@@ -148,6 +148,18 @@ public class GeoPulseImportDataCorruptionTest {
         log.info("Data corruption test PASSED - Multiple users can safely import same file");
     }
     @Test
+    void testImportWithoutDataTypes_ImportsEverythingInTheArchive() throws Exception {
+        // Options omitted by the API client arrive as defaults, with no data types selected.
+        ImportOptions defaultOptions = new ImportOptions();
+        defaultOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
+        ImportJob importJob = new ImportJob(testUserB.getId(), defaultOptions, "test-export.zip", exportData);
+
+        importDataService.processImportData(importJob);
+
+        assertEquals(1, gpsPointRepository.findByUserId(testUserB.getId()).size(),
+                "GPS data should be imported when no data types are specified");
+    }
+    @Test
     void testClearModeImport_UserSpecificClearing() throws Exception {
         log.info("=== Testing Clear Mode Import - User Specific Clearing ===");
         // Step 1: Both users import the same file

@@ -36,6 +36,7 @@ public class ConsecutiveTripDaysBadgeCalculator {
         Query query = entityManager.createNativeQuery(TRIP_DATES_QUERY);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<LocalDate> tripDates = (List<LocalDate>) query.getResultList();
 
         if (tripDates == null || tripDates.isEmpty()) {

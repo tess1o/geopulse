@@ -75,14 +75,6 @@ public class HomeContentService {
         updatedAt = Instant.now(clock);
     }
 
-    /**
-     * @deprecated kept for callers that do not need locale-specific tips; returns the {@code en} content.
-     */
-    @Deprecated
-    public HomeContentResponse getContent() {
-        return getContent(SupportedLanguages.DEFAULT.getCode());
-    }
-
     public HomeContentResponse getContent(String locale) {
         String normalizedLocale = SupportedLanguages.normalizeOrDefault(locale);
         List<HomeContentResponse.Tip> localizedTips = tipsByLocale.getOrDefault(

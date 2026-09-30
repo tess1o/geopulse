@@ -400,7 +400,7 @@ test.describe('Timeline Page', () => {
 
       const quickEditDialog = page.locator('.p-dialog').filter({ hasText: 'Edit Movement Type' });
       await expect(quickEditDialog).toBeVisible();
-      await expect(quickEditDialog).toContainText('UNKNOWN');
+      await expect(quickEditDialog).toContainText(/unknown/i);
       await expect(quickEditDialog).toContainText('AUTO');
 
       await quickEditDialog.locator('.movement-select').click();

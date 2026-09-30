@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.home.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.github.tess1o.geopulse.home.model.HomeContentResponse;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +30,7 @@ class HomeContentServiceTest {
         );
 
         service.init();
-        HomeContentResponse response = service.getContent();
+        HomeContentResponse response = service.getContent(SupportedLanguages.DEFAULT.getCode());
 
         assertEquals("bundled", response.meta().source());
         assertEquals("2026-03-30T10:00:00Z", response.meta().updatedAt());
@@ -49,7 +50,7 @@ class HomeContentServiceTest {
         );
 
         service.init();
-        HomeContentResponse response = service.getContent();
+        HomeContentResponse response = service.getContent(SupportedLanguages.DEFAULT.getCode());
 
         assertFalse(response.tips().isEmpty());
         assertTrue(response.whatsNew().isEmpty());
@@ -67,7 +68,7 @@ class HomeContentServiceTest {
         );
 
         service.init();
-        HomeContentResponse response = service.getContent();
+        HomeContentResponse response = service.getContent(SupportedLanguages.DEFAULT.getCode());
 
         assertEquals(1, response.tips().size());
         assertEquals("valid-tip", response.tips().getFirst().id());

@@ -77,6 +77,7 @@ class AdminSettingsBackupResourceTest {
         Response response = resource.exportSettingsBackup();
 
         assertThat(response.getStatus()).isEqualTo(200);
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(auditLogService).logAction(
                 eq(adminId),

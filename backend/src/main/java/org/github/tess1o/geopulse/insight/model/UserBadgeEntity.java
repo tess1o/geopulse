@@ -39,8 +39,10 @@ public class UserBadgeEntity extends PanacheEntityBase {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 10)
     private String icon;
 
     @Column(nullable = false)

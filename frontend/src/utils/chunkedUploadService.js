@@ -55,7 +55,7 @@ export const chunkedUploadService = {
             fileName: file.name,
             fileSize: file.size,
             importFormat,
-            options: JSON.stringify(options)
+            options
         })
 
         return response

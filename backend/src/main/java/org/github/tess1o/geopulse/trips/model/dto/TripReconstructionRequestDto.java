@@ -16,6 +16,5 @@ public class TripReconstructionRequestDto {
     private Long tripId;
 
     @NotEmpty(message = "At least one segment is required")
-    @Valid
-    private List<TripReconstructionSegmentDto> segments;
+    private List<@Valid TripReconstructionSegmentDto> segments;
 }

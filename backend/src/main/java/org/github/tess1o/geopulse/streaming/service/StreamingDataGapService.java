@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.streaming.service;
 
-import io.quarkus.panache.common.Parameters;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -14,6 +13,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,7 +73,7 @@ public class StreamingDataGapService {
     public void checkAndCreateOngoingDataGap(UUID userId, TimelineConfig config) {
         // Get the latest GPS point for this user
         Optional<GpsPointEntity> lastGpsPoint = gpsPointRepository.find("user.id = :userId order by timestamp desc",
-                Parameters.with("userId", userId)).firstResultOptional();
+                Map.of("userId", userId)).firstResultOptional();
 
         if (lastGpsPoint.isEmpty()) {
             log.debug("No GPS points found for user {}, no ongoing gap needed", userId);

@@ -299,6 +299,7 @@ components:
       - COVERAGE_RECALCULATION_CONFLICT
       - CITY_NOT_FOUND
       - COUNTRY_NOT_FOUND
+      - CSRF_TOKEN_INVALID
       - APPRISE_TEST_FAILED
       - EXPORT_EXPIRED
       - EXPORT_FILE_MISSING
@@ -323,6 +324,8 @@ components:
       - GEOCODING_RESULT_NOT_FOUND
       - IMMICH_PHOTO_NOT_FOUND
       - INVALID_BOUNDING_BOX
+      - INVALID_POI_REQUEST
+      - POI_UNAVAILABLE
       - INVALID_BACKUP_REQUEST
       - INVALID_AI_REQUEST
       - INVALID_CREDENTIALS
@@ -358,9 +361,9 @@ components:
       - INVALID_NOTE_REQUEST
       - INVALID_NOTIFICATION_PREFERENCES
       - INVALID_NOTIFICATION_TEMPLATE
-      - INVALID_PERIOD_DELETE_MODE
-      - INVALID_PERIOD_RANGE
-      - INVALID_PERIOD_TAG
+      - INVALID_TIMELINE_LABEL_DELETE_MODE
+      - INVALID_TIMELINE_LABEL_RANGE
+      - INVALID_TIMELINE_LABEL
       - INVALID_RELEASE_ANNOUNCEMENT
       - INVALID_RECONCILIATION_JOB_ID
       - INVALID_TELEMETRY_MAPPING
@@ -385,7 +388,6 @@ components:
       - INVALID_IMPORT_FORMAT
       - INVALID_IMPORT_FILE
       - INVALID_IMPORT_FILE_TYPE
-      - INVALID_IMPORT_OPTIONS
       - INVALID_IMPORT_REQUEST
       - INVALID_IMPORT_CHUNK
       - INVALID_IMPORT_CHUNK_INDEX
@@ -430,7 +432,7 @@ components:
       - REFRESH_TOKEN_REQUIRED
       - PLACE_NOT_FOUND
       - PLACE_RENAME_NOT_ALLOWED
-      - PERIOD_TAG_NOT_FOUND
+      - TIMELINE_LABEL_NOT_FOUND
       - LOCATION_VISITS_NOT_FOUND
       - RECONCILIATION_ALREADY_ACTIVE
       - RECONCILIATION_JOB_ACCESS_DENIED
@@ -698,36 +700,10 @@ components:
           $ref: "#/components/schemas/Instant"
         hasPassword:
           type: boolean
-        customMapTileUrl:
-          type: string
-        customMapStyleUrl:
-          type: string
-        mapRenderMode:
-          $ref: "#/components/schemas/MapRenderMode"
-        distanceUnit:
-          $ref: "#/components/schemas/DistanceUnit"
-        temperatureUnit:
-          $ref: "#/components/schemas/TemperatureUnit"
-        defaultRedirectUrl:
-          type: string
-        dateFormat:
-          type: string
-        timeFormat:
-          type: string
-        defaultDateRangePreset:
-          type: string
-        autoShowTripReplayControls:
-          type: boolean
-        enable3dBuildingsByDefault:
-          type: boolean
-        mapMatchingEnabled:
-          type: boolean
-        mapMatchingExcludedMovementTypes:
-          type: array
-          items:
-            $ref: "#/components/schemas/TripType"
-        mapMatchingAvailable:
-          type: boolean
+        uiPreferences:
+          $ref: "#/components/schemas/UserUiPreferences"
+        timelineDisplay:
+          $ref: "#/components/schemas/TimelineDisplaySettings"
     AuthStatusResponse:
       type: object
       properties:
@@ -1074,7 +1050,7 @@ components:
         importFormat:
           type: string
         options:
-          type: string
+          $ref: "#/components/schemas/ImportOptions"
     ChunkedUploadInitResponse:
       type: object
       properties:
@@ -1684,29 +1660,6 @@ components:
         scopes:
           maxLength: 255
           type: string
-    CreatePeriodTagDto:
-      required:
-      - tagName
-      - startTime
-      type: object
-      properties:
-        tagName:
-          maxLength: 100
-          pattern: \S
-          type: string
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        source:
-          type: string
-        isActive:
-          type: boolean
-        color:
-          pattern: "^#[0-9A-Fa-f]{6}$"
-          type: string
-        showAsPreset:
-          type: boolean
     CreateShareLinkRequest:
       required:
       - name
@@ -1737,6 +1690,9 @@ components:
           type: boolean
         show_photos:
           type: boolean
+        immich_album_id:
+          maxLength: 255
+          type: string
         show_notes:
           type: boolean
         custom_map_tile_url:
@@ -1766,6 +1722,25 @@ components:
         created_at:
           $ref: "#/components/schemas/Instant"
         is_active:
+          type: boolean
+    CreateTimelineLabelDto:
+      required:
+      - name
+      - startTime
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          pattern: \S
+          type: string
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        color:
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          type: string
+        showAsPreset:
           type: boolean
     CreateTimelineRegenerationCampaignRequest:
       type: object
@@ -2408,9 +2383,17 @@ components:
       type: object
       properties:
         startDate:
-          $ref: "#/components/schemas/Instant"
+          description: "Start of the range, inclusive (ISO-8601 instant)."
+          type: string
+          allOf:
+          - $ref: "#/components/schemas/Instant"
+          example: 2026-01-01T00:00:00Z
         endDate:
-          $ref: "#/components/schemas/Instant"
+          description: "End of the range, inclusive (ISO-8601 instant)."
+          type: string
+          allOf:
+          - $ref: "#/components/schemas/Instant"
+          example: 2026-01-31T23:59:59Z
     ExportJobResponse:
       type: object
       properties:
@@ -3283,6 +3266,16 @@ components:
           items:
             $ref: "#/components/schemas/Violation"
       additionalProperties: true
+    ImmichAlbum:
+      type: object
+      properties:
+        id:
+          type: string
+        albumName:
+          type: string
+        assetCount:
+          format: int32
+          type: integer
     ImmichConnectionStatus:
       enum:
       - CONNECTED
@@ -3397,6 +3390,26 @@ components:
           $ref: "#/components/schemas/Instant"
         timelineJobId:
           $ref: "#/components/schemas/UUID"
+    ImportOptions:
+      type: object
+      properties:
+        dataTypes:
+          description: Data types to import from a GeoPulse export archive. Ignored
+            by other formats. All data types found in the archive are imported when
+            omitted.
+          type: array
+          items:
+            type: string
+        dateRangeFilter:
+          description: Only import data with timestamps inside this range. No filtering
+            when omitted.
+          type: object
+          allOf:
+          - $ref: "#/components/schemas/ExportDateRange"
+        clearDataBeforeImport:
+          description: Delete existing data in the imported date range before importing.
+          default: false
+          type: boolean
     ImportPhase:
       enum:
       - validating
@@ -3468,6 +3481,10 @@ components:
           type: string
         timezone:
           maxLength: 255
+          type: string
+        language:
+          maxLength: 16
+          pattern: ^(en|uk)$
           type: string
     InvitationResponse:
       type: object
@@ -3831,6 +3848,13 @@ components:
           type: string
         completedAt:
           type: string
+    MapColorScheme:
+      enum:
+      - DEFAULT
+      - RED_GREEN_SAFE
+      - BLUE_YELLOW_SAFE
+      - HIGH_CONTRAST
+      type: string
     MapMatchedPointDTO:
       type: object
       properties:
@@ -4190,6 +4214,7 @@ components:
       - DERIVED_STAY
       - DERIVED_TRIP_GPS
       - DERIVED_TRIP_INTERPOLATED
+      - DERIVED_GAP_NEIGHBOR
       - NONE
       type: string
     NoteMapMarkerDto:
@@ -4667,32 +4692,6 @@ components:
         month:
           format: int32
           type: integer
-    PeriodTagDto:
-      type: object
-      properties:
-        id:
-          format: int64
-          type: integer
-        userId:
-          $ref: "#/components/schemas/UUID"
-        tagName:
-          type: string
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        source:
-          type: string
-        isActive:
-          type: boolean
-        color:
-          type: string
-        showAsPreset:
-          type: boolean
-        createdAt:
-          $ref: "#/components/schemas/Instant"
-        updatedAt:
-          $ref: "#/components/schemas/Instant"
     Phase:
       enum:
       - BOAT_SETUP_IS_READY
@@ -4861,6 +4860,25 @@ components:
         minimumVisitsRequired:
           format: int32
           type: integer
+    PlanSearchExternalStatus:
+      enum:
+      - OK
+      - DISABLED
+      - FAILED
+      type: string
+    PlanSearchResponseDto:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanSearchResultDto"
+        externalStatus:
+          $ref: "#/components/schemas/PlanSearchExternalStatus"
+        externalProvider:
+          type: string
+        externalMessage:
+          type: string
     PlanSearchResultDto:
       type: object
       properties:
@@ -4907,6 +4925,62 @@ components:
         geocodingId:
           format: int64
           type: integer
+    PoiDto:
+      type: object
+      properties:
+        id:
+          format: int64
+          type: integer
+        externalId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        imageUrl:
+          type: string
+        imageAuthor:
+          type: string
+        imageLicense:
+          type: string
+        imageLicenseUrl:
+          type: string
+        imageFilePageUrl:
+          type: string
+    PoiSearchResponseDto:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoiDto"
+        dataAttribution:
+          type: string
+        cached:
+          type: boolean
+    PoiTestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        wikidataSuccess:
+          type: boolean
+        wikidataEndpoint:
+          type: string
+        wikidataDetail:
+          type: string
+        commonsSuccess:
+          type: boolean
+        commonsEndpoint:
+          type: string
+        commonsDetail:
+          type: string
     Properties:
       type: object
       properties:
@@ -5312,6 +5386,8 @@ components:
           type: boolean
         show_photos:
           type: boolean
+        immich_album_id:
+          type: string
         show_notes:
           type: boolean
         timeline_status:
@@ -5384,8 +5460,28 @@ components:
           type: string
         map_render_mode:
           $ref: "#/components/schemas/MapRenderMode"
+        map_appearance:
+          $ref: "#/components/schemas/SharedMapAppearance"
         active:
           type: boolean
+    SharedMapAppearance:
+      type: object
+      properties:
+        colorScheme:
+          $ref: "#/components/schemas/MapColorScheme"
+        defaultPathColor:
+          type: string
+        activePathColor:
+          type: string
+        speedBandPalette:
+          type: string
+        heatmapGradient:
+          type: string
+        pathOutlineEnabled:
+          type: boolean
+        pathWidth:
+          format: int32
+          type: integer
     SliceResponseExportJobResponse:
       type: object
       properties:
@@ -5586,18 +5682,20 @@ components:
     TimePatterns:
       type: object
       properties:
-        mostActiveMonth:
+        mostActiveYearMonth:
           type: string
         monthlyComparison:
-          type: string
+          $ref: "#/components/schemas/MessageDescriptor"
         busiestDayOfWeek:
-          type: string
+          format: int32
+          type: integer
         dayInsight:
-          type: string
-        mostActiveTime:
-          type: string
+          $ref: "#/components/schemas/MessageDescriptor"
+        mostActiveHour:
+          format: int32
+          type: integer
         timeInsight:
-          type: string
+          $ref: "#/components/schemas/MessageDescriptor"
     TimelineConfig:
       type: object
       properties:
@@ -5789,12 +5887,23 @@ components:
         durationMinutes:
           format: int64
           type: integer
+    TimelineDisplayCapabilities:
+      type: object
+      properties:
+        mapMatchingAvailable:
+          type: boolean
+        panoramaxAvailable:
+          type: boolean
+        panoramaxEndpoint:
+          type: string
     TimelineDisplayPreferences:
       type: object
       properties:
         customMapTileUrl:
+          maxLength: 1000
           type: string
         customMapStyleUrl:
+          maxLength: 1000
           type: string
         mapRenderMode:
           $ref: "#/components/schemas/MapRenderMode"
@@ -5802,13 +5911,18 @@ components:
           type: boolean
         pathSimplificationTolerance:
           format: double
+          maximum: 100.0
+          minimum: 1.0
           type: number
         pathMaxPoints:
           format: int32
+          maximum: 1000
+          minimum: 0
           type: integer
         pathAdaptiveSimplification:
           type: boolean
         defaultDateRangePreset:
+          pattern: ^(today|yesterday|lastWeek|lastMonth)?$
           type: string
         showCurrentLocationTelemetry:
           type: boolean
@@ -5822,12 +5936,34 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TripType"
-        mapMatchingAvailable:
-          type: boolean
-        panoramaxAvailable:
-          type: boolean
-        panoramaxEndpoint:
+        defaultPathColor:
+          pattern: "^(#[0-9A-Fa-f]{6})?$"
           type: string
+        activePathColor:
+          pattern: "^(#[0-9A-Fa-f]{6})?$"
+          type: string
+        colorScheme:
+          $ref: "#/components/schemas/MapColorScheme"
+        speedBandPalette:
+          pattern: ^(DEFAULT|RED_GREEN_SAFE|BLUE_YELLOW_SAFE|HIGH_CONTRAST|OFF)?$
+          type: string
+        heatmapGradient:
+          pattern: ^(CLASSIC|VIRIDIS|CIVIDIS)?$
+          type: string
+        pathOutlineEnabled:
+          type: boolean
+        pathWidth:
+          format: int32
+          maximum: 10
+          minimum: 2
+          type: integer
+    TimelineDisplaySettings:
+      type: object
+      properties:
+        preferences:
+          $ref: "#/components/schemas/TimelineDisplayPreferences"
+        capabilities:
+          $ref: "#/components/schemas/TimelineDisplayCapabilities"
     TimelineJobProgress:
       type: object
       properties:
@@ -5838,7 +5974,7 @@ components:
         status:
           $ref: "#/components/schemas/JobStatus1"
         currentStep:
-          type: string
+          $ref: "#/components/schemas/MessageDescriptor"
         currentStepIndex:
           format: int32
           type: integer
@@ -5885,6 +6021,32 @@ components:
         activeUserJobs:
           format: int64
           type: integer
+    TimelineLabelDto:
+      type: object
+      properties:
+        id:
+          format: int64
+          type: integer
+        userId:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        source:
+          type: string
+        isActive:
+          type: boolean
+        color:
+          type: string
+        showAsPreset:
+          type: boolean
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
     TimelinePreferencesUpdateResponse:
       type: object
       properties:
@@ -6321,7 +6483,7 @@ components:
           $ref: "#/components/schemas/UUID"
         ownerFullName:
           type: string
-        periodTagId:
+        timelineLabelId:
           format: int64
           type: integer
         name:
@@ -6991,29 +7153,6 @@ components:
         scopes:
           maxLength: 255
           type: string
-    UpdatePeriodTagDto:
-      required:
-      - tagName
-      - startTime
-      type: object
-      properties:
-        tagName:
-          maxLength: 100
-          pattern: \S
-          type: string
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        source:
-          type: string
-        isActive:
-          type: boolean
-        color:
-          pattern: "^#[0-9A-Fa-f]{6}$"
-          type: string
-        showAsPreset:
-          type: boolean
     UpdatePlaceNameRequest:
       required:
       - name
@@ -7035,19 +7174,8 @@ components:
         timezone:
           maxLength: 255
           type: string
-        distanceUnit:
-          $ref: "#/components/schemas/DistanceUnit"
-        temperatureUnit:
-          $ref: "#/components/schemas/TemperatureUnit"
-        defaultRedirectUrl:
-          maxLength: 1000
-          type: string
-        dateFormat:
-          pattern: ^(MDY|DMY|YMD)$
-          type: string
-        timeFormat:
-          pattern: ^(24h|12h)$
-          type: string
+        uiPreferences:
+          $ref: "#/components/schemas/UserUiPreferences"
     UpdateSettingRequest:
       type: object
       properties:
@@ -7082,6 +7210,9 @@ components:
           type: boolean
         show_photos:
           type: boolean
+        immich_album_id:
+          maxLength: 255
+          type: string
         show_notes:
           type: boolean
         custom_map_tile_url:
@@ -7094,46 +7225,25 @@ components:
           $ref: "#/components/schemas/MapRenderMode"
         passwordRemoval:
           type: boolean
-    UpdateTimelineDisplayPreferencesRequest:
+    UpdateTimelineLabelDto:
+      required:
+      - name
+      - startTime
       type: object
       properties:
-        customMapTileUrl:
-          maxLength: 1000
+        name:
+          maxLength: 100
+          pattern: \S
           type: string
-        customMapStyleUrl:
-          maxLength: 1000
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        color:
+          pattern: "^#[0-9A-Fa-f]{6}$"
           type: string
-        mapRenderMode:
-          $ref: "#/components/schemas/MapRenderMode"
-        pathSimplificationEnabled:
+        showAsPreset:
           type: boolean
-        pathSimplificationTolerance:
-          format: double
-          maximum: 100.0
-          minimum: 1.0
-          type: number
-        pathMaxPoints:
-          format: int32
-          maximum: 1000
-          minimum: 0
-          type: integer
-        pathAdaptiveSimplification:
-          type: boolean
-        defaultDateRangePreset:
-          pattern: ^(today|yesterday|lastWeek|lastMonth)?$
-          type: string
-        showCurrentLocationTelemetry:
-          type: boolean
-        autoShowTripReplayControls:
-          type: boolean
-        enable3dBuildingsByDefault:
-          type: boolean
-        mapMatchingEnabled:
-          type: boolean
-        mapMatchingExcludedMovementTypes:
-          type: array
-          items:
-            type: string
     UpdateTimelinePermissionRequest:
       required:
       - shareTimeline
@@ -7420,19 +7530,6 @@ components:
           format: int32
           minimum: 0
           type: integer
-        isVisited:
-          type: boolean
-        visitConfidence:
-          format: double
-          maximum: 1.0
-          minimum: 0.0
-          type: number
-        visitSource:
-          $ref: "#/components/schemas/TripPlanItemVisitSource"
-        visitedAt:
-          $ref: "#/components/schemas/Instant"
-        manualOverrideState:
-          $ref: "#/components/schemas/TripPlanItemOverrideState"
     UpdateUserPasswordRequest:
       required:
       - newPassword
@@ -7623,6 +7720,10 @@ components:
         timezone:
           maxLength: 255
           type: string
+        language:
+          maxLength: 16
+          pattern: ^(en|uk)$
+          type: string
     UserResponse:
       type: object
       properties:
@@ -7646,36 +7747,10 @@ components:
           type: string
         hasPassword:
           type: boolean
-        customMapTileUrl:
-          type: string
-        customMapStyleUrl:
-          type: string
-        mapRenderMode:
-          $ref: "#/components/schemas/MapRenderMode"
-        distanceUnit:
-          $ref: "#/components/schemas/DistanceUnit"
-        temperatureUnit:
-          $ref: "#/components/schemas/TemperatureUnit"
-        defaultRedirectUrl:
-          type: string
-        dateFormat:
-          type: string
-        timeFormat:
-          type: string
-        defaultDateRangePreset:
-          type: string
-        autoShowTripReplayControls:
-          type: boolean
-        enable3dBuildingsByDefault:
-          type: boolean
-        mapMatchingEnabled:
-          type: boolean
-        mapMatchingExcludedMovementTypes:
-          type: array
-          items:
-            $ref: "#/components/schemas/TripType"
-        mapMatchingAvailable:
-          type: boolean
+        uiPreferences:
+          $ref: "#/components/schemas/UserUiPreferences"
+        timelineDisplay:
+          $ref: "#/components/schemas/TimelineDisplaySettings"
     UserSearchDTO:
       type: object
       properties:
@@ -7740,6 +7815,26 @@ components:
               $ref: "#/components/schemas/GpsPointPathPointDTO"
         stats:
           $ref: "#/components/schemas/TimelineStats"
+    UserUiPreferences:
+      type: object
+      properties:
+        distanceUnit:
+          $ref: "#/components/schemas/DistanceUnit"
+        temperatureUnit:
+          $ref: "#/components/schemas/TemperatureUnit"
+        dateFormat:
+          pattern: ^(MDY|DMY|YMD)$
+          type: string
+        timeFormat:
+          pattern: ^(24h|12h)$
+          type: string
+        language:
+          maxLength: 16
+          pattern: ^(en|uk)$
+          type: string
+        defaultRedirectUrl:
+          maxLength: 1000
+          type: string
     ValidateInvitationResponse:
       type: object
       properties:
@@ -8192,10 +8287,10 @@ tags:
   description: Manage GeoPulse notes and live Memos integration.
 - name: "User: Notifications"
   description: Read and update notifications and preferences.
-- name: "User: Period Tags"
-  description: Manage period tags and overlap checks.
 - name: "User: Places"
   description: "Read and update place details, visits, photos, and exports."
+- name: "User: Places to visit"
+  description: "Discover places worth visiting, with photos."
 - name: "User: Sharing"
   description: Manage shared location links.
 - name: "User: Statistics"
@@ -8204,6 +8299,8 @@ tags:
   description: Read application version and version status.
 - name: "User: Timeline"
   description: "Read timelines and manage timeline generation, jobs, and overrides."
+- name: "User: Timeline Labels"
+  description: Manage timeline labels and overlap checks.
 - name: "User: Trips"
   description: Read trip workspace timeline and path data.
 - name: "User: Trips and Planning"
@@ -9409,6 +9506,28 @@ paths:
           description: The authenticated user does not have permission to access this
             resource.
       summary: Test Panoramax Connection
+      security:
+      - jwt:
+        - ADMIN
+  /api/v1/admin/settings/poi/connection-tests:
+    post:
+      operationId: AdminSettingsResource_testPoiConnection
+      tags:
+      - "Admin: System Settings"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoiTestResponse"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Test Poi Connection
       security:
       - jwt:
         - ADMIN
@@ -13858,6 +13977,12 @@ paths:
       operationId: HomeContentResource_getHomeContent
       tags:
       - "User: Home"
+      parameters:
+      - description: "UI locale for translated tips (e.g. en, uk); defaults to en"
+        name: locale
+        in: query
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -14029,12 +14154,19 @@ paths:
                   format: binary
                   type: string
                 format:
+                  enum:
+                  - owntracks
+                  - gpx
+                  - google-timeline
+                  - geojson
+                  - csv
+                  - geopulse
                   type: string
                 options:
-                  type: string
+                  $ref: "#/components/schemas/ImportOptions"
             encoding:
               options:
-                contentType: text/plain
+                contentType: application/json
         required: true
       responses:
         "200":
@@ -14257,6 +14389,31 @@ paths:
           description: The authenticated user does not have permission to access this
             resource.
       summary: Get Immich Config
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/integrations/immich/albums:
+    get:
+      operationId: ImmichResource_listAlbums
+      tags:
+      - "User: Immich"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImmichAlbum"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: List Albums
       security:
       - jwt:
         - USER
@@ -15549,192 +15706,6 @@ paths:
       - jwt:
         - USER
         - ADMIN
-  /api/v1/period-tags:
-    get:
-      operationId: PeriodTagResource_getPeriodTags
-      tags:
-      - "User: Period Tags"
-      parameters:
-      - name: from
-        in: query
-        schema:
-          type: string
-      - name: to
-        in: query
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PeriodTagDto"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      summary: Get Period Tags
-      security:
-      - jwt:
-        - USER
-        - ADMIN
-    post:
-      operationId: PeriodTagResource_createPeriodTag
-      tags:
-      - "User: Period Tags"
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreatePeriodTagDto"
-        required: true
-      responses:
-        "201":
-          description: Period tag created
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      summary: Create Period Tag
-      security:
-      - jwt:
-        - USER
-        - ADMIN
-  /api/v1/period-tags/active:
-    get:
-      operationId: PeriodTagResource_getActiveTag
-      tags:
-      - "User: Period Tags"
-      responses:
-        "204":
-          description: No active period tag
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      summary: Get Active Tag
-      security:
-      - jwt:
-        - USER
-        - ADMIN
-  /api/v1/period-tags/check-overlaps:
-    get:
-      operationId: PeriodTagResource_checkOverlaps
-      tags:
-      - "User: Period Tags"
-      parameters:
-      - name: excludeId
-        in: query
-        schema:
-          format: int64
-          type: integer
-      - name: from
-        in: query
-        schema:
-          type: string
-      - name: to
-        in: query
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PeriodTagDto"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      summary: Check Overlaps
-      security:
-      - jwt:
-        - USER
-        - ADMIN
-  /api/v1/period-tags/{id}:
-    put:
-      operationId: PeriodTagResource_updatePeriodTag
-      tags:
-      - "User: Period Tags"
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdatePeriodTagDto"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PeriodTagDto"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      summary: Update Period Tag
-      security:
-      - jwt:
-        - USER
-        - ADMIN
-    delete:
-      operationId: PeriodTagResource_deletePeriodTag
-      tags:
-      - "User: Period Tags"
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - name: mode
-        in: query
-        schema:
-          default: unlink_only
-          type: string
-      responses:
-        "204":
-          description: Period tag deleted
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      summary: Delete Period Tag
-      security:
-      - jwt:
-        - USER
-        - ADMIN
   /api/v1/places/{type}/{id}:
     put:
       operationId: PlaceDetailsResource_updatePlaceName
@@ -15951,6 +15922,87 @@ paths:
       - jwt:
         - USER
         - ADMIN
+  /api/v1/poi/images/{poiId}/thumbnail:
+    get:
+      operationId: PoiResource_thumbnail
+      tags:
+      - "User: Places to visit"
+      parameters:
+      - name: poiId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: Cached thumbnail of the place's photo
+          content:
+            image/jpeg: {}
+            image/png: {}
+            image/webp: {}
+        "404":
+          description: No usable image for this place
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ApiProblemResponse"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Thumbnail
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/poi/search:
+    get:
+      operationId: PoiResource_search
+      tags:
+      - "User: Places to visit"
+      parameters:
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: int32
+          default: "8000"
+          type: integer
+      responses:
+        "200":
+          description: Places around the given point
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoiSearchResponseDto"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Search
+      security:
+      - jwt:
+        - USER
+        - ADMIN
   /api/v1/preferences/timeline:
     put:
       operationId: UserResource_updateTimelinePreferences
@@ -16017,15 +16069,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateTimelineDisplayPreferencesRequest"
+              $ref: "#/components/schemas/TimelineDisplayPreferences"
         required: true
       responses:
         "200":
-          description: Updated timeline display preferences
+          description: Updated timeline display settings
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TimelineDisplayPreferences"
+                $ref: "#/components/schemas/TimelineDisplaySettings"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -16049,7 +16101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TimelineDisplayPreferences"
+                $ref: "#/components/schemas/TimelineDisplaySettings"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -16199,6 +16251,113 @@ paths:
               schema:
                 $ref: "#/components/schemas/GpsPointPathDTO"
       summary: Get Shared Path
+  /api/v1/public/share-links/{linkId}/photos:
+    get:
+      operationId: PublicSharedLinkResource_getSharedPhotos
+      tags:
+      - "User: Sharing"
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: from
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: to
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImmichPhotoSearchResponse"
+      summary: Get Shared Photos
+  /api/v1/public/share-links/{linkId}/photos/{photoId}/download:
+    get:
+      operationId: PublicSharedLinkResource_downloadSharedPhoto
+      tags:
+      - "User: Sharing"
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Original shared Immich photo
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+      summary: Download Shared Photo
+  /api/v1/public/share-links/{linkId}/photos/{photoId}/preview:
+    get:
+      operationId: PublicSharedLinkResource_getSharedPhotoPreview
+      tags:
+      - "User: Sharing"
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Shared Immich photo preview
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+      summary: Get Shared Photo Preview
+  /api/v1/public/share-links/{linkId}/photos/{photoId}/thumbnail:
+    get:
+      operationId: PublicSharedLinkResource_getSharedPhotoThumbnail
+      tags:
+      - "User: Sharing"
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Shared Immich photo thumbnail
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+      summary: Get Shared Photo Thumbnail
   /api/v1/public/share-links/{linkId}/timeline:
     get:
       operationId: PublicSharedLinkResource_getSharedTimeline
@@ -16565,6 +16724,192 @@ paths:
           description: The authenticated user does not have permission to access this
             resource.
       summary: Get Timeline
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/timeline-labels:
+    get:
+      operationId: TimelineLabelResource_getTimelineLabels
+      tags:
+      - "User: Timeline Labels"
+      parameters:
+      - name: from
+        in: query
+        schema:
+          type: string
+      - name: to
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineLabelDto"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Timeline Labels
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+    post:
+      operationId: TimelineLabelResource_createTimelineLabel
+      tags:
+      - "User: Timeline Labels"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTimelineLabelDto"
+        required: true
+      responses:
+        "201":
+          description: Timeline label created
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Create Timeline Label
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/timeline-labels/active:
+    get:
+      operationId: TimelineLabelResource_getActiveLabel
+      tags:
+      - "User: Timeline Labels"
+      responses:
+        "204":
+          description: No active timeline label
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Active Label
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/timeline-labels/check-overlaps:
+    get:
+      operationId: TimelineLabelResource_checkOverlaps
+      tags:
+      - "User: Timeline Labels"
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: excludeId
+        in: query
+        schema:
+          format: int64
+          type: integer
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineLabelDto"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Check Overlaps
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/v1/timeline-labels/{id}:
+    put:
+      operationId: TimelineLabelResource_updateTimelineLabel
+      tags:
+      - "User: Timeline Labels"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTimelineLabelDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineLabelDto"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Update Timeline Label
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+    delete:
+      operationId: TimelineLabelResource_deleteTimelineLabel
+      tags:
+      - "User: Timeline Labels"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: mode
+        in: query
+        schema:
+          default: unlink_only
+          type: string
+      responses:
+        "204":
+          description: Timeline label deleted
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Delete Timeline Label
       security:
       - jwt:
         - USER
@@ -17089,9 +17434,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PlanSearchResultDto"
+                $ref: "#/components/schemas/PlanSearchResponseDto"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -17197,13 +17540,13 @@ paths:
       - jwt:
         - USER
         - ADMIN
-  /api/v1/trips/from-period-tag/{periodTagId}:
+  /api/v1/trips/from-timeline-label/{timelineLabelId}:
     post:
-      operationId: TripResource_createTripFromPeriodTag
+      operationId: TripResource_createTripFromTimelineLabel
       tags:
       - "User: Trips"
       parameters:
-      - name: periodTagId
+      - name: timelineLabelId
         in: path
         required: true
         schema:
@@ -17222,7 +17565,7 @@ paths:
         "403":
           description: The authenticated user does not have permission to access this
             resource.
-      summary: Create Trip From Period Tag
+      summary: Create Trip From Timeline Label
       security:
       - jwt:
         - USER
@@ -17429,9 +17772,9 @@ paths:
       - jwt:
         - USER
         - ADMIN
-  /api/v1/trips/{id}/period-tags:
+  /api/v1/trips/{id}/timeline-label:
     delete:
-      operationId: TripResource_unlinkTripFromPeriodTag
+      operationId: TripResource_unlinkTripFromTimelineLabel
       tags:
       - "User: Trips"
       parameters:
@@ -17454,7 +17797,7 @@ paths:
         "403":
           description: The authenticated user does not have permission to access this
             resource.
-      summary: Unlink Trip From Period Tag
+      summary: Unlink Trip From Timeline Label
       security:
       - jwt:
         - USER

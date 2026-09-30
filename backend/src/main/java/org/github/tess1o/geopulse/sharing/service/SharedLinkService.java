@@ -645,7 +645,10 @@ public class SharedLinkService {
         log.info("Path data accessed for linkId: {}, original points: {}, simplified: {}",
                 linkId, gpsPoints.size(), simplifiedPoints.size());
 
-        return new GpsPointPathDTO(entity.getUser().getId(), (List<GpsPointPathPointDTO>) simplifiedPoints);
+        // simplify() returns a subset of the input, so every element is a GpsPointPathPointDTO
+        @SuppressWarnings("unchecked")
+        List<GpsPointPathPointDTO> pathPoints = (List<GpsPointPathPointDTO>) simplifiedPoints;
+        return new GpsPointPathDTO(entity.getUser().getId(), pathPoints);
     }
 
     private TimelineRange resolveRequestedTimelineRange(SharedLinkEntity entity, Instant startTime, Instant endTime) {

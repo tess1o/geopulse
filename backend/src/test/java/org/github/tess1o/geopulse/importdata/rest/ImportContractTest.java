@@ -14,7 +14,6 @@ import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -35,10 +34,12 @@ import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assert
  * HTTP contract for the import surface: {@code /api/v1/imports}, {@code /api/v1/import-uploads} and
  * {@code /api/v1/debug-imports}.
  *
- * <p>This is the first place in the test tree that sends multipart requests. The import scheduler is
- * disabled in tests, so a created job stays in {@code VALIDATING} and is never parsed — that keeps
- * these tests about the HTTP contract rather than about import semantics, which the existing
- * service-level suite already covers.
+ * <p>The import scheduler is disabled in tests, so a created job stays in {@code validating} and is
+ * never parsed — that keeps these tests about the HTTP contract rather than about import semantics,
+ * which the existing service-level suite already covers.
+ *
+ * <p>Requests authenticate with a bearer header, so no CSRF token is involved; the CSRF rules for
+ * cookie sessions are covered by {@code CsrfProtectionContractTest}.
  *
  * <p>Not covered: the {@code POST /debug-imports} success path. It requires a ZIP whose
  * {@code gps_data.json} matches the debug-import schema — see the notes on that test.
@@ -68,21 +69,6 @@ class ImportContractTest {
         otherToken = token(register("import-other"));
     }
 
-    /**
-     * DISABLED — the multipart body never reaches the resource.
-     *
-     * <p>Quarkus RESTEASY answers every authenticated multipart request here with a bodyless 400:
-     * {@code X-Request-Id} is present but there is no {@code X-Error-Id}, no content type and no
-     * problem body, so it is rejected before {@code ImportResource} runs. Reproduced with two
-     * independent client encodings (RestAssured {@code multiPart(...)} and a hand-built
-     * {@code multipart/form-data} body) and with a CSRF token attached, so the cause is server-side.
-     * The same requests anonymously return a proper 401 problem, so routing and auth work — it is
-     * specifically the authenticated multipart path that fails.
-     *
-     * <p>Worth investigating: multipart import is the one flow this suite cannot reach, and it is
-     * also the only place in the API that uses multipart.
-     */
-    @Disabled("authenticated multipart requests are rejected with a bodyless 400 before the resource")
     @Test
     void multipartUploadCreatesAJobThatCanBeListedAndDeleted() {
         Response created = multipart(ownerToken,
@@ -93,7 +79,7 @@ class ImportContractTest {
 
         assertThat(created.statusCode()).isEqualTo(200);
         UUID jobId = UUID.fromString(created.jsonPath().getString("importJobId"));
-        assertThat(created.jsonPath().getString("status")).isEqualTo("VALIDATING");
+        assertThat(created.jsonPath().getString("status")).isEqualTo("validating");
         assertThat(created.jsonPath().getString("uploadedFileName")).isEqualTo(FIXTURE_NAME);
 
         Response listed = authenticated(ownerToken).when().get(IMPORTS);
@@ -107,28 +93,13 @@ class ImportContractTest {
         assertThat(authenticated(ownerToken).when().delete(IMPORTS + "/" + jobId).statusCode()).isEqualTo(204);
     }
 
-    /**
-     * DISABLED — the multipart body never reaches the resource.
-     *
-     * <p>Quarkus RESTEASY answers every authenticated multipart request here with a bodyless 400:
-     * {@code X-Request-Id} is present but there is no {@code X-Error-Id}, no content type and no
-     * problem body, so it is rejected before {@code ImportResource} runs. Reproduced with two
-     * independent client encodings (RestAssured {@code multiPart(...)} and a hand-built
-     * {@code multipart/form-data} body) and with a CSRF token attached, so the cause is server-side.
-     * The same requests anonymously return a proper 401 problem, so routing and auth work — it is
-     * specifically the authenticated multipart path that fails.
-     *
-     * <p>Worth investigating: multipart import is the one flow this suite cannot reach, and it is
-     * also the only place in the API that uses multipart.
-     */
-    @Disabled("authenticated multipart requests are rejected with a bodyless 400 before the resource")
     @Test
     void chunkedUploadLifecycleProducesAnImportJob() {
         byte[] payload = fixtureBytes();
 
         Response initialized = authenticated(ownerToken)
                 .body(Map.of("fileName", FIXTURE_NAME, "fileSize", payload.length,
-                        "importFormat", "geojson", "options", "{}"))
+                        "importFormat", "geojson", "options", Map.of()))
                 .when().post(UPLOADS);
         assertThat(initialized.statusCode()).isEqualTo(200);
         UUID uploadId = UUID.fromString(initialized.jsonPath().getString("uploadId"));
@@ -159,10 +130,69 @@ class ImportContractTest {
     }
 
     @Test
+    void directUploadTreatsOptionsAsOptional() {
+        Response created = multipart(ownerToken,
+                        filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
+                        fieldPart("format", "geojson"))
+                .when().post(IMPORTS);
+
+        assertThat(created.statusCode()).isEqualTo(200);
+        authenticated(ownerToken).when().delete(IMPORTS + "/" + created.jsonPath().getString("importJobId"));
+    }
+
+    @Test
+    void directUploadAcceptsOptionsWithOrWithoutAPartContentType() {
+        String options = "{\"clearDataBeforeImport\":true,"
+                + "\"dateRangeFilter\":{\"startDate\":\"2026-01-01T00:00:00Z\",\"endDate\":\"2026-01-31T23:59:59Z\"}}";
+
+        Response plainField = multipart(ownerToken,
+                        filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
+                        fieldPart("format", "geojson"),
+                        fieldPart("options", options))
+                .when().post(IMPORTS);
+        assertThat(plainField.statusCode()).isEqualTo(200);
+        authenticated(ownerToken).when().delete(IMPORTS + "/" + plainField.jsonPath().getString("importJobId"));
+
+        Response jsonPart = multipart(ownerToken,
+                        filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
+                        fieldPart("format", "geojson"),
+                        new Part("options", null, "application/json", options.getBytes(StandardCharsets.UTF_8)))
+                .when().post(IMPORTS);
+        assertThat(jsonPart.statusCode()).isEqualTo(200);
+        authenticated(ownerToken).when().delete(IMPORTS + "/" + jsonPart.jsonPath().getString("importJobId"));
+    }
+
+    @Test
+    void malformedOptionsAreRejected() {
+        assertProblemEnvelope(multipart(ownerToken,
+                        filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
+                        fieldPart("format", "geojson"),
+                        fieldPart("options", "{not json"))
+                        .when().post(IMPORTS),
+                400, "BAD_REQUEST");
+
+        assertProblemEnvelope(authenticated(ownerToken)
+                        .body(Map.of("fileName", FIXTURE_NAME, "fileSize", 10,
+                                "importFormat", "geojson", "options", "{}"))
+                        .when().post(UPLOADS),
+                400, "BAD_REQUEST");
+    }
+
+    @Test
+    void chunkedUploadTreatsOptionsAsOptional() {
+        Response initialized = authenticated(ownerToken)
+                .body(Map.of("fileName", FIXTURE_NAME, "fileSize", fixtureBytes().length, "importFormat", "geojson"))
+                .when().post(UPLOADS);
+
+        assertThat(initialized.statusCode()).isEqualTo(200);
+        authenticated(ownerToken).when().delete(UPLOADS + "/" + initialized.jsonPath().getString("uploadId"));
+    }
+
+    @Test
     void uploadSessionCanBeAborted() {
         Response initialized = authenticated(ownerToken)
                 .body(Map.of("fileName", FIXTURE_NAME, "fileSize", fixtureBytes().length,
-                        "importFormat", "geojson", "options", "{}"))
+                        "importFormat", "geojson", "options", Map.of()))
                 .when().post(UPLOADS);
         UUID uploadId = UUID.fromString(initialized.jsonPath().getString("uploadId"));
 
@@ -176,21 +206,21 @@ class ImportContractTest {
         // Unknown format
         assertProblemEnvelope(authenticated(ownerToken)
                         .body(Map.of("fileName", FIXTURE_NAME, "fileSize", 10,
-                                "importFormat", "not-a-format", "options", "{}"))
+                                "importFormat", "not-a-format", "options", Map.of()))
                         .when().post(UPLOADS),
                 400, "INVALID_IMPORT_FORMAT");
 
         // Non-positive file size
         assertProblemEnvelope(authenticated(ownerToken)
                         .body(Map.of("fileName", FIXTURE_NAME, "fileSize", 0,
-                                "importFormat", "geojson", "options", "{}"))
+                                "importFormat", "geojson", "options", Map.of()))
                         .when().post(UPLOADS),
                 400, "INVALID_IMPORT_REQUEST");
 
         // Unsupported extension for the declared format
         assertProblemEnvelope(authenticated(ownerToken)
                         .body(Map.of("fileName", "payload.txt", "fileSize", 10,
-                                "importFormat", "geojson", "options", "{}"))
+                                "importFormat", "geojson", "options", Map.of()))
                         .when().post(UPLOADS),
                 400, "INVALID_IMPORT_FILE_TYPE");
 
@@ -203,7 +233,7 @@ class ImportContractTest {
     @Test
     void onlyOneUploadSessionAtATimeAndCompletionNeedsEveryChunk() {
         Map<String, Object> init = Map.of("fileName", FIXTURE_NAME, "fileSize", fixtureBytes().length,
-                "importFormat", "geojson", "options", "{}");
+                "importFormat", "geojson", "options", Map.of());
 
         Response first = authenticated(ownerToken).body(init).when().post(UPLOADS);
         assertThat(first.statusCode()).isEqualTo(200);
@@ -241,21 +271,6 @@ class ImportContractTest {
                 404, "IMPORT_JOB_NOT_FOUND");
     }
 
-    /**
-     * DISABLED — the multipart body never reaches the resource.
-     *
-     * <p>Quarkus RESTEASY answers every authenticated multipart request here with a bodyless 400:
-     * {@code X-Request-Id} is present but there is no {@code X-Error-Id}, no content type and no
-     * problem body, so it is rejected before {@code ImportResource} runs. Reproduced with two
-     * independent client encodings (RestAssured {@code multiPart(...)} and a hand-built
-     * {@code multipart/form-data} body) and with a CSRF token attached, so the cause is server-side.
-     * The same requests anonymously return a proper 401 problem, so routing and auth work — it is
-     * specifically the authenticated multipart path that fails.
-     *
-     * <p>Worth investigating: multipart import is the one flow this suite cannot reach, and it is
-     * also the only place in the API that uses multipart.
-     */
-    @Disabled("authenticated multipart requests are rejected with a bodyless 400 before the resource")
     @Test
     void anotherUsersImportJobIsNotVisible() {
         Response created = multipart(otherToken,
@@ -284,36 +299,12 @@ class ImportContractTest {
                 401, "AUTHENTICATION_REQUIRED");
         assertProblemEnvelope(given().contentType(ContentType.JSON)
                         .body(Map.of("fileName", FIXTURE_NAME, "fileSize", 10,
-                                "importFormat", "geojson", "options", "{}"))
+                                "importFormat", "geojson", "options", Map.of()))
                         .when().post(UPLOADS),
                 401, "AUTHENTICATION_REQUIRED");
         assertProblemEnvelope(given().when().get(IMPORTS), 401, "AUTHENTICATION_REQUIRED");
     }
 
-    /**
-     * Security pin for {@code DebugImportResource}, which carries <em>no</em> security annotation at
-     * all. It is protected today only because the handler body touches {@code SecurityIdentity} via
-     * {@code currentUserService.getCurrentUserId()} and proactive auth is off — the guarantee is
-     * incidental rather than declarative. This endpoint defaults {@code clearExistingData=true} and
-     * deletes every trip, stay and GPS point for the user, so it matters.
-     *
-     * <p>Its success path is not exercised: that needs a ZIP whose {@code gps_data.json} matches the
-     * debug-import schema, and the destructive default makes a half-valid payload a poor trade.
-     */
-    /**
-     * DISABLED — the multipart body never reaches the resource.
-     *
-     * <p>Quarkus RESTEASY answers every authenticated multipart request here with a bodyless 400:
-     * {@code X-Request-Id} is present but there is no {@code X-Error-Id}, no content type and no
-     * problem body, so it is rejected before {@code ImportResource} runs. Reproduced with two
-     * independent client encodings (RestAssured {@code multiPart(...)} and a hand-built
-     * {@code multipart/form-data} body) and with a CSRF token attached, so the cause is server-side.
-     * The same requests anonymously return a proper 401 problem, so routing and auth work — it is
-     * specifically the authenticated multipart path that fails.
-     *
-     * <p>Worth investigating: multipart import is the one flow this suite cannot reach, and it is
-     * also the only place in the API that uses multipart.
-     */
     /**
      * Security pin for {@code DebugImportResource}, which carries <em>no</em> security annotation at
      * all. It is refused today only because the handler body touches {@code SecurityIdentity} via
@@ -342,24 +333,8 @@ class ImportContractTest {
                 .isEqualTo("/api/v1/debug-imports");
     }
 
-    @Disabled("authenticated multipart requests are rejected with a bodyless 400 before the resource")
     @Test
     void debugImportValidatesItsArchive() {
-        // Anonymous access is refused — but note the asymmetry: unlike endpoints declaring
-        // @Authenticated or @RolesAllowed, this one answers with a bare 401 carrying no problem body
-        // (empty content type). The challenge comes from the deferred-identity path while the
-        // multipart body is parsed, not from the standard security handler. Only the status is pinned
-        // here; the missing envelope is reported as a finding rather than asserted as a contract.
-        Response anonymous = multipartAnonymous(
-                        filePart("file", "dump.zip", zipWithoutGpsData(), "application/zip"),
-                        fieldPart("clearExistingData", "false"),
-                        fieldPart("updateTimelineConfig", "false"))
-                .when().post(DEBUG_IMPORTS);
-        assertThat(anonymous.statusCode()).isEqualTo(401);
-        assertThat(anonymous.body().asString())
-                .as("no problem body on this 401, unlike the rest of the API")
-                .isEmpty();
-
         assertProblemEnvelope(multipart(ownerToken,
                         filePart("file", "notes.txt", "not a zip".getBytes(StandardCharsets.UTF_8), "text/plain"),
                         fieldPart("clearExistingData", "false"),
@@ -434,11 +409,8 @@ class ImportContractTest {
     }
 
     /**
-     * Builds the multipart body by hand.
-     *
-     * <p>RestAssured's {@code multiPart(...)} produces a request RESTEasy Reactive rejects with a
-     * bodyless 400 (no {@code X-Error-Id}, no content type) before the resource is reached, so the
-     * encoding is written out explicitly instead.
+     * Builds the multipart body by hand, so a part can be sent with or without its own content type —
+     * the way curl and browsers send plain form fields.
      */
     private static final class MultipartBody {
         private MultipartBody() {
@@ -448,27 +420,30 @@ class ImportContractTest {
             String boundary = "----GeoPulseTest" + UUID.randomUUID().toString().replace("-", "");
             RequestSpecification spec = given()
                     .contentType("multipart/form-data; boundary=" + boundary)
-                    .body(render(boundary, parts).getBytes(StandardCharsets.UTF_8));
+                    .body(render(boundary, parts));
             return token == null ? spec : spec.header("Authorization", "Bearer " + token);
         }
 
-        private static String render(String boundary, Part[] parts) {
-            StringBuilder body = new StringBuilder();
+        private static byte[] render(String boundary, Part[] parts) {
+            ByteArrayOutputStream body = new ByteArrayOutputStream();
             for (Part part : parts) {
-                body.append("--").append(boundary).append("\r\n");
-                body.append("Content-Disposition: form-data; name=\"").append(part.name()).append('"');
+                StringBuilder headers = new StringBuilder();
+                headers.append("--").append(boundary).append("\r\n");
+                headers.append("Content-Disposition: form-data; name=\"").append(part.name()).append('"');
                 if (part.fileName() != null) {
-                    body.append("; filename=\"").append(part.fileName()).append('"');
+                    headers.append("; filename=\"").append(part.fileName()).append('"');
                 }
-                body.append("\r\n");
+                headers.append("\r\n");
                 if (part.contentType() != null) {
-                    body.append("Content-Type: ").append(part.contentType()).append("\r\n");
+                    headers.append("Content-Type: ").append(part.contentType()).append("\r\n");
                 }
-                body.append("\r\n");
-                body.append(new String(part.content(), StandardCharsets.UTF_8)).append("\r\n");
+                headers.append("\r\n");
+                body.writeBytes(headers.toString().getBytes(StandardCharsets.UTF_8));
+                body.writeBytes(part.content());
+                body.writeBytes("\r\n".getBytes(StandardCharsets.UTF_8));
             }
-            body.append("--").append(boundary).append("--\r\n");
-            return body.toString();
+            body.writeBytes(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+            return body.toByteArray();
         }
     }
 }

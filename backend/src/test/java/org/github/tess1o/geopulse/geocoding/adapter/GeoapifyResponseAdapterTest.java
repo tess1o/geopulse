@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatObject;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Tag("unit")
@@ -49,7 +50,7 @@ class GeoapifyResponseAdapterTest {
         assertThat(result.getCountry()).isEqualTo("Germany");
         assertThat(result.getResultCoordinates().getX()).isEqualTo(13.404954);
         assertThat(result.getResultCoordinates().getY()).isEqualTo(52.520008);
-        assertThat(result.getBoundingBox()).isNotNull();
+        assertThatObject(result.getBoundingBox()).isNotNull();
     }
 
     @Test
@@ -85,7 +86,7 @@ class GeoapifyResponseAdapterTest {
         assertThat(result.getCountry()).isEqualTo("Ukraine");
         assertThat(result.getResultCoordinates().getX()).isEqualTo(25.56069945);
         assertThat(result.getResultCoordinates().getY()).isEqualTo(49.54139765);
-        assertThat(result.getBoundingBox()).isNotNull();
+        assertThatObject(result.getBoundingBox()).isNotNull();
     }
 
     @Test

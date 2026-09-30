@@ -20,10 +20,11 @@ import java.util.UUID;
 @NoArgsConstructor
 public class IncidentEntity {
     @Id
+    @Column(length = 128)
     private String id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 64)
     private IncidentType type;
 
     @Column(name = "user_id")

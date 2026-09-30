@@ -142,7 +142,7 @@ class WeatherServiceFailureHandlingTest {
                 retryAfter,
                 "quota exhausted");
 
-        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second)).thenReturn(List.of());
         when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(quotaError);
         when(integrationHealthService.recordQuotaExceeded(
                 any(),
@@ -187,7 +187,7 @@ class WeatherServiceFailureHandlingTest {
                 WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                 "timeout");
 
-        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second)).thenReturn(List.of());
         when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(unavailable);
         when(integrationHealthService.currentHealth(any(), eq(PROVIDER)))
                 .thenReturn(ExternalIntegrationHealthDto.builder().failureCount(0).build());
@@ -216,7 +216,7 @@ class WeatherServiceFailureHandlingTest {
         allowFetches();
         WeatherSampleTargetClaim first = target(1L);
         WeatherSampleTargetClaim second = target(2L);
-        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second)).thenReturn(List.of());
         when(weatherClient.fetchHourlyBatch(anyDouble(), anyDouble(), anyList()))
                 .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "batch has no data"));
 
@@ -253,7 +253,7 @@ class WeatherServiceFailureHandlingTest {
 
         when(configurationService.providerOrder(PROVIDER)).thenReturn(List.of(PROVIDER, "PIRATE_WEATHER"));
         when(providerRegistry.client("PIRATE_WEATHER")).thenReturn(Optional.of(fallbackWeatherClient));
-        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first), List.of());
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first)).thenReturn(List.of());
         when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(unavailable);
         when(fallbackWeatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList()))
                 .thenReturn(Map.of(first.targetAt(), fallbackSample));
@@ -298,7 +298,7 @@ class WeatherServiceFailureHandlingTest {
                 WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                 "Open-Meteo archive hourly weather request failed",
                 new SSLHandshakeException("Failed to create SSL connection"));
-        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first), List.of());
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first)).thenReturn(List.of());
         when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList()))
                 .thenThrow(sslFailure)
                 .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "no archive data"));

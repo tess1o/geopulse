@@ -21,15 +21,11 @@ public class CookieService {
     @StaticInitSafe
     Optional<String> cookieDomain;
 
-
-    @Inject
-    @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
-    @StaticInitSafe
-    String csrfCookieName;
-
-    private static final String ACCESS_TOKEN_COOKIE = "access_token";
-    private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
+    static final String ACCESS_TOKEN_COOKIE = "access_token";
+    static final String REFRESH_TOKEN_COOKIE = "refresh_token";
     private static final String TOKEN_EXPIRATION_COOKIE = "token_expires_at";
+    static final String CSRF_COOKIE = "csrf-token";
+    private static final int CSRF_COOKIE_MAX_AGE_SECONDS = 2 * 60 * 60;
 
     /**
      * Helper method to create cookie with common settings
@@ -90,6 +86,12 @@ public class CookieService {
         return createCookie(TOKEN_EXPIRATION_COOKIE, String.valueOf(expirationTime), (int) expiresInSeconds, false);
     }
 
+    /**
+     * Create non-httpOnly cookie with the CSRF token, which the frontend echoes in a request header
+     */
+    public NewCookie createCsrfCookie(String csrfToken) {
+        return createCookie(CSRF_COOKIE, csrfToken, CSRF_COOKIE_MAX_AGE_SECONDS, false);
+    }
 
     /**
      * Create cookies for clearing tokens on logout
@@ -99,7 +101,7 @@ public class CookieService {
                 createCookie(ACCESS_TOKEN_COOKIE, "", 0, true),
                 createCookie(REFRESH_TOKEN_COOKIE, "", 0, true),
                 createCookie(TOKEN_EXPIRATION_COOKIE, "", 0, false),
-                createCookie(csrfCookieName, "", 0, false)
+                createCookie(CSRF_COOKIE, "", 0, false)
         };
     }
 

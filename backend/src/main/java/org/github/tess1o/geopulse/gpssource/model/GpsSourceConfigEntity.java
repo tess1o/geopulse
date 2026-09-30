@@ -49,6 +49,7 @@ public class GpsSourceConfigEntity {
     private ConnectionType connectionType = ConnectionType.HTTP;
 
     @Column(name = "filter_inaccurate_data")
+    @Builder.Default
     private boolean filterInaccurateData = false;
 
     @Column(name = "max_allowed_accuracy")
@@ -58,6 +59,7 @@ public class GpsSourceConfigEntity {
     private Integer maxAllowedSpeed;
 
     @Column(name = "enable_duplicate_detection")
+    @Builder.Default
     private boolean enableDuplicateDetection = false;
 
     @Column(name = "duplicate_detection_threshold_minutes")

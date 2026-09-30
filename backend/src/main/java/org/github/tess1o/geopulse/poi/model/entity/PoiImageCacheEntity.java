@@ -33,10 +33,10 @@ public class PoiImageCacheEntity {
     @Column(name = "file_name", nullable = false, length = 400)
     private String fileName;
 
-    @Column(name = "remote_url", nullable = false)
+    @Column(name = "remote_url", nullable = false, columnDefinition = "TEXT")
     private String remoteUrl;
 
-    @Column(name = "file_page_url")
+    @Column(name = "file_page_url", columnDefinition = "TEXT")
     private String filePageUrl;
 
     @Column(name = "content_type", nullable = false, length = 80)
@@ -60,7 +60,7 @@ public class PoiImageCacheEntity {
     @Column(name = "license_name", nullable = false, length = 120)
     private String licenseName;
 
-    @Column(name = "license_url")
+    @Column(name = "license_url", columnDefinition = "TEXT")
     private String licenseUrl;
 
     @Column(name = "fetched_at", nullable = false)

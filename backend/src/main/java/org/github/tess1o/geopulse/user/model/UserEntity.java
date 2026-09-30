@@ -95,14 +95,14 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     public NotificationPreferences notificationPreferences;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "timeline_status", nullable = false)
+    @Column(name = "timeline_status", nullable = false, length = 20)
     @Builder.Default
     private TimelineStatus timelineStatus = TimelineStatus.IDLE;
 
     @Column(name = "ai_settings_encrypted", columnDefinition = "TEXT")
     private String aiSettingsEncrypted;
 
-    @Column(name = "ai_settings_key_id")
+    @Column(name = "ai_settings_key_id", length = 50)
     private String aiSettingsKeyId;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -128,14 +128,17 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<FriendInvitationEntity> sentInvitations = new ArrayList<>();
 
     @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<FriendInvitationEntity> receivedInvitations = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<UserFriendEntity> friends = new ArrayList<>();
 
     /**

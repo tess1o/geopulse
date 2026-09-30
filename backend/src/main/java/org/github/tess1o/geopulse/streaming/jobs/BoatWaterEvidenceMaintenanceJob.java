@@ -44,6 +44,7 @@ public class BoatWaterEvidenceMaintenanceJob {
             return;
         }
 
+        @SuppressWarnings("unchecked")
         List<UUID> userIds = entityManager.createNativeQuery("""
                         SELECT gp.user_id
                         FROM gps_points gp

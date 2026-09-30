@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.nio.file.*;
@@ -21,7 +21,7 @@ import static org.github.tess1o.geopulse.admin.backup.NativeDatabaseBackup.*;
  */
 class NativeBackupIntegrationTest {
     static Path root;
-    static PostgreSQLContainer<?> postgres;
+    static PostgreSQLContainer postgres;
     NativeBackupContext source, destination;
     KeyCipher sourceKey, destinationKey;
     Path archive;
@@ -31,7 +31,7 @@ class NativeBackupIntegrationTest {
     @BeforeAll
     static void startDatabase() throws Exception {
         root = Files.createTempDirectory(Path.of(System.getProperty("user.home")), ".geopulse-native-backup-test-");
-        postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgis/postgis:17-3.5").asCompatibleSubstituteFor("postgres"))
+        postgres = new PostgreSQLContainer(DockerImageName.parse("postgis/postgis:17-3.5").asCompatibleSubstituteFor("postgres"))
                 .withUsername("postgres").withPassword("test-password").withDatabaseName("test")
                 .withFileSystemBind(root.toString(), root.toString(), BindMode.READ_WRITE);
         postgres.start();

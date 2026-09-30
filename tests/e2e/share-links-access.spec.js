@@ -417,6 +417,10 @@ test.describe('Shared Links Public Access', () => {
       );
       await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
 
+      // Clearing cookies is not enough to be a guest: shared pages recognize a signed-in viewer from the
+      // profile cached in localStorage and offer "My settings", so drop that too.
+      await page.evaluate(() => window.localStorage.clear());
+
       const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
         id: 'a1000000-0000-0000-0000-000000000011',
         name: 'Owner Colors Timeline'
@@ -435,7 +439,7 @@ test.describe('Shared Links Public Access', () => {
       await expect(panel).toBeVisible();
       await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toHaveAttribute('aria-checked', 'true');
       await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toContainText('As shared by');
-      // "My settings" is for signed-in viewers only.
+      // "My settings" is for signed-in viewers only (a viewer with a cached profile does get it).
       await expect(panel.locator('[data-testid="map-appearance-option-MINE"]')).toHaveCount(0);
 
       await panel.locator('[data-testid="map-appearance-option-DEFAULT"]').click();

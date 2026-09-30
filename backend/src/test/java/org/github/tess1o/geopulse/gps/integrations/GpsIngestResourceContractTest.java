@@ -22,6 +22,7 @@ import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatObject;
 import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assertProblemEnvelope;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -220,7 +221,7 @@ class GpsIngestResourceContractTest {
                         GpsSourceType.TRACCAR,
                         GpsSourceType.DAWARICH
                 ));
-        assertThat(points).allSatisfy(point -> assertThat(point.getCoordinates()).isNotNull());
+        assertThat(points).allSatisfy(point -> assertThatObject(point.getCoordinates()).isNotNull());
     }
 
     @Test

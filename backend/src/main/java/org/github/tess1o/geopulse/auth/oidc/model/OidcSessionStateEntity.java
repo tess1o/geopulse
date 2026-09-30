@@ -24,10 +24,10 @@ public class OidcSessionStateEntity extends PanacheEntityBase {
     
     private String nonce;
     
-    @Column(name = "provider_name", nullable = false)
+    @Column(name = "provider_name", nullable = false, length = 50)
     private String providerName;
     
-    @Column(name = "redirect_uri")
+    @Column(name = "redirect_uri", length = 500)
     private String redirectUri;
     
     @Column(name = "linking_user_id")

@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.streaming.service;
 
-import io.quarkus.panache.common.Parameters;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -400,21 +399,21 @@ public class StreamingTimelineGenerationService {
 
             // Delete all stays from this timestamp forward (including the anchor stay)
             long deletedStays = timelineStayRepository.delete("user.id = :userId and timestamp >= :timestamp",
-                    Parameters.with("userId", userId).and("timestamp", stayStartTime));
+                    Map.of("userId", userId, "timestamp", stayStartTime));
             if (deletedStays > 0) {
                 log.debug("Cleaned up {} stays starting from timestamp {}", deletedStays, stayStartTime);
             }
 
             // Delete all trips from this timestamp forward
             long deletedTrips = timelineTripRepository.delete("user.id = :userId and timestamp >= :timestamp",
-                    Parameters.with("userId", userId).and("timestamp", stayStartTime));
+                    Map.of("userId", userId, "timestamp", stayStartTime));
             if (deletedTrips > 0) {
                 log.debug("Cleaned up {} trips starting from timestamp {}", deletedTrips, stayStartTime);
             }
 
             // Delete all data gaps from this timestamp forward
             long deletedGaps = timelineDataGapRepository.delete("user.id = :userId and startTime >= :timestamp",
-                    Parameters.with("userId", userId).and("timestamp", stayStartTime));
+                    Map.of("userId", userId, "timestamp", stayStartTime));
             if (deletedGaps > 0) {
                 log.debug("Cleaned up {} data gaps starting from timestamp {}", deletedGaps, stayStartTime);
             }
@@ -435,19 +434,19 @@ public class StreamingTimelineGenerationService {
         log.debug("Fallback: clearing all timeline data for user {} and starting from scratch", userId);
 
         // Delete all stays for this user
-        long deletedStays = timelineStayRepository.delete("user.id = :userId", Parameters.with("userId", userId));
+        long deletedStays = timelineStayRepository.delete("user.id = :userId", Map.of("userId", userId));
         if (deletedStays > 0) {
             log.debug("Deleted {} stays for user {}", deletedStays, userId);
         }
 
         // Delete all trips for this user
-        long deletedTrips = timelineTripRepository.delete("user.id = :userId", Parameters.with("userId", userId));
+        long deletedTrips = timelineTripRepository.delete("user.id = :userId", Map.of("userId", userId));
         if (deletedTrips > 0) {
             log.debug("Deleted {} trips for user {}", deletedTrips, userId);
         }
 
         // Delete all data gaps for this user
-        long deletedGaps = timelineDataGapRepository.delete("user.id = :userId", Parameters.with("userId", userId));
+        long deletedGaps = timelineDataGapRepository.delete("user.id = :userId", Map.of("userId", userId));
         if (deletedGaps > 0) {
             log.debug("Deleted {} data gaps for user {}", deletedGaps, userId);
         }
@@ -458,9 +457,7 @@ public class StreamingTimelineGenerationService {
 
     private boolean acquireLock(UUID userId) {
         int updatedRows = UserEntity.update("timelineStatus = :status where id = :userId and timelineStatus = :idleStatus",
-                Parameters.with("status", TimelineStatus.PROCESSING)
-                        .and("userId", userId)
-                        .and("idleStatus", TimelineStatus.IDLE));
+                Map.of("status", TimelineStatus.PROCESSING, "userId", userId, "idleStatus", TimelineStatus.IDLE));
         return updatedRows > 0;
     }
 
@@ -494,7 +491,7 @@ public class StreamingTimelineGenerationService {
 
     private void releaseLock(UUID userId) {
         UserEntity.update("timelineStatus = :status where id = :userId",
-                Parameters.with("status", TimelineStatus.IDLE).and("userId", userId));
+                Map.of("status", TimelineStatus.IDLE, "userId", userId));
     }
 
     private void fireTimelineDataChanged(UUID userId, Instant affectedFrom, Instant affectedTo, UUID jobId,

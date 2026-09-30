@@ -125,10 +125,6 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-csrf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
         <dependency>
@@ -521,10 +517,9 @@
                 <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
                 <quarkus.native.additional-build-args>
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.backup.BackupEnvelope,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.ApiTokenSecretService,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.AdminPasswordRecoveryService,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.MobileDeepLinkService,
+                    --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
+                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.ApiTokenSecretService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,

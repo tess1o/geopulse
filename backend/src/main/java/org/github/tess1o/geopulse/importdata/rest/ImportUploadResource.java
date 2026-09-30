@@ -2,8 +2,6 @@ package org.github.tess1o.geopulse.importdata.rest;
 
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -46,9 +44,6 @@ public class ImportUploadResource {
 
     @Inject
     ImportTempFileService tempFileService;
-
-    @Inject
-    ObjectMapper objectMapper;
 
     // ==================== CHUNKED UPLOAD ====================
 
@@ -235,20 +230,8 @@ public class ImportUploadResource {
         try {
             java.nio.file.Path assembledFile = chunkedUploadService.assembleFile(uploadId);
 
-            // Parse import options
-            ImportOptions importOptions;
-            try {
-                if (session.getOptions() != null && !session.getOptions().isBlank()) {
-                    importOptions = objectMapper.readValue(session.getOptions(), ImportOptions.class);
-                } else {
-                    importOptions = new ImportOptions();
-                }
-                importOptions.setImportFormat(session.getImportFormat());
-            } catch (JsonProcessingException e) {
-                log.warn("Invalid import options for upload {}; using defaults", uploadId, e);
-                importOptions = new ImportOptions();
-                importOptions.setImportFormat(session.getImportFormat());
-            }
+            ImportOptions importOptions = session.getOptions() != null ? session.getOptions() : new ImportOptions();
+            importOptions.setImportFormat(session.getImportFormat());
 
             // Move assembled file to import temp directory
             String tempFilePath = tempFileService.moveUploadedFileToTemp(

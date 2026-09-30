@@ -353,7 +353,7 @@
         }
       },
       "ApiErrorCode" : {
-        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_PERIOD_DELETE_MODE", "INVALID_PERIOD_RANGE", "INVALID_PERIOD_TAG", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_OPTIONS", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "PERIOD_TAG_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
+        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
         "type" : "string"
       },
       "ApiProblemResponse" : {
@@ -627,50 +627,11 @@
           "hasPassword" : {
             "type" : "boolean"
           },
-          "customMapTileUrl" : {
-            "type" : "string"
+          "uiPreferences" : {
+            "$ref" : "#/components/schemas/UserUiPreferences"
           },
-          "customMapStyleUrl" : {
-            "type" : "string"
-          },
-          "mapRenderMode" : {
-            "$ref" : "#/components/schemas/MapRenderMode"
-          },
-          "distanceUnit" : {
-            "$ref" : "#/components/schemas/DistanceUnit"
-          },
-          "temperatureUnit" : {
-            "$ref" : "#/components/schemas/TemperatureUnit"
-          },
-          "defaultRedirectUrl" : {
-            "type" : "string"
-          },
-          "dateFormat" : {
-            "type" : "string"
-          },
-          "timeFormat" : {
-            "type" : "string"
-          },
-          "defaultDateRangePreset" : {
-            "type" : "string"
-          },
-          "autoShowTripReplayControls" : {
-            "type" : "boolean"
-          },
-          "enable3dBuildingsByDefault" : {
-            "type" : "boolean"
-          },
-          "mapMatchingEnabled" : {
-            "type" : "boolean"
-          },
-          "mapMatchingExcludedMovementTypes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TripType"
-            }
-          },
-          "mapMatchingAvailable" : {
-            "type" : "boolean"
+          "timelineDisplay" : {
+            "$ref" : "#/components/schemas/TimelineDisplaySettings"
           }
         }
       },
@@ -1169,7 +1130,7 @@
             "type" : "string"
           },
           "options" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/ImportOptions"
           }
         }
       },
@@ -2002,36 +1963,6 @@
           }
         }
       },
-      "CreatePeriodTagDto" : {
-        "required" : [ "tagName", "startTime" ],
-        "type" : "object",
-        "properties" : {
-          "tagName" : {
-            "maxLength" : 100,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "startTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "endTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "source" : {
-            "type" : "string"
-          },
-          "isActive" : {
-            "type" : "boolean"
-          },
-          "color" : {
-            "pattern" : "^#[0-9A-Fa-f]{6}$",
-            "type" : "string"
-          },
-          "showAsPreset" : {
-            "type" : "boolean"
-          }
-        }
-      },
       "CreateShareLinkRequest" : {
         "required" : [ "name" ],
         "type" : "object",
@@ -2070,6 +2001,10 @@
           },
           "show_photos" : {
             "type" : "boolean"
+          },
+          "immich_album_id" : {
+            "maxLength" : 255,
+            "type" : "string"
           },
           "show_notes" : {
             "type" : "boolean"
@@ -2113,6 +2048,30 @@
             "$ref" : "#/components/schemas/Instant"
           },
           "is_active" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "CreateTimelineLabelDto" : {
+        "required" : [ "name", "startTime" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          },
+          "showAsPreset" : {
             "type" : "boolean"
           }
         }
@@ -2983,10 +2942,20 @@
         "type" : "object",
         "properties" : {
           "startDate" : {
-            "$ref" : "#/components/schemas/Instant"
+            "description" : "Start of the range, inclusive (ISO-8601 instant).",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-01T00:00:00Z"
           },
           "endDate" : {
-            "$ref" : "#/components/schemas/Instant"
+            "description" : "End of the range, inclusive (ISO-8601 instant).",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-31T23:59:59Z"
           }
         }
       },
@@ -4198,6 +4167,21 @@
         },
         "additionalProperties" : true
       },
+      "ImmichAlbum" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "albumName" : {
+            "type" : "string"
+          },
+          "assetCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
       "ImmichConnectionStatus" : {
         "enum" : [ "CONNECTED", "USER_NOT_FOUND", "API_KEY_REQUIRED", "AUTHENTICATION_FAILED", "SERVER_NOT_FOUND", "CONNECTION_TIMEOUT", "CONNECTION_FAILED" ],
         "type" : "string"
@@ -4354,6 +4338,30 @@
           }
         }
       },
+      "ImportOptions" : {
+        "type" : "object",
+        "properties" : {
+          "dataTypes" : {
+            "description" : "Data types to import from a GeoPulse export archive. Ignored by other formats. All data types found in the archive are imported when omitted.",
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "dateRangeFilter" : {
+            "description" : "Only import data with timestamps inside this range. No filtering when omitted.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ExportDateRange"
+            } ]
+          },
+          "clearDataBeforeImport" : {
+            "description" : "Delete existing data in the imported date range before importing.",
+            "default" : false,
+            "type" : "boolean"
+          }
+        }
+      },
       "ImportPhase" : {
         "enum" : [ "validating", "importing", "clearing_existing_data", "timeline_generation", "coverage_recalculation", "completed", "failed" ],
         "type" : "string"
@@ -4427,6 +4435,11 @@
           },
           "timezone" : {
             "maxLength" : 255,
+            "type" : "string"
+          },
+          "language" : {
+            "maxLength" : 16,
+            "pattern" : "^(en|uk)$",
             "type" : "string"
           }
         }
@@ -4923,6 +4936,10 @@
           }
         }
       },
+      "MapColorScheme" : {
+        "enum" : [ "DEFAULT", "RED_GREEN_SAFE", "BLUE_YELLOW_SAFE", "HIGH_CONTRAST" ],
+        "type" : "string"
+      },
       "MapMatchedPointDTO" : {
         "type" : "object",
         "properties" : {
@@ -5408,7 +5425,7 @@
         }
       },
       "NoteLocationSource" : {
-        "enum" : [ "EXPLICIT", "DERIVED_STAY", "DERIVED_TRIP_GPS", "DERIVED_TRIP_INTERPOLATED", "NONE" ],
+        "enum" : [ "EXPLICIT", "DERIVED_STAY", "DERIVED_TRIP_GPS", "DERIVED_TRIP_INTERPOLATED", "DERIVED_GAP_NEIGHBOR", "NONE" ],
         "type" : "string"
       },
       "NoteMapMarkerDto" : {
@@ -6060,45 +6077,6 @@
           }
         }
       },
-      "PeriodTagDto" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "userId" : {
-            "$ref" : "#/components/schemas/UUID"
-          },
-          "tagName" : {
-            "type" : "string"
-          },
-          "startTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "endTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "source" : {
-            "type" : "string"
-          },
-          "isActive" : {
-            "type" : "boolean"
-          },
-          "color" : {
-            "type" : "string"
-          },
-          "showAsPreset" : {
-            "type" : "boolean"
-          },
-          "createdAt" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "updatedAt" : {
-            "$ref" : "#/components/schemas/Instant"
-          }
-        }
-      },
       "Phase" : {
         "enum" : [ "BOAT_SETUP_IS_READY", "GPS_WATER_EVIDENCE_NEEDS_ENRICHMENT", "WATER_DATASET_IS_NOT_IMPORTED", "STARTING_BOAT_SETUP", "BOAT_SETUP_COMPLETED", "RECLASSIFYING_EXISTING_TRIPS", "WATER_DATASET_READY", "PREPARING_WATER_DATASET_ARTIFACT", "IMPORTING_WATER_POLYGONS", "USING_LOCAL_WATER_DATASET_FILE", "DOWNLOADING_WATER_DATASET", "GPS_WATER_EVIDENCE_READY", "CLASSIFYING_GPS_WATER_EVIDENCE", "WAITING_FOR_WATER_DATASET_IMPORT", "WAITING_FOR_GPS_WATER_EVIDENCE", "BOAT_SETUP_WORKER_DID_NOT_START", "WATER_DATASET_SETUP_FAILED", "BOAT_SETUP_FAILED", "UNKNOWN" ],
         "type" : "string"
@@ -6313,6 +6291,30 @@
           }
         }
       },
+      "PlanSearchExternalStatus" : {
+        "enum" : [ "OK", "DISABLED", "FAILED" ],
+        "type" : "string"
+      },
+      "PlanSearchResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "results" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PlanSearchResultDto"
+            }
+          },
+          "externalStatus" : {
+            "$ref" : "#/components/schemas/PlanSearchExternalStatus"
+          },
+          "externalProvider" : {
+            "type" : "string"
+          },
+          "externalMessage" : {
+            "type" : "string"
+          }
+        }
+      },
       "PlanSearchResultDto" : {
         "type" : "object",
         "properties" : {
@@ -6376,6 +6378,90 @@
           "geocodingId" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }
+      },
+      "PoiDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "externalId" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "imageUrl" : {
+            "type" : "string"
+          },
+          "imageAuthor" : {
+            "type" : "string"
+          },
+          "imageLicense" : {
+            "type" : "string"
+          },
+          "imageLicenseUrl" : {
+            "type" : "string"
+          },
+          "imageFilePageUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PoiSearchResponseDto" : {
+        "type" : "object",
+        "properties" : {
+          "results" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PoiDto"
+            }
+          },
+          "dataAttribution" : {
+            "type" : "string"
+          },
+          "cached" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "PoiTestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "wikidataSuccess" : {
+            "type" : "boolean"
+          },
+          "wikidataEndpoint" : {
+            "type" : "string"
+          },
+          "wikidataDetail" : {
+            "type" : "string"
+          },
+          "commonsSuccess" : {
+            "type" : "boolean"
+          },
+          "commonsEndpoint" : {
+            "type" : "string"
+          },
+          "commonsDetail" : {
+            "type" : "string"
           }
         }
       },
@@ -6940,6 +7026,9 @@
           "show_photos" : {
             "type" : "boolean"
           },
+          "immich_album_id" : {
+            "type" : "string"
+          },
           "show_notes" : {
             "type" : "boolean"
           },
@@ -7047,8 +7136,38 @@
           "map_render_mode" : {
             "$ref" : "#/components/schemas/MapRenderMode"
           },
+          "map_appearance" : {
+            "$ref" : "#/components/schemas/SharedMapAppearance"
+          },
           "active" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "SharedMapAppearance" : {
+        "type" : "object",
+        "properties" : {
+          "colorScheme" : {
+            "$ref" : "#/components/schemas/MapColorScheme"
+          },
+          "defaultPathColor" : {
+            "type" : "string"
+          },
+          "activePathColor" : {
+            "type" : "string"
+          },
+          "speedBandPalette" : {
+            "type" : "string"
+          },
+          "heatmapGradient" : {
+            "type" : "string"
+          },
+          "pathOutlineEnabled" : {
+            "type" : "boolean"
+          },
+          "pathWidth" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -7301,23 +7420,25 @@
       "TimePatterns" : {
         "type" : "object",
         "properties" : {
-          "mostActiveMonth" : {
+          "mostActiveYearMonth" : {
             "type" : "string"
           },
           "monthlyComparison" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/MessageDescriptor"
           },
           "busiestDayOfWeek" : {
-            "type" : "string"
+            "format" : "int32",
+            "type" : "integer"
           },
           "dayInsight" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/MessageDescriptor"
           },
-          "mostActiveTime" : {
-            "type" : "string"
+          "mostActiveHour" : {
+            "format" : "int32",
+            "type" : "integer"
           },
           "timeInsight" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/MessageDescriptor"
           }
         }
       },
@@ -7585,13 +7706,29 @@
           }
         }
       },
+      "TimelineDisplayCapabilities" : {
+        "type" : "object",
+        "properties" : {
+          "mapMatchingAvailable" : {
+            "type" : "boolean"
+          },
+          "panoramaxAvailable" : {
+            "type" : "boolean"
+          },
+          "panoramaxEndpoint" : {
+            "type" : "string"
+          }
+        }
+      },
       "TimelineDisplayPreferences" : {
         "type" : "object",
         "properties" : {
           "customMapTileUrl" : {
+            "maxLength" : 1000,
             "type" : "string"
           },
           "customMapStyleUrl" : {
+            "maxLength" : 1000,
             "type" : "string"
           },
           "mapRenderMode" : {
@@ -7602,16 +7739,21 @@
           },
           "pathSimplificationTolerance" : {
             "format" : "double",
+            "maximum" : 100.0,
+            "minimum" : 1.0,
             "type" : "number"
           },
           "pathMaxPoints" : {
             "format" : "int32",
+            "maximum" : 1000,
+            "minimum" : 0,
             "type" : "integer"
           },
           "pathAdaptiveSimplification" : {
             "type" : "boolean"
           },
           "defaultDateRangePreset" : {
+            "pattern" : "^(today|yesterday|lastWeek|lastMonth)?$",
             "type" : "string"
           },
           "showCurrentLocationTelemetry" : {
@@ -7632,14 +7774,44 @@
               "$ref" : "#/components/schemas/TripType"
             }
           },
-          "mapMatchingAvailable" : {
-            "type" : "boolean"
-          },
-          "panoramaxAvailable" : {
-            "type" : "boolean"
-          },
-          "panoramaxEndpoint" : {
+          "defaultPathColor" : {
+            "pattern" : "^(#[0-9A-Fa-f]{6})?$",
             "type" : "string"
+          },
+          "activePathColor" : {
+            "pattern" : "^(#[0-9A-Fa-f]{6})?$",
+            "type" : "string"
+          },
+          "colorScheme" : {
+            "$ref" : "#/components/schemas/MapColorScheme"
+          },
+          "speedBandPalette" : {
+            "pattern" : "^(DEFAULT|RED_GREEN_SAFE|BLUE_YELLOW_SAFE|HIGH_CONTRAST|OFF)?$",
+            "type" : "string"
+          },
+          "heatmapGradient" : {
+            "pattern" : "^(CLASSIC|VIRIDIS|CIVIDIS)?$",
+            "type" : "string"
+          },
+          "pathOutlineEnabled" : {
+            "type" : "boolean"
+          },
+          "pathWidth" : {
+            "format" : "int32",
+            "maximum" : 10,
+            "minimum" : 2,
+            "type" : "integer"
+          }
+        }
+      },
+      "TimelineDisplaySettings" : {
+        "type" : "object",
+        "properties" : {
+          "preferences" : {
+            "$ref" : "#/components/schemas/TimelineDisplayPreferences"
+          },
+          "capabilities" : {
+            "$ref" : "#/components/schemas/TimelineDisplayCapabilities"
           }
         }
       },
@@ -7656,7 +7828,7 @@
             "$ref" : "#/components/schemas/JobStatus1"
           },
           "currentStep" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/MessageDescriptor"
           },
           "currentStepIndex" : {
             "format" : "int32",
@@ -7721,6 +7893,45 @@
           "activeUserJobs" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }
+      },
+      "TimelineLabelDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "userId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "isActive" : {
+            "type" : "boolean"
+          },
+          "color" : {
+            "type" : "string"
+          },
+          "showAsPreset" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
           }
         }
       },
@@ -8335,7 +8546,7 @@
           "ownerFullName" : {
             "type" : "string"
           },
-          "periodTagId" : {
+          "timelineLabelId" : {
             "format" : "int64",
             "type" : "integer"
           },
@@ -9226,36 +9437,6 @@
           }
         }
       },
-      "UpdatePeriodTagDto" : {
-        "required" : [ "tagName", "startTime" ],
-        "type" : "object",
-        "properties" : {
-          "tagName" : {
-            "maxLength" : 100,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "startTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "endTime" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "source" : {
-            "type" : "string"
-          },
-          "isActive" : {
-            "type" : "boolean"
-          },
-          "color" : {
-            "pattern" : "^#[0-9A-Fa-f]{6}$",
-            "type" : "string"
-          },
-          "showAsPreset" : {
-            "type" : "boolean"
-          }
-        }
-      },
       "UpdatePlaceNameRequest" : {
         "required" : [ "name" ],
         "type" : "object",
@@ -9282,23 +9463,8 @@
             "maxLength" : 255,
             "type" : "string"
           },
-          "distanceUnit" : {
-            "$ref" : "#/components/schemas/DistanceUnit"
-          },
-          "temperatureUnit" : {
-            "$ref" : "#/components/schemas/TemperatureUnit"
-          },
-          "defaultRedirectUrl" : {
-            "maxLength" : 1000,
-            "type" : "string"
-          },
-          "dateFormat" : {
-            "pattern" : "^(MDY|DMY|YMD)$",
-            "type" : "string"
-          },
-          "timeFormat" : {
-            "pattern" : "^(24h|12h)$",
-            "type" : "string"
+          "uiPreferences" : {
+            "$ref" : "#/components/schemas/UserUiPreferences"
           }
         }
       },
@@ -9350,6 +9516,10 @@
           "show_photos" : {
             "type" : "boolean"
           },
+          "immich_album_id" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
           "show_notes" : {
             "type" : "boolean"
           },
@@ -9369,59 +9539,27 @@
           }
         }
       },
-      "UpdateTimelineDisplayPreferencesRequest" : {
+      "UpdateTimelineLabelDto" : {
+        "required" : [ "name", "startTime" ],
         "type" : "object",
         "properties" : {
-          "customMapTileUrl" : {
-            "maxLength" : 1000,
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
             "type" : "string"
           },
-          "customMapStyleUrl" : {
-            "maxLength" : 1000,
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
             "type" : "string"
           },
-          "mapRenderMode" : {
-            "$ref" : "#/components/schemas/MapRenderMode"
-          },
-          "pathSimplificationEnabled" : {
+          "showAsPreset" : {
             "type" : "boolean"
-          },
-          "pathSimplificationTolerance" : {
-            "format" : "double",
-            "maximum" : 100.0,
-            "minimum" : 1.0,
-            "type" : "number"
-          },
-          "pathMaxPoints" : {
-            "format" : "int32",
-            "maximum" : 1000,
-            "minimum" : 0,
-            "type" : "integer"
-          },
-          "pathAdaptiveSimplification" : {
-            "type" : "boolean"
-          },
-          "defaultDateRangePreset" : {
-            "pattern" : "^(today|yesterday|lastWeek|lastMonth)?$",
-            "type" : "string"
-          },
-          "showCurrentLocationTelemetry" : {
-            "type" : "boolean"
-          },
-          "autoShowTripReplayControls" : {
-            "type" : "boolean"
-          },
-          "enable3dBuildingsByDefault" : {
-            "type" : "boolean"
-          },
-          "mapMatchingEnabled" : {
-            "type" : "boolean"
-          },
-          "mapMatchingExcludedMovementTypes" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
           }
         }
       },
@@ -9781,24 +9919,6 @@
             "format" : "int32",
             "minimum" : 0,
             "type" : "integer"
-          },
-          "isVisited" : {
-            "type" : "boolean"
-          },
-          "visitConfidence" : {
-            "format" : "double",
-            "maximum" : 1.0,
-            "minimum" : 0.0,
-            "type" : "number"
-          },
-          "visitSource" : {
-            "$ref" : "#/components/schemas/TripPlanItemVisitSource"
-          },
-          "visitedAt" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "manualOverrideState" : {
-            "$ref" : "#/components/schemas/TripPlanItemOverrideState"
           }
         }
       },
@@ -10069,6 +10189,11 @@
           "timezone" : {
             "maxLength" : 255,
             "type" : "string"
+          },
+          "language" : {
+            "maxLength" : 16,
+            "pattern" : "^(en|uk)$",
+            "type" : "string"
           }
         }
       },
@@ -10105,50 +10230,11 @@
           "hasPassword" : {
             "type" : "boolean"
           },
-          "customMapTileUrl" : {
-            "type" : "string"
+          "uiPreferences" : {
+            "$ref" : "#/components/schemas/UserUiPreferences"
           },
-          "customMapStyleUrl" : {
-            "type" : "string"
-          },
-          "mapRenderMode" : {
-            "$ref" : "#/components/schemas/MapRenderMode"
-          },
-          "distanceUnit" : {
-            "$ref" : "#/components/schemas/DistanceUnit"
-          },
-          "temperatureUnit" : {
-            "$ref" : "#/components/schemas/TemperatureUnit"
-          },
-          "defaultRedirectUrl" : {
-            "type" : "string"
-          },
-          "dateFormat" : {
-            "type" : "string"
-          },
-          "timeFormat" : {
-            "type" : "string"
-          },
-          "defaultDateRangePreset" : {
-            "type" : "string"
-          },
-          "autoShowTripReplayControls" : {
-            "type" : "boolean"
-          },
-          "enable3dBuildingsByDefault" : {
-            "type" : "boolean"
-          },
-          "mapMatchingEnabled" : {
-            "type" : "boolean"
-          },
-          "mapMatchingExcludedMovementTypes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TripType"
-            }
-          },
-          "mapMatchingAvailable" : {
-            "type" : "boolean"
+          "timelineDisplay" : {
+            "$ref" : "#/components/schemas/TimelineDisplaySettings"
           }
         }
       },
@@ -10244,6 +10330,34 @@
           },
           "stats" : {
             "$ref" : "#/components/schemas/TimelineStats"
+          }
+        }
+      },
+      "UserUiPreferences" : {
+        "type" : "object",
+        "properties" : {
+          "distanceUnit" : {
+            "$ref" : "#/components/schemas/DistanceUnit"
+          },
+          "temperatureUnit" : {
+            "$ref" : "#/components/schemas/TemperatureUnit"
+          },
+          "dateFormat" : {
+            "pattern" : "^(MDY|DMY|YMD)$",
+            "type" : "string"
+          },
+          "timeFormat" : {
+            "pattern" : "^(24h|12h)$",
+            "type" : "string"
+          },
+          "language" : {
+            "maxLength" : 16,
+            "pattern" : "^(en|uk)$",
+            "type" : "string"
+          },
+          "defaultRedirectUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
           }
         }
       },
@@ -10897,11 +11011,11 @@
     "name" : "User: Notifications",
     "description" : "Read and update notifications and preferences."
   }, {
-    "name" : "User: Period Tags",
-    "description" : "Manage period tags and overlap checks."
-  }, {
     "name" : "User: Places",
     "description" : "Read and update place details, visits, photos, and exports."
+  }, {
+    "name" : "User: Places to visit",
+    "description" : "Discover places worth visiting, with photos."
   }, {
     "name" : "User: Sharing",
     "description" : "Manage shared location links."
@@ -10914,6 +11028,9 @@
   }, {
     "name" : "User: Timeline",
     "description" : "Read timelines and manage timeline generation, jobs, and overrides."
+  }, {
+    "name" : "User: Timeline Labels",
+    "description" : "Manage timeline labels and overlap checks."
   }, {
     "name" : "User: Trips",
     "description" : "Read trip workspace timeline and path data."
@@ -12461,6 +12578,34 @@
           }
         },
         "summary" : "Test Panoramax Connection",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/admin/settings/poi/connection-tests" : {
+      "post" : {
+        "operationId" : "AdminSettingsResource_testPoiConnection",
+        "tags" : [ "Admin: System Settings" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PoiTestResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Test Poi Connection",
         "security" : [ {
           "jwt" : [ "ADMIN" ]
         } ]
@@ -18268,6 +18413,14 @@
       "get" : {
         "operationId" : "HomeContentResource_getHomeContent",
         "tags" : [ "User: Home" ],
+        "parameters" : [ {
+          "description" : "UI locale for translated tips (e.g. en, uk); defaults to en",
+          "name" : "locale",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -18498,16 +18651,17 @@
                     "type" : "string"
                   },
                   "format" : {
+                    "enum" : [ "owntracks", "gpx", "google-timeline", "geojson", "csv", "geopulse" ],
                     "type" : "string"
                   },
                   "options" : {
-                    "type" : "string"
+                    "$ref" : "#/components/schemas/ImportOptions"
                   }
                 }
               },
               "encoding" : {
                 "options" : {
-                  "contentType" : "text/plain"
+                  "contentType" : "application/json"
                 }
               }
             }
@@ -18796,6 +18950,37 @@
           }
         },
         "summary" : "Get Immich Config",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/integrations/immich/albums" : {
+      "get" : {
+        "operationId" : "ImmichResource_listAlbums",
+        "tags" : [ "User: Immich" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ImmichAlbum"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "List Albums",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]
@@ -20455,239 +20640,6 @@
         } ]
       }
     },
-    "/api/v1/period-tags" : {
-      "get" : {
-        "operationId" : "PeriodTagResource_getPeriodTags",
-        "tags" : [ "User: Period Tags" ],
-        "parameters" : [ {
-          "name" : "from",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "to",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/PeriodTagDto"
-                  }
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          }
-        },
-        "summary" : "Get Period Tags",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      },
-      "post" : {
-        "operationId" : "PeriodTagResource_createPeriodTag",
-        "tags" : [ "User: Period Tags" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreatePeriodTagDto"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Period tag created"
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          },
-          "400" : {
-            "description" : "Bad Request"
-          }
-        },
-        "summary" : "Create Period Tag",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      }
-    },
-    "/api/v1/period-tags/active" : {
-      "get" : {
-        "operationId" : "PeriodTagResource_getActiveTag",
-        "tags" : [ "User: Period Tags" ],
-        "responses" : {
-          "204" : {
-            "description" : "No active period tag"
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          }
-        },
-        "summary" : "Get Active Tag",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      }
-    },
-    "/api/v1/period-tags/check-overlaps" : {
-      "get" : {
-        "operationId" : "PeriodTagResource_checkOverlaps",
-        "tags" : [ "User: Period Tags" ],
-        "parameters" : [ {
-          "name" : "excludeId",
-          "in" : "query",
-          "schema" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        }, {
-          "name" : "from",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "to",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/PeriodTagDto"
-                  }
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          }
-        },
-        "summary" : "Check Overlaps",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      }
-    },
-    "/api/v1/period-tags/{id}" : {
-      "put" : {
-        "operationId" : "PeriodTagResource_updatePeriodTag",
-        "tags" : [ "User: Period Tags" ],
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/UpdatePeriodTagDto"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PeriodTagDto"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          },
-          "400" : {
-            "description" : "Bad Request"
-          }
-        },
-        "summary" : "Update Period Tag",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      },
-      "delete" : {
-        "operationId" : "PeriodTagResource_deletePeriodTag",
-        "tags" : [ "User: Period Tags" ],
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        }, {
-          "name" : "mode",
-          "in" : "query",
-          "schema" : {
-            "default" : "unlink_only",
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "Period tag deleted"
-          },
-          "401" : {
-            "description" : "Authentication is required or the provided credentials are invalid."
-          },
-          "403" : {
-            "description" : "The authenticated user does not have permission to access this resource."
-          }
-        },
-        "summary" : "Delete Period Tag",
-        "security" : [ {
-          "jwt" : [ "USER", "ADMIN" ]
-        } ]
-      }
-    },
     "/api/v1/places/{type}/{id}" : {
       "put" : {
         "operationId" : "PlaceDetailsResource_updatePlaceName",
@@ -20964,6 +20916,109 @@
         } ]
       }
     },
+    "/api/v1/poi/images/{poiId}/thumbnail" : {
+      "get" : {
+        "operationId" : "PoiResource_thumbnail",
+        "tags" : [ "User: Places to visit" ],
+        "parameters" : [ {
+          "name" : "poiId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Cached thumbnail of the place's photo",
+            "content" : {
+              "image/jpeg" : { },
+              "image/png" : { },
+              "image/webp" : { }
+            }
+          },
+          "404" : {
+            "description" : "No usable image for this place",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblemResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Thumbnail",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/poi/search" : {
+      "get" : {
+        "operationId" : "PoiResource_search",
+        "tags" : [ "User: Places to visit" ],
+        "parameters" : [ {
+          "name" : "latitude",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "longitude",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "radiusMeters",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : "8000",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Places around the given point",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PoiSearchResponseDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Search",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
     "/api/v1/preferences/timeline" : {
       "put" : {
         "operationId" : "UserResource_updateTimelinePreferences",
@@ -21045,7 +21100,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/UpdateTimelineDisplayPreferencesRequest"
+                "$ref" : "#/components/schemas/TimelineDisplayPreferences"
               }
             }
           },
@@ -21053,11 +21108,11 @@
         },
         "responses" : {
           "200" : {
-            "description" : "Updated timeline display preferences",
+            "description" : "Updated timeline display settings",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/TimelineDisplayPreferences"
+                  "$ref" : "#/components/schemas/TimelineDisplaySettings"
                 }
               }
             }
@@ -21086,7 +21141,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/TimelineDisplayPreferences"
+                  "$ref" : "#/components/schemas/TimelineDisplaySettings"
                 }
               }
             }
@@ -21301,6 +21356,157 @@
           }
         },
         "summary" : "Get Shared Path"
+      }
+    },
+    "/api/v1/public/share-links/{linkId}/photos" : {
+      "get" : {
+        "operationId" : "PublicSharedLinkResource_getSharedPhotos",
+        "tags" : [ "User: Sharing" ],
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImmichPhotoSearchResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get Shared Photos"
+      }
+    },
+    "/api/v1/public/share-links/{linkId}/photos/{photoId}/download" : {
+      "get" : {
+        "operationId" : "PublicSharedLinkResource_downloadSharedPhoto",
+        "tags" : [ "User: Sharing" ],
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "photoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Original shared Immich photo",
+            "content" : {
+              "image/jpeg" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Download Shared Photo"
+      }
+    },
+    "/api/v1/public/share-links/{linkId}/photos/{photoId}/preview" : {
+      "get" : {
+        "operationId" : "PublicSharedLinkResource_getSharedPhotoPreview",
+        "tags" : [ "User: Sharing" ],
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "photoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Shared Immich photo preview",
+            "content" : {
+              "image/jpeg" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get Shared Photo Preview"
+      }
+    },
+    "/api/v1/public/share-links/{linkId}/photos/{photoId}/thumbnail" : {
+      "get" : {
+        "operationId" : "PublicSharedLinkResource_getSharedPhotoThumbnail",
+        "tags" : [ "User: Sharing" ],
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "photoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Shared Immich photo thumbnail",
+            "content" : {
+              "image/jpeg" : {
+                "schema" : {
+                  "format" : "binary",
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Get Shared Photo Thumbnail"
       }
     },
     "/api/v1/public/share-links/{linkId}/timeline" : {
@@ -21793,6 +21999,239 @@
           }
         },
         "summary" : "Get Timeline",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/timeline-labels" : {
+      "get" : {
+        "operationId" : "TimelineLabelResource_getTimelineLabels",
+        "tags" : [ "User: Timeline Labels" ],
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TimelineLabelDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Timeline Labels",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      },
+      "post" : {
+        "operationId" : "TimelineLabelResource_createTimelineLabel",
+        "tags" : [ "User: Timeline Labels" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTimelineLabelDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Timeline label created"
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Timeline Label",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/timeline-labels/active" : {
+      "get" : {
+        "operationId" : "TimelineLabelResource_getActiveLabel",
+        "tags" : [ "User: Timeline Labels" ],
+        "responses" : {
+          "204" : {
+            "description" : "No active timeline label"
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Active Label",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/timeline-labels/check-overlaps" : {
+      "get" : {
+        "operationId" : "TimelineLabelResource_checkOverlaps",
+        "tags" : [ "User: Timeline Labels" ],
+        "parameters" : [ {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeId",
+          "in" : "query",
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TimelineLabelDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Check Overlaps",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/timeline-labels/{id}" : {
+      "put" : {
+        "operationId" : "TimelineLabelResource_updateTimelineLabel",
+        "tags" : [ "User: Timeline Labels" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTimelineLabelDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineLabelDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Timeline Label",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      },
+      "delete" : {
+        "operationId" : "TimelineLabelResource_deleteTimelineLabel",
+        "tags" : [ "User: Timeline Labels" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "mode",
+          "in" : "query",
+          "schema" : {
+            "default" : "unlink_only",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Timeline label deleted"
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Delete Timeline Label",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]
@@ -22451,10 +22890,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/PlanSearchResultDto"
-                  }
+                  "$ref" : "#/components/schemas/PlanSearchResponseDto"
                 }
               }
             }
@@ -22592,12 +23028,12 @@
         } ]
       }
     },
-    "/api/v1/trips/from-period-tag/{periodTagId}" : {
+    "/api/v1/trips/from-timeline-label/{timelineLabelId}" : {
       "post" : {
-        "operationId" : "TripResource_createTripFromPeriodTag",
+        "operationId" : "TripResource_createTripFromTimelineLabel",
         "tags" : [ "User: Trips" ],
         "parameters" : [ {
-          "name" : "periodTagId",
+          "name" : "timelineLabelId",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -22623,7 +23059,7 @@
             "description" : "The authenticated user does not have permission to access this resource."
           }
         },
-        "summary" : "Create Trip From Period Tag",
+        "summary" : "Create Trip From Timeline Label",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]
@@ -22881,9 +23317,9 @@
         } ]
       }
     },
-    "/api/v1/trips/{id}/period-tags" : {
+    "/api/v1/trips/{id}/timeline-label" : {
       "delete" : {
-        "operationId" : "TripResource_unlinkTripFromPeriodTag",
+        "operationId" : "TripResource_unlinkTripFromTimelineLabel",
         "tags" : [ "User: Trips" ],
         "parameters" : [ {
           "name" : "id",
@@ -22912,7 +23348,7 @@
             "description" : "The authenticated user does not have permission to access this resource."
           }
         },
-        "summary" : "Unlink Trip From Period Tag",
+        "summary" : "Unlink Trip From Timeline Label",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]

@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.db;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.nio.file.Path;
@@ -22,7 +22,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
 
     private static final String DEFAULT_DATABASE_NAME = "gp_test_shared";
     private static final Object LOCK = new Object();
-    private static PostgreSQLContainer<?> postgreSQLContainer;
+    private static PostgreSQLContainer postgreSQLContainer;
 
     /** Marks that this JVM already registered its database cleanup, shared across classloaders. */
     private static final String CLEANUP_REGISTERED_PROPERTY = "geopulse.test.db-cleanup-registered";
@@ -68,7 +68,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                 }
                 var postgis = DockerImageName.parse(postgisImage)
                         .asCompatibleSubstituteFor("postgres");
-                postgreSQLContainer = new PostgreSQLContainer<>(postgis)
+                postgreSQLContainer = new PostgreSQLContainer(postgis)
                         .withDatabaseName("test")
                         .withUsername("postgres")
                         .withPassword("password")

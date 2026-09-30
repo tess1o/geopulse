@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -327,7 +328,7 @@ public class OwnTracksMqttService {
             }
 
             GpsAuthenticationResult authenticationResult = userIdOpt.get();
-            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, Map.class);
+            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, new TypeReference<Map<String, Object>>() {});
             Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(messageData, authenticationResult.getConfig());
             if (resolvedPayload.isEmpty()) {
                 return;

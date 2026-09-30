@@ -28,7 +28,7 @@ test.describe('Timeline Reports Page', () => {
       expect(noDataVisible).toBe(true);
 
       const noDataMessage = await reportsPage.getNoDataMessage();
-      expect(noDataMessage).toContain('No location data found');
+      expect(noDataMessage).toContain('No timeline data found');
 
       // Verify database has no timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -544,16 +544,16 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Export Functionality', () => {
-    test('should have Export All Data button in header', async ({page, isolatedUsers, dbManager}) => {
+    test('should have Export All button in header', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
       await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
-      const exportAllButton = page.locator('button:has-text("Export All Data")');
+      const exportAllButton = page.locator('button.export-all-button');
       expect(await exportAllButton.isVisible()).toBe(true);
     });
 
-    test('should trigger export when Export All Data is clicked', async ({page, isolatedUsers, dbManager}) => {
+    test('should trigger export when Export All is clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
       await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();

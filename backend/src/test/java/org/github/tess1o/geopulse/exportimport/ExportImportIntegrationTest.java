@@ -64,9 +64,6 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -136,7 +133,6 @@ class ExportImportIntegrationTest {
     @Inject
     AIEncryptionService encryptionService;
 
-    private final GeometryFactory geometryFactory = new GeometryFactory();
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -276,13 +272,6 @@ class ExportImportIntegrationTest {
                 .build();
         timelineStayRepository.persist(testStay);
 
-        Coordinate[] pathCoordinates = new Coordinate[]{
-                new Coordinate(-122.4194, 37.7749),
-                new Coordinate(-122.4150, 37.7770),
-                new Coordinate(-122.4120, 37.7800),
-                new Coordinate(-122.4094, 37.7849)
-        };
-        LineString tripPath = geometryFactory.createLineString(pathCoordinates);
         testTimelineTrip = TimelineTripEntity.builder()
                 .user(testUser)
                 .timestamp(BASE_TIME.minus(90, ChronoUnit.MINUTES))
@@ -292,7 +281,6 @@ class ExportImportIntegrationTest {
                 .tripDuration(1800)
                 .movementType("WALKING")
                 .movementTypeSource(MovementTypeSource.MANUAL)
-                .path(tripPath)
                 .avgGpsSpeed(1.3)
                 .maxGpsSpeed(2.1)
                 .speedVariance(0.4)
@@ -581,10 +569,6 @@ class ExportImportIntegrationTest {
 
     private OriginalData captureOriginalData() {
         return QuarkusTransaction.requiringNew().call(() -> {
-            TimelineTripEntity timelineTrip = timelineTripRepository.findById(testTimelineTrip.getId());
-            assertNotNull(timelineTrip.getPath());
-            assertEquals(4, timelineTrip.getPath().getNumPoints());
-
             return new OriginalData(
                     testGeocodingLocation.getRequestCoordinates().getX(),
                     testGeocodingLocation.getRequestCoordinates().getY(),

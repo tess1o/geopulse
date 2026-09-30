@@ -331,6 +331,7 @@ class FavoritesResourceContractTest {
         return response.jsonPath().getList(collection + ".name", String.class);
     }
 
+    @SuppressWarnings("unchecked")
     private static Map<String, Object> favorite(Response response, String collection, String name) {
         assertThat(response.statusCode()).isEqualTo(200);
         return response.jsonPath().getList(collection, Map.class).stream()

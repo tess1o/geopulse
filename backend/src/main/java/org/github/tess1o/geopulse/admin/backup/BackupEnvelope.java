@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.admin.backup;
 
 import com.google.crypto.tink.*;
 import com.google.crypto.tink.streamingaead.StreamingAeadConfig;
-import com.google.crypto.tink.streamingaead.StreamingAeadKeyTemplates;
+import com.google.crypto.tink.streamingaead.PredefinedStreamingAeadParameters;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
@@ -29,7 +29,7 @@ public final class BackupEnvelope {
             byte[] salt = random(16), iv = random(12);
             byte[] prefix = ByteBuffer.allocate(MAGIC.length + 16 + 16 + 12)
                     .put(MAGIC).putInt(VERSION).putInt(MEMORY).putInt(ITERATIONS).putInt(LANES).put(salt).put(iv).array();
-            KeysetHandle keys = KeysetHandle.generateNew(StreamingAeadKeyTemplates.AES256_GCM_HKDF_1MB);
+            KeysetHandle keys = KeysetHandle.generateNew(PredefinedStreamingAeadParameters.AES256_GCM_HKDF_1MB);
             ByteArrayOutputStream serialized = new ByteArrayOutputStream();
             CleartextKeysetHandle.write(keys, BinaryKeysetWriter.withOutputStream(serialized));
             byte[] clear = serialized.toByteArray();
@@ -38,7 +38,7 @@ public final class BackupEnvelope {
             finally { Arrays.fill(clear, (byte) 0); }
             byte[] header = ByteBuffer.allocate(prefix.length + 4 + wrapped.length).put(prefix).putInt(wrapped.length).put(wrapped).array();
             destination.write(header);
-            return keys.getPrimitive(StreamingAead.class).newEncryptingStream(destination, header);
+            return keys.getPrimitive(RegistryConfiguration.get(), StreamingAead.class).newEncryptingStream(destination, header);
         } catch (GeneralSecurityException e) { throw new IOException("Cannot encrypt backup", e); }
     }
 
@@ -62,7 +62,7 @@ public final class BackupEnvelope {
             byte[] clear = wrap(Cipher.DECRYPT_MODE, password, salt, iv, prefix, wrapped);
             try {
                 KeysetHandle keys = CleartextKeysetHandle.read(BinaryKeysetReader.withBytes(clear));
-                return keys.getPrimitive(StreamingAead.class).newDecryptingStream(in, header);
+                return keys.getPrimitive(RegistryConfiguration.get(), StreamingAead.class).newDecryptingStream(in, header);
             } finally { Arrays.fill(clear, (byte) 0); }
         } catch (GeneralSecurityException e) { throw new IOException("Incorrect backup password or damaged backup", e); }
     }

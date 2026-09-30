@@ -2,8 +2,6 @@ package org.github.tess1o.geopulse.importdata.rest;
 
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -26,6 +24,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
@@ -50,9 +49,6 @@ public class ImportResource {
     @Inject
     ImportTempFileService tempFileService;
 
-    @Inject
-    ObjectMapper objectMapper;
-
     @ConfigProperty(name = "geopulse.import.chunked.max-file-size-gb", defaultValue = "10")
     int maxFileSizeGB;
 
@@ -67,8 +63,9 @@ public class ImportResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public ImportJobResponse uploadFile(
             @RestForm("file") FileUpload file,
-            @RestForm("format") String format,
-            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
+            @RestForm("format") @Schema(required = true, enumeration = {
+                    "owntracks", "gpx", "google-timeline", "geojson", "csv", "geopulse"}) String format,
+            @RestForm("options") @PartType(MediaType.APPLICATION_JSON) ImportOptions options) {
         UUID userId = currentUserService.getCurrentUserId();
 
         ImportFormat importFormat = ImportFormat.fromString(format);
@@ -109,14 +106,8 @@ public class ImportResource {
                     Map.of("format", importFormat.getValue()));
         }
 
-            // Parse options
-        ImportOptions importOptions;
-        try {
-            importOptions = objectMapper.readValue(options, ImportOptions.class);
-            importOptions.setImportFormat(importFormat.getValue());
-        } catch (JsonProcessingException e) {
-            throw new GeoPulseException(INVALID_IMPORT_OPTIONS, "Invalid import options format", e);
-        }
+        ImportOptions importOptions = options != null ? options : new ImportOptions();
+        importOptions.setImportFormat(importFormat.getValue());
 
             // Create import job
         ImportJob job;

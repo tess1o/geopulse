@@ -116,6 +116,7 @@ public class TimePatternService {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
         if (results.isEmpty()) {
             return null;
@@ -160,6 +161,7 @@ public class TimePatternService {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
         if (results.isEmpty()) {
             return null;
@@ -223,6 +225,7 @@ public class TimePatternService {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
         if (results.isEmpty()) {
             return null;

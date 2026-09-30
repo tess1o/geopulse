@@ -89,6 +89,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @param endTime Upper timestamp bound for latest point selection
      * @return Trail points ordered by user and timestamp
      */
+    @SuppressWarnings("unchecked")
     public List<GpsPointEntity> findFriendTrailPointsForUser(UUID userId, int minutes, Instant endTime) {
         if (userId == null || minutes <= 0 || endTime == null) {
             return List.of();
@@ -223,6 +224,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private List<GpsPointEntity> findExportDateRangeChunk(UUID userId, Instant startTime, Instant endTime,
                                                           Instant cursorTimestamp, Long cursorId, int batchSize) {
         String cursorPredicate = cursorTimestamp != null && cursorId != null
@@ -348,6 +350,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
             query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
         }
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
 
         return results.stream()
@@ -386,6 +389,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
             query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
         }
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
 
         return results.stream()
@@ -447,6 +451,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @param sortOrder Sort order (asc or desc)
      * @return A list of GPS point entities for the page
      */
+    @SuppressWarnings("unchecked")
     public List<GpsPointEntity> findByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
                                                      int page, int pageSize, String sortBy, String sortOrder) {
         QueryBuilder queryBuilder = buildFilterQuery(userId, filters);
@@ -524,6 +529,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private List<GpsPointEntity> findFilteredExportChunk(UUID userId, GpsPointFilterDTO filters,
                                                          Instant cursorTimestamp, Long cursorId, int batchSize) {
         QueryBuilder queryBuilder = buildFilterQuery(userId, filters);

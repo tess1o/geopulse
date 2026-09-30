@@ -60,7 +60,7 @@ test.describe('Admin Invitations', () => {
     const invitationRow = page.locator('tbody tr').filter({ hasText: tokenPreview }).first();
 
     await expect(invitationRow).toBeVisible();
-    await expect(invitationRow).toContainText('USED');
+    await expect(invitationRow).toContainText(/used/i);
     await expect(invitationRow).toContainText('Deleted user');
   });
 });

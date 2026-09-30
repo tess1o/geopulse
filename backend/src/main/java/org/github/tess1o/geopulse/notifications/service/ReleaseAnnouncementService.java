@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.home.model.HomeContentResponse;
 import org.github.tess1o.geopulse.home.service.HomeContentService;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.github.tess1o.geopulse.notifications.model.dto.ReleaseAnnouncementResponse;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
@@ -42,7 +43,7 @@ public class ReleaseAnnouncementService {
 
     @Transactional
     public ReleaseAnnouncementResponse current(UUID userId) {
-        HomeContentResponse.WhatsNewItem release = homeContentService.getContent().whatsNew().stream()
+        HomeContentResponse.WhatsNewItem release = homeContentService.getContent(SupportedLanguages.DEFAULT.getCode()).whatsNew().stream()
                 .filter(item -> version.equals(item.version())).findFirst().orElse(null);
         if (release == null) return new ReleaseAnnouncementResponse(false, null, null);
         UserEntity user = userRepository.findByIdOptional(userId).orElseThrow(() -> new IllegalArgumentException("User not found"));

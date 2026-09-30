@@ -226,7 +226,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
                 // Skip if this data type is not requested for import
                 String dataType = getDataTypeFromFileName(fileName);
-                if (dataType != null && !job.getOptions().getDataTypes().contains(dataType)) {
+                List<String> requestedDataTypes = job.getOptions().getDataTypes();
+                if (dataType != null && requestedDataTypes != null && !requestedDataTypes.contains(dataType)) {
                     log.debug("Skipping {} - not requested for import", fileName);
                     zis.closeEntry();
                     continue;

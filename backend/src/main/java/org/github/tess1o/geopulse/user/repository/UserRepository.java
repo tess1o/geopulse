@@ -93,6 +93,7 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
                 .setParameter("searchQuery", likeQuery)
                 .setParameter("currentUserId", currentUserId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
 
         return results.stream()

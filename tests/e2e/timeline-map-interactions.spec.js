@@ -704,8 +704,8 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location first
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8888, $1, 'Test Favorite', 'Test City', 'Test Country', 'POINT', 
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'Test Favorite', 'Test City', 'Test Country', 'POINT', 
                 ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
       `, [user.id]);
       
@@ -926,9 +926,9 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8889, $1, 'Original Name', 'Test City', 'Test Country', 'POINT', 
-                ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'Original Name', 'Test City', 'Test Country', 'POINT', 
+                ST_GeomFromText('POINT(-74.0060 40.7300)', 4326))
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
@@ -942,7 +942,8 @@ test.describe('Timeline Map Interactions', () => {
         await mapPage.toggleLayerControl('favorites');
       }
 
-      await mapPage.focusMapOnCoordinates(40.7128, -74.0060, 12);
+      // Keep the favorite well clear of every stay marker (Home is at 40.7128) so the right-click cannot hit a stay icon.
+      await mapPage.focusMapOnCoordinates(40.7300, -74.0060, 14);
       await expect.poll(() => mapPage.countMarkers('favorite'), { timeout: 30000 }).toBeGreaterThan(0);
 
       try {
@@ -999,9 +1000,9 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8890, $1, 'To Delete', 'Test City', 'Test Country', 'POINT', 
-                ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'To Delete', 'Test City', 'Test Country', 'POINT', 
+                ST_GeomFromText('POINT(-74.0060 40.7300)', 4326))
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
@@ -1015,7 +1016,8 @@ test.describe('Timeline Map Interactions', () => {
         await mapPage.toggleLayerControl('favorites');
       }
 
-      await mapPage.focusMapOnCoordinates(40.7128, -74.0060, 12);
+      // Keep the favorite well clear of every stay marker (Home is at 40.7128) so the right-click cannot hit a stay icon.
+      await mapPage.focusMapOnCoordinates(40.7300, -74.0060, 14);
       await expect.poll(() => mapPage.countMarkers('favorite'), { timeout: 30000 }).toBeGreaterThan(0);
       const favoriteCountBeforeDelete = await mapPage.countMarkers('favorite');
 

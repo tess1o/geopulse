@@ -52,6 +52,7 @@ public class TimeOfDayBadgeCalculator {
         Query timeQuery = entityManager.createNativeQuery(query);
         timeQuery.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         Object result = timeQuery.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
         String earnedDate = null;

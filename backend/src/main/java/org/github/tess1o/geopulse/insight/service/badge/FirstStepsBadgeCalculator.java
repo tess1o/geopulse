@@ -38,6 +38,7 @@ public class FirstStepsBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(FIRST_TRIP_QUERY);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         Object result = query.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
         String earnedDate = null;

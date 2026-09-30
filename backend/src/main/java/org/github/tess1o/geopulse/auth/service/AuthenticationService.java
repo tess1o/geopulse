@@ -188,7 +188,7 @@ public class AuthenticationService {
         return new RefreshTokenResponse(
                 createAccessToken(user),
                 createRefreshToken(user),
-                null, // CSRF token not needed - handled by Quarkus REST CSRF
+                null, // CSRF token not needed - handled by CsrfProtectionFilter
                 accessTokenLifespan
         );
     }

@@ -23,7 +23,7 @@ public class UserOidcConnectionEntity extends PanacheEntityBase {
     private UUID userId;
     
     @Id
-    @Column(name = "provider_name")
+    @Column(name = "provider_name", length = 50)
     private String providerName;
     
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,7 +36,7 @@ public class UserOidcConnectionEntity extends PanacheEntityBase {
     @Column(name = "display_name")
     private String displayName;
     
-    @Column(name = "avatar_url")
+    @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
     
     @Column(name = "linked_at")

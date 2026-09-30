@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 final class PreferencePatches {
 
     private static final ObjectMapper MAPPER = JsonMapper.builder()
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .build();
 
     private PreferencePatches() {
@@ -32,7 +32,7 @@ final class PreferencePatches {
         ObjectNode merged = MAPPER.valueToTree(current);
         if (patch != null) {
             ObjectNode changes = MAPPER.valueToTree(patch);
-            changes.fields().forEachRemaining(field -> {
+            changes.properties().forEach(field -> {
                 JsonNode value = field.getValue();
                 if (value.isTextual()) {
                     String trimmed = value.asText().trim();

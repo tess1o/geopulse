@@ -47,7 +47,7 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Builder.Default
     private Integer viewCount = 0;
 
-    @Column(name = "share_type", nullable = false)
+    @Column(name = "share_type", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ShareType shareType = ShareType.LIVE_LOCATION;

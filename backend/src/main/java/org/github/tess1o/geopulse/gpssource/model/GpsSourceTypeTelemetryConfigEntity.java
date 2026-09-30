@@ -36,7 +36,7 @@ public class GpsSourceTypeTelemetryConfigEntity {
     private UserEntity user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false)
+    @Column(name = "source_type", nullable = false, length = 32)
     private GpsSourceType sourceType;
 
     @JdbcTypeCode(SqlTypes.JSON)

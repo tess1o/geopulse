@@ -114,6 +114,7 @@ public class GeonamesCityRepository {
             double longitude,
             Double maxDistanceMeters
     ) {
+        @SuppressWarnings("unchecked")
         List<Object[]> rows = entityManager.createNativeQuery("""
                         SELECT
                             gc.geonameid,

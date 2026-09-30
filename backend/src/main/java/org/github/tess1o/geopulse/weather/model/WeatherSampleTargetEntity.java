@@ -76,7 +76,7 @@ public class WeatherSampleTargetEntity {
     @Column(name = "completed_at")
     private Instant completedAt;
 
-    @Column(name = "last_error")
+    @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
     @Column(name = "created_at", nullable = false)
