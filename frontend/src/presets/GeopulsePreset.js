@@ -155,7 +155,17 @@ const GeopulsePreset = definePreset(Aura, {
                 }
             }
         },
+        // "Today" in emerald (GeoPulse secondary) so it stays distinct from the primary-blue selected date.
+        // A selected today still shows as selected: PrimeVue's `.p-datepicker-today > .p-datepicker-day-selected` wins.
+        datepicker: {
+            colorScheme: {
+                light: {today: {background: '{emerald.500}', color: '#ffffff'}},
+                dark: {today: {background: '{emerald.500}', color: '#ffffff'}}
+            }
+        },
         toast: {
+            root: {borderRadius: '{border.radius.lg}'},
+            content: {padding: '1rem'},
             summary: {fontWeight: '600', fontSize: '0.875rem'},
             detail: {fontWeight: '400', fontSize: '0.8rem'}
         },

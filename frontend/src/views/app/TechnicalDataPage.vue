@@ -451,14 +451,6 @@
         class="gps-data-table"
         v-model:selection="selectedRows"
         selection-mode="multiple"
-        :pt="{
-          root: 'bg-surface-0 dark:bg-surface-950',
-          header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
-          tbody: 'bg-surface-0 dark:bg-surface-950',
-          row: 'bg-surface-0 dark:bg-surface-950 hover:bg-surface-50 dark:hover:bg-surface-800',
-          cell: 'text-surface-900 dark:text-surface-100 border-surface-200 dark:border-surface-700',
-          paginator: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700'
-        }"
       >
         <template #paginatorstart>
           <span class="paginator-info">{{ t('technicalData.page.table.pageOf', { current: currentPage + 1, total: totalPages.toLocaleString() }) }}</span>

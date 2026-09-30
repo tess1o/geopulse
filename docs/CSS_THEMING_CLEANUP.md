@@ -102,14 +102,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | Target |
-|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | Target |
+|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 |
 
 ---
 
@@ -149,18 +149,33 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 - The navbar demo badge, the notes delete-confirm box and the source chips, the analytics map overlay and refresh
   badge, and the admin mobile cards now get their dark styles. These never applied before.
 
-### Phase 2: Remove the global override wall
-- [ ] Delete the "LEGACY OVERRIDE WALL" section of `styles/primevue-overrides.css`, which holds all `.p-dark .p-*`
-  and light `!important` restyles of tabmenu, autocomplete, tabs, inputtext, toast, floatlabel, datepicker, textarea,
-  confirmdialog, dialog, card, select, multiselect, checkbox, dropdown, tooltip, datatable, paginator and breadcrumb.
-- [ ] Re-add in the preset only the intentional deviations that tokens can express. Decide, without `!important`:
-  datepicker "today" in emerald? confirm-dialog icon colour? tab styling (see `TabContainer.vue`)?
-- [ ] Remove the DataTable `:pt` dark classes (`dark:bg-surface-950`, …). Their `cell`, `row` and `paginator` keys
-  are ignored by DataTable, and `root` and `tbody` now fight the preset.
-- [ ] Build: check that no `.p-dark .p-` selectors come from the global stylesheet.
+### Phase 2: Remove the global override wall ✅
+- [x] Deleted the "LEGACY OVERRIDE WALL" section of `styles/primevue-overrides.css` (about 1120 lines, 435
+  `!important`): every `.p-dark .p-*` restyle and the light `!important` restyles of toast, textarea, confirm dialog,
+  dialog and tooltip. Much of it never matched anyway: PrimeVue 3 classes (`.p-highlight`, `.p-tabs-nav`,
+  `.p-confirm-dialog-icon`, `.p-variant-on`, `.p-dropdown*`) and `html body .p-dark .p-tooltip` (the tooltip is
+  teleported to `<body>`, outside `.p-dark`).
+- [x] Re-added in the preset: datepicker "today" in emerald in both schemes; toast radius 8px and 1rem padding.
+  Kept in `primevue-overrides.css` without `!important`: compact tooltip text (0.75rem / 500), `overflow: hidden`
+  on dialogs, and phone layout for confirm dialogs (inside the viewport, stacked full-width buttons). The one
+  justified `!important` left is the toast z-index 9999, since PrimeVue sets it inline.
+- [x] Removed the DataTable `:pt` dark classes from StaysTable, TripsTable, DataGapsTable and TechnicalDataPage.
+- [x] Build: no `.p-dark .p-` selectors come from the global stylesheet. The 9 unscoped ones left in the built CSS
+  come from component `<style>` blocks: AppNavbarWithDatePicker (datepicker, Phase 3/4) and AppNavigation
+  (`.p-dark .p-drawer`, Phase 4).
 
 **Check in the UI:**
-Every PrimeVue component type in both modes:
+Every PrimeVue component type in both modes. Expected visible changes:
+- dark inputs, selects, multiselects, checkboxes and textareas are one step darker than cards (formField);
+- light textareas are white like other inputs, not slate-50;
+- datepicker "today" is emerald in light mode too; selected stays blue;
+- toasts use Aura's tinted severity style in both modes; dark toasts are no longer card-coloured;
+- confirm dialogs use the preset look: no header or footer dividers; buttons keep their own severity instead of
+  all being forced to filled primary;
+- dark inactive tabs in `TabContainer` are slate-700 (the muted surface) instead of slate-900;
+- dark paginator page buttons have no borders.
+
+Components to check:
 - inputs, textarea, select, multiselect, autocomplete;
 - datepicker (today, selected, button bar), float labels, checkbox, toggle;
 - dialog and confirm dialog, toast (4 severities), tooltip, popover;
@@ -280,3 +295,14 @@ Check each in light, dark and system mode (switch the OS theme on an open page);
   primary.400 with dark text.
 - Dark highlight (selected option, row, date) is solid primary with white text, matching light mode.
 - The `:global(.p-dark)` fix was pulled forward from Phase 3 (red flash on reload).
+- Phase 2, datepicker "today": emerald (`{emerald.500}`, white text) in **both** schemes. Before, it was emerald
+  only in dark mode; the navbar's comment gave the reason: keep today distinct from the blue selected date.
+  AppNavbarWithDatePicker's own dark today/selected rules are now redundant; they go in Phase 4.
+- Phase 2, confirm-dialog icon: Aura default, the modal text colour. This is what already showed: the warning
+  colour rule used the PrimeVue 3 class and never matched. A fixed warning colour would also be wrong for
+  non-destructive confirms.
+- Phase 2, tabs: nothing in the preset. The app doesn't use PrimeVue TabMenu or Tabs; `TabContainer.vue` renders
+  its own markup with `p-tabmenu-*` class names and styles it with tokens that already flip.
+- Phase 2, toasts: Aura's severity colours (proper dark variants) instead of the old soft background with a solid
+  border in light and card background in dark. The confirm dialog's light restyle (dividers, custom paddings,
+  1.125rem title, all non-outlined buttons forced to primary) was dropped, as planned: tokens can't express it.
