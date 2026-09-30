@@ -438,22 +438,22 @@ watch(
   margin-top: var(--gp-spacing-sm);
 }
 
-:global(.p-dark) .note-delete-confirm {
+.p-dark .note-delete-confirm {
   border-color: rgba(239, 68, 68, 0.55);
   background: rgba(127, 29, 29, 0.35);
   color: #fee2e2;
 }
 
-:global(.p-dark) .note-delete-confirm-message i {
+.p-dark .note-delete-confirm-message i {
   color: #fca5a5;
 }
 
-:global(.p-dark) .note-source-memos {
+.p-dark .note-source-memos {
   color: #bae6fd;
   background: rgba(14, 116, 144, 0.35);
 }
 
-:global(.p-dark) .note-source-geopulse {
+.p-dark .note-source-geopulse {
   color: #bbf7d0;
   background: rgba(22, 101, 52, 0.35);
 }

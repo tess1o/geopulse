@@ -533,9 +533,7 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-:global(.p-dark) .user-card,
-:global([data-theme="dark"]) .user-card,
-:global(html.dark) .user-card {
+.p-dark .user-card {
   background: var(--gp-surface-dark);
 }
 

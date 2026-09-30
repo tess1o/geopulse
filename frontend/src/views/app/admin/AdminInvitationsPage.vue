@@ -778,9 +778,7 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-:global(.p-dark) .invitation-card,
-:global([data-theme="dark"]) .invitation-card,
-:global(html.dark) .invitation-card {
+.p-dark .invitation-card {
   background: var(--gp-surface-dark);
 }
 

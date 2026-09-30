@@ -723,9 +723,7 @@ code {
 }
 
 /* Dark theme specific */
-:global(.p-dark) .provider-card,
-:global([data-theme="dark"]) .provider-card,
-:global(html.dark) .provider-card {
+.p-dark .provider-card {
   background: var(--gp-surface-dark);
 }
 

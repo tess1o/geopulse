@@ -494,11 +494,11 @@ onBeforeUnmount(() => {
   color: var(--gp-text-secondary);
 }
 
-:global(.p-dark) .map-overlay {
+.p-dark .map-overlay {
   background: rgba(15, 23, 42, 0.7);
 }
 
-:global(.p-dark) .map-refresh-badge {
+.p-dark .map-refresh-badge {
   background: rgba(15, 23, 42, 0.92);
   border-color: rgba(148, 163, 184, 0.2);
 }

@@ -238,7 +238,7 @@ const handleNavigate = (item) => {
   color: var(--gp-primary-light);
 }
 
-:global(.p-dark) .gp-navbar-demo-badge {
+.p-dark .gp-navbar-demo-badge {
   background: #ef4444;
   border-color: #f87171;
   color: #111827;

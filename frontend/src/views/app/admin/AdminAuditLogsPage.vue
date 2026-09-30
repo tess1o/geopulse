@@ -705,9 +705,7 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-:global(.p-dark) .audit-card,
-:global([data-theme="dark"]) .audit-card,
-:global(html.dark) .audit-card {
+.p-dark .audit-card {
   background: var(--gp-surface-dark);
 }
 

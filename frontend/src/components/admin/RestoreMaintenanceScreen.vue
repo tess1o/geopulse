@@ -70,5 +70,5 @@ button {
 button:hover { background: var(--gp-surface-gray, #f1f5f9); }
 button:focus-visible { outline: 3px solid color-mix(in srgb, var(--gp-primary, #1a56db) 35%, transparent); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: wait; }
-:global(.p-dark) .restore-maintenance { --restore-accent: #f59e0b; }
+.p-dark .restore-maintenance { --restore-accent: #f59e0b; }
 </style>
