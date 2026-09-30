@@ -1,0 +1,213 @@
+/* ================================================================================================
+   GEOPULSE DESIGN TOKENS
+   ================================================================================================
+   Conventions:
+   - This file is the ONLY place where a token gets a light and a dark value. Components use tokens and
+     never re-color themselves under `.p-dark`; if a component needs a color that differs between the
+     schemes and no token fits, add a semantic token here (light value in :root, dark value in .p-dark).
+   - Tokens that exist in PrimeVue alias the PrimeVue semantic tokens (--p-*), which come from
+     src/presets/GeopulsePreset.js, so custom UI and PrimeVue components always match.
+   - Dark mode is the `p-dark` class on <html> (src/utils/themeMode.js). Don't use prefers-color-scheme,
+     `html.dark` or `[data-theme]` in CSS.
+   - Surfaces: ground (page) < card (panels, dialogs) < muted (nested block inside a card)
+     < emphasis (stronger nested block); hover for interactive rows; inverse for tooltip-like chips.
+   ================================================================================================ */
+
+:root {
+    /* Brand */
+    --gp-primary: var(--p-primary-color);
+    --gp-primary-hover: var(--p-primary-hover-color);
+    --gp-primary-active: var(--p-primary-active-color);
+    --gp-primary-contrast: var(--p-primary-contrast-color);
+    --gp-primary-light: #3b82f6;
+    --gp-primary-dark: #1e40af;
+    --gp-primary-soft: #eff6ff;
+    --gp-primary-soft-border: #bfdbfe;
+
+    --gp-secondary: #10b981;
+    --gp-secondary-light: #34d399;
+    --gp-secondary-dark: #059669;
+
+    /* Text */
+    --gp-text-primary: var(--p-text-color);
+    --gp-text-secondary: var(--p-text-muted-color);
+    --gp-text-muted: #94a3b8;
+    --gp-neutral-white: #ffffff;
+
+    /* Surfaces */
+    --gp-surface-ground: #f8fafc;
+    --gp-surface-card: var(--p-content-background);
+    --gp-surface-muted: #f8fafc;
+    --gp-surface-emphasis: #f1f5f9;
+    --gp-surface-hover: var(--p-content-hover-background);
+    --gp-surface-inverse: #1e293b;
+    --gp-text-inverse: #ffffff;
+
+    /* Borders */
+    --gp-border: var(--p-content-border-color);
+    --gp-border-medium: #e2e8f0;
+    --gp-border-subtle: #f1f5f9;
+
+    /* Status: solid (icons, fills), strong (hover of a solid fill), soft (tinted background),
+       border (border on a soft background), text (readable text on card or soft background) */
+    --gp-success: #10b981;
+    --gp-success-strong: #059669;
+    --gp-success-soft: #f0fdf4;
+    --gp-success-border: #bbf7d0;
+    --gp-success-text: #15803d;
+
+    --gp-warning: #f59e0b;
+    --gp-warning-strong: #d97706;
+    --gp-warning-soft: #fffbeb;
+    --gp-warning-border: #fde68a;
+    --gp-warning-text: #b45309;
+
+    --gp-danger: #ef4444;
+    --gp-danger-strong: #dc2626;
+    --gp-danger-soft: #fef2f2;
+    --gp-danger-border: #fecaca;
+    --gp-danger-text: #dc2626;
+
+    --gp-info: #06b6d4;
+    --gp-info-strong: #0891b2;
+    --gp-info-soft: #f0f9ff;
+    --gp-info-border: #bae6fd;
+    --gp-info-text: #0284c7;
+
+    --gp-demo-alert-bg: #fef2f2;
+    --gp-demo-alert-border: #fca5a5;
+    --gp-demo-alert-accent: #dc2626;
+    --gp-demo-alert-text: #991b1b;
+    --gp-demo-alert-icon: #dc2626;
+
+    /* Timeline and map accents */
+    --gp-timeline-blue: rgba(30, 64, 175, 0.15);
+    --gp-timeline-blue-light: rgba(219, 234, 254, 0.5);
+    --gp-timeline-green: rgba(5, 150, 105, 0.15);
+    --gp-timeline-green-light: rgba(209, 250, 229, 0.5);
+    --gp-timeline-orange: rgba(245, 158, 11, 0.15);
+    --gp-timeline-orange-light: rgba(254, 243, 199, 0.5);
+    --gp-timeline-purple: rgba(139, 92, 246, 0.15);
+    --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
+
+    --gp-map-accent-light: rgba(0, 188, 212, 0.7);
+    --gp-map-accent-bg: rgba(0, 188, 212, 0.1);
+
+    /* Shadows */
+    --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --gp-shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --gp-shadow-large: 0 10px 25px rgba(0, 0, 0, 0.12);
+    --gp-shadow-card: 0 1px 3px rgba(26, 86, 219, 0.1), 0 1px 2px rgba(26, 86, 219, 0.06);
+    --gp-shadow-card-hover: 0 4px 12px rgba(26, 86, 219, 0.15);
+    --gp-shadow-card-highlighted: 0 0 0 1px var(--gp-primary);
+    --gp-shadow-dialog: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --gp-shadow-button: 0 2px 4px rgba(26, 86, 219, 0.1);
+    --gp-shadow-button-hover: 0 4px 8px rgba(26, 86, 219, 0.15);
+    --gp-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gp-primary) 15%, transparent);
+
+    /* Shape */
+    --gp-radius-small: 4px;
+    --gp-radius-medium: 8px;
+    --gp-radius-large: 12px;
+    --gp-radius-pill: 20px;
+
+    /* Spacing */
+    --gp-spacing-xs: 0.25rem;
+    --gp-spacing-sm: 0.5rem;
+    --gp-spacing-md: 0.75rem;
+    --gp-spacing-lg: 1rem;
+    --gp-spacing-xl: 1.5rem;
+    --gp-spacing-xxl: 2rem;
+
+    /* Typography */
+    --gp-font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji';
+    --gp-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+.p-dark {
+    --gp-primary-light: #60a5fa;
+    --gp-primary-dark: #1d4ed8;
+    --gp-primary-soft: rgba(59, 130, 246, 0.16);
+    --gp-primary-soft-border: rgba(96, 165, 250, 0.35);
+
+    --gp-text-muted: #94a3b8;
+
+    --gp-surface-ground: #0f172a;
+    --gp-surface-muted: #334155;
+    --gp-surface-emphasis: #475569;
+    --gp-surface-inverse: #f8fafc;
+    --gp-text-inverse: #1e293b;
+
+    --gp-border-medium: #475569;
+    --gp-border-subtle: #334155;
+
+    --gp-success-soft: rgba(16, 185, 129, 0.15);
+    --gp-success-border: rgba(16, 185, 129, 0.35);
+    --gp-success-text: #4ade80;
+
+    --gp-warning-soft: rgba(245, 158, 11, 0.15);
+    --gp-warning-border: rgba(245, 158, 11, 0.35);
+    --gp-warning-text: #fbbf24;
+
+    --gp-danger-soft: rgba(239, 68, 68, 0.15);
+    --gp-danger-border: rgba(239, 68, 68, 0.35);
+    --gp-danger-text: #f87171;
+
+    --gp-info-soft: rgba(6, 182, 212, 0.15);
+    --gp-info-border: rgba(6, 182, 212, 0.35);
+    --gp-info-text: #38bdf8;
+
+    --gp-demo-alert-bg: #7f1d1d;
+    --gp-demo-alert-border: #ef4444;
+    --gp-demo-alert-accent: #ef4444;
+    --gp-demo-alert-text: #fee2e2;
+    --gp-demo-alert-icon: #fecaca;
+
+    --gp-timeline-blue-light: rgba(59, 130, 246, 0.12);
+    --gp-timeline-green-light: rgba(16, 185, 129, 0.12);
+    --gp-timeline-orange-light: rgba(245, 158, 11, 0.12);
+    --gp-timeline-purple-light: rgba(139, 92, 246, 0.12);
+
+    --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --gp-shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --gp-shadow-large: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --gp-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --gp-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --gp-shadow-dialog: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --gp-shadow-button: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --gp-shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ------------------------------------------------------------------------------------------------
+   TEMPORARY ALIASES for pre-cleanup token names. Removed once every usage is migrated.
+   ------------------------------------------------------------------------------------------------ */
+:root {
+    --gp-surface-white: var(--gp-surface-card);
+    --gp-surface-light: #f8fafc;
+    --gp-surface-gray: #f1f5f9;
+    --gp-surface-dark: #1e293b;
+    --gp-surface-darker: #0f172a;
+    --gp-border-light: var(--gp-border);
+    --gp-border-dark: rgba(255, 255, 255, 0.1);
+    --gp-error: var(--gp-danger);
+    --gp-success-light: var(--gp-success-soft);
+    --gp-success-dark: #15803d;
+    --gp-warning-light: var(--gp-warning-soft);
+    --gp-warning-dark: #d97706;
+    --gp-danger-light: var(--gp-danger-soft);
+    --gp-danger-dark: #dc2626;
+    --gp-info-light: var(--gp-info-soft);
+    --gp-info-dark: #0284c7;
+    --text-color: var(--gp-text-primary);
+    --text-color-secondary: var(--gp-text-secondary);
+}
+
+.p-dark {
+    --gp-surface-light: #334155;
+    --gp-surface-gray: #475569;
+    --gp-border-light: rgba(255, 255, 255, 0.1);
+    --gp-border-medium: rgba(255, 255, 255, 0.2);
+}

@@ -1,9 +1,19 @@
 import {definePreset} from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 
+/*
+ * GeoPulse theme = Aura + brand blue + one neutral palette (slate) in both color schemes.
+ *
+ * This preset is the single source of truth for colors. The --gp-* tokens in src/styles/tokens.css alias the
+ * semantic tokens emitted from here (--p-primary-color, --p-content-background, --p-text-color, ...), so PrimeVue
+ * components and custom GeoPulse UI always agree. Theme PrimeVue components here (semantic or component tokens),
+ * not with `.p-dark .p-xxx { ... !important }` CSS overrides.
+ *
+ * Keep the surface palette in Aura's orientation (0 = white ... 950 = darkest) in BOTH schemes: every Aura
+ * component token assumes it (e.g. dark formField.background = {surface.950}, dark text.color = {surface.0}).
+ */
 const GeopulsePreset = definePreset(Aura, {
     semantic: {
-        // Primary color - GeoPulse brand blue
         primary: {
             50: '#eff6ff',
             100: '#dbeafe',
@@ -19,60 +29,84 @@ const GeopulsePreset = definePreset(Aura, {
         },
         colorScheme: {
             light: {
+                // surface: Aura's light default is already slate.
                 primary: {
-                    color: '#1a56db',
-                    inverseColor: '#ffffff',
-                    hoverColor: '#1d4ed8',
-                    activeColor: '#1e40af'
+                    color: '{primary.600}',
+                    contrastColor: '#ffffff',
+                    hoverColor: '{primary.700}',
+                    activeColor: '{primary.800}'
                 },
                 highlight: {
-                    background: '#1a56db',
-                    focusBackground: '#1d4ed8',
+                    background: '{primary.600}',
+                    focusBackground: '{primary.700}',
                     color: '#ffffff',
                     focusColor: '#ffffff'
                 },
-                // Add more colorful surface options
-                surface: {
-                    0: '#ffffff',
-                    50: '#eff6ff',
-                    100: '{neutral.100}',
-                    200: '{neutral.200}',
-                    300: '{neutral.300}',
-                    400: '{neutral.400}',
-                    500: '{neutral.500}',
-                    600: '{neutral.600}',
-                    700: '{neutral.700}',
-                    800: '{neutral.800}',
-                    900: '{neutral.900}',
-                    950: '{neutral.950}'
+                text: {
+                    color: '{surface.800}',
+                    hoverColor: '{surface.900}',
+                    mutedColor: '{surface.500}',
+                    hoverMutedColor: '{surface.600}'
                 }
             },
             dark: {
+                surface: {
+                    0: '#ffffff',
+                    50: '{slate.50}',
+                    100: '{slate.100}',
+                    200: '{slate.200}',
+                    300: '{slate.300}',
+                    400: '{slate.400}',
+                    500: '{slate.500}',
+                    600: '{slate.600}',
+                    700: '{slate.700}',
+                    800: '{slate.800}',
+                    900: '{slate.900}',
+                    950: '{slate.950}'
+                },
                 primary: {
-                    color: '#60a5fa',
-                    inverseColor: '#172554',
-                    hoverColor: '#93c5fd',
-                    activeColor: '#bfdbfe'
+                    color: '{primary.500}',
+                    contrastColor: '#ffffff',
+                    hoverColor: '{primary.400}',
+                    activeColor: '{primary.300}'
                 },
                 highlight: {
-                    background: 'rgba(26, 86, 219, .16)',
-                    focusBackground: 'rgba(26, 86, 219, .24)',
-                    color: 'rgba(255,255,255,.87)',
-                    focusColor: 'rgba(255,255,255,.87)'
+                    background: '{primary.500}',
+                    focusBackground: '{primary.600}',
+                    color: '#ffffff',
+                    focusColor: '#ffffff'
                 },
-                surface: {
-                    0: '{zinc.950}',
-                    50: '{zinc.900}',
-                    100: '{zinc.800}',
-                    200: '{zinc.700}',
-                    300: '{zinc.600}',
-                    400: '{zinc.500}',
-                    500: '{zinc.400}',
-                    600: '{zinc.300}',
-                    700: '{zinc.200}',
-                    800: '{zinc.100}',
-                    900: '{zinc.50}',
-                    950: '#ffffff'
+                formField: {
+                    background: '{surface.900}',
+                    disabledBackground: '{surface.800}',
+                    filledBackground: '{surface.800}',
+                    filledHoverBackground: '{surface.800}',
+                    filledFocusBackground: '{surface.800}',
+                    borderColor: '{surface.600}',
+                    hoverBorderColor: '{surface.500}',
+                    color: '{surface.100}'
+                },
+                text: {
+                    color: '{surface.100}',
+                    hoverColor: '{surface.0}',
+                    mutedColor: '{surface.300}',
+                    hoverMutedColor: '{surface.200}'
+                },
+                content: {
+                    background: '{surface.800}',
+                    hoverBackground: '{surface.700}',
+                    borderColor: '{surface.700}'
+                },
+                overlay: {
+                    select: {background: '{surface.800}', borderColor: '{surface.700}'},
+                    popover: {background: '{surface.800}', borderColor: '{surface.700}'},
+                    modal: {background: '{surface.800}', borderColor: '{surface.700}'}
+                },
+                list: {
+                    option: {focusBackground: '{surface.700}'}
+                },
+                navigation: {
+                    item: {focusBackground: '{surface.700}', activeBackground: '{surface.700}'}
                 }
             }
         }
@@ -82,17 +116,7 @@ const GeopulsePreset = definePreset(Aura, {
             colorScheme: {
                 light: {
                     root: {
-                        primary: {
-                            background: '#1a56db',
-                            hoverBackground: '#1d4ed8',
-                            activeBackground: '#1e40af',
-                            borderColor: '#1a56db',
-                            hoverBorderColor: '#1d4ed8',
-                            activeBorderColor: '#1e40af',
-                            color: '#ffffff',
-                            hoverColor: '#ffffff',
-                            activeColor: '#ffffff'
-                        },
+                        // GeoPulse uses emerald for the "secondary" severity in light mode.
                         secondary: {
                             background: '{emerald.500}',
                             hoverBackground: '{emerald.600}',
@@ -101,133 +125,45 @@ const GeopulsePreset = definePreset(Aura, {
                             color: '#ffffff'
                         }
                     }
-                },
-                dark: {
-                    root: {
-                        primary: {
-                            background: '#3b82f6',
-                            hoverBackground: '#60a5fa',
-                            activeBackground: '#93c5fd',
-                            borderColor: '#3b82f6',
-                            color: '#ffffff'
-                        }
-                    }
                 }
             }
         },
-        // Add colorful card styling
         card: {
             colorScheme: {
                 light: {
                     root: {
-                        background: '{surface.0}',
-                        borderColor: '#bfdbfe',
-                        color: '{surface.700}',
                         shadow: '0 1px 3px 0 rgba(26, 86, 219, 0.1), 0 1px 2px 0 rgba(26, 86, 219, 0.06)'
                     }
+                }
+            }
+        },
+        datatable: {
+            colorScheme: {
+                light: {
+                    header: {background: '{surface.50}'},
+                    headerCell: {background: '{surface.50}'},
+                    footer: {background: '{surface.50}'},
+                    footerCell: {background: '{surface.50}'}
                 },
                 dark: {
-                    root: {
-                        background: '{surface.900}',
-                        borderColor: '#1e40af',
-                        color: '{surface.0}'
-                    }
+                    root: {borderColor: '{content.border.color}'},
+                    header: {background: '{surface.900}'},
+                    headerCell: {background: '{surface.900}'},
+                    footer: {background: '{surface.900}'},
+                    footerCell: {background: '{surface.900}'},
+                    row: {stripedBackground: '{surface.900}'}
                 }
             }
         },
-        // Colorful badges
-        badge: {
-            colorScheme: {
-                light: {
-                    root: {
-                        primary: {
-                            background: '#1a56db',
-                            color: '#ffffff'
-                        },
-                        secondary: {
-                            background: '{emerald.500}',
-                            color: '#ffffff'
-                        },
-                        success: {
-                            background: '{green.500}',
-                            color: '#ffffff'
-                        },
-                        info: {
-                            background: '{cyan.500}',
-                            color: '#ffffff'
-                        },
-                        warning: {
-                            background: '{amber.500}',
-                            color: '#ffffff'
-                        },
-                        danger: {
-                            background: '{red.500}',
-                            color: '#ffffff'
-                        }
-                    }
-                }
-            }
+        toast: {
+            summary: {fontWeight: '600', fontSize: '0.875rem'},
+            detail: {fontWeight: '400', fontSize: '0.8rem'}
         },
-        // Enhanced chart colors
-        chart: {
+        // Tooltips are inverted relative to the page in both schemes.
+        tooltip: {
             colorScheme: {
-                light: {
-                    grid: {
-                        color: '#dbeafe'
-                    },
-                    tick: {
-                        color: '{surface.500}'
-                    }
-                }
-            }
-        },
-        // AutoComplete styling for dark mode support
-        autocomplete: {
-            colorScheme: {
-                light: {
-                    root: {
-                        background: '{surface.0}',
-                        borderColor: '{surface.300}',
-                        color: '{surface.700}'
-                    },
-                    overlay: {
-                        background: '{surface.0}',
-                        borderColor: '{surface.200}',
-                        color: '{surface.700}',
-                        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-                    },
-                    option: {
-                        focusBackground: '{surface.100}',
-                        selectedBackground: '{highlight.background}',
-                        selectedFocusBackground: '{highlight.focusBackground}',
-                        color: '{surface.700}',
-                        focusColor: '{surface.700}',
-                        selectedColor: '{highlight.color}',
-                        selectedFocusColor: '{highlight.focusColor}'
-                    }
-                },
-                dark: {
-                    root: {
-                        background: '{surface.900}',
-                        borderColor: '{surface.700}',
-                        color: '{surface.0}'
-                    },
-                    overlay: {
-                        background: '{surface.800}',
-                        borderColor: '{surface.700}',
-                        color: '{surface.0}',
-                        shadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)'
-                    },
-                    option: {
-                        focusBackground: '{surface.700}',
-                        selectedBackground: '{highlight.background}',
-                        selectedFocusBackground: '{highlight.focusBackground}',
-                        color: '{surface.0}',
-                        focusColor: '{surface.0}',
-                        selectedColor: '{highlight.color}',
-                        selectedFocusColor: '{highlight.focusColor}'
-                    }
-                }
+                light: {root: {background: '{surface.800}', color: '#ffffff'}},
+                dark: {root: {background: '{surface.50}', color: '{surface.800}'}}
             }
         }
     }

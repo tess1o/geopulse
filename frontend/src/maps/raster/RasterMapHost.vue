@@ -506,7 +506,7 @@ onUnmounted(() => {
 }
 
 /* The neutral backdrop is there so tiles have something to fade in over, but #f0f0f0 is a
-   bright flash on a dark page. Beat `.p-dark .leaflet-container` in mapStyles.css by
+   bright flash on a dark page. Beat `.p-dark .leaflet-container` in styles/maps.css by
    specificity rather than trusting chunk order - this host is lazily loaded, so its
    stylesheet lands after index.css. */
 .p-dark .base-map {

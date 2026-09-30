@@ -1,9 +1,7 @@
 import "primeicons/primeicons.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "leaflet/dist/leaflet.css";
-import "./mapStyles.css"
-import "./style.css";
-import "./flags.css";
+import "./styles/index.css";
 
 import {createApp, watch} from "vue";
 import PrimeVue from "primevue/config";
@@ -68,7 +66,11 @@ app.use(PrimeVue, {
         options: {
             prefix: 'p',
             darkModeSelector: '.p-dark',
-            cssLayer: false,
+            // Must match the order declared in src/styles/layers.css.
+            cssLayer: {
+                name: 'primevue',
+                order: 'tailwind-base, primevue, app-components, tailwind-utilities'
+            },
         }
     }
 });

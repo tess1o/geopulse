@@ -9,8 +9,8 @@
     <template #message="slotProps">
       <div class="gp-error-toast">
         <div class="gp-error-toast-body">
-          <!-- The house .p-toast-summary / .p-toast-detail rules (style.css) own the typography, so
-               custom markup has to carry those class names to match every other toast. -->
+          <!-- PrimeVue styles .p-toast-summary / .p-toast-detail (typography from the toast tokens in
+               presets/GeopulsePreset.js), so custom markup carries those class names to match every other toast. -->
           <div class="p-toast-summary">{{ slotProps.message.summary }}</div>
           <div v-if="slotProps.message.detail" class="p-toast-detail gp-error-toast-detail">
             {{ slotProps.message.detail }}

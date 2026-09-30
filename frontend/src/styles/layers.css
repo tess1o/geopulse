@@ -1,0 +1,17 @@
+/* Cascade layer order. PrimeVue injects its styles into the `primevue` layer (main.js: theme.options.cssLayer)
+   with the same order string, so it doesn't matter which side declares the order first.
+   - Tailwind preflight is lowest, PrimeVue sits above it.
+   - `app-components` holds the shared GeoPulse classes (styles/components.css); they beat PrimeVue defaults but
+     Tailwind utilities still win over them, as utilities should.
+   - Everything that is NOT in a layer (scoped component styles, primevue-overrides.css, maps.css) beats all
+     layers, so overriding PrimeVue never needs !important. */
+@layer tailwind-base, primevue, app-components, tailwind-utilities;
+
+@layer tailwind-base {
+    @tailwind base;
+}
+
+@layer tailwind-utilities {
+    @tailwind components;
+    @tailwind utilities;
+}

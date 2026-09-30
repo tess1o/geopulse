@@ -1,0 +1,182 @@
+/* Shared GeoPulse classes. They live in the `app-components` layer: above PrimeVue (so they restyle PrimeVue
+   parts without !important) and below Tailwind utilities (so a utility class on the same element still wins). */
+@layer app-components {
+    /* ================================
+       COMPONENT UTILITY CLASSES
+       ================================ */
+
+    /* Card Base */
+    .gp-card {
+        background: var(--gp-surface-white);
+        border-radius: var(--gp-radius-large);
+        border: 1px solid var(--gp-border-light);
+        box-shadow: var(--gp-shadow-card);
+    }
+
+    /* Card Header */
+    .gp-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--gp-spacing-lg);
+        border-bottom: 1px solid var(--gp-border-light);
+    }
+
+    /* Card Title */
+    .gp-card-title {
+        color: var(--gp-primary);
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Period Badge */
+    .gp-period-badge {
+        background: var(--gp-primary);
+        color: white;
+        padding: var(--gp-spacing-xs) var(--gp-spacing-md);
+        border-radius: var(--gp-radius-pill);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Metric Layout */
+    .gp-metric-item {
+        display: flex;
+        align-items: flex-start;
+        padding: var(--gp-spacing-md) 0;
+        gap: var(--gp-spacing-md);
+    }
+
+    .gp-metric-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--gp-radius-medium);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gp-primary);
+        color: white;
+    }
+
+    .gp-metric-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--gp-text-primary);
+    }
+
+    .gp-metric-label {
+        font-size: 0.875rem;
+        color: var(--gp-text-secondary);
+        margin: 0;
+    }
+
+    /* Button Styles */
+    .gp-btn-primary {
+        background: var(--gp-primary);
+        color: white;
+        border: 1px solid var(--gp-primary);
+        border-radius: var(--gp-radius-medium);
+        padding: var(--gp-spacing-md) var(--gp-spacing-xl);
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .gp-btn-primary:hover {
+        background: var(--gp-primary-hover);
+        border-color: var(--gp-primary-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--gp-shadow-medium);
+    }
+
+    .gp-btn-secondary {
+        background: transparent;
+        color: var(--gp-primary);
+        border: 1px solid var(--gp-primary);
+        border-radius: var(--gp-radius-medium);
+        padding: var(--gp-spacing-md) var(--gp-spacing-xl);
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .gp-btn-secondary:hover {
+        background: var(--gp-primary);
+        color: white;
+    }
+
+    /* Form Input Styles */
+    .gp-input {
+        border-radius: var(--gp-radius-medium);
+        border: 1px solid var(--gp-border-medium);
+        padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+        transition: all 0.2s ease;
+    }
+
+    .gp-input:focus {
+        border-color: var(--gp-primary);
+        box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+    }
+
+    /* Text Utilities */
+    .gp-text-primary { color: var(--gp-text-primary); }
+    .gp-text-secondary { color: var(--gp-text-secondary); }
+    .gp-text-muted { color: var(--gp-text-muted); }
+    .gp-text-brand { color: var(--gp-primary); }
+
+    /* Background Utilities */
+    .gp-bg-primary { background-color: var(--gp-primary); }
+    .gp-bg-surface { background-color: var(--gp-surface-white); }
+    .gp-bg-light { background-color: var(--gp-surface-light); }
+
+    /* Status Utilities */
+    .gp-success { color: var(--gp-success); }
+    .gp-warning { color: var(--gp-warning); }
+    .gp-error { color: var(--gp-error); }
+    .gp-info { color: var(--gp-info); }
+
+    /* ================================
+         DEMO / READ-ONLY NOTICES
+       ================================ */
+
+    .demo-read-only-message,
+    .demo-disabled-message,
+    .demo-read-only-banner,
+    .coverage-action-error {
+        margin-bottom: var(--gp-spacing-lg);
+        background: var(--gp-demo-alert-bg);
+        border-color: var(--gp-demo-alert-border);
+        border-left: 4px solid var(--gp-demo-alert-accent);
+        color: var(--gp-demo-alert-text);
+    }
+
+    .demo-read-only-message .p-message-content,
+    .demo-disabled-message .p-message-content,
+    .demo-read-only-banner .p-message-content,
+    .coverage-action-error .p-message-content {
+        color: var(--gp-demo-alert-text);
+        font-weight: 600;
+    }
+
+    .demo-read-only-message .p-message-icon,
+    .demo-disabled-message .p-message-icon,
+    .demo-read-only-banner .p-message-icon,
+    .coverage-action-error .p-message-icon {
+        color: var(--gp-demo-alert-icon);
+    }
+
+    .demo-disabled-text,
+    .demo-disabled-note {
+        color: var(--gp-danger-text);
+        font-weight: 700;
+        line-height: 1.4;
+    }
+
+    .gp-setting-highlight {
+        outline: 2px solid color-mix(in srgb, var(--gp-primary) 65%, white);
+        outline-offset: 3px;
+        border-radius: var(--gp-radius-medium);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--gp-primary) 14%, transparent);
+        transition: box-shadow 0.2s ease, outline-color 0.2s ease;
+    }
+}

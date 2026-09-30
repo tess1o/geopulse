@@ -267,7 +267,7 @@ const resetForm = () => {
 </script>
 
 <style scoped>
-/* Dialog uses global styles from /frontend/src/style.css */
+/* Dialog styling comes from the PrimeVue preset (presets/GeopulsePreset.js) */
 .preset-toggle {
   display: flex;
   align-items: center;

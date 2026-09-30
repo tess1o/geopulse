@@ -337,7 +337,7 @@ const handleTabClick = (index) => {
   box-shadow: none;
 }
 
-/* Dark Mode styles are handled globally in style.css */
+/* Dark mode comes from the design tokens (styles/tokens.css) */
 
 /* Responsive */
 /* Tablet and mobile */

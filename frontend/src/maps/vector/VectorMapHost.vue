@@ -778,7 +778,7 @@ onUnmounted(() => {
   background-color: #f0f0f0;
 }
 
-/* This host is the one place `mapStyles.css`'s `.p-dark .leaflet-container` never reached:
+/* This host is the one place `styles/maps.css`'s `.p-dark .leaflet-container` never reached:
    MapLibre puts its own class on the container, not `leaflet-container`, so #f0f0f0 was
    the real background in dark mode, not just a loading flash. */
 .p-dark .base-map {
