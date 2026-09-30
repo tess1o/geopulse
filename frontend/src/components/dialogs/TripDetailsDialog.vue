@@ -435,10 +435,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-:deep(.p-dialog-content) {
-  overflow-y: auto;
-}
-
 .trip-details-content {
   display: flex;
   flex-direction: column;

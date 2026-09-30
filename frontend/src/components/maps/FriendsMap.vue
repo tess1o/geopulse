@@ -684,13 +684,6 @@ export default {
   flex-direction: column;
 }
 
-.friends-map-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--p-surface-200);
-  background: var(--p-surface-50);
-  flex-shrink: 0;
-}
-
 .friends-map-content {
   flex: 1;
   min-height: 400px; /* Important for flexbox */
@@ -707,38 +700,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--p-surface-50);
+  background: var(--gp-surface-ground);
   z-index: 1000;
 }
 
 .empty-content {
   text-align: center;
   padding: 2rem;
-}
-
-/* Friends Map Title */
-.friends-map-title {
-  color: var(--p-surface-900);
-}
-
-/* Dark mode support */
-.dark .friends-map-container {
-  background: var(--p-surface-900);
-  border-color: var(--p-surface-700);
-}
-
-.dark .friends-map-header {
-  background: var(--p-surface-800);
-  border-bottom-color: var(--p-surface-700);
-}
-
-.dark .friends-map-title {
-  color: var(--p-surface-100);
-}
-
-.dark .map-loading-overlay,
-.dark .map-empty-overlay {
-  background: var(--p-surface-800);
 }
 
 .custom-map-control-button {
@@ -778,10 +746,6 @@ export default {
 
   .friends-map-content {
     min-height: 300px;
-  }
-
-  .friends-map-header {
-    padding: 0.75rem;
   }
 }
 </style>

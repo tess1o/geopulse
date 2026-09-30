@@ -82,6 +82,11 @@
   font-weight: 600;
 }
 
+/* :where() keeps this at the base rule's specificity so the severity colours below still win in dark mode. */
+:where(.p-dark) .stack-item-weather {
+  color: #cbd5e1;
+}
+
 .stack-item-weather--clear {
   color: #ca8a04;
 }
@@ -90,10 +95,6 @@
 .stack-item-weather--storm,
 .stack-item-weather--snow {
   color: #2563eb;
-}
-
-.p-dark .stack-item-weather {
-  color: #cbd5e1;
 }
 
 .stack-item-title {

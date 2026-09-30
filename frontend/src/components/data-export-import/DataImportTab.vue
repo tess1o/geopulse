@@ -1415,12 +1415,12 @@ onMounted(async () => {
 }
 
 /* Dark Mode */
-:root[class*="dark"] .csv-format-docs {
+.p-dark .csv-format-docs {
   background: var(--surface-ground);
   border-color: var(--gp-border-dark);
 }
 
-:root[class*="dark"] .csv-example-code {
+.p-dark .csv-example-code {
   background: var(--surface-800);
   border-color: var(--gp-border-dark);
 }

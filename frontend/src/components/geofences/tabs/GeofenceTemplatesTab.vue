@@ -704,11 +704,6 @@ const templateEnabledModel = createFieldModel('enabled')
   box-shadow: 0 0 0 0.06rem color-mix(in srgb, var(--p-red-500, #ef4444) 35%, transparent) !important;
 }
 
-:deep(.p-dark .p-inputtext.p-invalid),
-:deep(.p-dark .p-textarea.p-invalid) {
-  background: color-mix(in srgb, var(--p-red-500, #ef4444) 10%, var(--surface-card)) !important;
-}
-
 .sticky-stack {
   position: sticky;
   top: 1rem;

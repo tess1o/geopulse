@@ -1237,42 +1237,6 @@ onUnmounted(() => {
   margin-bottom: 2rem;
 }
 
-/* Tab Styling */
-:deep(.p-tabs-nav) {
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
-}
-
-:deep(.p-tabs-tab) {
-  border: none;
-  background: transparent;
-  color: var(--gp-text-secondary);
-  font-weight: 500;
-  padding: 1rem 1.5rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-tabs-tab:hover) {
-  background: var(--gp-surface-light);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-tabs-tab.p-highlight) {
-  background: transparent;
-  color: var(--gp-primary);
-  border-bottom: 2px solid var(--gp-primary);
-  font-weight: 600;
-}
-
-:deep(.p-tabs-panels) {
-  background: transparent;
-  padding: 0;
-}
-
-:deep(.p-tabs-panel) {
-  padding: 2rem 0 0 0;
-}
-
 /* Input and Button Styling */
 :deep(.p-inputtext),
 :deep(.p-textarea) {
@@ -1318,44 +1282,6 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .friends-page {
     padding: 0 0.5rem;
-  }
-
-  /* Make tabs fit in one row on mobile */
-  :deep(.p-tabmenu-nav) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  :deep(.p-tabmenuitem) {
-    flex-shrink: 0;
-    min-width: fit-content;
-  }
-
-  :deep(.p-menuitem-link) {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  :deep(.p-menuitem-icon) {
-    font-size: 1rem;
-    margin-right: 0.375rem;
-  }
-}
-
-@media (max-width: 480px) {
-  :deep(.p-menuitem-link) {
-    padding: 0.625rem 0.75rem;
-    font-size: 0.85rem;
-  }
-
-  :deep(.p-menuitem-icon) {
-    font-size: 0.9rem;
-    margin-right: 0.25rem;
-  }
-
-  :deep(.p-menuitem-text) {
-    white-space: nowrap;
   }
 }
 </style>

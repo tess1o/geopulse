@@ -769,37 +769,4 @@ const getTransportSeverity = (transportMode) => {
     font-size: 0.95rem;
   }
 }
-
-/* PrimeVue Dialog overrides */
-:deep(.p-dialog) {
-  border-radius: var(--gp-radius-large);
-  box-shadow: var(--gp-shadow-large);
-}
-
-:deep(.p-dialog-header) {
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-dialog-content) {
-  background: var(--gp-surface-white);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-dialog-footer) {
-  background: var(--gp-surface-white);
-  border-top: 1px solid var(--gp-border-light);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--gp-spacing-sm);
-}
-
-.p-dark :deep(.p-dialog-header),
-.p-dark :deep(.p-dialog-content),
-.p-dark :deep(.p-dialog-footer) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-}
 </style>

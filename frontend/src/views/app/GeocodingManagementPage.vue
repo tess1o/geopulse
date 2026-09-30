@@ -1250,11 +1250,6 @@ watch(() => jobProgress.value?.status, async (status) => {
   overflow-x: auto;
 }
 
-.geocoding-table :deep(.p-datatable) {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
 /* Table Columns - Fixed Widths */
 .geocoding-table :deep(.selection-col) {
   width: 3rem;
@@ -1552,11 +1547,6 @@ watch(() => jobProgress.value?.status, async (status) => {
 }
 
 /* Dark Mode */
-.p-dark .geocoding-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
 .p-dark .geocoding-table :deep(.p-datatable-header) {
   background: var(--gp-surface-darker) !important;
   color: var(--gp-text-primary) !important;

@@ -586,9 +586,4 @@ const handleNavigate = (item) => {
   outline: 2px solid var(--gp-primary);
   outline-offset: -2px;
 }*/
-
-/* DatePicker overlay z-index fix */
-.gp-navbar-datepicker :deep(.p-datepicker) {
-  z-index: 1100 !important;
-}
 </style>

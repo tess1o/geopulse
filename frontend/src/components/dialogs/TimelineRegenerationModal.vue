@@ -5,8 +5,7 @@
     :modal="true"
     :closable="false"
     :draggable="false"
-    :style="{ width: '500px' }"
-    class="timeline-regeneration-modal"
+    class="gp-dialog-sm timeline-regeneration-modal"
   >
     <div class="regeneration-content">
       <div class="icon-container">
@@ -212,29 +211,6 @@ const goToJobDetails = () => {
 </script>
 
 <style scoped>
-.timeline-regeneration-modal :deep(.p-dialog) {
-  background: var(--gp-surface-card);
-  border: 1px solid var(--gp-surface-border);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-header) {
-  background: var(--gp-surface-card);
-  border-bottom: 1px solid var(--gp-surface-border);
-  padding: 1.5rem 1.5rem 1rem 1.5rem;
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-title) {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-content) {
-  padding: 0 1.5rem 1.5rem 1.5rem;
-  background: var(--gp-surface-card);
-}
-
 .regeneration-content {
   display: flex;
   flex-direction: column;
@@ -426,20 +402,6 @@ const goToJobDetails = () => {
 }
 
 /* Dark mode support */
-.p-dark .timeline-regeneration-modal :deep(.p-dialog) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .timeline-regeneration-modal :deep(.p-dialog-header) {
-  background: var(--gp-surface-dark);
-  border-bottom-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .timeline-regeneration-modal :deep(.p-dialog-content) {
-  background: var(--gp-surface-dark);
-}
-
 .p-dark .regeneration-note {
   background: var(--gp-surface-ground-dark);
   border-color: var(--gp-surface-border-dark);
@@ -474,16 +436,6 @@ const goToJobDetails = () => {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 90vw !important;
-    max-width: 360px !important;
-    margin: 0 20px;
-  }
-  
-  .timeline-regeneration-modal :deep(.p-dialog-content) {
-    padding: 0 2rem 2rem 2rem;
-  }
-  
   .regeneration-content {
     gap: 1.5rem;
     padding: 0.5rem;
@@ -510,12 +462,6 @@ const goToJobDetails = () => {
 
 /* Large mobile phones (iPhone 14 Pro Max, iPhone 15 Pro Max, iPhone 16 Pro Max) */
 @media (max-width: 768px) and (min-width: 415px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 85vw !important;
-    max-width: 380px !important;
-    margin: 0 25px;
-  }
-  
   .regeneration-content {
     gap: 1.75rem;
     padding: 0.75rem;
@@ -527,15 +473,6 @@ const goToJobDetails = () => {
   
   .regeneration-note {
     padding: 1.25rem;
-  }
-}
-
-/* Extra large mobile phones (iPhone 16 Pro Max and similar) */
-@media (max-width: 768px) and (min-width: 430px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 380px !important;
-    max-width: 380px !important;
-    margin: 0 auto;
   }
 }
 </style>

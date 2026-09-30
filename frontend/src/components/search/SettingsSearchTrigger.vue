@@ -258,10 +258,6 @@ const handleSelect = (event) => {
   text-overflow: ellipsis;
 }
 
-:deep(.settings-search-popover .p-popover-content) {
-  padding: 0.625rem;
-}
-
 @media (max-width: 768px) {
   .settings-search-popover-content {
     width: min(520px, calc(100vw - 1.25rem));
@@ -279,7 +275,11 @@ const handleSelect = (event) => {
 </style>
 
 <style>
-/* Global overrides for teleported settings search popover in dark mode */
+/* The popover is teleported to <body>, so it's styled from this unscoped block through its class. */
+.settings-search-popover .p-popover-content {
+  padding: 0.625rem;
+}
+
 .p-dark .settings-search-popover.p-popover {
   background: #0f172a !important;
   border-color: rgba(148, 163, 184, 0.35) !important;

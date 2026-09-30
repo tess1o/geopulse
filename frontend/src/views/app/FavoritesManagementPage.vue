@@ -1668,11 +1668,6 @@ onUnmounted(() => {
 }
 
 /* Dark Mode */
-.p-dark .favorites-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
 .p-dark .favorites-table :deep(.p-datatable-header) {
   background: var(--gp-surface-darker) !important;
   color: var(--gp-text-primary) !important;

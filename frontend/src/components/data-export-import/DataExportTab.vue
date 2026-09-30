@@ -860,11 +860,11 @@ onMounted(() => {
 }
 
 /* Dark mode support for GPX options */
-:root[class*="dark"] .gpx-option {
+.p-dark .gpx-option {
   background: var(--surface-ground);
 }
 
-:root[class*="dark"] .gpx-option.selected {
+.p-dark .gpx-option.selected {
   background: rgba(59, 130, 246, 0.2);
   border-color: var(--primary-400);
 }
@@ -938,11 +938,11 @@ onMounted(() => {
 }
 
 /* Dark mode support */
-:root[class*="dark"] .grouping-option {
+.p-dark .grouping-option {
   background: var(--surface-ground);
 }
 
-:root[class*="dark"] .grouping-option.selected {
+.p-dark .grouping-option.selected {
   background: rgba(59, 130, 246, 0.2);
   border-color: var(--primary-400);
 }
@@ -1138,12 +1138,12 @@ onMounted(() => {
 }
 
 /* Dark Mode */
-:root[class*="dark"] .csv-format-docs {
+.p-dark .csv-format-docs {
   background: var(--surface-ground);
   border-color: var(--gp-border-dark);
 }
 
-:root[class*="dark"] .csv-example-code {
+.p-dark .csv-example-code {
   background: var(--surface-800);
   border-color: var(--gp-border-dark);
 }

@@ -790,11 +790,6 @@ onUnmounted(() => {
 }
 
 /* PrimeVue DataTable Dark Mode Styling */
-.p-dark .stays-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
 .p-dark .stays-data-table :deep(.p-datatable-header) {
   background: var(--gp-surface-darker) !important;
   color: var(--gp-text-primary) !important;
@@ -822,49 +817,9 @@ onUnmounted(() => {
   border-color: var(--gp-border-dark) !important;
 }
 
-.p-dark .stays-data-table :deep(.p-datatable-paginator-bottom),
-.p-dark .stays-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-top: 1px solid var(--gp-border-dark) !important;
-}
-
 .p-dark .stays-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
   overflow: hidden !important;
   background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-next),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-prev),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-first),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-last) {
-  color: var(--gp-text-primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  margin: 0 2px !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-next:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-prev:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-first:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-current) {
-  color: var(--gp-text-secondary) !important;
 }
 </style>

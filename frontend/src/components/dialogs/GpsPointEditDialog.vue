@@ -572,11 +572,6 @@ export default {
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  :deep(.p-dialog) {
-    width: 95vw !important;
-    margin: 1rem;
-  }
-  
   .location-fields {
     grid-template-columns: 1fr;
     gap: var(--gp-spacing-sm);

@@ -308,7 +308,7 @@ onMounted(() => {
     const observer = new MutationObserver(updateThemeColors)
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class', 'data-theme']
+      attributeFilter: ['class']
     })
 
     // Store observer for cleanup

@@ -298,36 +298,4 @@ watch(() => props.visible, (newVal) => {
 :deep(.p-password-input) {
   width: 100%;
 }
-
-/* GeoPulse Dialog Styling */
-:deep(.p-dialog) {
-  border-radius: var(--gp-radius-large, 12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-:deep(.p-dialog-header) {
-  background: var(--surface-card);
-  border-bottom: 1px solid var(--surface-border);
-  border-radius: 12px 12px 0 0;
-  padding: 1.5rem;
-}
-
-:deep(.p-dialog-title) {
-  font-weight: 600;
-  color: var(--text-color);
-  font-size: 1.25rem;
-}
-
-:deep(.p-dialog-content) {
-  background: var(--surface-card);
-  padding: 0 1.5rem;
-  color: var(--text-color);
-}
-
-:deep(.p-dialog-footer) {
-  background: var(--surface-card);
-  border-top: 1px solid var(--surface-border);
-  border-radius: 0 0 12px 12px;
-  padding: 1rem 1.5rem;
-}
 </style>

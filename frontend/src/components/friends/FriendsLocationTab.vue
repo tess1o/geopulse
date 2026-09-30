@@ -126,56 +126,10 @@ const modeOptions = computed(() => [
   gap: 0.25rem;
 }
 
-:deep(.mode-toggle-compact .p-selectbutton) {
-  background: transparent;
-}
-
-:deep(.mode-toggle-compact .p-button) {
-  padding: 0.5rem 0.875rem !important;
-  font-weight: 500 !important;
-  font-size: 0.875rem !important;
-  border: none !important;
-  background: transparent !important;
-  color: var(--gp-text-secondary) !important;
-  border-radius: var(--gp-radius-small) !important;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-:deep(.mode-toggle-compact .p-button:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-:deep(.mode-toggle-compact .p-button.p-highlight) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  font-weight: 600 !important;
-}
-
-:deep(.mode-toggle-compact .p-button i) {
-  margin-right: 0.375rem;
-  font-size: 0.875rem;
-}
-
 /* Dark mode */
 .p-dark .mode-toggle-segmented {
   background: var(--gp-surface-dark);
   border-color: var(--gp-border-dark);
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button) {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button.p-highlight) {
-  background: var(--gp-primary) !important;
-  color: white !important;
 }
 
 /* Mobile Responsive */
@@ -184,16 +138,6 @@ const modeOptions = computed(() => [
     top: 0.75rem;
     left: 3.5rem;
     padding: 0.2rem;
-  }
-
-  :deep(.mode-toggle-compact .p-button) {
-    padding: 0.375rem 0.625rem !important;
-    font-size: 0.8rem !important;
-  }
-
-  :deep(.mode-toggle-compact .p-button i) {
-    margin-right: 0.25rem;
-    font-size: 0.8rem;
   }
 }
 
@@ -204,17 +148,8 @@ const modeOptions = computed(() => [
   }
 
   /* Hide text labels on very small screens */
-  :deep(.mode-toggle-compact .p-button .toggle-label) {
+  .toggle-label {
     display: none;
-  }
-
-  :deep(.mode-toggle-compact .p-button i) {
-    margin-right: 0;
-    font-size: 1rem;
-  }
-
-  :deep(.mode-toggle-compact .p-button) {
-    padding: 0.5rem !important;
   }
 }
 </style>

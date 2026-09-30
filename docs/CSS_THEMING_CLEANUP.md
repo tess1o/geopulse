@@ -102,14 +102,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | After Phase 2 | Target |
-|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | Target |
+|---|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 |
 
 ---
 
@@ -149,7 +149,7 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 - The navbar demo badge, the notes delete-confirm box and the source chips, the analytics map overlay and refresh
   badge, and the admin mobile cards now get their dark styles. These never applied before.
 
-### Phase 2: Remove the global override wall ✅
+### Phase 2: Remove the global override wall ✅ `a0c91dbb7`
 - [x] Deleted the "LEGACY OVERRIDE WALL" section of `styles/primevue-overrides.css` (about 1120 lines, 435
   `!important`): every `.p-dark .p-*` restyle and the light `!important` restyles of toast, textarea, confirm dialog,
   dialog and tooltip. Much of it never matched anyway: PrimeVue 3 classes (`.p-highlight`, `.p-tabs-nav`,
@@ -181,31 +181,57 @@ Components to check:
 - dialog and confirm dialog, toast (4 severities), tooltip, popover;
 - tabs and tabmenu, card, datatable and paginator, breadcrumb, drawer.
 
-### Phase 3: Fix broken and dead selectors
-- [ ] `.p-dark :deep(...)`, 19 selectors that never match: EditFavoriteDialog 497–515,
-  TripClassificationDialog 798, DataExportImportPage 351/355/548, FriendsLocationTab 167–176.
-- [ ] `:deep(.p-dark …)`: GeofenceTemplatesTab 707–708.
-- [ ] Teleported-overlay rules. Delete them if the preset covers them; otherwise use a `pt`/`class` hook plus `:global(.overlay-class …)`:
-  - `:deep(.p-dialog*)` in OidcProviderDialog, EditFavoriteDialog, TripClassificationDialog,
-    TimelineRegenerationModal, TripDetailsDialog, GpsPointEditDialog;
-  - EditFavoriteDialog footer buttons;
-  - popovers in Home.vue 567 and SettingsSearchTrigger 261.
-- [ ] Home.vue: `:root` inside `<style scoped>` never matches, so the light `--home-*` variables are undefined.
-- [ ] FriendsMap.vue 725–740: dead `.dark` rules. BarChart.vue: watches a `data-theme` attribute that nothing sets.
-  DataExportTab and DataImportTab: `:root[class*="dark"]` becomes `.p-dark`.
-- [ ] PrimeVue 3 class `.p-highlight` (8 places in 6 files) becomes the PrimeVue 4 class names.
-- [ ] DataTable rules that never match: `.X-table :deep(.p-datatable)` (the class is already on the root), and
-  paginator rules on tables with `:paginator="false"`.
-- [ ] AppNavbarWithDatePicker 591: `:deep()` inside an unscoped block.
-- [ ] mapPopupContent.css 95: `.p-dark .stack-item-weather` overrides the weather colours.
+### Phase 3: Fix broken and dead selectors ✅
+Verified first: a teleported `.p-dialog` and its ancestors carry no `data-v-*` attribute, so scoped `:deep(.p-dialog…)`
+never matches, while a `class` passed to `<Dialog>`/`<Popover>` does land on the overlay root. Rules that never
+matched were deleted, since what users see today is already the preset look. Rules with a real intent were moved
+to a working selector.
+- [x] `.p-dark :deep(...)` (19) and `:deep(.p-dark …)` (2): all deleted. EditFavoriteDialog, TripClassificationDialog,
+  DataExportImportPage (the base rules already use tokens that flip) and GeofenceTemplatesTab (Aura already
+  styles `.p-invalid`).
+- [x] FriendsLocationTab: every `.mode-toggle-compact .p-button` rule was dead, light ones included. PrimeVue 4's
+  SelectButton renders `.p-togglebutton`, not `.p-button`. Deleted; the one real intent (hide the labels under
+  480px) is now a plain scoped `.toggle-label` rule.
+- [x] Teleported overlays:
+  - `:deep(.p-dialog*)` deleted in OidcProviderDialog, EditFavoriteDialog, TripClassificationDialog,
+    TimelineRegenerationModal, TripDetailsDialog and GpsPointEditDialog; the preset and the `gp-dialog-*` classes
+    cover them. TimelineRegenerationModal had an inline `width: 500px` whose phone overrides never applied, so
+    it overflowed small screens. It now uses `gp-dialog-sm`.
+  - EditFavoriteDialog footer and content button rules deleted.
+  - Popover content padding in Home.vue and SettingsSearchTrigger moved to the components' unscoped blocks as
+    `.home-wn-popover .p-popover-content` / `.settings-search-popover .p-popover-content`.
+- [x] Home.vue: the light `--home-*` palette moved from the scoped `:root` (compiled to `[data-v-…]:root`) to
+  `.landing-page`, so the light landing page gets its intended background and text colours.
+- [x] FriendsMap: dead `.dark` rules and the unused header and title rules deleted. The loading and empty overlays
+  used `--p-surface-50`, which stays light in dark mode; they now use `--gp-surface-ground`. BarChart no longer
+  watches `data-theme`. DataExportTab and DataImportTab: `:root[class*="dark"]` becomes `.p-dark`.
+- [x] `.p-highlight`: all 8 removed. DataTable paginators already listed `.p-paginator-page-selected` next to it.
+  FriendsPage's `.p-tabs-*` and `.p-tabmenu-nav`/`.p-menuitem-*` rules (PrimeVue 3 TabView and TabMenu markup;
+  the page uses `TabContainer`) were deleted.
+- [x] DataTable: the 11 `.X-table :deep(.p-datatable)` rules and every paginator rule in StaysTable, TripsTable and
+  DataGapsTable (`:paginator="false"`) deleted.
+- [x] AppNavbarWithDatePicker: the `:deep()` rule in the unscoped block shipped as a literal `:deep(`, which
+  browsers drop. Deleted; it only targeted the input wrapper anyway, not the teleported panel.
+- [x] mapPopupContent.css: the dark weather-chip colour is now `:where(.p-dark) .stack-item-weather`, before the
+  severity modifiers, so clear, rain, storm and snow keep their colours in dark mode.
+- [x] Built CSS: no literal `:deep(`, no `[data-v-…]:root`, no `.p-highlight`, no `.dark ` selectors.
+
+Left for later phases (found during this one):
+- `maps.css` `.p-contextmenu .p-menuitem-link` uses PrimeVue 3 classes (Phase 6, with the context-menu move).
+- AppNavbarWithDatePicker's unscoped `.p-dark .p-datepicker …` block and AppNavigation's `.p-dark .p-drawer`
+  (Phase 4).
+- The Family A and B DataTable dark blocks still restyle what the preset now covers (Phase 5).
 
 **Check in the UI:**
-- the dialogs listed above in both modes;
-- the Home "what's new" popover;
-- the settings search popover;
-- Home in light mode;
-- the Friends map;
-- the Data export/import tabs.
+- the dialogs listed above in both modes (they should look unchanged, apart from TimelineRegenerationModal fitting on
+  a phone);
+- the Home "what's new" popover: no inner padding, 18–22rem wide;
+- the settings search popover: slightly tighter padding;
+- Home in light mode: the landing background, header border and hero text colours now apply (a visible change);
+- the Friends map: the loading and empty overlays are dark in dark mode; the live-location/timeline-history toggle labels are hidden
+  under 480px;
+- the Data export/import tabs in dark mode;
+- timeline map popups in dark mode: weather chips are coloured by severity again.
 
 ### Phase 4: Token sweep
 - [ ] Node codemod applying the rename map; context-dependent cases are reviewed by hand.

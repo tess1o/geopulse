@@ -2301,11 +2301,6 @@ watch(filters, async () => {
   }
 
   /* Force table to fit in viewport */
-  .gps-data-table :deep(.p-datatable) {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-
   .gps-data-table :deep(.p-datatable-wrapper) {
     overflow-x: auto;
     max-width: 100%;
@@ -3111,11 +3106,6 @@ watch(filters, async () => {
 }
 
 /* PrimeVue DataTable Dark Mode Overrides */
-.p-dark .gps-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
 .p-dark .gps-data-table :deep(.p-datatable-header) {
   background: var(--gp-surface-darker) !important;
   color: var(--gp-text-primary) !important;
@@ -3193,7 +3183,6 @@ watch(filters, async () => {
   border-color: var(--gp-border-medium) !important;
 }
 
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
   background: var(--gp-primary) !important;
   color: white !important;
@@ -3204,17 +3193,11 @@ watch(filters, async () => {
   color: var(--gp-text-secondary) !important;
 }
 
-
 /* Fix the table wrapper to ensure proper corner styling */
 .p-dark .gps-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
   overflow: hidden !important;
   background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
 }
 
 /* Ensure the table container has proper rounded corners */
@@ -3235,7 +3218,6 @@ watch(filters, async () => {
 }
 
 /* Light mode selected page styling */
-.gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
 .gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
   background: var(--gp-primary) !important;
   color: white !important;

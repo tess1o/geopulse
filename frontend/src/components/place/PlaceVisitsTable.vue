@@ -630,11 +630,6 @@ watch(
 }
 
 /* Dark Mode - DataTable */
-.p-dark .visits-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
 .p-dark .visits-data-table :deep(.p-datatable-header) {
   background: var(--gp-surface-darker) !important;
   color: var(--gp-text-primary) !important;
@@ -677,11 +672,6 @@ watch(
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
-}
-
-.visits-data-table :deep(.p-datatable) {
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
 .visits-data-table--navigable :deep(.visit-row--navigable) {

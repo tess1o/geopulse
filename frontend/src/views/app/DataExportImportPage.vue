@@ -348,15 +348,6 @@ watch(() => route.query.tab, (tab) => {
   width: 100%;
 }
 
-.p-dark :deep(.date-picker .p-datepicker-dropdown .p-icon) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark :deep(.date-picker .p-datepicker-dropdown) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
 :deep(.date-range-presets) {
   display: flex;
   gap: 0.5rem;
@@ -543,11 +534,6 @@ watch(() => route.query.tab, (tab) => {
 :deep(.timeline-info i) {
   color: var(--gp-primary);
   font-size: 1rem;
-}
-
-.p-dark :deep(.timeline-info) {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-primary-300) !important;
 }
 
 :deep(.history-header) {

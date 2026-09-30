@@ -515,7 +515,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-:root {
+/* Page palette. Defined on the page root: `:root` inside a scoped block never matches. */
+.landing-page {
   --home-bg: #eef4fb;
   --home-border: #d8e4f0;
   --home-text-primary: #0f172a;
@@ -564,7 +565,6 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .nav-update-pill-mobile { display: none; }
 
 /* Home page What's New popover */
-.home-wn-popover :deep(.p-popover-content) { padding: 0; min-width: 18rem; max-width: 22rem; }
 .home-wn-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1rem 0.625rem; border-bottom: 1px solid rgba(0,0,0,0.08); }
 .home-wn-icon { color: #7c3aed; font-size: 1rem; }
 .home-wn-title { font-size: 0.85rem; font-weight: 700; color: #0f172a; }
@@ -886,7 +886,9 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 </style>
 
 <style>
-/* Global override for teleported What's New popover in dark mode */
+/* The What's New popover is teleported to <body>, so it's styled from this unscoped block through its class. */
+.home-wn-popover .p-popover-content { padding: 0; min-width: 18rem; max-width: 22rem; }
+
 .p-dark .home-wn-popover.p-popover {
   background: #0f172a !important;
   border-color: rgba(148, 163, 184, 0.35) !important;
