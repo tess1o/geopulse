@@ -186,6 +186,40 @@ describe('auth store cached profile reconciliation', () => {
     expect(authStore.defaultPathColor).toBe('')
   })
 
+  it('keeps appearance preferences on the user and resolves unset ones to follow the color scheme', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(user({ defaultPathColor: '#112233', speedBandPalette: 'OFF' }))
+    apiService.put.mockResolvedValue({
+      preferences: { colorScheme: 'RED_GREEN_SAFE', pathOutlineEnabled: true, pathWidth: 6 },
+      capabilities: {}
+    })
+
+    await authStore.updateTimelineDisplayPreferences({ colorScheme: 'RED_GREEN_SAFE', defaultPathColor: '', speedBandPalette: '' })
+
+    expect(authStore.user).toMatchObject({
+      colorScheme: 'RED_GREEN_SAFE',
+      defaultPathColor: '',
+      speedBandPalette: '',
+      heatmapGradient: '',
+      pathOutlineEnabled: true,
+      pathWidth: 6
+    })
+    expect(readCachedProfile()).toMatchObject({ colorScheme: 'RED_GREEN_SAFE', pathWidth: 6 })
+  })
+
+  it('refreshes the in-memory user when timeline display preferences are fetched', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(user())
+    apiService.get.mockResolvedValue({
+      preferences: { colorScheme: 'HIGH_CONTRAST', activePathColor: '#ffcc00' },
+      capabilities: {}
+    })
+
+    await authStore.fetchTimelineDisplayPreferences()
+
+    expect(authStore.user).toMatchObject({ colorScheme: 'HIGH_CONTRAST', activePathColor: '#ffcc00' })
+  })
+
   it('sends UI preferences nested and flattens the updated profile', async () => {
     const authStore = useAuthStore()
     authStore.setUser(user())

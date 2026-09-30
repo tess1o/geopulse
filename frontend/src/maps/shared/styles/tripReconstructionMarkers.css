@@ -44,6 +44,8 @@
 .trip-reconstruction-waypoint-icon--end,
 .trip-reconstruction-waypoint-marker--end {
   background: #dc2626;
+  /* Circle = start, square = end (as for trip endpoints), so the ends differ by shape, not only color. */
+  border-radius: 6px;
 }
 
 .trip-reconstruction-waypoint-icon--mid,

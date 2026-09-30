@@ -1,5 +1,7 @@
 <template>
   <div class="viewer-location-control">
+    <!-- Same container and button size as MapControls' groups, so the control stack lines up. -->
+    <div class="viewer-location-group">
     <button
       type="button"
       class="viewer-location-button"
@@ -26,6 +28,7 @@
     >
       <i class="pi pi-times"></i>
     </button>
+    </div>
     <div v-if="message" class="viewer-location-message" role="status">
       {{ message }}
     </div>
@@ -87,26 +90,42 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   pointer-events: none;
 }
 
+.viewer-location-group {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs, 0.25rem);
+  padding: var(--gp-spacing-xs, 0.25rem);
+  background: var(--gp-surface-white, white);
+  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  border-radius: var(--gp-radius-medium, 8px);
+  box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
 .viewer-location-button,
 .viewer-location-stop {
-  pointer-events: auto;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--surface-border, #d1d5db);
-  border-radius: 6px;
-  background: var(--surface-card, #ffffff);
-  color: var(--text-color, #111827);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--gp-radius-small, 4px);
+  background: transparent;
+  color: var(--gp-text-secondary, #64748b);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.viewer-location-button i,
+.viewer-location-stop i {
+  font-size: 16px;
 }
 
 .viewer-location-button:hover:not(:disabled),
 .viewer-location-stop:hover {
-  background: var(--surface-hover, #f3f4f6);
+  background: var(--gp-surface-light);
 }
 
 .viewer-location-button:disabled {
@@ -131,9 +150,17 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   color: #c2410c;
 }
 
-.viewer-location-stop {
-  width: 32px;
-  height: 32px;
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .viewer-location-button,
+  .viewer-location-stop {
+    width: 35px;
+    height: 35px;
+  }
+
+  .viewer-location-button i,
+  .viewer-location-stop i {
+    font-size: 14px;
+  }
 }
 
 .viewer-location-message {

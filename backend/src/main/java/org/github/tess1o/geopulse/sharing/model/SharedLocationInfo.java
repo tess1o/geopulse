@@ -75,4 +75,8 @@ public class SharedLocationInfo {
 
     @JsonProperty("map_render_mode")
     private MapRenderMode mapRenderMode;
+
+    /** The owner's current map colors and line style; viewers may override it on the shared page. */
+    @JsonProperty("map_appearance")
+    private SharedMapAppearance mapAppearance;
 }

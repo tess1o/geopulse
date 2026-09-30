@@ -1,8 +1,5 @@
 import { createFeatureCollection, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
 import {
-  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS
-} from '@/maps/shared/highlightedTripSpeedBands'
-import {
   buildHighlightedTripData,
   createEmptyHighlightedTripData
 } from '@/maps/shared/highlightedTripData'
@@ -101,13 +98,3 @@ export const resolvePopupAnchorCoordinate = (lineCoordinates) => {
 
   return lineCoordinates[Math.floor(lineCoordinates.length / 2)] || lineCoordinates[0]
 }
-
-export const highlightedLineColorExpression = [
-  'match',
-  ['get', 'speedBand'],
-  'red', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.red,
-  'yellow', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.yellow,
-  'green', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.green,
-  'unknown', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown,
-  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown
-]

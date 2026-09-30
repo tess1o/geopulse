@@ -10,6 +10,7 @@ export class UserProfilePage {
       aiAssistantTab: '[role="tab"]:has-text("AI Assistant")',
       immichTab: '[role="tab"]:has-text("Immich")',
       displayTab: '.settings-nav button:has-text("Timeline & Map")',
+      appearanceTab: '.settings-nav button:has-text("Appearance")',
       
       // Profile Information tab selectors
       profile: {
@@ -46,6 +47,16 @@ export class UserProfilePage {
         errorMessage: '.error-message'
       },
       
+      // Appearance tab selectors
+      appearance: {
+        form: '.appearance-form',
+        colorSchemeOption: (scheme) => `[data-testid="color-scheme-${scheme}"]`,
+        customizedTag: '.appearance-customized-tag',
+        outlineToggle: '#setting-pathOutlineEnabled .p-toggleswitch',
+        saveButton: '.appearance-form button[type="submit"]:has-text("Save Changes")',
+        resetButton: '.appearance-form button:has-text("Reset to Defaults")'
+      },
+
       // Security tab selectors
       security: {
         currentPasswordInput: '#currentPassword input',
@@ -160,6 +171,40 @@ export class UserProfilePage {
   async switchToDisplayTab() {
     await this.page.locator(this.selectors.displayTab).click();
     await this.page.locator(this.selectors.display.customMapTileUrlInput).waitFor();
+  }
+
+  /**
+   * Switch to Appearance tab
+   */
+  async switchToAppearanceTab() {
+    await this.page.locator(this.selectors.appearanceTab).click();
+    await this.page.locator(this.selectors.appearance.form).waitFor();
+  }
+
+  /**
+   * Pick a color vision preset card (DEFAULT, RED_GREEN_SAFE, BLUE_YELLOW_SAFE, HIGH_CONTRAST)
+   */
+  async selectColorScheme(scheme) {
+    await this.page.locator(this.selectors.appearance.colorSchemeOption(scheme)).click();
+  }
+
+  async isColorSchemeSelected(scheme) {
+    const checked = await this.page.locator(this.selectors.appearance.colorSchemeOption(scheme)).getAttribute('aria-checked');
+    return checked === 'true';
+  }
+
+  async isPathOutlineEnabled() {
+    return await this.page.locator(this.selectors.appearance.outlineToggle).evaluate(
+      (element) => element.classList.contains('p-toggleswitch-checked')
+    );
+  }
+
+  async saveAppearanceSettings() {
+    await this.page.click(this.selectors.appearance.saveButton);
+  }
+
+  async resetAppearanceSettings() {
+    await this.page.click(this.selectors.appearance.resetButton);
   }
 
   /**

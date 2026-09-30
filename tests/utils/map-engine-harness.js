@@ -248,3 +248,64 @@ export class MapEngineHarness {
     }, { ...options, layerIncludes })
   }
 }
+
+/**
+ * Read the colors the timeline path layers are drawn with, on either map engine.
+ * Returns { normalColor, highlightedColors } where highlightedColors lists every color used by the
+ * highlighted trip (several for a car trip drawn in speed bands), lower-cased.
+ */
+export async function readTimelinePathColors(page, { rootSelector = null } = {}) {
+  return page.evaluate(({ rootSelector, hostSelector }) => {
+    const registry = window.__GP_E2E_MAPS || {}
+    const root = rootSelector ? document.querySelector(rootSelector) : document
+    const hosts = [...(root || document).querySelectorAll(hostSelector)]
+    const host = hosts.find((entry) => {
+      const rect = entry.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+    }) || hosts[0] || null
+    const map = host?.id ? registry[host.id] : null
+    if (!map) {
+      return { normalColor: null, highlightedColors: [] }
+    }
+
+    const normalize = (color) => String(color || '').toLowerCase()
+
+    // Vector (MapLibre): read paint properties of the gp-path layers.
+    if (typeof map.getStyle === 'function') {
+      const layers = (map.getStyle()?.layers || []).filter((layer) => layer.id.startsWith('gp-path'))
+      const normalLayer = layers.find((layer) => layer.id.endsWith('-line') && !layer.id.includes('highlighted'))
+      const highlightedLayer = layers.find((layer) => layer.id.endsWith('-highlighted-line'))
+      const highlightedPaint = highlightedLayer ? map.getPaintProperty(highlightedLayer.id, 'line-color') : null
+      const highlightedColors = Array.isArray(highlightedPaint)
+        ? highlightedPaint.filter((entry) => typeof entry === 'string' && entry.startsWith('#'))
+        : (highlightedPaint ? [highlightedPaint] : [])
+
+      return {
+        normalColor: normalLayer ? normalize(map.getPaintProperty(normalLayer.id, 'line-color')) : null,
+        highlightedColors: [...new Set(highlightedColors.map(normalize))]
+      }
+    }
+
+    // Raster (Leaflet): path groups carry a pathId; highlighted visuals are non-interactive, visible polylines.
+    let normalColor = null
+    const highlightedColors = new Set()
+    const visit = (layer) => {
+      if (typeof layer.eachLayer === 'function') {
+        layer.eachLayer(visit)
+        return
+      }
+      const options = layer?.options
+      if (!options || typeof layer.getLatLngs !== 'function') {
+        return
+      }
+      if (options.pathId !== undefined) {
+        normalColor = normalColor || normalize(options.color)
+      } else if (options.interactive === false && options.opacity !== 0) {
+        highlightedColors.add(normalize(options.color))
+      }
+    }
+    map.eachLayer?.(visit)
+
+    return { normalColor, highlightedColors: [...highlightedColors] }
+  }, { rootSelector, hostSelector: MAP_HOST_SELECTOR })
+}

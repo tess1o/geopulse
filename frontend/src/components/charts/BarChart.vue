@@ -196,7 +196,7 @@ const chartOptions = computed(() => {
         }
       },
       tooltip: {
-        backgroundColor: '##374151',
+        backgroundColor: '#374151',
         titleColor: '#ffffff',
         bodyColor: '#ffffff',
         borderColor: themeColors.value.borderColor || '#E5E7EB',

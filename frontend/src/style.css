@@ -39,6 +39,10 @@
     --gp-text-primary: #1e293b;
     --gp-text-secondary: #64748b;
     --gp-text-muted: #94a3b8;
+    /* Legacy PrimeVue text variables, still used by many pages. PrimeVue 4 no longer defines them, so
+       without these aliases the rules are dropped and text inherits a color that is unreadable in dark mode. */
+    --text-color: var(--gp-text-primary);
+    --text-color-secondary: var(--gp-text-secondary);
     --gp-border-light: rgba(0, 0, 0, 0.1);
     --gp-border-medium: #e2e8f0;
     --gp-border-subtle: #f1f5f9;
@@ -126,6 +130,8 @@ body {
     margin: 0;
     min-height: 100%;
     font-weight: normal;
+    /* Base text color: text that sets no color of its own follows the theme instead of the browser's black. */
+    color: var(--gp-text-primary);
 }
 
 .p-toggleswitch {

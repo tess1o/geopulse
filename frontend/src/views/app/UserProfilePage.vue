@@ -83,6 +83,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import ProfileTab from '@/components/profile/ProfileTab.vue'
 import SecurityTab from '@/components/profile/SecurityTab.vue'
 import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
+import AppearanceTab from '@/components/profile/AppearanceTab.vue'
 import ConnectedAppsTab from '@/components/profile/ConnectedAppsTab.vue'
 import NotificationsPreferencesTab from '@/components/profile/NotificationsPreferencesTab.vue'
 import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
@@ -93,6 +94,7 @@ import { useImmichStore } from '@/stores/immich'
 import { useNotesStore } from '@/stores/notes'
 import { useAIStore } from '@/stores/ai'
 import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
+import { APPEARANCE_PREFERENCE_DEFAULTS, APPEARANCE_PREFERENCE_KEYS } from '@/maps/shared/mapAppearance'
 import { jumpToSetting } from '@/utils/settingJump'
 import { showDemoModeToast } from '@/utils/demoMode'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
@@ -115,7 +117,7 @@ const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
 // State
 const activeTab = ref('general')
-const validTabs = ['general', 'security', 'timeline', 'notifications', 'connectedApps']
+const validTabs = ['general', 'security', 'timeline', 'appearance', 'notifications', 'connectedApps']
 const profileUnsavedConfirmGroup = 'profile-unsaved-changes'
 const settingHintsById = Object.fromEntries(
   PROFILE_SETTINGS_SEARCH_INDEX
@@ -136,8 +138,15 @@ const aiSettings = computed(() => {
   }
 })
 
+// Both the Timeline & Map and the Appearance tabs edit this one preferences document.
+const pickAppearancePreferences = (source = {}) => Object.fromEntries(APPEARANCE_PREFERENCE_KEYS.map((key) => {
+  const value = source?.[key]
+  return [key, value === undefined || value === null ? APPEARANCE_PREFERENCE_DEFAULTS[key] : value]
+}))
+
 // Timeline Display Preferences state
 const timelineDisplayPrefs = ref({
+  ...pickAppearancePreferences(authStore.user || {}),
   customMapTileUrl: customMapTileUrl.value || '',
   customMapStyleUrl: customMapStyleUrl.value || '',
   mapRenderMode: mapRenderMode.value || 'VECTOR',
@@ -161,10 +170,14 @@ const settingsGroups = computed(() => [
     { label: t('profile.tabs.general'), icon: 'pi pi-user', key: 'general' },
     { label: t('profile.tabs.security'), icon: 'pi pi-shield', key: 'security' }
   ] },
-  { label: t('profile.groups.experience'), items: [{ label: t('profile.tabs.timeline'), icon: 'pi pi-map', key: 'timeline' }, { label: t('profile.tabs.notifications'), icon: 'pi pi-bell', key: 'notifications' }] },
+  { label: t('profile.groups.experience'), items: [
+    { label: t('profile.tabs.timeline'), icon: 'pi pi-map', key: 'timeline' },
+    { label: t('profile.tabs.appearance'), icon: 'pi pi-palette', key: 'appearance' },
+    { label: t('profile.tabs.notifications'), icon: 'pi pi-bell', key: 'notifications' }
+  ] },
   { label: t('profile.groups.connectedApps'), items: [{ label: t('profile.tabs.connectedApps'), icon: 'pi pi-box', key: 'connectedApps' }] }
 ])
-const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
+const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', accessibility: 'appearance', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
 const legacyApps = { ai: 'ai', immich: 'immich', memos: 'memos' }
 
 // Stable map from key → component definition so keep-alive can cache by component name
@@ -172,6 +185,7 @@ const tabComponents = {
   general: ProfileTab,
   security: SecurityTab,
   timeline: TimelineDisplayTab,
+  appearance: AppearanceTab,
   notifications: NotificationsPreferencesTab,
   connectedApps: ConnectedAppsTab,
 }
@@ -210,6 +224,10 @@ const currentTabProps = computed(() => {
       readOnly: demoReadOnly.value,
       initialPreferences: timelineDisplayPrefs.value,
     },
+    appearance: {
+      readOnly: demoReadOnly.value,
+      initialPreferences: timelineDisplayPrefs.value,
+    },
     notifications: { readOnly: demoReadOnly.value },
     connectedApps: { readOnly: demoReadOnly.value, activeApp: route.query.app || 'ai', aiSettings: aiSettings.value, immichConfig: immichConfig.value, immichLoading: immichLoading.value, memosConfig: memosConfig.value, memosLoading: memosLoading.value },
   }
@@ -223,6 +241,10 @@ const currentTabHandlers = computed(() => {
     timeline: {
       save: handleTimelineDisplaySave,
       'dirty-change': (isDirty) => handleTabDirtyChange('timeline', isDirty)
+    },
+    appearance: {
+      save: handleTimelineDisplaySave,
+      'dirty-change': (isDirty) => handleTabDirtyChange('appearance', isDirty)
     },
     notifications: { saved: () => toast.add({ severity: 'success', summary: t('profile.save.notificationsSaved'), life: 3000 }) },
     connectedApps: {
@@ -359,11 +381,15 @@ const handleTimelineDisplaySave = async (displayPrefs) => {
   try {
     const savedDisplayPrefs = await authStore.updateTimelineDisplayPreferences(displayPrefs)
 
-    // Update local state from canonical backend response when available
-    timelineDisplayPrefs.value = {
-      ...timelineDisplayPrefs.value,
-      ...(savedDisplayPrefs || displayPrefs)
-    }
+    // Update local state from canonical backend response when available. The response omits unset
+    // (follow-the-scheme) appearance values, so those are re-derived rather than kept from before the save.
+    timelineDisplayPrefs.value = savedDisplayPrefs
+      ? {
+          ...timelineDisplayPrefs.value,
+          ...savedDisplayPrefs,
+          ...pickAppearancePreferences(savedDisplayPrefs)
+        }
+      : { ...timelineDisplayPrefs.value, ...displayPrefs }
 
     toast.add({
       severity: 'success',
@@ -537,8 +563,7 @@ const loadTimelineDisplayPreferences = async () => {
           ? data.mapMatchingExcludedMovementTypes
           : [],
         mapMatchingAvailable: data.mapMatchingAvailable ?? false,
-        defaultPathColor: data.defaultPathColor || '',
-        activePathColor: data.activePathColor || ''
+        ...pickAppearancePreferences(data)
       }
     }
   } catch (error) {

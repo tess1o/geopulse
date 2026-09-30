@@ -27,6 +27,7 @@ export default {
         general: 'Загальні',
         security: 'Безпека',
         timeline: 'Хронологія та карта',
+        appearance: 'Вигляд',
         notifications: 'Сповіщення',
         connectedApps: 'Підключені застосунки'
     },

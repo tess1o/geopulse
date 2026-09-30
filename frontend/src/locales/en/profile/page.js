@@ -24,6 +24,7 @@ export default {
         general: 'General',
         security: 'Security',
         timeline: 'Timeline & Map',
+        appearance: 'Appearance',
         notifications: 'Notifications',
         connectedApps: 'Connected Apps'
     },

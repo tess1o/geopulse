@@ -56,7 +56,8 @@ export const createVectorGeofenceRulesMapAdapter = () => {
     editingLayerId: `${token}-editing-layer`,
     rulesSourceId: `${token}-rules-source`,
     rulesFillLayerId: `${token}-rules-fill-layer`,
-    rulesLineLayerId: `${token}-rules-line-layer`
+    rulesLineLayerId: `${token}-rules-line-layer`,
+    rulesInactiveLineLayerId: `${token}-rules-inactive-line-layer`
   }
 
   let map = null
@@ -156,6 +157,9 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       return
     }
 
+    if (hasLayer(ids.rulesInactiveLineLayerId)) {
+      safeMapCall(() => map.removeLayer(ids.rulesInactiveLineLayerId))
+    }
     if (hasLayer(ids.rulesLineLayerId)) {
       safeMapCall(() => map.removeLayer(ids.rulesLineLayerId))
     }
@@ -287,18 +291,30 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       }))
     }
 
+    // Active rules are solid and inactive ones dashed, so the state does not rely on color alone.
+    // Two filtered layers, since line-dasharray cannot be data-driven reliably.
     if (!hasLayer(ids.rulesLineLayerId)) {
       safeMapCall(() => map.addLayer({
         id: ids.rulesLineLayerId,
         type: 'line',
         source: ids.rulesSourceId,
+        filter: ['==', ['get', 'status'], 'ACTIVE'],
         paint: {
-          'line-color': [
-            'case',
-            ['==', ['get', 'status'], 'ACTIVE'],
-            '#3b82f6',
-            '#94a3b8'
-          ],
+          'line-color': '#3b82f6',
+          'line-width': 2,
+          'line-opacity': 0.95
+        }
+      }))
+    }
+
+    if (!hasLayer(ids.rulesInactiveLineLayerId)) {
+      safeMapCall(() => map.addLayer({
+        id: ids.rulesInactiveLineLayerId,
+        type: 'line',
+        source: ids.rulesSourceId,
+        filter: ['!=', ['get', 'status'], 'ACTIVE'],
+        paint: {
+          'line-color': '#94a3b8',
           'line-width': 2,
           'line-dasharray': [2, 2],
           'line-opacity': 0.95
@@ -403,7 +419,7 @@ export const createVectorGeofenceRulesMapAdapter = () => {
         return null
       }
 
-      const layers = [ids.rulesFillLayerId, ids.rulesLineLayerId].filter((layerId) => hasLayer(layerId))
+      const layers = [ids.rulesFillLayerId, ids.rulesLineLayerId, ids.rulesInactiveLineLayerId].filter((layerId) => hasLayer(layerId))
       if (layers.length === 0) {
         return null
       }

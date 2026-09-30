@@ -14,6 +14,7 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import { HEATMAP_GRADIENTS, getHeatmapZeroStopColor } from '@/maps/shared/mapAppearance'
 
 const props = defineProps({
   map: {
@@ -54,13 +55,7 @@ const props = defineProps({
   },
   gradient: {
     type: Object,
-    default: () => ({
-      0.0: '#2563eb',
-      0.35: '#22c55e',
-      0.6: '#eab308',
-      0.8: '#f97316',
-      1.0: '#dc2626'
-    })
+    default: () => ({ ...HEATMAP_GRADIENTS.CLASSIC })
   },
   profile: {
     type: String,
@@ -216,22 +211,16 @@ const buildHeatmapColorExpression = (profileConfig) => {
     .filter(([stop, color]) => Number.isFinite(stop) && typeof color === 'string')
     .sort((left, right) => left[0] - right[0])
 
+  const defaultStops = Object.entries(HEATMAP_GRADIENTS.CLASSIC).map(([stop, color]) => [Number(stop), color])
+  const normalizedStops = entries.length > 0 ? entries : defaultStops
+
   const expression = [
     'interpolate',
     ['linear'],
     ['heatmap-density'],
-    // Keep density 0 fully transparent to avoid tinting the entire map canvas.
-    0, 'rgba(37,99,235,0)'
+    // Keep density 0 fully transparent (in the first stop's hue) to avoid tinting the entire map canvas.
+    0, getHeatmapZeroStopColor(Object.fromEntries(normalizedStops))
   ]
-
-  const defaultStops = [
-    [0, '#2563eb'],
-    [0.35, '#22c55e'],
-    [0.6, '#eab308'],
-    [0.8, '#f97316'],
-    [1, '#dc2626']
-  ]
-  const normalizedStops = entries.length > 0 ? entries : defaultStops
 
   // Keep density 0 transparent and then ramp in using the same gradient stops as raster.
   const firstColor = normalizedStops[0]?.[1] || '#2563eb'

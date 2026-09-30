@@ -6,7 +6,8 @@ import * as MapTestData from '../utils/map-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 import { randomUUID } from 'crypto';
-import { MAP_POPUP_CONTENT_SELECTOR } from '../utils/map-engine-harness.js';
+import { MAP_POPUP_CONTENT_SELECTOR, readTimelinePathColors } from '../utils/map-engine-harness.js';
+import {TestSetupHelper} from '../utils/test-setup-helper.js';
 
 const getUtcTodayDate = () => {
   const now = new Date();
@@ -447,6 +448,97 @@ test.describe('Timeline Map Interactions', () => {
       KnownDateStrings.sep21_2025.DMY,
       KnownDateStrings.sep21_2025.MDY
     );
+  });
+
+  test.describe('Map appearance', () => {
+    const CAR_TRIP_RANGE = { startDate: new Date('2025-09-21'), endDate: new Date('2025-09-21') };
+    const RED_GREEN_SAFE_BANDS = ['#4b2991', '#56b4e9', '#fde725'];
+    const DEFAULT_BANDS = ['#ef4444', '#f59e0b', '#22c55e'];
+
+    const setupCarTrip = async (page, isolatedUsers, dbManager, mapMode, preferences) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
+
+      await setupTimelineWithMapMode(
+        timelinePage,
+        dbManager,
+        async (manager, userId) => {
+          await TestSetupHelper.applyTimelineDisplayPreferences(manager, testUser.email, preferences);
+          return MapTestData.insertCarTripSpeedBandsData(manager, userId);
+        },
+        testUser,
+        CAR_TRIP_RANGE,
+        mapMode
+      );
+      await mapPage.waitForMapReady();
+
+      return { timelinePage, mapPage };
+    };
+
+    const selectCarTrip = async (timelinePage) => {
+      const tripCard = timelinePage.getTimelineCards('trips').first();
+      await expect(tripCard).toBeVisible({ timeout: 15000 });
+      await tripCard.click();
+    };
+
+    test('should draw paths and car speed bands in the default colors', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {});
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors)
+        .toEqual(expect.arrayContaining(DEFAULT_BANDS));
+    });
+
+    test('should use the color vision preset for paths, speed bands and the legend', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, { colorScheme: 'RED_GREEN_SAFE' });
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors)
+        .toEqual(expect.arrayContaining(RED_GREEN_SAFE_BANDS));
+      const colors = (await readTimelinePathColors(page)).highlightedColors;
+      DEFAULT_BANDS.forEach((color) => expect(colors).not.toContain(color));
+
+      // The legend explains the bands in words, in the trip summary or the replay bar's place.
+      const legend = page.locator('.map-color-legend--speed').first();
+      if (await legend.count()) {
+        await expect(legend).toContainText('Under 10 km/h');
+        await expect(legend).toContainText('Over 25 km/h');
+      }
+    });
+
+    test('should draw a car trip in the selected trip color when speed colors are off', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
+        speedBandPalette: 'OFF',
+        activePathColor: '#ffb000'
+      });
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors).toEqual(['#ffb000']);
+      await expect(page.locator('.map-color-legend--speed')).toHaveCount(0);
+    });
+
+    test('should show the speed legend in the trip summary when replay controls are not auto-shown', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
+        colorScheme: 'RED_GREEN_SAFE',
+        autoShowTripReplayControls: false
+      });
+
+      await selectCarTrip(timelinePage);
+
+      const legend = page.locator('.trip-summary .map-color-legend--speed');
+      await expect(legend).toBeVisible({ timeout: 15000 });
+      await expect(legend).toContainText('Under 10 km/h');
+      await expect(legend).toContainText('10–25 km/h');
+      await expect(legend).toContainText('Over 25 km/h');
+    });
   });
 
   test.describe('Current Location Telemetry', () => {

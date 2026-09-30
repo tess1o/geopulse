@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.sharing.model.*;
         SharedLinkDto.class,
         SharedLinksDto.class,
         SharedLocationInfo.class,
+        SharedMapAppearance.class,
         ShareLinkResponse.class,
         UpdateShareLinkDto.class,
         VerifyPasswordRequest.class,

@@ -57,6 +57,29 @@ export default {
         engineFatal: 'Не вдалося ініціалізувати картографічний рушій. Перехід у растровий режим.',
         genericWarning: 'Попередження карти'
     },
+    appearanceMenu: {
+        title: 'Кольори карти',
+        buttonLabel: 'Змінити кольори карти',
+        asSharedBy: 'Як у {name}',
+        asShared: 'Як у власника',
+        mine: 'Мої налаштування',
+        remembered: 'Ваш вибір запамʼятовується в цьому браузері.'
+    },
+    legend: {
+        speed: {
+            title: 'Швидкість',
+            ariaLabel: 'Легенда кольорів швидкості',
+            slow: 'До {speed}',
+            medium: '{from}–{to}',
+            fast: 'Понад {speed}',
+            unknown: 'Невідомо'
+        },
+        heatmap: {
+            ariaLabel: 'Легенда кольорів теплової карти',
+            low: 'Менше',
+            high: 'Більше'
+        }
+    },
     timelineMap: {
         contextMenu: {
             wasIHere: 'Чи був я тут?',

@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.map.MapColorScheme;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
@@ -90,7 +91,31 @@ public class TimelineDisplayPreferences implements Serializable {
     @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "Active path color must be a hex color like #ef4444, or empty to reset to default")
     private String activePathColor;
 
-    /** A copy with every unset preference replaced by its application default. */
+    /** Color vision preset; fills in path colors, speed bands and heatmap gradient the user has not set. Default: DEFAULT. */
+    private MapColorScheme colorScheme;
+
+    /** Speed-band palette for highlighted car trips; OFF draws a solid active path. Null follows colorScheme; empty string resets it. */
+    @Pattern(regexp = "^(DEFAULT|RED_GREEN_SAFE|BLUE_YELLOW_SAFE|HIGH_CONTRAST|OFF)?$",
+            message = "Speed band palette must be one of: DEFAULT, RED_GREEN_SAFE, BLUE_YELLOW_SAFE, HIGH_CONTRAST, OFF")
+    private String speedBandPalette;
+
+    /** Heatmap color gradient. Null follows colorScheme; empty string resets it. */
+    @Pattern(regexp = "^(CLASSIC|VIRIDIS|CIVIDIS)?$",
+            message = "Heatmap gradient must be one of: CLASSIC, VIRIDIS, CIVIDIS")
+    private String heatmapGradient;
+
+    /** Draw a contrasting outline under timeline paths. Default: false. */
+    private Boolean pathOutlineEnabled;
+
+    /** Timeline path width in pixels; the highlighted path is drawn 2px wider. Default: 4. */
+    @Min(value = 2, message = "Path width must be at least 2 pixels")
+    @Max(value = 10, message = "Path width cannot exceed 10 pixels")
+    private Integer pathWidth;
+
+    /**
+     * A copy with every unset preference replaced by its application default. Path colors, speed band palette and
+     * heatmap gradient stay null: null means "follow colorScheme", which the frontend resolves.
+     */
     public TimelineDisplayPreferences withDefaults() {
         return toBuilder()
                 .mapRenderMode(mapRenderMode != null ? mapRenderMode : MapRenderMode.VECTOR)
@@ -104,6 +129,9 @@ public class TimelineDisplayPreferences implements Serializable {
                 .mapMatchingEnabled(mapMatchingEnabled != null ? mapMatchingEnabled : false)
                 .mapMatchingExcludedMovementTypes(mapMatchingExcludedMovementTypes != null
                         ? mapMatchingExcludedMovementTypes : List.of())
+                .colorScheme(colorScheme != null ? colorScheme : MapColorScheme.DEFAULT)
+                .pathOutlineEnabled(pathOutlineEnabled != null ? pathOutlineEnabled : false)
+                .pathWidth(pathWidth != null ? pathWidth : 4)
                 .build();
     }
 }

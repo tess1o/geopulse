@@ -45,6 +45,17 @@ export class TestSetupHelper {
   }
 
   /**
+   * Merge map/timeline display preferences straight into the user's JSONB document
+   * (colorScheme, speedBandPalette, pathOutlineEnabled, ...). Pass null for a key to remove it.
+   */
+  static async applyTimelineDisplayPreferences(dbManager, email, preferences = {}) {
+    await dbManager.client.query(
+      "UPDATE users SET timeline_display_preferences = jsonb_strip_nulls(timeline_display_preferences || $2::jsonb) WHERE email = $1",
+      [email, JSON.stringify(preferences)]
+    );
+  }
+
+  /**
    * Create a user, login, and return necessary objects
    * @returns {Promise<{loginPage, user, testUser}>}
    */

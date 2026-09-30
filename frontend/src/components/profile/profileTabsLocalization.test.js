@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia } from 'pinia'
 
 /**
  * Ukrainian rendering for the Personal Settings tabs.
@@ -58,6 +59,7 @@ const DropdownStub = {
 const Inert = { template: '<div />' }
 
 const globalOptions = {
+  plugins: [createPinia()],
   stubs: {
     Card: { template: '<div><slot name="content" /></div>' },
     Button: ButtonStub,
@@ -73,13 +75,17 @@ const globalOptions = {
     Textarea: Inert,
     Message: Inert,
     OidcManagement: Inert,
-    ApiTokensManagement: Inert
+    ApiTokensManagement: Inert,
+    ColorPicker: Inert,
+    Tag: { props: ['value'], template: '<span>{{ value }}</span>' },
+    MapAppearancePreview: Inert
   }
 }
 
 describe('personal settings tabs in Ukrainian', () => {
   let SecurityTab
   let TimelineDisplayTab
+  let AppearanceTab
   let NotificationsPreferencesTab
   let ProfileTab
 
@@ -88,6 +94,7 @@ describe('personal settings tabs in Ukrainian', () => {
     await setLocale('uk', { persist: false })
     SecurityTab = (await import('./SecurityTab.vue')).default
     TimelineDisplayTab = (await import('./TimelineDisplayTab.vue')).default
+    AppearanceTab = (await import('./AppearanceTab.vue')).default
     NotificationsPreferencesTab = (await import('./NotificationsPreferencesTab.vue')).default
     ProfileTab = (await import('./ProfileTab.vue')).default
   })
@@ -271,6 +278,49 @@ describe('personal settings tabs in Ukrainian', () => {
       const protocolCase = mountTimeline({ customMapTileUrl: 'ftp://tiles.example.com/{z}/{x}/{y}.png' })
       await protocolCase.find('form').trigger('submit')
       expect(protocolCase.text()).toContain('Адреса має використовувати протокол HTTP або HTTPS')
+    })
+  })
+
+  describe('AppearanceTab', () => {
+    const mountAppearance = (overrides = {}) => mount(AppearanceTab, {
+      props: {
+        initialPreferences: {
+          colorScheme: 'DEFAULT',
+          defaultPathColor: '',
+          activePathColor: '',
+          speedBandPalette: '',
+          heatmapGradient: '',
+          pathOutlineEnabled: false,
+          pathWidth: 4,
+          ...overrides
+        }
+      },
+      global: globalOptions
+    })
+
+    it('translates the section headings, presets and card copy', () => {
+      const text = mountAppearance().text()
+
+      expect(text).toContain('Вигляд і доступність')
+      expect(text).toContain('Кольоровий зір')
+      expect(text).toContain('Безпечний для червоно-зеленого')
+      expect(text).toContain('Для тританопії')
+      expect(text).toContain('Колір вибраної поїздки')
+      expect(text).toContain('Кольори швидкості руху')
+      expect(text).toContain('Теплова карта')
+      expect(text).toContain('Зберегти зміни')
+    })
+
+    it('translates dropdown options and the customized badge', () => {
+      const text = mountAppearance({ activePathColor: '#ffcc00' }).text()
+
+      expect(text).toContain('Як у кольоровому наборі (Типовий)')
+      expect(text).toContain('Вимкнено (один колір)')
+      expect(text).toContain('Viridis (від фіолетового до жовтого)')
+      expect(text).toContain('Товста')
+      // Speed limits are interpolated with the unit, not hard-coded.
+      expect(text).toContain('Повільно — до 10 км/год, середньо — 10–25 км/год')
+      expect(text).toContain('Змінено')
     })
   })
 

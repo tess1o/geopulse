@@ -58,6 +58,29 @@ export default {
         engineFatal: 'Map engine failed to initialize. Falling back to raster mode.',
         genericWarning: 'Map warning'
     },
+    appearanceMenu: {
+        title: 'Map colors',
+        buttonLabel: 'Change map colors',
+        asSharedBy: 'As shared by {name}',
+        asShared: 'As shared',
+        mine: 'My settings',
+        remembered: 'Your choice is remembered in this browser.'
+    },
+    legend: {
+        speed: {
+            title: 'Speed',
+            ariaLabel: 'Speed color legend',
+            slow: 'Under {speed}',
+            medium: '{from}–{to}',
+            fast: 'Over {speed}',
+            unknown: 'Unknown'
+        },
+        heatmap: {
+            ariaLabel: 'Heatmap color legend',
+            low: 'Less',
+            high: 'More'
+        }
+    },
     timelineMap: {
         contextMenu: {
             wasIHere: 'Was I here?',

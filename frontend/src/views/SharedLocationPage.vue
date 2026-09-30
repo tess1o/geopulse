@@ -8,6 +8,8 @@
           <h1 class="app-title">GeoPulse</h1>
         </div>
         <div class="header-right">
+          <!-- Colors only apply to the history path, so the menu appears with it. -->
+          <MapAppearanceControl v-if="hasHistoryData" class="large-theme-toggle" />
           <DarkModeSwitcher class="large-theme-toggle"/>
         </div>
       </div>
@@ -178,12 +180,6 @@
                         :map="map"
                         :path-data="pathData"
                         :visible="true"
-                        :path-options="{
-                      color: '#007bff',
-                      weight: 3,
-                      opacity: 0.7,
-                      smoothFactor: 1
-                    }"
                     />
 
                     <!-- Current location marker -->
@@ -258,6 +254,8 @@ import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
+import { useSharedMapAppearance } from '@/composables/useMapAppearance'
+import MapAppearanceControl from '@/components/maps/MapAppearanceControl.vue'
 import { productionErrorContext } from '@/utils/apiErrorDetail'
 
 const { t } = useI18n()
@@ -268,6 +266,15 @@ const route = useRoute()
 const linkId = route.params.linkId
 const shareLinksStore = useShareLinksStore()
 const viewerLocation = useViewerLocation()
+// The map shows the owner's colors unless the viewer picks otherwise (MapAppearanceControl).
+const { setSharedOwner, clearSharedOwner } = useSharedMapAppearance()
+watch(() => shareLinksStore.getSharedLocationInfo, (info) => {
+  if (info) {
+    setSharedOwner(info.map_appearance, info.shared_by)
+  } else {
+    clearSharedOwner()
+  }
+}, { immediate: true })
 const isMapEmbed = computed(() => route.query.embed === 'map')
 
 // State
@@ -687,6 +694,7 @@ onMounted(async () => {
 watch(autoRefreshIntervalMs, ensureAutoRefresh)
 
 onUnmounted(() => {
+  clearSharedOwner()
   stopAutoRefresh()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -753,6 +761,9 @@ onUnmounted(() => {
 }
 
 .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 

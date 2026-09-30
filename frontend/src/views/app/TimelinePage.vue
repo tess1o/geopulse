@@ -60,8 +60,6 @@
               :custom-tile-url="customMapTileUrl"
               :custom-style-url="customMapStyleUrl"
               :map-render-mode="mapRenderMode"
-              :default-path-color="defaultPathColor"
-              :active-path-color="activePathColor"
               :panoramax-available="panoramaxAvailable"
               :panoramax-endpoint="panoramaxEndpoint"
               :enable-trip-replay="true"
@@ -278,8 +276,6 @@ const readTimelineDisplayFallback = () => {
     mapMatchingExcludedMovementTypes: Array.isArray(mapMatchingExcludedMovementTypes)
       ? mapMatchingExcludedMovementTypes
       : [],
-    defaultPathColor: user.defaultPathColor || cachedProfile.defaultPathColor || null,
-    activePathColor: user.activePathColor || cachedProfile.activePathColor || null,
     panoramaxAvailable: false,
     panoramaxEndpoint: null
   }
@@ -305,8 +301,6 @@ const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTr
 const enable3dBuildingsByDefault = ref(initialTimelineDisplaySettings.enable3dBuildingsByDefault)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
 const mapMatchingExcludedMovementTypes = ref(initialTimelineDisplaySettings.mapMatchingExcludedMovementTypes)
-const defaultPathColor = ref(initialTimelineDisplaySettings.defaultPathColor)
-const activePathColor = ref(initialTimelineDisplaySettings.activePathColor)
 const panoramaxAvailable = ref(initialTimelineDisplaySettings.panoramaxAvailable)
 const panoramaxEndpoint = ref(initialTimelineDisplaySettings.panoramaxEndpoint)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
@@ -800,12 +794,6 @@ const loadTimelineDisplaySettings = async () => {
     mapMatchingExcludedMovementTypes.value = Array.isArray(data?.mapMatchingExcludedMovementTypes)
       ? data.mapMatchingExcludedMovementTypes
       : fallback.mapMatchingExcludedMovementTypes
-    defaultPathColor.value = hasOwnPreference(data, 'defaultPathColor')
-      ? data.defaultPathColor || null
-      : fallback.defaultPathColor
-    activePathColor.value = hasOwnPreference(data, 'activePathColor')
-      ? data.activePathColor || null
-      : fallback.activePathColor
     panoramaxAvailable.value = data?.panoramaxAvailable ?? false
     panoramaxEndpoint.value = data?.panoramaxEndpoint || null
   } catch (error) {
@@ -817,8 +805,6 @@ const loadTimelineDisplaySettings = async () => {
     enable3dBuildingsByDefault.value = fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = fallback.mapMatchingEnabled
     mapMatchingExcludedMovementTypes.value = fallback.mapMatchingExcludedMovementTypes
-    defaultPathColor.value = fallback.defaultPathColor
-    activePathColor.value = fallback.activePathColor
     panoramaxAvailable.value = false
     panoramaxEndpoint.value = null
   } finally {

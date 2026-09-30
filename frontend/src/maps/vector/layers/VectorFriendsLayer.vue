@@ -17,6 +17,7 @@ import {
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import { buildFriendLocationPopupModel } from '@/maps/shared/popups/friendPopupModel'
+import { getFriendTrailColor } from '@/maps/shared/friendTrailColors'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH
@@ -69,11 +70,6 @@ const baseLayerRef = ref(null)
 const friendMarkers = ref([])
 const trailLayers = ref([])
 
-const trailColorPalette = [
-  '#E53935', '#43A047', '#1E88E5', '#FDD835', '#8E24AA', '#F57C00',
-  '#00ACC1', '#3949AB', '#6D4C41', '#546E7A', '#00897B', '#6A1B9A'
-]
-
 const getFriendLookupKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id || friend?.email
 }
@@ -83,14 +79,7 @@ const getFriendAvatar = (friend) => {
   return friend.avatar || friend.avatarUrl || null
 }
 
-const getColorByFriend = (friend, index) => {
-  const key = String(getFriendLookupKey(friend) || `friend-${index}`)
-  const hash = key
-    .split('')
-    .reduce((acc, character) => (acc * 31 + character.charCodeAt(0)) % trailColorPalette.length, 0)
-
-  return trailColorPalette[hash]
-}
+const getColorByFriend = getFriendTrailColor
 
 const getFriendLabel = (friend) => {
   return (friend?.fullName || friend?.name || friend?.email || '?').slice(0, 1).toUpperCase()

@@ -18,9 +18,11 @@ const { testMemosConfig, testImmichConnection, testAIConnection, fetchDefaultSys
 }))
 
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import ProfileTab from './ProfileTab.vue'
 import SecurityTab from './SecurityTab.vue'
 import TimelineDisplayTab from './TimelineDisplayTab.vue'
+import AppearanceTab from './AppearanceTab.vue'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
 import MemosTab from './MemosTab.vue'
@@ -190,6 +192,7 @@ const SettingCardStub = {
 }
 
 const globalOptions = {
+  plugins: [createPinia()],
   stubs: {
     Card: CardStub,
     Button: ButtonStub,
@@ -210,7 +213,10 @@ const globalOptions = {
     SettingCard: SettingCardStub,
     SliderControl: SliderControlStub,
     OidcManagement: true,
-    ApiTokensManagement: true
+    ApiTokensManagement: true,
+    ColorPicker: true,
+    Tag: true,
+    MapAppearancePreview: true
   },
   directives: {
     tooltip: {}
@@ -244,6 +250,142 @@ const timelineDisplayPrefs = {
   mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: true
 }
+
+const appearanceKeys = [
+  'colorScheme',
+  'defaultPathColor',
+  'activePathColor',
+  'speedBandPalette',
+  'heatmapGradient',
+  'pathOutlineEnabled',
+  'pathWidth'
+]
+
+const appearancePrefs = {
+  colorScheme: 'DEFAULT',
+  defaultPathColor: '#112233',
+  activePathColor: '',
+  speedBandPalette: 'OFF',
+  heatmapGradient: '',
+  pathOutlineEnabled: false,
+  pathWidth: 4
+}
+
+describe('appearance and timeline tabs share one preferences document', () => {
+  it('saves only timeline & map fields from the timeline tab', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('form').trigger('submit')
+
+    const payload = wrapper.emitted('save')[0][0]
+    appearanceKeys.forEach((key) => expect(payload).not.toHaveProperty(key))
+  })
+
+  it('saves only appearance fields from the appearance tab', async () => {
+    const wrapper = mount(AppearanceTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(Object.keys(wrapper.emitted('save')[0][0]).sort()).toEqual([...appearanceKeys].sort())
+    expect(wrapper.emitted('save')[0][0]).toMatchObject(appearancePrefs)
+  })
+
+  it('keeps unsaved timeline edits when only appearance values change', async () => {
+    const customMapTileUrl = 'https://tiles.example.com/{z}/{x}/{y}.png'
+    const wrapper = mount(TimelineDisplayTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('#customMapTileUrl').setValue(customMapTileUrl)
+    await wrapper.setProps({
+      initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs, colorScheme: 'HIGH_CONTRAST' }
+    })
+    await flushPromises()
+
+    expect(wrapper.find('#customMapTileUrl').element.value).toBe(customMapTileUrl)
+    expect(lastDirtyValue(wrapper)).toBe(true)
+  })
+
+  it('keeps unsaved appearance edits when only timeline values change', async () => {
+    const wrapper = mount(AppearanceTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="color-scheme-RED_GREEN_SAFE"]').trigger('click')
+    await wrapper.setProps({
+      initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs, mapRenderMode: 'RASTER' }
+    })
+    await flushPromises()
+
+    expect(lastDirtyValue(wrapper)).toBe(true)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save')[0][0].colorScheme).toBe('RED_GREEN_SAFE')
+  })
+
+  it('clears individual overrides and turns on the outline when a color vision preset is picked', async () => {
+    const wrapper = mount(AppearanceTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="color-scheme-DEFAULT"]').attributes('aria-checked')).toBe('true')
+
+    await wrapper.find('[data-testid="color-scheme-RED_GREEN_SAFE"]').trigger('click')
+    expect(wrapper.find('[data-testid="color-scheme-RED_GREEN_SAFE"]').attributes('aria-checked')).toBe('true')
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save')[0][0]).toEqual({
+      colorScheme: 'RED_GREEN_SAFE',
+      defaultPathColor: '',
+      activePathColor: '',
+      speedBandPalette: '',
+      heatmapGradient: '',
+      pathOutlineEnabled: true,
+      pathWidth: 4
+    })
+  })
+
+  it('resets appearance to defaults without saving', async () => {
+    const wrapper = mount(AppearanceTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await findButtonByLabel(wrapper, 'Reset to Defaults').trigger('click')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await wrapper.setProps({
+      initialPreferences: {
+        ...timelineDisplayPrefs,
+        colorScheme: 'DEFAULT',
+        defaultPathColor: '',
+        activePathColor: '',
+        speedBandPalette: '',
+        heatmapGradient: '',
+        pathOutlineEnabled: false,
+        pathWidth: 4
+      }
+    })
+    await flushPromises()
+    expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+})
 
 describe('profile tab dirty state', () => {
   it('does not expose or persist a Panoramax display preference', async () => {

@@ -1103,4 +1103,102 @@ test.describe('User Profile Management', () => {
     });
   });
 
+
+  test.describe('Appearance Tab', () => {
+    test('should save a color vision preset and keep unset colors following it', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
+
+      await profilePage.switchToAppearanceTab();
+      expect(await profilePage.isColorSchemeSelected('DEFAULT')).toBe(true);
+
+      await profilePage.selectColorScheme('RED_GREEN_SAFE');
+      expect(await profilePage.isColorSchemeSelected('RED_GREEN_SAFE')).toBe(true);
+      // Color vision presets turn the line outline on.
+      expect(await profilePage.isPathOutlineEnabled()).toBe(true);
+
+      await profilePage.saveAppearanceSettings();
+      await profilePage.waitForSuccessToast();
+      await profilePage.waitForToastToDisappear();
+
+      // Only explicit choices are stored; path colors, speed colors and heatmap follow the preset.
+      await expect.poll(async () => {
+        const dbUser = await dbManager.getUserByEmail(testUser.email);
+        const prefs = dbUser?.timeline_display_preferences || {};
+        return {
+          colorScheme: prefs.colorScheme ?? null,
+          pathOutlineEnabled: prefs.pathOutlineEnabled ?? null,
+          defaultPathColor: prefs.defaultPathColor ?? null,
+          activePathColor: prefs.activePathColor ?? null,
+          speedBandPalette: prefs.speedBandPalette ?? null,
+          heatmapGradient: prefs.heatmapGradient ?? null
+        };
+      }).toEqual({
+        colorScheme: 'RED_GREEN_SAFE',
+        pathOutlineEnabled: true,
+        defaultPathColor: null,
+        activePathColor: null,
+        speedBandPalette: null,
+        heatmapGradient: null
+      });
+
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      await profilePage.switchToAppearanceTab();
+      expect(await profilePage.isColorSchemeSelected('RED_GREEN_SAFE')).toBe(true);
+    });
+
+    test('should clear individual overrides when a preset is picked', async ({page, isolatedUsers, dbManager}) => {
+      const testUser = createManagedUser(isolatedUsers);
+      const {profilePage} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, testUser);
+
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, testUser.email, {
+        activePathColor: '#ffcc00',
+        speedBandPalette: 'OFF'
+      });
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      await profilePage.switchToAppearanceTab();
+
+      await expect(page.locator(profilePage.selectors.appearance.customizedTag)).toBeVisible();
+
+      await profilePage.selectColorScheme('HIGH_CONTRAST');
+      await expect(page.locator(profilePage.selectors.appearance.customizedTag)).toHaveCount(0);
+
+      await profilePage.saveAppearanceSettings();
+      await profilePage.waitForSuccessToast();
+
+      await expect.poll(async () => {
+        const dbUser = await dbManager.getUserByEmail(testUser.email);
+        const prefs = dbUser?.timeline_display_preferences || {};
+        return [prefs.colorScheme ?? null, prefs.activePathColor ?? null, prefs.speedBandPalette ?? null];
+      }).toEqual(['HIGH_CONTRAST', null, null]);
+    });
+
+    test('should keep unsaved Timeline & Map edits when appearance is saved', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
+      const pendingUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+      // Leave an unsaved edit on the Timeline & Map tab. Both tabs write the same preferences document.
+      await profilePage.switchToDisplayTab();
+      await profilePage.fillCustomMapTileUrl(pendingUrl);
+
+      // Switching tabs inside the profile page keeps each tab's form alive.
+      await profilePage.switchToAppearanceTab();
+
+      await profilePage.selectColorScheme('BLUE_YELLOW_SAFE');
+      await profilePage.saveAppearanceSettings();
+      await profilePage.waitForSuccessToast();
+      await profilePage.waitForToastToDisappear();
+
+      // The appearance save did not touch the tile URL on the server...
+      const dbUser = await dbManager.getUserByEmail(testUser.email);
+      expect(dbUser.timeline_display_preferences.colorScheme).toBe('BLUE_YELLOW_SAFE');
+      expect(dbUser.timeline_display_preferences.customMapTileUrl ?? null).toBe(null);
+
+      // ...and the unsaved edit is still in the other tab's form.
+      await page.locator(profilePage.selectors.displayTab).click();
+      await page.locator(profilePage.selectors.display.customMapTileUrlInput).waitFor();
+      expect(await profilePage.getCustomMapTileUrl()).toBe(pendingUrl);
+    });
+  });
 });

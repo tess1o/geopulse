@@ -42,6 +42,11 @@ import {
   buildReplayEmission
 } from '@/maps/shared/highlightedTripData'
 import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
+import {
+  PATH_OUTLINE_EXTRA_WIDTH,
+  SPEED_BAND_PALETTES,
+  getOutlineColor
+} from '@/maps/shared/mapAppearance'
 
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
@@ -117,6 +122,20 @@ const props = defineProps({
   highlightedPathColor: {
     type: String,
     default: '#ef4444'
+  },
+  // Colors for car-trip speed bands; null draws car trips solid in highlightedPathColor.
+  speedBandColors: {
+    type: Object,
+    default: () => SPEED_BAND_PALETTES.DEFAULT
+  },
+  highlightedPathWidth: {
+    type: Number,
+    default: HIGHLIGHTED_TRIP_LINE_WEIGHT
+  },
+  // Contrasting casing under the paths.
+  outline: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -131,6 +150,8 @@ const emit = defineEmits([
 // State
 const baseLayerRef = ref(null)
 const pathLayers = ref([])
+// Casings live apart from pathLayers, whose indices match pathData groups for highlightPath().
+const pathCasingLayers = ref([])
 
 // Computed
 const hasPathData = computed(() => props.pathData && props.pathData.length > 0)
@@ -143,6 +164,17 @@ const hasFocusedHighlightedTrip = computed(() => (
 const handleLayerReady = () => {
   renderAll()
 }
+
+// Non-interactive, wider polyline drawn under a line so it contrasts with any map background.
+const createCasingPolyline = (latlngs, { color, weight, opacity = 1, dashArray = null }) => L.polyline(latlngs, {
+  color: getOutlineColor(color),
+  weight: weight + PATH_OUTLINE_EXTRA_WIDTH,
+  opacity,
+  lineCap: 'round',
+  lineJoin: 'round',
+  interactive: false,
+  ...(dashArray ? { dashArray } : {})
+})
 
 const renderPaths = () => {
   if (!baseLayerRef.value) return
@@ -165,6 +197,17 @@ const renderPaths = () => {
           ...props.pathOptions,
           interactive: props.inspectionEnabled
         }
+
+    if (props.outline) {
+      const casing = createCasingPolyline(latlngs, {
+        color: basePathOptions.color || '#007bff',
+        weight: basePathOptions.weight || 4,
+        opacity: basePathOptions.opacity ?? 0.8,
+        dashArray: basePathOptions.dashArray
+      })
+      baseLayerRef.value.addToLayer(casing)
+      pathCasingLayers.value.push(casing)
+    }
 
     const polyline = L.polyline(latlngs, {
       ...basePathOptions,
@@ -207,6 +250,10 @@ const clearPaths = () => {
     baseLayerRef.value?.removeFromLayer(layer)
   })
   pathLayers.value = []
+  pathCasingLayers.value.forEach(layer => {
+    baseLayerRef.value?.removeFromLayer(layer)
+  })
+  pathCasingLayers.value = []
 }
 
 const highlightPath = (pathIndex) => {
@@ -612,30 +659,44 @@ const renderHighlightedTrip = (newTrip) => {
     const startEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'start')
     const endEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'end')
 
-    if (isCarMovementType(newTrip.movementType)) {
-      tripVisualPathLayers.value = highlightedData.highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
-        color: segment.color,
-        weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
+    const isCarTrip = isCarMovementType(newTrip.movementType)
+    // Car trips stay solid even without speed bands; the dash is what marks non-car trips.
+    const visualLines = isCarTrip && props.speedBandColors
+      ? highlightedData.highlightedSegments.segments.map((segment) => ({
+          latLngs: segment.latLngs,
+          color: props.speedBandColors[segment.speedBand] || props.speedBandColors.unknown,
+          dashArray: null
+        }))
+      : tripCoordinateSegments.map((segment) => ({
+          latLngs: segment,
+          color: props.highlightedPathColor,
+          dashArray: isCarTrip ? null : HIGHLIGHTED_TRIP_NON_CAR_DASH
+        }))
+
+    // Casings go first so every one of them sits under the lines.
+    const casingLayers = props.outline
+      ? visualLines.map((line) => createCasingPolyline(line.latLngs, {
+          color: line.color,
+          weight: props.highlightedPathWidth,
+          dashArray: line.dashArray
+        }))
+      : []
+    tripVisualPathLayers.value = [
+      ...casingLayers,
+      ...visualLines.map((line) => L.polyline(line.latLngs, {
+        color: line.color,
+        weight: props.highlightedPathWidth,
         opacity: 1,
         lineCap: 'round',
         lineJoin: 'round',
-        interactive: false
+        interactive: false,
+        ...(line.dashArray ? { dashArray: line.dashArray } : {})
       }))
-    } else {
-      tripVisualPathLayers.value = tripCoordinateSegments.map(segment => L.polyline(segment, {
-        color: props.highlightedPathColor,
-        dashArray: HIGHLIGHTED_TRIP_NON_CAR_DASH,
-        weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
-        opacity: 1,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: false
-      }))
-    }
+    ]
 
     tripPathLayer.value = L.polyline(tripCoordinateSegments, {
       color: '#000000',
-      weight: HIGHLIGHTED_TRIP_RASTER_HIT_WEIGHT,
+      weight: Math.max(HIGHLIGHTED_TRIP_RASTER_HIT_WEIGHT, props.highlightedPathWidth + PATH_OUTLINE_EXTRA_WIDTH + 8),
       opacity: 0,
       lineCap: 'round',
       lineJoin: 'round'
@@ -852,6 +913,10 @@ watch(
     props.focusHighlightedTrip,
     props.allowPathDataTripFallback,
     props.showHighlightedTripPopup,
+    props.highlightedPathColor,
+    props.speedBandColors,
+    props.highlightedPathWidth,
+    props.outline,
     distanceUnit.value
   ],
   renderAll,

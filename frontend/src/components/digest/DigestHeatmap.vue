@@ -89,7 +89,7 @@
       <!-- Legend -->
       <div class="heatmap-legend">
         <span class="legend-label">{{ t('analytics.digest.heatmap.legendLow') }}</span>
-        <div class="legend-gradient"></div>
+        <div class="legend-gradient" :style="legendGradientStyle"></div>
         <span class="legend-label">{{ t('analytics.digest.heatmap.legendHigh') }}</span>
         <span class="legend-hint">{{ legendHint }}</span>
       </div>
@@ -104,6 +104,8 @@ import { storeToRefs } from 'pinia'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import HeatmapLayer from '@/components/maps/layers/HeatmapLayer.vue'
 import { useDigestStore } from '@/stores/digest'
+import { useMapAppearance } from '@/composables/useMapAppearance'
+import { heatmapGradientToCss } from '@/maps/shared/mapAppearance'
 
 const { t } = useI18n()
 
@@ -182,13 +184,10 @@ const heatStyle = computed(() => {
   }[layerMode.value] || { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 }
 })
 
-const heatGradient = {
-  0.0: '#2563eb',
-  0.35: '#22c55e',
-  0.6: '#eab308',
-  0.8: '#f97316',
-  1.0: '#dc2626',
-}
+// The viewer's heatmap gradient; the legend below is drawn from the same stops.
+const mapAppearance = useMapAppearance()
+const heatGradient = computed(() => mapAppearance.value.heatmapGradient)
+const legendGradientStyle = computed(() => ({ background: heatmapGradientToCss(heatGradient.value) }))
 
 // ─── Data loading ────────────────────────────────────────────────────────────
 
@@ -414,7 +413,6 @@ onBeforeUnmount(() => {
   width: 80px;
   height: 10px;
   border-radius: 5px;
-  background: linear-gradient(to right, #3b82f6, #22c55e, #f59e0b, #ef4444);
 }
 
 .legend-hint {

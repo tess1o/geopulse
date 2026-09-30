@@ -70,14 +70,26 @@ const createMarker = () => {
     }).addTo(props.map)
   }
 
-  marker = L.circleMarker(latLng, {
-    radius: 9,
-    fillColor: color,
-    color: '#ffffff',
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 1
-  })
+  // An approximate (fallback) position is a hollow, dashed ring rather than a solid dot,
+  // so it is distinguishable without relying on color.
+  marker = L.circleMarker(latLng, isFallback
+    ? {
+        radius: 9,
+        fillColor: '#ffffff',
+        color,
+        weight: 3,
+        dashArray: '3 3',
+        opacity: 1,
+        fillOpacity: 1
+      }
+    : {
+        radius: 9,
+        fillColor: color,
+        color: '#ffffff',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 1
+      })
   popupMount = mountMapPopup(
     MapInfoPopup,
     buildViewerLocationPopupModel(props.location, { timezone })

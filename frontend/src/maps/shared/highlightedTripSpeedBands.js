@@ -1,22 +1,19 @@
 import { haversineDistanceMeters } from '@/utils/geoDistance'
 
 const DEFAULT_ROLLING_WINDOW_HALF_SPAN_MS = 60 * 1000
-const RED_SPEED_THRESHOLD_KMH = 10
-const YELLOW_SPEED_THRESHOLD_KMH = 25
 
-export const HIGHLIGHTED_TRIP_SPEED_BANDS = {
-  RED: 'red',
-  YELLOW: 'yellow',
-  GREEN: 'green',
+export const HIGHLIGHTED_TRIP_SPEED_THRESHOLDS_KMH = Object.freeze({
+  slowBelow: 10,
+  mediumUpTo: 25
+})
+
+// Bands are named by speed, not color: the colors come from the user's palette (see mapAppearance.js).
+export const HIGHLIGHTED_TRIP_SPEED_BANDS = Object.freeze({
+  SLOW: 'slow',
+  MEDIUM: 'medium',
+  FAST: 'fast',
   UNKNOWN: 'unknown'
-}
-
-export const HIGHLIGHTED_TRIP_SPEED_BAND_COLORS = {
-  [HIGHLIGHTED_TRIP_SPEED_BANDS.RED]: '#ef4444',
-  [HIGHLIGHTED_TRIP_SPEED_BANDS.YELLOW]: '#f59e0b',
-  [HIGHLIGHTED_TRIP_SPEED_BANDS.GREEN]: '#22c55e',
-  [HIGHLIGHTED_TRIP_SPEED_BANDS.UNKNOWN]: '#f59e0b'
-}
+})
 
 const toFiniteNumber = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -150,14 +147,14 @@ export const classifyHighlightedTripSpeedBand = (speedKmh) => {
     return HIGHLIGHTED_TRIP_SPEED_BANDS.UNKNOWN
   }
 
-  if (resolvedSpeed < RED_SPEED_THRESHOLD_KMH) {
-    return HIGHLIGHTED_TRIP_SPEED_BANDS.RED
+  if (resolvedSpeed < HIGHLIGHTED_TRIP_SPEED_THRESHOLDS_KMH.slowBelow) {
+    return HIGHLIGHTED_TRIP_SPEED_BANDS.SLOW
   }
-  if (resolvedSpeed <= YELLOW_SPEED_THRESHOLD_KMH) {
-    return HIGHLIGHTED_TRIP_SPEED_BANDS.YELLOW
+  if (resolvedSpeed <= HIGHLIGHTED_TRIP_SPEED_THRESHOLDS_KMH.mediumUpTo) {
+    return HIGHLIGHTED_TRIP_SPEED_BANDS.MEDIUM
   }
 
-  return HIGHLIGHTED_TRIP_SPEED_BANDS.GREEN
+  return HIGHLIGHTED_TRIP_SPEED_BANDS.FAST
 }
 
 export const buildHighlightedTripSegments = (
@@ -209,8 +206,7 @@ export const buildHighlightedTripSegments = (
         [endPoint.latitude, endPoint.longitude]
       ],
       speedKmh,
-      speedBand,
-      color: HIGHLIGHTED_TRIP_SPEED_BAND_COLORS[speedBand] || HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown
+      speedBand
     })
   }
 

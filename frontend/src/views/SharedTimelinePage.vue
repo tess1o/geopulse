@@ -78,6 +78,8 @@
 
         <!-- Theme Switcher (positioned via CSS order) -->
         <div class="header-theme-switcher">
+          <!-- Viewer preferences: map colors, then light/dark theme. -->
+          <MapAppearanceControl v-if="shareInfo && shareInfo.timeline_status !== 'upcoming'" />
           <DarkModeSwitcher />
         </div>
       </div>
@@ -277,6 +279,8 @@ import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
+import { useSharedMapAppearance } from '@/composables/useMapAppearance'
+import MapAppearanceControl from '@/components/maps/MapAppearanceControl.vue'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -322,6 +326,15 @@ const autoRefreshOptions = computed(() => [
 let autoRefreshTimer = null
 
 const shareInfo = ref(null)
+// The map shows the owner's colors unless the viewer picks otherwise (MapAppearanceControl).
+const { setSharedOwner, clearSharedOwner } = useSharedMapAppearance()
+watch(shareInfo, (info) => {
+  if (info) {
+    setSharedOwner(info.map_appearance, info.shared_by)
+  } else {
+    clearSharedOwner()
+  }
+})
 const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
@@ -710,6 +723,7 @@ function storeToken(response) {
 watch(autoRefreshIntervalMs, ensureAutoRefresh)
 
 onUnmounted(() => {
+  clearSharedOwner()
   stopAutoRefresh()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -932,6 +946,7 @@ function handleTimelineItemClick(item) {
 .header-theme-switcher {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   flex-shrink: 0;
   order: 4;
 }

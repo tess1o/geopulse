@@ -11,6 +11,7 @@ import {insertVerifiableStaysTestData} from '../utils/timeline-test-data.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import * as TimelineTestData from "../utils/timeline-test-data.js";
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
+import {readTimelinePathColors} from '../utils/map-engine-harness.js';
 
 const boxesOverlap = (first, second) => {
   if (!first || !second) return false;
@@ -405,6 +406,111 @@ test.describe('Shared Links Public Access', () => {
       expect(boxes.mapControls).not.toBeNull();
       expect(boxes.viewerControl).not.toBeNull();
       expect(boxesOverlap(boxes.mapControls, boxes.viewerControl)).toBe(false);
+    });
+
+    test('should show the owner\'s map colors to a guest and let them switch', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const owner = createManagedUser(isolatedUsers);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, owner
+      );
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000011',
+        name: 'Owner Colors Timeline'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      // A guest sees the path in the owner's preset color.
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel).toBeVisible();
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toContainText('As shared by');
+      // "My settings" is for signed-in viewers only.
+      await expect(panel.locator('[data-testid="map-appearance-option-MINE"]')).toHaveCount(0);
+
+      await panel.locator('[data-testid="map-appearance-option-DEFAULT"]').click();
+      await expect(panel).toHaveCount(0);
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+
+      // The choice is remembered in this browser.
+      expect(await page.evaluate(() => window.localStorage.getItem('gp-shared-map-colors'))).toBe('DEFAULT');
+      await page.reload();
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+    });
+
+    test('should not offer the owner option when the owner uses default colors', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
+      );
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000012',
+        name: 'Default Colors Timeline'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toHaveCount(0);
+      await expect(panel.locator('[data-testid="map-appearance-option-DEFAULT"]')).toHaveAttribute('aria-checked', 'true');
+
+      await panel.locator('[data-testid="map-appearance-option-HIGH_CONTRAST"]').click();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#1a1a1a');
+    });
+
+    test('should keep a signed-in viewer on their own customized colors by default', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const owner = createManagedUser(isolatedUsers);
+      const viewer = createManagedUser(isolatedUsers);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, owner
+      );
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000013',
+        name: 'Viewer Colors Timeline'
+      });
+
+      // A second user with their own appearance opens the link while signed in.
+      await TestSetupHelper.createAndLoginUser(page, dbManager, viewer);
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, viewer.email, { colorScheme: 'HIGH_CONTRAST' });
+      // Reload the app so the viewer's cached profile (what shared pages read) has the new appearance.
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#1a1a1a');
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel.locator('[data-testid="map-appearance-option-MINE"]')).toHaveAttribute('aria-checked', 'true');
+
+      await panel.locator('[data-testid="map-appearance-option-OWNER"]').click();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
     });
 
     test('should show upcoming timeline message', async ({page, isolatedUsers, dbManager, context}) => {

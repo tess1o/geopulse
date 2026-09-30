@@ -27,17 +27,23 @@ import {
 import { createTripEndpointMarkerElement, TRIP_ENDPOINT_MARKER_SIZE } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildHighlightedData,
-  buildPathCollection,
-  highlightedLineColorExpression
+  buildPathCollection
 } from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
 import {
   HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+  HIGHLIGHTED_TRIP_LINE_WEIGHT,
   HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
   buildReplayEmission,
   getHighlightedTripKey
 } from '@/maps/shared/highlightedTripData'
+import {
+  PATH_OUTLINE_EXTRA_WIDTH,
+  SPEED_BAND_PALETTES,
+  buildSpeedBandColorExpression,
+  getOutlineColor
+} from '@/maps/shared/mapAppearance'
 
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
@@ -92,6 +98,20 @@ const props = defineProps({
   highlightedPathColor: {
     type: String,
     default: '#ef4444'
+  },
+  // Colors for car-trip speed bands; null draws car trips solid in highlightedPathColor.
+  speedBandColors: {
+    type: Object,
+    default: () => SPEED_BAND_PALETTES.DEFAULT
+  },
+  highlightedPathWidth: {
+    type: Number,
+    default: HIGHLIGHTED_TRIP_LINE_WEIGHT
+  },
+  // Contrasting casing under the paths.
+  outline: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -107,8 +127,10 @@ const state = {
   token: nextLayerToken('gp-path'),
   sourceId: '',
   lineLayerId: '',
+  casingLayerId: '',
   highlightedSourceId: '',
   highlightedLineLayerId: '',
+  highlightedCasingLayerId: '',
   highlightedHitLayerId: '',
   highlightedStartEndpointMarker: null,
   highlightedEndEndpointMarker: null,
@@ -125,8 +147,10 @@ const state = {
 
 state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
+state.casingLayerId = `${state.token}-casing`
 state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
+state.highlightedCasingLayerId = `${state.token}-highlighted-casing`
 state.highlightedHitLayerId = `${state.token}-highlighted-hit`
 
 const formatDateTimeDisplay = (dateValue) => (
@@ -161,6 +185,10 @@ const resolvePathLineDashArray = (dashArray) => {
   }
   return null
 }
+// line-dasharray is measured in line widths; rescale so a casing's dashes line up with its (narrower) line.
+const scaleDashArrayForCasing = (dashArray, lineWidth, casingWidth) => (
+  Array.isArray(dashArray) ? dashArray.map(value => value * lineWidth / casingWidth) : dashArray
+)
 const hasFocusedHighlightedTrip = () => (
   props.focusHighlightedTrip
   && isTripItem(props.highlightedTrip)
@@ -560,7 +588,9 @@ const syncReplayFocusLayerVisibility = () => {
 
   const replayFocusMode = Boolean(props.replayState?.playing)
   setLayerVisibility(props.map, [state.lineLayerId], props.visible && !replayFocusMode)
+  setLayerVisibility(props.map, [state.casingLayerId], props.visible && !replayFocusMode && props.outline)
   setLayerVisibility(props.map, [state.highlightedLineLayerId, state.highlightedHitLayerId], props.visible)
+  setLayerVisibility(props.map, [state.highlightedCasingLayerId], props.visible && props.outline)
 }
 
 const unregisterEvents = () => {
@@ -593,18 +623,55 @@ const renderLayer = () => {
   replayController.registerReplayUserCameraHandlers()
   const highlightedTrip = isTripItem(props.highlightedTrip) ? props.highlightedTrip : null
   const hasHighlightedTrip = Boolean(highlightedTrip)
-  const highlightedTripUsesSpeedBands = isCarMovementType(highlightedTrip?.movementType)
+  const highlightedTripIsCar = isCarMovementType(highlightedTrip?.movementType)
+  const highlightedTripUsesSpeedBands = highlightedTripIsCar && Boolean(props.speedBandColors)
   const highlightedLineColor = highlightedTripUsesSpeedBands
-    ? highlightedLineColorExpression
+    ? buildSpeedBandColorExpression(props.speedBandColors)
     : props.highlightedPathColor
-  const highlightedLineDashArray = highlightedTripUsesSpeedBands
+  const highlightedCasingColor = highlightedTripUsesSpeedBands
+    ? buildSpeedBandColorExpression(props.speedBandColors, { outline: true })
+    : getOutlineColor(props.highlightedPathColor)
+  // Car trips stay solid even without speed bands; the dash is what marks non-car trips.
+  const highlightedLineDashArray = highlightedTripIsCar
     ? HIGHLIGHTED_TRIP_CAR_SOLID_DASH
     : HIGHLIGHTED_TRIP_NON_CAR_DASH
+  const highlightedLineWidth = props.highlightedPathWidth
+  const highlightedCasingWidth = highlightedLineWidth + PATH_OUTLINE_EXTRA_WIDTH
+  const highlightedCasingDashArray = scaleDashArrayForCasing(
+    highlightedLineDashArray,
+    highlightedLineWidth,
+    highlightedCasingWidth
+  )
+  const pathLineColor = props.pathOptions.color || '#007bff'
+  const pathLineWidth = props.pathOptions.weight || 4
+  const pathLineOpacity = hasFocusedHighlightedTrip()
+    ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
+    : (props.pathOptions.opacity ?? 0.8)
   const pathLineDashArray = resolvePathLineDashArray(props.pathOptions.dashArray)
+  const pathCasingWidth = pathLineWidth + PATH_OUTLINE_EXTRA_WIDTH
+  const pathCasingDashArray = scaleDashArrayForCasing(pathLineDashArray || [1, 0], pathLineWidth, pathCasingWidth)
 
   const pathCollection = buildPathCollection(props.pathData)
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
+
+  // The casing is always present (hidden when the outline is off) so layer order never changes.
+  ensureLayer(props.map, {
+    id: state.casingLayerId,
+    type: 'line',
+    source: state.sourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round',
+      visibility: props.outline ? 'visible' : 'none'
+    },
+    paint: {
+      'line-color': getOutlineColor(pathLineColor),
+      'line-width': pathCasingWidth,
+      'line-opacity': pathLineOpacity,
+      'line-dasharray': pathCasingDashArray
+    }
+  }, state.lineLayerId)
 
   ensureLayer(props.map, {
     id: state.lineLayerId,
@@ -615,41 +682,32 @@ const renderLayer = () => {
       'line-cap': 'round'
     },
     paint: {
-      'line-color': props.pathOptions.color || '#007bff',
-      'line-width': props.pathOptions.weight || 4,
-      'line-opacity': hasFocusedHighlightedTrip()
-        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8),
+      'line-color': pathLineColor,
+      'line-width': pathLineWidth,
+      'line-opacity': pathLineOpacity,
       ...(pathLineDashArray ? { 'line-dasharray': pathLineDashArray } : {})
     }
   })
 
   if (hasMapLibreLayer(props.map, state.lineLayerId)) {
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-color',
-      props.pathOptions.color || '#007bff'
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-width',
-      props.pathOptions.weight || 4
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-opacity',
-      hasFocusedHighlightedTrip()
-        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8)
-    )
+    props.map.setPaintProperty(state.lineLayerId, 'line-color', pathLineColor)
+    props.map.setPaintProperty(state.lineLayerId, 'line-width', pathLineWidth)
+    props.map.setPaintProperty(state.lineLayerId, 'line-opacity', pathLineOpacity)
     props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
+  }
+
+  if (hasMapLibreLayer(props.map, state.casingLayerId)) {
+    props.map.setPaintProperty(state.casingLayerId, 'line-color', getOutlineColor(pathLineColor))
+    props.map.setPaintProperty(state.casingLayerId, 'line-width', pathCasingWidth)
+    props.map.setPaintProperty(state.casingLayerId, 'line-opacity', pathLineOpacity)
+    props.map.setPaintProperty(state.casingLayerId, 'line-dasharray', pathCasingDashArray)
   }
 
   if (!hasHighlightedTrip) {
     unregisterEvents()
     resetHighlightedTripFocus()
     removeHighlightedEndpointMarkers()
-    removeLayers(props.map, [state.highlightedHitLayerId, state.highlightedLineLayerId])
+    removeLayers(props.map, [state.highlightedCasingLayerId, state.highlightedHitLayerId, state.highlightedLineLayerId])
     removeSources(props.map, [state.highlightedSourceId])
     hoverController.syncTripHoverContext(null, [])
     syncReplayFocusLayerVisibility()
@@ -668,6 +726,23 @@ const renderLayer = () => {
   ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
 
   ensureLayer(props.map, {
+    id: state.highlightedCasingLayerId,
+    type: 'line',
+    source: state.highlightedSourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round',
+      visibility: props.outline ? 'visible' : 'none'
+    },
+    paint: {
+      'line-color': highlightedCasingColor,
+      'line-dasharray': highlightedCasingDashArray,
+      'line-width': highlightedCasingWidth,
+      'line-opacity': 1
+    }
+  }, state.highlightedLineLayerId)
+
+  ensureLayer(props.map, {
     id: state.highlightedLineLayerId,
     type: 'line',
     source: state.highlightedSourceId,
@@ -678,7 +753,7 @@ const renderLayer = () => {
     paint: {
       'line-color': highlightedLineColor,
       'line-dasharray': highlightedLineDashArray,
-      'line-width': 6,
+      'line-width': highlightedLineWidth,
       'line-opacity': 1
     }
   })
@@ -693,7 +768,7 @@ const renderLayer = () => {
     },
     paint: {
       'line-color': '#000000',
-      'line-width': HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
+      'line-width': Math.max(HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT, highlightedCasingWidth + 8),
       'line-opacity': 0.01
     }
   })
@@ -705,6 +780,21 @@ const renderLayer = () => {
       highlightedLineColor
     )
     props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
+    props.map.setPaintProperty(state.highlightedLineLayerId, 'line-width', highlightedLineWidth)
+  }
+
+  if (hasMapLibreLayer(props.map, state.highlightedCasingLayerId)) {
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-color', highlightedCasingColor)
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-dasharray', highlightedCasingDashArray)
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-width', highlightedCasingWidth)
+  }
+
+  if (hasMapLibreLayer(props.map, state.highlightedHitLayerId)) {
+    props.map.setPaintProperty(
+      state.highlightedHitLayerId,
+      'line-width',
+      Math.max(HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT, highlightedCasingWidth + 8)
+    )
   }
 
   syncReplayFocusLayerVisibility()
@@ -742,7 +832,13 @@ const clearLayer = () => {
     return
   }
 
-  removeLayers(targetMap, [state.highlightedHitLayerId, state.highlightedLineLayerId, state.lineLayerId])
+  removeLayers(targetMap, [
+    state.highlightedHitLayerId,
+    state.highlightedLineLayerId,
+    state.highlightedCasingLayerId,
+    state.lineLayerId,
+    state.casingLayerId
+  ])
   removeSources(targetMap, [state.highlightedSourceId, state.sourceId])
   state.boundMap = null
 }
@@ -758,6 +854,10 @@ watch(
     props.inspectionEnabled,
     props.allowPathDataTripFallback,
     props.showHighlightedTripPopup,
+    props.highlightedPathColor,
+    props.speedBandColors,
+    props.highlightedPathWidth,
+    props.outline,
     distanceUnit.value
   ],
   () => {

@@ -104,6 +104,7 @@ public class SharedLinkMapper {
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
                 .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.RASTER)
+                .mapAppearance(SharedMapAppearance.from(entity.getUser().getTimelineDisplayPreferences()))
                 .build();
     }
 

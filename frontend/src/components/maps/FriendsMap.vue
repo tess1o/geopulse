@@ -91,6 +91,7 @@ import {ProgressSpinner} from 'primevue'
 // Map components
 import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { getFriendTrailColor } from '@/maps/shared/friendTrailColors'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
@@ -123,33 +124,11 @@ const processedFriendsData = computed(() => {
   return processFriendsForMap(props.friends)
 })
 
-const FRIEND_TRAIL_COLOR_PALETTE = [
-  '#E53935',
-  '#43A047',
-  '#1E88E5',
-  '#FDD835',
-  '#8E24AA',
-  '#F57C00',
-  '#00ACC1',
-  '#3949AB',
-  '#6D4C41',
-  '#546E7A',
-  '#00897B',
-  '#6A1B9A'
-]
-
 const getFriendLocationKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id || friend?.email
 }
 
-const getColorByFriend = (friend, index) => {
-  const key = String(getFriendLocationKey(friend) || `friend-${index}`)
-  const hash = key
-      .split('')
-      .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % FRIEND_TRAIL_COLOR_PALETTE.length, 0)
-
-  return FRIEND_TRAIL_COLOR_PALETTE[hash]
-}
+const getColorByFriend = getFriendTrailColor
 
 const getFriendTrailPoints = (friend) => {
   const key = getFriendLocationKey(friend)

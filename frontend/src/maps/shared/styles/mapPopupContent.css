@@ -59,9 +59,10 @@
 }
 
 .timeline-stack-select.stack-item--datagap {
-  --row-accent: var(--gp-danger, #ef4444);
-  --row-accent-text: #b91c1c;
-  background: var(--gp-danger-light, #fef2f2);
+  /* Amber, as data gaps are everywhere else (markers, timeline cards). */
+  --row-accent: var(--gp-warning, #f59e0b);
+  --row-accent-text: var(--gp-warning-dark, #b45309);
+  background: var(--gp-warning-light, #fffbeb);
 }
 
 .timeline-stack-select .stack-item-time {
@@ -234,8 +235,8 @@
 }
 
 .p-dark .timeline-stack-select.stack-item--datagap {
-  --row-accent-text: #fca5a5;
-  background: rgba(127, 29, 29, 0.35);
+  --row-accent-text: #fcd34d;
+  background: rgba(120, 53, 15, 0.35);
 }
 
 .p-dark .stack-popup-header {

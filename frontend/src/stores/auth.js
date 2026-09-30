@@ -6,6 +6,7 @@ import {clearCachedUserProfile, readCachedUserProfile, writeCachedUserProfile} f
 import {resolvePreferredLocale} from '@/locales'
 import {isBackendDown} from '@/utils/errorHandler'
 import {normalizeApiError} from '@/utils/apiErrorDetail'
+import {APPEARANCE_PREFERENCE_DEFAULTS} from '@/maps/shared/mapAppearance'
 
 let authReconcilePromise = null
 
@@ -46,8 +47,8 @@ const TIMELINE_DISPLAY_PREFERENCE_DEFAULTS = {
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],
-    defaultPathColor: '',
-    activePathColor: ''
+    // Path colors, speed bands, heatmap gradient, width and outline; resolved by maps/shared/mapAppearance.
+    ...APPEARANCE_PREFERENCE_DEFAULTS
 }
 
 const TIMELINE_DISPLAY_CAPABILITY_DEFAULTS = {
@@ -279,7 +280,12 @@ export const useAuthStore = defineStore('auth', {
 
         async fetchTimelineDisplayPreferences() {
             try {
-                return flattenTimelineDisplaySettings(await apiService.get('/preferences/timeline-display'))
+                const response = await apiService.get('/preferences/timeline-display')
+                // Keep the in-memory user current: maps read appearance preferences from it (useMapAppearance).
+                if (response && this.user) {
+                    this.patchCurrentUser(withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, response.preferences))
+                }
+                return flattenTimelineDisplaySettings(response)
             } catch (error) {
                 throw this.fail(error, 'Failed to load timeline display preferences')
             }

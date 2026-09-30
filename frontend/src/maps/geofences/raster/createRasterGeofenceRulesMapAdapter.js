@@ -100,7 +100,8 @@ export const createRasterGeofenceRulesMapAdapter = (callbacks = {}) => {
       const rectangle = L.rectangle(bounds, {
         color: rule?.status === 'ACTIVE' ? '#3b82f6' : '#94a3b8',
         weight: 2,
-        dashArray: '6 4',
+        // Active rules are solid and inactive ones dashed, so the state does not rely on color alone.
+        dashArray: rule?.status === 'ACTIVE' ? null : '6 4',
         fill: true,
         fillOpacity: 0.06,
         interactive: true

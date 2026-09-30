@@ -94,7 +94,7 @@ describe('UserProfilePage', () => {
 
     // A regression guard for turning settingsGroups into a computed: both the nav and the mobile
     // select read from it, so they must stay in step.
-    expect(options).toEqual(['General', 'Security', 'Timeline & Map', 'Notifications', 'Connected Apps'])
+    expect(options).toEqual(['General', 'Security', 'Timeline & Map', 'Appearance', 'Notifications', 'Connected Apps'])
     const groups = wrapper.findAll('optgroup').map((group) => group.attributes('label'))
     expect(groups).toEqual(['Personal', 'Experience', 'Connected Apps'])
   })
@@ -116,7 +116,7 @@ describe('UserProfilePage', () => {
 
     // A validity check on the tab keys: they are identities and must survive translation.
     const options = wrapper.findAll('option').map((option) => option.attributes('value'))
-    expect(options).toEqual(['general', 'security', 'timeline', 'notifications', 'connectedApps'])
+    expect(options).toEqual(['general', 'security', 'timeline', 'appearance', 'notifications', 'connectedApps'])
   })
 
   it('shows the demo read-only notice translated', async () => {

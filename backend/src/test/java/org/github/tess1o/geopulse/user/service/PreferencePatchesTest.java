@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.user.service;
 
+import org.github.tess1o.geopulse.shared.map.MapColorScheme;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.DistanceUnit;
@@ -83,6 +84,29 @@ class PreferencePatchesTest {
 
         assertNull(merged.getDefaultPathColor());
         assertNull(merged.getCustomMapTileUrl());
+    }
+
+    @Test
+    void appearancePatchKeepsOtherStoredAppearance() {
+        TimelineDisplayPreferences current = TimelineDisplayPreferences.builder()
+                .defaultPathColor("#112233")
+                .colorScheme(MapColorScheme.DEFAULT)
+                .speedBandPalette("OFF")
+                .pathOutlineEnabled(true)
+                .build();
+
+        TimelineDisplayPreferences merged = PreferencePatches.apply(current, TimelineDisplayPreferences.builder()
+                .colorScheme(MapColorScheme.RED_GREEN_SAFE)
+                .speedBandPalette("")
+                .pathOutlineEnabled(false)
+                .pathWidth(6)
+                .build());
+
+        assertEquals("#112233", merged.getDefaultPathColor());
+        assertEquals(MapColorScheme.RED_GREEN_SAFE, merged.getColorScheme());
+        assertNull(merged.getSpeedBandPalette());
+        assertEquals(false, merged.getPathOutlineEnabled());
+        assertEquals(6, merged.getPathWidth());
     }
 
     @Test

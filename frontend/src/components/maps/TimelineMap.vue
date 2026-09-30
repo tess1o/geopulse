@@ -109,8 +109,6 @@
           :path-data="processedPathData"
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
-          :path-options="normalPathOptions"
-          :highlighted-path-color="highlightedPathColor"
           :replay-state="pathReplayState"
           :show-highlighted-trip-popup="showHighlightedTripPopup"
           @path-click="handlePathClick"
@@ -127,6 +125,7 @@
           :highlighted-trip="null"
           :visible="showPath && routeDisplayModeUsesComparison && rawComparisonPathData.length > 0"
           :path-options="rawComparisonPathOptions"
+          :outline="false"
           :inspection-enabled="false"
           :focus-highlighted-trip="false"
           :show-highlighted-trip-popup="false"
@@ -332,6 +331,13 @@
       </template>
     </MapContainer>
 
+    <MapColorLegend
+      v-if="showHeatmapLegend"
+      class="heatmap-legend"
+      variant="heatmap"
+      :gradient="heatmapGradient"
+    />
+
     <div v-if="mapMatchingStatusText" class="map-matching-status" aria-live="polite">
       <i class="pi pi-sync map-matching-status-icon" aria-hidden="true" />
       <span>{{ mapMatchingStatusText }}</span>
@@ -357,6 +363,13 @@
             <span>{{ item }}</span>
           </template>
         </div>
+        <MapColorLegend
+          v-if="showSpeedLegend"
+          class="trip-summary-legend"
+          variant="speed"
+          :speed-colors="mapAppearance.speedBandColors"
+          :outline="mapAppearance.outlineEnabled"
+        />
         <div v-if="!isMobileTripSelectionViewport" class="trip-summary-hint">
           {{ t('maps.timelineMap.tripSummaryHoverHint') }}
         </div>
@@ -438,6 +451,8 @@ import VectorCrossTypeCollisionLayer from '@/maps/vector/layers/VectorCrossTypeC
 import VectorPanoramaxLayer from '@/maps/vector/layers/VectorPanoramaxLayer.vue'
 import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDialog.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
+import MapColorLegend from '@/components/maps/MapColorLegend.vue'
+import { useMapAppearance } from '@/composables/useMapAppearance'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
@@ -562,14 +577,6 @@ const props = defineProps({
     default: null
   },
   mapRenderMode: {
-    type: String,
-    default: null
-  },
-  defaultPathColor: {
-    type: String,
-    default: null
-  },
-  activePathColor: {
     type: String,
     default: null
   },
@@ -760,13 +767,8 @@ const rawGpsLocationCache = new Map()
 const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
 
-const normalPathOptions = computed(() => ({
-  color: props.defaultPathColor || '#007bff',
-  weight: 4,
-  opacity: 0.8,
-  smoothFactor: 1
-}))
-const highlightedPathColor = computed(() => props.activePathColor || '#ef4444')
+// Path colors, width and outline come from the viewer's appearance preferences (see PathLayer).
+const mapAppearance = useMapAppearance()
 
 const rawComparisonPathOptions = {
   color: '#a855f7',
@@ -1029,13 +1031,8 @@ const heatmapStyle = computed(() => {
     : { radius: 32, blur: 24, minOpacity: 0.3, max: 1.0 }
 })
 
-const heatmapGradient = {
-  0.0: '#2563eb',
-  0.35: '#22c55e',
-  0.6: '#eab308',
-  0.8: '#f97316',
-  1.0: '#dc2626',
-}
+const heatmapGradient = computed(() => mapAppearance.value.heatmapGradient)
+const showHeatmapLegend = computed(() => heatmapEnabled.value && heatmapAvailable.value)
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
@@ -1108,6 +1105,11 @@ const tripSummary = computed(() => {
 })
 
 const showTripSummary = computed(() => Boolean(tripSummary.value))
+// Car trips are drawn in speed bands; the legend explains them unless the user turned bands off.
+const showSpeedLegend = computed(() => (
+  mapAppearance.value.speedBandsEnabled
+  && String(activeHighlightedTrip.value?.movementType || '').trim().toUpperCase() === 'CAR'
+))
 const {
   showTripReplayBar,
   showTripReplayRestoreButton,
@@ -2418,6 +2420,31 @@ defineExpose({
 @keyframes mapMatchingPulse {
   0%, 100% { opacity: 0.45; transform: rotate(0deg); }
   50% { opacity: 1; transform: rotate(12deg); }
+}
+
+/* Bottom-left, clear of the attribution (bottom-right) and the docked trip summary (bottom-centre). */
+.heatmap-legend {
+  position: absolute;
+  left: calc(0.75rem + env(safe-area-inset-left));
+  bottom: calc(2.35rem + env(safe-area-inset-bottom));
+  z-index: 905;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  pointer-events: none;
+}
+
+.p-dark .heatmap-legend {
+  border-color: var(--gp-border-medium);
+  background: var(--gp-surface-dark);
+  color: var(--gp-text-primary);
+}
+
+.trip-summary-legend {
+  margin-top: 0.3rem;
 }
 
 /* Desktop: docked bottom-centre, where the replay bar also lives. */
