@@ -1316,28 +1316,15 @@ watch(() => jobProgress.value?.status, async (status) => {
   align-items: center;
 }
 
-.action-button {
-  min-width: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). The hover tint
+   is PrimeVue's text-button hover for each button's severity. */
+.p-button.action-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.reconcile-button:hover {
-  background-color: var(--p-cyan-50) !important;
-  color: var(--p-cyan-600) !important;
-}
-
-.view-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
 }
 
 /* Header Actions */
@@ -1458,10 +1445,10 @@ watch(() => jobProgress.value?.status, async (status) => {
     font-size: 0.7rem;
   }
 
-  .action-button {
-    min-width: 28px !important;
-    width: 28px !important;
-    height: 28px !important;
+  .p-button.action-button {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
   }
 
   .actions-buttons {
@@ -1504,10 +1491,10 @@ watch(() => jobProgress.value?.status, async (status) => {
     font-size: 0.8rem;
   }
 
-  .action-button {
-    min-width: 24px !important;
-    width: 24px !important;
-    height: 24px !important;
+  .p-button.action-button {
+    min-width: 24px;
+    width: 24px;
+    height: 24px;
   }
 
   .actions-buttons {

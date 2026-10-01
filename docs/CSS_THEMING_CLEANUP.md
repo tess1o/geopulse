@@ -106,7 +106,7 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 | Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | After Phase 6 | Target |
 |---|---|---|---|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | 212 | < 150 |
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | 142 | < 150 |
 | lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | 4 in 1 file (`tokens.css`) | `tokens.css` plus a few justified cases |
 | PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 | 0 |
 | undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
@@ -433,7 +433,23 @@ Left for later phases:
   `--gp-font-family` (Inter is never loaded). The tooltip is inverted like PrimeVue tooltips
   (`--gp-surface-inverse`/`--gp-text-inverse`). Before, it was #374151 in both modes.
 
+- [x] `!important` in TechnicalDataPage (39), GeocodingManagementPage (16) and FavoritesManagementPage (15): none was
+  needed.
+  - Action buttons: the only real competitor is the global phone rule `.p-button.p-button-sm` in
+    `primevue-overrides.css`, which has the same specificity as a scoped `.action-button`, so order decided.
+    `.p-button.action-button` outranks it.
+  - Custom hover colours removed in favour of PrimeVue's text-button hover per severity. The old ones were a #3b82f6
+    fill under a #1a56db icon, and light red/cyan tints that stayed light in dark mode.
+  - TechnicalDataPage phone padding: `.gp-page-container.gp-page-container--fullwidth` outranks PageContainer's own
+    rules (before, it was a specificity tie). The `.gp-page-header`/`.gp-page-container` focus-border rules removed
+    everything from elements that have no border, outline or focus. The duplicate BaseCard margin rule was merged.
+  - The datepicker and input widths only competed with the PrimeVue layer.
+  - Favorites marker reset: Leaflet's CSS is in the vendor layer now.
+
 **Check in the UI:**
+- Technical data, Geocoding and Favorites tables: action buttons are the same size at desktop and phone widths. Hover
+  now uses the button's severity tint (view blue, edit grey, delete red, reconcile/map cyan), also in dark mode.
+  Technical data on a phone: same side padding, date pickers full width.
 - Timeline map popups (stay, trip, stack list with weather chips, cross-type list), the raw GPS popup and the trip
   hover card, on both engines and in both modes. They should look as before. Small differences:
   - dark: the popup icon is light blue instead of #2563eb, and actions are #93c5fd instead of #bfdbfe;

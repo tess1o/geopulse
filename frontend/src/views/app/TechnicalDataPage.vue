@@ -2581,12 +2581,13 @@ watch(filters, async () => {
   min-width: 0;
 }
 
-.mobile-sort-direction-button,
-.mobile-gps-actions-button {
-  width: 2.25rem !important;
-  height: 2.25rem !important;
-  min-width: 2.25rem !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). */
+.p-button.mobile-sort-direction-button,
+.p-button.mobile-gps-actions-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0;
 }
 
 .mobile-gps-loading {
@@ -2696,39 +2697,31 @@ watch(filters, async () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  /* Override PageContainer padding for mobile with balanced margins */
-  :deep(.gp-page-container--fullwidth) {
-    padding-left: var(--gp-spacing-md) !important;
-    padding-right: var(--gp-spacing-md) !important;
-    max-width: 100vw !important;
+  /* Wider side padding than PageContainer's phone default. The PageContainer root carries this page's scope id;
+     the doubled class outranks PageContainer's own single-class rules. */
+  .gp-page-container.gp-page-container--fullwidth {
+    padding-left: var(--gp-spacing-md);
+    padding-right: var(--gp-spacing-md);
+    max-width: 100vw;
     overflow-x: hidden;
     box-sizing: border-box;
   }
 
   /* Override page content container */
   :deep(.gp-page-content) {
-    max-width: 100% !important;
     overflow-x: hidden;
     box-sizing: border-box;
   }
 
   /* Force all content to respect viewport width */
   .stats-grid,
+  .stat-card,
   .filter-section,
   .table-section {
     max-width: 100%;
     box-sizing: border-box;
     margin-left: 0;
     margin-right: 0;
-  }
-
-  /* Ensure BaseCards don't exceed viewport */
-  .stat-card,
-  .filter-section,
-  .table-section {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    box-sizing: border-box;
   }
 
   .stats-grid {
@@ -2818,13 +2811,13 @@ watch(filters, async () => {
 
   /* Ensure datepicker component fits */
   .filter-section :deep(.p-datepicker) {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 100%;
+    max-width: 100%;
   }
 
   .filter-section :deep(.p-inputtext) {
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
   }
 
@@ -2983,11 +2976,11 @@ watch(filters, async () => {
     padding: 0.12rem 0.35rem;
   }
 
-  .mobile-sort-direction-button,
-  .mobile-gps-actions-button {
-    width: 2rem !important;
-    height: 2rem !important;
-    min-width: 2rem !important;
+  .p-button.mobile-sort-direction-button,
+  .p-button.mobile-gps-actions-button {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
   }
 
   /* Extra mobile paginator optimizations for very small screens */
@@ -3021,33 +3014,6 @@ watch(filters, async () => {
   padding: 0 0.5rem;
 }
 
-/* Remove unwanted focus/active borders on page header */
-:deep(.gp-page-header) {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-:deep(.gp-page-header):focus,
-:deep(.gp-page-header):active,
-:deep(.gp-page-header):focus-within {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Remove focus borders from page container */
-:deep(.gp-page-container) {
-  outline: none !important;
-}
-
-:deep(.gp-page-container):focus,
-:deep(.gp-page-container):active {
-  outline: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
 /* Actions Column */
 .actions-buttons {
   display: flex;
@@ -3056,23 +3022,15 @@ watch(filters, async () => {
   align-items: center;
 }
 
-.action-button {
-  min-width: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). The hover tint
+   is PrimeVue's text-button hover for each button's severity. */
+.p-button.action-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.delete-button:hover {
-  background-color: var(--p-red-50) !important;
-  color: var(--p-red-600) !important;
 }
 
 /* Confirmation Dialog */
@@ -3105,11 +3063,11 @@ watch(filters, async () => {
     gap: var(--gp-spacing-xs);
   }
 
-  .action-button {
-    min-width: 28px !important;
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 0.75rem !important;
+  .p-button.action-button {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
   }
 }
 

@@ -1529,33 +1529,15 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.action-button {
-  min-width: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). The hover tint
+   is PrimeVue's text-button hover for each button's severity. */
+.p-button.action-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.delete-button:hover {
-  background-color: var(--p-red-50) !important;
-  color: var(--p-red-600) !important;
-}
-
-.view-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.map-button:hover {
-  background-color: var(--p-cyan-50) !important;
-  color: var(--p-cyan-600) !important;
 }
 
 /* Header Actions */
@@ -1651,9 +1633,9 @@ onUnmounted(() => {
 .pending-point-marker,
 .favorite-area-marker,
 .pending-area-marker {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* Favorite marker icon - teardrop shape */
