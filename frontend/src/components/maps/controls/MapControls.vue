@@ -588,19 +588,19 @@ onBeforeUnmount(() => {
 <style scoped>
 .map-controls {
   display: flex;
-  gap: var(--gp-spacing-sm, 0.5rem);
+  gap: var(--gp-spacing-sm);
   flex-direction: column;
 }
 
 .control-group {
   display: flex;
-  gap: var(--gp-spacing-xs, 0.25rem);
+  gap: var(--gp-spacing-xs);
   flex-direction: column;
-  background: var(--gp-surface-card, #1e293b);
-  border-radius: var(--gp-radius-medium, 8px);
-  padding: var(--gp-spacing-xs, 0.25rem);
-  box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
+  background: var(--gp-surface-card);
+  border-radius: var(--gp-radius-medium);
+  padding: var(--gp-spacing-xs);
+  box-shadow: var(--gp-shadow-medium);
+  border: 1px solid var(--gp-border);
 }
 
 .control-button {
@@ -613,13 +613,13 @@ onBeforeUnmount(() => {
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  border-radius: var(--gp-radius-small, 4px);
+  border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-  color: var(--gp-text-secondary, #cbd5e1);
+  color: var(--gp-text-secondary);
 }
 
 .control-button:hover:not(:disabled) {
-  background-color: var(--gp-surface-ground, #0f172a);
+  background-color: var(--gp-surface-ground);
   color: var(--gp-primary-text);
   transform: translateY(-1px);
 }
@@ -635,12 +635,12 @@ onBeforeUnmount(() => {
 }
 
 .control-button.active {
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   color: white;
 }
 
 .control-button.active:hover {
-  background: var(--gp-primary-dark, #1e40af);
+  background: var(--gp-primary-dark);
   transform: translateY(-1px);
 }
 
@@ -662,7 +662,7 @@ onBeforeUnmount(() => {
 
 .control-button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--gp-primary, #1a56db);
+  box-shadow: 0 0 0 2px var(--gp-primary);
 }
 
 .heatmap-control {
@@ -674,10 +674,10 @@ onBeforeUnmount(() => {
   top: 0;
   right: calc(100% + 8px);
   min-width: 140px;
-  background: var(--gp-surface-card, #1e293b);
-  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
-  border-radius: var(--gp-radius-medium, 8px);
-  box-shadow: var(--gp-shadow-medium, 0 8px 20px rgba(0, 0, 0, 0.12));
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+  box-shadow: var(--gp-shadow-medium);
   padding: 8px;
   z-index: 1100;
 }
@@ -685,7 +685,7 @@ onBeforeUnmount(() => {
 .heatmap-popover-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -700,7 +700,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: var(--gp-text-primary, #0f172a);
+  color: var(--gp-text-primary);
   font-size: 0.8125rem;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
 }
 
 .heatmap-popover-option:hover {
-  background: var(--gp-surface-muted, #f8fafc);
+  background: var(--gp-surface-muted);
 }
 
 .heatmap-popover-option.active {
@@ -721,7 +721,7 @@ onBeforeUnmount(() => {
 }
 
 .heatmap-popover-off {
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary);
 }
 
 /* Immich button specific styles */
@@ -743,7 +743,7 @@ onBeforeUnmount(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   animation: immich-pulse 1.5s infinite;
 }
 

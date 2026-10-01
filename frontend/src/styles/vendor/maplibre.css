@@ -1,0 +1,2 @@
+/* Imported by VectorMapHost (lazy chunk). In the vendor layer so map CSS overrides it without !important; see layers.css. */
+@import 'maplibre-gl/dist/maplibre-gl.css' layer(vendor);

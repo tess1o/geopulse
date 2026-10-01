@@ -33,11 +33,13 @@ Light/dark mode was broken across the app because of a few root causes:
 |---|---|
 | `src/presets/GeopulsePreset.js` | Single source of colours. Slate in both schemes; PrimeVue components are themed by tokens, not CSS. |
 | `src/styles/tokens.css` | All `--gp-*` tokens. The **only** place with light and dark values. Aliases `--p-*` where the concept exists. |
-| `src/styles/layers.css` | Layer order: `tailwind-base, primevue, app-components, tailwind-utilities`. |
+| `src/styles/layers.css` | Layer order: `tailwind-base, vendor, primevue, app-components, tailwind-utilities`. |
+| `src/styles/vendor/*.css` | Third-party map CSS (MapLibre, Leaflet plugins) imported `layer(vendor)` by the lazily loaded map code. Leaflet's own CSS is imported the same way from `index.css`. |
 | `src/styles/base.css` | `html` and `body`: font, text colour, page background. |
 | `src/styles/components.css` | Shared `gp-*` classes (the `app-components` layer). |
 | `src/styles/primevue-overrides.css` | The few global PrimeVue tweaks that tokens can't express. |
-| `src/styles/maps.css` | Map CSS (was `mapStyles.css`). |
+| `src/styles/maps.css` | Map CSS (was `mapStyles.css`). The popup CSS in `src/maps/shared/styles` is imported next to it from `index.css`. |
+| `src/maps/shared/mapColors.js` | Marker colours used from JS; the ones CSS also uses are mirrored as `--gp-map-marker-*` tokens. |
 | `src/styles/index.css` | Entry point, imported once from `main.js`. |
 
 Conventions (enforced in Phase 7):
@@ -102,14 +104,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | Target |
-|---|---|---|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | After Phase 6 | Target |
+|---|---|---|---|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | 212 | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | 4 in 1 file (`tokens.css`) | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
 
 ---
 
@@ -376,26 +378,78 @@ Left for later phases:
 - Empty states: the four timeline/place tables and Favorites/Geocoding/Technical data look the same apart from a
   slightly smaller title (1.1rem) on the management pages; the dashboard card and Friends empty states are unchanged.
 
-### Phase 6: Maps and JS colours
-- [ ] Popup CSS (mapPopup, rawGpsPointPopup, mapPopupContent) gets shared `--gp-map-popup-*` tokens and is
-  imported once, globally.
-- [ ] Fix the wrong fallbacks. Merge the duplicated dark Leaflet tooltip gradient. Move `.p-contextmenu` and
-  `.loading-messages` out of the map CSS.
-- [ ] Markers (weather, note, photo, trip reconstruction) stay light, because the tiles don't switch theme. Add a
-  comment saying so, and take the shared colours from tokens.
-- [ ] `src/maps/shared/mapColors.js` becomes the single table for:
-  - timeline markers (`timelineMarkerBuilder` and `mapHelpers`);
-  - trip endpoint gradients (`tripEndpointMarkerBuilder`, `mapHelpers`, `useMapHighlights`);
-  - photo blue and note purple.
-- [ ] Movement-type colours: DigestMetrics and JourneyInsights disagree; keep JourneyInsights' colours.
-- [ ] BarChart: use `useThemeMode().isDarkMode` and `readCssToken`; remove the leaking MutationObserver and the
-  hardcoded fallbacks.
+### Phase 6: Maps and JS colours ✅
+- [x] Vendor layer: Leaflet, leaflet.fullscreen, leaflet.markercluster and MapLibre CSS are imported with
+  `layer(vendor)` (Leaflet from `index.css`, the rest through `styles/vendor/*.css` from the lazily loaded map code).
+  The lazy chunks used to land after `index.css` and win ties, which is what most map `!important` was for. Layer
+  order is now `tailwind-base, vendor, primevue, app-components, tailwind-utilities` (layers.css and main.js). The
+  vendor CSS's own `!important` (fullscreen sizing) is nothing we override.
+- [x] Popup CSS (mapPopup, mapPopupContent, rawGpsPointPopup) uses `--gp-map-popup-*` tokens and is imported once
+  from `index.css`; the per-component imports and `<style src>` blocks are gone. The trip hover card uses
+  `--gp-map-hover-card-*`, plain Leaflet tooltips `--gp-map-tooltip-*`. In dark mode both are the same slate glass
+  panel, so the hover-card tokens point at the tooltip ones (the duplicated dark gradient is defined once).
+  Stack-popup rows use the timeline tint tokens and the status `-text` tokens in both modes. The note row gets a new
+  `--gp-timeline-purple-text`.
+- [x] Fallbacks: `var(--gp-…, literal)` fallbacks in the map code (55) removed; the tokens always exist and several
+  fallbacks didn't match them. Bug found: RasterTripPlanLayer's pin dot. Phase 4 renamed the undefined
+  `--gp-danger/warning-contrast` to `--gp-primary-contrast`, which made it white on its white inner circle (and the
+  circle used `--gp-surface-card`, dark in dark mode). Both are literal again (#ffffff, #7f1d1d / #7c2d12).
+- [x] `maps.css`:
+  - Dark rules replaced by tokens (attribution, tooltip, fullscreen button). The dark fullscreen icons are a
+    `.p-dark` redefinition of the plugin's own `--fullscreen-icon-enter/-exit` in `tokens.css`, rather than repeating
+    the data URIs in two selectors.
+  - Map backdrop: `--gp-map-backdrop` (#f0f0f0 / card) on both hosts' `.base-map`. Their `.p-dark .base-map` rules and
+    the `.p-dark .leaflet-container` gradient (only ever hidden behind `.base-map`) are gone.
+  - Dead rules deleted: the `.timeline-page` phone block (TimelineMap's more specific copies always won; its one unique
+    rule, the control container's `z-index: auto`, moved to TimelineMap), the `.marker-cluster-small/medium/large`
+    colours (lost to the lazily loaded MarkerCluster.Default.css; every cluster group has its own icon anyway), the
+    avatar `.marker-container`/`.status-badge` rules and the timeline `.marker-inner` rules (never rendered), and the
+    PrimeVue 3 `.p-contextmenu .p-menuitem-link` rules.
+  - `.p-contextmenu` radius moved to the preset (`contextmenu.root.borderRadius = border.radius.xl`); the shadow and
+    border are Aura's.
+  - `.loading-messages` moved into TimelineContainer and TimelinePage, the only users, which already restyled it; the
+    layout properties they relied on (flex column, centred, 200px min height, spinner margin) moved with it.
+  - The `!important` left (22) is for inline styles that Leaflet or the marker builders set (position, margins,
+    transform, transition, inner-div borders) and the reduced-motion/high-contrast blocks.
+- [x] Markers stay light in dark mode, because the tiles don't switch theme. A comment says so in each marker file.
+  Their dark rules are deleted: RasterTimelineLayer's stack and cluster markers, VectorTimelineLayer's stack marker
+  and count badge, the cross-type marker chip, the stay weather badge, the trip replay marker. The vector friend marker's
+  ring is white in both modes (it was `--gp-surface-card`). Shared marker colours are `--gp-map-marker-*` tokens
+  (note, photo, weather), with no dark values.
+- [x] `src/maps/shared/mapColors.js` is the single JS table:
+  - timeline markers: `timelineMarkerBuilder` exports `resolveTimelineMarkerVisual`, and `mapHelpers` uses it instead
+    of its copy;
+  - trip endpoint gradients: `tripEndpointMarkerBuilder` and `mapHelpers`. `useMapHighlights`' `highlightConfig` (the
+    other copy of the colours) was never read, so it was deleted;
+  - photo blue and note purple (MapLibre paint, canvas icons, the cross-type layer).
+  - `mapColors.test.js` checks that the note and photo colours match their tokens, and that marker tokens have no
+    dark value. Unused `MARKER_COLORS` entries in `mapHelpers` were dropped.
+- [x] Raster single-note markers are violet like stacks and like every note on the vector map (they were teal, the
+  timeline stack-marker colour).
+- [x] Movement-type colours: `src/utils/movementTypeColors.js`, with JourneyInsights' values; DigestMetrics now shows
+  public transport pink and train indigo (both were slate).
+- [x] BarChart: colours come from `readCssToken` and are re-read when `useThemeMode().isDarkMode` changes. The
+  MutationObserver, never disconnected, is gone, and so are the hardcoded colour fallbacks. Fonts use
+  `--gp-font-family` (Inter is never loaded). The tooltip is inverted like PrimeVue tooltips
+  (`--gp-surface-inverse`/`--gp-text-inverse`). Before, it was #374151 in both modes.
 
 **Check in the UI:**
-- timeline map popups and tooltips in both modes;
-- raw GPS popup;
-- weather, note and photo markers;
-- the dashboard chart, which should follow a theme switch without a reload.
+- Timeline map popups (stay, trip, stack list with weather chips, cross-type list), the raw GPS popup and the trip
+  hover card, on both engines and in both modes. They should look as before. Small differences:
+  - dark: the popup icon is light blue instead of #2563eb, and actions are #93c5fd instead of #bfdbfe;
+  - dark: stack rows use the standard dark tints (stay, trip, data gap and note slightly different shades);
+  - light: the photo row background is #f8fafc instead of slate-100.
+- Plain Leaflet tooltips, the zoom and fullscreen buttons (icon visible in both modes, also when toggled), and the
+  attribution in both modes. A phone-width timeline: attribution above the bottom sheet, tappable.
+- Weather, note, photo, stay-weather-badge, stack, cluster, friend and trip-replay markers in dark mode: same colours as
+  in light mode now. Raster single notes are violet.
+- Trip plan pins (raster): the inner dot is visible again.
+- Raster marker-cluster groups (raw GPS, location analytics): cluster colours unchanged.
+- Map context menu (right-click on the timeline map): 12px radius, Aura shadow and border.
+- Timeline loading and no-data boxes in the sidebar and over the map: unchanged.
+- Dashboard and digest charts: follow a theme switch without a reload (also in system mode). The tooltip is dark in
+  light mode and light in dark mode.
+- Journey insights and digest movement bars: public transport and train have the same colours in both.
 
 ### Phase 7: Guard test
 - [ ] Add `src/styles/cssTokens.test.js` (vitest). It fails on:
@@ -458,6 +512,13 @@ Check each in light, dark and system mode (switch the OS theme on an open page);
   Cells keep their own colours (muted dates, primary durations, outlined buttons), which were unreadable on solid
   blue. Other highlights (selected list option, selected date) stay solid.
 - Phase 5: dark-only row hover became PrimeVue's `rowHover` in both modes (only PlaceVisitsTable needed it).
+- Phase 6: third-party map CSS goes in a `vendor` cascade layer instead of keeping `!important` to beat lazily
+  loaded chunks. MapLibre's 70 KB stylesheet stays in the lazy VectorMapHost chunk, imported through a small CSS file
+  with `layer(vendor)`.
+- Phase 6: map markers keep one colour set in both modes, because the base tiles never switch theme. Map chrome
+  (popups, tooltips, controls) follows the theme through `--gp-map-*` tokens.
+- Phase 6: the context menu's look comes from preset tokens. Only the radius is GeoPulse-specific; the old
+  `--gp-border-medium` border and custom shadow became Aura's `content.border` and overlay shadow.
 - Phase 2, toasts: Aura's severity colours (proper dark variants) instead of the old soft background with a solid
   border in light and card background in dark. The confirm dialog's light restyle (dividers, custom paddings,
   1.125rem title, all non-outlined buttons forced to primary) was dropped, as planned: tokens can't express it.

@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .gp-photo-map-marker-wrapper {
   background: transparent;
   border: none;
@@ -8,7 +9,7 @@
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, var(--gp-map-marker-photo), var(--gp-map-marker-photo-end));
   border: 2px solid #ffffff;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
   color: #ffffff;

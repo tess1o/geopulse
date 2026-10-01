@@ -903,6 +903,11 @@ defineExpose({
 }
 
 .loading-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
   text-align: center;
   padding: var(--gp-spacing-lg);
   margin: var(--gp-spacing-lg);
@@ -912,6 +917,10 @@ defineExpose({
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.loading-messages .p-progressspinner {
+  margin-bottom: 1rem;
 }
 
 .timeline-warning {

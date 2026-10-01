@@ -4,7 +4,8 @@
  */
 
 import L from 'leaflet'
-import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+import { resolveTimelineMarkerVisual } from '@/maps/shared/timelineMarkerBuilder'
+import { TRIP_ENDPOINT_GRADIENTS } from '@/maps/shared/mapColors'
 
 /**
  * Fix Leaflet default marker images import issues in Vite/Webpack
@@ -313,17 +314,10 @@ export function fixLeafletHeatLayerAnimation() {
     }
 }
 
-// Color scheme for different marker types
+// Colours of the Leaflet-only friend and favourite markers. Timeline and trip endpoint colours: maps/shared/mapColors.js.
 const MARKER_COLORS = {
-    STAY: '#607D8B',           // Blue Grey - for stay points
-    PATH: '#4A90E2',           // Light Blue - for path lines
-    TRANSIT: '#003366',        // Dark Blue - for transit points
-    DATA_GAP: '#D97706',       // Amber - for inferred/unknown timeline gaps
-    HIGHLIGHT_START: '#2ECC71', // Green - for trip start points
-    HIGHLIGHT_END: '#D84315',   // Red Orange - for trip end points
-    FRIEND: '#FF9800',         // Orange - for friend locations
-    CURRENT: '#00BCD4',        // Cyan - for current/last location
-    FAVORITE: '#E91E63'        // Pink - for favorite locations
+    FRIEND: '#FF9800',
+    FAVORITE: '#E91E63'
 }
 
 // Size configurations for different marker types
@@ -522,13 +516,12 @@ function getPopupAnchor(shape, totalSize) {
 export function createHighlightedPathStartMarker(latitude, longitude, instant = false, styleOverrides = {}) {
     return L.marker([latitude, longitude], {
         icon: createCustomDivIcon({
-            //color: MARKER_COLORS.HIGHLIGHT_START,
             icon: 'fas fa-play', // Play icon for start
             size: MARKER_SIZES.HIGHLIGHT,
             className: `custom-marker highlight-start-marker${instant ? ' instant' : ''}`,
             shape: 'circle',
             customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`,
+                background: `linear-gradient(135deg, ${TRIP_ENDPOINT_GRADIENTS.start.from}, ${TRIP_ENDPOINT_GRADIENTS.start.to})`,
                 ...styleOverrides
             }
         }),
@@ -547,13 +540,13 @@ export function createHighlightedPathStartMarker(latitude, longitude, instant = 
 export function createHighlightedPathEndMarker(latitude, longitude, instant = false, styleOverrides = {}) {
     return L.marker([latitude, longitude], {
         icon: createCustomDivIcon({
-            color: MARKER_COLORS.HIGHLIGHT_END,
+            color: TRIP_ENDPOINT_GRADIENTS.end.from,
             icon: 'fas fa-stop', // Stop icon for end
             size: MARKER_SIZES.HIGHLIGHT,
             className: `custom-marker highlight-end-marker${instant ? ' instant' : ''}`,
             shape: 'square',
             customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`,
+                background: `linear-gradient(135deg, ${TRIP_ENDPOINT_GRADIENTS.end.from}, ${TRIP_ENDPOINT_GRADIENTS.end.to})`,
                 ...styleOverrides
             }
         }),
@@ -641,37 +634,6 @@ export function createHighlightedTimelineIcon(item = null) {
             boxShadow: `0 0 0 4px ${markerVisual.highlightRingColor}, 0 4px 10px rgba(15, 23, 42, 0.25)`
         }
     })
-}
-
-/**
- * Resolve the timeline marker visual based on timeline item type.
- * Mirrors timeline list semantics: stays use location pin, trips use transport.
- * @param {Object|null} item - Timeline item
- * @returns {{color: string, icon: string, highlightRingColor: string}}
- */
-function resolveTimelineMarkerVisual(item) {
-    const itemType = item?.type
-    if (itemType === 'trip') {
-        return {
-            color: '#10B981',
-            icon: getTripMovementIconClass(item?.movementType),
-            highlightRingColor: 'rgba(52, 211, 153, 0.55)'
-        }
-    }
-
-    if (itemType === 'dataGap') {
-        return {
-            color: '#F59E0B',
-            icon: 'pi pi-question',
-            highlightRingColor: 'rgba(251, 191, 36, 0.55)'
-        }
-    }
-
-    return {
-        color: '#1A56DB',
-        icon: 'pi pi-map-marker',
-        highlightRingColor: 'rgba(96, 165, 250, 0.55)'
-    }
 }
 
 function getResponsiveTimelineMarkerSize(highlighted = false) {

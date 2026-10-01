@@ -1,7 +1,6 @@
 import L from 'leaflet'
 import 'leaflet.markercluster'
-import 'leaflet.markercluster/dist/MarkerCluster.css'
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import '@/styles/vendor/leaflet-plugins.css'
 
 export const DEFAULT_CLUSTER_RADIUS = 48
 export const DEFAULT_CLUSTER_DISABLE_ZOOM = 16

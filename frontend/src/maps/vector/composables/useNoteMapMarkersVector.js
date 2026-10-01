@@ -15,7 +15,7 @@ import {
   createNativeClusterMirror,
   MIN_GROUP_INDEX_CLUSTER_PROPERTY
 } from '@/maps/vector/utils/nativeClusterMirror'
-import { NOTE_MARKER_COLOR } from '@/maps/shared/noteMapMarkers'
+import { NOTE_MARKER_COLOR } from '@/maps/shared/mapColors'
 
 const NOTE_CLUSTER_RADIUS = 48
 const NOTE_CLUSTER_MAX_ZOOM = 16

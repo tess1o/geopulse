@@ -138,6 +138,10 @@ const GeopulsePreset = definePreset(Aura, {
                 }
             }
         },
+        // The map context menus (TimelineMap) use the larger card radius.
+        contextmenu: {
+            root: {borderRadius: '{border.radius.xl}'}
+        },
         // Selected rows get a soft primary tint with normal text instead of the solid highlight: table cells carry
         // their own colours (muted dates, primary durations, outlined action buttons) that don't read on solid blue.
         // The dark tint matches --gp-primary-soft.

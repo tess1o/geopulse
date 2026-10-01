@@ -80,8 +80,8 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
 <style scoped>
 .viewer-location-control {
   position: absolute;
-  top: var(--gp-spacing-lg, 1rem);
-  right: var(--gp-spacing-lg, 1rem);
+  top: var(--gp-spacing-lg);
+  right: var(--gp-spacing-lg);
   z-index: 920;
   display: flex;
   flex-direction: column;
@@ -94,12 +94,12 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--gp-spacing-xs, 0.25rem);
-  padding: var(--gp-spacing-xs, 0.25rem);
-  background: var(--gp-surface-card, white);
-  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
-  border-radius: var(--gp-radius-medium, 8px);
-  box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
+  gap: var(--gp-spacing-xs);
+  padding: var(--gp-spacing-xs);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+  box-shadow: var(--gp-shadow-medium);
 }
 
 .viewer-location-button,
@@ -108,9 +108,9 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   height: 40px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--gp-radius-small, 4px);
+  border-radius: var(--gp-radius-small);
   background: transparent;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -5,9 +5,8 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { FullScreen } from 'leaflet.fullscreen'
-import 'leaflet.fullscreen/dist/Control.FullScreen.css'
+import '@/styles/vendor/leaflet-plugins.css'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { fixLeafletMarkerAnimation, fixLeafletMarkerImages, fixLeafLetTooltip } from '@/utils/mapHelpers'
@@ -502,14 +501,7 @@ onUnmounted(() => {
   height: v-bind(height);
   min-width: 300px;
   min-height: 300px;
-  background-color: #f0f0f0;
-}
-
-/* The neutral backdrop is there so tiles have something to fade in over, but #f0f0f0 is a
-   bright flash on a dark page. Beat `.p-dark .leaflet-container` in styles/maps.css by
-   specificity rather than trusting chunk order - this host is lazily loaded, so its
-   stylesheet lands after index.css. */
-.p-dark .base-map {
-  background-color: var(--gp-surface-card);
+  /* Neutral backdrop for the tiles to fade in over; the card colour in dark mode, so it isn't a bright flash. */
+  background-color: var(--gp-map-backdrop);
 }
 </style>

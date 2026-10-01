@@ -1,4 +1,5 @@
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+import { TIMELINE_MARKER_COLORS } from './mapColors'
 
 const MARKER_SIZES = {
   STANDARD: {
@@ -53,29 +54,18 @@ const getResponsiveTimelineMarkerSize = (highlighted = false) => {
   return highlighted ? DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE : DESKTOP_TIMELINE_MARKER_SIZE
 }
 
-const resolveTimelineMarkerVisual = (item) => {
+// Marker colour, icon and highlight ring for a timeline item. Stays use the location pin, trips their transport icon.
+export const resolveTimelineMarkerVisual = (item) => {
   const itemType = item?.type
   if (itemType === 'trip') {
-    return {
-      color: '#10B981',
-      icon: getTripMovementIconClass(item?.movementType),
-      highlightRingColor: 'rgba(52, 211, 153, 0.55)'
-    }
+    return { ...TIMELINE_MARKER_COLORS.trip, icon: getTripMovementIconClass(item?.movementType) }
   }
 
   if (itemType === 'dataGap') {
-    return {
-      color: '#F59E0B',
-      icon: 'pi pi-question',
-      highlightRingColor: 'rgba(251, 191, 36, 0.55)'
-    }
+    return { ...TIMELINE_MARKER_COLORS.dataGap, icon: 'pi pi-question' }
   }
 
-  return {
-    color: '#1A56DB',
-    icon: 'pi pi-map-marker',
-    highlightRingColor: 'rgba(96, 165, 250, 0.55)'
-  }
+  return { ...TIMELINE_MARKER_COLORS.stay, icon: 'pi pi-map-marker' }
 }
 
 const createCustomMarkerElement = ({

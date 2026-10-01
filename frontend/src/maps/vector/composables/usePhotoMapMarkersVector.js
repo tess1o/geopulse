@@ -12,6 +12,7 @@ import {
   removeSources,
   setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import { PHOTO_MARKER_COLOR } from '@/maps/shared/mapColors'
 import {
   applyGroupExclusionFilters,
   createNativeClusterMirror,
@@ -259,7 +260,7 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
     ctx.fillRect(22, 16, 16, 8)
     ctx.fillRect(40, 18, 8, 6)
 
-    ctx.fillStyle = '#2563eb'
+    ctx.fillStyle = PHOTO_MARKER_COLOR
     ctx.beginPath()
     ctx.arc(32, 35, 9, 0, Math.PI * 2)
     ctx.fill()
@@ -541,7 +542,7 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
       source: state.sourceId,
       filter: ['has', 'point_count'],
       paint: {
-        'circle-color': '#2563eb',
+        'circle-color': PHOTO_MARKER_COLOR,
         'circle-radius': ['step', ['coalesce', ['get', 'photo_count'], ['get', 'point_count']], 18, 10, 21, 50, 24],
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 2,
@@ -592,7 +593,7 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
       source: state.sourceId,
       filter: ['!', ['has', 'point_count']],
       paint: {
-        'circle-color': '#2563eb',
+        'circle-color': PHOTO_MARKER_COLOR,
         'circle-radius': 13,
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 2,

@@ -18,7 +18,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import { createMarkerClusterGroup } from '@/maps/raster/utils/createMarkerClusterGroup'
 import { groupItemsByProximity } from '@/maps/shared/nearbyPointGrouping'
-import '@/maps/shared/styles/mapPopupContent.css'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import { buildTimelineStackItems } from '@/maps/shared/timelineStackContent'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
@@ -535,9 +534,10 @@ defineExpose({
 </script>
 
 <style>
+/* Markers keep their light-map colours in dark mode: the base tiles don't switch theme (see tokens.css). */
 .timeline-stack-icon {
-  background: transparent !important;
-  border: none !important;
+  background: transparent;
+  border: none;
 }
 
 .timeline-stack-marker {
@@ -566,23 +566,13 @@ defineExpose({
   opacity: 0.28;
   filter: grayscale(0.35) saturate(0.7);
 }
-
-.p-dark .timeline-stack-marker {
-  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-  border-color: #134e4a;
-}
-
-.p-dark .timeline-stack-marker-highlighted {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
-  border-color: #c2410c;
-}
 </style>
 
 <style>
 /* Custom cluster marker styles */
 .custom-cluster-icon {
-  background: transparent !important;
-  border: none !important;
+  background: transparent;
+  border: none;
 }
 
 .cluster-marker {
@@ -634,21 +624,5 @@ defineExpose({
   width: 56px;
   height: 56px;
   font-size: 16px;
-}
-
-/* Dark mode adjustments */
-.p-dark .cluster-marker-small {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  border-color: #2563eb;
-}
-
-.p-dark .cluster-marker-medium {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  border-color: #d97706;
-}
-
-.p-dark .cluster-marker-large {
-  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-  border-color: #dc2626;
 }
 </style>

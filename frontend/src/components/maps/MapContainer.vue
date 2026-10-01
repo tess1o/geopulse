@@ -208,15 +208,15 @@ defineExpose({
 
 .map-controls {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
   z-index: 900;
 }
 
 .map-warning-banner {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-bottom));
+  bottom: calc(var(--gp-spacing-lg) + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 950;
   background: rgba(245, 158, 11, 0.95);
@@ -231,8 +231,8 @@ defineExpose({
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .map-controls {
-    top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
-    right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
+    top: calc(var(--gp-spacing-md) + env(safe-area-inset-top));
+    right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
   }
 
   .map-warning-banner {

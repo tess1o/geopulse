@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .weather-map-marker {
   width: 28px;
   height: 28px;
@@ -6,22 +7,22 @@
   justify-content: center;
   border-radius: 999px;
   background: #f8fafc;
-  border: 2px solid #0f766e;
-  color: #0f766e;
+  border: 2px solid var(--gp-map-marker-weather-neutral);
+  color: var(--gp-map-marker-weather-neutral);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
   box-sizing: border-box;
 }
 
 .weather-map-marker--clear {
-  border-color: #ca8a04;
-  color: #ca8a04;
+  border-color: var(--gp-map-marker-weather-clear);
+  color: var(--gp-map-marker-weather-clear);
 }
 
 .weather-map-marker--rain,
 .weather-map-marker--storm,
 .weather-map-marker--snow {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--gp-map-marker-weather-wet);
+  color: var(--gp-map-marker-weather-wet);
 }
 
 /* Several readings share this marker: a second "card" peeks out behind it. */
@@ -63,30 +64,14 @@
 }
 
 .gp-stay-weather-badge--clear {
-  color: #ca8a04;
+  color: var(--gp-map-marker-weather-clear);
 }
 
 .gp-stay-weather-badge--rain,
 .gp-stay-weather-badge--storm {
-  color: #2563eb;
+  color: var(--gp-map-marker-weather-wet);
 }
 
 .gp-stay-weather-badge--snow {
-  color: #0284c7;
-}
-
-.p-dark .gp-stay-weather-badge {
-  background: #1f2937;
-  color: #cbd5e1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .gp-stay-weather-badge--clear {
-  color: #facc15;
-}
-
-.p-dark .gp-stay-weather-badge--rain,
-.p-dark .gp-stay-weather-badge--storm,
-.p-dark .gp-stay-weather-badge--snow {
-  color: #60a5fa;
+  color: var(--gp-map-marker-weather-snow);
 }

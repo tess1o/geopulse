@@ -5,7 +5,7 @@
 <script setup>
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/styles/vendor/maplibre.css'
 import '@/maps/shared/styles/maplibreMarkerFixes.css'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
@@ -775,13 +775,7 @@ onUnmounted(() => {
   height: v-bind(height);
   min-width: 300px;
   min-height: 300px;
-  background-color: #f0f0f0;
-}
-
-/* This host is the one place `styles/maps.css`'s `.p-dark .leaflet-container` never reached:
-   MapLibre puts its own class on the container, not `leaflet-container`, so #f0f0f0 was
-   the real background in dark mode, not just a loading flash. */
-.p-dark .base-map {
-  background-color: var(--gp-surface-card);
+  /* Neutral backdrop for the tiles to fade in over; the card colour in dark mode, so it isn't a bright flash. */
+  background-color: var(--gp-map-backdrop);
 }
 </style>

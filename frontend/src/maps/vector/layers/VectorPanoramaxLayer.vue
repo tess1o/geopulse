@@ -3,7 +3,6 @@
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
-import '@/maps/shared/styles/mapPopupContent.css'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import PanoramaxPreviewPopup from '@/maps/shared/popups/PanoramaxPreviewPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'

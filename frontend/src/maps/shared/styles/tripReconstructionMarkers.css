@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .trip-reconstruction-waypoint-icon-wrapper,
 .trip-reconstruction-waypoint-marker {
   box-sizing: border-box;

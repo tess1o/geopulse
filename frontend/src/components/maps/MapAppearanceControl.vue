@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
 }
 
 .map-appearance-option:focus-visible {
-  outline: 2px solid var(--gp-primary, #1a56db);
+  outline: 2px solid var(--gp-primary);
   outline-offset: 1px;
 }
 

@@ -91,6 +91,7 @@ import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
 import { useAuthStore } from '@/stores/auth'
 import { te } from '@/locales'
+import { MOVEMENT_TYPE_COLORS } from '@/utils/movementTypeColors'
 
 // A known Monday, used only to turn an ISO-8601 day-of-week number (1=Monday..7=Sunday, as sent by
 // TimePatternService.java) into a weekday name via dayjs's active locale -- the actual date is
@@ -112,16 +113,16 @@ const ACHIEVEMENT_CATEGORIES = [
 // only by counting array slots; named fields make the label explicit and its key greppable.
 // `key` is the backend's locale-neutral distance field name and the i18n key suffix.
 const MOVEMENT_MODES = [
-  { key: 'byCar', icon: '🚗', color: '#3b82f6' },
-  { key: 'byMotorcycle', icon: '🏍️', color: '#06b6d4' },
-  { key: 'byPublicTransport', icon: '🚌', color: '#ec4899' },
-  { key: 'byWalk', icon: '🚶', color: '#10b981' },
-  { key: 'byBicycle', icon: '🚴', color: '#f59e0b' },
-  { key: 'byRunning', icon: '🏃', color: '#8b5cf6' },
-  { key: 'byTrain', icon: '🚆', color: '#6366f1' },
-  { key: 'byFlight', icon: '✈️', color: '#ef4444' },
-  { key: 'byBoat', icon: '🚤', color: '#14b8a6' },
-  { key: 'byUnknown', icon: '🧭', color: '#94a3b8' }
+  { key: 'byCar', icon: '🚗', color: MOVEMENT_TYPE_COLORS.CAR },
+  { key: 'byMotorcycle', icon: '🏍️', color: MOVEMENT_TYPE_COLORS.MOTORCYCLE },
+  { key: 'byPublicTransport', icon: '🚌', color: MOVEMENT_TYPE_COLORS.PUBLIC_TRANSPORT },
+  { key: 'byWalk', icon: '🚶', color: MOVEMENT_TYPE_COLORS.WALK },
+  { key: 'byBicycle', icon: '🚴', color: MOVEMENT_TYPE_COLORS.BICYCLE },
+  { key: 'byRunning', icon: '🏃', color: MOVEMENT_TYPE_COLORS.RUNNING },
+  { key: 'byTrain', icon: '🚆', color: MOVEMENT_TYPE_COLORS.TRAIN },
+  { key: 'byFlight', icon: '✈️', color: MOVEMENT_TYPE_COLORS.FLIGHT },
+  { key: 'byBoat', icon: '🚤', color: MOVEMENT_TYPE_COLORS.BOAT },
+  { key: 'byUnknown', icon: '🧭', color: MOVEMENT_TYPE_COLORS.UNKNOWN }
 ]
 
 const timezone = useTimezone()

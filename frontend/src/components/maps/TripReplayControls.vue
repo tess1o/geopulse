@@ -263,7 +263,7 @@ defineEmits([
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   color: #ffffff;
   font-size: 0.78rem;
 }

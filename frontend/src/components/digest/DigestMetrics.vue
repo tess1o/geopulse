@@ -30,6 +30,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { t as translate } from '@/locales'
 import { formatDistanceRounded, formatDuration } from '@/utils/calculationsHelpers'
+import { MOVEMENT_TYPE_COLORS } from '@/utils/movementTypeColors'
 
 const { t } = useI18n()
 
@@ -53,16 +54,16 @@ const comparisonText = computed(() => {
 })
 const movementModes = computed(() => {
   const definitions = [
-    ['carDistance', t('movementTypes.CAR'), '#3b82f6'],
-    ['walkDistance', t('movementTypes.WALK'), '#10b981'],
-    ['bicycleDistance', t('movementTypes.BICYCLE'), '#f59e0b'],
-    ['runningDistance', t('movementTypes.RUNNING'), '#8b5cf6'],
-    ['motorcycleDistance', t('movementTypes.MOTORCYCLE'), '#06b6d4'],
-    ['publicTransportDistance', t('movementTypes.PUBLIC_TRANSPORT'), '#64748b'],
-    ['trainDistance', t('movementTypes.TRAIN'), '#64748b'],
-    ['flightDistance', t('movementTypes.FLIGHT'), '#ef4444'],
-    ['boatDistance', t('movementTypes.BOAT'), '#14b8a6'],
-    ['unknownDistance', t('analytics.digest.hero.otherMode'), '#94a3b8']
+    ['carDistance', t('movementTypes.CAR'), MOVEMENT_TYPE_COLORS.CAR],
+    ['walkDistance', t('movementTypes.WALK'), MOVEMENT_TYPE_COLORS.WALK],
+    ['bicycleDistance', t('movementTypes.BICYCLE'), MOVEMENT_TYPE_COLORS.BICYCLE],
+    ['runningDistance', t('movementTypes.RUNNING'), MOVEMENT_TYPE_COLORS.RUNNING],
+    ['motorcycleDistance', t('movementTypes.MOTORCYCLE'), MOVEMENT_TYPE_COLORS.MOTORCYCLE],
+    ['publicTransportDistance', t('movementTypes.PUBLIC_TRANSPORT'), MOVEMENT_TYPE_COLORS.PUBLIC_TRANSPORT],
+    ['trainDistance', t('movementTypes.TRAIN'), MOVEMENT_TYPE_COLORS.TRAIN],
+    ['flightDistance', t('movementTypes.FLIGHT'), MOVEMENT_TYPE_COLORS.FLIGHT],
+    ['boatDistance', t('movementTypes.BOAT'), MOVEMENT_TYPE_COLORS.BOAT],
+    ['unknownDistance', t('analytics.digest.hero.otherMode'), MOVEMENT_TYPE_COLORS.UNKNOWN]
   ]
   const total = Number(props.metrics?.totalDistance) || 0
   return definitions.map(([key, label, color]) => ({ key, label, color, distance: Number(props.metrics?.[key]) || 0 })).filter((mode) => mode.distance > 0).map((mode) => ({ ...mode, share: Math.max(1, Math.round((mode.distance / total) * 100)) }))

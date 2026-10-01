@@ -2355,7 +2355,7 @@ defineExpose({
   height: 100%;
   min-height: 400px;
   position: relative;
-  background-color: var(--gp-surface-muted, #f8fafc);
+  background-color: var(--gp-surface-muted);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2363,13 +2363,13 @@ defineExpose({
 
 .timeline-map-control-stack {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
   z-index: 900;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: var(--gp-spacing-sm, 0.5rem);
+  gap: var(--gp-spacing-sm);
   pointer-events: none;
 }
 
@@ -2386,8 +2386,8 @@ defineExpose({
 
 .map-matching-status {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  left: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-left));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left));
   z-index: 905;
   display: inline-flex;
   align-items: center;
@@ -2466,7 +2466,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   color: #ffffff;
   font-size: 0.9rem;
 }
@@ -2554,7 +2554,7 @@ defineExpose({
 .trip-summary-replay:focus-visible,
 .trip-summary-close:hover,
 .trip-summary-close:focus-visible {
-  border-color: var(--gp-primary-light, #60a5fa);
+  border-color: var(--gp-primary-light);
   background: var(--gp-primary-soft);
   color: var(--gp-primary-text);
 }
@@ -2562,8 +2562,8 @@ defineExpose({
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .timeline-map-control-stack {
-    top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
-    right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
+    top: calc(var(--gp-spacing-md) + env(safe-area-inset-top));
+    right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
     align-items: flex-end;
   }
 
@@ -2573,34 +2573,40 @@ defineExpose({
     min-height: 300px;
   }
 
+  /* Lift the bottom controls (attribution) above the mobile bottom sheet. The control container has z-index 0 in
+     maplibreMarkerFixes.css, which would keep them under the markers. */
+  .map-view-container :global(.maplibregl-control-container) {
+    z-index: auto;
+  }
+
   .map-view-container :global(.leaflet-bottom),
   .map-view-container :global(.maplibregl-ctrl-bottom-left),
   .map-view-container :global(.maplibregl-ctrl-bottom-right) {
-    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom)) !important;
-    z-index: 880 !important;
-    pointer-events: none !important;
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom));
+    z-index: 880;
+    pointer-events: none;
   }
 
   .map-view-container :global(.leaflet-bottom.leaflet-left),
   .map-view-container :global(.maplibregl-ctrl-bottom-left) {
-    left: calc(0.5rem + env(safe-area-inset-left)) !important;
+    left: calc(0.5rem + env(safe-area-inset-left));
   }
 
   .map-view-container :global(.leaflet-bottom.leaflet-right),
   .map-view-container :global(.maplibregl-ctrl-bottom-right) {
-    right: calc(0.5rem + env(safe-area-inset-right)) !important;
+    right: calc(0.5rem + env(safe-area-inset-right));
   }
 
   .map-view-container :global(.leaflet-control-attribution),
   .map-view-container :global(.maplibregl-ctrl-attrib) {
     max-width: calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     box-sizing: border-box;
-    pointer-events: auto !important;
+    pointer-events: auto;
   }
 
   .map-view-container :global(.maplibregl-ctrl-attrib) {
-    margin-bottom: 0 !important;
-    font-size: 9px !important;
+    margin-bottom: 0;
+    font-size: 9px;
     white-space: nowrap;
   }
 

@@ -415,7 +415,8 @@ defineExpose({
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  border: 3px solid var(--gp-surface-card, #ffffff);
+  /* White ring like every other map marker, in both themes (the tiles don't switch theme). */
+  border: 3px solid #ffffff;
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   display: flex;
@@ -438,11 +439,7 @@ defineExpose({
 }
 
 .gp-vector-friend-marker:focus-visible {
-  outline: 2px solid var(--gp-primary, #1a56db);
+  outline: 2px solid var(--gp-primary);
   outline-offset: 2px;
-}
-
-.p-dark .gp-vector-friend-marker {
-  border-color: var(--gp-border, rgba(148, 163, 184, 0.55));
 }
 </style>

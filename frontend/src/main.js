@@ -1,6 +1,5 @@
 import "primeicons/primeicons.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import "leaflet/dist/leaflet.css";
 import "./styles/index.css";
 
 import {createApp, watch} from "vue";
@@ -69,7 +68,7 @@ app.use(PrimeVue, {
             // Must match the order declared in src/styles/layers.css.
             cssLayer: {
                 name: 'primevue',
-                order: 'tailwind-base, primevue, app-components, tailwind-utilities'
+                order: 'tailwind-base, vendor, primevue, app-components, tailwind-utilities'
             },
         }
     }

@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .gp-note-marker-wrapper {
   background: transparent;
   border: none;
@@ -13,14 +14,11 @@
   height: 32px;
   border: 2px solid #fff;
   border-radius: 50%;
-  background: #0f766e;
+  /* Violet for single notes and stacks alike, as on the vector map; teal is the timeline stack marker. */
+  background: var(--gp-map-marker-note);
   color: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
   font-size: 0.95rem;
-}
-
-.gp-note-marker--stack {
-  background: #7c3aed;
 }
 
 .gp-note-marker-count {

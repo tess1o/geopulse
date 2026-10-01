@@ -7,7 +7,6 @@ import { useI18n } from 'vue-i18n'
 import maplibregl from 'maplibre-gl'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
-import '@/maps/shared/styles/mapPopupContent.css'
 import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
 import { buildCrossTypeStackItems, buildStackRowHtml } from '@/maps/shared/timelineStackContent'
 import {
@@ -16,7 +15,7 @@ import {
   CROSS_TYPE_ORDER
 } from '@/maps/shared/crossTypeMarkerCollision'
 import { buildPhotoMarkerClickPayload } from '@/maps/shared/photoMarkerGroups'
-import { NOTE_MARKER_COLOR } from '@/maps/shared/noteMapMarkers'
+import { NOTE_MARKER_COLOR, PHOTO_MARKER_COLOR } from '@/maps/shared/mapColors'
 import { getTimelineItemWeatherDisplay } from '@/maps/shared/stayWeather'
 import { placeWeatherMarkers } from '@/maps/shared/weatherMarkerPlacement'
 import {
@@ -30,7 +29,7 @@ const SETTLE_MS = 50
 const TYPE_STYLES = {
   timeline: { color: '#0f766e', icon: 'pi pi-map-marker' },
   notes: { color: NOTE_MARKER_COLOR, icon: 'pi pi-file-edit' },
-  photos: { color: '#2563eb', icon: 'pi pi-camera' }
+  photos: { color: PHOTO_MARKER_COLOR, icon: 'pi pi-camera' }
 }
 
 const props = defineProps({
@@ -410,6 +409,7 @@ defineExpose({ requestCompute })
 </script>
 
 <style>
+/* The marker chip keeps its light-map colours in dark mode (the tiles don't switch theme); the popup follows it. */
 .gp-cross-type-marker {
   display: flex;
   align-items: center;
@@ -473,8 +473,9 @@ defineExpose({ requestCompute })
   align-items: center;
   gap: 0.45rem;
   padding: 0.15rem 0;
-  background: #ffffff;
-  color: var(--gp-text-primary, #1e293b);
+  /* Opaque, so rows scrolling under the sticky header don't show through. */
+  background: var(--gp-map-popup-sticky-background);
+  color: var(--gp-map-popup-text);
   font-size: 0.78rem;
   font-weight: 600;
 }
@@ -493,26 +494,9 @@ defineExpose({ requestCompute })
   min-width: 22px;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: var(--gp-text-secondary, #475569);
+  background: var(--gp-map-popup-chip-background);
+  color: var(--gp-map-popup-text-secondary);
   font-size: 0.72rem;
   text-align: center;
-}
-
-.p-dark .gp-cross-type-section-header {
-  /* Opaque match for the dark popup gradient so rows don't show through. */
-  background: #172033;
-  color: #f1f5f9;
-}
-
-.p-dark .gp-cross-type-section-count {
-  background: rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
-}
-
-.p-dark .gp-cross-type-marker {
-  background: #1f2937;
-  color: #f9fafb;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
 }
 </style>

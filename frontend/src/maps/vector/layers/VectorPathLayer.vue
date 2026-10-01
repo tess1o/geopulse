@@ -6,7 +6,6 @@ import { storeToRefs } from 'pinia'
 import maplibregl from 'maplibre-gl'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
-import '@/maps/shared/styles/mapPopupContent.css'
 import {
   ensureGeoJsonSource,
   ensureLayer,

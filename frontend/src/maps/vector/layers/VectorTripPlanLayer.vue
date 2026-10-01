@@ -372,8 +372,4 @@ defineExpose({
 .maplibregl-popup-anchor-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
   border-left-color: var(--gp-surface-card);
 }
-
-.p-dark .maplibregl-popup-content:has(.gp-trip-plan-popup) {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-}
 </style>

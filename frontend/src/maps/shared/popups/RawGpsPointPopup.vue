@@ -170,5 +170,3 @@ const formatBattery = (value) => {
   return Number.isFinite(number) && number >= 0 ? `${Math.round(number)}%` : t('maps.popups.rawGps.notAvailable')
 }
 </script>
-
-<style src="../styles/rawGpsPointPopup.css"></style>

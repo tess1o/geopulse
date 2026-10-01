@@ -1194,9 +1194,15 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   padding: var(--gp-spacing-lg);
   margin-top: 1rem;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  min-height: 200px;
   text-align: center;
+}
+
+.loading-messages .p-progressspinner {
+  margin-bottom: 1rem;
 }
 
 /* Responsive design */

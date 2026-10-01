@@ -7,7 +7,6 @@ import { useI18n } from 'vue-i18n'
 import maplibregl from 'maplibre-gl'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
-import '@/maps/shared/styles/mapPopupContent.css'
 import '@/maps/shared/styles/weatherMapMarkers.css'
 import { isMapLibreMap, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
 import { groupItemsByProximity } from '@/maps/shared/nearbyPointGrouping'
@@ -908,6 +907,8 @@ defineExpose({
 </script>
 
 <style>
+/* Markers keep their light-map colours in dark mode: the base tiles don't switch theme (see tokens.css). */
+
 /* Zoom cluster (click zooms in). White ring + shadow like every other map marker. */
 .timeline-stack-marker {
   width: 30px;
@@ -936,14 +937,6 @@ defineExpose({
   filter: grayscale(0.35) saturate(0.7);
 }
 
-.p-dark .timeline-stack-marker {
-  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-}
-
-.p-dark .timeline-stack-marker-highlighted {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
-}
-
 /* Same-location group (click lists the items): count on the dominant item's marker. */
 .timeline-marker-count-badge {
   position: absolute;
@@ -964,11 +957,5 @@ defineExpose({
   line-height: 1;
   box-sizing: border-box;
   pointer-events: none;
-}
-
-.p-dark .timeline-marker-count-badge {
-  background: #f8fafc;
-  border-color: #0f172a;
-  color: #0f172a;
 }
 </style>

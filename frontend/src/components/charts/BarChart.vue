@@ -10,12 +10,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Chart from 'primevue/chart'
 import { t as translate } from '@/locales'
+import { useThemeMode } from '@/composables/useThemeMode'
+import { readCssToken } from '@/utils/cssTokens'
 
 const { t } = useI18n()
+const { isDarkMode } = useThemeMode()
 
 // Props
 const props = defineProps({
@@ -38,7 +41,7 @@ const props = defineProps({
   },
   color: {
     type: String,
-    default: 'primary' // primary, secondary, success, warning, danger
+    default: 'primary' // primary, secondary, success, warning, danger, info, contrast
   },
   valueFormatter: {
     type: Function,
@@ -50,16 +53,7 @@ const props = defineProps({
   }
 })
 
-// Reactive state for theme updates
-const themeColors = ref({
-  primary: '',
-  primaryLight: '',
-  textColor: '',
-  textMuted: '',
-  borderColor: ''
-})
-
-// Color mapping for different chart types
+// Tokens behind each series colour (fill, border, hover fill)
 const colorVariants = {
   primary: {
     bg: '--p-primary-color',
@@ -98,81 +92,70 @@ const colorVariants = {
   }
 }
 
-// Function to get CSS custom property value
-const getCSSVariable = (property) => {
-  if (typeof window !== 'undefined' && document.documentElement) {
-    return getComputedStyle(document.documentElement).getPropertyValue(property).trim()
-  }
-  return ''
-}
+// Chart.js needs resolved colour values, not var() references. They follow the active theme, so they are re-read
+// whenever it changes (including OS theme changes in "system" mode).
+const readThemeColors = () => ({
+  variants: Object.fromEntries(Object.entries(colorVariants).map(([key, tokens]) => [key, {
+    bg: readCssToken(tokens.bg),
+    border: readCssToken(tokens.border),
+    light: readCssToken(tokens.light)
+  }])),
+  text: readCssToken('--gp-text-primary'),
+  textMuted: readCssToken('--gp-text-secondary'),
+  border: readCssToken('--gp-border'),
+  // Inverted, like PrimeVue tooltips
+  tooltipBackground: readCssToken('--gp-surface-inverse'),
+  tooltipText: readCssToken('--gp-text-inverse'),
+  fontFamily: readCssToken('--gp-font-family')
+})
 
-// Update theme colors
-const updateThemeColors = () => {
-  const variant = colorVariants[props.color] || colorVariants.primary
+const themeColors = ref(readThemeColors())
+watch(isDarkMode, () => {
+  themeColors.value = readThemeColors()
+})
 
-  themeColors.value = {
-    primary: getCSSVariable(variant.bg),
-    primaryLight: getCSSVariable(variant.light),
-    border: getCSSVariable(variant.border),
-    backgroundColor: themeColors.value.primary || '#3B82F6',
-    textColor: getCSSVariable('--gp-text-primary'),
-    textMuted: getCSSVariable('--gp-text-secondary'),
-    borderColor: getCSSVariable('--gp-border')
-  }
-}
+const toDataset = ({ label, data, variant }) => ({
+  label,
+  backgroundColor: variant.bg,
+  borderColor: variant.border,
+  borderWidth: 1,
+  borderRadius: 4,
+  borderSkipped: false,
+  data,
+  // Add hover effects
+  hoverBackgroundColor: variant.light,
+  hoverBorderColor: variant.border,
+  hoverBorderWidth: 2
+})
+
+const getVariant = (colorKey) => themeColors.value.variants[colorKey] || themeColors.value.variants.primary
 
 // Chart data computed property
 const chartData = computed(() => {
   // If datasets prop is provided, use it (for multiple series)
   if (props.datasets && props.datasets.length > 0) {
-    const processedDatasets = props.datasets.map((dataset, index) => {
-      const colorKey = dataset.color || (index === 0 ? 'primary' : 'secondary')
-      const variant = colorVariants[colorKey] || colorVariants.primary
-      
-      return {
-        label: dataset.label || dataset.title || t('ui.charts.barChart.seriesFallback', { number: index + 1 }),
-        backgroundColor: getCSSVariable(variant.bg) || '#3B82F6',
-        borderColor: getCSSVariable(variant.border) || '#2563EB',
-        borderWidth: 1,
-        borderRadius: 4,
-        borderSkipped: false,
-        data: dataset.data || [],
-        // Add hover effects
-        hoverBackgroundColor: getCSSVariable(variant.light) || '#DBEAFE',
-        hoverBorderColor: getCSSVariable(variant.border) || '#2563EB',
-        hoverBorderWidth: 2
-      }
-    })
-    
     return {
       labels: props.labels,
-      datasets: processedDatasets
+      datasets: props.datasets.map((dataset, index) => toDataset({
+        label: dataset.label || dataset.title || t('ui.charts.barChart.seriesFallback', { number: index + 1 }),
+        data: dataset.data || [],
+        variant: getVariant(dataset.color || (index === 0 ? 'primary' : 'secondary'))
+      }))
     }
   }
-  
+
   // Fallback to single series (backward compatibility)
   return {
     labels: props.labels,
-    datasets: [
-      {
-        label: props.title,
-        backgroundColor: themeColors.value.primary || '#3B82F6',
-        borderColor: themeColors.value.border || '#2563EB',
-        borderWidth: 1,
-        borderRadius: 4,
-        borderSkipped: false,
-        data: props.data,
-        // Add hover effects
-        hoverBackgroundColor: themeColors.value.primaryLight || '#DBEAFE',
-        hoverBorderColor: themeColors.value.border || '#2563EB',
-        hoverBorderWidth: 2
-      }
-    ]
+    datasets: [toDataset({ label: props.title, data: props.data, variant: getVariant(props.color) })]
   }
 })
 
 // Chart options computed property
 const chartOptions = computed(() => {
+  const colors = themeColors.value
+  const font = (size, weight) => ({ family: colors.fontFamily, size, weight })
+
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -183,35 +166,23 @@ const chartOptions = computed(() => {
         display: true,
         position: 'top',
         labels: {
-          color: themeColors.value.textColor || (document.documentElement.classList.contains('p-dark') ? '#f1f5f9' : '#374151'),
-          font: {
-            family: 'Inter, system-ui, sans-serif',
-            size: 12,
-            weight: '500'
-          },
+          color: colors.text,
+          font: font(12, '500'),
           usePointStyle: true,
           pointStyle: 'rect',
           padding: 20
         }
       },
       tooltip: {
-        backgroundColor: '#374151',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: themeColors.value.borderColor || '#E5E7EB',
+        backgroundColor: colors.tooltipBackground,
+        titleColor: colors.tooltipText,
+        bodyColor: colors.tooltipText,
+        borderColor: colors.border,
         borderWidth: 1,
         cornerRadius: 8,
         displayColors: false,
-        titleFont: {
-          family: 'Inter, system-ui, sans-serif',
-          size: 14,
-          weight: '600'
-        },
-        bodyFont: {
-          family: 'Inter, system-ui, sans-serif',
-          size: 13,
-          weight: '400'
-        },
+        titleFont: font(14, '600'),
+        bodyFont: font(13, '400'),
         callbacks: {
           label: function (context) {
             const label = context.dataset.label || '';
@@ -227,12 +198,8 @@ const chartOptions = computed(() => {
       x: {
         beginAtZero: true,
         ticks: {
-          color: themeColors.value.textMuted || (document.documentElement.classList.contains('p-dark') ? '#cbd5e1' : '#6B7280'),
-          font: {
-            family: 'Inter, system-ui, sans-serif',
-            size: 11,
-            weight: '500'
-          },
+          color: colors.textMuted,
+          font: font(11, '500'),
           maxRotation: 45,
           minRotation: 0
         },
@@ -249,20 +216,12 @@ const chartOptions = computed(() => {
         title: props.yAxisTitle ? {
           display: true,
           text: props.yAxisTitle,
-          color: themeColors.value.textColor || (document.documentElement.classList.contains('p-dark') ? '#f1f5f9' : '#374151'),
-          font: {
-            family: 'Inter, system-ui, sans-serif',
-            size: 12,
-            weight: '600'
-          }
+          color: colors.text,
+          font: font(12, '600')
         } : undefined,
         ticks: {
-          color: themeColors.value.textMuted || (document.documentElement.classList.contains('p-dark') ? '#cbd5e1' : '#6B7280'),
-          font: {
-            family: 'Inter, system-ui, sans-serif',
-            size: 11,
-            weight: '400'
-          },
+          color: colors.textMuted,
+          font: font(11, '400'),
           // Format numbers nicely
           callback: function(value) {
             if (value >= 1000000) {
@@ -274,7 +233,7 @@ const chartOptions = computed(() => {
           }
         },
         grid: {
-          color: themeColors.value.borderColor || (document.documentElement.classList.contains('p-dark') ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB'),
+          color: colors.border,
           drawBorder: false,
           lineWidth: 1
         },
@@ -297,38 +256,6 @@ const chartOptions = computed(() => {
     }
   }
 })
-
-// Lifecycle hooks
-onMounted(() => {
-  updateThemeColors()
-
-  // Listen for theme changes
-  if (typeof window !== 'undefined') {
-    const observer = new MutationObserver(updateThemeColors)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    })
-
-    // Store observer for cleanup
-    //observer.disconnect = () => observer.disconnect()
-    //window.chartThemeObserver = observer
-  }
-})
-
-onUnmounted(() => {
-  // Cleanup theme observer
-  if (typeof window !== 'undefined' && window.chartThemeObserver) {
-    window.chartThemeObserver.disconnect()
-    delete window.chartThemeObserver
-  }
-})
-
-// Watch for color prop changes
-import { watch } from 'vue'
-watch(() => props.color, () => {
-  updateThemeColors()
-}, { immediate: true })
 </script>
 
 <style scoped>
