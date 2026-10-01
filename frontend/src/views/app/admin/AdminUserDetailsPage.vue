@@ -1,10 +1,14 @@
 <template>
   <AppLayout :padding="'none'">
-    <div class="admin-user-details">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <h1>{{ t('adminCampaignsAndUsers.userDetailsPage.title') }}</h1>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('adminCampaignsAndUsers.userDetailsPage.title') }}</h1>
+          </div>
+        </div>
       </div>
 
       <DemoReadOnlyBanner />
@@ -591,27 +595,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-user-details {
-  width: 100%;
-  padding: 1.5rem 2rem;
-  box-sizing: border-box;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
 /* Container */
 .user-details-container {
   display: flex;
@@ -841,10 +824,6 @@ onMounted(() => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .admin-user-details {
-    padding: 1rem;
-  }
-
   .user-header {
     padding: 1.5rem;
     flex-direction: column;
@@ -863,8 +842,5 @@ onMounted(() => {
     justify-content: center;
   }
 
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
 }
 </style>

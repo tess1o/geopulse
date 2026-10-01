@@ -3,11 +3,11 @@
     <PageContainer>
       <div class="data-export-import-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('data.exportImportPage.pageTitle') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('data.exportImportPage.pageTitle') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('data.exportImportPage.pageDescription') }}
               </p>
             </div>
@@ -136,36 +136,6 @@ watch(() => route.query.tab, (tab) => {
     max-width: calc(100vw - 1.5rem);
     box-sizing: border-box;
   }
-}
-
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
 }
 
 /* Info Banner */
@@ -599,16 +569,6 @@ watch(() => route.query.tab, (tab) => {
     padding: 0 1rem;
   }
 
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1.5rem;
-  }
-
   :deep(.data-types-grid) {
     grid-template-columns: 1fr;
   }
@@ -646,10 +606,6 @@ watch(() => route.query.tab, (tab) => {
 @media (max-width: 480px) {
   .data-export-import-page {
     padding: 0 0.75rem;
-  }
-
-  .page-title {
-    font-size: 1.3rem;
   }
 
   :deep(.data-type-option) {

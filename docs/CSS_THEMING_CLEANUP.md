@@ -102,14 +102,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | Target |
-|---|---|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | Target |
+|---|---|---|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
 
 ---
 
@@ -318,21 +318,63 @@ Left for later phases:
 - Landing page: dark mode uses the same glass panels via tokens; the hero eyebrow and tip icon are emerald
   (#34d399) in dark mode.
 
-### Phase 5: Merge copy-pasted blocks
-- [ ] DataTable: Family A (StaysTable, TripsTable, DataGapsTable, TechnicalDataPage) and Family B (PlaceVisitsTable,
-  FavoritesManagementPage, GeocodingManagementPage) become the preset plus an optional `.gp-data-table`.
-- [ ] Page headers: `PageContainer` `title`/`subtitle` props, or a shared `.gp-page-header` (21 files).
-- [ ] Admin pages: breadcrumb, card and mobile list card move to shared classes (9 files).
-- [ ] Timeline cards: the shared base of StayCard, TripCard, DataGapCard and the `Overnight*` variants moves to
-  `components/timeline/timeline-card.css`.
-- [ ] Stat tiles use `StatCard.vue` or `.gp-stat`; empty states use `.gp-empty-state`.
-- [ ] `.settings-panel`: remove the duplicate in UserProfilePage 848.
+### Phase 5: Merge copy-pasted blocks ✅
+- [x] DataTable: the preset alone covers Family A and B. Every dark rule repeated a preset value (header and header
+  cells = slate-900, rows = card, hover = `content.hover`, borders = `content.border`), so all 7 dark blocks were
+  deleted (about 170 `!important`). No `.gp-data-table` class was needed: the only extra in the blocks, the rounded
+  wrapper, targeted `.p-datatable-wrapper`, a PrimeVue 3 class. PrimeVue 4 renders `.p-datatable-table-container`
+  and already sets `overflow: auto` on it inline.
+  - Dead along the way: every `.p-datatable-wrapper` rule (also in AdminFullBackupSection), TechnicalDataPage's
+    `.p-dark .table-section :deep(.p-card-body)` (BaseCard is not a PrimeVue Card) and `.p-dark .gp-data-table`
+    (the class was never rendered).
+  - TechnicalDataPage paginator: the base rules (ground background, border, page size) moved above the media
+    queries, so the phone sizes win by source order and lost their `!important`. The selected-page rule repeated
+    the preset highlight and was deleted.
+  - PlaceVisitsTable gets `rowHover`; the other tables already hover because they have a `selectionMode`.
+- [x] Page headers: the `.gp-page-header*` classes moved from PageContainer's scoped block to `components.css`
+  (`.gp-page-header > .gp-page-header-content > (.gp-page-header-text > .gp-page-title + .gp-page-subtitle) +
+  .gp-page-actions`). PageContainer renders the same markup for its `title`/`subtitle` props. The 21 pages that
+  build their own header (12 app pages, 9 admin pages) now use these classes and dropped their local copies.
+  Kept per page: the side padding on the phone settings pages (UserProfile, TimelinePreferences), the compact header
+  of the full-height AI chat, no bottom margin on Notifications (its column already has a gap), and button sizing in the actions of TimelinePreferences, Invitations and Campaigns.
+- [x] Admin pages: `.gp-admin-page` (padding), `.gp-admin-breadcrumb`, `.gp-admin-card` (was `.card`) and the phone
+  list card `.gp-admin-list` / `.gp-admin-list-card` (`-header`, `-body`, `-actions`, `--interactive` for the
+  clickable user cards) in `components.css`. AdminUserDetailsPage keeps its own sectioned `.card`.
+- [x] Timeline cards: `components/timeline/timeline-card.css` holds the shared base (card box, hover, title row,
+  timestamp, subtitle, phone sizes, long-press touch rules). Each card includes it with
+  `<style scoped src="./timeline-card.css">` before its own block, which keeps only its colours and body styles.
+  Scoped on purpose: ShareLinksPage has an unrelated `.timeline-card` class.
+- [x] Empty states: `.gp-empty-state` (`-icon`, `-title`, `-message`) with `--compact` (dashboard cards) and
+  `--panel` (Friends tabs) in `components.css`. Moved: StaysTable, TripsTable, DataGapsTable (success colour kept
+  locally), PlaceVisitsTable, Favorites/Geocoding management, TechnicalDataPage (table and phone list),
+  TopPlacesContent, RouteAnalysisContent, FriendsListTab, InvitationsTab and FriendsMapTab. BaseCard's
+  `.gp-card .no-data-*` rules were deleted: they were scoped and BaseCard has no such elements (slot content carries
+  the parent's scope id), so they never matched.
+- [x] Stat tiles: no change. The tiles that repeat across pages already use `MetricItem` (TimelineReportsPage,
+  TechnicalDataPage); LocationAnalytics' `.stat-item` and the admin list-card stats are inline stats, not tiles; the
+  admin dashboard's four tiles are the only hand-rolled set and aren't repeated elsewhere.
+- [x] `.settings-panel`: defined once in `components.css`. The copies in `timeline-preferences/shared-styles.css`
+  (loaded only with those tabs) and UserProfilePage's `:deep()` are gone.
 
 **Check in the UI:**
-- the tables;
-- the admin pages;
-- the timeline sidebar cards;
-- the management pages' headers.
+- Tables (Timeline data tables, Place visits, Technical data, Favorites, Geocoding) in both modes:
+  - dark header and header cells are slate-900, rows card-coloured, hover slate-700 — as before;
+  - selected rows use a soft primary tint with normal text in both modes (light primary-50, dark the
+    `--gp-primary-soft` tint) instead of solid blue with white text; in dark mode they now show at all (the old
+    `tr { background: … !important }` hid the selection);
+  - light Place-visits rows now hover (the other tables already did);
+  - dark paginators in Place visits, Favorites and Geocoding are card-coloured, as in light mode; Technical data's
+    paginator keeps the header colour in both modes, and its dark page buttons lose the extra borders.
+- Page headers (Profile, Timeline preferences, Data export/import, Debug export/import, Help, Share links, Location
+  sources, Timeline jobs, AI chat, Notifications, all admin pages): title 1.75rem/700 (was 2rem/600 on the app
+  pages), subtitle 1rem, 1rem gap below the header (was 2rem on the app pages, 1.5rem on admin), same as pages that
+  use PageContainer's `title` prop. On phones the actions stack under the title.
+- Admin pages: same padding and breadcrumb spacing everywhere (Campaigns and User details used their own); content
+  cards gain a 1px border and the card shadow token (the Campaigns table card had no styling at all before); phone
+  list cards use the card shadow token, and only the user cards scale on tap.
+- Timeline sidebar cards look unchanged; the data-gap cards now also suppress text selection on long press.
+- Empty states: the four timeline/place tables and Favorites/Geocoding/Technical data look the same apart from a
+  slightly smaller title (1.1rem) on the management pages; the dashboard card and Friends empty states are unchanged.
 
 ### Phase 6: Maps and JS colours
 - [ ] Popup CSS (mapPopup, rawGpsPointPopup, mapPopupContent) gets shared `--gp-map-popup-*` tokens and is
@@ -408,6 +450,14 @@ Check each in light, dark and system mode (switch the OS theme on an open page);
   non-destructive confirms.
 - Phase 2, tabs: nothing in the preset. The app doesn't use PrimeVue TabMenu or Tabs; `TabContainer.vue` renders
   its own markup with `p-tabmenu-*` class names and styles it with tokens that already flip.
+- Phase 5: no `.gp-data-table` class. Nothing table-specific remained once the dark blocks were checked against the
+  preset.
+- Phase 5: page headers are shared classes rather than PageContainer props, because most of these pages put the
+  header inside their own width-limited wrapper; moving it into PageContainer's header would change the layout.
+- Phase 5: DataTable selected rows use a soft tint (preset `datatable.row.selected*`), not the solid app highlight.
+  Cells keep their own colours (muted dates, primary durations, outlined buttons), which were unreadable on solid
+  blue. Other highlights (selected list option, selected date) stay solid.
+- Phase 5: dark-only row hover became PrimeVue's `rowHover` in both modes (only PlaceVisitsTable needed it).
 - Phase 2, toasts: Aura's severity colours (proper dark variants) instead of the old soft background with a solid
   border in light and card background in dark. The confirm dialog's light restyle (dividers, custom paddings,
   1.125rem title, all non-outlined buttons forced to primary) was dropped, as planned: tokens can't express it.

@@ -463,7 +463,6 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .backup-files-table :deep(.p-datatable-wrapper) { overflow-x: hidden; }
   .backup-files-table :deep(.p-datatable-table) {
     width: 100%;
     min-width: 0;

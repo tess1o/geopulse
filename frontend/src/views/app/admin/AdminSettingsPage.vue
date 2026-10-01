@@ -1,15 +1,15 @@
 <template>
   <AppLayout>
-    <div class="admin-settings">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div class="header-content">
-          <div class="header-text">
-            <h1>{{ t('admin.settingsPage.title') }}</h1>
-            <p class="text-muted">{{ t('admin.settingsPage.subtitle') }}</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.settingsPage.title') }}</h1>
+            <p class="gp-page-subtitle">{{ t('admin.settingsPage.subtitle') }}</p>
           </div>
-          <div class="header-actions">
+          <div class="gp-page-actions">
             <SettingsSearchTrigger
               page-key="admin"
               :placeholder="t('admin.settingsPage.searchPlaceholder')"
@@ -237,42 +237,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-settings {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  margin-bottom: 1.5rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
-.text-muted {
-  color: var(--gp-text-secondary);
-}
-
-.header-actions {
-  flex-shrink: 0;
-}
-
 .settings-layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; }
 .settings-nav { display: grid; align-content: start; gap: 1rem; }
 .settings-nav-group { display: grid; gap: .25rem; }
@@ -285,33 +249,6 @@ onMounted(() => {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-settings {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .header-content {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .header-actions {
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-  }
-
   .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
   .settings-nav { display: none; }
   .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; }
@@ -348,14 +285,6 @@ onMounted(() => {
 
 /* Extra small screens */
 @media (max-width: 480px) {
-  .admin-settings {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
   .settings-tabs :deep(.tab-menu-item) {
     font-size: 0.8rem;
     padding: 0.4rem 0.75rem;

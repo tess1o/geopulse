@@ -200,10 +200,10 @@
         </template>
 
         <template #empty>
-          <div class="empty-state">
-            <i class="pi pi-map-marker empty-icon"></i>
-            <h3>{{ t('geocoding.page.table.emptyTitle') }}</h3>
-            <p>{{ t('geocoding.page.table.emptyDescription') }}</p>
+          <div class="gp-empty-state">
+            <i class="pi pi-map-marker gp-empty-state-icon"></i>
+            <h3 class="gp-empty-state-title">{{ t('geocoding.page.table.emptyTitle') }}</h3>
+            <p class="gp-empty-state-message">{{ t('geocoding.page.table.emptyDescription') }}</p>
           </div>
         </template>
 
@@ -1244,12 +1244,6 @@ watch(() => jobProgress.value?.status, async (status) => {
   width: 100%;
 }
 
-.geocoding-table :deep(.p-datatable-wrapper) {
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-}
-
 /* Table Columns - Fixed Widths */
 .geocoding-table :deep(.selection-col) {
   width: 3rem;
@@ -1312,31 +1306,6 @@ watch(() => jobProgress.value?.status, async (status) => {
 
 .provider-tag {
   font-size: 0.75rem;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-lg);
-  display: block;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-state p {
-  color: var(--gp-text-muted);
-  margin: 0;
 }
 
 /* Actions Column */
@@ -1546,41 +1515,4 @@ watch(() => jobProgress.value?.status, async (status) => {
   }
 }
 
-/* Dark Mode */
-.p-dark .geocoding-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-card) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-muted) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-card) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-paginator) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
 </style>

@@ -127,12 +127,12 @@
     </Card>
 
     <!-- Empty State for Invites -->
-    <div v-if="!receivedInvites?.length && !sentInvites?.length" class="empty-state">
-      <div class="empty-icon">
+    <div v-if="!receivedInvites?.length && !sentInvites?.length" class="gp-empty-state gp-empty-state--panel">
+      <div class="gp-empty-state-icon">
         <i class="pi pi-envelope"></i>
       </div>
-      <h3 class="empty-title">{{ t('friends.invitationsTab.empty.title') }}</h3>
-      <p class="empty-description">
+      <h3 class="gp-empty-state-title">{{ t('friends.invitationsTab.empty.title') }}</h3>
+      <p class="gp-empty-state-message">
         {{ t('friends.invitationsTab.empty.description') }}
       </p>
     </div>
@@ -276,47 +276,6 @@ const formatDate = (dateString) => {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 3rem 1rem;
-  background: var(--gp-surface-muted);
-  border-radius: var(--gp-radius-large);
-  margin: 2rem 0;
-}
-
-.empty-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 4rem;
-  height: 4rem;
-  background: var(--gp-primary-light);
-  color: var(--gp-primary);
-  border-radius: 50%;
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-description {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 1.5rem 0;
-  max-width: 400px;
-  line-height: 1.5;
 }
 
 /* Responsive Design */

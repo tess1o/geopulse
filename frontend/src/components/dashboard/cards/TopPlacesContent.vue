@@ -1,10 +1,10 @@
 <template>
   <!-- No Data State -->
-  <div v-if="noDataAvailable" class="no-data-container">
-    <div class="no-data-content">
-      <i class="pi pi-map-marker no-data-icon"></i>
-      <h3 class="no-data-title">{{ t('ui.dashboard.topPlaces.noDataTitle') }}</h3>
-      <p class="no-data-message">
+  <div v-if="noDataAvailable" class="gp-empty-state gp-empty-state--compact">
+    <div>
+      <i class="pi pi-map-marker gp-empty-state-icon"></i>
+      <h3 class="gp-empty-state-title">{{ t('ui.dashboard.topPlaces.noDataTitle') }}</h3>
+      <p class="gp-empty-state-message">
         {{ t('ui.dashboard.topPlaces.noDataMessage') }}
       </p>
     </div>
@@ -182,41 +182,6 @@ const closeMapPopup = () => {
 .place-duration {
   color: var(--gp-text-secondary);
   font-weight: 500;
-}
-
-/* No Data State */
-.no-data-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  padding: var(--gp-spacing-lg);
-}
-
-.no-data-content {
-  text-align: center;
-}
-
-.no-data-icon {
-  font-size: 2rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-md);
-  display: block;
-}
-
-.no-data-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-sm);
-}
-
-.no-data-message {
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-  margin: 0;
-  max-width: 250px;
-  line-height: 1.4;
 }
 
 /* Responsive adjustments */

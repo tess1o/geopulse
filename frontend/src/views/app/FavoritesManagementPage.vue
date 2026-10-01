@@ -158,10 +158,10 @@
           </template>
 
           <template #empty>
-            <div class="empty-state">
-              <i class="pi pi-map-marker empty-icon"></i>
-              <h3>{{ t('sharing.favorites.managementPage.empty.title') }}</h3>
-              <p>{{ t('sharing.favorites.managementPage.empty.message') }}</p>
+            <div class="gp-empty-state">
+              <i class="pi pi-map-marker gp-empty-state-icon"></i>
+              <h3 class="gp-empty-state-title">{{ t('sharing.favorites.managementPage.empty.title') }}</h3>
+              <p class="gp-empty-state-message">{{ t('sharing.favorites.managementPage.empty.message') }}</p>
             </div>
           </template>
 
@@ -1521,31 +1521,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-lg);
-  display: block;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-state p {
-  color: var(--gp-text-muted);
-  margin: 0;
-}
-
 /* Actions Column */
 .actions-buttons {
   display: flex;
@@ -1667,43 +1642,6 @@ onUnmounted(() => {
   }
 }
 
-/* Dark Mode */
-.p-dark .favorites-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-card) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-muted) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-card) !important;
-}
-
-.p-dark .favorites-table :deep(.p-paginator) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
 </style>
 
 <style>

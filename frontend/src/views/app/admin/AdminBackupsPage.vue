@@ -1,11 +1,15 @@
 <template>
   <AppLayout>
-    <div class="admin-backups">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
-      <div class="page-header">
-        <h1>{{ t('admin.backupsPage.title') }}</h1>
-        <p class="text-muted">{{ t('admin.backupsPage.subtitle') }}</p>
-        <a href="https://geopulse.cc/docs/system-administration/maintenance/backup-restore#encrypted-full-backups-from-the-admin-ui" target="_blank" rel="noopener noreferrer" class="documentation-link">{{ t('admin.backupsPage.learnMore') }} <i class="pi pi-external-link" /></a>
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.backupsPage.title') }}</h1>
+            <p class="gp-page-subtitle">{{ t('admin.backupsPage.subtitle') }}</p>
+            <a href="https://geopulse.cc/docs/system-administration/maintenance/backup-restore#encrypted-full-backups-from-the-admin-ui" target="_blank" rel="noopener noreferrer" class="documentation-link">{{ t('admin.backupsPage.learnMore') }} <i class="pi pi-external-link" /></a>
+          </div>
+        </div>
       </div>
       <DemoReadOnlyBanner />
       <AdminSettingsBackupTab />
@@ -32,11 +36,6 @@ const breadcrumbItems = computed(() => [
 </script>
 
 <style scoped>
-.admin-backups { padding: 1.5rem; }
-.admin-breadcrumb { margin-bottom: 1.5rem; }
-.page-header { margin-bottom: 1.5rem; }
-.page-header h1 { margin: 0; font-size: 1.75rem; }
-.text-muted { color: var(--gp-text-secondary); }
 .documentation-link { display: inline-block; margin-top: .5rem; }
-@media (max-width: 768px) { .admin-backups { padding: .75rem; } }
+
 </style>

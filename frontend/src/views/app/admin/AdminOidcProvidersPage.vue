@@ -1,27 +1,31 @@
 <template>
   <AppLayout>
     <PageContainer>
-    <div class="admin-oidc-providers">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>{{ t('admin.dashboardPage.oidcProviders') }}</h1>
-          <p class="text-muted">{{ t('adminAuditInvitations.oidcProvidersPage.subtitle') }}</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.dashboardPage.oidcProviders') }}</h1>
+            <p class="gp-page-subtitle">{{ t('adminAuditInvitations.oidcProvidersPage.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <Button
+              :label="t('adminAuditInvitations.oidcProvidersPage.addProvider')"
+              icon="pi pi-plus"
+              @click="openCreateDialog"
+              class="add-provider-button"
+              :disabled="adminReadOnly"
+            />
+          </div>
         </div>
-        <Button
-          :label="t('adminAuditInvitations.oidcProvidersPage.addProvider')"
-          icon="pi pi-plus"
-          @click="openCreateDialog"
-          class="add-provider-button"
-          :disabled="adminReadOnly"
-        />
       </div>
 
       <DemoReadOnlyBanner />
 
       <!-- Desktop Table View -->
-      <div class="card desktop-only">
+      <div class="gp-admin-card desktop-only">
         <DataTable
           :value="providers"
           :loading="loading"
@@ -133,13 +137,13 @@
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
 
-        <div v-else-if="providers.length === 0" class="text-center p-4 card">
+        <div v-else-if="providers.length === 0" class="text-center p-4 gp-admin-card">
           {{ t('adminAuditInvitations.oidcProvidersPage.table.empty') }}
         </div>
 
-        <div v-else class="provider-cards">
-          <div v-for="provider in providers" :key="provider.name" class="provider-card">
-            <div class="provider-card-header">
+        <div v-else class="gp-admin-list">
+          <div v-for="provider in providers" :key="provider.name" class="gp-admin-list-card">
+            <div class="gp-admin-list-card-header">
               <div class="provider-info">
                 <div class="provider-name">
                   <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" custom-class="provider-icon" />
@@ -152,7 +156,7 @@
               </div>
             </div>
 
-            <div class="provider-card-body">
+            <div class="gp-admin-list-card-body">
               <div class="provider-stat">
                 <span class="stat-label">{{ t('adminAuditInvitations.oidcProvidersPage.table.columns.source') }}</span>
                 <Tag
@@ -174,7 +178,7 @@
               <code class="client-id-value">{{ provider.clientId }}</code>
             </div>
 
-            <div class="provider-card-actions">
+            <div class="gp-admin-list-card-actions provider-card-actions">
               <Button
                 icon="pi pi-pencil"
                 :label="t('adminAuditInvitations.oidcProvidersPage.mobile.edit')"
@@ -596,39 +600,6 @@ onMounted(() => {
   color: var(--gp-danger-text);
 }
 
-.admin-oidc-providers {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  gap: 1rem;
-}
-
-.page-header h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  color: var(--gp-text-primary);
-}
-
-.text-muted {
-  color: var(--gp-text-secondary);
-}
-
-.card {
-  background: var(--gp-surface-card);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
 code {
   background-color: var(--gp-surface-muted);
   padding: 0.25rem 0.5rem;
@@ -719,39 +690,6 @@ code {
   display: none;
 }
 
-/* Mobile Provider Cards */
-.provider-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.provider-card {
-  background: var(--gp-surface-card);
-  border: 2px solid var(--gp-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-
-.provider-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.provider-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
-}
-
 .provider-info {
   flex: 1;
   min-width: 0;
@@ -782,14 +720,6 @@ code {
   flex-direction: column;
   gap: 0.25rem;
   align-items: flex-end;
-}
-
-.provider-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--gp-border);
 }
 
 .provider-stat {
@@ -833,29 +763,6 @@ code {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-oidc-providers {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .page-header p {
-    margin: 0.25rem 0 0 0;
-  }
-
   .add-provider-button {
     width: 100%;
   }
@@ -868,27 +775,6 @@ code {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-oidc-providers {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .provider-card {
-    padding: 0.75rem;
-  }
-
-  .provider-card-body {
-    gap: 1rem;
-  }
-}
 </style>

@@ -1,21 +1,25 @@
 <template>
   <AppLayout>
-    <div class="admin-users">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>{{ t('admin.usersPage.title') }}</h1>
-          <p class="text-muted">{{ t('admin.usersPage.subtitle') }}</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.usersPage.title') }}</h1>
+            <p class="gp-page-subtitle">{{ t('admin.usersPage.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <router-link to="/app/admin/invitations" class="no-underline">
+              <Button
+                :label="t('admin.usersPage.userInvitations')"
+                icon="pi pi-send"
+                severity="secondary"
+                outlined
+              />
+            </router-link>
+          </div>
         </div>
-        <router-link to="/app/admin/invitations" class="no-underline">
-          <Button
-            :label="t('admin.usersPage.userInvitations')"
-            icon="pi pi-send"
-            severity="secondary"
-            outlined
-          />
-        </router-link>
       </div>
 
       <DemoReadOnlyBanner />
@@ -31,7 +35,7 @@
     </div>
 
     <!-- Desktop Table View -->
-    <div class="card desktop-only">
+    <div class="gp-admin-card desktop-only">
       <DataTable
         :value="users"
         :loading="loading"
@@ -128,13 +132,13 @@
         <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
       </div>
 
-      <div v-else-if="users.length === 0" class="text-center p-4 card">
+      <div v-else-if="users.length === 0" class="text-center p-4 gp-admin-card">
         {{ t('admin.usersPage.noUsersFound') }}
       </div>
 
-      <div v-else class="user-cards">
-        <div v-for="user in users" :key="user.id" class="user-card" @click="viewUser(user)">
-          <div class="user-card-header">
+      <div v-else class="gp-admin-list">
+        <div v-for="user in users" :key="user.id" class="gp-admin-list-card gp-admin-list-card--interactive" @click="viewUser(user)">
+          <div class="gp-admin-list-card-header">
             <div class="user-info">
               <div class="user-email">{{ user.email }}</div>
               <div class="user-name">{{ user.fullName }}</div>
@@ -145,7 +149,7 @@
             </div>
           </div>
 
-          <div class="user-card-body">
+          <div class="gp-admin-list-card-body">
             <div class="user-stat">
               <span class="stat-label">{{ t('admin.usersPage.columnGpsPoints') }}</span>
               <span class="stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
@@ -156,7 +160,7 @@
             </div>
           </div>
 
-          <div class="user-card-actions" @click.stop>
+          <div class="gp-admin-list-card-actions user-card-actions" @click.stop>
             <Button
               icon="pi pi-eye"
               rounded
@@ -464,39 +468,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-users {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
 .no-underline {
   text-decoration: none;
-}
-
-.card {
-  background: var(--gp-surface-card);
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-}
-
-.text-muted {
-  color: var(--gp-text-secondary);
 }
 
 /* Search Container */
@@ -511,40 +484,6 @@ onMounted(() => {
 
 .mobile-only {
   display: none;
-}
-
-/* Mobile User Cards */
-.user-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.user-card {
-  background: var(--gp-surface-card);
-  border: 2px solid var(--gp-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-
-.user-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.user-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
 }
 
 .user-info {
@@ -571,14 +510,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   align-items: flex-end;
-}
-
-.user-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--gp-border);
 }
 
 .user-stat {
@@ -626,29 +557,6 @@ onMounted(() => {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-users {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .page-header p {
-    margin: 0.25rem 0 0 0;
-  }
-
   .search-container {
     margin-bottom: 0.75rem;
   }
@@ -661,27 +569,6 @@ onMounted(() => {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-users {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .user-card {
-    padding: 0.75rem;
-  }
-
-  .user-card-body {
-    gap: 1rem;
-  }
-}
 </style>

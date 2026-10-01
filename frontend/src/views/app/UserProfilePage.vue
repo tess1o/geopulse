@@ -3,16 +3,16 @@
     <PageContainer>
       <div class="user-profile-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('profile.page.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('profile.page.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('profile.page.description') }}
               </p>
               <p v-if="activeTab === 'general'" class="account-context">{{ t('profile.page.signedInAs', { email: userEmail }) }}</p>
             </div>
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <SettingsSearchTrigger
                 page-key="profile"
                 :placeholder="t('profile.searchPlaceholder')"
@@ -706,40 +706,6 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.header-actions {
-  flex-shrink: 0;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
 .account-context { margin: .35rem 0 0; color: var(--gp-text-secondary); font-size: .9rem; }
 
 /* Profile Content */
@@ -845,15 +811,6 @@ onUnmounted(() => {
   gap: var(--gp-spacing-lg);
 }
 
-:deep(.settings-panel) {
-  min-width: 0;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--gp-surface-card) 65%, var(--gp-surface-muted));
-  border: 1px solid var(--gp-border-medium);
-  border-radius: var(--gp-radius-large);
-  box-shadow: var(--gp-shadow-subtle);
-}
-
 :deep(.field-control) {
   display: flex;
   flex-direction: column;
@@ -920,25 +877,7 @@ onUnmounted(() => {
     box-sizing: border-box;
   }
 
-  .page-header {
-    padding: 0 1rem;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .header-content {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .header-actions {
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-  }
-
+  .gp-page-header { padding: 0 1rem; }
   .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
   .settings-nav { display: none; }
   .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; padding: 0 1rem; }
@@ -973,19 +912,6 @@ onUnmounted(() => {
     padding: 0;
     max-width: 100%;
     box-sizing: border-box;
-  }
-
-  .page-header {
-    margin-bottom: 1.5rem;
-    padding: 0 1rem;
-  }
-
-  .page-title {
-    font-size: 1.3rem;
-  }
-
-  .page-description {
-    font-size: 1rem;
   }
 
   :deep(.profile-section-card .p-card-body) {

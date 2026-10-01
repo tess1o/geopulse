@@ -215,46 +215,19 @@ const formattedEndTime = computed(() => {
 })
 </script>
 
-<style scoped>
-.timeline-card {
-  margin-top: var(--gp-spacing-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  overflow: hidden;
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
+<style scoped src="./timeline-card.css"></style>
 
+<style scoped>
 /* Mobile optimizations */
 @media (max-width: 768px) {
-  .timeline-card {
-    margin-top: var(--gp-spacing-sm);
-    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-  }
-  
-  .timeline-timestamp {
-    font-size: 0.875rem;
-  }
-  
-  .timeline-subtitle {
-    margin: var(--gp-spacing-xs) 0 0 0;
-    font-size: 0.875rem;
-  }
-  
   .data-gap-content {
     margin-top: var(--gp-spacing-xs);
   }
-  
+
   .gap-detail {
     margin: 2px 0;
     font-size: 0.8rem;
   }
-}
-
-.timeline-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-medium);
 }
 
 .timeline-card--data-gap {
@@ -264,37 +237,11 @@ const formattedEndTime = computed(() => {
 
 .timeline-timestamp {
   color: var(--gp-warning);
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin: 0;
-  line-height: 1.2;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.timeline-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-  flex-wrap: wrap;
-}
-
-.timeline-title-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .timeline-subtitle {
-  margin: var(--gp-spacing-xs) 0 0 0;
   color: var(--gp-warning);
-  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.3;
 }
 
 .data-gap-content {

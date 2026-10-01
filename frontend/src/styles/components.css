@@ -136,6 +136,314 @@
     .gp-info { color: var(--gp-info); }
 
     /* ================================
+         PAGE HEADER
+       ================================ */
+
+    /* Title, subtitle and actions at the top of a page. PageContainer renders this for its `title`/`subtitle`
+       props and `#actions` slot; pages that build the header themselves use the same classes:
+       .gp-page-header > .gp-page-header-content > (.gp-page-header-text > .gp-page-title + .gp-page-subtitle)
+       + .gp-page-actions */
+    .gp-page-header {
+        flex-shrink: 0;
+        margin-bottom: var(--gp-spacing-lg);
+    }
+
+    .gp-page-header-content {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--gp-spacing-lg);
+    }
+
+    .gp-page-header-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .gp-page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--gp-text-primary);
+        margin: 0 0 var(--gp-spacing-sm);
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        hyphens: auto;
+    }
+
+    .gp-page-subtitle {
+        font-size: 1rem;
+        color: var(--gp-text-secondary);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .gp-page-actions {
+        display: flex;
+        gap: var(--gp-spacing-md);
+        align-items: flex-start;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 1024px) {
+        .gp-page-title {
+            font-size: 1.5rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .gp-page-header-content {
+            flex-direction: column;
+            align-items: stretch;
+            gap: var(--gp-spacing-md);
+        }
+
+        .gp-page-actions {
+            justify-content: flex-start;
+        }
+
+        .gp-page-title {
+            font-size: 1.375rem;
+        }
+
+        .gp-page-subtitle {
+            font-size: 0.875rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .gp-page-header {
+            margin-bottom: var(--gp-spacing-md);
+        }
+
+        .gp-page-title {
+            font-size: 1.25rem;
+        }
+
+        .gp-page-actions {
+            flex-direction: column;
+            gap: var(--gp-spacing-sm);
+        }
+    }
+
+    @media print {
+        .gp-page-actions {
+            display: none;
+        }
+    }
+
+    /* ================================
+         ADMIN PAGES
+       ================================ */
+
+    /* Page wrapper, breadcrumb, content card and the phone list cards shared by the admin pages. A list card is
+       .gp-admin-list-card > .gp-admin-list-card-header + .gp-admin-list-card-body + .gp-admin-list-card-actions,
+       inside a .gp-admin-list. */
+    .gp-admin-page {
+        padding: 1.5rem;
+    }
+
+    .gp-admin-breadcrumb {
+        margin-bottom: 1.5rem;
+    }
+
+    .gp-admin-card {
+        background: var(--gp-surface-card);
+        border: 1px solid var(--gp-border);
+        border-radius: var(--gp-radius-medium);
+        box-shadow: var(--gp-shadow-card);
+        padding: 1rem;
+    }
+
+    .gp-admin-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+
+    .gp-admin-list-card {
+        background: var(--gp-surface-card);
+        border: 2px solid var(--gp-border);
+        border-radius: var(--gp-radius-large);
+        padding: 1.25rem;
+        box-shadow: var(--gp-shadow-card);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .gp-admin-list-card--interactive {
+        cursor: pointer;
+    }
+
+    .gp-admin-list-card--interactive:active {
+        transform: scale(0.98);
+    }
+
+    .gp-admin-list-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .gp-admin-list-card-body {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--gp-border);
+    }
+
+    .gp-admin-list-card-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--gp-border);
+    }
+
+    @media (max-width: 768px) {
+        .gp-admin-page {
+            padding: 0.75rem;
+        }
+
+        .gp-admin-breadcrumb {
+            margin-bottom: 0.75rem;
+        }
+
+        .gp-admin-card {
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .gp-admin-page {
+            padding: 0.5rem;
+        }
+
+        .gp-admin-list-card {
+            padding: 0.75rem;
+        }
+
+        .gp-admin-list-card-body {
+            gap: 1rem;
+        }
+    }
+
+    /* ================================
+         SETTINGS PANEL
+       ================================ */
+
+    /* A group of settings rows on the profile and timeline-preferences tabs. */
+    .settings-panel {
+        min-width: 0;
+        overflow: hidden;
+        background: color-mix(in srgb, var(--gp-surface-card) 65%, var(--gp-surface-muted));
+        border: 1px solid var(--gp-border-medium);
+        border-radius: var(--gp-radius-large);
+        box-shadow: var(--gp-shadow-subtle);
+    }
+
+    /* ================================
+         EMPTY STATE
+       ================================ */
+
+    /* "Nothing here yet" block: .gp-empty-state > .gp-empty-state-icon + .gp-empty-state-title
+       + .gp-empty-state-message. The compact variant fits inside a dashboard card. */
+    .gp-empty-state {
+        text-align: center;
+        padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
+        color: var(--gp-text-secondary);
+    }
+
+    .gp-empty-state-icon {
+        display: block;
+        font-size: 3rem;
+        color: var(--gp-text-muted);
+        margin-bottom: var(--gp-spacing-md);
+    }
+
+    .gp-empty-state-title {
+        margin: 0 0 var(--gp-spacing-sm);
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--gp-text-secondary);
+    }
+
+    .gp-empty-state-message {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--gp-text-muted);
+    }
+
+    .gp-empty-state--compact {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
+        padding: var(--gp-spacing-lg);
+    }
+
+    .gp-empty-state--compact .gp-empty-state-icon {
+        font-size: 2rem;
+    }
+
+    .gp-empty-state--compact .gp-empty-state-title {
+        font-size: 1rem;
+    }
+
+    .gp-empty-state--compact .gp-empty-state-message {
+        max-width: 250px;
+        line-height: 1.4;
+    }
+
+    /* Panel variant: a tinted block with the icon in a circle (Friends tabs). */
+    .gp-empty-state--panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        margin: 2rem 0;
+        background: var(--gp-surface-muted);
+        border-radius: var(--gp-radius-large);
+    }
+
+    .gp-empty-state--panel .gp-empty-state-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 4rem;
+        height: 4rem;
+        margin-bottom: 1rem;
+        border-radius: 50%;
+        background: var(--gp-primary-light);
+        color: var(--gp-primary);
+        font-size: 2rem;
+    }
+
+    .gp-empty-state--panel .gp-empty-state-title {
+        font-size: 1.25rem;
+        color: var(--gp-text-primary);
+    }
+
+    .gp-empty-state--panel .gp-empty-state-message {
+        max-width: 400px;
+        margin-bottom: 1.5rem;
+        font-size: 1rem;
+        color: var(--gp-text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .gp-empty-state:not(.gp-empty-state--compact, .gp-empty-state--panel) {
+            padding: var(--gp-spacing-xl) var(--gp-spacing-md);
+        }
+    }
+
+    /* ================================
          DEMO / READ-ONLY NOTICES
        ================================ */
 

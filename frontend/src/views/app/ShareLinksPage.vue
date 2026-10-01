@@ -4,16 +4,15 @@
       <div class="share-links-page">
 
         <!-- Page Header -->
-        <div class="page-header" v-if="shareLinksStore.links.length !== 0 || shareLinksStore.isLoading">
-          <!--          <div class="page-header">-->
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('sharing.shareLinksPage.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header" v-if="shareLinksStore.links.length !== 0 || shareLinksStore.isLoading">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('sharing.shareLinksPage.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('sharing.shareLinksPage.description') }}
               </p>
             </div>
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <Button
                   :label="t('sharing.shareLinksPage.createNew')"
                   icon="pi pi-plus"
@@ -1051,41 +1050,6 @@ onMounted(async () => {
   padding: 0;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: var(--gp-text-primary);
-}
-
-.page-description {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .create-link-btn {
   white-space: nowrap;
 }
@@ -1442,11 +1406,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .share-type-section {
     padding: 1rem;
     margin-bottom: 2rem;

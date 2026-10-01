@@ -2,28 +2,30 @@
   <AppLayout>
     <PageContainer>
       <div class="notifications-page">
-        <div class="page-header">
-          <div>
-            <h1>{{ t('notifications.page.title') }}</h1>
-            <p>{{ t('notifications.page.description') }}</p>
-          </div>
-          <div class="page-actions">
-            <Button
-              :label="t('notifications.page.refresh')"
-              icon="pi pi-refresh"
-              severity="secondary"
-              outlined
-              :loading="loading"
-              @click="loadNotifications"
-            />
-            <Button
-              :label="t('notifications.page.markAllSeen')"
-              icon="pi pi-check"
-              severity="secondary"
-              outlined
-              :disabled="unreadCount === 0"
-              @click="markAllSeen"
-            />
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('notifications.page.title') }}</h1>
+              <p class="gp-page-subtitle">{{ t('notifications.page.description') }}</p>
+            </div>
+            <div class="gp-page-actions">
+              <Button
+                :label="t('notifications.page.refresh')"
+                icon="pi pi-refresh"
+                severity="secondary"
+                outlined
+                :loading="loading"
+                @click="loadNotifications"
+              />
+              <Button
+                :label="t('notifications.page.markAllSeen')"
+                icon="pi pi-check"
+                severity="secondary"
+                outlined
+                :disabled="unreadCount === 0"
+                @click="markAllSeen"
+              />
+            </div>
           </div>
         </div>
 
@@ -362,25 +364,12 @@ onMounted(() => {
   width: 100%;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+/* The page is a flex column with its own gap. */
+.gp-page-header {
+  margin-bottom: 0;
 }
 
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  color: var(--gp-text-primary);
-}
-
-.page-header p {
-  margin: 0.35rem 0 0;
-  color: var(--gp-text-secondary);
-}
-
-.page-actions,
+.gp-page-actions,
 .notification-filters,
 .seen-filters,
 .table-actions,
@@ -391,7 +380,7 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.page-actions {
+.gp-page-actions {
   justify-content: flex-end;
 }
 
@@ -505,16 +494,12 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-  }
-
-  .page-actions,
+  .gp-page-actions,
   .notification-filters {
     width: 100%;
   }
 
-  .page-actions :deep(.p-button),
+  .gp-page-actions :deep(.p-button),
   .source-filter {
     flex: 1;
   }

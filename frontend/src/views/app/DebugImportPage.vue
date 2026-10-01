@@ -3,11 +3,11 @@
     <PageContainer>
       <div class="debug-import-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('data.debugImport.pageTitle') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('data.debugImport.pageTitle') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('data.debugImport.pageDescription') }}
               </p>
             </div>
@@ -292,23 +292,6 @@ const importData = async () => {
   padding: 2rem 0;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content .header-text .page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.header-content .header-text .page-description {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-}
-
 .warning-banner {
   margin-bottom: 2rem;
   border-left: 4px solid var(--p-orange-500);
@@ -546,10 +529,6 @@ const importData = async () => {
 @media (max-width: 768px) {
   .debug-import-page {
     padding: 1rem 0;
-  }
-
-  .page-header .header-text .page-title {
-    font-size: 1.5rem;
   }
 
   .upload-area {

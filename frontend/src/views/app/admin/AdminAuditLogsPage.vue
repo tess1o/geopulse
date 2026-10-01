@@ -1,17 +1,19 @@
 <template>
   <AppLayout>
-    <div class="admin-audit-logs">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>{{ t('admin.dashboardPage.auditLogs') }}</h1>
-          <p class="text-muted">{{ t('adminAuditInvitations.auditLogsPage.subtitle') }}</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.dashboardPage.auditLogs') }}</h1>
+            <p class="gp-page-subtitle">{{ t('adminAuditInvitations.auditLogsPage.subtitle') }}</p>
+          </div>
         </div>
       </div>
 
       <!-- Filters Card -->
-      <div class="card filters-card">
+      <div class="gp-admin-card filters-card">
         <div class="filters-grid">
           <div class="filter-field">
             <label for="dateRange">{{ t('adminAuditInvitations.auditLogsPage.filters.dateRangeLabel') }}</label>
@@ -83,7 +85,7 @@
       </div>
 
       <!-- Desktop Table View -->
-      <div class="card desktop-only">
+      <div class="gp-admin-card desktop-only">
         <DataTable
           :value="auditLogs"
           :loading="loading"
@@ -183,13 +185,13 @@
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
 
-        <div v-else-if="auditLogs.length === 0" class="text-center p-4 card">
+        <div v-else-if="auditLogs.length === 0" class="text-center p-4 gp-admin-card">
           {{ t('adminAuditInvitations.auditLogsPage.table.empty') }}
         </div>
 
-        <div v-else class="audit-cards">
-          <div v-for="log in auditLogs" :key="log.id" class="audit-card">
-            <div class="audit-card-header">
+        <div v-else class="gp-admin-list">
+          <div v-for="log in auditLogs" :key="log.id" class="gp-admin-list-card">
+            <div class="gp-admin-list-card-header">
               <div class="audit-info">
                 <div class="audit-action">
                   <i :class="getActionIcon(log.actionType)" :style="{ color: getActionColor(log.actionType) }"></i>
@@ -199,7 +201,7 @@
               </div>
             </div>
 
-            <div class="audit-card-body">
+            <div class="gp-admin-list-card-body">
               <div class="audit-stat">
                 <span class="stat-label">{{ t('adminAuditInvitations.auditLogsPage.table.columns.admin') }}</span>
                 <div class="stat-value">
@@ -554,33 +556,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-audit-logs {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
-.card {
-  background: var(--gp-surface-card);
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-}
-
 .filters-card {
   margin-bottom: 1.5rem;
 }
@@ -686,30 +661,6 @@ onMounted(() => {
   display: none;
 }
 
-/* Mobile Audit Cards */
-.audit-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.audit-card {
-  background: var(--gp-surface-card);
-  border: 2px solid var(--gp-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-
-.audit-card-header {
-  margin-bottom: 0.75rem;
-}
-
 .audit-info {
   display: flex;
   flex-direction: column;
@@ -726,14 +677,6 @@ onMounted(() => {
 .audit-timestamp {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
-}
-
-.audit-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--gp-border);
 }
 
 .audit-stat {
@@ -833,22 +776,6 @@ onMounted(() => {
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-audit-logs {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
   .filters-card {
     padding: 0.75rem;
     margin-bottom: 1rem;
@@ -871,27 +798,6 @@ onMounted(() => {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-audit-logs {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .audit-card {
-    padding: 0.75rem;
-  }
-
-  .audit-card-body {
-    gap: 1rem;
-  }
-}
 </style>

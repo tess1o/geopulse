@@ -226,10 +226,10 @@
     </div>
 
     <!-- No Data State -->
-    <div v-if="!loading && filteredStaysData.length === 0" class="no-data-state">
-      <i class="pi pi-map-marker no-data-icon"></i>
-      <h4 class="no-data-title">{{ t('data.tables.stays.noDataTitle') }}</h4>
-      <p class="no-data-message">
+    <div v-if="!loading && filteredStaysData.length === 0" class="gp-empty-state">
+      <i class="pi pi-map-marker gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('data.tables.stays.noDataTitle') }}</h4>
+      <p class="gp-empty-state-message">
         {{ t('data.tables.stays.noDataMessage') }}
       </p>
     </div>
@@ -668,31 +668,6 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
-.no-data-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl);
-  color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  opacity: 0.5;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .stays-table-card :deep(.gp-card-header) {
@@ -774,37 +749,4 @@ onUnmounted(() => {
   }
 }
 
-/* PrimeVue DataTable Dark Mode Styling */
-.p-dark .stays-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-card) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-muted) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-wrapper) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-  background: var(--gp-surface-card) !important;
-}
 </style>

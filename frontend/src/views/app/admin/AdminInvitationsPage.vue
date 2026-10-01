@@ -1,28 +1,30 @@
 <template>
   <AppLayout>
-    <div class="admin-invitations">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>{{ t('admin.dashboardPage.userInvitations') }}</h1>
-          <p class="text-muted">{{ t('adminAuditInvitations.invitationsPage.subtitle') }}</p>
-        </div>
-        <div class="header-actions">
-          <router-link to="/app/admin/users" class="no-underline">
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.dashboardPage.userInvitations') }}</h1>
+            <p class="gp-page-subtitle">{{ t('adminAuditInvitations.invitationsPage.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <router-link to="/app/admin/users" class="no-underline">
+              <Button
+                :label="t('admin.dashboardPage.manageUsers')"
+                icon="pi pi-users"
+                severity="secondary"
+                outlined
+              />
+            </router-link>
             <Button
-              :label="t('admin.dashboardPage.manageUsers')"
-              icon="pi pi-users"
-              severity="secondary"
-              outlined
+              :label="t('adminAuditInvitations.invitationsPage.createInvitation')"
+              icon="pi pi-plus"
+              @click="showCreateDialog = true"
+              :disabled="adminReadOnly"
             />
-          </router-link>
-          <Button
-            :label="t('adminAuditInvitations.invitationsPage.createInvitation')"
-            icon="pi pi-plus"
-            @click="showCreateDialog = true"
-            :disabled="adminReadOnly"
-          />
+          </div>
         </div>
       </div>
 
@@ -42,7 +44,7 @@
       </div>
 
       <!-- Desktop Table View -->
-      <div class="card desktop-only">
+      <div class="gp-admin-card desktop-only">
         <DataTable
           :value="invitations"
           :loading="loading"
@@ -132,13 +134,13 @@
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
 
-        <div v-else-if="invitations.length === 0" class="text-center p-4 card">
+        <div v-else-if="invitations.length === 0" class="text-center p-4 gp-admin-card">
           {{ t('adminAuditInvitations.invitationsPage.table.empty') }}
         </div>
 
-        <div v-else class="invitation-cards">
-          <div v-for="invitation in invitations" :key="invitation.id" class="invitation-card">
-            <div class="invitation-card-header">
+        <div v-else class="gp-admin-list">
+          <div v-for="invitation in invitations" :key="invitation.id" class="gp-admin-list-card">
+            <div class="gp-admin-list-card-header">
               <div class="invitation-info">
                 <div class="invitation-token">{{ invitation.token.substring(0, 16) }}...</div>
                 <div class="invitation-creator">{{ invitation.createdBy?.email || '-' }}</div>
@@ -146,7 +148,7 @@
               <Tag :severity="getStatusSeverity(invitation.status)" :value="getStatusLabel(invitation.status)" />
             </div>
 
-            <div class="invitation-card-body">
+            <div class="gp-admin-list-card-body">
               <div class="invitation-stat">
                 <span class="stat-label">{{ t('adminAuditInvitations.invitationsPage.table.columns.created') }}</span>
                 <span class="stat-value">{{ formatDateTime(invitation.createdAt) }}</span>
@@ -162,7 +164,7 @@
               <span>{{ t('adminAuditInvitations.invitationsPage.mobile.usedByPrefix', { value: getUsedByDisplay(invitation) }) }}</span>
             </div>
 
-            <div class="invitation-card-actions">
+            <div class="gp-admin-list-card-actions invitation-card-actions">
               <Button
                 icon="pi pi-copy"
                 :label="t('adminAuditInvitations.invitationsPage.mobile.copyLink')"
@@ -626,45 +628,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-invitations {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
 .no-underline {
   text-decoration: none;
-}
-
-.card {
-  background: var(--gp-surface-card);
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-}
-
-.text-muted {
-  color: var(--gp-text-secondary);
 }
 
 .font-mono {
@@ -759,39 +724,6 @@ onMounted(() => {
   display: none;
 }
 
-/* Mobile Invitation Cards */
-.invitation-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.invitation-card {
-  background: var(--gp-surface-card);
-  border: 2px solid var(--gp-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-
-.invitation-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.invitation-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
-}
-
 .invitation-info {
   flex: 1;
   min-width: 0;
@@ -810,14 +742,6 @@ onMounted(() => {
 .invitation-creator {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
-}
-
-.invitation-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--gp-border);
 }
 
 .invitation-stat {
@@ -882,40 +806,16 @@ onMounted(() => {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .admin-invitations {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .page-header p {
-    margin: 0.25rem 0 0 0;
-  }
-
-  .header-actions {
-    width: 100%;
+  .gp-page-actions {
     flex-direction: column;
   }
 
-  .header-actions .no-underline,
-  .header-actions > button {
+  .gp-page-actions .no-underline,
+  .gp-page-actions > button {
     width: 100%;
   }
 
-  .header-actions button {
+  .gp-page-actions button {
     width: 100%;
   }
 
@@ -931,10 +831,6 @@ onMounted(() => {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
-
   .invitation-link-container {
     flex-direction: column;
   }
@@ -948,22 +844,4 @@ onMounted(() => {
   }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-invitations {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .invitation-card {
-    padding: 0.75rem;
-  }
-
-  .invitation-card-body {
-    gap: 1rem;
-  }
-}
 </style>

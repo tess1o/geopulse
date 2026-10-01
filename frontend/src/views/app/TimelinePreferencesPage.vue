@@ -3,16 +3,16 @@
     <PageContainer>
       <div class="timeline-preferences-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('timelinePreferences.page.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('timelinePreferences.page.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('timelinePreferences.page.description') }}
               </p>
             </div>
 
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <SettingsSearchTrigger
                 class="timeline-search-trigger"
                 page-key="timeline"
@@ -1512,37 +1512,14 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; }
-.header-text { flex: 1; }
-.header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; flex-shrink: 0; }
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
 .toolbar-secondary-actions {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.header-actions :deep(.p-button),
-.header-actions :deep(.settings-search-trigger) {
+.gp-page-actions :deep(.p-button),
+.gp-page-actions :deep(.settings-search-trigger) {
   min-height: 3.1rem;
 }
 
@@ -1832,13 +1809,7 @@ onUnmounted(() => {
     max-width: 100%;
   }
 
-  .page-header { padding: 0 1rem; }
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .header-content { flex-direction: column; gap: .75rem; }
-  .header-actions { width: 100%; justify-content: flex-end; }
+  .gp-page-header { padding: 0 1rem; }
   .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
   .settings-nav { display: none; }
   .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; padding: 0 1rem; }
@@ -1884,22 +1855,9 @@ onUnmounted(() => {
     padding: 0;
     max-width: 100%;
   }
-  
-  .page-header {
-    margin-bottom: 1.5rem;
-  }
-  
-  .page-title {
-    font-size: 1.3rem;
-  }
-  
-  .page-description {
-    font-size: 1rem;
-  }
-  
-  .header-actions { align-items: stretch; }
-  .header-actions :deep(.p-button),
-  .header-actions :deep(.settings-search-trigger) {
+
+  .gp-page-actions :deep(.p-button),
+  .gp-page-actions :deep(.settings-search-trigger) {
     width: 100%;
     min-height: 48px;
     font-size: 0.95rem;

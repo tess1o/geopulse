@@ -138,13 +138,17 @@ const GeopulsePreset = definePreset(Aura, {
                 }
             }
         },
+        // Selected rows get a soft primary tint with normal text instead of the solid highlight: table cells carry
+        // their own colours (muted dates, primary durations, outlined action buttons) that don't read on solid blue.
+        // The dark tint matches --gp-primary-soft.
         datatable: {
             colorScheme: {
                 light: {
                     header: {background: '{surface.50}'},
                     headerCell: {background: '{surface.50}'},
                     footer: {background: '{surface.50}'},
-                    footerCell: {background: '{surface.50}'}
+                    footerCell: {background: '{surface.50}'},
+                    row: {selectedBackground: '{primary.50}', selectedColor: '{text.color}'}
                 },
                 dark: {
                     root: {borderColor: '{content.border.color}'},
@@ -152,7 +156,11 @@ const GeopulsePreset = definePreset(Aura, {
                     headerCell: {background: '{surface.900}'},
                     footer: {background: '{surface.900}'},
                     footerCell: {background: '{surface.900}'},
-                    row: {stripedBackground: '{surface.900}'}
+                    row: {
+                        stripedBackground: '{surface.900}',
+                        selectedBackground: 'rgba(59, 130, 246, 0.16)',
+                        selectedColor: '{text.color}'
+                    }
                 }
             }
         },

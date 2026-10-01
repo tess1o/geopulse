@@ -40,6 +40,7 @@
       :sortOrder="sortOrder"
       :class="['visits-data-table', { 'visits-data-table--navigable': enableTimelineNavigation }]"
       :rowClass="getRowClass"
+      rowHover
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
@@ -200,10 +201,10 @@
     </DataTable>
 
     <!-- No Data State -->
-    <div v-if="!loading && visits.length === 0" class="no-data-state">
-      <i class="pi pi-map-marker no-data-icon"></i>
-      <h4 class="no-data-title">{{ t('place.visitsTable.empty.title') }}</h4>
-      <p class="no-data-message">
+    <div v-if="!loading && visits.length === 0" class="gp-empty-state">
+      <i class="pi pi-map-marker gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('place.visitsTable.empty.title') }}</h4>
+      <p class="gp-empty-state-message">
         {{ t('place.visitsTable.empty.message') }}
       </p>
     </div>
@@ -575,75 +576,10 @@ watch(
   text-align: center;
 }
 
-.no-data-state,
 .loading-state {
   text-align: center;
   padding: var(--gp-spacing-xxl);
   color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  opacity: 0.5;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-}
-
-/* Dark Mode - DataTable */
-.p-dark .visits-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-card) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-muted) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-card) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-paginator) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-/* Ensure DataTable wrapper respects parent width */
-.visits-data-table :deep(.p-datatable-wrapper) {
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
 }
 
 .visits-data-table--navigable :deep(.visit-row--navigable) {

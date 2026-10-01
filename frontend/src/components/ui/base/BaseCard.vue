@@ -197,39 +197,4 @@ const cardClasses = computed(() => ({
     padding: var(--gp-spacing-xs);
   }
 }
-
-/* No Data States */
-.gp-card .no-data-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  padding: var(--gp-spacing-lg);
-}
-
-.gp-card .no-data-content {
-  text-align: center;
-}
-
-.gp-card .no-data-icon {
-  font-size: 2rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-md);
-  display: block;
-}
-
-.gp-card .no-data-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-sm);
-}
-
-.gp-card .no-data-message {
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-  margin: 0;
-  max-width: 250px;
-  line-height: 1.4;
-}
 </style>

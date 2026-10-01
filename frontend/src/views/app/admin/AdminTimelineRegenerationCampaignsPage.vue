@@ -1,34 +1,36 @@
 <template>
   <AppLayout>
-    <div class="admin-timeline-regeneration">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>{{ t('adminCampaignsAndUsers.campaignsPage.header.title') }}</h1>
-          <p class="text-muted">{{ t('adminCampaignsAndUsers.campaignsPage.header.subtitle') }}</p>
-        </div>
-        <div class="header-actions">
-          <Button
-            :label="t('admin.dashboardPage.refresh')"
-            icon="pi pi-refresh"
-            severity="secondary"
-            outlined
-            :loading="loading"
-            @click="loadCampaigns"
-          />
-          <Button
-            :label="t('adminCampaignsAndUsers.campaignsPage.createCampaign')"
-            icon="pi pi-plus"
-            @click="openCreateDialog"
-            :disabled="adminReadOnly"
-          />
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('adminCampaignsAndUsers.campaignsPage.header.title') }}</h1>
+            <p class="gp-page-subtitle">{{ t('adminCampaignsAndUsers.campaignsPage.header.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <Button
+              :label="t('admin.dashboardPage.refresh')"
+              icon="pi pi-refresh"
+              severity="secondary"
+              outlined
+              :loading="loading"
+              @click="loadCampaigns"
+            />
+            <Button
+              :label="t('adminCampaignsAndUsers.campaignsPage.createCampaign')"
+              icon="pi pi-plus"
+              @click="openCreateDialog"
+              :disabled="adminReadOnly"
+            />
+          </div>
         </div>
       </div>
 
       <DemoReadOnlyBanner />
 
-      <div class="card desktop-only">
+      <div class="gp-admin-card desktop-only">
         <DataTable
           :value="campaigns"
           :loading="loading"
@@ -132,12 +134,12 @@
         <div v-if="loading" class="text-center p-4">
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
-        <div v-else-if="campaigns.length === 0" class="text-center p-4 card">
+        <div v-else-if="campaigns.length === 0" class="text-center p-4 gp-admin-card">
           {{ t('adminCampaignsAndUsers.campaignsPage.table.empty') }}
         </div>
-        <div v-else class="campaign-cards">
-          <div v-for="campaign in campaigns" :key="campaign.id" class="campaign-card">
-            <div class="campaign-card-header">
+        <div v-else class="gp-admin-list">
+          <div v-for="campaign in campaigns" :key="campaign.id" class="gp-admin-list-card">
+            <div class="gp-admin-list-card-header">
               <div>
                 <div class="campaign-key">{{ campaign.campaignKey }}</div>
                 <div class="campaign-card-date">{{ formatDateTime(campaign.affectedFrom) }}</div>
@@ -150,7 +152,7 @@
               <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.done') }}</span><strong>{{ campaign.completedUsers }}</strong></div>
               <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.failed') }}</span><strong :class="{ danger: campaign.failedUsers > 0 }">{{ campaign.failedUsers }}</strong></div>
             </div>
-            <div class="campaign-card-actions">
+            <div class="gp-admin-list-card-actions campaign-card-actions">
               <Button
                 :label="t('adminCampaignsAndUsers.campaignsPage.mobile.detailsButton')"
                 icon="pi pi-eye"
@@ -652,28 +654,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-timeline-regeneration {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  color: var(--gp-text-primary);
-}
-
 .text-muted {
   color: var(--gp-text-secondary);
   margin: 0;
@@ -681,13 +661,6 @@ onMounted(() => {
 
 .small {
   font-size: 0.8rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .desktop-only {
@@ -722,25 +695,6 @@ onMounted(() => {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
   margin-top: 0.25rem;
-}
-
-.campaign-cards {
-  display: grid;
-  gap: 1rem;
-}
-
-.campaign-card {
-  background: var(--gp-surface-card);
-  border: 1px solid var(--gp-border);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.campaign-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
 }
 
 .campaign-card-reason {
@@ -879,16 +833,7 @@ onMounted(() => {
     display: block;
   }
 
-  .page-header {
-    flex-direction: column;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .header-actions :deep(.p-button) {
+  .gp-page-actions :deep(.p-button) {
     flex: 1;
   }
 
@@ -898,10 +843,6 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .admin-timeline-regeneration {
-    padding: 1rem;
-  }
-
   .preview-panel,
   .confirmation-row,
   .failed-users-header {

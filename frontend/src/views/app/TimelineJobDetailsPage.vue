@@ -3,15 +3,15 @@
     <PageContainer>
       <div class="timeline-job-details-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('timelineJobs.detailsPage.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('timelineJobs.detailsPage.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('timelineJobs.detailsPage.description') }}
               </p>
             </div>
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <Button
                 :label="t('timelineJobs.detailsPage.backButton')"
                 icon="pi pi-arrow-left"
@@ -386,31 +386,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.header-text h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.header-text p {
-  margin: 0;
-  color: var(--gp-text-secondary);
-  font-size: 1rem;
-}
-
 .loading-card,
 .error-message {
   margin-bottom: 2rem;
@@ -677,11 +652,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .job-details {
     grid-template-columns: 1fr;
   }

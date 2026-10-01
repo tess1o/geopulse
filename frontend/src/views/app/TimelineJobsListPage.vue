@@ -3,11 +3,11 @@
     <PageContainer>
       <div class="timeline-jobs-list-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('timelineJobs.listPage.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('timelineJobs.listPage.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('timelineJobs.listPage.description') }}
               </p>
             </div>
@@ -240,31 +240,6 @@ onMounted(() => {
 .timeline-jobs-list-page {
   max-width: 800px;
   margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.header-text h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.header-text p {
-  margin: 0;
-  color: var(--gp-text-secondary);
-  font-size: 1rem;
 }
 
 .loading-card,

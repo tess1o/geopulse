@@ -3,11 +3,11 @@
     <PageContainer>
       <div class="ai-chat-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('aiChat.page.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('aiChat.page.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('aiChat.page.description') }}
               </p>
               <div class="ai-disclaimer">
@@ -15,7 +15,7 @@
                 <span>{{ t('aiChat.page.disclaimer') }}</span>
               </div>
             </div>
-            <div class="header-actions" v-if="hasMessages">
+            <div class="gp-page-actions" v-if="hasMessages">
               <Button
                 icon="pi pi-trash"
                 class="p-button-text p-button-sm clear-history-btn"
@@ -687,23 +687,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.page-header {
-  margin-bottom: 1.5rem;
-  flex-shrink: 0;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .clear-history-btn {
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -711,18 +694,6 @@ onBeforeUnmount(() => {
 
 .clear-history-btn:hover {
   opacity: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--gp-text-primary);
-  margin: 0;
-}
-
-.page-description {
-  color: var(--gp-text-secondary);
-  margin: 0.5rem 0 0 0;
 }
 
 .ai-disclaimer {
@@ -1325,22 +1296,16 @@ onBeforeUnmount(() => {
     flex-direction: column;
     overflow: hidden;
   }
-  
-  .page-header {
+
+  /* Keep the header short so the full-height chat gets the room. */
+  .gp-page-header {
     margin-bottom: 0.5rem;
-    flex-shrink: 0;
   }
-  
-  .page-title {
-    font-size: 1.5rem;
-    margin: 0;
+
+  .gp-page-title {
+    margin-bottom: 0.25rem;
   }
-  
-  .page-description {
-    margin: 0.25rem 0 0 0;
-    font-size: 0.9rem;
-  }
-  
+
   .ai-disclaimer {
     margin-top: 0.75rem;
     padding: 0.5rem 0.75rem;
@@ -1430,10 +1395,6 @@ onBeforeUnmount(() => {
 
   .example-questions {
     max-width: 100%;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
   }
 
   .progress-content {

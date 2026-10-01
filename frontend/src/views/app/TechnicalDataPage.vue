@@ -486,10 +486,10 @@
         </template>
 
         <template #empty>
-          <div class="empty-state">
-            <i class="pi pi-map-marker empty-icon"></i>
-            <h3>{{ t('technicalData.page.table.emptyTitle') }}</h3>
-            <p>{{ t('technicalData.page.table.emptyDescription') }}</p>
+          <div class="gp-empty-state">
+            <i class="pi pi-map-marker gp-empty-state-icon"></i>
+            <h3 class="gp-empty-state-title">{{ t('technicalData.page.table.emptyTitle') }}</h3>
+            <p class="gp-empty-state-message">{{ t('technicalData.page.table.emptyDescription') }}</p>
           </div>
         </template>
 
@@ -760,10 +760,10 @@
           </Paginator>
         </template>
 
-        <div v-else class="empty-state mobile-empty-state">
-          <i class="pi pi-map-marker empty-icon"></i>
-          <h3>{{ t('technicalData.page.table.emptyTitle') }}</h3>
-          <p>{{ t('technicalData.page.table.emptyDescription') }}</p>
+        <div v-else class="gp-empty-state mobile-empty-state">
+          <i class="pi pi-map-marker gp-empty-state-icon"></i>
+          <h3 class="gp-empty-state-title">{{ t('technicalData.page.table.emptyTitle') }}</h3>
+          <p class="gp-empty-state-message">{{ t('technicalData.page.table.emptyDescription') }}</p>
         </div>
 
         <Menu
@@ -2254,12 +2254,12 @@ watch(filters, async () => {
     justify-content: flex-start;
     flex-wrap: nowrap;
   }
-  
+
   .filter-group {
     flex: 0 0 auto;
     min-width: 300px;
   }
-  
+
   .date-picker {
     max-width: 400px;
   }
@@ -2278,6 +2278,26 @@ watch(filters, async () => {
   width: 100%;
   min-width: 80rem;
   table-layout: fixed;
+}
+
+/* Paginator under the table, in the header colour (slate-50 / slate-900). The base rules come before the
+   media queries below so the phone sizes win by source order. */
+.gps-data-table :deep(.p-datatable-paginator-bottom) {
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.gps-data-table :deep(.p-paginator .p-paginator-pages) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gps-data-table :deep(.p-paginator .p-paginator-page) {
+  min-width: 2.5rem;
+  height: 2.5rem;
 }
 
 /* Large screen table optimizations */
@@ -2300,12 +2320,6 @@ watch(filters, async () => {
     width: 100%;
   }
 
-  /* Force table to fit in viewport */
-  .gps-data-table :deep(.p-datatable-wrapper) {
-    overflow-x: auto;
-    max-width: 100%;
-  }
-
   .gps-data-table :deep(.p-datatable-table) {
     width: max-content;
     min-width: unset;
@@ -2314,10 +2328,10 @@ watch(filters, async () => {
 
   /* Mobile paginator optimizations */
   .gps-data-table :deep(.p-paginator) {
-    flex-wrap: nowrap !important;
-    justify-content: center !important;
-    gap: 4px !important;
-    padding: var(--gp-spacing-sm) !important;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--gp-spacing-sm);
   }
 
   .gps-data-table :deep(.p-paginator .p-paginator-page),
@@ -2325,26 +2339,26 @@ watch(filters, async () => {
   .gps-data-table :deep(.p-paginator .p-paginator-prev),  
   .gps-data-table :deep(.p-paginator .p-paginator-first),
   .gps-data-table :deep(.p-paginator .p-paginator-last) {
-    min-width: 32px !important;
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    margin: 0 1px !important;
-    font-size: 0.8rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0 1px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Hide some pagination elements on very small screens */
   .gps-data-table :deep(.p-paginator .p-paginator-first),
   .gps-data-table :deep(.p-paginator .p-paginator-last) {
-    display: none !important;
+    display: none;
   }
 
   /* Show fewer page numbers on mobile */
   .gps-data-table :deep(.p-paginator .p-paginator-page:nth-child(n+8)) {
-    display: none !important;
+    display: none;
   }
 
   .telemetry-mapping-controls {
@@ -2513,31 +2527,6 @@ watch(filters, async () => {
 
 .source-tag {
   font-size: 0.75rem;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-lg);
-  display: block;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-state p {
-  color: var(--gp-text-muted);
-  margin: 0;
 }
 
 /* Mobile GPS List */
@@ -2875,10 +2864,6 @@ watch(filters, async () => {
     font-size: 0.75rem;
   }
 
-  .empty-state {
-    padding: var(--gp-spacing-xl) var(--gp-spacing-md);
-  }
-
   .mobile-gps-header {
     gap: var(--gp-spacing-md);
   }
@@ -2897,10 +2882,10 @@ watch(filters, async () => {
   }
 
   .mobile-gps-paginator :deep(.p-paginator) {
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 4px !important;
-    padding: var(--gp-spacing-sm) !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--gp-spacing-sm);
   }
 
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-page),
@@ -2908,18 +2893,18 @@ watch(filters, async () => {
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-prev),
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-first),
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-last) {
-    min-width: 32px !important;
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    margin: 0 1px !important;
-    font-size: 0.8rem !important;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0 1px;
+    font-size: 0.8rem;
   }
 
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-first),
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-last),
   .mobile-gps-paginator :deep(.p-paginator-current) {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -2953,7 +2938,7 @@ watch(filters, async () => {
     height: 24px;
     font-size: 0.8rem;
   }
-  
+
   .timestamp-date,
   .timestamp-time {
     font-size: 0.8rem;
@@ -3007,148 +2992,27 @@ watch(filters, async () => {
 
   /* Extra mobile paginator optimizations for very small screens */
   .gps-data-table :deep(.p-paginator) {
-    gap: 2px !important;
-    padding: var(--gp-spacing-xs) !important;
+    gap: 2px;
+    padding: var(--gp-spacing-xs);
   }
 
   .gps-data-table :deep(.p-paginator .p-paginator-page),
   .gps-data-table :deep(.p-paginator .p-paginator-next),
   .gps-data-table :deep(.p-paginator .p-paginator-prev) {
-    min-width: 28px !important;
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 0.75rem !important;
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
   }
 
   /* Show even fewer elements on very small screens */
   .gps-data-table :deep(.p-paginator .p-paginator-page:nth-child(n+6)) {
-    display: none !important;
+    display: none;
   }
 
   .mobile-gps-paginator :deep(.p-paginator .p-paginator-page:nth-child(n+6)) {
-    display: none !important;
+    display: none;
   }
-}
-
-/* PrimeVue DataTable Dark Mode Overrides */
-.p-dark .gps-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-card) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-muted) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-paginator-bottom),
-.p-dark .gps-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-/* Fix white corners by ensuring all child elements have proper background */
-.p-dark .gps-data-table :deep(.p-datatable-paginator-bottom *),
-.p-dark .gps-data-table :deep(.p-paginator.p-component *) {
-  background-color: inherit !important;
-}
-
-.p-dark .gps-data-table :deep(.p-datatable-paginator-bottom::before),
-.p-dark .gps-data-table :deep(.p-datatable-paginator-bottom::after),
-.p-dark .gps-data-table :deep(.p-paginator.p-component::before),
-.p-dark .gps-data-table :deep(.p-paginator.p-component::after) {
-  background: var(--gp-surface-ground) !important;
-}
-
-.p-dark .gp-data-table :deep(.p-paginator) {
-  background: var(--gp-surface-ground) !important;
-  color: var(--gp-text-primary) !important;
-  border: none !important;
-}
-
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-next),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-prev),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-first),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-last) {
-  color: var(--gp-text-primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--gp-border) !important;
-  margin: 0 2px !important;
-}
-
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page:hover),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-next:hover),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-prev:hover),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-first:hover),
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-muted) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-current) {
-  color: var(--gp-text-secondary) !important;
-}
-
-/* Fix the table wrapper to ensure proper corner styling */
-.p-dark .gps-data-table :deep(.p-datatable-wrapper) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-  background: var(--gp-surface-card) !important;
-}
-
-/* Ensure the table container has proper rounded corners */
-.p-dark .table-section :deep(.p-card-body) {
-  padding: 0 !important;
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-}
-
-/* Light mode paginator fixes */
-.gps-data-table :deep(.p-datatable-paginator-bottom),
-.gps-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-muted) !important;
-  border: 1px solid var(--gp-border) !important;
-  border-top: 1px solid var(--gp-border) !important;
-  border-radius: 0 0 0 0 !important;
-  overflow: hidden !important;
-}
-
-/* Light mode selected page styling */
-.gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
-}
-
-/* Paginator styling */
-.gps-data-table :deep(.p-paginator .p-paginator-pages) {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.gps-data-table :deep(.p-paginator .p-paginator-page) {
-  min-width: 2.5rem;
-  height: 2.5rem;
 }
 
 .paginator-info {
@@ -3236,11 +3100,11 @@ watch(filters, async () => {
     min-width: 70px;
     width: 70px;
   }
-  
+
   .actions-buttons {
     gap: var(--gp-spacing-xs);
   }
-  
+
   .action-button {
     min-width: 28px !important;
     width: 28px !important;

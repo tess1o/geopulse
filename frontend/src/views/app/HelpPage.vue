@@ -3,11 +3,11 @@
     <PageContainer>
       <div class="help-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">{{ t('help.page.title') }}</h1>
-              <p class="page-description">
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('help.page.title') }}</h1>
+              <p class="gp-page-subtitle">
                 {{ t('help.page.description') }}
               </p>
             </div>
@@ -285,36 +285,6 @@ onMounted(() => {
   padding: 0 1rem;
   width: 100%;
   box-sizing: border-box;
-}
-
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
 }
 
 /* Help Sections */
@@ -624,14 +594,6 @@ onMounted(() => {
     padding: 0 1rem;
   }
 
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-description {
-    font-size: 1rem;
-  }
-
   .section-header {
     flex-direction: column;
     text-align: center;
@@ -666,14 +628,6 @@ onMounted(() => {
 @media (max-width: 480px) {
   .help-page {
     padding: 0 0.75rem;
-  }
-
-  .page-header {
-    margin-bottom: 1.5rem;
-  }
-
-  .page-title {
-    font-size: 1.3rem;
   }
 
   .section-title {
