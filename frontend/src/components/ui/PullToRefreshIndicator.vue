@@ -95,8 +95,8 @@ const indicatorIcon = computed(() => {
   min-height: 2.25rem;
   padding: 0.45rem 0.8rem;
   border-radius: 999px;
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
   color: var(--gp-text-secondary);
   box-shadow: var(--gp-shadow-card);
   font-size: 0.82rem;
@@ -127,11 +127,5 @@ const indicatorIcon = computed(() => {
 
 .pull-refresh-icon {
   font-size: 0.95rem;
-}
-
-.p-dark .pull-refresh-indicator {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
 }
 </style>

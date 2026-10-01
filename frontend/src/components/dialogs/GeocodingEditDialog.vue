@@ -349,7 +349,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-md);
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -366,7 +366,7 @@ onUnmounted(() => {
 }
 
 .info-value {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.9rem;
   color: var(--gp-text-primary);
 }
@@ -383,11 +383,6 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .info-section {
-  background-color: var(--gp-surface-darker);
 }
 
 /* Custom marker icon */

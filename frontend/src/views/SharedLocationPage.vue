@@ -708,7 +708,7 @@ onUnmounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, var(--gp-surface-light) 0%, var(--gp-surface-gray) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
 }
 
 .shared-location-page--map-embed {
@@ -716,13 +716,13 @@ onUnmounted(() => {
   min-height: 100dvh;
   height: 100vh;
   height: 100dvh;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 /* Header */
 .shared-header {
-  background: var(--p-surface-card);
-  border-bottom: 1px solid var(--p-surface-border);
+  background: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   padding: 0.5rem 0;
 }
 
@@ -756,7 +756,7 @@ onUnmounted(() => {
 .app-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--p-primary-color);
+  color: var(--gp-primary);
   margin: 0;
 }
 
@@ -840,11 +840,11 @@ onUnmounted(() => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .error-message p, .password-form p {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
 }
 
@@ -887,7 +887,7 @@ onUnmounted(() => {
 
 .no-data-icon {
   font-size: 2rem;
-  color: var(--p-blue-500);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
@@ -899,11 +899,11 @@ onUnmounted(() => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .no-data-message p {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -947,18 +947,18 @@ onUnmounted(() => {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .share-description {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
   font-style: italic;
 }
 
 .share-meta {
   font-size: 0.9rem;
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .info-grid {
@@ -992,18 +992,18 @@ onUnmounted(() => {
 
 .info-label {
   font-size: 0.875rem;
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
 .info-value {
   font-size: 1rem;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
   font-weight: 600;
 }
 
 .info-value.expired {
-  color: var(--p-red-500);
+  color: var(--gp-danger);
 }
 
 .info-value.expiring-soon {
@@ -1016,14 +1016,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--p-surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .map-title {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .map-actions {
@@ -1056,8 +1056,8 @@ onUnmounted(() => {
 
 /* Footer */
 .shared-footer {
-  background: var(--p-surface-50);
-  border-top: 1px solid var(--p-surface-border);
+  background: var(--gp-surface-ground);
+  border-top: 1px solid var(--gp-border);
   padding: 1.5rem 0;
   margin-top: auto;
 }
@@ -1072,71 +1072,8 @@ onUnmounted(() => {
 }
 
 .footer-text {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
-}
-
-/* Dark Mode Support */
-.p-dark .shared-location-page {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .shared-location-page--map-embed {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .shared-location-page .shared-footer {
-  background: var(--gp-surface-darker) !important;
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .shared-location-page .footer-text {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .share-title {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-value {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-label {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .shared-location-page .password-form h3,
-.p-dark .shared-location-page .error-message h3 {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-value.expired {
-  color: var(--gp-danger) !important;
-}
-
-.p-dark .shared-location-page .info-value.expiring-soon {
-  color: var(--gp-warning) !important;
-}
-
-.p-dark .shared-location-page .map-title {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .map-header {
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .shared-location-page .no-data-message h3 {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .no-data-message p {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .shared-location-page .no-data-icon {
-  color: var(--gp-primary) !important;
 }
 
 /* Responsive */

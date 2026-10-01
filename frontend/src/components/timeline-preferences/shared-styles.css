@@ -2,7 +2,7 @@
 
 .settings-panel {
   overflow: hidden;
-  background: color-mix(in srgb, var(--gp-surface-white) 65%, var(--gp-surface-light));
+  background: color-mix(in srgb, var(--gp-surface-card) 65%, var(--gp-surface-muted));
   border: 1px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-subtle);

@@ -610,47 +610,47 @@ onBeforeUnmount(clearStatusRefresh)
 .save-actions, .buttons, .section-actions { display: flex; align-items: center; gap: 0.75rem; }
 .save-actions { justify-content: space-between; }
 .section-actions { margin: 1rem; }
-.advanced-settings { margin: 1rem 0; border: 1px solid var(--gp-border-light); border-radius: 6px; }
+.advanced-settings { margin: 1rem 0; border: 1px solid var(--gp-border); border-radius: 6px; }
 .advanced-settings summary { padding: 1rem; cursor: pointer; font-weight: 800; }
 .provider-select { width: 220px; }
 .number-input { width: 180px; }
 .url-input { width: min(56vw, 720px); min-width: 420px; }
-.status-card { margin: 0 1rem; padding: 1rem; display: grid; gap: 1rem; border: 1px solid var(--gp-border-light); border-radius: 6px; background: color-mix(in srgb, var(--surface-ground) 70%, transparent); }
+.status-card { margin: 0 1rem; padding: 1rem; display: grid; gap: 1rem; border: 1px solid var(--gp-border); border-radius: 6px; background: color-mix(in srgb, var(--gp-surface-ground) 70%, transparent); }
 .status-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .status-header h3 { margin: 0.5rem 0 0; }
-.backfill-progress { display: grid; gap: 0.65rem; padding: 1rem; border: 1px solid var(--surface-border); border-radius: 0.75rem; }
+.backfill-progress { display: grid; gap: 0.65rem; padding: 1rem; border: 1px solid var(--gp-border); border-radius: 0.75rem; }
 .progress-heading, .progress-caption { display: flex; justify-content: space-between; gap: 1rem; }
 .progress-heading > div { display: grid; gap: 0.2rem; }
-.progress-heading span, .progress-caption { color: var(--text-color-secondary); font-size: 0.85rem; }
+.progress-heading span, .progress-caption { color: var(--gp-text-secondary); font-size: 0.85rem; }
 .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin: 0; }
-.status-grid div { padding: 0.75rem; border-radius: 0.5rem; background: var(--surface-ground); }
-.status-grid dt { color: var(--text-color-secondary); font-size: 0.8rem; }
+.status-grid div { padding: 0.75rem; border-radius: 0.5rem; background: var(--gp-surface-ground); }
+.status-grid dt { color: var(--gp-text-secondary); font-size: 0.8rem; }
 .status-grid dd { margin: 0.3rem 0 0; font-weight: 600; }
 .status-grid-primary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.status-diagnostics { border-top: 1px solid var(--surface-border); padding-top: 0.75rem; }
-.status-diagnostics summary { cursor: pointer; color: var(--primary-color); font-weight: 600; }
+.status-diagnostics { border-top: 1px solid var(--gp-border); padding-top: 0.75rem; }
+.status-diagnostics summary { cursor: pointer; color: var(--gp-primary); font-weight: 600; }
 .status-diagnostics[open] summary { margin-bottom: 1rem; }
-.diagnostic-outcomes { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--surface-border); }
+.diagnostic-outcomes { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gp-border); }
 .diagnostic-outcomes-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
 .diagnostic-outcomes-header h4 { margin: 0; }
-.diagnostic-outcomes-header span { color: var(--text-color-secondary); font-size: 0.8rem; }
+.diagnostic-outcomes-header span { color: var(--gp-text-secondary); font-size: 0.8rem; }
 .diagnostic-outcome-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.outcome-group { min-width: 0; padding: 0.75rem; border: 1px solid var(--surface-border); border-radius: 0.5rem; background: var(--surface-ground); }
-.outcome-group h5 { margin: 0 0 0.65rem; color: var(--text-color-secondary); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.outcome-group { min-width: 0; padding: 0.75rem; border: 1px solid var(--gp-border); border-radius: 0.5rem; background: var(--gp-surface-ground); }
+.outcome-group h5 { margin: 0 0 0.65rem; color: var(--gp-text-secondary); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .outcome-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin: 0; }
-.outcome-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--surface-border); border-radius: 999px; background: var(--surface-card); }
-.outcome-item dt { overflow: hidden; color: var(--text-color-secondary); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
-.outcome-item dd { margin: 0; color: var(--text-color); font-weight: 700; }
+.outcome-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--gp-border); border-radius: 999px; background: var(--gp-surface-card); }
+.outcome-item dt { overflow: hidden; color: var(--gp-text-secondary); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+.outcome-item dd { margin: 0; color: var(--gp-text-primary); font-weight: 700; }
 .rerun-prompt { display: flex; gap: 0.75rem; align-items: flex-start; }
-.rerun-prompt > i { color: var(--primary-color); font-size: 1.25rem; }
+.rerun-prompt > i { color: var(--gp-primary); font-size: 1.25rem; }
 .rerun-prompt p { margin: 0; line-height: 1.5; }
 .rerun-options { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
-.rerun-option { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.85rem; border: 1px solid var(--surface-border); border-radius: 0.5rem; cursor: pointer; }
-.rerun-option.selected { border-color: var(--primary-color); background: color-mix(in srgb, var(--primary-color) 6%, transparent); }
+.rerun-option { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.85rem; border: 1px solid var(--gp-border); border-radius: 0.5rem; cursor: pointer; }
+.rerun-option.selected { border-color: var(--gp-primary); background: color-mix(in srgb, var(--gp-primary) 6%, transparent); }
 .rerun-radio { margin-top: 0.15rem; }
 .rerun-info { display: grid; gap: 0.2rem; cursor: pointer; }
 .rerun-label { font-weight: 600; }
-.rerun-description { margin: 0; color: var(--text-color-secondary); font-size: 0.85rem; line-height: 1.4; }
+.rerun-description { margin: 0; color: var(--gp-text-secondary); font-size: 0.85rem; line-height: 1.4; }
 @media (max-width: 768px) {
   .save-actions { flex-direction: column; align-items: stretch; }
   .url-input { width: 100%; min-width: 0; }

@@ -143,7 +143,7 @@ watch(() => [props.latitude, props.longitude], () => {
   gap: 2px;
   padding: 0;
   background: none;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
   cursor: pointer;
@@ -171,9 +171,5 @@ watch(() => [props.latitude, props.longitude], () => {
   margin: var(--gp-spacing-xs) 0 0;
   font-size: 0.72rem;
   color: var(--gp-text-secondary);
-}
-
-.p-dark .poi-suggest-card {
-  border-color: var(--gp-border-dark);
 }
 </style>

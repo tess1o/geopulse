@@ -143,7 +143,7 @@ function getPresetOptionStyle(option) {
 
 .preset-selected-value--timeline-label {
   border-left: 3px solid var(--timeline-label-preset-color);
-  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), white);
+  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), var(--gp-surface-card));
   padding-left: calc(0.5rem - 3px);
 }
 
@@ -176,7 +176,7 @@ function getPresetOptionStyle(option) {
 .preset-option-group-divider {
   flex: 1;
   height: 1px;
-  background: var(--gp-border-light);
+  background: var(--gp-border);
 }
 
 .preset-option-row {
@@ -190,7 +190,7 @@ function getPresetOptionStyle(option) {
 
 .preset-option-row--timeline-label {
   border-left: 3px solid var(--timeline-label-preset-color);
-  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), white);
+  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), var(--gp-surface-card));
   padding-left: calc(0.5rem - 3px);
 }
 
@@ -217,21 +217,5 @@ function getPresetOptionStyle(option) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.p-dark .preset-option-group-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .preset-option-group-divider {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .preset-option-row--timeline-label {
-  background: color-mix(in srgb, var(--timeline-label-preset-color) 16%, var(--gp-surface-dark));
-}
-
-.p-dark .preset-selected-value--timeline-label {
-  background: color-mix(in srgb, var(--timeline-label-preset-color) 16%, var(--gp-surface-dark));
 }
 </style>

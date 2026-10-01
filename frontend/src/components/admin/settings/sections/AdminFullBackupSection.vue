@@ -380,18 +380,18 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 </script>
 
 <style scoped>
-.backup-section { border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-left: 4px solid var(--gp-primary); border-radius: 8px; overflow: hidden; background: var(--gp-surface-white); box-shadow: var(--gp-shadow-card); }
-.backup-section-header { padding: 1.25rem 1.45rem; border-bottom: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); background: color-mix(in srgb, var(--gp-primary) 7%, var(--gp-surface-white)); }
+.backup-section { border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-left: 4px solid var(--gp-primary); border-radius: 8px; overflow: hidden; background: var(--gp-surface-card); box-shadow: var(--gp-shadow-card); }
+.backup-section-header { padding: 1.25rem 1.45rem; border-bottom: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); background: color-mix(in srgb, var(--gp-primary) 7%, var(--gp-surface-card)); }
 .backup-section-header h3 { margin: 0 0 0.35rem; color: var(--gp-primary); }
 .backup-section-header p, .subsection-header p, .backup-panel p { margin: 0; line-height: 1.5; }
 .backup-section-body { display: grid; gap: 1.5rem; padding: 1.45rem; }
 .backup-grid, .config-grid, .config-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.backup-panel, .backup-subsection, .config-group { border: 1px solid var(--gp-border-medium); border-radius: 8px; padding: 1.15rem; background: var(--gp-surface-light); }
+.backup-panel, .backup-subsection, .config-group { border: 1px solid var(--gp-border-medium); border-radius: 8px; padding: 1.15rem; background: var(--gp-surface-muted); }
 .backup-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
 .backup-panel-header, .subsection-header, .progress-heading, .progress-caption { display: flex; justify-content: space-between; gap: 1rem; width: 100%; }
 .backup-panel h4, .subsection-header h4, .progress-heading h4 { margin: 0 0 0.35rem; color: var(--gp-text-primary); }
 .backup-panel-icon { color: var(--gp-primary); font-size: 1.25rem; }
-.backup-progress { padding: 1.1rem; border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-radius: 8px; display: grid; gap: 0.75rem; background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white)); }
+.backup-progress { padding: 1.1rem; border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-radius: 8px; display: grid; gap: 0.75rem; background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card)); }
 .progress-heading span, .progress-caption { color: var(--gp-text-secondary); font-size: 0.9rem; }
 .restore-progress, .backup-subsection, .config-group, .retryable-restore, .restore-failure { display: grid; gap: 1rem; }
 .restore-failure h4 { margin: 0 0 0.5rem; color: var(--gp-text-primary); }
@@ -404,7 +404,7 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 .section-actions { display: flex; justify-content: flex-end; }
 .restore-upload-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
 .inline-upload { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; width: 100%; }
-.selected-file { display: inline-flex; align-items: center; gap: 0.5rem; max-width: 100%; color: var(--text-color-secondary); font-size: 0.9rem; }
+.selected-file { display: inline-flex; align-items: center; gap: 0.5rem; max-width: 100%; color: var(--gp-text-secondary); font-size: 0.9rem; }
 .selected-file span { overflow-wrap: anywhere; }
 .file-actions { display: flex; gap: 0.25rem; }
 .confirm-content { display: flex; gap: 1rem; align-items: flex-start; }
@@ -498,9 +498,4 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 </style>
 
 <style>
-.p-dark .admin-settings .full-backup-section { background: color-mix(in srgb, var(--gp-surface-dark) 62%, var(--gp-surface-darker)); border-color: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-border-medium)); }
-.p-dark .admin-settings .full-backup-section .backup-section-header { background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-darker)); }
-.p-dark .admin-settings .full-backup-section .backup-panel,
-.p-dark .admin-settings .full-backup-section .backup-subsection,
-.p-dark .admin-settings .full-backup-section .config-group { background: transparent; }
 </style>

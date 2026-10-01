@@ -512,7 +512,7 @@ export default {
 
 .map-section {
   padding: 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   padding-bottom: var(--gp-spacing-lg);
 }
 
@@ -562,8 +562,6 @@ export default {
   width: 100%;
 }
 
-
-
 /* Map container border radius */
 :deep(.map-container) {
   border-radius: var(--gp-radius-medium);
@@ -580,15 +578,6 @@ export default {
   .map-selection-content {
     height: 300px;
   }
-}
-
-/* Dark mode */
-.p-dark .field-label {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .map-instructions {
-  color: var(--gp-text-secondary);
 }
 </style>
 

@@ -377,7 +377,7 @@ onMounted(loadTokens)
 
 .token-preview {
   color: var(--gp-text-secondary);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.85rem;
 }
 

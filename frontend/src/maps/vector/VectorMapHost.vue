@@ -782,6 +782,6 @@ onUnmounted(() => {
    MapLibre puts its own class on the container, not `leaflet-container`, so #f0f0f0 was
    the real background in dark mode, not just a loading flash. */
 .p-dark .base-map {
-  background-color: var(--gp-surface-dark);
+  background-color: var(--gp-surface-card);
 }
 </style>

@@ -301,7 +301,7 @@ defineExpose({
   justify-content: center;
   text-align: center;
   padding: 3rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-large);
   margin: 2rem 0;
   min-height: 400px;
@@ -333,7 +333,7 @@ defineExpose({
   justify-content: center;
   text-align: center;
   padding: 3rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-large);
   margin: 2rem 0;
 }

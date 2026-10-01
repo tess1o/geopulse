@@ -324,10 +324,10 @@ const handleReset = () => {
 .configured-key i { color: var(--gp-success); }
 :deep(.p-password), :deep(.p-password-input) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .tag-input { width: 100%; }
-.tag-input :deep(.p-autocomplete-input-multiple) { width: 100%; min-height: 2.75rem; background: var(--gp-surface-white); border-color: var(--gp-border-medium); color: var(--gp-text-primary); box-shadow: var(--gp-shadow-subtle); }
+.tag-input :deep(.p-autocomplete-input-multiple) { width: 100%; min-height: 2.75rem; background: var(--gp-surface-card); border-color: var(--gp-border-medium); color: var(--gp-text-primary); box-shadow: var(--gp-shadow-subtle); }
 .tag-input :deep(.p-autocomplete-input-chip input), .tag-input :deep(.p-autocomplete-chip .p-chip-label) { color: var(--gp-text-primary); }
 .tag-input :deep(.p-autocomplete-input-chip input::placeholder), .tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon) { color: var(--gp-text-muted); }
-.tag-input :deep(.p-autocomplete-chip) { background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); color: var(--gp-text-primary); }
+.tag-input :deep(.p-autocomplete-chip) { background: var(--gp-surface-muted); border: 1px solid var(--gp-border); color: var(--gp-text-primary); }
 .tag-setting :deep(.setting-layout) { grid-template-columns: 1fr; }
 .tag-setting :deep(.setting-control) { width: 100%; justify-self: stretch; }
 </style>

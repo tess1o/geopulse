@@ -33,7 +33,7 @@
   text-align: left;
   border: 1px solid transparent;
   border-left: 3px solid var(--row-accent);
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
   border-radius: 8px;
   padding: 0.5rem 0.6rem;
   cursor: pointer;
@@ -47,7 +47,7 @@
 }
 
 .timeline-stack-select.stack-item--stay {
-  --row-accent: var(--gp-primary, #1a56db);
+  --row-accent: var(--gp-primary, #3b82f6);
   --row-accent-text: var(--gp-primary, #1a56db);
   background: var(--gp-timeline-blue-light, rgba(219, 234, 254, 0.5));
 }
@@ -61,8 +61,8 @@
 .timeline-stack-select.stack-item--datagap {
   /* Amber, as data gaps are everywhere else (markers, timeline cards). */
   --row-accent: var(--gp-warning, #f59e0b);
-  --row-accent-text: var(--gp-warning-dark, #b45309);
-  background: var(--gp-warning-light, #fffbeb);
+  --row-accent-text: var(--gp-warning-text, #b45309);
+  background: var(--gp-warning-soft, #fffbeb);
 }
 
 .timeline-stack-select .stack-item-time {
@@ -225,7 +225,6 @@
 }
 
 .p-dark .timeline-stack-select.stack-item--stay {
-  --row-accent: var(--gp-primary, #3b82f6);
   --row-accent-text: #93c5fd;
   background: var(--gp-timeline-blue, rgba(30, 64, 175, 0.15));
 }

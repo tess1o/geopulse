@@ -658,7 +658,7 @@ const emitCopy = (text) => {
 }
 
 .text-muted {
-  color: var(--gp-text-muted, #6b7280);
+  color: var(--gp-text-muted, #9ca3af);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
@@ -668,8 +668,8 @@ const emitCopy = (text) => {
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   min-width: 0;
   overflow: hidden;
@@ -677,7 +677,7 @@ const emitCopy = (text) => {
 
 .copy-field code {
   flex: 1;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   word-break: break-all;
@@ -687,7 +687,7 @@ const emitCopy = (text) => {
 
 .yaml-config {
   flex: 1;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   white-space: pre-wrap;
@@ -697,61 +697,6 @@ const emitCopy = (text) => {
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
-}
-
-.p-dark .instruction-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .step-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .step-value {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .copy-field {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .copy-field code {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .yaml-config {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .text-muted {
-  color: var(--gp-text-muted, #9ca3af);
-}
-
-.p-dark .instructions-card {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .instructions-card :deep(.p-card) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .instructions-card :deep(.p-card-header),
-.p-dark .instructions-card :deep(.p-card-title-section) {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .instructions-card :deep(.p-card-title) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .instructions-card :deep(.p-card-content),
-.p-dark .instructions-card :deep(.p-card-body) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
 }
 
 @media (max-width: 768px) {

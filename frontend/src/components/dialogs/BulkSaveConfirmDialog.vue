@@ -115,7 +115,7 @@ const onConfirm = () => {
 
 .warning-icon {
   font-size: 2rem;
-  color: var(--yellow-500);
+  color: var(--p-yellow-500);
   flex-shrink: 0;
 }
 
@@ -126,13 +126,13 @@ const onConfirm = () => {
 .summary-title {
   margin: 0 0 0.5rem 0;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .summary-list {
   margin: 0;
   padding-left: 1.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .summary-list li {

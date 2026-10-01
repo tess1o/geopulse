@@ -279,36 +279,4 @@ const handleSelect = (event) => {
 .settings-search-popover .p-popover-content {
   padding: 0.625rem;
 }
-
-.p-dark .settings-search-popover.p-popover {
-  background: #0f172a !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.55) !important;
-}
-
-.p-dark .settings-search-popover.p-popover .p-popover-content {
-  background: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover::after {
-  border-bottom-color: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover::before {
-  border-bottom-color: rgba(148, 163, 184, 0.35) !important;
-}
-
-.p-dark .settings-search-popover.p-popover.p-popover-flipped::after {
-  border-top-color: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover.p-popover-flipped::before {
-  border-top-color: rgba(148, 163, 184, 0.35) !important;
-}
-
-.p-dark .settings-search-popover .p-autocomplete-input {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-}
 </style>

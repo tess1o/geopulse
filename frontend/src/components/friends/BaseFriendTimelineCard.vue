@@ -82,9 +82,9 @@ const handleClick = () => {
   transition: all 0.2s ease;
   border-radius: var(--gp-radius-medium);
   border-left: 4px solid var(--user-color);
-  border-top: 1px solid var(--gp-border-light);
-  border-right: 1px solid var(--gp-border-light);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
+  border-right: 1px solid var(--gp-border);
+  border-bottom: 1px solid var(--gp-border);
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-sm);
 }
@@ -150,30 +150,9 @@ const handleClick = () => {
 }
 
 .friend-timeline-card--gap {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-style: dashed;
   opacity: 0.7;
-}
-
-/* Dark mode */
-.p-dark .friend-timeline-card--stay {
-  background: var(--gp-timeline-purple);
-  border-color: var(--gp-border-medium);
-  border-left-color: var(--user-color);
-}
-
-.p-dark .friend-timeline-card--trip {
-  background: var(--gp-timeline-orange);
-  border-color: var(--gp-border-medium);
-  border-left-color: var(--user-color);
-}
-
-.p-dark .friend-timeline-card--gap {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .friend-timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 
 /* Mobile optimizations */

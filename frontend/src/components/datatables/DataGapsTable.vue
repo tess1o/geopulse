@@ -301,14 +301,14 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
@@ -319,24 +319,24 @@ onUnmounted(() => {
 }
 
 .duration-short {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .duration-medium {
-  background: var(--gp-warning-50);
-  color: var(--gp-warning-700);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 .duration-long {
-  background: var(--gp-danger-50);
-  color: var(--gp-danger-700);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 .duration-very-long {
-  background: var(--gp-danger-100);
-  color: var(--gp-danger-800);
-  border: 1px solid var(--gp-danger-200);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
+  border: 1px solid var(--gp-danger-border);
 }
 
 .location-info {
@@ -391,10 +391,10 @@ onUnmounted(() => {
 }
 
 .mobile-gap-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
@@ -470,37 +470,6 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-/* Dark Mode */
-.p-dark .duration-short {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
-}
-
-.p-dark .duration-medium {
-  background: var(--gp-warning-900);
-  color: var(--gp-warning-300);
-}
-
-.p-dark .duration-long {
-  background: var(--gp-danger-900);
-  color: var(--gp-danger-300);
-}
-
-.p-dark .duration-very-long {
-  background: var(--gp-danger-800);
-  color: var(--gp-danger-200);
-  border-color: var(--gp-danger-700);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-success);
-}
-
-.p-dark .mobile-gap-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .data-gaps-table-card :deep(.gp-card-header) {
@@ -571,35 +540,35 @@ onUnmounted(() => {
 
 /* PrimeVue DataTable Dark Mode Styling */
 .p-dark .data-gaps-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .data-gaps-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .data-gaps-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
   overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 </style>

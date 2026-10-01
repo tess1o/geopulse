@@ -137,13 +137,13 @@ const openMapMatchingSettings = () => {
 
 <style scoped>
 .map-matching-details { display: grid; gap: 1rem; }
-.trip-when { margin: 0; color: var(--text-color-secondary); font-size: 0.9rem; }
+.trip-when { margin: 0; color: var(--gp-text-secondary); font-size: 0.9rem; }
 .state-heading { display: flex; align-items: flex-start; gap: 0.75rem; }
 .state-title { margin: 0; line-height: 1.5; }
-.state-when { margin: 0; color: var(--text-color-secondary); font-size: 0.85rem; }
-.state-note { margin: 0; color: var(--text-color-secondary); line-height: 1.5; }
+.state-when { margin: 0; color: var(--gp-text-secondary); font-size: 0.85rem; }
+.state-note { margin: 0; color: var(--gp-text-secondary); line-height: 1.5; }
 .state-detail { display: grid; gap: 0.35rem; }
-.state-detail > span { color: var(--text-color-secondary); font-size: 0.8rem; }
-.state-detail code { display: block; padding: 0.6rem; border-radius: 0.4rem; background: var(--surface-ground); font-size: 0.8rem; overflow-wrap: anywhere; }
-.state-hint { margin: 0; color: var(--text-color-secondary); font-size: 0.85rem; line-height: 1.5; }
+.state-detail > span { color: var(--gp-text-secondary); font-size: 0.8rem; }
+.state-detail code { display: block; padding: 0.6rem; border-radius: 0.4rem; background: var(--gp-surface-ground); font-size: 0.8rem; overflow-wrap: anywhere; }
+.state-hint { margin: 0; color: var(--gp-text-secondary); font-size: 0.85rem; line-height: 1.5; }
 </style>

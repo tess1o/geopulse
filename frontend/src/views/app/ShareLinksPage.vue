@@ -1051,7 +1051,6 @@ onMounted(async () => {
   padding: 0;
 }
 
-
 .page-header {
   margin-bottom: 2rem;
 }
@@ -1071,12 +1070,12 @@ onMounted(async () => {
   font-size: 2rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .page-description {
   font-size: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -1086,7 +1085,6 @@ onMounted(async () => {
   align-items: center;
   flex-wrap: wrap;
 }
-
 
 .create-link-btn {
   white-space: nowrap;
@@ -1105,31 +1103,31 @@ onMounted(async () => {
   justify-content: center;
   padding: 3rem;
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .share-type-section {
   margin-bottom: 3rem;
   padding: 1.5rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 12px;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .type-title {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--surface-border);
+  border-bottom: 2px solid var(--gp-border);
 }
 
 .type-title i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.5rem;
 }
 
@@ -1145,14 +1143,14 @@ onMounted(async () => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .section-subtitle {
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .links-grid {
@@ -1175,18 +1173,14 @@ onMounted(async () => {
 }
 
 .timeline-card {
-  border-left: 4px solid var(--blue-500);
+  border-left: 4px solid var(--p-blue-500);
 }
 
 .live-location-card {
-  border-left: 4px solid var(--green-500);
+  border-left: 4px solid var(--p-green-500);
 }
 
 /* Dark mode adjustments for share type sections */
-.p-dark .share-type-section {
-  background: var(--surface-100);
-  border-color: var(--surface-border);
-}
 
 .link-header {
   display: flex;
@@ -1203,12 +1197,12 @@ onMounted(async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.25rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .link-description {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 0.5rem 0;
 }
 
@@ -1217,7 +1211,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .link-details {
@@ -1233,7 +1227,7 @@ onMounted(async () => {
   font-size: 0.9rem;
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .url-input-group {
@@ -1243,7 +1237,7 @@ onMounted(async () => {
 
 .share-url-input {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.85rem;
 }
 
@@ -1256,7 +1250,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
 }
 
@@ -1267,18 +1261,18 @@ onMounted(async () => {
 }
 
 .setting-label {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .setting-value {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .timeline-info {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -1302,7 +1296,7 @@ onMounted(async () => {
 
 .empty-icon {
   font-size: 3rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 1rem;
 }
 
@@ -1310,11 +1304,11 @@ onMounted(async () => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .empty-state p {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1.5rem 0;
 }
 
@@ -1337,7 +1331,7 @@ onMounted(async () => {
 
 .form-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .form-input {
@@ -1357,7 +1351,7 @@ onMounted(async () => {
 
 .checkbox-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .scope-options {
@@ -1371,14 +1365,14 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .scope-option:hover {
-  background: var(--surface-50);
-  border-color: var(--primary-color);
+  background: var(--gp-surface-muted);
+  border-color: var(--gp-primary);
 }
 
 .scope-label {
@@ -1391,12 +1385,12 @@ onMounted(async () => {
 
 .scope-label strong {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .scope-description {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .form-actions {
@@ -1420,7 +1414,7 @@ onMounted(async () => {
 
 .warning-icon {
   font-size: 2rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
 }
 
@@ -1428,17 +1422,17 @@ onMounted(async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .delete-message p {
   margin: 0 0 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .warning-text {
   font-weight: 500;
-  color: var(--orange-600);
+  color: var(--p-orange-600);
 }
 
 .delete-actions {
@@ -1488,7 +1482,7 @@ onMounted(async () => {
 .custom-tiles-section {
   margin-left: 1.75rem;
   padding-left: 1rem;
-  border-left: 3px solid var(--orange-500);
+  border-left: 3px solid var(--p-orange-500);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -1507,7 +1501,7 @@ onMounted(async () => {
 
 .warning-content i {
   font-size: 1.25rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -1529,25 +1523,20 @@ onMounted(async () => {
 
 .trip-workspace-btn {
   border-radius: 999px;
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card));
   color: var(--gp-primary);
   white-space: nowrap;
 }
 
 .trip-workspace-btn:hover {
-  border-color: color-mix(in srgb, var(--gp-primary) 55%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 14%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 55%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 14%, var(--gp-surface-card));
   color: var(--gp-primary-hover);
 }
 
 .trip-workspace-btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
   outline-offset: 2px;
-}
-
-.p-dark .trip-workspace-btn {
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-dark));
 }
 </style>

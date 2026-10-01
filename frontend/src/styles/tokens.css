@@ -23,6 +23,8 @@
     --gp-primary-dark: #1e40af;
     --gp-primary-soft: #eff6ff;
     --gp-primary-soft-border: #bfdbfe;
+    /* Primary used as text, icon or accent line on a card; brighter in dark mode for contrast. */
+    --gp-primary-text: var(--p-primary-color);
 
     --gp-secondary: #10b981;
     --gp-secondary-light: #34d399;
@@ -93,6 +95,22 @@
     --gp-map-accent-light: rgba(0, 188, 212, 0.7);
     --gp-map-accent-bg: rgba(0, 188, 212, 0.1);
 
+    /* Landing page (Home, ExploreGeoPulsePanel, TipOfDayCard): its own tinted palette and glass panels */
+    --gp-landing-bg: #eef4fb;
+    --gp-landing-page-glow: radial-gradient(circle at 8% 10%, #dbeafe 0%, rgba(219, 234, 254, 0) 34%),
+        radial-gradient(circle at 90% 75%, #dcfce7 0%, rgba(220, 252, 231, 0) 30%);
+    --gp-landing-hero-gradient: linear-gradient(140deg, #f4f8ff 0%, #edf7f4 45%, #eaf3ff 100%);
+    --gp-landing-hero-glow: radial-gradient(ellipse at 75% 10%, rgba(37, 99, 235, 0.14) 0%, rgba(37, 99, 235, 0) 62%);
+    --gp-landing-header-bg: rgba(244, 248, 255, 0.78);
+    --gp-landing-border: #d8e4f0;
+    --gp-landing-text-primary: #0f172a;
+    --gp-landing-text-secondary: #52627a;
+    --gp-landing-accent: #0f766e;
+    --gp-landing-glass: rgba(255, 255, 255, 0.8);
+    --gp-landing-glass-hover: rgba(255, 255, 255, 0.95);
+    --gp-landing-glass-border: rgba(203, 213, 225, 0.7);
+    --gp-landing-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+
     /* Shadows */
     --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
     --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -128,6 +146,7 @@
 
 .p-dark {
     --gp-primary-light: #60a5fa;
+    --gp-primary-text: #60a5fa;
     --gp-primary-dark: #1d4ed8;
     --gp-primary-soft: rgba(59, 130, 246, 0.16);
     --gp-primary-soft-border: rgba(96, 165, 250, 0.35);
@@ -165,6 +184,21 @@
     --gp-demo-alert-text: #fee2e2;
     --gp-demo-alert-icon: #fecaca;
 
+    --gp-landing-bg: #020617;
+    --gp-landing-page-glow: radial-gradient(circle at 8% 10%, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 34%),
+        radial-gradient(circle at 90% 75%, rgba(14, 165, 233, 0.05) 0%, rgba(14, 165, 233, 0) 30%);
+    --gp-landing-hero-gradient: linear-gradient(160deg, #020617 0%, #0a1128 50%, #03081a 100%);
+    --gp-landing-hero-glow: radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
+    --gp-landing-header-bg: rgba(2, 6, 23, 0.85);
+    --gp-landing-border: #1e293b;
+    --gp-landing-text-primary: #f8fafc;
+    --gp-landing-text-secondary: #94a3b8;
+    --gp-landing-accent: #34d399;
+    --gp-landing-glass: rgba(15, 23, 42, 0.72);
+    --gp-landing-glass-hover: rgba(30, 41, 59, 0.9);
+    --gp-landing-glass-border: rgba(148, 163, 184, 0.3);
+    --gp-landing-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+
     --gp-timeline-blue-light: rgba(59, 130, 246, 0.12);
     --gp-timeline-green-light: rgba(16, 185, 129, 0.12);
     --gp-timeline-orange-light: rgba(245, 158, 11, 0.12);
@@ -179,35 +213,4 @@
     --gp-shadow-dialog: 0 10px 25px rgba(0, 0, 0, 0.5);
     --gp-shadow-button: 0 2px 4px rgba(0, 0, 0, 0.3);
     --gp-shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.4);
-}
-
-/* ------------------------------------------------------------------------------------------------
-   TEMPORARY ALIASES for pre-cleanup token names. Removed once every usage is migrated.
-   ------------------------------------------------------------------------------------------------ */
-:root {
-    --gp-surface-white: var(--gp-surface-card);
-    --gp-surface-light: #f8fafc;
-    --gp-surface-gray: #f1f5f9;
-    --gp-surface-dark: #1e293b;
-    --gp-surface-darker: #0f172a;
-    --gp-border-light: var(--gp-border);
-    --gp-border-dark: rgba(255, 255, 255, 0.1);
-    --gp-error: var(--gp-danger);
-    --gp-success-light: var(--gp-success-soft);
-    --gp-success-dark: #15803d;
-    --gp-warning-light: var(--gp-warning-soft);
-    --gp-warning-dark: #d97706;
-    --gp-danger-light: var(--gp-danger-soft);
-    --gp-danger-dark: #dc2626;
-    --gp-info-light: var(--gp-info-soft);
-    --gp-info-dark: #0284c7;
-    --text-color: var(--gp-text-primary);
-    --text-color-secondary: var(--gp-text-secondary);
-}
-
-.p-dark {
-    --gp-surface-light: #334155;
-    --gp-surface-gray: #475569;
-    --gp-border-light: rgba(255, 255, 255, 0.1);
-    --gp-border-medium: rgba(255, 255, 255, 0.2);
 }

@@ -18,7 +18,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--gp-primary);
-  border-bottom: 2px solid var(--gp-border-light);
+  border-bottom: 2px solid var(--gp-border);
   letter-spacing: 0.025em;
 }
 
@@ -28,7 +28,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .setting-item:last-child {
@@ -64,7 +64,7 @@
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 
@@ -76,7 +76,7 @@
 
 /* Text Utilities */
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 /* Empty State Styling */
@@ -108,8 +108,8 @@
 
 .planned-features {
   text-align: left;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -121,7 +121,7 @@
   color: var(--gp-text-primary);
   font-size: 1.125rem;
   font-weight: 600;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .planned-features ul {
@@ -132,7 +132,7 @@
 .planned-features li {
   margin-bottom: 0.75rem;
   line-height: 1.6;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .planned-features li:last-child {
@@ -140,7 +140,7 @@
 }
 
 .planned-features strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .coming-soon-badge {

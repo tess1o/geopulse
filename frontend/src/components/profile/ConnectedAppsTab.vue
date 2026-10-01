@@ -89,8 +89,8 @@ const selectAppAt = (index) => {
   gap: var(--gp-spacing-xs);
   padding: var(--gp-spacing-xs);
   overflow-x: auto;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -111,7 +111,7 @@ const selectAppAt = (index) => {
 }
 
 .app-tab:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .app-tab:focus-visible {
@@ -120,7 +120,7 @@ const selectAppAt = (index) => {
 }
 
 .app-tab.active {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-color: var(--gp-primary);
   box-shadow: var(--gp-shadow-subtle);
 }

@@ -159,8 +159,8 @@ function formatTimelineTimestamp(item) {
 
 <style scoped>
 .merged-timeline-list {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 1rem;
   display: flex;
@@ -174,7 +174,7 @@ function formatTimelineTimestamp(item) {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .list-header h3 {
@@ -208,7 +208,7 @@ function formatTimelineTimestamp(item) {
 
 /* Data Gap Item */
 .timeline-item--gap {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border: 2px dashed var(--user-color);
   border-radius: var(--gp-radius-medium);
   padding: 0.75rem;
@@ -222,7 +222,7 @@ function formatTimelineTimestamp(item) {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .gap-user-name {
@@ -258,30 +258,12 @@ function formatTimelineTimestamp(item) {
   gap: 0.5rem;
   padding-top: 1rem;
   margin-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .showing-count {
   font-size: 0.8rem;
   color: var(--gp-text-secondary);
-}
-
-/* Dark mode */
-.p-dark .merged-timeline-list {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .list-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .timeline-item--gap {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gap-header {
-  border-bottom-color: var(--gp-border-dark);
 }
 
 /* Mobile optimizations */

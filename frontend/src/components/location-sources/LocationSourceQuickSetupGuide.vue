@@ -69,9 +69,9 @@ const quickSetupOptions = computed(() => (
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .source-header {
@@ -92,44 +92,5 @@ const quickSetupOptions = computed(() => (
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
-}
-
-.p-dark .source-option {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .source-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .quick-guide-card {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-header),
-.p-dark .quick-guide-card :deep(.p-card-title-section) {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-title) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-content),
-.p-dark .quick-guide-card :deep(.p-card-body) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
 }
 </style>

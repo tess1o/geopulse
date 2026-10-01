@@ -90,7 +90,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 <style scoped>
 .pending-panel {
   margin-bottom: 1.5rem;
-  border: 2px solid var(--yellow-500);
+  border: 2px solid var(--p-yellow-500);
 }
 
 .panel-header {
@@ -103,7 +103,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 .panel-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0;
 }
 
@@ -124,14 +124,14 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: var(--surface-50);
-  border: 1px dashed var(--yellow-500);
+  background: var(--gp-surface-muted);
+  border: 1px dashed var(--p-yellow-500);
   border-radius: 6px;
   transition: background-color 0.2s;
 }
 
 .pending-item:hover {
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
 }
 
 .item-icon {
@@ -140,9 +140,9 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: var(--yellow-100);
+  background: var(--gp-warning-soft);
   border-radius: 50%;
-  color: var(--yellow-700);
+  color: var(--gp-warning-text);
   font-size: 1.25rem;
 }
 
@@ -153,7 +153,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 
 .item-name {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin-bottom: 0.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -162,7 +162,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 
 .item-location {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -172,26 +172,12 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
 }
 
 .footer-info i {
-  color: var(--blue-500);
-}
-
-/* Dark mode */
-.p-dark .pending-item {
-  background: var(--surface-800);
-}
-
-.p-dark .pending-item:hover {
-  background: var(--surface-700);
-}
-
-.p-dark .item-icon {
-  background: var(--yellow-900);
-  color: var(--yellow-300);
+  color: var(--p-blue-500);
 }
 
 /* Responsive */

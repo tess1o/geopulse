@@ -241,7 +241,7 @@ const handleNoteSaved = (note) => {
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border-medium);
   overflow: hidden;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
 }
@@ -280,11 +280,11 @@ const handleNoteSaved = (note) => {
 
 .timeline-card--overnight-data-gap {
   background-color: var(--gp-timeline-orange-light);
-  border-left: 4px solid var(--gp-warning-dark);
+  border-left: 4px solid var(--gp-warning-strong);
 }
 
 .timeline-timestamp {
-  color: var(--gp-warning-dark);
+  color: var(--gp-warning-text);
   font-weight: 600;
   font-size: 0.95rem;
   margin: 0;
@@ -339,49 +339,18 @@ const handleNoteSaved = (note) => {
 .duration-detail .duration-value,
 .end-time-detail .time-value {
   font-weight: 700;
-  color: var(--gp-warning-dark);
+  color: var(--gp-warning-text);
 }
 
 .convert-gap-btn {
   margin-top: var(--gp-spacing-xs);
   border: none;
   background: transparent;
-  color: var(--gp-warning-dark);
+  color: var(--gp-warning-text);
   font-weight: 700;
   font-size: 0.8rem;
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--overnight-data-gap {
-  background-color: var(--gp-timeline-orange);
-  border-left: 4px solid var(--gp-warning-dark);
-}
-
-.p-dark .timeline-timestamp,
-.p-dark .duration-detail .duration-value,
-.p-dark .end-time-detail .time-value {
-  color: var(--gp-warning);
-}
-
-.p-dark .gap-label {
-  color: var(--gp-warning);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .overnight-data-gap-content,
-.p-dark .duration-detail,
-.p-dark .end-time-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 </style>

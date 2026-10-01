@@ -676,27 +676,27 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .distance-badge {
-  background: var(--gp-info-50);
-  color: var(--gp-info-700);
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -764,10 +764,10 @@ onUnmounted(() => {
 }
 
 .mobile-trip-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
@@ -870,26 +870,6 @@ onUnmounted(() => {
   color: var(--gp-text-muted);
 }
 
-/* Dark Mode */
-.p-dark .duration-badge {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
-}
-
-.p-dark .distance-badge {
-  background: var(--gp-info-900);
-  color: var(--gp-info-300);
-}
-
-.p-dark .mobile-trip-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .trips-table-card :deep(.gp-card-header) {
@@ -979,35 +959,35 @@ onUnmounted(() => {
 
 /* PrimeVue DataTable Dark Mode Styling */
 .p-dark .trips-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .trips-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .trips-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .trips-data-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .trips-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .trips-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
   overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 </style>

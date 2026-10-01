@@ -222,7 +222,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -241,8 +241,8 @@ onUnmounted(() => {
   flex-shrink: 0;
   z-index: 1000;
   height: 60px;
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-light);
   padding-top: env(safe-area-inset-top);
   height: calc(60px + env(safe-area-inset-top));
@@ -286,14 +286,14 @@ onUnmounted(() => {
 /* Footer */
 .gp-app-footer {
   flex-shrink: 0;
-  background: var(--gp-surface-white);
-  border-top: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border-top: 1px solid var(--gp-border);
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
 }
 
 /* Layout Variants */
 .gp-app-layout--app .gp-app-main {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .gp-app-layout--minimal .gp-app-navbar {
@@ -352,25 +352,6 @@ onUnmounted(() => {
 .gp-notification-toast-hint {
   font-size: 0.75rem;
   color: var(--gp-primary);
-}
-
-/* Dark Mode */
-.p-dark .gp-app-navbar {
-  background: var(--gp-surface-dark);
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-app-layout {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .gp-app-layout--app .gp-app-main {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gp-app-footer {
-  background: var(--gp-surface-dark);
-  border-top-color: var(--gp-border-dark);
 }
 
 /* Responsive */

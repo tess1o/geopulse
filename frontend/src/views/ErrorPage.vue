@@ -444,7 +444,7 @@ const formatTimestamp = (timestamp) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   padding: var(--gp-spacing-lg);
 }
 
@@ -454,12 +454,12 @@ const formatTimestamp = (timestamp) => {
 }
 
 .error-content {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xxl);
   text-align: center;
   box-shadow: var(--gp-shadow-card);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .error-icon {
@@ -498,8 +498,8 @@ const formatTimestamp = (timestamp) => {
 }
 
 .error-details pre {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   font-size: 0.875rem;
@@ -518,9 +518,9 @@ const formatTimestamp = (timestamp) => {
 .error-detail-section {
   margin-bottom: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-small);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .error-detail-section h4 {
@@ -528,7 +528,7 @@ const formatTimestamp = (timestamp) => {
   font-size: 1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   padding-bottom: var(--gp-spacing-xs);
 }
 
@@ -557,15 +557,15 @@ const formatTimestamp = (timestamp) => {
 }
 
 .detail-value.url {
-  font-family: monospace;
-  background: var(--gp-surface-lighter);
+  font-family: var(--gp-font-mono);
+  background: var(--gp-surface-ground);
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 0.8rem;
 }
 
 .detail-value.user-agent {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.75rem;
   line-height: 1.3;
 }
@@ -591,12 +591,12 @@ const formatTimestamp = (timestamp) => {
 }
 
 .response-data, .headers-data, .stack-trace, .raw-details {
-  background: var(--gp-surface-lighter, #f9fafb);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted, #f9fafb);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
   font-size: 0.8rem;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: var(--gp-font-mono);
   color: var(--gp-text-primary);
   overflow-x: auto;
   white-space: pre-wrap;
@@ -620,7 +620,7 @@ const formatTimestamp = (timestamp) => {
 
 .error-tips {
   text-align: left;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-lg);
   margin: var(--gp-spacing-xl) 0;
@@ -652,7 +652,7 @@ const formatTimestamp = (timestamp) => {
 }
 
 .error-status {
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   padding-top: var(--gp-spacing-lg);
   display: flex;
   justify-content: space-between;
@@ -690,50 +690,6 @@ const formatTimestamp = (timestamp) => {
 
 .status-checking {
   color: var(--gp-primary);
-}
-
-/* Dark Mode */
-.p-dark .error-page {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .error-content {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .error-tips {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .error-details pre {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .error-detail-section {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .error-detail-section h4 {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .detail-value.url {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .response-data, 
-.p-dark .headers-data, 
-.p-dark .stack-trace, 
-.p-dark .raw-details {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .error-status {
-  border-top-color: var(--gp-border-dark);
 }
 
 /* Responsive */

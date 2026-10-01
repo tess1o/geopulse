@@ -107,7 +107,7 @@ const gapRecommendations = computed(() => {
 <style scoped>
 .gap-help-section {
   margin-top: var(--gp-spacing-sm);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border-medium);
   padding-top: var(--gp-spacing-sm);
 }
 
@@ -138,7 +138,7 @@ const gapRecommendations = computed(() => {
 .help-content {
   margin-top: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background-color: var(--gp-surface-50);
+  background-color: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   font-size: 0.875rem;
   line-height: 1.5;
@@ -159,7 +159,7 @@ const gapRecommendations = computed(() => {
 .recommendations {
   margin-top: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background-color: var(--gp-primary-50);
+  background-color: var(--gp-primary-soft);
   border-radius: var(--gp-radius-small);
   border-left: 3px solid var(--gp-primary);
 }
@@ -234,26 +234,5 @@ const gapRecommendations = computed(() => {
   .settings-button {
     font-size: 0.8rem;
   }
-}
-
-/* Dark mode */
-.p-dark .gap-help-section {
-  border-top-color: var(--gp-border-medium);
-}
-
-.p-dark .help-content {
-  background-color: var(--gp-surface-800);
-}
-
-.p-dark .recommendations {
-  background-color: rgba(var(--gp-primary-rgb), 0.1);
-}
-
-.p-dark .help-toggle {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .help-toggle:hover {
-  color: var(--gp-primary);
 }
 </style>

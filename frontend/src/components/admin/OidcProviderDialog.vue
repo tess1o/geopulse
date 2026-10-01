@@ -261,11 +261,11 @@ watch(() => props.visible, (newVal) => {
 
 .field label {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .field-hint {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   margin-top: -0.25rem;
 }
@@ -276,13 +276,13 @@ watch(() => props.visible, (newVal) => {
   gap: 0.75rem;
   margin-top: 0.5rem;
   padding: 0.75rem;
-  background: var(--surface-100);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-muted);
+  border-radius: var(--gp-radius-medium);
 }
 
 .preview-label {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .field-checkbox {

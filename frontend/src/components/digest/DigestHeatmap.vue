@@ -282,8 +282,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .digest-heatmap {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
@@ -324,8 +324,8 @@ onBeforeUnmount(() => {
 .layer-toggle,
 .intensity-toggle {
   display: flex;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
 }
@@ -362,14 +362,14 @@ onBeforeUnmount(() => {
   padding: var(--gp-spacing-xxl) var(--gp-spacing-xl);
   text-align: center;
   color: var(--gp-text-muted);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   min-height: 200px;
 }
 
 .heatmap-state--error {
-  color: var(--gp-error);
+  color: var(--gp-danger);
 }
 
 .heatmap-state-icon {
@@ -399,9 +399,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--gp-surface-card) 90%, transparent);
   backdrop-filter: blur(6px);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 6px 12px;
   font-size: 0.75rem;
@@ -419,32 +419,6 @@ onBeforeUnmount(() => {
   font-style: italic;
   opacity: 0.7;
   margin-left: 4px;
-}
-
-/* ── Dark mode ── */
-.p-dark .digest-heatmap {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .intensity-toggle {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .heatmap-state {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .heatmap-legend {
-  background: rgba(30, 30, 40, 0.92);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .heatmap-title {
-  color: var(--gp-text-primary);
 }
 
 /* ── Responsive ── */

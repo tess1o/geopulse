@@ -313,7 +313,7 @@ const emit = defineEmits([
 }
 
 .segments-empty {
-  border: 1px dashed var(--gp-border-light);
+  border: 1px dashed var(--gp-border);
   border-radius: var(--gp-radius-small);
   color: var(--gp-text-secondary);
   padding: var(--gp-spacing-md);
@@ -330,11 +330,11 @@ const emit = defineEmits([
 }
 
 .segment-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
   cursor: pointer;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .segment-card--active {
@@ -391,9 +391,9 @@ const emit = defineEmits([
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   padding: 0.5rem;
 }
 
@@ -424,9 +424,9 @@ const emit = defineEmits([
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--gp-spacing-xs);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   padding: 0.2rem 0.3rem;
 }
 

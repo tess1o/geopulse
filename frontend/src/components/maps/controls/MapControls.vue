@@ -596,11 +596,11 @@ onBeforeUnmount(() => {
   display: flex;
   gap: var(--gp-spacing-xs, 0.25rem);
   flex-direction: column;
-  background: var(--gp-surface-white, white);
+  background: var(--gp-surface-card, #1e293b);
   border-radius: var(--gp-radius-medium, 8px);
   padding: var(--gp-spacing-xs, 0.25rem);
   box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
 }
 
 .control-button {
@@ -615,12 +615,12 @@ onBeforeUnmount(() => {
   padding: 0;
   border-radius: var(--gp-radius-small, 4px);
   transition: all 0.2s ease;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary, #cbd5e1);
 }
 
 .control-button:hover:not(:disabled) {
-  background-color: var(--gp-surface-light, #f8fafc);
-  color: var(--gp-primary, #1a56db);
+  background-color: var(--gp-surface-ground, #0f172a);
+  color: var(--gp-primary-text);
   transform: translateY(-1px);
 }
 
@@ -674,8 +674,8 @@ onBeforeUnmount(() => {
   top: 0;
   right: calc(100% + 8px);
   min-width: 140px;
-  background: var(--gp-surface-white, #fff);
-  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  background: var(--gp-surface-card, #1e293b);
+  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
   border-radius: var(--gp-radius-medium, 8px);
   box-shadow: var(--gp-shadow-medium, 0 8px 20px rgba(0, 0, 0, 0.12));
   padding: 8px;
@@ -711,47 +711,17 @@ onBeforeUnmount(() => {
 }
 
 .heatmap-popover-option:hover {
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
 }
 
 .heatmap-popover-option.active {
-  background: rgba(26, 86, 219, 0.12);
-  border-color: rgba(26, 86, 219, 0.2);
-  color: var(--gp-primary, #1a56db);
+  background: var(--gp-primary-soft);
+  border-color: var(--gp-primary-soft-border);
+  color: var(--gp-primary-text);
 }
 
 .heatmap-popover-off {
   color: var(--gp-text-secondary, #64748b);
-}
-
-/* Dark mode */
-.p-dark .control-group {
-  background: var(--gp-surface-dark, #1e293b);
-  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
-}
-
-.p-dark .control-button {
-  color: var(--gp-text-secondary, #cbd5e1);
-}
-
-.p-dark .control-button:hover:not(:disabled) {
-  background-color: var(--gp-surface-darker, #0f172a);
-  color: var(--gp-primary-light, #3b82f6);
-}
-
-.p-dark .heatmap-popover {
-  background: var(--gp-surface-dark, #1e293b);
-  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
-}
-
-.p-dark .heatmap-popover-option {
-  color: var(--gp-text-secondary, #cbd5e1);
-}
-
-.p-dark .heatmap-popover-option.active {
-  color: var(--gp-primary-light, #3b82f6);
-  background: rgba(59, 130, 246, 0.16);
-  border-color: rgba(59, 130, 246, 0.35);
 }
 
 /* Immich button specific styles */
@@ -775,10 +745,6 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: var(--gp-primary, #1a56db);
   animation: immich-pulse 1.5s infinite;
-}
-
-.p-dark .loading-indicator {
-  background: var(--gp-primary-light, #3b82f6);
 }
 
 @keyframes immich-pulse {

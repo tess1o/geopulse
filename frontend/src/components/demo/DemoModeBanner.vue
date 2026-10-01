@@ -87,21 +87,6 @@ onMounted(() => {
   text-decoration: underline;
 }
 
-.p-dark .demo-mode-banner {
-  box-shadow: inset 0 -1px 0 rgba(248, 113, 113, 0.45);
-}
-
-.p-dark .demo-mode-banner__link {
-  color: #ffffff;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.p-dark .demo-mode-banner__link:hover {
-  color: var(--gp-demo-alert-icon);
-}
-
 @media (max-width: 640px) {
   .demo-mode-banner__inner {
     align-items: flex-start;

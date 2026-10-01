@@ -103,7 +103,7 @@
       <Card v-else-if="needsPassword && !authenticated" class="password-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-lock" style="font-size: 2rem; color: var(--primary-color)"></i>
+            <i class="pi pi-lock" style="font-size: 2rem; color: var(--gp-primary)"></i>
             <h2>{{ t('sharing.sharedTimelinePage.passwordRequiredTitle') }}</h2>
           </div>
         </template>
@@ -126,7 +126,7 @@
       <Card v-else-if="shareInfo && shareInfo.timeline_status === 'upcoming'" class="info-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-calendar" style="font-size: 2rem; color: var(--blue-500)"></i>
+            <i class="pi pi-calendar" style="font-size: 2rem; color: var(--p-blue-500)"></i>
             <h2>{{ shareInfo.name }}</h2>
           </div>
         </template>
@@ -152,7 +152,7 @@
       <Card v-else-if="error" class="error-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-exclamation-circle" style="font-size: 2rem; color: var(--red-500)"></i>
+            <i class="pi pi-exclamation-circle" style="font-size: 2rem; color: var(--p-red-500)"></i>
             <h2>{{ t('sharing.sharedTimelinePage.loadErrorTitle') }}</h2>
           </div>
         </template>
@@ -171,7 +171,7 @@
         <Card v-if="!hasTimelineData && !hasPathData" class="info-card">
           <template #header>
             <div class="card-header">
-              <i class="pi pi-map-marker" style="font-size: 2rem; color: var(--blue-500)"></i>
+              <i class="pi pi-map-marker" style="font-size: 2rem; color: var(--p-blue-500)"></i>
               <h2>{{ t('sharing.sharedTimelinePage.noLocationDataTitle') }}</h2>
             </div>
           </template>
@@ -208,7 +208,7 @@
           <div class="timeline-map">
             <!-- Empty state for map when no path data -->
             <div v-if="!hasPathData" class="empty-map-state">
-              <i class="pi pi-map" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
+              <i class="pi pi-map" style="font-size: 3rem; color: var(--gp-text-secondary); opacity: 0.5"></i>
               <p>{{ t('sharing.sharedTimelinePage.noRouteData') }}</p>
               <small v-if="filterStartDate && filterEndDate">{{ t('sharing.sharedTimelinePage.tryAdjustingFilter') }}</small>
             </div>
@@ -244,7 +244,7 @@
           <div v-if="!isMapOnlyEmbed" class="timeline-sidebar">
             <!-- Empty state for timeline when no timeline data -->
             <div v-if="!hasTimelineData" class="empty-timeline-state">
-              <i class="pi pi-list" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
+              <i class="pi pi-list" style="font-size: 3rem; color: var(--gp-text-secondary); opacity: 0.5"></i>
               <p>{{ t('sharing.sharedTimelinePage.noStaysOrTrips') }}</p>
               <small v-if="filterStartDate && filterEndDate">{{ t('sharing.sharedTimelinePage.tryAdjustingFilter') }}</small>
               <small v-else-if="shareInfo.timeline_status === 'active'">{{ t('sharing.sharedTimelinePage.checkBackForUpdates') }}</small>
@@ -793,22 +793,14 @@ function handleTimelineItemClick(item) {
 }
 
 /* Dark mode background */
-.p-dark .shared-timeline-page {
-  background-color: var(--gp-surface-dark);
-}
 
 .shared-header {
-  background-color: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
+  background-color: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   padding: 1rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.p-dark .shared-header {
-  background-color: var(--gp-surface-card);
-  border-bottom: 1px solid var(--gp-border-dark);
 }
 
 /* Authenticated Header - Desktop: Single line, Mobile: 3 rows */
@@ -900,26 +892,21 @@ function handleTimelineItemClick(item) {
 
 .meta-trip-link {
   border-radius: 999px;
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
   color: var(--gp-primary);
   white-space: nowrap;
 }
 
 .meta-trip-link:hover {
-  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-card));
   color: var(--gp-primary-hover);
 }
 
 .meta-trip-link:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
   outline-offset: 2px;
-}
-
-.p-dark .meta-trip-link {
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark));
 }
 
 /* Row 3: Date Filter and Actions (before theme switcher on desktop) */
@@ -1007,7 +994,7 @@ function handleTimelineItemClick(item) {
 }
 
 .field .p-error {
-  color: var(--red-500);
+  color: var(--gp-danger-text);
   font-size: 0.875rem;
   font-weight: 500;
   margin-top: 0.25rem;
@@ -1041,17 +1028,17 @@ function handleTimelineItemClick(item) {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background-color: var(--surface-100);
-  border-radius: var(--border-radius);
+  background-color: var(--gp-surface-muted);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-item i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .info-hint {
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -1066,36 +1053,13 @@ function handleTimelineItemClick(item) {
 
 .timeline-map,
 .timeline-sidebar {
-  background-color: var(--gp-surface-white);
+  background-color: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
   height: 100%;
 }
 
-.p-dark .timeline-map,
-.p-dark .timeline-sidebar {
-  background-color: var(--gp-surface-card);
-}
-
 /* Dark mode for password and info cards */
-.p-dark .card-header h2 {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .field label {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .field .p-error {
-  color: var(--red-400);
-  font-weight: 600;
-}
-
-.p-dark .password-card,
-.p-dark .info-card,
-.p-dark .error-card {
-  background-color: var(--gp-surface-card);
-}
 
 .timeline-map {
   position: relative;
@@ -1307,10 +1271,6 @@ function handleTimelineItemClick(item) {
   height: 100dvh;
   overflow: hidden;
   background-color: var(--gp-surface-ground);
-}
-
-.p-dark .shared-timeline-page--embed {
-  background-color: var(--gp-surface-dark);
 }
 
 .shared-content--embed {

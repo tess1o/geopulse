@@ -57,7 +57,7 @@
             <div class="sharing-status-items">
               <div class="status-item">
                 <i :class="['pi', friend.friendSharesLiveLocation ? 'pi-check-circle' : 'pi-times-circle']"
-                   :style="{ color: friend.friendSharesLiveLocation ? 'var(--green-500)' : 'var(--red-500)' }"></i>
+                   :style="{ color: friend.friendSharesLiveLocation ? 'var(--p-green-500)' : 'var(--p-red-500)' }"></i>
                 <span class="status-label">{{ t('friends.listTab.liveLocation') }}</span>
                 <Badge
                   :value="friend.friendSharesLiveLocation ? t('friends.listTab.shared') : t('friends.listTab.notShared')"
@@ -66,7 +66,7 @@
               </div>
               <div class="status-item">
                 <i :class="['pi', friend.friendSharesTimeline ? 'pi-check-circle' : 'pi-times-circle']"
-                   :style="{ color: friend.friendSharesTimeline ? 'var(--green-500)' : 'var(--red-500)' }"></i>
+                   :style="{ color: friend.friendSharesTimeline ? 'var(--p-green-500)' : 'var(--p-red-500)' }"></i>
                 <span class="status-label">{{ t('friends.listTab.timelineHistory') }}</span>
                 <Badge
                   :value="friend.friendSharesTimeline ? t('friends.listTab.shared') : t('friends.listTab.notShared')"
@@ -369,7 +369,7 @@ const getLastSeenText = (lastSeen) => {
   justify-content: center;
   text-align: center;
   padding: 3rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-large);
   margin: 2rem 0;
 }
@@ -421,8 +421,8 @@ const getLastSeenText = (lastSeen) => {
 }
 
 .friend-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-light);
   transition: all 0.2s ease;
 }
@@ -495,8 +495,8 @@ const getLastSeenText = (lastSeen) => {
 .friend-sharing-status {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
 }
 
@@ -526,8 +526,8 @@ const getLastSeenText = (lastSeen) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
 }
 
@@ -545,8 +545,8 @@ const getLastSeenText = (lastSeen) => {
 .friend-permissions {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
 }
 
@@ -555,8 +555,8 @@ const getLastSeenText = (lastSeen) => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   margin-top: 0.5rem;
 }
@@ -593,7 +593,7 @@ const getLastSeenText = (lastSeen) => {
   justify-content: flex-end;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Responsive Design */

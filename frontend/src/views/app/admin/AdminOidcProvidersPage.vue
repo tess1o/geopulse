@@ -243,13 +243,13 @@
               <template #name><strong>{{ providerToDelete?.name }}</strong></template>
             </i18n-t>
 
-            <div v-if="isEnvironmentProvider(providerToDelete)" class="p-3 bg-blue-50 border-round mt-3">
+            <div v-if="isEnvironmentProvider(providerToDelete)" class="delete-note delete-note--info mt-3">
               <strong>{{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteLabel') }}</strong> {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteText') }}
               <br>
               {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteDetail') }}
             </div>
 
-            <div v-else class="p-3 bg-red-50 border-round mt-3">
+            <div v-else class="delete-note delete-note--danger mt-3">
               <strong>{{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.customWarningLabel') }}</strong> {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.customWarningText') }}
             </div>
           </div>
@@ -581,6 +581,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.delete-note {
+  padding: var(--gp-spacing-md);
+  border-radius: var(--gp-radius-small);
+}
+
+.delete-note--info {
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
+}
+
+.delete-note--danger {
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
+}
+
 .admin-oidc-providers {
   padding: 1.5rem;
 }
@@ -600,25 +615,25 @@ onMounted(() => {
 .page-header h1 {
   margin: 0 0 0.5rem 0;
   font-size: 2rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 code {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .table-header {
@@ -645,20 +660,20 @@ code {
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .test-result-message {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .endpoints-title {
   margin: 0 0 0.75rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .endpoint-list,
@@ -676,23 +691,23 @@ code {
 
 .endpoint-label {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-size: 0.875rem;
 }
 
 .endpoint-value {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.5rem 0.75rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   word-break: break-all;
   display: block;
 }
 
 .endpoint-value.error-value {
-  background-color: var(--red-50);
-  color: var(--red-700);
+  background-color: var(--p-red-50);
+  color: var(--p-red-700);
 }
 
 /* Desktop/Mobile Toggle */
@@ -714,8 +729,8 @@ code {
 }
 
 .provider-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-border);
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -723,9 +738,6 @@ code {
 }
 
 /* Dark theme specific */
-.p-dark .provider-card {
-  background: var(--gp-surface-dark);
-}
 
 .provider-card:active {
   transform: scale(0.98);
@@ -751,18 +763,18 @@ code {
   gap: 0.5rem;
   font-weight: 600;
   font-size: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin-bottom: 0.25rem;
 }
 
 .provider-icon {
   font-size: 1.25rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .provider-display-name {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .provider-badges {
@@ -777,7 +789,7 @@ code {
   gap: 1.5rem;
   margin-bottom: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .provider-stat {
@@ -789,7 +801,7 @@ code {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
   font-weight: 600;
 }
@@ -802,10 +814,10 @@ code {
 }
 
 .client-id-value {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.5rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.75rem;
   word-break: break-all;
   display: block;
@@ -816,7 +828,7 @@ code {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Mobile Responsive Styles */

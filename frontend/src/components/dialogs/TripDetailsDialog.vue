@@ -472,7 +472,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: var(--gp-spacing-md);
   padding-bottom: var(--gp-spacing-md);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .trip-title {
@@ -526,7 +526,7 @@ onBeforeUnmount(() => {
 }
 
 .coordinate {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.875rem;
 }
 
@@ -539,7 +539,7 @@ onBeforeUnmount(() => {
 }
 
 .copyable:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   color: var(--gp-primary);
 }
 
@@ -554,31 +554,13 @@ onBeforeUnmount(() => {
 }
 
 .duration-badge {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 600;
   display: inline-block;
-}
-
-/* Dark Mode */
-.p-dark .trip-header {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .detail-item {
-  border-color: var(--gp-border-subtle);
-}
-
-.p-dark .copyable:hover {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .duration-badge {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
 }
 
 /* Responsive */

@@ -2355,7 +2355,7 @@ defineExpose({
   height: 100%;
   min-height: 400px;
   position: relative;
-  background-color: var(--gp-surface-light, #f8fafc);
+  background-color: var(--gp-surface-muted, #f8fafc);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2394,10 +2394,10 @@ defineExpose({
   gap: 0.45rem;
   max-width: min(18rem, calc(100% - 7rem));
   padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--gp-surface-card) 94%, transparent);
+  color: var(--gp-text-primary);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
   font-size: 0.82rem;
   font-weight: 700;
@@ -2406,11 +2406,6 @@ defineExpose({
 
 /* Both overlays below were written against the light theme only, so on a dark map they
    showed up as white pills with dark text. */
-.p-dark .map-matching-status {
-  border-color: var(--gp-border-medium);
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
-}
 
 .map-matching-status-icon {
   animation: mapMatchingPulse 1.4s ease-in-out infinite;
@@ -2429,18 +2424,12 @@ defineExpose({
   bottom: calc(2.35rem + env(safe-area-inset-bottom));
   z-index: 905;
   padding: 0.35rem 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--gp-surface-card) 94%, transparent);
+  color: var(--gp-text-primary);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
   pointer-events: none;
-}
-
-.p-dark .heatmap-legend {
-  border-color: var(--gp-border-medium);
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
 }
 
 .trip-summary-legend {
@@ -2460,15 +2449,14 @@ defineExpose({
   gap: 0.65rem;
   padding: 0.55rem 0.6rem;
   /* Same card as the replay bar it stands in for (TripReplayControls .trip-replay-bar). */
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.95);
-  color: #0f172a;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  background: color-mix(in srgb, var(--gp-surface-card) 95%, transparent);
+  color: var(--gp-text-primary);
+  box-shadow: var(--gp-shadow-large);
   backdrop-filter: blur(4px);
   pointer-events: auto;
 }
-
 
 .trip-summary-icon {
   flex: 0 0 2rem;
@@ -2490,7 +2478,7 @@ defineExpose({
 
 .trip-summary-title {
   overflow: hidden;
-  color: #0f172a;
+  color: var(--gp-text-primary);
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.2;
@@ -2504,7 +2492,7 @@ defineExpose({
   flex-wrap: wrap;
   gap: 0.38rem;
   overflow: visible;
-  color: #334155;
+  color: var(--gp-text-secondary);
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
@@ -2514,7 +2502,7 @@ defineExpose({
 .trip-summary-hint {
   margin-top: 0.15rem;
   overflow: hidden;
-  color: #64748b;
+  color: var(--gp-text-muted);
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.2;
@@ -2527,20 +2515,20 @@ defineExpose({
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.7);
+  background: var(--gp-text-muted);
 }
 
 .trip-summary-close {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(248, 250, 252, 0.98);
-  color: #334155;
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -2549,13 +2537,13 @@ defineExpose({
   flex: 0 0 auto;
   height: 2rem;
   padding: 0 0.7rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(248, 250, 252, 0.98);
-  color: #0f172a;
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
@@ -2567,34 +2555,8 @@ defineExpose({
 .trip-summary-close:hover,
 .trip-summary-close:focus-visible {
   border-color: var(--gp-primary-light, #60a5fa);
-  background: rgba(239, 246, 255, 0.98);
-  color: var(--gp-primary, #1a56db);
-}
-
-.p-dark .trip-summary {
-  border-color: rgba(100, 116, 139, 0.65);
-  background: rgba(15, 23, 42, 0.94);
-  color: rgba(248, 250, 252, 0.96);
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.48);
-}
-
-.p-dark .trip-summary-title {
-  color: rgba(248, 250, 252, 0.96);
-}
-
-.p-dark .trip-summary-meta {
-  color: rgba(203, 213, 225, 0.88);
-}
-
-.p-dark .trip-summary-hint {
-  color: rgba(148, 163, 184, 0.9);
-}
-
-.p-dark .trip-summary-replay,
-.p-dark .trip-summary-close {
-  border-color: rgba(100, 116, 139, 0.65);
-  background: rgba(30, 41, 59, 0.95);
-  color: rgba(203, 213, 225, 0.92);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
 }
 
 /* Responsive adjustments */

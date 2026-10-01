@@ -541,12 +541,12 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .editor-section {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
   display: grid;
   gap: 0.75rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
 }
 
 .editor-section h4 {
@@ -565,10 +565,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-field {
-  border: 2px solid color-mix(in srgb, var(--primary-color, #3b82f6) 45%, var(--surface-border));
+  border: 2px solid color-mix(in srgb, var(--gp-primary, #3b82f6) 45%, var(--gp-border));
   border-radius: 12px;
   padding: 0.8rem;
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 8%, var(--surface-card));
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 8%, var(--gp-surface-card));
 }
 
 .routing-mode-options {
@@ -593,10 +593,10 @@ const templateEnabledModel = createFieldModel('enabled')
   align-items: center;
   gap: 0.6rem;
   text-align: left;
-  border: 2px solid color-mix(in srgb, var(--surface-border) 85%, #000);
+  border: 2px solid color-mix(in srgb, var(--gp-border) 85%, #000);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
-  color: var(--text-color);
+  background: color-mix(in srgb, var(--gp-surface-card) 70%, #fff);
+  color: var(--gp-text-primary);
   font-weight: 600;
   padding: 0.66rem 0.8rem;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
@@ -606,7 +606,7 @@ const templateEnabledModel = createFieldModel('enabled')
   width: 0.95rem;
   height: 0.95rem;
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--text-color-secondary) 75%, transparent);
+  border: 2px solid color-mix(in srgb, var(--gp-text-secondary) 75%, transparent);
   background: transparent;
   flex: 0 0 auto;
 }
@@ -616,8 +616,8 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-option:hover .routing-mode-card {
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 60%, var(--surface-border));
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--gp-primary, #3b82f6) 60%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 12%, var(--gp-surface-card));
 }
 
 .routing-mode-option.is-disabled {
@@ -626,24 +626,24 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-option.is-disabled:hover .routing-mode-card {
-  border-color: color-mix(in srgb, var(--surface-border) 85%, #000);
-  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
+  border-color: color-mix(in srgb, var(--gp-border) 85%, #000);
+  background: color-mix(in srgb, var(--gp-surface-card) 70%, #fff);
 }
 
 .routing-mode-input:focus-visible + .routing-mode-card {
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 0.14rem color-mix(in srgb, var(--primary-color, #3b82f6) 32%, transparent);
+  border-color: var(--gp-primary, #3b82f6);
+  box-shadow: 0 0 0 0.14rem color-mix(in srgb, var(--gp-primary, #3b82f6) 32%, transparent);
 }
 
 .routing-mode-option.is-active .routing-mode-card {
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 88%, #1d4ed8);
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 24%, var(--surface-card));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color, #3b82f6) 45%, transparent);
+  border-color: color-mix(in srgb, var(--gp-primary, #3b82f6) 88%, #1d4ed8);
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 24%, var(--gp-surface-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gp-primary, #3b82f6) 45%, transparent);
 }
 
 .routing-mode-option.is-active .routing-mode-dot {
-  border-color: var(--primary-color, #3b82f6);
-  background: radial-gradient(circle, var(--primary-color, #3b82f6) 45%, transparent 48%);
+  border-color: var(--gp-primary, #3b82f6);
+  background: radial-gradient(circle, var(--gp-primary, #3b82f6) 45%, transparent 48%);
 }
 
 .field-inline-header {
@@ -677,10 +677,10 @@ const templateEnabledModel = createFieldModel('enabled')
   justify-content: space-between;
   align-items: center;
   gap: 0.6rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.6rem 0.7rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .logic-label {
@@ -689,7 +689,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .muted-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.8rem;
 }
 
@@ -712,10 +712,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .preview-panel {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   display: grid;
   gap: 0.75rem;
 }
@@ -750,10 +750,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-help {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
 }
 
 .macro-help-header {
@@ -776,23 +776,23 @@ const templateEnabledModel = createFieldModel('enabled')
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.5rem 0.6rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .macro-chip {
-  border: 1px solid var(--primary-300);
-  background: var(--surface-50);
-  color: var(--text-color);
+  border: 1px solid var(--p-primary-300);
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
   border-radius: 999px;
   padding: 0.22rem 0.6rem;
   cursor: pointer;
 }
 
 .macro-chip:hover {
-  border-color: var(--primary-500);
+  border-color: var(--p-primary-500);
 }
 
 .macro-chip:disabled {
@@ -801,7 +801,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-chip:disabled:hover {
-  border-color: var(--primary-300);
+  border-color: var(--p-primary-300);
 }
 
 .macro-description {
@@ -809,7 +809,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-example-icon {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .actions-row {

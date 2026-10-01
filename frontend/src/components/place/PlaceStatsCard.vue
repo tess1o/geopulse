@@ -98,7 +98,7 @@ const formatCadence = (days) => {
 
 .stats-group {
   padding: var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -132,10 +132,6 @@ const formatCadence = (days) => {
   margin: 0;
   font-size: .8rem;
   white-space: nowrap;
-}
-
-.p-dark .stats-group {
-  border-color: var(--gp-border-dark);
 }
 
 @media (max-width: 1100px) {

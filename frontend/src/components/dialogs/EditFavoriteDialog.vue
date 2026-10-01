@@ -309,7 +309,7 @@ onUnmounted(() => {
 .bounds-section {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .bounds-header {
@@ -342,7 +342,7 @@ onUnmounted(() => {
   height: 350px;
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   margin-bottom: 0.75rem;
   position: relative;
 }
@@ -388,7 +388,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
 }
@@ -399,7 +399,7 @@ onUnmounted(() => {
 }
 
 .bounds-info-text {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   color: var(--gp-text-primary);
   font-size: 0.8rem;
 }
@@ -423,19 +423,6 @@ onUnmounted(() => {
   border-color: var(--gp-primary);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
   outline: none;
-}
-
-/* Dark Mode */
-.p-dark .bounds-section {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .map-container {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .bounds-info {
-  background: var(--gp-surface-darker);
 }
 
 /* Responsive */

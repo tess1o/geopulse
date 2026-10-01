@@ -16,7 +16,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="p-6 text-center">
       <ProgressSpinner size="small" />
-      <p class="text-surface-500 mt-2">{{ t('friends.sentInvites.loading') }}</p>
+      <p class="text-muted-color mt-2">{{ t('friends.sentInvites.loading') }}</p>
     </div>
 
     <!-- Has Invites -->
@@ -39,8 +39,8 @@
                 {{ invite.receiverName }}
               </p>
               <div class="flex items-center gap-1 mt-1">
-                <i class="pi pi-clock text-xs text-surface-500"></i>
-                <p class="text-xs text-surface-500">
+                <i class="pi pi-clock text-xs text-muted-color"></i>
+                <p class="text-xs text-muted-color">
                   {{ t('friends.sentInvites.sentAgo', { time: timezone.timeAgo(invite.sentAt) }) }}
                 </p>
               </div>
@@ -52,7 +52,7 @@
             <!-- Status indicator -->
             <div class="flex items-center gap-1">
               <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span class="text-xs text-surface-500">{{ t('friends.sentInvites.pending') }}</span>
+              <span class="text-xs text-muted-color">{{ t('friends.sentInvites.pending') }}</span>
             </div>
 
             <!-- Cancel button -->
@@ -89,12 +89,12 @@
     <div v-else class="p-6 text-center">
       <div class="mb-4">
         <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mx-auto mb-3">
-          <i class="pi pi-send text-2xl text-surface-400"></i>
+          <i class="pi pi-send text-2xl text-muted-color"></i>
         </div>
         <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
           {{ t('friends.sentInvites.emptyTitle') }}
         </h3>
-        <p class="text-sm text-surface-500 max-w-sm mx-auto">
+        <p class="text-sm text-muted-color max-w-sm mx-auto">
           {{ t('friends.sentInvites.emptyMessage') }}
         </p>
       </div>
@@ -115,7 +115,7 @@
               <template #name><strong>{{ selectedInvite?.receiverName }}</strong></template>
             </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
+          <p class="text-sm text-muted-color">
             {{ t('friends.sentInvites.cancelDialog.note') }}
           </p>
         </div>

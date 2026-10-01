@@ -147,7 +147,7 @@
 
     <div v-if="systemSettings.length === 0" class="empty-state">
       <div class="empty-state-icon">
-        <i class="pi pi-cog" style="font-size: 2rem; color: var(--text-color-secondary);" />
+        <i class="pi pi-cog" style="font-size: 2rem; color: var(--gp-text-secondary);" />
       </div>
       <h3>{{ t('adminSettings.systemTab.noSettingsTitle') }}</h3>
       <p class="text-muted">{{ t('adminSettings.systemTab.noSettingsDescription') }}</p>
@@ -254,7 +254,7 @@ const handleLoggingReset = async () => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 
@@ -272,7 +272,7 @@ const handleLoggingReset = async () => {
 .logging-status {
   margin: 0.75rem 0 1rem;
   padding: 0 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 @media (max-width: 768px) {

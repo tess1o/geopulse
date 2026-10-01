@@ -340,7 +340,7 @@ watch(() => props.jobProgress?.status, (status) => {
   flex-direction: column;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-md);
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
   border-left: 3px solid var(--gp-primary);
 }
@@ -409,7 +409,7 @@ watch(() => props.jobProgress?.status, (status) => {
   flex-direction: column;
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -435,7 +435,7 @@ watch(() => props.jobProgress?.status, (status) => {
 }
 
 .progress-bar.progress-complete :deep(.p-progressbar-value) {
-  background: var(--green-500);
+  background: var(--p-green-500);
 }
 
 .progress-details {
@@ -461,11 +461,11 @@ watch(() => props.jobProgress?.status, (status) => {
 }
 
 .success-count {
-  color: var(--green-600);
+  color: var(--p-green-600);
 }
 
 .failed-count {
-  color: var(--red-600);
+  color: var(--p-red-600);
 }
 
 .completion-message {
@@ -473,16 +473,16 @@ watch(() => props.jobProgress?.status, (status) => {
   align-items: center;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background: var(--green-50);
-  border: 1px solid var(--green-200);
+  background: var(--p-green-50);
+  border: 1px solid var(--p-green-200);
   border-radius: var(--gp-radius-small);
-  color: var(--green-700);
+  color: var(--p-green-700);
   font-weight: 600;
 }
 
 .completion-message i {
   font-size: 1.2rem;
-  color: var(--green-600);
+  color: var(--p-green-600);
 }
 
 .warning-message-box {
@@ -490,16 +490,16 @@ watch(() => props.jobProgress?.status, (status) => {
   align-items: center;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background: var(--yellow-50);
-  border: 1px solid var(--yellow-300);
+  background: var(--p-yellow-50);
+  border: 1px solid var(--p-yellow-300);
   border-radius: var(--gp-radius-small);
-  color: var(--yellow-900);
+  color: var(--p-yellow-900);
   font-weight: 600;
 }
 
 .warning-message-box i {
   font-size: 1.2rem;
-  color: var(--yellow-600);
+  color: var(--p-yellow-600);
 }
 
 .error-message {
@@ -507,16 +507,16 @@ watch(() => props.jobProgress?.status, (status) => {
   align-items: flex-start;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background: var(--red-50);
-  border: 1px solid var(--red-200);
+  background: var(--p-red-50);
+  border: 1px solid var(--p-red-200);
   border-radius: var(--gp-radius-small);
-  color: var(--red-700);
+  color: var(--p-red-700);
   font-weight: 600;
 }
 
 .error-message i {
   font-size: 1.2rem;
-  color: var(--red-600);
+  color: var(--p-red-600);
   margin-top: 2px;
 }
 
@@ -524,18 +524,12 @@ watch(() => props.jobProgress?.status, (status) => {
   font-size: 0.85rem;
   font-weight: 400;
   margin-top: var(--gp-spacing-xs);
-  color: var(--red-600);
+  color: var(--p-red-600);
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .info-section,
-.p-dark .progress-section {
-  background-color: var(--gp-surface-darker);
 }
 </style>

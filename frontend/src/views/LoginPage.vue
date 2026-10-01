@@ -556,7 +556,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
   z-index: 0;
 }
 
@@ -622,7 +622,7 @@ onMounted(() => {
   background: var(--gp-warning);
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: var(--gp-radius-medium);
-  color: var(--gp-text-on-surface-emphasis);
+  color: var(--gp-text-primary);
   font-size: 0.95rem;
   margin-bottom: 1.5rem;
   max-width: 420px;
@@ -661,7 +661,7 @@ onMounted(() => {
   background: rgba(26, 86, 219, 0.1);
   border: 1px solid rgba(26, 86, 219, 0.3);
   border-radius: var(--gp-radius-medium);
-  color: var(--gp-text-on-surface-emphasis);
+  color: var(--gp-text-primary);
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -671,22 +671,11 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-/* Dark Mode Gradient Background */
-.p-dark .login-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .login-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-}
-
-
-
 /* Login Card */
 .login-card {
   width: 100%;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-card);
 }
 
@@ -724,7 +713,7 @@ onMounted(() => {
   width: 100%;
   justify-content: center;
   padding: 0.75rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-color: var(--gp-border-medium);
   color: var(--gp-text-primary);
 }
@@ -787,7 +776,6 @@ onMounted(() => {
   margin-top: 0.25rem;
 }
 
-
 /* Submit Button */
 .submit-button {
   width: 100%;
@@ -835,12 +823,11 @@ onMounted(() => {
   opacity: 1;
 }
 
-
 /* Register Section */
 .register-section {
   text-align: center;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .register-text {
@@ -861,7 +848,6 @@ onMounted(() => {
   color: var(--gp-primary-hover);
   text-decoration: underline;
 }
-
 
 /* Input Styling */
 :deep(.p-inputtext) {
@@ -937,5 +923,4 @@ onMounted(() => {
     padding: 0.5rem;
   }
 }
-
 </style>

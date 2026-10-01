@@ -169,8 +169,8 @@ watch(() => props.enabled, (newVal) => {
 
 <style scoped>
 .transport-type-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   box-shadow: none;
   transition: border-color 0.2s ease;
@@ -198,7 +198,7 @@ watch(() => props.enabled, (newVal) => {
 
 .transport-type-card.is-disabled {
   opacity: 0.6;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 /* Header Section */
@@ -305,7 +305,7 @@ watch(() => props.enabled, (newVal) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border: 1px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-medium);
   font-size: 0.85rem;
@@ -340,7 +340,7 @@ watch(() => props.enabled, (newVal) => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-left: 3px solid var(--gp-primary);
   border-radius: var(--gp-radius-small);
   margin-top: var(--gp-spacing-md);
@@ -385,7 +385,7 @@ watch(() => props.enabled, (newVal) => {
   gap: var(--gp-spacing-lg);
   margin-top: var(--gp-spacing-lg);
   padding-top: var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Disabled Message */
@@ -394,7 +394,7 @@ watch(() => props.enabled, (newVal) => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   margin-top: 1rem;
   font-size: 0.9rem;
@@ -403,7 +403,7 @@ watch(() => props.enabled, (newVal) => {
 }
 
 .disabled-message i {
-  color: var(--gp-text-tertiary);
+  color: var(--gp-text-muted);
   flex-shrink: 0;
 }
 

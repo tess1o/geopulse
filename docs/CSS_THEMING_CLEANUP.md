@@ -102,14 +102,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | Target |
-|---|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | 868 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | Target |
+|---|---|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 |
 
 ---
 
@@ -181,7 +181,7 @@ Components to check:
 - dialog and confirm dialog, toast (4 severities), tooltip, popover;
 - tabs and tabmenu, card, datatable and paginator, breadcrumb, drawer.
 
-### Phase 3: Fix broken and dead selectors ✅
+### Phase 3: Fix broken and dead selectors ✅ `d95b73da7`
 Verified first: a teleported `.p-dialog` and its ancestors carry no `data-v-*` attribute, so scoped `:deep(.p-dialog…)`
 never matches, while a `class` passed to `<Dialog>`/`<Popover>` does land on the overlay root. Rules that never
 matched were deleted, since what users see today is already the preset look. Rules with a real intent were moved
@@ -233,20 +233,90 @@ Left for later phases (found during this one):
 - the Data export/import tabs in dark mode;
 - timeline map popups in dark mode: weather chips are coloured by severity again.
 
-### Phase 4: Token sweep
-- [ ] Node codemod applying the rename map; context-dependent cases are reviewed by hand.
-- [ ] Remove the temporary aliases from `tokens.css`, including `--text-color` and `--text-color-secondary`.
-- [ ] Delete the no-op `.p-dark` blocks (about 52 files that only swap tokens which already flip, e.g. StayCard, admin pages).
-- [ ] Hardcoded colour plus `.p-dark` pairs (about 49 files): replace the literals with tokens and delete the dark
-  block. Examples: Home, ExploreGeoPulsePanel, TripReplayControls, TipOfDayCard, TimelineMap, CoverageExplorerPage.
-- [ ] Raw Tailwind palette classes without a dark variant become primeui semantic classes, e.g. GpsFilteringSettings
-  and AdminOidcProvidersPage (where the PrimeFlex class `border-round` becomes `rounded`).
-- [ ] Remove `!important` that the layers make unnecessary. Top offenders: TechnicalDataPage (130), BaseButton (94),
-  AppNavbarWithDatePicker (86), maps.css (104).
-- [ ] Component-local variables drop the `gp-` prefix (NotificationBell's `--gp-bell-*` becomes `--bell-*`).
-- [ ] Fonts: `--gp-font-family` and `--gp-font-mono` everywhere; drop the `'Inter'` references.
+### Phase 4: Token sweep ✅
+- [x] Codemod (a style parser, so each `var()` is renamed with its property and whether it sits in a `.p-dark` rule):
+  about 1850 renames in 180 files. Context-dependent cases:
+  - Constant-dark tokens (`--gp-surface-dark`, `-darker`, `--gp-border-dark`) all sat in `.p-dark` rules and
+    became `--gp-surface-card`, `--gp-surface-ground` and `--gp-border`.
+  - Old status shades were fixed by hand after the codemod. Dark `-900` backgrounds were tints, so they become
+    `-soft`, not `-strong`. `-100`/`-300` shades used as text become `-text`.
+  - `--p-text-color-secondary`, `--p-surface-border` and `--p-shadow-lg` were undefined in PrimeVue 4
+    (SharedLocationPage and others); semantic `--p-*` uses now go through their `--gp-*` aliases.
+  - `--gp-surface-card` used as a text colour (white text on a fill, a dark code block) becomes
+    `--gp-primary-contrast` or a fixed palette colour.
+  - JS reads (BarChart) updated.
+- [x] Temporary aliases removed from `tokens.css`, including `--text-color` and `--text-color-secondary`. No
+  PrimeVue 3 variables and no undefined `--gp-*` names are left (apart from the two set at runtime).
+- [x] `.p-dark` blocks, handled by tools and then per file:
+  - Exact no-ops (same value as the base rule, which now flips) deleted.
+  - Pairs where the dark token's light value equals the base literal: the base takes the token.
+  - Pattern rules:
+    - primary text brightened in dark becomes the new `--gp-primary-text`;
+    - `p-primary-50`/`900` becomes `--gp-primary-soft`;
+    - secondary text swapped in dark: the override is dropped;
+    - same-family status text: the override is dropped.
+  - The remaining 351 rules in 93 files were decided per file. The policy: the component uses its base token in
+    both modes, and dark-only surface swaps are dropped. Literal pairs got tokens. PrimeVue restyles already
+    covered by the preset were deleted: the drawer, datepicker, the card inside the location-source cards, and
+    the teleported popover overrides.
+- [x] Landing page (Home, ExploreGeoPulsePanel, TipOfDayCard): its palette moved to `tokens.css` as `--gp-landing-*`
+  (background, glows, header, text, accent, glass panels). This also fixed light-only styles that stayed light in
+  dark mode (the secondary hero button, the mobile panel tabs).
+- [x] Tailwind: GpsFilteringSettings uses `border-surface` / `text-muted-color`. AdminOidcProvidersPage's delete
+  notes use status tokens, and the PrimeFlex `border-round` is gone. Muted `text-surface-400/500` in the friends
+  components becomes `text-muted-color`. Mid-tone icon colours (`text-*-500`) stay, since they read in both modes.
+- [x] `!important`: 868 down to 495.
+  - BaseButton: the global `.p-button` rules left the component. The radius went to the preset `button` token.
+    Values Aura already has (label weight, icon-only sizes, disabled opacity) were dropped, and so were the dead
+    `.p-buttonset` and `.p-ink` rules (ripple is off). The rest moved to `primevue-overrides.css` without
+    `!important`.
+  - Navbars: the two components repeated the same global toolbar rules and settled them by load order.
+    AppNavbarWithDatePicker now uses `.gp-app-navbar-toolbar.gp-app-navbar-with-datepicker`, and its dead
+    `.gp-datepicker` rules (the class is never rendered) were deleted.
+  - PrimeVue-only overrides in AIChatPage, TripsManagementPage, OidcProvidersSection and TimelinePage were
+    stripped.
+  - Kept on purpose:
+    - NotificationBell, where the global `.p-button` shadow rule is more specific than its own;
+    - the navbar's override of the bell size;
+    - the Popover/Dialog size and position, which PrimeVue sets inline;
+    - the `gp-dialog-*` widths;
+    - reduced-motion rules;
+    - Home's static hero button, which cancels the global hover lift;
+    - the toast z-index.
+  - The rest is in the Phase 5 table files (246) and the Phase 6 map CSS and map components (148).
+- [x] Component-local variables: NotificationBell's `--gp-bell-*`, `--gp-footer-btn-*` and `--gp-mark-seen-*` are now
+  `--bell-*` and so on. The runtime-set `--gp-friend-marker-color` and `--gp-navbar-datepicker-width` are kept.
+- [x] Fonts: every monospace stack is `var(--gp-font-mono)`, and the one `'Inter'` is `var(--gp-font-family)`.
+- [x] Bugs found along the way:
+  - ActivitySummaryCard's `:global(.p-tooltip .p-tooltip-text)` stripped the padding and background from every
+    tooltip in the app once the dashboard had loaded. It is now scoped to its own `pt` class.
+  - AdminAuditLogsPage's JSON viewer had dark text on a dark background in dark mode.
+  - StayDetailsDialog's duration badge was blue text on a solid blue background.
+  - FriendsMap-style non-flipping `--p-surface-N` surfaces were replaced in AIChatPage and OnboardingTour.
 
-**Check in the UI:** a broad pass over all pages in both modes (list below).
+Left for later phases:
+- Phase 5: the Family A and B DataTable dark blocks and their `!important` (StaysTable, TripsTable, DataGapsTable,
+  TechnicalDataPage, PlaceVisitsTable, FavoritesManagementPage, GeocodingManagementPage).
+- Phase 6: map CSS (`maps.css`, the popup CSS, weather markers, the map layer components).
+
+**Check in the UI:** a broad pass over all pages in both modes (list below). Expected visible changes:
+- Dark mode:
+  - Nested blocks that used to be forced to the card colour now show the muted surface (#334155), as in light mode
+    (timeline sidebar blocks, dialogs, digest, mobile table cards).
+  - Tinted accents keep their light-mode strength instead of a boosted dark one.
+  - Primary text and links use the brighter `--gp-primary-text`.
+  - Page backgrounds that were forced to the card colour are the ground colour (Oidc callback, shared location,
+    shared timeline).
+- Light mode:
+  - Borders that used `--surface-border` now show (it was undefined, so the whole declaration was dropped).
+  - Some literal greys moved to the slate tokens.
+  - The login, register and shared-location gradients are card to ground.
+- Everywhere:
+  - Buttons with the `rounded` prop are pill-shaped again (the global radius `!important` used to flatten them).
+  - There is no focus ring after a mouse click (Aura's `focus-visible` ring stays).
+  - Tooltips keep their padding and background after visiting the dashboard.
+- Landing page: dark mode uses the same glass panels via tokens; the hero eyebrow and tip icon are emerald
+  (#34d399) in dark mode.
 
 ### Phase 5: Merge copy-pasted blocks
 - [ ] DataTable: Family A (StaysTable, TripsTable, DataGapsTable, TechnicalDataPage) and Family B (PlaceVisitsTable,
@@ -321,6 +391,15 @@ Check each in light, dark and system mode (switch the OS theme on an open page);
   primary.400 with dark text.
 - Dark highlight (selected option, row, date) is solid primary with white text, matching light mode.
 - The `:global(.p-dark)` fix was pulled forward from Phase 3 (red flash on reload).
+- Phase 4: `--gp-primary-text` is reused as a new token: primary as text, icon or accent line, light = primary,
+  dark = #60a5fa. The rename map's old `--gp-primary-text` (text on a primary fill) had one use, which became
+  `--gp-primary-contrast`. The name now matches the status `--gp-<status>-text` tokens.
+- Phase 4: the landing page keeps its own tinted palette as `--gp-landing-*` in `tokens.css`, rather than being
+  flattened onto the app surfaces.
+- Phase 4: PrimeVue palette colours (`--green-500` and so on) were renamed to `--p-green-500` rather than to status
+  tokens. That keeps the exact colours; they were undefined before, so their fallbacks applied.
+- Phase 4: dark-only surface swaps were dropped instead of adding tokens. Components use one surface token in both
+  modes, and the dark muted surface (#334155) is the nested-block colour everywhere.
 - Phase 2, datepicker "today": emerald (`{emerald.500}`, white text) in **both** schemes. Before, it was emerald
   only in dark mode; the navbar's comment gave the reason: keep today distinct from the blue selected date.
   AppNavbarWithDatePicker's own dark today/selected rules are now redundant; they go in Phase 4.

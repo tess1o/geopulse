@@ -657,18 +657,18 @@ onMounted(() => {
 }
 
 .card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1rem;
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .font-mono {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 /* Invitation Dialog Styles */
@@ -681,7 +681,7 @@ onMounted(() => {
 .invitation-dialog-text {
   margin: 0 0 0.5rem 0;
   font-size: 0.95rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .invitation-link-container {
@@ -692,7 +692,7 @@ onMounted(() => {
 
 .invitation-link-input {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.875rem;
   min-width: 0;
 }
@@ -706,14 +706,14 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .invitation-expiry i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .invitation-message {
@@ -735,7 +735,7 @@ onMounted(() => {
 
 .form-field label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .help-text {
@@ -769,8 +769,8 @@ onMounted(() => {
 }
 
 .invitation-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-border);
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -778,9 +778,6 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-.p-dark .invitation-card {
-  background: var(--gp-surface-dark);
-}
 
 .invitation-card:active {
   transform: scale(0.98);
@@ -801,10 +798,10 @@ onMounted(() => {
 }
 
 .invitation-token {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin-bottom: 0.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -812,7 +809,7 @@ onMounted(() => {
 
 .invitation-creator {
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .invitation-card-body {
@@ -820,7 +817,7 @@ onMounted(() => {
   gap: 1.5rem;
   margin-bottom: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .invitation-stat {
@@ -832,7 +829,7 @@ onMounted(() => {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
 }
 
@@ -847,14 +844,14 @@ onMounted(() => {
   gap: 0.5rem;
   padding: 0.5rem;
   margin-bottom: 0.5rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .invitation-used i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .invitation-card-actions {
@@ -862,7 +859,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Mobile Pagination */
@@ -873,13 +870,13 @@ onMounted(() => {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
 }
 
 .pagination-info {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   padding: 0 0.5rem;
 }
 

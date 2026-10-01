@@ -125,7 +125,7 @@ const closeMapPopup = () => {
 }
 
 .place-item:hover {
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-ground);
   border-color: var(--gp-primary-light);
   transform: translateX(2px);
 }
@@ -217,35 +217,6 @@ const closeMapPopup = () => {
   margin: 0;
   max-width: 250px;
   line-height: 1.4;
-}
-
-/* Dark Mode */
-.p-dark .place-item:hover {
-  background-color: var(--gp-surface-darker);
-}
-
-.p-dark .place-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .place-visits {
-  color: var(--gp-primary);
-}
-
-.p-dark .place-duration {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .no-data-icon {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .no-data-message {
-  color: var(--gp-text-muted);
 }
 
 /* Responsive adjustments */

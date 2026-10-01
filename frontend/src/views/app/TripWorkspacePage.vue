@@ -2324,7 +2324,7 @@ watch(showPlanItemDialog, async (nextVisible) => {
   grid-template-columns: 1fr auto auto;
   gap: var(--gp-spacing-sm);
   align-items: center;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
 }
@@ -2377,14 +2377,10 @@ watch(showPlanItemDialog, async (nextVisible) => {
    component's bottom sheet, so it is undone by the media block at the end of this sheet. */
 .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
   max-height: none;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   position: relative;
   min-height: 0;
   overflow: hidden;
-}
-
-.p-dark .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
-  background: var(--gp-surface-dark);
 }
 
 .pane-loading {
@@ -2425,8 +2421,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
 .plan-item-coordinate-pill {
   min-height: 2.5rem;
   border-radius: var(--gp-radius-small);
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
   padding: 0.55rem 0.7rem;
   color: var(--gp-text-secondary);
   font-size: 0.83rem;
@@ -2441,10 +2437,10 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .plan-item-dialog-map-wrap {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .plan-item-dialog-map-hint {
@@ -2516,7 +2512,6 @@ watch(showPlanItemDialog, async (nextVisible) => {
   .plan-item-dialog-layout {
     grid-template-columns: 1fr;
   }
-
 }
 
 @media (max-width: 768px) {

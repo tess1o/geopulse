@@ -304,9 +304,9 @@ const selectOnlineFriends = () => {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .filter-main {
@@ -390,15 +390,6 @@ const selectOnlineFriends = () => {
 
 .mobile-done-button {
   width: 100%;
-}
-
-.p-dark .filter-desktop {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .selected-summary {
-  color: var(--gp-text-primary);
 }
 
 @media (max-width: 768px) {

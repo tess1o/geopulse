@@ -343,8 +343,8 @@ defineExpose({
 
 .place-notes-count {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gp-primary) 11%, var(--gp-surface-white));
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 24%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 11%, var(--gp-surface-card));
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 24%, var(--gp-border));
   color: var(--gp-primary);
   font-size: 0.8rem;
   font-weight: 700;
@@ -377,9 +377,9 @@ defineExpose({
 }
 
 .place-note-item {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   padding: var(--gp-spacing-md);
 }
 
@@ -427,13 +427,13 @@ defineExpose({
 }
 
 .place-note-source-memos {
-  background: #e0f2fe;
-  color: #0f5f8f;
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
 }
 
 .place-note-source-geopulse {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .place-note-markdown {
@@ -463,17 +463,17 @@ defineExpose({
 
 .place-note-markdown :deep(pre) {
   overflow: auto;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
 }
 
 .place-note-truncated {
   margin-top: var(--gp-spacing-sm);
-  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--gp-border-light));
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--gp-border));
   border-radius: var(--gp-radius-small);
-  background: color-mix(in srgb, #f59e0b 13%, var(--gp-surface-white));
-  color: #92400e;
+  background: color-mix(in srgb, #f59e0b 13%, var(--gp-surface-card));
+  color: var(--gp-warning-text);
   font-size: 0.86rem;
   line-height: 1.45;
   padding: var(--gp-spacing-sm);
@@ -495,42 +495,13 @@ defineExpose({
 
 .place-notes-error {
   margin-top: var(--gp-spacing-md);
-  border: 1px solid color-mix(in srgb, var(--gp-error) 36%, var(--gp-border-light));
+  border: 1px solid color-mix(in srgb, var(--gp-danger) 36%, var(--gp-border));
   border-radius: var(--gp-radius-small);
-  background: color-mix(in srgb, var(--gp-error) 9%, var(--gp-surface-white));
-  color: var(--gp-error);
+  background: color-mix(in srgb, var(--gp-danger) 9%, var(--gp-surface-card));
+  color: var(--gp-danger);
   font-size: 0.9rem;
   line-height: 1.45;
   padding: var(--gp-spacing-sm);
-}
-
-.p-dark .place-note-item {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .place-note-source-memos {
-  background: color-mix(in srgb, #38bdf8 22%, var(--gp-surface-darker));
-  color: #bae6fd;
-}
-
-.p-dark .place-note-source-geopulse {
-  background: color-mix(in srgb, #22c55e 22%, var(--gp-surface-darker));
-  color: #bbf7d0;
-}
-
-.p-dark .place-notes-count {
-  background: color-mix(in srgb, var(--gp-primary) 20%, var(--gp-surface-darker));
-  border-color: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-border-dark));
-}
-
-.p-dark .place-note-truncated {
-  background: color-mix(in srgb, #f59e0b 18%, var(--gp-surface-darker));
-  color: #fcd34d;
-}
-
-.p-dark .place-notes-error {
-  background: color-mix(in srgb, var(--gp-error) 16%, var(--gp-surface-darker));
 }
 
 @media (max-width: 640px) {

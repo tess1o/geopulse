@@ -320,14 +320,9 @@ onMounted(() => {
 /* Help Sections */
 .help-section {
   margin-bottom: 2rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-large);
-}
-
-.p-dark .help-section {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
 }
 
 .section-content {
@@ -394,15 +389,10 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   padding: 1.5rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   transition: all 0.2s ease;
-}
-
-.p-dark .action-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
 }
 
 .debug-export-card {
@@ -510,8 +500,8 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   text-decoration: none;
   transition: all 0.2s ease;
@@ -522,11 +512,6 @@ onMounted(() => {
   transform: translateY(-2px);
   box-shadow: var(--gp-shadow-medium);
   border-color: var(--gp-primary);
-}
-
-.p-dark .doc-link-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
 }
 
 .doc-icon {
@@ -617,11 +602,7 @@ onMounted(() => {
 
 .tech-stack {
   padding-top: 2rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-.p-dark .tech-stack {
-  border-color: var(--gp-border-dark);
+  border-top: 1px solid var(--gp-border);
 }
 
 .tech-title {

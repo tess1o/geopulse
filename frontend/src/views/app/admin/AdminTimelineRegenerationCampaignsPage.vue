@@ -671,11 +671,11 @@ onMounted(() => {
 .page-header h1 {
   margin: 0;
   font-size: 1.75rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -700,13 +700,13 @@ onMounted(() => {
 
 .campaign-key {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   word-break: break-word;
 }
 
 .campaign-reason,
 .campaign-card-date {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   margin-top: 0.25rem;
 }
@@ -719,7 +719,7 @@ onMounted(() => {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.8rem;
   margin-top: 0.25rem;
 }
@@ -730,8 +730,8 @@ onMounted(() => {
 }
 
 .campaign-card {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -745,7 +745,7 @@ onMounted(() => {
 
 .campaign-card-reason {
   margin: 0.75rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .campaign-card-stats,
@@ -757,7 +757,7 @@ onMounted(() => {
 
 .campaign-card-stats div,
 .details-stats div {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 0.75rem;
 }
@@ -766,7 +766,7 @@ onMounted(() => {
 .details-stats span,
 .detail-label {
   display: block;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.8rem;
   margin-bottom: 0.25rem;
 }
@@ -794,19 +794,19 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 1rem;
-  background: var(--surface-ground);
+  background: var(--gp-surface-ground);
 }
 
 .preview-panel.stale {
-  border-color: var(--yellow-500);
+  border-color: var(--p-yellow-500);
 }
 
 .preview-title {
   font-size: 0.8rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .preview-value {
@@ -815,7 +815,7 @@ onMounted(() => {
 }
 
 .preview-help {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
@@ -829,13 +829,13 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   padding-bottom: 0.75rem;
 }
 
 .confirmation-row span,
 .confirmation-reason span {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .confirmation-reason p,
@@ -867,7 +867,7 @@ onMounted(() => {
 }
 
 .danger {
-  color: var(--red-500);
+  color: var(--p-red-500);
 }
 
 @media (max-width: 960px) {

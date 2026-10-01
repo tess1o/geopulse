@@ -355,7 +355,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
   z-index: 0;
 }
 
@@ -371,13 +371,6 @@ onMounted(() => {
 }
 
 /* Dark Mode */
-.p-dark .invitation-register-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .invitation-register-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-}
 
 .locale-switcher-corner {
   position: fixed;
@@ -396,15 +389,10 @@ onMounted(() => {
 }
 
 .register-card {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: 12px;
   padding: 2.5rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-}
-
-.p-dark .register-card {
-  background: var(--gp-surface-dark);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Title */
@@ -417,7 +405,7 @@ onMounted(() => {
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0.5rem 0 0 0;
 }
 
@@ -434,11 +422,11 @@ onMounted(() => {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .p-error {
-  color: var(--red-500);
+  color: var(--p-red-500);
   font-size: 0.875rem;
   margin-top: 0.25rem;
   display: block;

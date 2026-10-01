@@ -221,7 +221,7 @@ const formattedEndTime = computed(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border-medium);
   overflow: hidden;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
 }
@@ -324,38 +324,5 @@ const formattedEndTime = computed(() => {
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--data-gap {
-  background-color: var(--gp-timeline-orange);
-  border-left: 4px solid var(--gp-warning);
-}
-
-.p-dark .timeline-timestamp,
-.p-dark .timeline-subtitle {
-  color: var(--gp-warning);
-}
-
-.p-dark .gap-detail .detail-value {
-  color: var(--gp-warning);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .data-gap-content,
-.p-dark .gap-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .data-gap-content {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 </style>

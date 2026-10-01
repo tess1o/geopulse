@@ -131,10 +131,6 @@ const hasEndLocation = computed(() => {
   font-weight: 600;
 }
 
-.p-dark .trip-detail {
-  color: var(--gp-text-primary);
-}
-
 @media (max-width: 768px) {
   .trip-detail {
     font-size: 0.8rem;

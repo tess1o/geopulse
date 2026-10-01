@@ -227,7 +227,7 @@
 }
 
 .leaflet-control-zoom a {
-    background: linear-gradient(135deg, var(--gp-surface-white), var(--gp-surface-light)) !important;
+    background: linear-gradient(135deg, var(--gp-surface-card), var(--gp-surface-muted)) !important;
     border: 1px solid var(--gp-border-medium) !important;
     color: var(--gp-text-secondary) !important;
     transition: all 0.3s ease !important;
@@ -251,7 +251,7 @@
 
 .leaflet-control-zoom a.leaflet-control-zoom-fullscreen,
 .leaflet-bar a.leaflet-control-zoom-fullscreen {
-    background-color: var(--gp-surface-white) !important;
+    background-color: var(--gp-surface-card) !important;
     border: 1px solid var(--gp-border-medium) !important;
     color: var(--gp-text-secondary) !important;
 }
@@ -345,7 +345,7 @@
 }
 
 .p-contextmenu .p-menuitem-link:hover {
-    background: linear-gradient(135deg, var(--gp-surface-light), var(--gp-surface-gray)) !important;
+    background: linear-gradient(135deg, var(--gp-surface-muted), var(--gp-surface-emphasis)) !important;
     transform: translateX(4px);
 }
 
@@ -363,7 +363,7 @@
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    background-color: var(--gp-surface-white);
+    background-color: var(--gp-surface-card);
     box-shadow: var(--gp-shadow-medium);
     transition: all 0.2s ease-in-out;
 }
@@ -456,7 +456,7 @@
     font-size: 16px;
     text-align: center;
     padding: 2rem;
-    background: linear-gradient(135deg, var(--gp-surface-light), var(--gp-surface-gray));
+    background: linear-gradient(135deg, var(--gp-surface-muted), var(--gp-surface-emphasis));
     border-radius: var(--gp-radius-medium);
     backdrop-filter: blur(5px);
 }
@@ -494,31 +494,13 @@
    ================================ */
 
 .p-dark .leaflet-container {
-    background: linear-gradient(135deg, var(--gp-surface-light) 0%, var(--gp-surface-gray) 100%);
-}
-
-.p-dark .leaflet-control-zoom a {
-    background: linear-gradient(135deg, var(--gp-surface-white), var(--gp-surface-light)) !important;
-    border-color: var(--gp-border-medium) !important;
-    color: var(--gp-text-primary) !important;
-}
-
-.p-dark .leaflet-control-zoom a:hover {
-    background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-dark)) !important;
-    color: white !important;
+    background: linear-gradient(135deg, var(--gp-surface-muted) 0%, var(--gp-surface-emphasis) 100%);
 }
 
 .p-dark .leaflet-control-zoom a.leaflet-control-zoom-fullscreen,
 .p-dark .leaflet-bar a.leaflet-control-zoom-fullscreen {
-    background-color: var(--gp-surface-white) !important;
     border-color: var(--gp-border-medium) !important;
     color: var(--gp-text-primary) !important;
-}
-
-.p-dark .leaflet-control-zoom a.leaflet-control-zoom-fullscreen:hover,
-.p-dark .leaflet-bar a.leaflet-control-zoom-fullscreen:hover {
-    background-color: var(--gp-primary) !important;
-    color: white !important;
 }
 
 /* Dark mode: re-apply fullscreen icon after shorthand background overrides */

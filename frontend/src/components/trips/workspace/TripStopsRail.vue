@@ -278,7 +278,7 @@ const handleAdded = (stop) => {
   align-items: center;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-md);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   flex-wrap: wrap;
 }
 
@@ -371,9 +371,9 @@ const handleAdded = (stop) => {
   align-items: flex-start;
   gap: var(--gp-spacing-xs);
   padding: var(--gp-spacing-sm);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .trip-stop + .trip-stop {
@@ -424,14 +424,5 @@ const handleAdded = (stop) => {
 .trip-stop-actions {
   display: flex;
   flex-shrink: 0;
-}
-
-.p-dark .trip-stop {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .trip-rail-header {
-  border-bottom-color: var(--gp-border-dark);
 }
 </style>

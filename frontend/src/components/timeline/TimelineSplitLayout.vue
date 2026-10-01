@@ -403,7 +403,7 @@ defineExpose({
 }
 
 .timeline-sheet-handle:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 /* Opt-in: the handle is a sheet affordance, so on desktop it is hidden rather than
@@ -477,9 +477,9 @@ defineExpose({
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -538,8 +538,8 @@ defineExpose({
   height: 44px;
   min-width: 0;
   min-height: 0;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: 999px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
 }
@@ -558,25 +558,6 @@ defineExpose({
 
 .timeline-sheet--compact :deep(.timeline-container) {
   display: none;
-}
-
-.p-dark .timeline-sheet-handle:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .timeline-sheet-handle {
-  border-bottom-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-sheet-date-nav-button {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .timeline-main--sheet-collapsed .timeline-split-side-pane {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
@@ -614,8 +595,8 @@ defineExpose({
     min-height: 0;
     margin: 0;
     overflow: hidden !important;
-    background: var(--gp-surface-white);
-    border: 1px solid var(--gp-border-light);
+    background: var(--gp-surface-card);
+    border: 1px solid var(--gp-border);
     border-bottom: none;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
@@ -637,7 +618,7 @@ defineExpose({
     width: auto;
     height: var(--timeline-sheet-height, 168px);
     min-width: 320px;
-    background: var(--gp-surface-white);
+    background: var(--gp-surface-card);
     border-bottom: none;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
@@ -658,7 +639,7 @@ defineExpose({
     height: var(--timeline-sheet-height, 44px);
     max-height: none;
     min-width: 0;
-    border: 1px solid var(--gp-border-light);
+    border: 1px solid var(--gp-border);
     border-radius: 999px;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
     transform: translateX(-50%);
@@ -682,8 +663,8 @@ defineExpose({
     gap: 0.5rem;
     padding: 0.45rem 2.25rem 0.5rem;
     border: none;
-    border-bottom: 1px solid var(--gp-border-light);
-    background: var(--gp-surface-white);
+    border-bottom: 1px solid var(--gp-border);
+    background: var(--gp-surface-card);
     color: var(--gp-text-secondary);
     font: inherit;
     font-size: 0.85rem;
@@ -750,16 +731,6 @@ defineExpose({
 
   .timeline-split-side-pane :deep(.timeline-content) {
     padding: 0 var(--gp-spacing-sm) var(--gp-spacing-md);
-  }
-
-  .p-dark .timeline-split-side-pane,
-  .p-dark .timeline-sheet-handle {
-    background: var(--gp-surface-dark);
-    border-color: var(--gp-border-dark);
-  }
-
-  .p-dark .timeline-sheet-grip {
-    background: var(--gp-border-medium);
   }
 }
 

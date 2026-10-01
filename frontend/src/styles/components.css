@@ -7,9 +7,9 @@
 
     /* Card Base */
     .gp-card {
-        background: var(--gp-surface-white);
+        background: var(--gp-surface-card);
         border-radius: var(--gp-radius-large);
-        border: 1px solid var(--gp-border-light);
+        border: 1px solid var(--gp-border);
         box-shadow: var(--gp-shadow-card);
     }
 
@@ -19,7 +19,7 @@
         justify-content: space-between;
         align-items: center;
         padding: var(--gp-spacing-lg);
-        border-bottom: 1px solid var(--gp-border-light);
+        border-bottom: 1px solid var(--gp-border);
     }
 
     /* Card Title */
@@ -126,13 +126,13 @@
 
     /* Background Utilities */
     .gp-bg-primary { background-color: var(--gp-primary); }
-    .gp-bg-surface { background-color: var(--gp-surface-white); }
-    .gp-bg-light { background-color: var(--gp-surface-light); }
+    .gp-bg-surface { background-color: var(--gp-surface-card); }
+    .gp-bg-light { background-color: var(--gp-surface-muted); }
 
     /* Status Utilities */
     .gp-success { color: var(--gp-success); }
     .gp-warning { color: var(--gp-warning); }
-    .gp-error { color: var(--gp-error); }
+    .gp-error { color: var(--gp-danger); }
     .gp-info { color: var(--gp-info); }
 
     /* ================================

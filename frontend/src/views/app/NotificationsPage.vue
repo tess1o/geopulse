@@ -397,10 +397,10 @@ onMounted(() => {
 
 .notification-filters {
   justify-content: space-between;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 0.75rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .source-filter {
@@ -416,7 +416,7 @@ onMounted(() => {
 }
 
 .notifications-table {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -450,12 +450,12 @@ onMounted(() => {
 
 .empty-state,
 .mobile-loading {
-  border: 1px dashed var(--gp-border-light);
+  border: 1px dashed var(--gp-border);
   border-radius: 8px;
   color: var(--gp-text-secondary);
   padding: 1rem;
   text-align: center;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .mobile-loading i {
@@ -468,15 +468,15 @@ onMounted(() => {
 }
 
 .notification-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 0.85rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .notification-card--unread {
   border-color: var(--gp-primary);
-  background: color-mix(in srgb, var(--gp-primary) 6%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 6%, var(--gp-surface-card));
 }
 
 .notification-card-header {
@@ -500,8 +500,8 @@ onMounted(() => {
 }
 
 :deep(.p-tag.p-tag-warning) {
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 @media (max-width: 768px) {

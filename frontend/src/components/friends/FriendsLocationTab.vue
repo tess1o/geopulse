@@ -113,23 +113,17 @@ const modeOptions = computed(() => [
   top: 1rem;
   left: 4rem;
   z-index: 1000;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
   padding: 0.25rem;
   box-shadow: var(--gp-shadow-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 /* Compact Toggle Buttons */
 .mode-toggle-compact {
   display: flex;
   gap: 0.25rem;
-}
-
-/* Dark mode */
-.p-dark .mode-toggle-segmented {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Mobile Responsive */

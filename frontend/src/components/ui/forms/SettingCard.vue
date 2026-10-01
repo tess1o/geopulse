@@ -64,7 +64,7 @@ const detailsText = computed(() => {
 .setting-card {
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   width: 100%;
   box-sizing: border-box;
 }
@@ -124,7 +124,7 @@ const detailsText = computed(() => {
 .setting-help:hover,
 .setting-help:focus-visible {
   color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   outline: none;
 }
 

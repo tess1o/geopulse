@@ -225,7 +225,7 @@ const selectLast30Days = () => {
   align-items: center;
   gap: var(--gp-spacing-sm);
   padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .or-text {
@@ -245,7 +245,7 @@ const selectLast30Days = () => {
   justify-content: center;
   gap: var(--gp-spacing-sm);
   padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .force-load-label {
@@ -258,16 +258,6 @@ const selectLast30Days = () => {
 .continue-button {
   width: 100%;
   margin-top: var(--gp-spacing-sm);
-}
-
-/* Dark Mode */
-.p-dark .warning-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .secondary-actions,
-.p-dark .force-load-option {
-  border-top-color: var(--gp-border-dark);
 }
 
 /* Responsive */

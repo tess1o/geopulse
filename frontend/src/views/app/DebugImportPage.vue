@@ -299,19 +299,19 @@ const importData = async () => {
 .header-content .header-text .page-title {
   font-size: 2rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .header-content .header-text .page-description {
   font-size: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
 .warning-banner {
   margin-bottom: 2rem;
-  border-left: 4px solid var(--orange-500);
+  border-left: 4px solid var(--p-orange-500);
 }
 
 .warning-banner .banner-content {
@@ -322,7 +322,7 @@ const importData = async () => {
 
 .warning-banner .banner-icon {
   font-size: 1.5rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
 }
 
@@ -330,12 +330,12 @@ const importData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .warning-banner .banner-text .banner-description {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -347,11 +347,11 @@ const importData = async () => {
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .upload-area {
-  border: 2px dashed var(--surface-border);
+  border: 2px dashed var(--gp-border);
   border-radius: 8px;
   padding: 3rem 2rem;
   text-align: center;
@@ -361,27 +361,27 @@ const importData = async () => {
 }
 
 .upload-area:hover {
-  border-color: var(--primary-color);
-  background: var(--surface-ground);
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-ground);
 }
 
 .upload-prompt .upload-icon,
 .file-info .upload-icon {
   font-size: 3rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 1rem;
 }
 
 .upload-prompt .upload-text {
   font-size: 1.1rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .upload-prompt .upload-hint {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -395,13 +395,13 @@ const importData = async () => {
 .file-info .file-name {
   font-size: 1.1rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0;
 }
 
 .file-info .file-size {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
 }
 
@@ -413,7 +413,7 @@ const importData = async () => {
   display: block;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .checkbox-group {
@@ -433,7 +433,7 @@ const importData = async () => {
 
 .checkbox-item .checkbox-label {
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-weight: 500;
 }
 
@@ -441,7 +441,7 @@ const importData = async () => {
   display: block;
   margin-left: 1.75rem;
   margin-top: 0.25rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -488,12 +488,12 @@ const importData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-description {
   margin: 0 0 1rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -505,7 +505,7 @@ const importData = async () => {
 
 .info-card .info-content .info-list li {
   padding: 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.6;
   display: flex;
   align-items: flex-start;
@@ -513,23 +513,23 @@ const importData = async () => {
 }
 
 .info-card .info-content .info-list li i {
-  color: var(--green-500);
+  color: var(--p-green-500);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
 
 .info-card .info-content .info-list li strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--blue-50);
-  border-left: 3px solid var(--primary-color);
+  background: var(--p-blue-50);
+  border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   display: flex;
   align-items: flex-start;
@@ -537,7 +537,7 @@ const importData = async () => {
 }
 
 .info-card .info-content .info-note i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;

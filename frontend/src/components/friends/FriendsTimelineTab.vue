@@ -166,8 +166,8 @@ function handleTimelineItemClick(item) {
   justify-content: center;
   text-align: center;
   padding: 2rem 1rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -236,7 +236,7 @@ function handleTimelineItemClick(item) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   z-index: 1000;
   gap: 1rem;
 }

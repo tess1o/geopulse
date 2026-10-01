@@ -1142,9 +1142,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .mobile-trip-plan-header {
@@ -1164,10 +1164,10 @@ onUnmounted(() => {
 }
 
 .mobile-trip-plan-actions-button {
-  width: 2rem !important;
-  height: 2rem !important;
-  min-width: 2rem !important;
-  padding: 0 !important;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
 }
 
 .mobile-trip-plan-notes {
@@ -1209,17 +1209,17 @@ onUnmounted(() => {
 
 .mobile-trip-plan-paginator {
   margin-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   padding-top: var(--gp-spacing-sm);
 }
 
 .mobile-trip-plan-paginator :deep(.p-paginator) {
-  flex-wrap: wrap !important;
-  justify-content: center !important;
-  gap: 4px !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-page),
@@ -1227,17 +1227,17 @@ onUnmounted(() => {
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-prev),
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-first),
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-last) {
-  min-width: 2rem !important;
-  width: 2rem !important;
-  height: 2rem !important;
-  padding: 0 !important;
-  margin: 0 1px !important;
-  font-size: 0.8rem !important;
+  min-width: 2rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin: 0 1px;
+  font-size: 0.8rem;
 }
 
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-first),
 .mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-last) {
-  display: none !important;
+  display: none;
 }
 
 .mobile-paginator-info {
@@ -1296,7 +1296,7 @@ onUnmounted(() => {
 
 .preview-tag {
   border: none;
-  color: var(--gp-surface-white);
+  color: var(--gp-primary-contrast);
 }
 
 .from-label-dialog-content {
@@ -1345,9 +1345,9 @@ onUnmounted(() => {
 
   .refresh-button {
     grid-area: 2 / 3 / 3 / 4;
-    width: 2.5rem !important;
-    height: 2.5rem !important;
-    padding: 0 !important;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
   }
 
   .refresh-button :deep(.p-button-label) {

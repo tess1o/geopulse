@@ -206,7 +206,7 @@ onMounted(loadData);
 
 .provider-section + .provider-section,
 .provider-section + :deep(.p-message) {
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .provider-section h4 {
@@ -227,7 +227,7 @@ onMounted(loadData);
   justify-content: space-between;
   gap: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md) 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .provider-item:first-child {
@@ -253,11 +253,11 @@ onMounted(loadData);
 
 .provider-name {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .provider-email {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.85rem;
 }
 

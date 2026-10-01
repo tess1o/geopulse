@@ -286,7 +286,7 @@ const handleReset = async (setting) => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 

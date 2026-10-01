@@ -266,7 +266,7 @@ onMounted(() => {
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .header-actions {
@@ -315,7 +315,7 @@ onMounted(() => {
   .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
   .settings-nav { display: none; }
   .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; }
-  .mobile-settings-select select { width: 100%; min-height: 2.75rem; padding: 0 .75rem; border: 1px solid var(--gp-border-medium); border-radius: var(--gp-radius-medium); background: var(--gp-surface-white); color: var(--gp-text-primary); font: inherit; }
+  .mobile-settings-select select { width: 100%; min-height: 2.75rem; padding: 0 .75rem; border: 1px solid var(--gp-border-medium); border-radius: var(--gp-radius-medium); background: var(--gp-surface-card); color: var(--gp-text-primary); font: inherit; }
 
   /* Override TabContainer for horizontal scroll */
   .settings-tabs :deep(.tab-menu) {
@@ -334,7 +334,7 @@ onMounted(() => {
   }
 
   .settings-tabs :deep(.tab-menu::-webkit-scrollbar-thumb) {
-    background: var(--surface-border);
+    background: var(--gp-border);
     border-radius: 2px;
   }
 

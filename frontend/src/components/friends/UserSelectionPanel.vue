@@ -70,8 +70,8 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
 
 <style scoped>
 .user-selection-panel {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 1rem;
 }
@@ -82,7 +82,7 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .panel-header h3 {
@@ -116,7 +116,7 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: background-color 0.2s;
 }
 
@@ -164,23 +164,5 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
 
 .item-badge {
   flex-shrink: 0;
-}
-
-/* Dark mode */
-.p-dark .user-selection-panel {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .panel-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .user-item {
-  background: var(--gp-surface-medium);
-}
-
-.p-dark .user-item:hover {
-  background: var(--gp-surface-hover);
 }
 </style>

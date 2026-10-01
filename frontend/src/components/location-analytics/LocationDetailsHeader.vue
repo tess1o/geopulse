@@ -44,9 +44,9 @@ defineEmits(['back'])
 .location-details-header {
   margin-bottom: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md);
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 24%, var(--gp-border-light));
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 24%, var(--gp-border));
   border-radius: var(--gp-radius-large);
-  background: linear-gradient(125deg, color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-white)), var(--gp-surface-white) 62%);
+  background: linear-gradient(125deg, color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-card)), var(--gp-surface-card) 62%);
   box-shadow: var(--gp-shadow-card);
 }
 
@@ -108,11 +108,6 @@ defineEmits(['back'])
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--gp-spacing-sm);
-}
-
-.p-dark .location-details-header {
-  background: linear-gradient(125deg, color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark)), var(--gp-surface-dark) 66%);
-  border-color: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-border-dark));
 }
 
 @media (max-width: 640px) {

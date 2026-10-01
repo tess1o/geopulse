@@ -336,7 +336,7 @@ defineExpose({
 <style>
 .maplibregl-popup-content:has(.gp-trip-plan-popup) {
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
   box-shadow: var(--gp-shadow-dialog);
 }
@@ -356,45 +356,24 @@ defineExpose({
 .maplibregl-popup-anchor-top:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
 .maplibregl-popup-anchor-top-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
 .maplibregl-popup-anchor-top-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-bottom-color: var(--gp-surface-white);
+  border-bottom-color: var(--gp-surface-card);
 }
 
 .maplibregl-popup-anchor-bottom:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
 .maplibregl-popup-anchor-bottom-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
 .maplibregl-popup-anchor-bottom-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-top-color: var(--gp-surface-white);
+  border-top-color: var(--gp-surface-card);
 }
 
 .maplibregl-popup-anchor-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-right-color: var(--gp-surface-white);
+  border-right-color: var(--gp-surface-card);
 }
 
 .maplibregl-popup-anchor-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-left-color: var(--gp-surface-white);
+  border-left-color: var(--gp-surface-card);
 }
 
 .p-dark .maplibregl-popup-content:has(.gp-trip-plan-popup) {
-  background: var(--gp-surface-dark);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-}
-
-.p-dark .maplibregl-popup-anchor-top:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
-.p-dark .maplibregl-popup-anchor-top-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
-.p-dark .maplibregl-popup-anchor-top-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-bottom-color: var(--gp-surface-dark);
-}
-
-.p-dark .maplibregl-popup-anchor-bottom:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
-.p-dark .maplibregl-popup-anchor-bottom-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip,
-.p-dark .maplibregl-popup-anchor-bottom-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-top-color: var(--gp-surface-dark);
-}
-
-.p-dark .maplibregl-popup-anchor-left:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-right-color: var(--gp-surface-dark);
-}
-
-.p-dark .maplibregl-popup-anchor-right:has(.gp-trip-plan-popup) .maplibregl-popup-tip {
-  border-left-color: var(--gp-surface-dark);
 }
 </style>

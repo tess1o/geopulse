@@ -116,7 +116,7 @@ const noDataAvailable = computed(() => {
   align-items: flex-start;
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-md) 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .route-detail:last-child {
@@ -200,35 +200,6 @@ const noDataAvailable = computed(() => {
   margin: 0;
   max-width: 250px;
   line-height: 1.4;
-}
-
-/* Dark Mode */
-.p-dark .route-detail {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .route-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .route-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .trips-count {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .no-data-icon {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .no-data-message {
-  color: var(--gp-text-muted);
 }
 
 /* Responsive adjustments */

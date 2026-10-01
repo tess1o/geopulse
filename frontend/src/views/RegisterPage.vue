@@ -380,7 +380,7 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
   z-index: 0;
 }
 
@@ -438,20 +438,11 @@ onMounted(async () => {
   transform: scale(1.05);
 }
 
-/* Dark Mode Gradient Background */
-.p-dark .register-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .register-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-}
-
 /* Register Card */
 .register-card {
   width: 100%;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-card);
 }
 
@@ -547,7 +538,7 @@ onMounted(async () => {
 .login-section {
   text-align: center;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .login-text {
@@ -629,20 +620,12 @@ onMounted(async () => {
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid var(--gp-warning);
+  background: var(--gp-warning-soft);
+  border: 1px solid var(--gp-warning-border);
   border-radius: var(--gp-radius-medium);
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
   font-size: 0.95rem;
   font-weight: 500;
   text-align: center;
 }
-
-.p-dark .signup-disabled-message {
-  background: rgba(255, 193, 7, 0.15);
-  border-color: var(--gp-warning-dark);
-  color: var(--gp-warning-dark);
-}
-
-
 </style>

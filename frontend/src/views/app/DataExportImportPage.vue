@@ -171,16 +171,10 @@ watch(() => route.query.tab, (tab) => {
 /* Info Banner */
 .info-banner {
   margin-bottom: 2rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border: 1px solid var(--gp-border-medium);
   border-left: 4px solid var(--gp-primary);
   border-radius: var(--gp-radius-large);
-}
-
-.p-dark .info-banner {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-left: 4px solid var(--gp-primary) !important;
 }
 
 .banner-content {
@@ -287,9 +281,9 @@ watch(() => route.query.tab, (tab) => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: all 0.2s ease;
 }
 
@@ -361,7 +355,7 @@ watch(() => route.query.tab, (tab) => {
   align-items: center;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 :deep(.export-button),
@@ -473,9 +467,9 @@ watch(() => route.query.tab, (tab) => {
   align-items: stretch;
   gap: 0;
   padding: 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -487,7 +481,7 @@ watch(() => route.query.tab, (tab) => {
 
 :deep(.format-option.selected) {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-50);
+  background: var(--p-primary-50);
 }
 
 :deep(.format-radio) {
@@ -523,8 +517,8 @@ watch(() => route.query.tab, (tab) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-primary-200);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--p-primary-200);
   border-radius: var(--gp-radius-small);
   color: var(--gp-text-primary);
   font-size: 0.9rem;

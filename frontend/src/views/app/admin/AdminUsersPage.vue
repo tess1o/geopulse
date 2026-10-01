@@ -489,14 +489,14 @@ onMounted(() => {
 }
 
 .card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1rem;
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 /* Search Container */
@@ -523,8 +523,8 @@ onMounted(() => {
 }
 
 .user-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-border);
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -533,9 +533,6 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-.p-dark .user-card {
-  background: var(--gp-surface-dark);
-}
 
 .user-card:active {
   transform: scale(0.98);
@@ -557,7 +554,7 @@ onMounted(() => {
 
 .user-email {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   margin-bottom: 0.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -566,7 +563,7 @@ onMounted(() => {
 
 .user-name {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .user-badges {
@@ -581,7 +578,7 @@ onMounted(() => {
   gap: 1.5rem;
   margin-bottom: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .user-stat {
@@ -592,7 +589,7 @@ onMounted(() => {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
 }
 
@@ -606,7 +603,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Mobile Pagination */
@@ -617,13 +614,13 @@ onMounted(() => {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
 }
 
 .pagination-info {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   padding: 0 0.5rem;
 }
 

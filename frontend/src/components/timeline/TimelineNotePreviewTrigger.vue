@@ -69,7 +69,7 @@ defineExpose({
 .note-trigger {
   border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   display: inline-flex;
   align-items: center;
@@ -81,6 +81,6 @@ defineExpose({
 }
 
 .note-trigger:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 </style>

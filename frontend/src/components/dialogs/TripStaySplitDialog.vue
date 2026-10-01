@@ -583,7 +583,7 @@ const formatDistance = (value) => value < 1000
 .split-map {
   height: clamp(360px, 48vh, 460px);
   overflow: hidden;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
 }
 
@@ -646,7 +646,7 @@ const formatDistance = (value) => value < 1000
 
 .preview-original {
   padding-bottom: var(--gp-spacing-sm);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .preview-section-title {

@@ -113,6 +113,7 @@ const GeopulsePreset = definePreset(Aura, {
     },
     components: {
         button: {
+            root: {borderRadius: '{border.radius.lg}'},
             colorScheme: {
                 light: {
                     root: {

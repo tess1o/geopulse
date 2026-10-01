@@ -758,7 +758,7 @@ onBeforeUnmount(() => {
 .analytics-tabs .p-button {
   min-width: 120px;
   background: transparent;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   color: var(--gp-text-secondary);
   box-shadow: none;
 }
@@ -770,8 +770,8 @@ onBeforeUnmount(() => {
 }
 
 .analytics-tabs .p-button:not(.active-tab):hover {
-  background: var(--gp-surface-light);
-  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-light));
+  background: var(--gp-surface-muted);
+  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border));
   color: var(--gp-text-primary);
 }
 
@@ -808,8 +808,8 @@ onBeforeUnmount(() => {
 .map-places-count {
   font-size: 0.76rem;
   color: var(--gp-text-secondary);
-  background: color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-white));
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 25%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-card));
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 25%, var(--gp-border));
   border-radius: 999px;
   padding: 0.14rem 0.5rem;
   line-height: 1.2;
@@ -840,7 +840,7 @@ onBeforeUnmount(() => {
 }
 
 .map-places-rail::-webkit-scrollbar-thumb {
-  background: var(--gp-border-light);
+  background: var(--gp-border);
   border-radius: 8px;
 }
 
@@ -855,7 +855,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 0.68rem;
   cursor: pointer;
@@ -865,17 +865,17 @@ onBeforeUnmount(() => {
 
 .map-place-item:hover {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .map-place-item.hovered {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .map-place-item.active {
   border-color: var(--gp-primary);
-  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card));
 }
 
 .map-place-thumb {
@@ -883,7 +883,7 @@ onBeforeUnmount(() => {
   height: 2.25rem;
   min-width: 2.25rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-card));
   color: var(--gp-primary);
   display: flex;
   align-items: center;
@@ -932,9 +932,9 @@ onBeforeUnmount(() => {
   max-width: 100%;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tag-color) 55%, white);
-  background: color-mix(in srgb, var(--tag-color) 10%, white);
-  color: color-mix(in srgb, var(--tag-color) 78%, black);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--tag-color) 78%, var(--gp-text-primary));
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.2;
@@ -970,9 +970,9 @@ onBeforeUnmount(() => {
   max-width: 100%;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, white);
-  background: color-mix(in srgb, var(--trip-tag-color) 10%, white);
-  color: color-mix(in srgb, var(--trip-tag-color) 78%, black);
+  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--trip-tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--trip-tag-color) 78%, var(--gp-text-primary));
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1036,22 +1036,6 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.p-dark .map-place-trip-chip {
-  border-color: color-mix(in srgb, var(--trip-tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--trip-tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--trip-tag-color) 70%, white);
-}
-
-.p-dark .map-place-tag-chip {
-  border-color: color-mix(in srgb, var(--tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--tag-color) 70%, white);
-}
-
-.p-dark .map-place-chip-action {
-  color: var(--gp-text-secondary);
-}
-
 .loading-container {
   display: flex;
   justify-content: center;
@@ -1088,9 +1072,9 @@ onBeforeUnmount(() => {
   gap: var(--gp-spacing-md);
   min-height: 5rem;
   padding: var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: inherit;
   text-decoration: none;
   box-shadow: var(--gp-shadow-subtle);
@@ -1100,7 +1084,7 @@ onBeforeUnmount(() => {
 .location-card:hover {
   transform: translateY(-2px);
   border-color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .location-card:focus-visible {
@@ -1114,7 +1098,7 @@ onBeforeUnmount(() => {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--gp-radius-medium);
-  background: color-mix(in srgb, var(--gp-primary) 12%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 12%, var(--gp-surface-card));
   color: var(--gp-primary);
   font-size: 1rem;
 }
@@ -1141,7 +1125,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: var(--gp-spacing-md);
   padding-left: var(--gp-spacing-md);
-  border-left: 1px solid var(--gp-border-light);
+  border-left: 1px solid var(--gp-border);
 }
 
 .stat-item {
@@ -1167,20 +1151,6 @@ onBeforeUnmount(() => {
 .location-chevron {
   color: var(--gp-text-muted);
   font-size: .8rem;
-}
-
-.p-dark .location-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .location-card:hover {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .location-icon {
-  background: color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark));
 }
 
 @media (max-width: 768px) {
@@ -1241,7 +1211,7 @@ onBeforeUnmount(() => {
     grid-column: 2 / -1;
     justify-content: flex-start;
     border-left: 0;
-    border-top: 1px solid var(--gp-border-light);
+    border-top: 1px solid var(--gp-border);
     padding-left: 0;
     padding-top: var(--gp-spacing-xs);
   }

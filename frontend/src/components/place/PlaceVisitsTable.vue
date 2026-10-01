@@ -491,19 +491,19 @@ watch(
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
-  background: var(--gp-primary-50);
-  color: var(--gp-primary-700);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.9rem;
@@ -517,7 +517,7 @@ watch(
 }
 
 .city-link {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   text-decoration: underline;
   font-weight: 500;
@@ -525,7 +525,7 @@ watch(
 }
 
 .city-link:hover {
-  color: var(--gp-primary-hover);
+  color: var(--gp-primary-text);
 }
 
 .place-name {
@@ -541,9 +541,9 @@ watch(
   max-width: 100%;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, white);
-  background: color-mix(in srgb, var(--trip-tag-color) 10%, white);
-  color: color-mix(in srgb, var(--trip-tag-color) 75%, black);
+  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--trip-tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--trip-tag-color) 75%, var(--gp-text-primary));
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
@@ -601,70 +601,42 @@ watch(
   color: var(--gp-text-muted);
 }
 
-/* Dark Mode */
-.p-dark .duration-badge {
-  background: var(--gp-primary-900);
-  color: var(--gp-primary-300);
-}
-
-.p-dark .city-link {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .city-link:hover {
-  color: var(--gp-primary);
-}
-
-.p-dark .place-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .trip-tag-chip {
-  border-color: color-mix(in srgb, var(--trip-tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--trip-tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--trip-tag-color) 70%, white);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
-}
-
 /* Dark Mode - DataTable */
 .p-dark .visits-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 
 .p-dark .visits-data-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 /* Ensure DataTable wrapper respects parent width */

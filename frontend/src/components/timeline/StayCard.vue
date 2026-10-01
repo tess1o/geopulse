@@ -408,7 +408,7 @@ const formattedTimestamp = computed(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border-medium);
   overflow: hidden;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
 }
@@ -572,43 +572,6 @@ const formattedTimestamp = computed(() => {
 
 .duration-detail .duration-value {
   font-weight: 700;
-  color: var(--gp-primary);
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--stay {
-  background-color: var(--gp-timeline-blue);
-  border-left: 4px solid var(--gp-primary);
-}
-
-.p-dark .timeline-timestamp {
-  color: var(--gp-primary);
-}
-
-.p-dark .location-name,
-.p-dark .duration-text {
-  color: var(--gp-primary);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .stay-content {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
-}
-
-.p-dark .overnight-stay-content,
-.p-dark .duration-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .duration-detail .duration-value {
   color: var(--gp-primary);
 }
 </style>

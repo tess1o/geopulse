@@ -704,8 +704,8 @@ onMounted(() => {
 
 /* Card Styles */
 .card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-card);
   transition: all 0.3s ease;
@@ -720,8 +720,8 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-bottom: 2px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-bottom: 2px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .card-title i {
@@ -816,14 +816,14 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--gp-warning-light);
+  background: var(--gp-warning-soft);
   border: 1px solid var(--gp-warning);
   border-radius: var(--gp-radius-medium);
   margin-top: 1rem;
 }
 
 .warning-message i {
-  color: var(--gp-warning-dark);
+  color: var(--gp-warning-text);
   font-size: 1.25rem;
   flex-shrink: 0;
 }
@@ -832,20 +832,6 @@ onMounted(() => {
   color: var(--gp-text-primary);
   font-size: 0.875rem;
   line-height: 1.5;
-}
-
-/* Dark Mode Warning Message */
-.p-dark .warning-message {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: var(--gp-warning);
-}
-
-.p-dark .warning-message i {
-  color: var(--gp-warning);
-}
-
-.p-dark .warning-message span {
-  color: var(--gp-text-primary);
 }
 
 /* Text Utilities */

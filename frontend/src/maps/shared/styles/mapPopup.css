@@ -21,7 +21,7 @@
 .gp-map-popup-card {
   box-sizing: border-box;
   color: #0f172a;
-  font-family: var(--font-family, system-ui);
+  font-family: var(--gp-font-family, system-ui);
   font-size: 0.92rem;
   line-height: 1.35;
 }

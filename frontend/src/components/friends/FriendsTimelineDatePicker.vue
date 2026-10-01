@@ -53,8 +53,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 0.75rem;
 }
@@ -81,12 +81,6 @@ onMounted(() => {
     min-width: 300px;
     max-width: 400px;
   }
-}
-
-/* Dark mode */
-.p-dark .friends-timeline-date-picker {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Mobile */

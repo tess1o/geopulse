@@ -36,7 +36,7 @@ const breadcrumbItems = computed(() => [
 .admin-breadcrumb { margin-bottom: 1.5rem; }
 .page-header { margin-bottom: 1.5rem; }
 .page-header h1 { margin: 0; font-size: 1.75rem; }
-.text-muted { color: var(--text-color-secondary); }
+.text-muted { color: var(--gp-text-secondary); }
 .documentation-link { display: inline-block; margin-top: .5rem; }
 @media (max-width: 768px) { .admin-backups { padding: .75rem; } }
 </style>

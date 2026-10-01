@@ -96,8 +96,8 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   flex-direction: column;
   gap: var(--gp-spacing-xs, 0.25rem);
   padding: var(--gp-spacing-xs, 0.25rem);
-  background: var(--gp-surface-white, white);
-  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  background: var(--gp-surface-card, white);
+  border: 1px solid var(--gp-border, rgba(0, 0, 0, 0.1));
   border-radius: var(--gp-radius-medium, 8px);
   box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
 }
@@ -125,7 +125,7 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
 
 .viewer-location-button:hover:not(:disabled),
 .viewer-location-stop:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .viewer-location-button:disabled {

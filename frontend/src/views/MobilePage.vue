@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .mobile-card {
@@ -99,8 +99,8 @@ onBeforeUnmount(() => {
   max-width: 420px;
   padding: var(--gp-spacing-xxl);
   border-radius: var(--gp-radius-large);
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
   box-shadow: var(--gp-shadow-card);
   text-align: center;
 }

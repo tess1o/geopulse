@@ -1186,8 +1186,8 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 .loading-messages {
   color: var(--gp-text-secondary);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
@@ -1197,13 +1197,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   justify-content: center;
   align-items: center;
   text-align: center;
-}
-
-/* Dark mode for loading messages */
-.p-dark .loading-messages {
-  color: var(--gp-text-primary);
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Responsive design */
@@ -1219,7 +1212,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     height: calc(100vh - 150px);
   }
 }
-
 </style>
 
 <style>
@@ -1234,15 +1226,15 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Override padding on the timeline container */
 .p-timeline-left .p-timeline-event-opposite {
-  display: none !important; /* optional: remove opposite content space */
+  display: none; /* optional: remove opposite content space */
 }
 
 .p-timeline-left .p-timeline-event {
-  margin-left: 0 !important; /* remove extra margin */
+  margin-left: 0; /* remove extra margin */
 }
 
 /* Adjust the content container */
 .p-timeline-left .p-timeline-event-content {
-  padding-left: 0.5rem !important; /* or 0 if you want no space */
+  padding-left: 0.5rem; /* or 0 if you want no space */
 }
 </style>

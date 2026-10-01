@@ -68,8 +68,8 @@ const metrics = computed(() => {
   flex: 1 1 8rem;
   min-width: 0;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -84,11 +84,6 @@ const metrics = computed(() => {
   font-size: 0.95rem;
   color: var(--gp-text-primary);
   overflow-wrap: anywhere;
-}
-
-.p-dark .trip-summary-metric {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Mobile: the desktop flex-wrap grid breaks into two rows under a 390px viewport, which is

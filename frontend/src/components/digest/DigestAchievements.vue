@@ -38,8 +38,8 @@ defineProps({
 
 <style scoped>
 .digest-achievements {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
@@ -70,7 +70,7 @@ defineProps({
   align-items: center;
   gap: var(--gp-spacing-md);
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   transition: all 0.3s ease;
@@ -110,21 +110,6 @@ defineProps({
 .no-achievements p {
   margin: 0;
   font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .digest-achievements {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .achievement-item {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .achievements-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

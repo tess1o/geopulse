@@ -172,11 +172,11 @@ const handleItemClick = (item) => {
 }
 
 .gp-nav-item-link:hover:not(.gp-nav-item-link--disabled) .gp-nav-item-label {
-  color: var(--gp-primary-dark);
+  color: var(--gp-primary-text);
 }
 
 .gp-nav-item-link:hover:not(.gp-nav-item-link--disabled) .gp-nav-item-icon {
-  color: var(--gp-primary-dark);
+  color: var(--gp-primary-text);
 }
 
 /* Active States */
@@ -221,32 +221,6 @@ const handleItemClick = (item) => {
 .gp-nav-item-link:focus {
   outline: 2px solid var(--gp-primary);
   outline-offset: 2px;
-}
-
-/* Dark Mode */
-.p-dark .gp-nav-section-title {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-nav-item-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .gp-nav-item-link:hover:not(.gp-nav-item-link--disabled) {
-  background: var(--gp-primary-dark);
-}
-
-.p-dark .gp-nav-item-link:hover:not(.gp-nav-item-link--disabled) .gp-nav-item-label {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .gp-nav-item-link:hover:not(.gp-nav-item-link--disabled) .gp-nav-item-icon {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .gp-nav-item-link.router-link-active {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
 }
 
 /* Badge Styling */

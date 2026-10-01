@@ -780,7 +780,7 @@ onUnmounted(() => {
 
 .avatar-setting-content {
   padding: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .user-avatar {
@@ -808,7 +808,7 @@ onUnmounted(() => {
   gap: var(--gp-spacing-sm);
   margin-top: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
-  background: color-mix(in srgb, var(--gp-surface-white) 45%, var(--gp-surface-light));
+  background: color-mix(in srgb, var(--gp-surface-card) 45%, var(--gp-surface-muted));
   border-radius: var(--gp-radius-medium);
   max-height: 200px;
   overflow-y: auto;
@@ -823,7 +823,7 @@ onUnmounted(() => {
   border-radius: var(--gp-radius-small);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .avatar-option:hover {
@@ -852,7 +852,7 @@ onUnmounted(() => {
 .custom-url-field {
   margin-top: var(--gp-spacing-xs);
   padding-top: var(--gp-spacing-sm);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 @media (max-width: 768px) {

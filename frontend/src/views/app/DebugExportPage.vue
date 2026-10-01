@@ -371,13 +371,13 @@ const exportDebugData = async () => {
 .header-content .header-text .page-title {
   font-size: 2rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .header-content .header-text .page-description {
   font-size: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -386,7 +386,7 @@ const exportDebugData = async () => {
 }
 
 .info-banner.warning {
-  border-left: 4px solid var(--primary-color);
+  border-left: 4px solid var(--gp-primary);
 }
 
 .info-banner .banner-content {
@@ -397,7 +397,7 @@ const exportDebugData = async () => {
 
 .info-banner .banner-content .banner-icon {
   font-size: 1.5rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
@@ -405,12 +405,12 @@ const exportDebugData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-banner .banner-content .banner-text .banner-description {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -422,7 +422,7 @@ const exportDebugData = async () => {
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group {
@@ -433,7 +433,7 @@ const exportDebugData = async () => {
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group .form-label-with-action {
@@ -460,7 +460,7 @@ const exportDebugData = async () => {
 }
 
 .export-config-card .config-section .form-group .date-range-selector .date-separator {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
@@ -473,7 +473,7 @@ const exportDebugData = async () => {
 .export-config-card .config-section .form-group .shift-inputs .shift-input-group .input-label {
   display: block;
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -490,13 +490,13 @@ const exportDebugData = async () => {
 
 .export-config-card .config-section .form-group .checkbox-group .checkbox-item .checkbox-label {
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group .form-help-text {
   display: block;
   margin-top: 0.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -516,10 +516,10 @@ const exportDebugData = async () => {
 .export-config-card .config-section .validation-error {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: var(--red-50);
-  border: 1px solid var(--red-200);
+  background: var(--p-red-50);
+  border: 1px solid var(--p-red-200);
   border-radius: 6px;
-  color: var(--red-700);
+  color: var(--p-red-700);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -565,12 +565,12 @@ const exportDebugData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-description {
   margin: 0 0 1rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -582,7 +582,7 @@ const exportDebugData = async () => {
 
 .info-card .info-content .info-list li {
   padding: 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.6;
   display: flex;
   align-items: flex-start;
@@ -590,23 +590,23 @@ const exportDebugData = async () => {
 }
 
 .info-card .info-content .info-list li i {
-  color: var(--green-500);
+  color: var(--p-green-500);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
 
 .info-card .info-content .info-list li strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--blue-50);
-  border-left: 3px solid var(--primary-color);
+  background: var(--p-blue-50);
+  border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   display: flex;
   align-items: flex-start;
@@ -614,7 +614,7 @@ const exportDebugData = async () => {
 }
 
 .info-card .info-content .info-note i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;

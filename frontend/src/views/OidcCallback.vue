@@ -152,17 +152,17 @@ const handleLinkingCancel = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   padding: var(--gp-spacing-lg);
 }
 
 .callback-content {
   text-align: center;
   padding: var(--gp-spacing-xxl);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-card);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   max-width: 450px;
   width: 100%;
 }
@@ -240,7 +240,7 @@ const handleLinkingCancel = () => {
 :deep(.p-button:not(.p-button-outlined)) {
   background: var(--gp-primary);
   border-color: var(--gp-primary);
-  color: var(--gp-primary-text);
+  color: var(--gp-primary-contrast);
 }
 
 :deep(.p-button:not(.p-button-outlined):hover) {
@@ -248,25 +248,5 @@ const handleLinkingCancel = () => {
   border-color: var(--gp-primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--gp-shadow-medium);
-}
-
-/* Dark mode support */
-.p-dark .oidc-callback-page {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .callback-content {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .processing-title,
-.p-dark .error-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .processing-description,
-.p-dark .error-description {
-  color: var(--gp-text-secondary);
 }
 </style>

@@ -203,7 +203,7 @@ defineExpose({
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
 }
 
 .map-controls {
@@ -238,10 +238,5 @@ defineExpose({
   .map-warning-banner {
     bottom: calc(64px + env(safe-area-inset-bottom));
   }
-}
-
-/* Dark mode */
-.p-dark .map-container-wrapper {
-  background-color: var(--gp-surface-dark, #1e293b);
 }
 </style>

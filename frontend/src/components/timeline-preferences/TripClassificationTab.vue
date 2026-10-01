@@ -839,7 +839,7 @@ const boatSetupCanStart = computed(() => {
 
 .label-toggle {
   align-items: center;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   display: flex;
   gap: 1rem;

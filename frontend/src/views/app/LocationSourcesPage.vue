@@ -517,21 +517,11 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* Dark Mode */
-.p-dark .page-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .page-description {
-  color: var(--gp-text-secondary);
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
     align-items: stretch;
   }
-
 }
 </style>

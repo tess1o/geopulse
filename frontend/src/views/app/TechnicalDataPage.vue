@@ -2114,7 +2114,7 @@ watch(filters, async () => {
   align-items: center;
   gap: var(--gp-spacing-xs);
   margin-top: var(--gp-spacing-sm);
-  color: var(--red-600);
+  color: var(--p-red-600);
   font-size: 0.875rem;
 }
 
@@ -2164,10 +2164,10 @@ watch(filters, async () => {
 }
 
 .telemetry-table-wrapper {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   overflow-x: auto;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .telemetry-table {
@@ -2178,7 +2178,7 @@ watch(filters, async () => {
 
 .telemetry-table th,
 .telemetry-table td {
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   padding: 0.45rem 0.5rem;
   text-align: left;
   vertical-align: middle;
@@ -2189,7 +2189,7 @@ watch(filters, async () => {
   white-space: nowrap;
   color: var(--gp-text-secondary);
   font-weight: 600;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .telemetry-table tbody tr:last-child td {
@@ -2229,10 +2229,10 @@ watch(filters, async () => {
 }
 
 .telemetry-boolean-row {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: 0.6rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .telemetry-boolean-title {
@@ -2463,7 +2463,7 @@ watch(filters, async () => {
 .timestamp-time {
   font-size: 0.75rem;
   color: var(--gp-text-muted);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .coordinates-cell {
@@ -2474,14 +2474,14 @@ watch(filters, async () => {
 }
 
 .coordinate-line {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   color: var(--gp-text-primary);
 }
 
 .coordinate-separator {
   color: var(--gp-text-muted);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
 }
 
@@ -2545,12 +2545,12 @@ watch(filters, async () => {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .mobile-gps-header {
   padding: var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .mobile-gps-toolbar {
@@ -2559,7 +2559,7 @@ watch(filters, async () => {
   align-items: center;
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .mobile-select-page-control {
@@ -2625,7 +2625,7 @@ watch(filters, async () => {
   width: 100%;
   min-width: 0;
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   box-sizing: border-box;
 }
 
@@ -2657,7 +2657,7 @@ watch(filters, async () => {
 }
 
 .mobile-gps-time {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.85rem;
   color: var(--gp-text-muted);
 }
@@ -2667,7 +2667,7 @@ watch(filters, async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.82rem;
   color: var(--gp-text-secondary);
 }
@@ -2687,7 +2687,7 @@ watch(filters, async () => {
   max-width: 100%;
   padding: 0.15rem 0.45rem;
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   color: var(--gp-text-secondary);
   font-size: 0.78rem;
   line-height: 1.25;
@@ -2698,7 +2698,7 @@ watch(filters, async () => {
 }
 
 .mobile-gps-paginator {
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .mobile-empty-state {
@@ -3030,117 +3030,38 @@ watch(filters, async () => {
   }
 }
 
-/* Dark Mode */
-.p-dark .table-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .table-subtitle {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .timestamp-date {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timestamp-time {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .coordinate-line {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .telemetry-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .telemetry-value {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .null-value {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .empty-icon {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .empty-state h3 {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .empty-state p {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .mobile-gps-list-panel {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .mobile-gps-header,
-.p-dark .mobile-gps-toolbar,
-.p-dark .mobile-gps-row,
-.p-dark .mobile-gps-paginator {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .mobile-gps-date {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .mobile-gps-time {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .mobile-gps-coordinates,
-.p-dark .mobile-sort-label,
-.p-dark .mobile-select-page-control {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .mobile-gps-metric {
-  background: var(--gp-surface-light);
-  color: var(--gp-text-secondary);
-}
-
 /* PrimeVue DataTable Dark Mode Overrides */
 .p-dark .gps-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-datatable-paginator-bottom),
 .p-dark .gps-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-top: 1px solid var(--gp-border-dark) !important;
-  border-radius: 0 0 0 0 !important;
-  overflow: hidden !important;
 }
 
 /* Fix white corners by ensuring all child elements have proper background */
@@ -3153,11 +3074,11 @@ watch(filters, async () => {
 .p-dark .gps-data-table :deep(.p-datatable-paginator-bottom::after),
 .p-dark .gps-data-table :deep(.p-paginator.p-component::before),
 .p-dark .gps-data-table :deep(.p-paginator.p-component::after) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
 }
 
 .p-dark .gp-data-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
   border: none !important;
 }
@@ -3169,7 +3090,7 @@ watch(filters, async () => {
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-last) {
   color: var(--gp-text-primary) !important;
   background: transparent !important;
-  border: 1px solid var(--gp-border-dark) !important;
+  border: 1px solid var(--gp-border) !important;
   margin: 0 2px !important;
 }
 
@@ -3178,15 +3099,9 @@ watch(filters, async () => {
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-prev:hover),
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-first:hover),
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
   color: var(--gp-text-primary) !important;
   border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
 }
 
 .p-dark .gps-data-table :deep(.p-paginator .p-paginator-current) {
@@ -3197,7 +3112,7 @@ watch(filters, async () => {
 .p-dark .gps-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
   overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 
 /* Ensure the table container has proper rounded corners */
@@ -3210,9 +3125,9 @@ watch(filters, async () => {
 /* Light mode paginator fixes */
 .gps-data-table :deep(.p-datatable-paginator-bottom),
 .gps-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-light) !important;
-  border: 1px solid var(--gp-border-light) !important;
-  border-top: 1px solid var(--gp-border-light) !important;
+  background: var(--gp-surface-muted) !important;
+  border: 1px solid var(--gp-border) !important;
+  border-top: 1px solid var(--gp-border) !important;
   border-radius: 0 0 0 0 !important;
   overflow: hidden !important;
 }
@@ -3240,10 +3155,6 @@ watch(filters, async () => {
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
   padding: 0 0.5rem;
-}
-
-.p-dark .paginator-info {
-  color: var(--gp-text-secondary);
 }
 
 /* Remove unwanted focus/active borders on page header */
@@ -3420,7 +3331,7 @@ watch(filters, async () => {
   align-items: center;
   margin-bottom: var(--gp-spacing-md);
   padding-bottom: var(--gp-spacing-sm);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .filter-title {
@@ -3446,7 +3357,7 @@ watch(filters, async () => {
 .advanced-filters {
   margin-top: var(--gp-spacing-md);
   padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .filter-row {
@@ -3487,13 +3398,13 @@ watch(filters, async () => {
   gap: var(--gp-spacing-sm);
   margin-top: var(--gp-spacing-md);
   padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Filtered Banner */
 .filtered-banner {
   margin-bottom: var(--gp-spacing-lg);
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
   border-left: 4px solid var(--gp-primary);
 }
 
@@ -3600,32 +3511,5 @@ watch(filters, async () => {
     width: 100%;
     justify-content: space-between;
   }
-}
-
-/* Dark Mode Filters */
-.p-dark .filter-header {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .advanced-filters {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .active-filter-chips {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .filtered-banner {
-  background: var(--p-primary-900);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .filter-input :deep(.p-chip) {
-  background: var(--p-surface-800) !important;
-  color: var(--p-text-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-chip .p-chip-remove-icon) {
-  color: var(--p-text-color) !important;
 }
 </style>

@@ -357,8 +357,8 @@ onMounted(async () => {
   gap: 0.5rem;
   margin-top: 0.5rem;
   padding: 0.5rem;
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
   border-radius: var(--gp-radius-small);
   font-size: 0.85rem;
 }
@@ -375,12 +375,6 @@ onMounted(async () => {
 /* Compact variant */
 .date-range-picker--compact .date-picker-input {
   font-size: 0.85rem;
-}
-
-/* Dark mode */
-.p-dark .validation-message {
-  background: rgba(255, 193, 7, 0.2);
-  color: var(--gp-warning);
 }
 
 /* Mobile responsiveness */

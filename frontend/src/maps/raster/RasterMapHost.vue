@@ -510,6 +510,6 @@ onUnmounted(() => {
    specificity rather than trusting chunk order - this host is lazily loaded, so its
    stylesheet lands after index.css. */
 .p-dark .base-map {
-  background-color: var(--gp-surface-dark);
+  background-color: var(--gp-surface-card);
 }
 </style>

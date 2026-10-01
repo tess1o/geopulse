@@ -4,17 +4,17 @@
       <!-- Loading overlay -->
       <div v-if="isLoading" class="map-loading-overlay">
         <ProgressSpinner size="small"/>
-        <p class="text-sm text-surface-500 mt-2">Loading friend locations...</p>
+        <p class="text-sm text-muted-color mt-2">Loading friend locations...</p>
       </div>
 
       <!-- Empty state overlay -->
       <div v-else-if="!hasLocations" class="map-empty-overlay">
         <div class="empty-content">
-          <i class="pi pi-map-marker text-4xl text-surface-400 mb-3"></i>
+          <i class="pi pi-map-marker text-4xl text-muted-color mb-3"></i>
           <h3 class="text-lg font-medium text-surface-600 dark:text-surface-400 mb-2">
             No Friend Locations
           </h3>
-          <p class="text-sm text-surface-500 text-center max-w-sm">
+          <p class="text-sm text-muted-color text-center max-w-sm">
             {{
               friends?.length ? 'Your friends haven\'t shared their locations yet.' : 'Add friends to see their locations on the map.'
             }}

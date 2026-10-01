@@ -387,7 +387,7 @@ function remainingSubjectsCount(rule) {
 }
 
 .form-section {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.85rem;
   display: grid;
@@ -395,8 +395,8 @@ function remainingSubjectsCount(rule) {
 }
 
 .form-section--needs-area {
-  border-color: color-mix(in srgb, var(--primary-color) 48%, var(--surface-border));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 22%, transparent);
+  border-color: color-mix(in srgb, var(--gp-primary) 48%, var(--gp-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gp-primary) 22%, transparent);
 }
 
 .section-header {
@@ -434,8 +434,8 @@ function remainingSubjectsCount(rule) {
 .draw-rectangle-button--required {
   font-weight: 700;
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--primary-color) 55%, transparent),
-    0 8px 18px color-mix(in srgb, var(--primary-color) 28%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--gp-primary) 55%, transparent),
+    0 8px 18px color-mix(in srgb, var(--gp-primary) 28%, transparent);
 }
 
 .section-grid {
@@ -456,7 +456,7 @@ function remainingSubjectsCount(rule) {
 
 .map-picker {
   width: 100%;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -473,18 +473,18 @@ function remainingSubjectsCount(rule) {
 }
 
 .help-icon {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   cursor: help;
   font-size: 0.85rem;
 }
 
 .muted-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.8rem;
 }
 
 .error-text {
-  color: var(--red-500);
+  color: var(--p-red-500);
   font-size: 0.78rem;
 }
 
@@ -497,7 +497,7 @@ function remainingSubjectsCount(rule) {
   margin: 0;
   font-size: 0.96rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .rule-sentence-row {
@@ -513,10 +513,10 @@ function remainingSubjectsCount(rule) {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 999px;
   padding: 0.32rem 0.55rem;
-  background: color-mix(in srgb, var(--surface-card) 88%, var(--surface-ground));
+  background: color-mix(in srgb, var(--gp-surface-card) 88%, var(--gp-surface-ground));
 }
 
 .rule-toggle-chip-label {
@@ -542,7 +542,7 @@ function remainingSubjectsCount(rule) {
 
 .rule-sentence-text {
   font-size: 0.9rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   white-space: nowrap;
 }
 
@@ -561,7 +561,7 @@ function remainingSubjectsCount(rule) {
 }
 
 .rule-sentence-info {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.84rem;
   cursor: help;
 }
@@ -597,8 +597,8 @@ function remainingSubjectsCount(rule) {
 }
 
 .sticky-actions {
-  background: var(--surface-card);
-  border-top: 1px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border-top: 1px solid var(--gp-border);
   padding-top: 0.75rem;
 }
 
@@ -623,11 +623,11 @@ function remainingSubjectsCount(rule) {
 }
 
 .subject-option--unavailable {
-  color: var(--orange-700);
+  color: var(--p-orange-700);
 }
 
 .subject-option-warning {
-  color: var(--orange-600);
+  color: var(--p-orange-600);
   font-size: 0.72rem;
   font-weight: 600;
 }
@@ -664,23 +664,13 @@ function remainingSubjectsCount(rule) {
 }
 
 .subjects-select :deep(.p-multiselect-token-icon) {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   border-radius: 999px;
 }
 
 .subjects-select :deep(.p-multiselect-token-icon:hover) {
-  color: var(--text-color);
-  background: color-mix(in srgb, var(--text-color-secondary) 20%, transparent);
-}
-
-.p-dark .subjects-select :deep(.p-multiselect-token-icon) {
-  color: #cbd5e1;
-  background: rgba(148, 163, 184, 0.22);
-}
-
-.p-dark .subjects-select :deep(.p-multiselect-token-icon:hover) {
-  color: #e2e8f0;
-  background: rgba(148, 163, 184, 0.38);
+  color: var(--gp-text-primary);
+  background: color-mix(in srgb, var(--gp-text-secondary) 20%, transparent);
 }
 
 @media (min-width: 900px) {

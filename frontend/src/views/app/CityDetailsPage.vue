@@ -319,18 +319,18 @@ watch(
 
 .error-icon {
   font-size: 4rem;
-  color: var(--gp-error);
+  color: var(--gp-danger);
   opacity: 0.7;
 }
 
 .detail-link {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 600;
   text-underline-offset: .18em;
 }
 
 .detail-link:hover {
-  color: var(--gp-primary-hover);
+  color: var(--gp-primary-text);
 }
 
 .city-context-grid {
@@ -356,7 +356,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   color: inherit;
   text-decoration: none;
@@ -365,7 +365,7 @@ watch(
 
 .top-place-item:hover {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-50);
+  background: var(--p-primary-50);
 }
 
 .place-info {
@@ -406,14 +406,6 @@ watch(
 .top-place-item > .pi-chevron-right {
   flex-shrink: 0;
   margin-left: var(--gp-spacing-sm);
-}
-
-.p-dark .detail-link {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .detail-link:hover {
-  color: var(--gp-primary);
 }
 
 @media (max-width: 1024px) {

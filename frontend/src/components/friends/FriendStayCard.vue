@@ -66,11 +66,6 @@ defineEmits(['click'])
   font-weight: 600;
 }
 
-.p-dark .location-name,
-.p-dark .stay-detail {
-  color: var(--gp-text-primary);
-}
-
 @media (max-width: 768px) {
   .stay-detail {
     font-size: 0.8rem;

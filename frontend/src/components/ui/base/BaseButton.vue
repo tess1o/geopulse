@@ -138,242 +138,97 @@ const handleBlur = (event) => {
 </script>
 
 <style>
-/* GeoPulse Button Variants */
+/* GeoPulse button variants. Global PrimeVue button tweaks live in styles/primevue-overrides.css. */
 .gp-button--gp-primary {
-  background: var(--gp-primary) !important;
-  border-color: var(--gp-primary) !important;
-  color: white !important;
-  box-shadow: var(--gp-shadow-button) !important;
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: var(--gp-primary-contrast);
+  box-shadow: var(--gp-shadow-button);
+}
+
+.gp-button--gp-primary:hover:not(:disabled),
+.gp-button--gp-primary:active:not(:disabled) {
+  background: var(--gp-primary-hover);
+  border-color: var(--gp-primary-hover);
 }
 
 .gp-button--gp-primary:hover:not(:disabled) {
-  background: var(--gp-primary-dark) !important;
-  border-color: var(--gp-primary-dark) !important;
-  box-shadow: var(--gp-shadow-button-hover) !important;
+  box-shadow: var(--gp-shadow-button-hover);
   transform: translateY(-1px);
-}
-
-.gp-button--gp-primary:active:not(:disabled) {
-  background: var(--gp-primary-dark) !important;
-  border-color: var(--gp-primary-dark) !important;
-  transform: translateY(0);
 }
 
 .gp-button--gp-secondary {
-  background: var(--gp-secondary) !important;
-  border-color: var(--gp-secondary) !important;
-  color: white !important;
-  box-shadow: var(--gp-shadow-button) !important;
+  background: var(--gp-secondary);
+  border-color: var(--gp-secondary);
+  color: var(--gp-primary-contrast);
+  box-shadow: var(--gp-shadow-button);
+}
+
+.gp-button--gp-secondary:hover:not(:disabled),
+.gp-button--gp-secondary:active:not(:disabled) {
+  background: var(--gp-secondary-dark);
+  border-color: var(--gp-secondary-dark);
 }
 
 .gp-button--gp-secondary:hover:not(:disabled) {
-  background: var(--gp-secondary-dark) !important;
-  border-color: var(--gp-secondary-dark) !important;
-  box-shadow: var(--gp-shadow-button-hover) !important;
+  box-shadow: var(--gp-shadow-button-hover);
   transform: translateY(-1px);
 }
 
-.gp-button--gp-secondary:active:not(:disabled) {
-  background: var(--gp-secondary-dark) !important;
-  border-color: var(--gp-secondary-dark) !important;
-  transform: translateY(0);
-}
-
 .gp-button--gp-ghost {
-  background: transparent !important;
-  border: 1px solid var(--gp-border-light) !important;
-  color: var(--gp-text-primary) !important;
-  box-shadow: none !important;
+  background: transparent;
+  border: 1px solid var(--gp-border);
+  color: var(--gp-text-primary);
+  box-shadow: none;
 }
 
 .gp-button--gp-ghost:hover:not(:disabled) {
-  background: var(--gp-surface-light) !important;
-  border-color: var(--gp-primary) !important;
-  color: var(--gp-primary) !important;
-  box-shadow: var(--gp-shadow-subtle) !important;
+  background: var(--gp-surface-ground);
+  border-color: var(--gp-primary);
+  color: var(--gp-primary-text);
+  box-shadow: var(--gp-shadow-subtle);
 }
 
 .gp-button--gp-ghost:active:not(:disabled) {
-  background: var(--gp-timeline-blue) !important;
+  background: var(--gp-timeline-blue);
 }
 
 .gp-button--gp-minimal {
-  background: transparent !important;
-  border: none !important;
-  color: var(--gp-text-secondary) !important;
-  box-shadow: none !important;
-  padding: var(--gp-spacing-sm) !important;
+  background: transparent;
+  border: none;
+  color: var(--gp-text-secondary);
+  box-shadow: none;
+  padding: var(--gp-spacing-sm);
 }
 
 .gp-button--gp-minimal:hover:not(:disabled) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-  border-radius: var(--gp-radius-small) !important;
+  background: var(--gp-surface-ground);
+  color: var(--gp-text-primary);
+  border-radius: var(--gp-radius-small);
 }
 
 .gp-button--gp-minimal:active:not(:disabled) {
-  background: var(--gp-surface-white) !important;
+  background: var(--gp-surface-card);
 }
 
-/* Full Width */
 .gp-button--full-width {
-  width: 100% !important;
+  width: 100%;
 }
 
-/* Compact */
 .gp-button--compact {
-  padding: var(--gp-spacing-xs) var(--gp-spacing-sm) !important;
-  font-size: 0.75rem !important;
-  min-height: auto !important;
+  padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+  font-size: 0.75rem;
+  min-height: auto;
 }
 
 .gp-button--compact .p-button-icon {
-  font-size: 0.7rem !important;
+  font-size: 0.7rem;
 }
 
-/* Enhanced Button Styles */
-.p-button {
-  border-radius: var(--gp-radius-medium) !important;
-  font-weight: 500 !important;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-.p-button:not(.p-button-text):not(.p-button-outlined) {
-  box-shadow: var(--gp-shadow-button) !important;
-}
-
-.p-button:hover:not(:disabled):not(.p-button-text) {
-  transform: translateY(-1px) !important;
-  box-shadow: var(--gp-shadow-button-hover) !important;
-}
-
-.p-button:active:not(:disabled) {
-  transform: translateY(0) !important;
-}
-
-.p-button:focus {
-  box-shadow: var(--gp-shadow-button), 0 0 0 2px var(--gp-primary-light) !important;
-}
-
-/* Loading State */
-.p-button[aria-label*="Loading"] {
-  pointer-events: none !important;
-}
-
-.p-button .p-button-loading-icon {
-  color: currentColor !important;
-}
-
-/* Icon Only Buttons */
-.p-button.p-button-icon-only {
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-}
-
-.p-button.p-button-icon-only.p-button-sm {
-  width: 2rem !important;
-  height: 2rem !important;
-}
-
-.p-button.p-button-icon-only.p-button-lg {
-  width: 3rem !important;
-  height: 3rem !important;
-}
-
-/* Disabled State */
-.p-button:disabled {
-  opacity: 0.6 !important;
-  cursor: not-allowed !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* Dark Mode */
-.p-dark .gp-button--gp-ghost {
-  border-color: var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .gp-button--gp-ghost:hover:not(:disabled) {
-  background: var(--gp-surface-darker) !important;
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .gp-button--gp-ghost:active:not(:disabled) {
-  background: var(--gp-primary-dark) !important;
-}
-
-.p-dark .gp-button--gp-minimal {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .gp-button--gp-minimal:hover:not(:disabled) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .gp-button--gp-minimal:active:not(:disabled) {
-  background: var(--gp-surface-dark) !important;
-}
-
-/* Responsive */
 @media (max-width: 640px) {
-  .p-button {
-    padding: var(--gp-spacing-sm) var(--gp-spacing-md) !important;
-    font-size: 0.875rem !important;
-  }
-
-  .p-button.p-button-lg {
-    padding: var(--gp-spacing-md) var(--gp-spacing-lg) !important;
-    font-size: 1rem !important;
-  }
-
-  .p-button.p-button-sm {
-    padding: var(--gp-spacing-xs) var(--gp-spacing-sm) !important;
-    font-size: 0.75rem !important;
-  }
-
   .gp-button--compact {
-    padding: var(--gp-spacing-xs) !important;
-    font-size: 0.7rem !important;
+    padding: var(--gp-spacing-xs);
+    font-size: 0.7rem;
   }
-}
-
-/* Button Group Support */
-.p-buttonset .p-button {
-  border-radius: 0 !important;
-}
-
-.p-buttonset .p-button:first-child {
-  border-top-left-radius: var(--gp-radius-medium) !important;
-  border-bottom-left-radius: var(--gp-radius-medium) !important;
-}
-
-.p-buttonset .p-button:last-child {
-  border-top-right-radius: var(--gp-radius-medium) !important;
-  border-bottom-right-radius: var(--gp-radius-medium) !important;
-}
-
-/* Ripple Effect Override */
-.p-button .p-ink {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-radius: 50% !important;
-}
-
-.gp-button--gp-ghost .p-ink,
-.gp-button--gp-minimal .p-ink {
-  background: var(--gp-primary) !important;
-  opacity: 0.1 !important;
-}
-
-/* Badge Support */
-.p-button .p-badge {
-  min-width: 1rem !important;
-  height: 1rem !important;
-  line-height: 1rem !important;
-  font-size: 0.6rem !important;
-  border-radius: 50% !important;
 }
 </style>

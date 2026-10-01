@@ -132,7 +132,7 @@ const changeIcon = computed(() => {
 }
 
 .gp-metric-item:not(:last-child) {
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 /* Icon */
@@ -160,33 +160,33 @@ const changeIcon = computed(() => {
 }
 
 .gp-metric-icon--success {
-  background: var(--gp-success-light);
+  background: var(--gp-success-soft);
   color: var(--gp-success);
   border: 1px solid var(--gp-success);
 }
 
 .gp-metric-icon--danger {
-  background: var(--gp-danger-light);
+  background: var(--gp-danger-soft);
   color: var(--gp-danger);
   border: 1px solid var(--gp-danger);
 }
 
 .gp-metric-icon--warning {
-  background: var(--gp-warning-light);
+  background: var(--gp-warning-soft);
   color: var(--gp-warning);
   border: 1px solid var(--gp-warning);
 }
 
 .gp-metric-icon--info {
-  background: var(--gp-info-light);
+  background: var(--gp-info-soft);
   color: var(--gp-info);
   border: 1px solid var(--gp-info);
 }
 
 .gp-metric-icon--muted {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   color: var(--gp-text-muted);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 /* Content */
@@ -311,19 +311,19 @@ const changeIcon = computed(() => {
 
 /* Style Variants */
 .gp-metric-item--card {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-sm);
 }
 
 .gp-metric-item--card:not(:last-child) {
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .gp-metric-item--card:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   box-shadow: var(--gp-shadow-light);
   transform: translateY(-1px);
   border-color: var(--gp-border-medium);
@@ -347,71 +347,6 @@ const changeIcon = computed(() => {
 
 .gp-metric-item--minimal .gp-metric-label {
   font-size: 0.7rem;
-}
-
-/* Dark Mode */
-.p-dark .gp-metric-item:not(:last-child) {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-metric-value {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-metric-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .gp-metric-subtitle {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-metric-item--card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-metric-item--card:hover {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-medium);
-  box-shadow: var(--gp-shadow-light);
-}
-
-.p-dark .gp-metric-icon--muted {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-muted);
-}
-
-/* Additional dark mode icon refinements */
-.p-dark .gp-metric-icon--primary {
-  background: rgba(30, 64, 175, 0.2);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .gp-metric-icon--secondary {
-  background: rgba(5, 150, 105, 0.2);
-  border-color: var(--gp-secondary);
-}
-
-.p-dark .gp-metric-icon--success {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: var(--gp-success);
-}
-
-.p-dark .gp-metric-icon--danger {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: var(--gp-danger);
-}
-
-.p-dark .gp-metric-icon--warning {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: var(--gp-warning);
-}
-
-.p-dark .gp-metric-icon--info {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: var(--gp-info);
 }
 
 /* Responsive */

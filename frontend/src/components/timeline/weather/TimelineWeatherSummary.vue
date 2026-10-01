@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   padding: 2px 8px;
   font-size: 0.75rem;
@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
 }
 
 .weather-summary-button:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .weather-summary-button:focus-visible {
@@ -254,13 +254,13 @@ onBeforeUnmount(() => {
 }
 
 :global(.weather-details-popover.p-popover) {
-  --weather-details-popover-surface: var(--gp-surface-white);
-  --weather-details-popover-border: rgba(148, 163, 184, 0.24);
+  --weather-details-popover-surface: var(--gp-surface-card);
+  --weather-details-popover-border: var(--gp-border);
 
   background: var(--weather-details-popover-surface);
   color: var(--gp-text-primary);
   border: 1px solid var(--weather-details-popover-border);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+  box-shadow: var(--gp-shadow-large);
 }
 
 :global(.weather-details-popover .p-popover-content) {
@@ -280,19 +280,13 @@ onBeforeUnmount(() => {
   border-top-color: var(--weather-details-popover-surface);
 }
 
-:global(.p-dark .weather-details-popover.p-popover) {
-  --weather-details-popover-border: rgba(148, 163, 184, 0.16);
-
-  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.45);
-}
-
 :global(.weather-details-dialog.p-dialog) {
   color: var(--gp-text-primary);
 }
 
 :global(.weather-details-dialog .p-dialog-header),
 :global(.weather-details-dialog .p-dialog-content) {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
 }
 

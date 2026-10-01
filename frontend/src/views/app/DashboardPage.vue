@@ -278,7 +278,6 @@ onMounted(() => {
   margin-bottom: 0;
 }
 
-
 /* Empty Dashboard */
 .empty-dashboard {
   text-align: center;
@@ -308,20 +307,6 @@ onMounted(() => {
   margin-right: auto;
   line-height: 1.5;
 }
-
-/* Dark Mode */
-.p-dark .empty-icon {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .empty-title {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .empty-message {
-  color: var(--gp-text-muted);
-}
-
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

@@ -350,7 +350,7 @@ const formattedTimestamp = computed(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border-medium);
   overflow: hidden;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
 }
@@ -508,34 +508,5 @@ const formattedTimestamp = computed(() => {
   color: var(--gp-warning);
   font-size: 0.78rem;
   font-weight: 600;
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--trip {
-  background-color: var(--gp-timeline-green);
-  border-left: 4px solid var(--gp-success);
-}
-
-.p-dark .timeline-timestamp,
-.p-dark .transition-title {
-  color: var(--gp-primary);
-}
-
-.p-dark .trip-detail .font-bold {
-  color: var(--gp-primary);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .trip-content,
-.p-dark .trip-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 </style>

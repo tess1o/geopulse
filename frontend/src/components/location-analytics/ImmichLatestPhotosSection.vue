@@ -1358,7 +1358,7 @@ defineExpose({
 }
 
 .immich-photos-count {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   color: var(--gp-text-secondary);
   border-radius: 999px;
   padding: 2px 10px;
@@ -1389,9 +1389,9 @@ defineExpose({
 }
 
 .immich-photo-tile {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   padding: var(--gp-spacing-xs);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1407,7 +1407,7 @@ defineExpose({
   aspect-ratio: 1;
   border-radius: var(--gp-radius-small);
   overflow: hidden;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .immich-photo-thumb img {
@@ -1457,7 +1457,7 @@ defineExpose({
   overflow: hidden;
   border: 0;
   border-radius: 12px;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   padding: 0;
 }
 
@@ -1514,7 +1514,7 @@ defineExpose({
 .immich-photos-error {
   margin-top: var(--gp-spacing-sm);
   font-size: 0.85rem;
-  color: var(--gp-error);
+  color: var(--gp-danger);
 }
 
 @media (max-width: 768px) {
@@ -1532,6 +1532,5 @@ defineExpose({
   .gallery-grid {
     max-height: 58vh;
   }
-
 }
 </style>

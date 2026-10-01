@@ -125,7 +125,7 @@ const chartDatasets = computed(() => {
 </script>
 
 <style scoped>
-.digest-trends { background: var(--gp-surface-white); border: 1px solid var(--gp-border-light); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
+.digest-trends { background: var(--gp-surface-card); border: 1px solid var(--gp-border); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .trends-title {
   display: flex;
@@ -141,7 +141,7 @@ const chartDatasets = computed(() => {
   color: var(--gp-secondary);
 }
 
-.chart-container { background: var(--gp-surface-light); border: 0; border-radius: 12px; padding: var(--gp-spacing-lg); height: 380px; }
+.chart-container { background: var(--gp-surface-muted); border: 0; border-radius: 12px; padding: var(--gp-spacing-lg); height: 380px; }
 
 .no-trends-placeholder {
   display: flex;
@@ -151,8 +151,8 @@ const chartDatasets = computed(() => {
   padding: var(--gp-spacing-xxl) var(--gp-spacing-xl);
   text-align: center;
   color: var(--gp-text-muted);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   min-height: 200px;
 }
@@ -169,22 +169,6 @@ const chartDatasets = computed(() => {
   font-size: 0.9375rem;
   font-style: italic;
   opacity: 0.8;
-}
-
-/* Dark Mode */
-.p-dark .digest-trends {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .chart-container,
-.p-dark .no-trends-placeholder {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .trends-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

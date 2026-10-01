@@ -148,7 +148,7 @@ const testEndpoints = async () => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 
@@ -169,9 +169,5 @@ const testEndpoints = async () => {
   .advanced-hint {
     padding: 0 0.5rem;
   }
-}
-
-.p-dark .advanced-settings {
-  border-color: var(--gp-border-dark);
 }
 </style>

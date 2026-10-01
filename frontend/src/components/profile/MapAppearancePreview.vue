@@ -233,15 +233,15 @@ const highlightedLines = computed(() => {
    surface and text variables so the segmented control follows the theme. */
 .appearance-preview-simulate {
   flex-wrap: wrap;
-  --p-togglebutton-background: var(--gp-surface-light);
-  --p-togglebutton-border-color: var(--gp-surface-light);
+  --p-togglebutton-background: var(--gp-surface-muted);
+  --p-togglebutton-border-color: var(--gp-surface-muted);
   --p-togglebutton-color: var(--gp-text-secondary);
-  --p-togglebutton-hover-background: var(--gp-surface-light);
+  --p-togglebutton-hover-background: var(--gp-surface-muted);
   --p-togglebutton-hover-color: var(--gp-text-primary);
-  --p-togglebutton-checked-background: var(--gp-surface-light);
-  --p-togglebutton-checked-border-color: var(--gp-surface-light);
+  --p-togglebutton-checked-background: var(--gp-surface-muted);
+  --p-togglebutton-checked-border-color: var(--gp-surface-muted);
   --p-togglebutton-checked-color: var(--gp-text-primary);
-  --p-togglebutton-content-checked-background: var(--gp-surface-white);
+  --p-togglebutton-content-checked-background: var(--gp-surface-card);
 }
 
 /* The selected option is also bold, so it does not depend on the background shade alone. */
@@ -273,7 +273,7 @@ const highlightedLines = computed(() => {
   width: 100%;
   aspect-ratio: 5 / 3;
   border-radius: var(--gp-radius-medium, 0.5rem);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   display: block;
 }
 

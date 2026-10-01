@@ -74,10 +74,10 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   color: var(--gp-text-primary);
 }
 
@@ -104,9 +104,9 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   padding: 0.42rem 0.5rem;
 }
 

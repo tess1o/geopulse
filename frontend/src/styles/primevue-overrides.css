@@ -119,6 +119,62 @@
     z-index: 9999 !important;
 }
 
+/* Buttons: soft shadow and a small hover lift. Radius, label weight, icon-only sizes and the disabled opacity
+   come from the preset. */
+.p-button {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.p-button:not(.p-button-text):not(.p-button-outlined) {
+    box-shadow: var(--gp-shadow-button);
+}
+
+.p-button:hover:not(:disabled):not(.p-button-text) {
+    transform: translateY(-1px);
+    box-shadow: var(--gp-shadow-button-hover);
+}
+
+.p-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.p-button:disabled {
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.p-button[aria-label*="Loading"] {
+    pointer-events: none;
+}
+
+.p-button .p-badge {
+    min-width: 1rem;
+    height: 1rem;
+    line-height: 1rem;
+    font-size: 0.6rem;
+    border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+    .p-button {
+        padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+        font-size: 0.875rem;
+    }
+
+    .p-button.p-button-lg {
+        padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+        font-size: 1rem;
+    }
+
+    .p-button.p-button-sm {
+        padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+        font-size: 0.75rem;
+    }
+}
+
 /* Compact tooltips. Colours, padding and radius come from the preset. */
 .p-tooltip-text {
     font-size: 0.75rem;

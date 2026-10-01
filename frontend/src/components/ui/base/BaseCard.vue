@@ -48,8 +48,8 @@ const cardClasses = computed(() => ({
 <style scoped>
 /* Base Card Styles */
 .gp-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-card);
   overflow: hidden;
@@ -69,8 +69,8 @@ const cardClasses = computed(() => ({
   align-items: center;
   justify-content: space-between;
   padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-md);
-  border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-ground);
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -114,8 +114,8 @@ const cardClasses = computed(() => ({
 /* Footer */
 .gp-card-footer {
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-top: 1px solid var(--gp-border);
+  background: var(--gp-surface-ground);
 }
 
 /* Variants */
@@ -129,7 +129,7 @@ const cardClasses = computed(() => ({
 }
 
 .gp-card--subtle {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-color: var(--gp-border-subtle);
   box-shadow: var(--gp-shadow-subtle);
 }
@@ -169,35 +169,6 @@ const cardClasses = computed(() => ({
 
 .gp-card--large .gp-card-title {
   font-size: 1rem;
-}
-
-/* Dark Mode */
-.p-dark .gp-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-card-header {
-  background: var(--gp-surface-darker);
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-card-footer {
-  background: var(--gp-surface-darker);
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-card-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-card--highlighted .gp-card-header {
-  background: var(--gp-timeline-blue);
-}
-
-.p-dark .gp-card--subtle {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-subtle);
 }
 
 /* Responsive */

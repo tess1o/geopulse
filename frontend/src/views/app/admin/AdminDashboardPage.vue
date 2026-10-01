@@ -536,11 +536,11 @@ onMounted(() => {
 .page-header h1 {
   margin: 0;
   font-size: 1.75rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -552,17 +552,17 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.health-summary { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding: .8rem 1rem; border-radius: var(--gp-radius-medium); background: var(--gp-success-light, #ecfdf5); color: var(--gp-success-dark, #166534); }
-.health-summary--warning { background: var(--gp-warning-light, #fff7ed); color: var(--gp-warning-dark, #9a3412); }
+.health-summary { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding: .8rem 1rem; border-radius: var(--gp-radius-medium); background: var(--gp-success-soft, #ecfdf5); color: var(--gp-success-text, #166534); }
+.health-summary--warning { background: var(--gp-warning-soft, #fff7ed); color: var(--gp-warning-text, #9a3412); }
 .health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 2rem; }
 .health-card-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 600; }
 .health-card-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .25rem; }
-.health-card p { min-height: 2.8rem; margin: 1rem 0 .5rem; color: var(--text-color-secondary); font-size: .9rem; line-height: 1.4; }
+.health-card p { min-height: 2.8rem; margin: 1rem 0 .5rem; color: var(--gp-text-secondary); font-size: .9rem; line-height: 1.4; }
 .geocoding-provider-list { display: grid; gap: .6rem; margin: 1rem 0 .5rem; }
-.geocoding-provider-row { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; color: var(--text-color-secondary); font-size: .8rem; }
+.geocoding-provider-row { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; color: var(--gp-text-secondary); font-size: .8rem; }
 .geocoding-provider-name { display: flex; align-items: center; gap: .35rem; }
 .geocoding-provider-row strong, .geocoding-provider-row small { display: block; }
-.geocoding-provider-row strong { color: var(--text-color); }
+.geocoding-provider-row strong { color: var(--gp-text-primary); }
 .geocoding-provider-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .25rem; }
 .geocoding-provider-role { font-size: .65rem; padding: .1rem .3rem; }
 .usage-header { margin-top: .5rem; }
@@ -571,7 +571,7 @@ onMounted(() => {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 /* Stats Grid */
@@ -617,14 +617,14 @@ onMounted(() => {
 .stat-label {
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .stat-value {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .stat-icon {
@@ -633,23 +633,23 @@ onMounted(() => {
 }
 
 .stat-icon-primary {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .stat-icon-orange {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .stat-icon-green {
-  color: var(--green-500);
+  color: var(--p-green-500);
 }
 
 .stat-icon-blue {
-  color: var(--blue-500);
+  color: var(--p-blue-500);
 }
 
 .stat-icon-purple {
-  color: var(--purple-500);
+  color: var(--p-purple-500);
 }
 
 .operational-health-grid {
@@ -685,7 +685,7 @@ onMounted(() => {
 
 .operational-health-details summary::after {
   content: '⌄';
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-left: auto;
 }
 
@@ -697,7 +697,7 @@ onMounted(() => {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .weather-health-details {
@@ -710,11 +710,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .weather-health-row strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   text-align: right;
 }
 
@@ -725,10 +725,10 @@ onMounted(() => {
 
 .weather-health-message {
   padding: 0.75rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
-  color: var(--text-color);
-  background: var(--surface-ground);
+  color: var(--gp-text-primary);
+  background: var(--gp-surface-ground);
   overflow-wrap: anywhere;
 }
 
@@ -764,14 +764,14 @@ onMounted(() => {
   margin: 0 0 1rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .actions-icon {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.25rem;
 }
 

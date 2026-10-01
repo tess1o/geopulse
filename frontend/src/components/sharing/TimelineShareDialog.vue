@@ -574,7 +574,7 @@ function onHide() {
 }
 
 .field-checkbox small {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
@@ -587,7 +587,7 @@ function onHide() {
 .custom-tiles-section {
   margin-left: 1.75rem;
   padding-left: 1rem;
-  border-left: 3px solid var(--orange-500);
+  border-left: 3px solid var(--p-orange-500);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -605,7 +605,7 @@ function onHide() {
 
 .warning-content i {
   font-size: 1.25rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -629,6 +629,5 @@ function onHide() {
   .custom-tiles-section {
     margin-left: 1rem;
   }
-
 }
 </style>

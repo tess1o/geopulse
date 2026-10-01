@@ -348,40 +348,40 @@ watch(panelOpen, async (isOpen) => {
 <style scoped>
 .gp-notification-bell {
   position: relative;
-  --gp-bell-trigger-fg: var(--gp-text-primary);
-  --gp-bell-trigger-bg: var(--gp-surface-white);
-  --gp-bell-trigger-border: var(--gp-border-medium);
-  --gp-bell-trigger-shadow: var(--gp-shadow-subtle);
-  --gp-bell-trigger-fg-hover: var(--gp-primary-dark);
-  --gp-bell-trigger-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
-  --gp-bell-trigger-border-hover: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
-  --gp-bell-trigger-bg-active: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
-  --gp-bell-trigger-border-active: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
+  --bell-trigger-fg: var(--gp-text-primary);
+  --bell-trigger-bg: var(--gp-surface-card);
+  --bell-trigger-border: var(--gp-border-medium);
+  --bell-trigger-shadow: var(--gp-shadow-subtle);
+  --bell-trigger-fg-hover: var(--gp-primary-dark);
+  --bell-trigger-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
+  --bell-trigger-border-hover: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
+  --bell-trigger-bg-active: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-card));
+  --bell-trigger-border-active: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
 
-  --gp-mark-seen-fg: var(--gp-primary-dark);
-  --gp-mark-seen-border: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
-  --gp-mark-seen-bg: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
-  --gp-mark-seen-fg-hover: var(--gp-primary);
-  --gp-mark-seen-border-hover: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
-  --gp-mark-seen-bg-hover: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+  --mark-seen-fg: var(--gp-primary-text);
+  --mark-seen-border: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
+  --mark-seen-bg: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
+  --mark-seen-fg-hover: var(--gp-primary);
+  --mark-seen-border-hover: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
+  --mark-seen-bg-hover: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-card));
 
-  --gp-footer-btn-fg: var(--gp-text-primary);
-  --gp-footer-btn-border: var(--gp-border-medium);
-  --gp-footer-btn-bg: var(--gp-surface-white);
-  --gp-footer-btn-fg-hover: var(--gp-primary-dark);
-  --gp-footer-btn-border-hover: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-medium));
-  --gp-footer-btn-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
-  --gp-footer-btn-fg-disabled: var(--gp-text-muted);
-  --gp-footer-btn-border-disabled: var(--gp-border-medium);
-  --gp-footer-btn-bg-disabled: var(--gp-surface-gray);
+  --footer-btn-fg: var(--gp-text-primary);
+  --footer-btn-border: var(--gp-border-medium);
+  --footer-btn-bg: var(--gp-surface-card);
+  --footer-btn-fg-hover: var(--gp-primary-dark);
+  --footer-btn-border-hover: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-medium));
+  --footer-btn-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
+  --footer-btn-fg-disabled: var(--gp-text-muted);
+  --footer-btn-border-disabled: var(--gp-border-medium);
+  --footer-btn-bg-disabled: var(--gp-surface-emphasis);
 }
 
 .gp-bell-trigger {
   position: relative;
-  color: var(--gp-bell-trigger-fg) !important;
-  background: var(--gp-bell-trigger-bg) !important;
-  border: 1px solid var(--gp-bell-trigger-border) !important;
-  box-shadow: var(--gp-bell-trigger-shadow) !important;
+  color: var(--bell-trigger-fg) !important;
+  background: var(--bell-trigger-bg) !important;
+  border: 1px solid var(--bell-trigger-border) !important;
+  box-shadow: var(--bell-trigger-shadow) !important;
 }
 
 .gp-bell-trigger :deep(.p-button-icon) {
@@ -389,9 +389,9 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-bell-trigger:hover {
-  color: var(--gp-bell-trigger-fg-hover) !important;
-  background: var(--gp-bell-trigger-bg-hover) !important;
-  border-color: var(--gp-bell-trigger-border-hover) !important;
+  color: var(--bell-trigger-fg-hover) !important;
+  background: var(--bell-trigger-bg-hover) !important;
+  border-color: var(--bell-trigger-border-hover) !important;
 }
 
 .gp-bell-trigger:focus-visible {
@@ -400,8 +400,8 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-bell-trigger:active {
-  background: var(--gp-bell-trigger-bg-active) !important;
-  border-color: var(--gp-bell-trigger-border-active) !important;
+  background: var(--bell-trigger-bg-active) !important;
+  border-color: var(--bell-trigger-border-active) !important;
 }
 
 .gp-bell-badge {
@@ -412,7 +412,7 @@ watch(panelOpen, async (isOpen) => {
   height: 1.1rem;
   border-radius: 999px;
   padding: 0 0.3rem;
-  background: var(--gp-danger-dark);
+  background: var(--gp-danger-strong);
   color: var(--gp-neutral-white);
   font-size: 0.68rem;
   font-weight: 700;
@@ -428,9 +428,9 @@ watch(panelOpen, async (isOpen) => {
   width: min(420px, calc(100vw - 2rem));
   max-height: 70vh;
   overflow: hidden;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   box-shadow: var(--gp-shadow-medium);
   z-index: 1200;
   display: flex;
@@ -440,7 +440,7 @@ watch(panelOpen, async (isOpen) => {
 
 .gp-notification-panel-header {
   padding: 0.8rem 0.9rem 0.5rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -486,16 +486,16 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-empty {
-  border: 1px dashed var(--gp-border-light);
+  border: 1px dashed var(--gp-border);
   border-radius: 10px;
   color: var(--gp-text-secondary);
   padding: 0.9rem;
   font-size: 0.88rem;
-  background: color-mix(in srgb, var(--gp-surface-white) 92%, var(--gp-primary));
+  background: color-mix(in srgb, var(--gp-surface-card) 92%, var(--gp-primary));
 }
 
 .gp-notification-item {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.65rem;
   display: flex;
@@ -566,7 +566,7 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-footer {
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   padding: 0.7rem 0.9rem;
   display: flex;
   justify-content: space-between;
@@ -574,9 +574,9 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-panel :deep(.p-button.p-button-text.gp-notification-item-action) {
-  color: var(--gp-mark-seen-fg);
-  border: 1px solid var(--gp-mark-seen-border);
-  background: var(--gp-mark-seen-bg);
+  color: var(--mark-seen-fg);
+  border: 1px solid var(--mark-seen-border);
+  background: var(--mark-seen-bg);
   border-radius: 10px;
   padding: 0.3rem 0.75rem;
 }
@@ -587,27 +587,27 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-panel :deep(.p-button.p-button-text.gp-notification-item-action:hover) {
-  color: var(--gp-mark-seen-fg-hover);
-  border-color: var(--gp-mark-seen-border-hover);
-  background: var(--gp-mark-seen-bg-hover);
+  color: var(--mark-seen-fg-hover);
+  border-color: var(--mark-seen-border-hover);
+  background: var(--mark-seen-bg-hover);
 }
 
 .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary) {
-  color: var(--gp-footer-btn-fg);
-  border-color: var(--gp-footer-btn-border);
-  background: var(--gp-footer-btn-bg);
+  color: var(--footer-btn-fg);
+  border-color: var(--footer-btn-border);
+  background: var(--footer-btn-bg);
 }
 
 .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:hover) {
-  color: var(--gp-footer-btn-fg-hover);
-  border-color: var(--gp-footer-btn-border-hover);
-  background: var(--gp-footer-btn-bg-hover);
+  color: var(--footer-btn-fg-hover);
+  border-color: var(--footer-btn-border-hover);
+  background: var(--footer-btn-bg-hover);
 }
 
 .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:disabled) {
-  color: var(--gp-footer-btn-fg-disabled);
-  border-color: var(--gp-footer-btn-border-disabled);
-  background: var(--gp-footer-btn-bg-disabled);
+  color: var(--footer-btn-fg-disabled);
+  border-color: var(--footer-btn-border-disabled);
+  background: var(--footer-btn-bg-disabled);
 }
 
 .gp-notification-panel :deep(.p-tag) {
@@ -615,61 +615,28 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-success) {
-  background: var(--gp-success-light);
-  color: var(--gp-success-dark);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-info) {
-  background: var(--gp-info-light);
-  color: var(--gp-info-dark);
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-warning) {
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-secondary) {
-  background: var(--gp-surface-gray);
+  background: var(--gp-surface-emphasis);
   color: var(--gp-text-primary);
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-danger) {
-  background: var(--gp-danger-light);
-  color: var(--gp-danger-dark);
-}
-
-.p-dark .gp-notification-bell {
-  --gp-bell-trigger-fg: var(--gp-primary-light);
-  --gp-bell-trigger-bg: color-mix(in srgb, var(--gp-surface-darker) 80%, var(--gp-primary) 20%);
-  --gp-bell-trigger-border: color-mix(in srgb, var(--gp-border-medium) 70%, var(--gp-primary) 30%);
-  --gp-bell-trigger-shadow: var(--gp-shadow-subtle);
-  --gp-bell-trigger-fg-hover: var(--gp-neutral-white);
-  --gp-bell-trigger-bg-hover: color-mix(in srgb, var(--gp-surface-darker) 55%, var(--gp-primary) 45%);
-  --gp-bell-trigger-border-hover: color-mix(in srgb, var(--gp-border-medium) 50%, var(--gp-primary-light) 50%);
-  --gp-bell-trigger-bg-active: color-mix(in srgb, var(--gp-surface-darker) 45%, var(--gp-primary) 55%);
-  --gp-bell-trigger-border-active: color-mix(in srgb, var(--gp-border-medium) 40%, var(--gp-primary-light) 60%);
-
-  --gp-mark-seen-fg: var(--gp-primary-light);
-  --gp-mark-seen-border: color-mix(in srgb, var(--gp-primary-light) 65%, var(--gp-border-medium));
-  --gp-mark-seen-bg: color-mix(in srgb, var(--gp-primary) 26%, var(--gp-surface-dark));
-  --gp-mark-seen-fg-hover: var(--gp-neutral-white);
-  --gp-mark-seen-border-hover: color-mix(in srgb, var(--gp-primary-light) 85%, var(--gp-border-medium));
-  --gp-mark-seen-bg-hover: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-surface-dark));
-
-  --gp-footer-btn-fg: var(--gp-text-primary);
-  --gp-footer-btn-border: var(--gp-border-medium);
-  --gp-footer-btn-bg: color-mix(in srgb, var(--gp-surface-dark) 75%, var(--gp-surface-darker));
-  --gp-footer-btn-fg-hover: var(--gp-neutral-white);
-  --gp-footer-btn-border-hover: color-mix(in srgb, var(--gp-primary-light) 55%, var(--gp-border-medium));
-  --gp-footer-btn-bg-hover: color-mix(in srgb, var(--gp-primary) 22%, var(--gp-surface-dark));
-  --gp-footer-btn-fg-disabled: var(--gp-text-muted);
-  --gp-footer-btn-border-disabled: var(--gp-border-medium);
-  --gp-footer-btn-bg-disabled: color-mix(in srgb, var(--gp-surface-dark) 88%, var(--gp-surface-darker));
-}
-
-.p-dark .gp-notification-panel :deep(.p-inputswitch.p-disabled) {
-  opacity: 0.9;
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 @media (max-width: 640px) {

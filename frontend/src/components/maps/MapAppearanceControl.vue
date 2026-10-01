@@ -142,7 +142,7 @@ onBeforeUnmount(() => {
   padding: 0.5rem;
   border: 1px solid var(--gp-border-medium);
   border-radius: 8px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
   display: flex;
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 }
 
 .map-appearance-option:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .map-appearance-option:focus-visible {

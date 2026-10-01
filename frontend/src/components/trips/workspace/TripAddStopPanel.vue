@@ -111,8 +111,8 @@ const handlePoiSelect = (poi) => {
   width: 100%;
   gap: 2px;
   padding: 2px;
-  background: var(--gp-surface-gray);
-  border: 1px solid var(--gp-border-medium);
+  background: var(--gp-surface-emphasis);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -127,7 +127,7 @@ const handlePoiSelect = (poi) => {
 }
 
 .trip-add-modes :deep(.p-togglebutton:not(.p-togglebutton-checked):hover) {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   color: var(--gp-text-primary);
 }
 
@@ -150,20 +150,6 @@ const handlePoiSelect = (poi) => {
 
 .trip-add-modes :deep(.p-togglebutton .p-togglebutton-content) {
   background: transparent;
-}
-
-.p-dark .trip-add-modes :deep(.p-selectbutton) {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .trip-add-modes :deep(.p-togglebutton) {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .trip-add-modes :deep(.p-togglebutton:not(.p-togglebutton-checked):hover) {
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
 }
 
 .trip-add-hint {

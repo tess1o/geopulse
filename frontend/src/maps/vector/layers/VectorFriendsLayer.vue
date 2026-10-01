@@ -415,7 +415,7 @@ defineExpose({
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  border: 3px solid var(--gp-surface-white, #ffffff);
+  border: 3px solid var(--gp-surface-card, #ffffff);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   display: flex;
@@ -443,6 +443,6 @@ defineExpose({
 }
 
 .p-dark .gp-vector-friend-marker {
-  border-color: var(--gp-border-dark, rgba(148, 163, 184, 0.55));
+  border-color: var(--gp-border, rgba(148, 163, 184, 0.55));
 }
 </style>

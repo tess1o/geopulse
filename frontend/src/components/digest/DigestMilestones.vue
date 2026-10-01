@@ -76,8 +76,8 @@ const getTierLabel = (tier) => {
 .milestones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--gp-spacing-md); }
 
 .milestone-card {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: 14px;
   padding: var(--gp-spacing-lg);
   transition: border-color 0.2s ease;
@@ -202,21 +202,6 @@ const getTierLabel = (tier) => {
   font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .digest-milestones {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .milestone-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .milestones-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

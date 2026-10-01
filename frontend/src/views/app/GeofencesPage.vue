@@ -1978,7 +1978,7 @@ onBeforeUnmount(() => {
 :deep(.geofence-area-tooltip__title) {
   font-size: 0.96rem;
   font-weight: 700;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 :deep(.geofence-area-tooltip__row) {
@@ -1993,13 +1993,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 :deep(.geofence-area-tooltip__value) {
   font-size: 0.83rem;
   line-height: 1.25;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   overflow-wrap: anywhere;
 }
 </style>

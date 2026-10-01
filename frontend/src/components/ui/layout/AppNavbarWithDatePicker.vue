@@ -122,7 +122,6 @@ const handleNavigate = (item) => {
 </script>
 
 <style scoped>
-
 * {
   --p-datepicker-date-range-selected-background: rgba(59, 130, 246, 0.25);
   --p-datepicker-date-range-selected-color: var(--gp-text-primary);
@@ -156,7 +155,7 @@ const handleNavigate = (item) => {
 .gp-navbar-logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   letter-spacing: 0;
 }
 
@@ -231,25 +230,6 @@ const handleNavigate = (item) => {
   background: transparent !important;
   border-bottom: none !important;
   box-shadow: none !important;
-}
-
-/* Dark Mode */
-.p-dark .gp-navbar-logo-text {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .gp-navbar-demo-badge {
-  background: #ef4444;
-  border-color: #f87171;
-  color: #111827;
-}
-
-.p-dark .gp-navbar--minimal .gp-navbar-logo-text {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-datepicker-label {
-  color: var(--gp-text-secondary);
 }
 
 /* Responsive */
@@ -351,16 +331,16 @@ const handleNavigate = (item) => {
 
 <style>
 /* Global Toolbar Overrides for DatePicker Navbar */
-.gp-app-navbar-with-datepicker {
-  background: var(--gp-surface-white) !important;
-  border: none !important;
-  border-bottom: 1px solid var(--gp-border-light) !important;
-  border-radius: 0 !important;
-  padding: 0 var(--gp-spacing-lg) !important;
-  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left)) !important;
-  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right)) !important;
-  height: 60px !important;
-  box-shadow: var(--gp-shadow-light) !important;
+.gp-app-navbar-toolbar.gp-app-navbar-with-datepicker {
+  background: var(--gp-surface-card);
+  border: none;
+  border-bottom: 1px solid var(--gp-border);
+  border-radius: 0;
+  padding: 0 var(--gp-spacing-lg);
+  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left));
+  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
+  height: 60px;
+  box-shadow: var(--gp-shadow-light);
 }
 
 .gp-app-navbar-with-datepicker .p-toolbar-group-start,
@@ -371,11 +351,11 @@ const handleNavigate = (item) => {
 }
 
 @media (min-width: 769px) and (max-width: 971px) {
-  .gp-app-navbar-with-datepicker {
-    flex-wrap: nowrap !important;
-    padding: 0 var(--gp-spacing-md) !important;
-    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
+  .gp-app-navbar-toolbar.gp-app-navbar-with-datepicker {
+    flex-wrap: nowrap;
+    padding: 0 var(--gp-spacing-md);
+    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
   }
 
   .gp-app-navbar-with-datepicker .p-toolbar-group-start,
@@ -389,149 +369,43 @@ const handleNavigate = (item) => {
   }
 }
 
-/* DatePicker Customization */
-.gp-navbar-datepicker .gp-datepicker {
-  border-radius: var(--gp-radius-medium) !important;
-  border: 1px solid var(--gp-border-light) !important;
-  background: var(--gp-surface-white) !important;
-  transition: all 0.2s ease !important;
-}
-
-.gp-navbar-datepicker .gp-datepicker:focus {
-  border-color: var(--gp-primary) !important;
-  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.1) !important;
-}
-
-.gp-navbar-datepicker .gp-datepicker:hover {
-  border-color: var(--gp-primary-light) !important;
-}
-
-/* Compact DatePicker */
-.gp-datepicker--compact {
-  padding: var(--gp-spacing-xs) var(--gp-spacing-sm) !important;
-  font-size: 0.8rem !important;
-}
-
 /* FloatLabel customization */
 .gp-navbar-datepicker .p-floatlabel label {
-  color: var(--gp-text-secondary) !important;
-  font-size: 0.8rem !important;
-  font-weight: 500 !important;
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .gp-navbar-datepicker .p-floatlabel:focus-within label {
-  color: var(--gp-primary) !important;
+  color: var(--gp-primary-text);
 }
 
 /* Compact variant */
 .gp-navbar--compact.gp-app-navbar-with-datepicker {
-  height: 50px !important;
-  padding: 0 var(--gp-spacing-md) !important;
-  padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
-  padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
+  height: 50px;
+  padding: 0 var(--gp-spacing-md);
+  padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left));
+  padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
 }
 
 /* Minimal variant */
 .gp-navbar--minimal.gp-app-navbar-with-datepicker {
-  box-shadow: none !important;
-  border-bottom: 1px solid var(--gp-border-subtle) !important;
+  box-shadow: none;
+  border-bottom: 1px solid var(--gp-border-subtle);
 }
 
 /* Transparent variant */
 .gp-navbar--transparent.gp-app-navbar-with-datepicker {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
-.gp-navbar--transparent .gp-navbar-datepicker .gp-datepicker {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-/* Dark mode */
-.p-dark .gp-app-navbar-with-datepicker {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .gp-navbar--minimal.gp-app-navbar-with-datepicker {
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .gp-navbar-datepicker .gp-datepicker {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .gp-navbar-datepicker .gp-datepicker input {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .gp-navbar-datepicker .p-floatlabel label {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .gp-navbar-datepicker .p-floatlabel:focus-within label {
-  color: var(--gp-primary-light) !important;
-}
-
-.p-dark .gp-navbar-datepicker .p-datepicker-trigger-icon {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .gp-navbar--transparent .gp-navbar-datepicker .gp-datepicker {
-  background: rgba(0, 0, 0, 0.8) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-/* Dark mode for DatePicker popup */
-.p-dark .p-datepicker {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .p-datepicker .p-datepicker-header {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .p-datepicker .p-datepicker-calendar td span {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .p-datepicker .p-datepicker-calendar td span:hover {
-  background: var(--gp-primary-light) !important;
-  color: white !important;
-}
-
-/* Fix today's date color to be more distinct from selected dates */
-.p-dark .p-datepicker .p-datepicker-calendar td.p-datepicker-today span {
-  background: var(--gp-secondary) !important;
-  color: white !important;
-  font-weight: 600 !important;
-}
-
-/* Fix selected date styling in dark mode */
-.p-dark .p-datepicker .p-datepicker-calendar td.p-datepicker-selected span {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  font-weight: 600 !important;
-}
-
-/* Date range highlighting is now handled in global styles with correct PrimeVue classes */
-
-/* Responsive */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
-  .gp-app-navbar-with-datepicker {
-    padding: 0 var(--gp-spacing-sm) !important;
-    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
+  .gp-app-navbar-toolbar.gp-app-navbar-with-datepicker {
+    padding: 0 var(--gp-spacing-sm);
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right));
   }
 
   .gp-app-navbar-with-datepicker .p-toolbar-group-start,
@@ -552,17 +426,10 @@ const handleNavigate = (item) => {
 }
 
 @media (max-width: 480px) {
-  .gp-app-navbar-with-datepicker {
-    padding: 0 var(--gp-spacing-sm) !important;
-    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
-  }
-
-  .gp-navbar-datepicker .gp-datepicker {
-    font-size: 0.8rem !important;
-    padding: 0.25rem 0.35rem !important;
-    min-height: 44px;
-    width: 100% !important;
+  .gp-app-navbar-toolbar.gp-app-navbar-with-datepicker {
+    padding: 0 var(--gp-spacing-sm);
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right));
   }
 
   .gp-app-navbar-with-datepicker .gp-bell-trigger {
@@ -572,7 +439,7 @@ const handleNavigate = (item) => {
   }
 
   .gp-navbar-datepicker .p-floatlabel label {
-    font-size: 0.75rem !important;
+    font-size: 0.75rem;
   }
 }
 

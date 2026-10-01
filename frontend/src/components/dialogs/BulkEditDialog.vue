@@ -388,9 +388,9 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
   border-radius: var(--gp-radius-medium);
-  color: var(--p-primary-700);
+  color: var(--gp-primary-text);
 }
 
 .summary-section i {
@@ -447,7 +447,7 @@ onMounted(() => {
 
 .typo-list li {
   padding: 0.75rem;
-  background: var(--p-yellow-50);
+  background: var(--gp-warning-soft);
   border-radius: var(--gp-radius-small);
   margin-bottom: 0.5rem;
 }
@@ -467,14 +467,5 @@ onMounted(() => {
 
 .suggestion-link:hover {
   color: var(--p-primary-700);
-}
-
-.p-dark .summary-section {
-  background: var(--p-primary-900);
-  color: var(--p-primary-100);
-}
-
-.p-dark .typo-list li {
-  background: var(--p-yellow-900);
 }
 </style>

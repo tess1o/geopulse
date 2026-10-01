@@ -3,7 +3,7 @@
     :title="t('adminSettings.gpsProcessingTab.title')"
     :description="t('adminSettings.gpsProcessingTab.description')"
     icon="pi-map-marker"
-    iconColor="var(--blue-500)"
+    iconColor="var(--p-blue-500)"
     :plannedFeatures="plannedFeatures"
   />
 </template>

@@ -142,7 +142,7 @@ const updateValue = (value) => {
   width: 20px;
   height: 20px;
   background: var(--gp-primary);
-  border: 2px solid var(--gp-surface-white);
+  border: 2px solid var(--gp-surface-card);
   border-radius: 50%;
   box-shadow: var(--gp-shadow-light);
   transition: all 0.2s ease;
@@ -170,7 +170,7 @@ const updateValue = (value) => {
   padding: 0.5rem 0.75rem;
   min-height: 2.5rem;
   text-align: center;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
   font-weight: 600;
 }
 

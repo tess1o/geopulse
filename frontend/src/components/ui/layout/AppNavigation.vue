@@ -375,7 +375,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 /* Navigation Header */
@@ -384,7 +384,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -414,27 +414,19 @@ onMounted(async () => {
 .gp-nav-admin-header {
   padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-sm);
   margin-top: var(--gp-spacing-md);
-  border-top: 2px solid var(--gp-primary);
+  border-top: 2px solid var(--gp-primary-text);
 }
 
 .gp-nav-admin-header .gp-nav-section-title {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-size: 0.875rem;
   font-weight: 700;
-}
-
-.p-dark .gp-nav-admin-header {
-  border-top-color: var(--gp-primary-light);
-}
-
-.p-dark .gp-nav-admin-header .gp-nav-section-title {
-  color: var(--gp-primary-light);
 }
 
 /* Theme Section */
 .gp-nav-theme {
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -467,7 +459,7 @@ onMounted(async () => {
 .gp-nav-user {
   margin-top: auto;
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -500,9 +492,9 @@ onMounted(async () => {
 /* Version Section */
 .gp-nav-version {
   padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   text-align: center;
-  background: var(--gp-surface-lighter, rgba(0, 0, 0, 0.02));
+  background: var(--gp-surface-muted, rgba(0, 0, 0, 0.02));
   flex-shrink: 0;
 }
 
@@ -522,7 +514,7 @@ onMounted(async () => {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--gp-text-secondary);
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .gp-nav-version-update {
@@ -532,8 +524,8 @@ onMounted(async () => {
   margin-top: var(--gp-spacing-xs);
   padding: 2px 8px;
   border-radius: var(--gp-radius-pill);
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
@@ -545,60 +537,11 @@ onMounted(async () => {
 }
 
 /* Dark Mode */
-.p-dark .gp-nav-container {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gp-nav-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-theme {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-section-title {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-theme-label {
-  color: var(--gp-text-primary);
-}
 
 .gp-theme-switcher :deep(.p-button) {
   min-width: 2.25rem;
   min-height: 2.25rem;
   padding: 0.5rem;
-}
-
-.p-dark .gp-nav-user {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-user-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-nav-user-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-nav-version {
-  background: var(--gp-surface-darker, rgba(255, 255, 255, 0.03));
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-version-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-nav-version-number {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .gp-nav-version-update {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
 }
 
 /* Compact variant */
@@ -648,41 +591,7 @@ onMounted(async () => {
   width: 240px;
 }
 
-/* Dark mode drawer styling - More specific selectors */
-.p-dark .gp-app-navigation .p-drawer.p-component {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
-}
-
-.p-dark .gp-app-navigation .p-drawer-content {
-  background: var(--gp-surface-dark) !important;
-  border: none !important;
-}
-
-.p-dark .gp-app-navigation .p-drawer-mask {
-  background: rgba(0, 0, 0, 0.6) !important;
-  border: none !important;
-}
-
-/* Additional PrimeVue specific overrides for dark mode */
-.p-dark .p-drawer.p-component[data-pc-name="drawer"] {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .p-drawer[data-pc-name="drawer"][data-p="left open modal"] {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-}
-
 /* Override any potential CSS variables that PrimeVue might be using */
-.p-dark .p-drawer {
-  --p-drawer-background: var(--gp-surface-dark) !important;
-  --p-drawer-border-color: var(--gp-border-dark) !important;
-  --p-drawer-color: var(--gp-text-primary) !important;
-}
 
 /* Responsive drawer */
 @media (max-width: 768px) {

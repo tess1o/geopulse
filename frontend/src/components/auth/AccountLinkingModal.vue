@@ -218,9 +218,9 @@ const linkWithOidc = async (verificationProvider) => {
 .verification-option {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .verification-header {
@@ -264,7 +264,7 @@ const linkWithOidc = async (verificationProvider) => {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--gp-border-light);
+  background: var(--gp-border);
 }
 
 .method-divider span {
@@ -276,7 +276,7 @@ const linkWithOidc = async (verificationProvider) => {
 .linking-actions {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Button styling */
@@ -304,7 +304,7 @@ const linkWithOidc = async (verificationProvider) => {
 }
 
 :deep(.p-button-outlined:hover) {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-color: var(--gp-primary);
   color: var(--gp-primary);
 }

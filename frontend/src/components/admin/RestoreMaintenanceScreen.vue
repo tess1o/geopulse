@@ -38,12 +38,12 @@ const icon = computed(() => maintenance.manualRestartRequired || maintenance.sta
 
 <style scoped>
 .restore-maintenance {
-  --restore-accent: #b45309;
+  --restore-accent: var(--gp-warning-text);
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 2rem;
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
   color: var(--gp-text-primary, #1e293b);
 }
 .restore-maintenance-card {
@@ -51,7 +51,7 @@ const icon = computed(() => maintenance.manualRestartRequired || maintenance.sta
   border: 1px solid var(--gp-border-medium, #e2e8f0);
   border-radius: 1rem;
   padding: clamp(1.5rem, 5vw, 3rem);
-  background: var(--gp-surface-white, #ffffff);
+  background: var(--gp-surface-card, #ffffff);
   box-shadow: var(--gp-shadow-dialog, 0 10px 25px rgba(0, 0, 0, .1));
 }
 .restore-maintenance-card > i { font-size: 2.5rem; color: var(--restore-accent); }
@@ -63,12 +63,11 @@ button {
   padding: .8rem 1rem;
   border: 1px solid var(--gp-border-medium, #cbd5e1);
   border-radius: .5rem;
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
   color: var(--gp-text-primary, #1e293b);
   cursor: pointer;
 }
-button:hover { background: var(--gp-surface-gray, #f1f5f9); }
+button:hover { background: var(--gp-surface-emphasis, #f1f5f9); }
 button:focus-visible { outline: 3px solid color-mix(in srgb, var(--gp-primary, #1a56db) 35%, transparent); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: wait; }
-.p-dark .restore-maintenance { --restore-accent: #f59e0b; }
 </style>

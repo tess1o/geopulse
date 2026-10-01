@@ -1344,7 +1344,7 @@ onUnmounted(() => {
   gap: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .map-heading {
@@ -1393,7 +1393,7 @@ onUnmounted(() => {
   gap: 0.5rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1507,7 +1507,7 @@ onUnmounted(() => {
 }
 
 .location-cell {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   color: var(--gp-text-primary);
 }
@@ -1669,49 +1669,40 @@ onUnmounted(() => {
 
 /* Dark Mode */
 .p-dark .favorites-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .favorites-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .favorites-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .favorites-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .favorites-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .favorites-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 
 .p-dark .favorites-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .map-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .map-loading-state {
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
+  border-color: var(--gp-border) !important;
 }
 </style>
 
@@ -1850,26 +1841,5 @@ onUnmounted(() => {
 
 .pending-area-icon i {
   font-size: 1.5rem;
-}
-
-/* Dark mode support */
-.p-dark .favorite-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .temp-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .pending-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .favorite-area-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .pending-area-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 </style>

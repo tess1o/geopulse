@@ -149,7 +149,7 @@ const handleNavigate = (item) => {
 .gp-navbar-logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   letter-spacing: 0;
 }
 
@@ -182,9 +182,9 @@ const handleNavigate = (item) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .sharing-icon-navbar {
@@ -228,24 +228,9 @@ const handleNavigate = (item) => {
 
 /* Transparent Navbar */
 .gp-navbar--transparent {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
-/* Dark Mode */
-.p-dark .gp-navbar-logo-text {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .gp-navbar-demo-badge {
-  background: #ef4444;
-  border-color: #f87171;
-  color: #111827;
-}
-
-.p-dark .gp-navbar--minimal .gp-navbar-logo-text {
-  color: var(--gp-text-primary);
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* Responsive */
@@ -292,15 +277,15 @@ const handleNavigate = (item) => {
 <style>
 /* Global Toolbar Overrides for GeoPulse */
 .gp-app-navbar-toolbar {
-  background: var(--gp-surface-white) !important;
-  border: none !important;
-  border-bottom: 1px solid var(--gp-border-light) !important;
-  border-radius: 0 !important;
-  padding: 0 var(--gp-spacing-lg) !important;
-  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left)) !important;
-  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right)) !important;
-  height: 60px !important;
-  box-shadow: var(--gp-shadow-light) !important;
+  background: var(--gp-surface-card);
+  border: none;
+  border-bottom: 1px solid var(--gp-border);
+  border-radius: 0;
+  padding: 0 var(--gp-spacing-lg);
+  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left));
+  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
+  height: 60px;
+  box-shadow: var(--gp-shadow-light);
 }
 
 .gp-app-navbar-toolbar .p-toolbar-group-start,
@@ -312,47 +297,37 @@ const handleNavigate = (item) => {
 
 /* Compact variant */
 .gp-navbar--compact.gp-app-navbar-toolbar {
-  height: 50px !important;
-  padding: 0 var(--gp-spacing-md) !important;
+  height: 50px;
+  padding: 0 var(--gp-spacing-md);
 }
 
 /* Minimal variant */
 .gp-navbar--minimal.gp-app-navbar-toolbar {
-  box-shadow: none !important;
-  border-bottom: 1px solid var(--gp-border-subtle) !important;
+  box-shadow: none;
+  border-bottom: 1px solid var(--gp-border-subtle);
 }
 
 /* Transparent variant */
 .gp-navbar--transparent.gp-app-navbar-toolbar {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
-/* Dark mode */
-.p-dark .gp-app-navbar-toolbar {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .gp-navbar--minimal.gp-app-navbar-toolbar {
-  border-bottom-color: var(--gp-border-dark) !important;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .gp-app-navbar-toolbar {
-    padding: 0 var(--gp-spacing-md) !important;
-    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
+    padding: 0 var(--gp-spacing-md);
+    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
   }
 }
 
 @media (max-width: 480px) {
   .gp-app-navbar-toolbar {
-    padding: 0 var(--gp-spacing-sm) !important;
-    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
+    padding: 0 var(--gp-spacing-sm);
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right));
   }
 }
 

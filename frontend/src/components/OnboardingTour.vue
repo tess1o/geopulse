@@ -199,7 +199,7 @@ defineExpose({
 /* Welcome Message */
 .welcome-message {
   background: var(--p-primary-600);
-  color: var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
   padding: 1.25rem;
   margin: 1.25rem 0;
   border-radius: var(--p-border-radius-md);
@@ -233,10 +233,10 @@ defineExpose({
 }
 
 .tour-step-card {
-  background: var(--p-content-background);
-  border: 2px solid var(--p-primary-600);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-primary-text);
   border-radius: var(--p-border-radius-md);
-  box-shadow: var(--p-shadow-lg);
+  box-shadow: var(--gp-shadow-large);
   max-width: 350px;
   padding: 1.25rem;
   position: relative;
@@ -248,7 +248,7 @@ defineExpose({
   right: 0.5rem;
   background: transparent;
   border: none;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
   font-size: 1.125rem;
   cursor: pointer;
   width: 1.5rem;
@@ -261,8 +261,8 @@ defineExpose({
 }
 
 .tour-close-btn:hover {
-  background: var(--p-surface-100);
-  color: var(--p-text-color);
+  background: var(--gp-surface-hover);
+  color: var(--gp-text-primary);
 }
 
 .tour-step-title {
@@ -270,12 +270,12 @@ defineExpose({
   padding-right: 1.25rem;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .tour-step-description {
   margin: 0 0 1rem 0;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   font-size: 0.9rem;
 }
@@ -291,12 +291,12 @@ defineExpose({
   width: 1.875rem;
   height: 0.25rem;
   border-radius: var(--p-border-radius-xs);
-  background: var(--p-surface-200);
+  background: var(--gp-border);
   transition: background-color 0.3s ease;
 }
 
 .tour-progress-active {
-  background: var(--p-primary-600);
+  background: var(--gp-primary);
 }
 
 /* Tour Footer */
@@ -308,7 +308,7 @@ defineExpose({
 
 .tour-step-counter {
   font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
 }
 
 .tour-step-actions {
@@ -333,8 +333,8 @@ defineExpose({
 
 .btn-primary {
   background: var(--p-primary-600);
-  color: var(--p-primary-contrast-color);
-  border: 2px solid var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
+  border: 2px solid var(--gp-primary-contrast);
 }
 
 .btn-primary:hover {
@@ -344,8 +344,8 @@ defineExpose({
 
 .btn-secondary {
   background: transparent;
-  color: var(--p-primary-contrast-color);
-  border: 1px solid var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
+  border: 1px solid var(--gp-primary-contrast);
 }
 
 .btn-secondary:hover {
@@ -354,41 +354,14 @@ defineExpose({
 
 .btn-outline {
   background: transparent;
-  color: var(--p-text-muted-color);
-  border: 1px solid var(--p-surface-300);
+  color: var(--gp-text-secondary);
+  border: 1px solid var(--gp-border-medium);
 }
 
 .btn-outline:hover {
-  background: var(--p-surface-50);
-  color: var(--p-text-color);
+  background: var(--gp-surface-hover);
+  color: var(--gp-text-primary);
   border-color: var(--p-surface-400);
-}
-
-/* Dark Mode Support */
-.p-dark .tour-step-card {
-  background: var(--p-surface-900);
-  border-color: var(--p-primary-500);
-}
-
-.p-dark .tour-close-btn:hover {
-  background: var(--p-surface-800);
-}
-
-.p-dark .tour-progress-bar {
-  background: var(--p-surface-700);
-}
-
-.p-dark .tour-progress-active {
-  background: var(--p-primary-500);
-}
-
-.p-dark .btn-outline {
-  border-color: var(--p-surface-600);
-}
-
-.p-dark .btn-outline:hover {
-  background: var(--p-surface-800);
-  border-color: var(--p-surface-500);
 }
 
 /* Responsive Design */

@@ -142,7 +142,7 @@ const resolvePreloadedBlobUrl = (photoId) => {
 .photo-trigger {
   border: 1px solid var(--gp-primary-light);
   border-radius: 999px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--photo-trigger-color);
   display: inline-flex;
   align-items: center;
@@ -168,7 +168,7 @@ const resolvePreloadedBlobUrl = (photoId) => {
 }
 
 .photo-trigger--thumbnail:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .photo-trigger-thumbnail {

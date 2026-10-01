@@ -1,5 +1,5 @@
 <template>
-  <div class="form-section border-t border-gray-200 pt-4">
+  <div class="form-section border-t border-surface pt-4">
     <label class="form-label font-semibold text-lg">{{ t('ui.gpsFiltering.title') }}</label>
     <div class="flex items-center gap-3 mt-2">
       <ToggleSwitch
@@ -9,7 +9,7 @@
       />
       <label for="filterInaccurateData" class="font-medium">{{ t('ui.gpsFiltering.filterLabel') }}</label>
     </div>
-    <p class="text-sm text-gray-500 mt-1">{{ t('ui.gpsFiltering.filterHint') }}</p>
+    <p class="text-sm text-muted-color mt-1">{{ t('ui.gpsFiltering.filterHint') }}</p>
 
     <div v-if="settings.filterInaccurateData" class="grid grid-cols-1 gap-4 mt-4">
             <div class="form-field">
@@ -23,7 +23,7 @@
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">{{ t('ui.gpsFiltering.maxAccuracyHint') }}</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.maxAccuracyHint') }}</small>
             </div>
             <div class="form-field">
               <div class="flex items-center justify-between">
@@ -36,11 +36,11 @@
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">{{ t('ui.gpsFiltering.maxSpeedHint') }}</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.maxSpeedHint') }}</small>
             </div>    </div>
   </div>
 
-  <div class="form-section border-t border-gray-200 pt-4 mt-4">
+  <div class="form-section border-t border-surface pt-4 mt-4">
     <label class="form-label font-semibold text-lg">{{ t('ui.gpsFiltering.duplicateDetectionTitle') }}</label>
     <div class="flex items-center gap-3 mt-2">
       <ToggleSwitch
@@ -50,7 +50,7 @@
       />
       <label for="enableDuplicateDetection" class="font-medium">{{ t('ui.gpsFiltering.duplicateDetectionLabel') }}</label>
     </div>
-    <p class="text-sm text-gray-500 mt-1">{{ t('ui.gpsFiltering.duplicateDetectionHint') }}</p>
+    <p class="text-sm text-muted-color mt-1">{{ t('ui.gpsFiltering.duplicateDetectionHint') }}</p>
 
     <div v-if="settings.enableDuplicateDetection" class="grid grid-cols-1 gap-4 mt-4">
             <div class="form-field">
@@ -64,7 +64,7 @@
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">{{ t('ui.gpsFiltering.thresholdHint') }}</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.thresholdHint') }}</small>
             </div>
     </div>
   </div>
@@ -98,7 +98,7 @@ const emit = defineEmits(['update:settings'])
 .form-section {
   padding: 1rem;
   border-radius: var(--gp-radius-medium);
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
 }
 
 .form-label {
@@ -106,13 +106,7 @@ const emit = defineEmits(['update:settings'])
   color: var(--gp-text-primary);
 }
 
-.text-gray-500 {
-  color: var(--gp-text-secondary);
-}
-
 .narrow-input {
   max-width: 15rem;
 }
-
-
 </style>

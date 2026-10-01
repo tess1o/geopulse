@@ -1300,7 +1300,7 @@ watch(() => jobProgress.value?.status, async (status) => {
 }
 
 .coordinate-line {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   color: var(--gp-text-primary);
 }
@@ -1548,39 +1548,39 @@ watch(() => jobProgress.value?.status, async (status) => {
 
 /* Dark Mode */
 .p-dark .geocoding-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
+  background: var(--gp-surface-muted) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-datatable-tbody > tr > td) {
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-card) !important;
 }
 
 .p-dark .geocoding-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
+  background: var(--gp-surface-ground) !important;
   color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
+  border-color: var(--gp-border) !important;
 }
 </style>

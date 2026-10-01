@@ -96,7 +96,7 @@
                 <template #name><strong>{{ selectedFriend?.name }}</strong></template>
               </i18n-t>
             </p>
-            <p class="text-sm text-surface-500">
+            <p class="text-sm text-muted-color">
               {{ t('friends.list.removeDialog.note') }}
             </p>
           </div>

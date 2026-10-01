@@ -826,8 +826,8 @@ onMounted(() => {
 .data-type-option.disabled:hover,
 .gpx-option.disabled:hover,
 .grouping-option.disabled:hover {
-  border-color: var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-color: var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 /* GPX Export Options */
@@ -842,11 +842,11 @@ onMounted(() => {
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem;
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .gpx-option:hover {
@@ -855,19 +855,11 @@ onMounted(() => {
 }
 
 .gpx-option.selected {
-  border-color: var(--gp-primary);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--gp-primary-text);
+  background: var(--gp-primary-soft);
 }
 
 /* Dark mode support for GPX options */
-.p-dark .gpx-option {
-  background: var(--surface-ground);
-}
-
-.p-dark .gpx-option.selected {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: var(--primary-400);
-}
 
 .gpx-radio {
   flex-shrink: 0;
@@ -897,9 +889,9 @@ onMounted(() => {
 .gpx-zip-grouping {
   margin-top: 1.5rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .grouping-title {
@@ -920,11 +912,11 @@ onMounted(() => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .grouping-option:hover {
@@ -933,19 +925,11 @@ onMounted(() => {
 }
 
 .grouping-option.selected {
-  border-color: var(--gp-primary);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--gp-primary-text);
+  background: var(--gp-primary-soft);
 }
 
 /* Dark mode support */
-.p-dark .grouping-option {
-  background: var(--surface-ground);
-}
-
-.p-dark .grouping-option.selected {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: var(--primary-400);
-}
 
 .grouping-radio {
   flex-shrink: 0;
@@ -990,9 +974,9 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .export-item-info {
@@ -1023,7 +1007,7 @@ onMounted(() => {
 }
 
 .export-size {
-  color: var(--gp-text-tertiary);
+  color: var(--gp-text-muted);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -1065,8 +1049,8 @@ onMounted(() => {
 .csv-format-docs {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1087,7 +1071,7 @@ onMounted(() => {
 }
 
 .csv-info-text i {
-  color: var(--gp-primary-500);
+  color: var(--p-primary-500);
 }
 
 .csv-docs-section {
@@ -1120,16 +1104,16 @@ onMounted(() => {
 
 .csv-field-list li strong {
   color: var(--gp-text-primary);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.9em;
 }
 
 .csv-example-code {
-  background: var(--gp-surface-0);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: 1rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   line-height: 1.5;
   color: var(--gp-text-primary);
@@ -1138,15 +1122,6 @@ onMounted(() => {
 }
 
 /* Dark Mode */
-.p-dark .csv-format-docs {
-  background: var(--surface-ground);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .csv-example-code {
-  background: var(--surface-800);
-  border-color: var(--gp-border-dark);
-}
 
 @media (max-width: 768px) {
   .csv-format-docs {

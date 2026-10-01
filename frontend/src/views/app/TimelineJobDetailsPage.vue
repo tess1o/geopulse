@@ -185,7 +185,7 @@
             <Card>
               <template #content>
                 <div class="completion-message">
-                  <i class="pi pi-check-circle" style="font-size: 3rem; color: var(--green-500)"></i>
+                  <i class="pi pi-check-circle" style="font-size: 3rem; color: var(--p-green-500)"></i>
                   <h2>{{ t('timelineJobs.detailsPage.completion.title') }}</h2>
                   <p>{{ t('timelineJobs.detailsPage.completion.message') }}</p>
                   <div class="action-buttons">
@@ -276,14 +276,14 @@ const statusIcon = computed(() => {
 })
 
 const statusColor = computed(() => {
-  if (!jobProgress.value) return 'var(--primary-color)'
+  if (!jobProgress.value) return 'var(--gp-primary)'
 
   switch (jobProgress.value.status) {
-    case 'QUEUED': return 'var(--blue-500)'
-    case 'RUNNING': return 'var(--primary-color)'
-    case 'COMPLETED': return 'var(--green-500)'
-    case 'FAILED': return 'var(--red-500)'
-    default: return 'var(--text-color)'
+    case 'QUEUED': return 'var(--p-blue-500)'
+    case 'RUNNING': return 'var(--gp-primary)'
+    case 'COMPLETED': return 'var(--p-green-500)'
+    case 'FAILED': return 'var(--p-red-500)'
+    default: return 'var(--gp-text-primary)'
   }
 })
 
@@ -402,12 +402,12 @@ onMounted(() => {
   margin: 0 0 0.5rem 0;
   font-size: 2rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .header-text p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 1rem;
 }
 
@@ -425,7 +425,7 @@ onMounted(() => {
 }
 
 .loading-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -442,7 +442,7 @@ onMounted(() => {
 }
 
 .status-card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .status-header {
@@ -464,9 +464,9 @@ onMounted(() => {
 
 .job-id {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .progress-section {
@@ -481,16 +481,16 @@ onMounted(() => {
 
 .progress-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .progress-percentage {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .progress-complete :deep(.p-progressbar-value) {
-  background: var(--green-500);
+  background: var(--p-green-500);
 }
 
 .job-details {
@@ -498,8 +498,8 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   padding: 1rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-row {
@@ -510,13 +510,13 @@ onMounted(() => {
 
 .detail-label {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
 .detail-value {
   font-size: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-weight: 600;
 }
 
@@ -537,23 +537,23 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   padding: 1.25rem;
-  border-left: 3px solid var(--surface-border);
+  border-left: 3px solid var(--gp-border);
   position: relative;
   transition: all 0.3s ease;
 }
 
 .step-item:not(:last-child) {
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .step-completed {
   opacity: 0.7;
-  border-left-color: var(--green-500);
+  border-left-color: var(--p-green-500);
 }
 
 .step-active {
-  background: var(--primary-50);
-  border-left-color: var(--primary-color);
+  background: var(--p-primary-50);
+  border-left-color: var(--gp-primary);
 }
 
 .step-pending {
@@ -571,15 +571,15 @@ onMounted(() => {
 }
 
 .step-completed .step-indicator {
-  color: var(--green-500);
+  color: var(--p-green-500);
 }
 
 .step-active .step-indicator {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .step-pending .step-indicator {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .step-content {
@@ -590,12 +590,12 @@ onMounted(() => {
   margin: 0 0 0.25rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .step-description {
   margin: 0 0 0.75rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -605,8 +605,8 @@ onMounted(() => {
   gap: 0.75rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-section {
@@ -620,18 +620,18 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .detail-item i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
 .detail-header {
   font-size: 0.95rem;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   margin-bottom: 0.25rem;
 }
 
@@ -641,12 +641,12 @@ onMounted(() => {
 }
 
 .detail-pending {
-  color: var(--orange-600);
+  color: var(--p-orange-600);
   font-weight: 500;
 }
 
 .detail-pending i {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .completion-message {
@@ -661,12 +661,12 @@ onMounted(() => {
 .completion-message h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .completion-message p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   max-width: 500px;
 }
 

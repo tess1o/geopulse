@@ -93,18 +93,18 @@ async function copyLinkToClipboard(linkOption) {
 
 .success-icon {
   font-size: 4rem;
-  color: var(--green-500);
+  color: var(--p-green-500);
 }
 
 .success-state h3 {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .success-state p {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
   max-width: 400px;
 }
@@ -126,7 +126,7 @@ async function copyLinkToClipboard(linkOption) {
 }
 
 .created-link-label {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -139,7 +139,7 @@ async function copyLinkToClipboard(linkOption) {
 
 .share-url-input {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.9rem;
 }
 

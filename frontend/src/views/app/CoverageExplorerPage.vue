@@ -723,9 +723,9 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   margin-bottom: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   box-shadow: var(--gp-shadow-subtle);
 }
 
@@ -754,7 +754,7 @@ onBeforeUnmount(() => {
   gap: var(--gp-spacing-sm);
   min-height: 2.5rem;
   padding-left: var(--gp-spacing-md);
-  border-left: 1px solid var(--gp-border-light);
+  border-left: 1px solid var(--gp-border);
   color: var(--gp-primary);
 }
 
@@ -797,18 +797,9 @@ onBeforeUnmount(() => {
   min-width: 220px;
 }
 
-.p-dark .coverage-toolbar {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .seen-area-summary {
-  border-color: var(--gp-border-dark);
-}
-
 .coverage-map-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-card);
   overflow: hidden;
@@ -821,8 +812,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .map-title {
@@ -852,8 +843,8 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.78);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--gp-surface-card) 78%, transparent);
+  color: var(--gp-text-primary);
   font-weight: 500;
   z-index: 500;
   pointer-events: none;
@@ -866,8 +857,8 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: color-mix(in srgb, var(--gp-surface-card) 92%, transparent);
+  border: 1px solid var(--gp-border);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
   max-width: min(92%, 520px);
   pointer-events: auto;
@@ -880,40 +871,16 @@ onBeforeUnmount(() => {
 
 .map-overlay .empty-icon {
   font-size: 2rem;
-  color: #334155;
+  color: var(--gp-text-secondary);
 }
 
 .map-overlay p {
   margin: 0.35rem 0 0;
-  color: #334155;
+  color: var(--gp-text-secondary);
 }
 
 .map-overlay strong {
-  color: #0f172a;
-}
-
-.p-dark .map-overlay {
-  background: rgba(2, 6, 23, 0.74);
-  color: #f8fafc;
-}
-
-.p-dark .map-overlay-content {
-  background: rgba(15, 23, 42, 0.9);
-  border-color: rgba(148, 163, 184, 0.35);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-}
-
-.p-dark .map-overlay .empty-icon {
-  color: #cbd5e1;
-}
-
-.p-dark .map-overlay p {
-  color: #cbd5e1;
-}
-
-.p-dark .map-overlay strong,
-.p-dark .map-overlay span {
-  color: #f8fafc;
+  color: var(--gp-text-primary);
 }
 
 .overlay-enable-button {
@@ -928,8 +895,8 @@ onBeforeUnmount(() => {
   padding: 0.75rem 1.5rem;
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
-  border-top: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-top: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .legend-chip {

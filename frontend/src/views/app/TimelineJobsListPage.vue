@@ -111,7 +111,7 @@
                     <div class="job-status">
                       <i
                         :class="job.status === 'COMPLETED' ? 'pi pi-check-circle' : 'pi pi-times-circle'"
-                        :style="{ color: job.status === 'COMPLETED' ? 'var(--green-500)' : 'var(--red-500)' }"
+                        :style="{ color: job.status === 'COMPLETED' ? 'var(--p-green-500)' : 'var(--p-red-500)' }"
                       ></i>
                       <span class="status-text">{{ job.status }}</span>
                     </div>
@@ -258,12 +258,12 @@ onMounted(() => {
   margin: 0 0 0.5rem 0;
   font-size: 2rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .header-text p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 1rem;
 }
 
@@ -282,7 +282,7 @@ onMounted(() => {
 }
 
 .loading-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -297,19 +297,19 @@ onMounted(() => {
 
 .no-job-icon {
   font-size: 4rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   opacity: 0.6;
 }
 
 .no-job-content h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .no-job-content p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   max-width: 500px;
 }
 
@@ -351,13 +351,13 @@ onMounted(() => {
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .section-description {
   font-size: 0.95rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -372,7 +372,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 2rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .no-history-content i {
@@ -389,15 +389,15 @@ onMounted(() => {
 .history-job-card {
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--surface-border);
-  background: var(--surface-card);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
 }
 
 .history-job-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: var(--primary-color);
-  background: var(--surface-hover);
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-hover);
 }
 
 .history-job-card:active {
@@ -434,14 +434,14 @@ onMounted(() => {
 
 .job-date {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .job-details {
   display: flex;
   gap: 1.5rem;
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .job-duration,
@@ -454,12 +454,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 0.9rem;
   font-weight: 500;
   margin-top: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .job-action i {

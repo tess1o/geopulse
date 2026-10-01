@@ -575,7 +575,7 @@ onMounted(() => {
 }
 
 .card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 1rem;
@@ -596,18 +596,18 @@ onMounted(() => {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .filter-actions {
   display: flex;
   justify-content: flex-end;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .small {
@@ -619,7 +619,7 @@ onMounted(() => {
 }
 
 .font-mono {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .timestamp-cell {
@@ -630,14 +630,14 @@ onMounted(() => {
 
 .expansion-panel {
   padding: 1rem 2rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
 }
 
 .expansion-panel h3 {
   margin-top: 0;
   margin-bottom: 1rem;
   font-size: 1.1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .details-content {
@@ -645,12 +645,12 @@ onMounted(() => {
 }
 
 .json-viewer {
-  background: var(--surface-900);
-  color: var(--surface-0);
+  background: var(--p-surface-900);
+  color: var(--p-surface-50);
   padding: 1rem;
   border-radius: 4px;
   overflow-x: auto;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -660,7 +660,7 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .meta-item {
@@ -670,7 +670,7 @@ onMounted(() => {
 
 .meta-label {
   font-weight: 600;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .no-underline {
@@ -696,8 +696,8 @@ onMounted(() => {
 }
 
 .audit-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-border);
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -705,9 +705,6 @@ onMounted(() => {
 }
 
 /* Dark theme specific */
-.p-dark .audit-card {
-  background: var(--gp-surface-dark);
-}
 
 .audit-card-header {
   margin-bottom: 0.75rem;
@@ -728,7 +725,7 @@ onMounted(() => {
 
 .audit-timestamp {
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .audit-card-body {
@@ -736,7 +733,7 @@ onMounted(() => {
   gap: 1.5rem;
   margin-bottom: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .audit-stat {
@@ -748,7 +745,7 @@ onMounted(() => {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
   font-weight: 600;
 }
@@ -765,7 +762,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   margin-bottom: 0.75rem;
 }
@@ -778,17 +775,17 @@ onMounted(() => {
 
 .meta-label {
   font-weight: 600;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .meta-value {
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   word-break: break-all;
 }
 
 .audit-details {
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
   padding-top: 0.75rem;
 }
 
@@ -798,13 +795,13 @@ onMounted(() => {
   align-items: center;
   padding: 0.5rem;
   cursor: pointer;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   transition: background 0.2s;
 }
 
 .details-header:active {
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
 }
 
 .details-label {
@@ -824,13 +821,13 @@ onMounted(() => {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
 }
 
 .pagination-info {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   padding: 0 0.5rem;
 }
 

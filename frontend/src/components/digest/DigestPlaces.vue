@@ -49,7 +49,7 @@ const displayedPlaces = computed(() => {
 </script>
 
 <style scoped>
-.digest-places { background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
+.digest-places { background: var(--gp-surface-muted); border: 1px solid var(--gp-border); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .places-title {
   display: flex;
@@ -62,7 +62,7 @@ const displayedPlaces = computed(() => {
 }
 
 .places-title i {
-  color: var(--gp-error);
+  color: var(--gp-danger);
 }
 
 .places-list {
@@ -75,8 +75,8 @@ const displayedPlaces = computed(() => {
   display: flex;
   align-items: center;
   gap: var(--gp-spacing-md);
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   transition: all 0.2s ease;
@@ -137,25 +137,6 @@ const displayedPlaces = computed(() => {
   font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .digest-places {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .place-item {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .place-item:hover {
-  background: rgba(30, 64, 175, 0.2);
-}
-
-.p-dark .places-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

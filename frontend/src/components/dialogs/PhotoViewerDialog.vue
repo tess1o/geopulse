@@ -1495,9 +1495,9 @@ onUnmounted(() => {
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  border-left: 1px solid var(--gp-border-light);
+  border-left: 1px solid var(--gp-border);
   color: var(--gp-text-primary);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   opacity: 1;
   transform: translateX(0);
   transition: opacity 180ms ease, transform 180ms ease;
@@ -1515,7 +1515,7 @@ onUnmounted(() => {
   justify-content: space-between;
   min-height: 66px;
   padding: 0 20px;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .details-panel-header strong {
@@ -1539,7 +1539,7 @@ onUnmounted(() => {
 
 .details-close-button:hover {
   color: var(--gp-text-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .details-panel-content {
@@ -1589,9 +1589,9 @@ onUnmounted(() => {
   display: grid;
   padding: 14px;
   gap: 14px;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 15px;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .location-card-copy {
@@ -1608,7 +1608,7 @@ onUnmounted(() => {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  color: var(--gp-primary) !important;
+  color: var(--gp-primary);
   background: color-mix(in srgb, var(--gp-primary) 12%, transparent);
 }
 
@@ -1622,7 +1622,7 @@ onUnmounted(() => {
   border: 1px solid var(--gp-border-medium);
   border-radius: 11px;
   color: var(--gp-text-primary);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
@@ -1641,20 +1641,6 @@ onUnmounted(() => {
 .mobile-photo-summary,
 .mobile-details-sheet {
   display: none;
-}
-
-.p-dark .photo-viewer-content .thumbnail-navigation {
-  border-color: rgba(255, 255, 255, 0.13) !important;
-  background: rgba(16, 20, 28, 0.62) !important;
-}
-
-.p-dark .photo-viewer-content .thumbnail-tile {
-  border-color: transparent !important;
-  background: #202735 !important;
-}
-
-.p-dark .photo-viewer-content .thumbnail-tile.is-active {
-  border-color: var(--gp-primary-light) !important;
 }
 
 @media (max-width: 768px) {
@@ -1807,7 +1793,7 @@ onUnmounted(() => {
 
   .details-open .mobile-details-sheet {
     color: var(--gp-text-primary);
-    background: color-mix(in srgb, var(--gp-surface-white) 96%, transparent);
+    background: color-mix(in srgb, var(--gp-surface-card) 96%, transparent);
   }
 
   .mobile-sheet-bar {
@@ -1884,7 +1870,7 @@ onUnmounted(() => {
     padding: 2px 16px 16px;
     gap: 15px;
     overflow-y: auto;
-    border-top: 1px solid var(--gp-border-light);
+    border-top: 1px solid var(--gp-border);
   }
 
   .mobile-sheet-content .detail-item:first-child {

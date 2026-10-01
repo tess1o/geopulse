@@ -821,9 +821,9 @@ onMounted(() => {
   gap: var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
   border-radius: var(--gp-radius-large);
-  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card));
 }
 
 .active-label-icon {
@@ -865,11 +865,6 @@ onMounted(() => {
   font-size: .85rem;
 }
 
-.p-dark .active-label-card {
-  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-dark));
-  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-dark));
-}
-
 @media (max-width: 768px) {
   .active-label-card {
     padding: var(--gp-spacing-md);
@@ -878,14 +873,10 @@ onMounted(() => {
 
 /* Filters Toolbar */
 .filters-toolbar {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-md);
-}
-
-.p-dark .filters-toolbar {
-  background: var(--gp-surface-dark);
 }
 
 .filters-row {
@@ -1069,16 +1060,11 @@ onMounted(() => {
 
 /* Timeline Label Card */
 .timeline-label-card {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-md);
-}
-
-.p-dark .timeline-label-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Card Header */

@@ -1265,10 +1265,10 @@ const deleteCustomProvider = async (provider) => {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--surface-section);
+  background: var(--gp-surface-muted);
   padding: 1rem;
   margin: -1rem -1rem 1rem -1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1309,7 +1309,7 @@ const deleteCustomProvider = async (provider) => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 
@@ -1322,9 +1322,9 @@ const deleteCustomProvider = async (provider) => {
 .providers-workspace {
   width: 100%;
   max-width: 1240px;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   overflow: hidden;
 }
 
@@ -1335,21 +1335,21 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .providers-workspace-header {
-  border-bottom: 1px solid var(--surface-border);
-  background: var(--surface-section);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .provider-list-panel {
   width: 100%;
   min-width: 0;
   padding: 0.75rem 0;
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--gp-border);
 }
 
 .workspace-panel-heading {
   margin: 0;
   padding: 0.75rem 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1370,9 +1370,9 @@ const deleteCustomProvider = async (provider) => {
   gap: 0.75rem;
   padding: 0.7rem 1rem;
   border: 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   background: transparent;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   text-align: left;
   cursor: pointer;
 }
@@ -1383,11 +1383,11 @@ const deleteCustomProvider = async (provider) => {
 
 .provider-row:hover,
 .provider-row.selected {
-  background: var(--surface-hover);
+  background: var(--gp-surface-hover);
 }
 
 .provider-row.selected {
-  background: var(--surface-hover);
+  background: var(--gp-surface-hover);
   box-shadow: inset 3px 0 0 var(--gp-primary);
 }
 
@@ -1420,7 +1420,7 @@ const deleteCustomProvider = async (provider) => {
 .provider-details {
   width: 100%;
   max-width: none;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   padding: 1rem 1.25rem;
 }
 
@@ -1430,7 +1430,7 @@ const deleteCustomProvider = async (provider) => {
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .provider-details-header h4 {
@@ -1450,7 +1450,7 @@ const deleteCustomProvider = async (provider) => {
   gap: 1rem;
   align-items: start;
   padding: 0.9rem 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .detail-row:last-child {
@@ -1490,7 +1490,7 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .empty-provider-settings {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.9rem;
   padding: 0.8rem 0 0 0;
 }
@@ -1512,13 +1512,13 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .credential-state {
-  color: var(--green-600);
+  color: var(--p-green-600);
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .credential-state.missing {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .credential-input {
@@ -1530,9 +1530,9 @@ const deleteCustomProvider = async (provider) => {
   max-width: 1240px;
   display: grid;
   grid-template-columns: minmax(360px, 480px) minmax(420px, 760px);
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   overflow: hidden;
 }
 
@@ -1542,7 +1542,7 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .custom-provider-list {
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--gp-border);
 }
 
 .custom-provider-row {
@@ -1551,7 +1551,7 @@ const deleteCustomProvider = async (provider) => {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .custom-provider-row:last-child {
@@ -1577,13 +1577,13 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .field-error {
-  color: var(--red-500);
+  color: var(--p-red-500);
   line-height: 1.35;
 }
 
 .headers-input {
   width: min(100%, 520px);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .custom-provider-save-row {
@@ -1617,19 +1617,19 @@ const deleteCustomProvider = async (provider) => {
 
   .custom-provider-list {
     border-right: none;
-    border-bottom: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--gp-border);
   }
 
   .provider-list-panel {
     border-right: none;
-    border-bottom: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--gp-border);
   }
 
   .provider-list-panel::before,
   .provider-details::before {
     display: block;
     padding: 0 1rem 0.65rem 1rem;
-    color: var(--text-color-secondary);
+    color: var(--gp-text-secondary);
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.04em;

@@ -79,8 +79,8 @@ onBeforeUnmount(() => {
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: var(--gp-radius-md, 8px);
-  background: var(--gp-surface-100, #f3f4f6);
+  border-radius: var(--gp-radius-medium, 8px);
+  background: var(--gp-surface-muted, #f3f4f6);
 }
 
 .poi-image img {

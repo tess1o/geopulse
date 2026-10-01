@@ -250,7 +250,7 @@ const goToJobDetails = () => {
   padding: 0.75rem;
   background: var(--gp-surface-ground);
   border-radius: 8px;
-  border: 1px solid var(--gp-surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .progress-tracking {
@@ -258,7 +258,7 @@ const goToJobDetails = () => {
   padding: 1rem;
   background: var(--gp-surface-ground);
   border-radius: 8px;
-  border: 1px solid var(--gp-surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .completion-indicator {
@@ -268,21 +268,21 @@ const goToJobDetails = () => {
   gap: 0.5rem;
   padding: 0.75rem;
   margin-bottom: 1rem;
-  background: var(--green-50);
-  border: 1px solid var(--green-200);
+  background: var(--gp-success-soft);
+  border: 1px solid var(--gp-success-border);
   border-radius: 6px;
-  color: var(--green-700);
+  color: var(--gp-success-text);
   font-weight: 600;
   font-size: 0.95rem;
 }
 
 .completion-indicator i {
   font-size: 1.25rem;
-  color: var(--green-600);
+  color: var(--gp-success);
 }
 
 .progress-bar.progress-complete :deep(.p-progressbar-value) {
-  background: var(--green-500);
+  background: var(--p-green-500);
   transition: background 0.3s ease;
 }
 
@@ -302,7 +302,7 @@ const goToJobDetails = () => {
 .progress-percentage {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
 }
 
 .progress-bar {
@@ -328,7 +328,7 @@ const goToJobDetails = () => {
 }
 
 .detail-item i {
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
   font-size: 0.875rem;
   flex-shrink: 0;
 }
@@ -340,12 +340,12 @@ const goToJobDetails = () => {
 }
 
 .detail-pending {
-  color: var(--orange-600);
+  color: var(--gp-warning-text);
   font-weight: 600;
 }
 
 .detail-pending i {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .view-details-btn {
@@ -370,7 +370,7 @@ const goToJobDetails = () => {
 .dot {
   width: 8px;
   height: 8px;
-  background: var(--gp-primary-color);
+  background: var(--gp-primary);
   border-radius: 50%;
   animation: pulse 1.5s infinite;
 }
@@ -399,39 +399,6 @@ const goToJobDetails = () => {
     opacity: 1;
     transform: scale(1.1);
   }
-}
-
-/* Dark mode support */
-.p-dark .regeneration-note {
-  background: var(--gp-surface-ground-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .progress-tracking {
-  background: var(--gp-surface-ground-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .progress-details {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .completion-indicator {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: var(--green-400);
-}
-
-.p-dark .completion-indicator i {
-  color: var(--green-500);
-}
-
-.p-dark .detail-pending {
-  color: var(--orange-400);
-}
-
-.p-dark .detail-pending i {
-  color: var(--orange-500);
 }
 
 /* Responsive adjustments */

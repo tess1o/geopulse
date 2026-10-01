@@ -753,7 +753,7 @@ onUnmounted(() => {
 
 .empty-state {
   text-align: center;
-  color: var(--text-color-secondary, #667085);
+  color: var(--gp-text-secondary, #667085);
   padding: 1rem 0.5rem;
 }
 
@@ -763,7 +763,7 @@ onUnmounted(() => {
 }
 
 .event-card {
-  border: 1px solid var(--surface-border, #d0d5dd);
+  border: 1px solid var(--gp-border, #d0d5dd);
   border-radius: 0.75rem;
   padding: 0.75rem;
   display: grid;
@@ -771,7 +771,7 @@ onUnmounted(() => {
 }
 
 .event-card--unseen {
-  border-color: color-mix(in srgb, var(--red-500, #ef4444) 48%, var(--surface-border, #d0d5dd));
+  border-color: color-mix(in srgb, var(--p-red-500, #ef4444) 48%, var(--gp-border, #d0d5dd));
 }
 
 .event-card-header {
@@ -786,7 +786,7 @@ onUnmounted(() => {
 }
 
 .event-card-header small {
-  color: var(--text-color-secondary, #667085);
+  color: var(--gp-text-secondary, #667085);
 }
 
 .event-card-meta {
@@ -797,7 +797,7 @@ onUnmounted(() => {
 }
 
 .subject-chip {
-  background: var(--surface-100, #f3f4f6);
+  background: var(--gp-surface-muted, #f3f4f6);
   border-radius: 999px;
   padding: 0.12rem 0.5rem;
   font-size: 0.8rem;
@@ -814,7 +814,7 @@ onUnmounted(() => {
 }
 
 .event-card-details {
-  border-top: 1px dashed var(--surface-border, #d0d5dd);
+  border-top: 1px dashed var(--gp-border, #d0d5dd);
   padding-top: 0.5rem;
   display: grid;
   gap: 0.25rem;

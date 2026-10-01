@@ -41,7 +41,7 @@ const props = defineProps({
   },
   iconColor: {
     type: String,
-    default: 'var(--blue-500)'
+    default: 'var(--p-blue-500)'
   },
   plannedFeatures: {
     type: Array,

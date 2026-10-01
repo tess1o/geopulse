@@ -109,16 +109,15 @@ const getCSSVariable = (property) => {
 // Update theme colors
 const updateThemeColors = () => {
   const variant = colorVariants[props.color] || colorVariants.primary
-  const isDarkMode = document.documentElement.classList.contains('p-dark')
 
   themeColors.value = {
     primary: getCSSVariable(variant.bg),
     primaryLight: getCSSVariable(variant.light),
     border: getCSSVariable(variant.border),
     backgroundColor: themeColors.value.primary || '#3B82F6',
-    textColor: isDarkMode ? getCSSVariable('--gp-text-primary') : getCSSVariable('--p-text-color'),
-    textMuted: isDarkMode ? getCSSVariable('--gp-text-secondary') : getCSSVariable('--p-text-muted-color'),
-    borderColor: isDarkMode ? getCSSVariable('--gp-border-dark') : getCSSVariable('--p-content-border-color')
+    textColor: getCSSVariable('--gp-text-primary'),
+    textMuted: getCSSVariable('--gp-text-secondary'),
+    borderColor: getCSSVariable('--gp-border')
   }
 }
 

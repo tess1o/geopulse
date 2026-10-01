@@ -188,7 +188,7 @@
                   </label>
                 </div>
                 <div class="option-description">
-                  <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--gp-primary-500);"></i>
+                  <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--p-primary-500);"></i>
                   {{ t('data.importTab.replaceExistingDataDescription') }}
                 </div>
                 <div v-if="clearDataBeforeImport" class="warning-message">
@@ -998,8 +998,8 @@ onMounted(async () => {
 
 .format-option.disabled:hover,
 .import-data-type.disabled:hover {
-  border-color: var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-color: var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 /* Upload Progress */
@@ -1043,14 +1043,14 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
   color: var(--gp-text-secondary);
   font-size: 0.9rem;
 }
 
 .upload-info-message i {
-  color: var(--gp-primary-500);
+  color: var(--p-primary-500);
 }
 
 /* File Upload */
@@ -1098,9 +1098,9 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: all 0.2s ease;
 }
 
@@ -1156,7 +1156,7 @@ onMounted(async () => {
 .import-summary {
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1189,8 +1189,8 @@ onMounted(async () => {
 .timeline-progress-container {
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   display: flex;
   flex-direction: column;
@@ -1213,7 +1213,7 @@ onMounted(async () => {
 .timeline-progress-percentage {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
 }
 
 .timeline-progress-bar {
@@ -1244,7 +1244,7 @@ onMounted(async () => {
 }
 
 .timeline-key-metric i {
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
   font-size: 0.875rem;
   flex-shrink: 0;
 }
@@ -1272,9 +1272,9 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .import-item-info {
@@ -1305,7 +1305,7 @@ onMounted(async () => {
 }
 
 .import-size {
-  color: var(--gp-text-tertiary);
+  color: var(--gp-text-muted);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -1346,8 +1346,8 @@ onMounted(async () => {
 .csv-format-docs {
   margin-top: 1.5rem;
   padding: 1.5rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1397,16 +1397,16 @@ onMounted(async () => {
 
 .csv-field-list li strong {
   color: var(--gp-text-primary);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.9em;
 }
 
 .csv-example-code {
-  background: var(--gp-surface-0);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: 1rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   line-height: 1.5;
   color: var(--gp-text-primary);
@@ -1415,15 +1415,6 @@ onMounted(async () => {
 }
 
 /* Dark Mode */
-.p-dark .csv-format-docs {
-  background: var(--surface-ground);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .csv-example-code {
-  background: var(--surface-800);
-  border-color: var(--gp-border-dark);
-}
 
 @media (max-width: 768px) {
   .csv-format-docs {

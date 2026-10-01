@@ -200,8 +200,8 @@ const formatDate = (dateString) => {
 }
 
 .invites-section {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-light);
 }
 
@@ -237,9 +237,9 @@ const formatDate = (dateString) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .invite-info {
@@ -286,7 +286,7 @@ const formatDate = (dateString) => {
   justify-content: center;
   text-align: center;
   padding: 3rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-large);
   margin: 2rem 0;
 }

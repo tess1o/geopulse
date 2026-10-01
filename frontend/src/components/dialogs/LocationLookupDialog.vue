@@ -250,7 +250,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-match {
-  border: 1px solid var(--gp-border-color, #e2e8f0);
+  border: 1px solid var(--gp-border, #e2e8f0);
   border-radius: var(--gp-radius-medium, 0.5rem);
   padding: 0.9rem;
 }
@@ -296,7 +296,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-visit-row {
-  border-top: 1px solid var(--gp-border-color, #e2e8f0);
+  border-top: 1px solid var(--gp-border, #e2e8f0);
   padding-top: 0.45rem;
 }
 
@@ -315,7 +315,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-favorites {
-  border-top: 1px solid var(--gp-border-color, #e2e8f0);
+  border-top: 1px solid var(--gp-border, #e2e8f0);
   padding-top: 0.9rem;
 }
 

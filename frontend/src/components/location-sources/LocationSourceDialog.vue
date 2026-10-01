@@ -550,9 +550,9 @@ defineExpose({
   align-items: flex-start;
   gap: 1rem;
   padding: 0.9rem 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .source-summary-main {
@@ -578,7 +578,7 @@ defineExpose({
   margin-top: 0.2rem;
   font-size: 0.82rem;
   color: var(--gp-text-secondary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
   word-break: break-all;
 }
 
@@ -607,11 +607,11 @@ defineExpose({
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .source-type-option.wizard {
@@ -627,17 +627,17 @@ defineExpose({
 
 .source-type-option:hover {
   border-color: var(--gp-border-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .source-type-option.active {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
 }
 
 .source-type-option.active:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .type-name {
@@ -697,22 +697,22 @@ defineExpose({
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   flex: 1;
 }
 
 .connection-type-option:hover {
   border-color: var(--gp-border-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .connection-type-option.active {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
 }
 
@@ -750,62 +750,7 @@ defineExpose({
   justify-content: flex-end;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-.p-dark .source-summary-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .source-type-option {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .source-type-option:hover {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .source-type-option.active {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.p-dark .type-name,
-.p-dark .form-label,
-.p-dark .source-summary-name,
-.p-dark .connection-type-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .type-description,
-.p-dark .text-muted,
-.p-dark .source-summary-meta,
-.p-dark .step-value,
-.p-dark .connection-type-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .connection-type-option {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .connection-type-option:hover {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .connection-type-option.active {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .dialog-footer {
-  border-top-color: var(--gp-border-dark);
+  border-top: 1px solid var(--gp-border);
 }
 
 @media (max-width: 768px) {

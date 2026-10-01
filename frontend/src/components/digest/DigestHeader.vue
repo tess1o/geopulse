@@ -230,8 +230,8 @@ watch(() => props.month, (newMonth) => {
 
 <style scoped>
 .digest-header {
-  background: color-mix(in srgb, var(--gp-surface-white) 90%, var(--gp-primary));
-  border: 1px solid var(--gp-border-light);
+  background: color-mix(in srgb, var(--gp-surface-card) 90%, var(--gp-primary));
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-xl);
@@ -247,9 +247,9 @@ watch(() => props.month, (newMonth) => {
 .period-toggle {
   display: flex;
   padding: 3px;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   flex-shrink: 0;
 }
 
@@ -310,9 +310,9 @@ watch(() => props.month, (newMonth) => {
 .period-select {
   flex: 1;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   font-size: 1rem;
   font-weight: 500;
@@ -328,26 +328,6 @@ watch(() => props.month, (newMonth) => {
   outline: none;
   border-color: var(--gp-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Dark Mode */
-.p-dark .digest-header {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .period-display {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .period-select {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
-}
-
-.p-dark .period-select:hover {
-  border-color: var(--gp-primary);
 }
 
 /* Responsive Design */

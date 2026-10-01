@@ -78,7 +78,7 @@ const formatDate = (date) => {
 </script>
 
 <style scoped>
-.digest-highlights { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); border-bottom: 1px solid var(--gp-border-light); }
+.digest-highlights { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); border-bottom: 1px solid var(--gp-border); }
 
 .highlights-title {
   display: flex;
@@ -100,9 +100,9 @@ const formatDate = (date) => {
   gap: var(--gp-spacing-md);
 }
 
-.highlight-card { display: flex; gap: var(--gp-spacing-md); background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); border-radius: 14px; padding: var(--gp-spacing-lg); transition: border-color 0.2s ease, background 0.2s ease; }
+.highlight-card { display: flex; gap: var(--gp-spacing-md); background: var(--gp-surface-ground); border: 1px solid var(--gp-border); border-radius: 14px; padding: var(--gp-spacing-lg); transition: border-color 0.2s ease, background 0.2s ease; }
 
-.highlight-card:hover { border-color: var(--gp-primary); background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-light)); }
+.highlight-card:hover { border-color: var(--gp-primary); background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-muted)); }
 
 .highlight-icon {
   font-size: 2.5rem;
@@ -160,18 +160,6 @@ const formatDate = (date) => {
   font-weight: 500;
   margin-top: var(--gp-spacing-xs);
   font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .digest-highlights { border-color: var(--gp-border-dark); }
-
-.p-dark .highlight-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .highlights-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

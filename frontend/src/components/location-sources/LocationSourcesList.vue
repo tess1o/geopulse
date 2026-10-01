@@ -150,7 +150,7 @@ const emit = defineEmits([
   font-size: 0.9rem;
   color: var(--gp-text-secondary);
   margin: 0.25rem 0 0 0;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
 }
 
 .source-status-column {
@@ -191,32 +191,6 @@ const emit = defineEmits([
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.p-dark .section-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-type {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-identifier {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .toggle-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .source-card {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .source-card :deep(.p-card) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
 }
 
 @media (max-width: 768px) {

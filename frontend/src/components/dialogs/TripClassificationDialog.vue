@@ -474,12 +474,12 @@ const getTransportSeverity = (transportMode) => {
 }
 
 .classification-content::-webkit-scrollbar-track {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: 4px;
 }
 
 .classification-content::-webkit-scrollbar-thumb {
-  background: var(--gp-border-medium);
+  background: var(--gp-border);
   border-radius: 4px;
 }
 
@@ -547,7 +547,7 @@ const getTransportSeverity = (transportMode) => {
   display: flex;
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
   border-left: 4px solid var(--gp-primary);
 }
@@ -621,72 +621,11 @@ const getTransportSeverity = (transportMode) => {
 
 .doc-link:hover {
   text-decoration: underline;
-  color: var(--gp-primary-dark);
+  color: var(--gp-primary-text);
 }
 
 .doc-link i {
   font-size: 0.75rem;
-}
-
-/* Dark Mode */
-.p-dark .priority-banner {
-  background: var(--gp-surface-darker);
-  border-left-color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-icon {
-  color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .priority-step {
-  background: var(--gp-primary);
-  color: white;
-}
-
-.p-dark .priority-step.priority-unknown {
-  background: var(--gp-text-muted);
-}
-
-.p-dark .priority-flow i {
-  color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .doc-link:hover {
-  color: var(--gp-primary-light);
-}
-
-/* Dark Mode (continued) */
-.p-dark .classification-content::-webkit-scrollbar-track {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .classification-content::-webkit-scrollbar-thumb {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .classification-content::-webkit-scrollbar-thumb:hover {
-  background: var(--gp-primary);
-}
-
-.p-dark .section-title {
-  color: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .section-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .loading-state p {
-  color: var(--gp-text-secondary);
 }
 
 /* Mobile Responsive */

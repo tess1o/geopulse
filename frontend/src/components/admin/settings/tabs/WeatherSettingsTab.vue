@@ -330,14 +330,14 @@ onMounted(async () => { await reloadSettings(); await loadStatus() })
 @import '../admin-settings-common.css';
 .save-actions, .status-header, .buttons, .section-actions { display: flex; align-items: center; gap: 0.75rem; }
 .save-actions, .status-header { justify-content: space-between; }
-.credential-row { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(300px, 520px); gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid var(--surface-border); }
+.credential-row { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(300px, 520px); gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid var(--gp-border); }
 .credential-control { display: grid; gap: 0.5rem; }
 .credential-state { color: var(--gp-text-secondary); font-size: 0.86rem; font-weight: 700; }
 .credential-input, .credential-input :deep(input) { width: 100%; }
 .section-actions { margin: 1rem; }
-.advanced-settings { margin: 1rem 0; border: 1px solid var(--gp-border-light); border-radius: 6px; }
+.advanced-settings { margin: 1rem 0; border: 1px solid var(--gp-border); border-radius: 6px; }
 .advanced-settings summary { padding: 1rem; cursor: pointer; font-weight: 800; }
-.status-card { margin: 0 1rem; padding: 1rem; border: 1px solid var(--gp-border-light); border-radius: 6px; background: color-mix(in srgb, var(--surface-ground) 70%, transparent); }
+.status-card { margin: 0 1rem; padding: 1rem; border: 1px solid var(--gp-border); border-radius: 6px; background: color-mix(in srgb, var(--gp-surface-ground) 70%, transparent); }
 .status-header h3 { margin: 0.6rem 0 0; }
 .status-grid { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 0.8rem 2rem; margin: 1.25rem 0 0; }
 .status-grid div { display: flex; justify-content: space-between; gap: 1rem; }

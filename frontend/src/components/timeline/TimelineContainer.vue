@@ -855,7 +855,7 @@ defineExpose({
   margin-bottom: var(--gp-spacing-lg);
   padding: 0 0 var(--gp-spacing-xs);
   border-bottom: 2px solid var(--gp-primary-light);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .timeline-title {
@@ -907,8 +907,8 @@ defineExpose({
   padding: var(--gp-spacing-lg);
   margin: var(--gp-spacing-lg);
   color: var(--gp-text-secondary);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
@@ -917,8 +917,8 @@ defineExpose({
 .timeline-warning {
   padding: var(--gp-spacing-md);
   margin: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
-  color: var(--gp-warning-dark);
-  background: var(--gp-warning-light);
+  color: var(--gp-warning-text);
+  background: var(--gp-warning-soft);
   border: 1px solid var(--gp-warning);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
@@ -969,17 +969,6 @@ defineExpose({
 }
 
 /* Dark mode adjustments */
-.p-dark .timeline-header {
-  color: var(--gp-primary);
-  border-bottom-color: var(--gp-border-medium);
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .loading-messages {
-  color: var(--gp-text-primary);
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
 
 .timeline-no-data {
   flex-direction: column;
@@ -1001,7 +990,7 @@ defineExpose({
 .date-separator-line {
   flex: 1;
   height: 1px;
-  background: var(--gp-border-medium);
+  background: var(--gp-border);
 }
 
 .date-separator-text {
@@ -1009,7 +998,7 @@ defineExpose({
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0 var(--gp-spacing-sm);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   white-space: nowrap;
 }
 
@@ -1020,9 +1009,9 @@ defineExpose({
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -1067,22 +1056,6 @@ defineExpose({
   }
 }
 
-/* Dark mode adjustments for date separators */
-.p-dark .date-separator-line {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .date-separator-text {
-  color: var(--gp-text-secondary);
-  background: var(--gp-surface-white);
-}
-
-.p-dark .date-nav-button {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
 /* Clickable period badge styles */
 .gp-period-badge--clickable {
   cursor: pointer;
@@ -1104,9 +1077,5 @@ defineExpose({
 .gp-period-badge--clickable:focus {
   outline: 2px solid var(--gp-primary);
   outline-offset: 2px;
-}
-
-.p-dark .gp-period-badge--clickable:hover {
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
 }
 </style>

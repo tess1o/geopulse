@@ -491,9 +491,9 @@ const handleReset = () => {
   align-items: flex-start;
   gap: 0.4rem;
   padding: 0.75rem;
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border);
   border-radius: var(--gp-radius-medium, 0.5rem);
-  background: var(--gp-surface-white, transparent);
+  background: var(--gp-surface-card, transparent);
   color: var(--gp-text-primary);
   text-align: left;
   cursor: pointer;

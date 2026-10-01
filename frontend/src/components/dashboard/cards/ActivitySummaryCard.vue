@@ -47,7 +47,7 @@
 
       <!-- Most Active Day -->
       <div
-        v-tooltip="{value: mostActiveDayTooltip, escape: false, pt: {text: 'tooltip-content'}}"
+        v-tooltip="{value: mostActiveDayTooltip, escape: false, pt: {text: 'most-active-day-tooltip-text'}}"
         class="tooltip-wrapper"
       >
         <MetricItem
@@ -237,7 +237,7 @@ const mostActiveDayTooltip = computed(() => {
 .chart-section {
   margin-top: var(--gp-spacing-lg);
   padding-top: var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .chart-title {
@@ -252,31 +252,22 @@ const mostActiveDayTooltip = computed(() => {
   width: 100%;
 }
 
-/* Dark Mode */
-.p-dark .chart-section {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .chart-title {
-  color: var(--gp-text-primary);
-}
-
 /* Tooltip Wrapper */
 .tooltip-wrapper {
   cursor: help;
 }
 
-/* Global Tooltip Styles */
-:global(.p-tooltip .p-tooltip-text) {
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+/* The tooltip body is the card below; strip the default tooltip chrome from this tooltip only. */
+:global(.p-tooltip-text.most-active-day-tooltip-text) {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 :global(.most-active-day-tooltip) {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   box-shadow: var(--gp-shadow-medium);
@@ -290,7 +281,7 @@ const mostActiveDayTooltip = computed(() => {
   justify-content: space-between;
   margin-bottom: var(--gp-spacing-sm);
   padding-bottom: var(--gp-spacing-xs);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 :global(.most-active-day-tooltip .tooltip-header strong) {
@@ -327,33 +318,6 @@ const mostActiveDayTooltip = computed(() => {
 
 :global(.most-active-day-tooltip .tooltip-item span) {
   font-weight: 500;
-}
-
-/* Dark Mode Tooltip Styles */
-:global(.p-dark .most-active-day-tooltip) {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-  box-shadow: var(--gp-shadow-dark);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-header) {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-header strong) {
-  color: var(--gp-text-primary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-date) {
-  color: var(--gp-text-secondary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-item) {
-  color: var(--gp-text-secondary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-item i) {
-  color: var(--gp-text-muted);
 }
 
 /* Responsive adjustments */

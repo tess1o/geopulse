@@ -16,7 +16,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="p-6 text-center">
       <ProgressSpinner size="small" />
-      <p class="text-surface-500 mt-2">{{ t('friends.receivedInvites.loading') }}</p>
+      <p class="text-muted-color mt-2">{{ t('friends.receivedInvites.loading') }}</p>
     </div>
 
     <!-- Has Invites -->
@@ -38,12 +38,12 @@
               <p class="text-base font-medium text-surface-900 dark:text-surface-100 truncate">
                 {{ invite.senderName }}
               </p>
-              <p class="text-sm text-surface-500 mt-1">
+              <p class="text-sm text-muted-color mt-1">
                 {{ t('friends.receivedInvites.wantsToConnect') }}
               </p>
               <div class="flex items-center gap-1 mt-1">
-                <i class="pi pi-clock text-xs text-surface-500"></i>
-                <p class="text-xs text-surface-500">
+                <i class="pi pi-clock text-xs text-muted-color"></i>
+                <p class="text-xs text-muted-color">
                   {{ formatInviteDate(invite.receivedAt) }}
                 </p>
               </div>
@@ -108,12 +108,12 @@
     <div v-else class="p-6 text-center">
       <div class="mb-4">
         <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mx-auto mb-3">
-          <i class="pi pi-inbox text-2xl text-surface-400"></i>
+          <i class="pi pi-inbox text-2xl text-muted-color"></i>
         </div>
         <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
           {{ t('friends.receivedInvites.emptyTitle') }}
         </h3>
-        <p class="text-sm text-surface-500 max-w-sm mx-auto">
+        <p class="text-sm text-muted-color max-w-sm mx-auto">
           {{ t('friends.receivedInvites.emptyMessage') }}
         </p>
       </div>
@@ -134,7 +134,7 @@
               <template #name><strong>{{ selectedInvite?.senderName }}</strong></template>
             </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
+          <p class="text-sm text-muted-color">
             {{ t('friends.receivedInvites.acceptDialog.note') }}
           </p>
         </div>
@@ -169,7 +169,7 @@
               <template #name><strong>{{ selectedInvite?.senderName }}</strong></template>
             </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
+          <p class="text-sm text-muted-color">
             {{ t('friends.receivedInvites.rejectDialog.note') }}
           </p>
         </div>
@@ -205,7 +205,7 @@
               count: receivedInvites?.length
             }) }}
           </p>
-          <p class="text-sm text-surface-500">
+          <p class="text-sm text-muted-color">
             {{ bulkAction === 'accept'
               ? t('friends.receivedInvites.bulkDialog.acceptNote')
               : t('friends.receivedInvites.bulkDialog.declineNote')
