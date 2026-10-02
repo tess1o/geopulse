@@ -784,8 +784,8 @@ onUnmounted(() => {
 }
 
 .user-avatar {
-  width: 44px !important;
-  height: 44px !important;
+  width: 44px;
+  height: 44px;
   border: 2px solid var(--gp-primary);
   flex-shrink: 0;
 }

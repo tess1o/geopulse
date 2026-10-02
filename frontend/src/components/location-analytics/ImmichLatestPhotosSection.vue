@@ -129,7 +129,6 @@
     modal
     :header="t('analytics.immichPhotos.galleryHeader')"
     class="gp-dialog-xl"
-    :style="{ width: '90vw', maxWidth: '1200px' }"
     :content-style="{ padding: '1rem' }"
   >
     <div class="gallery-meta">

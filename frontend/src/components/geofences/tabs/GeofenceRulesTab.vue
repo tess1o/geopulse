@@ -551,7 +551,7 @@ function remainingSubjectsCount(rule) {
 }
 
 .rule-sentence-template {
-  width: clamp(16rem, 36vw, 30rem) !important;
+  width: clamp(16rem, 36vw, 30rem);
   max-width: 100%;
   justify-self: start;
 }
@@ -577,7 +577,7 @@ function remainingSubjectsCount(rule) {
 }
 
 .rule-sentence-cooldown-input {
-  width: 6.25rem !important;
+  width: 6.25rem;
   min-width: 6.25rem;
 }
 

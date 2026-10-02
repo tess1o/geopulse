@@ -231,16 +231,16 @@ const formattedEndTime = computed(() => {
 }
 
 .timeline-card--data-gap {
-  background-color: var(--gp-timeline-orange-light);
+  background-color: var(--gp-timeline-card-gap);
   border-left: 4px solid var(--gp-warning);
 }
 
 .timeline-timestamp {
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
 }
 
 .timeline-subtitle {
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
   font-weight: 700;
 }
 
@@ -258,14 +258,14 @@ const formattedEndTime = computed(() => {
 
 .gap-detail .detail-value {
   font-weight: 700;
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
 }
 
 .convert-gap-btn {
   margin-top: var(--gp-spacing-xs);
   border: none;
   background: transparent;
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
   font-weight: 700;
   font-size: 0.8rem;
   cursor: pointer;

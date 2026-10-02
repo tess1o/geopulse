@@ -444,6 +444,21 @@
     }
 
     /* ================================
+         TOASTS
+       ================================ */
+
+    /* Extra line under a custom toast's detail (ToastMessageContent's slot): a link, or the hint on a clickable
+       toast. Detail size in the toast's severity colour, underlined so it reads as the action. */
+    .gp-toast-action {
+        width: fit-content;
+        font-size: var(--p-toast-detail-font-size);
+        font-weight: 600;
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    /* ================================
          DEMO / READ-ONLY NOTICES
        ================================ */
 

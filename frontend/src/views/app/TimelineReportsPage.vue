@@ -437,6 +437,7 @@ watch(dateRange, async (newValue) => {
   flex: 1;
   min-width: 120px;
   max-width: 160px;
+  /* Beats MetricItem's own `:not(:last-child)` divider, which is more specific than this rule. */
   border: none !important;
 }
 

@@ -51,11 +51,11 @@ const props = defineProps({
   },
   accentColor: {
     type: String,
-    default: 'var(--gp-primary)'
+    default: 'var(--gp-primary-text)'
   },
   hoverBgColor: {
     type: String,
-    default: 'var(--gp-primary-light)'
+    default: 'var(--gp-primary-soft)'
   },
   authToken: {
     type: String,

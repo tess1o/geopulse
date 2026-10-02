@@ -1122,9 +1122,9 @@ onUnmounted(() => {
 
 <style scoped>
 :global(.photo-viewer-dialog) {
-  width: min(96vw, 1500px) !important;
-  height: min(92dvh, 960px) !important;
-  max-height: 92dvh !important;
+  width: min(96vw, 1500px);
+  height: min(92dvh, 960px);
+  max-height: 92dvh;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
@@ -1136,7 +1136,6 @@ onUnmounted(() => {
   height: 100%;
   max-height: none;
   overflow: hidden;
-  padding: 0 !important;
   border-radius: inherit;
   background: #080c13;
 }
@@ -1645,10 +1644,10 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   :global(.photo-viewer-dialog) {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
     margin: 0;
     border: 0;
     border-radius: 0;

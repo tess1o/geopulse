@@ -16,7 +16,6 @@
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
             :auth-token="immichPhotoAuthToken"
-            accent-color="var(--gp-primary-dark)"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
         </div>
@@ -419,16 +418,12 @@ const navigateToCountryDetails = () => {
 }
 
 .timeline-card--overnight-stay {
-  background-color: var(--gp-timeline-purple-light);
+  background-color: var(--gp-timeline-card-overnight);
   border-left: 4px solid var(--gp-primary-text);
 }
 
-.timeline-timestamp {
-  color: var(--gp-primary-dark);
-}
-
 .location-name {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
 }
 
@@ -436,7 +431,7 @@ const navigateToCountryDetails = () => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -487,6 +482,6 @@ const navigateToCountryDetails = () => {
 
 .duration-detail .duration-value {
   font-weight: 700;
-  color: var(--gp-primary-dark);
+  color: var(--gp-primary-text);
 }
 </style>

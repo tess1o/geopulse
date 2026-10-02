@@ -378,20 +378,20 @@ watch(panelOpen, async (isOpen) => {
 
 .gp-bell-trigger {
   position: relative;
-  color: var(--bell-trigger-fg) !important;
-  background: var(--bell-trigger-bg) !important;
-  border: 1px solid var(--bell-trigger-border) !important;
-  box-shadow: var(--bell-trigger-shadow) !important;
+  color: var(--bell-trigger-fg);
+  background: var(--bell-trigger-bg);
+  border: 1px solid var(--bell-trigger-border);
+  box-shadow: var(--bell-trigger-shadow);
 }
 
 .gp-bell-trigger :deep(.p-button-icon) {
-  color: inherit !important;
+  color: inherit;
 }
 
 .gp-bell-trigger:hover {
-  color: var(--bell-trigger-fg-hover) !important;
-  background: var(--bell-trigger-bg-hover) !important;
-  border-color: var(--bell-trigger-border-hover) !important;
+  color: var(--bell-trigger-fg-hover);
+  background: var(--bell-trigger-bg-hover);
+  border-color: var(--bell-trigger-border-hover);
 }
 
 .gp-bell-trigger:focus-visible {
@@ -400,8 +400,8 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-bell-trigger:active {
-  background: var(--bell-trigger-bg-active) !important;
-  border-color: var(--bell-trigger-border-active) !important;
+  background: var(--bell-trigger-bg-active);
+  border-color: var(--bell-trigger-border-active);
 }
 
 .gp-bell-badge {

@@ -171,7 +171,7 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.88);
   color: #ffffff;
-  font-size: 0.72rem !important;
+  font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.25;
   text-align: left;

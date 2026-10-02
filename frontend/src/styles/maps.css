@@ -131,14 +131,11 @@
     filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5)) brightness(1.1) saturate(1.2);
 }
 
-.marker-circle {
-    transform-origin: center center;
-    box-shadow: var(--gp-shadow-medium);
-}
-
+/* No box-shadow on these: they are the marker's square root element. The builders draw the shadow on the inner
+   circle or rounded square, so it follows the shape. */
+.marker-circle,
 .marker-square {
     transform-origin: center center;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.25);
 }
 
 /* ================================

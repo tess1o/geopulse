@@ -1069,7 +1069,7 @@ function handleTimelineItemClick(item) {
 .timeline-sidebar {
   /* Match the right-pane from TimelinePage.vue */
   flex: 1;
-  overflow-y: auto !important;
+  overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
   min-height: 350px;
@@ -1132,7 +1132,7 @@ function handleTimelineItemClick(item) {
 
   /* Hide GeoPulse brand and status tag on mobile */
   .desktop-only {
-    display: none !important;
+    display: none;
   }
 
   /* Row 1: Timeline name - stays on first line */

@@ -3,7 +3,7 @@
     v-model:visible="internalVisible"
     :header="t('tripDialogs.staySplit.header')"
     :modal="true"
-    class="gp-dialog-lg trip-stay-split-dialog"
+    class="trip-stay-split-dialog"
     @hide="$emit('close')"
   >
     <div v-if="trip" class="split-content">
@@ -717,8 +717,8 @@ const formatDistance = (value) => value < 1000
 }
 
 :global(.trip-stay-split-dialog) {
-  width: 92vw !important;
-  max-width: 1200px !important;
+  width: 92vw;
+  max-width: 1200px;
 }
 
 @media (max-width: 767px) {

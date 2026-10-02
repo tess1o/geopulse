@@ -373,7 +373,7 @@ defineExpose({
 .timeline-split-side-pane {
   display: flex;
   flex-direction: column;
-  overflow: hidden !important;
+  overflow: hidden;
   height: auto;
   min-height: 0;
   min-width: 320px;
@@ -394,7 +394,7 @@ defineExpose({
   border: none;
   border-bottom: 2px solid var(--gp-primary-light);
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font: inherit;
   font-size: 1.1rem;
   font-weight: 600;
@@ -594,7 +594,7 @@ defineExpose({
     max-height: calc(100% - 24px);
     min-height: 0;
     margin: 0;
-    overflow: hidden !important;
+    overflow: hidden;
     background: var(--gp-surface-card);
     border: 1px solid var(--gp-border);
     border-bottom: none;

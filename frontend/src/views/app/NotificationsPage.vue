@@ -499,7 +499,17 @@ onMounted(() => {
     width: 100%;
   }
 
-  .gp-page-actions :deep(.p-button),
+  /* Keep the shared phone header's column layout from centring the buttons at content width: lay them out in
+     a row that fills the width, wrapping to one full-width button per line when a label is too long. */
+  .gp-page-actions {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .gp-page-actions :deep(.p-button) {
+    flex: 1 1 auto;
+  }
+
   .source-filter {
     flex: 1;
   }

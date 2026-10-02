@@ -7,7 +7,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     border-radius: var(--gp-radius-medium);
-    border: 1px solid var(--gp-border-medium);
+    border: 1px solid var(--gp-border);
     overflow: hidden;
     padding: var(--gp-spacing-sm) var(--gp-spacing-md);
 }
@@ -35,7 +35,7 @@
 }
 
 .timeline-timestamp {
-    color: var(--gp-primary);
+    color: var(--gp-primary-text);
     font-weight: 600;
     font-size: 0.95rem;
     margin: 0;

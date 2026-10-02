@@ -3,7 +3,6 @@
     v-model:visible="internalVisible"
     :header="title || t('maps.popups.placesMap.defaultTitle')"
     :modal="true"
-    :style="dialogStyle"
     class="places-map-dialog"
     @hide="$emit('close')"
   >
@@ -65,10 +64,6 @@ const emit = defineEmits(['close'])
 const internalVisible = ref(props.showMap)
 const mapId = ref(Math.random().toString(36).substr(2, 9))
 const mapContainerRef = ref(null)
-const dialogStyle = {
-  width: 'min(92vw, 760px)',
-  maxWidth: '760px'
-}
 const mapHeight = 'min(60vh, 420px)'
 
 // Computed
@@ -122,11 +117,16 @@ export default {
   overflow: hidden;
 }
 
+:global(.places-map-dialog.p-dialog) {
+  width: min(92vw, 760px);
+  max-width: 760px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   :global(.places-map-dialog.p-dialog) {
-    width: calc(100vw - 1rem) !important;
-    max-width: calc(100vw - 1rem) !important;
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
     margin: 0.5rem;
   }
 

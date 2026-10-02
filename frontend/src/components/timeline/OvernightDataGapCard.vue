@@ -252,7 +252,7 @@ const handleNoteSaved = (note) => {
 }
 
 .timeline-card--overnight-data-gap {
-  background-color: var(--gp-timeline-orange-light);
+  background-color: var(--gp-timeline-card-gap);
   border-left: 4px solid var(--gp-warning-strong);
 }
 
@@ -265,7 +265,7 @@ const handleNoteSaved = (note) => {
 }
 
 .gap-label {
-  color: var(--gp-warning);
+  color: var(--gp-warning-text);
   font-weight: 700;
 }
 

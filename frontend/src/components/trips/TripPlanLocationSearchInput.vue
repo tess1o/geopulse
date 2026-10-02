@@ -122,7 +122,7 @@ const localValue = computed({
 }
 
 .trip-plan-location-search :deep(.p-autocomplete-loader) {
-  display: none !important;
+  display: none;
 }
 
 .trip-plan-location-search :deep(.p-autocomplete-input),

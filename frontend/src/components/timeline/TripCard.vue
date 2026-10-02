@@ -364,12 +364,12 @@ const formattedTimestamp = computed(() => {
 }
 
 .timeline-card--trip {
-  background-color: var(--gp-timeline-green-light);
+  background-color: var(--gp-timeline-card-trip);
   border-left: 4px solid var(--gp-success);
 }
 
 .transition-title {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 500;
   margin: 0;
   font-size: 0.9rem;
@@ -394,7 +394,7 @@ const formattedTimestamp = computed(() => {
 
 .trip-detail .font-bold {
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 
 .manual-indicator {
@@ -408,7 +408,7 @@ const formattedTimestamp = computed(() => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
   font-size: 0.75rem;
   cursor: pointer;
@@ -426,7 +426,7 @@ const formattedTimestamp = computed(() => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   padding: 0;
   line-height: 1;

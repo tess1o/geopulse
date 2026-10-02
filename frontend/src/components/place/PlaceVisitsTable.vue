@@ -612,17 +612,17 @@ watch(
 
   /* Always hide Day of Week on mobile */
   :deep(.day-of-week-column) {
-    display: none !important;
+    display: none;
   }
 
   /* Hide End Time on mobile when location columns are shown */
   :deep(.end-time-column) {
-    display: none !important;
+    display: none;
   }
 
   /* Hide Duration on mobile for Country pages (when both city and place name shown) */
   :deep(.duration-column-country) {
-    display: none !important;
+    display: none;
   }
 
   /* Reduce column widths on mobile */

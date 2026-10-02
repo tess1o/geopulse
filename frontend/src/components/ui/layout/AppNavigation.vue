@@ -366,8 +366,9 @@ onMounted(async () => {
 }
 
 /* Navigation Toggle Button */
-.gp-nav-toggle--compact {
-  padding: var(--gp-spacing-xs) !important;
+/* .p-button outranks the global phone rule `.p-button.p-button-sm` in primevue-overrides.css. */
+.p-button.gp-nav-toggle--compact {
+  padding: var(--gp-spacing-xs);
 }
 
 /* Drawer Container */

@@ -127,7 +127,7 @@ const gapRecommendations = computed(() => {
 }
 
 .help-toggle:hover {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 
 .help-toggle:focus {

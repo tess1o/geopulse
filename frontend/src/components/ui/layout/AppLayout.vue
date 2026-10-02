@@ -4,18 +4,16 @@
     <ErrorReferenceToast />
     <Toast group="gps-delete" position="top-right">
       <template #message="slotProps">
-        <div class="gp-action-toast">
-          <div class="gp-action-toast-summary">{{ slotProps.message.summary }}</div>
-          <div v-if="slotProps.message.detail" class="gp-action-toast-detail">{{ slotProps.message.detail }}</div>
+        <ToastMessageContent :message="slotProps.message">
           <a
             v-if="slotProps.message.data?.timelineJobUrl"
-            class="gp-action-toast-link"
+            class="gp-toast-action"
             :href="slotProps.message.data.timelineJobUrl"
             @click.stop
           >
             {{ t('ui.appLayout.viewTimelineJob') }}
           </a>
-        </div>
+        </ToastMessageContent>
       </template>
     </Toast>
     <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" :header="t('ui.appLayout.whatsNew')">
@@ -33,9 +31,9 @@
           class="gp-notification-toast"
           @click="handleNotificationToastClick(slotProps.message)"
         >
-          <div class="gp-notification-toast-summary">{{ slotProps.message.summary }}</div>
-          <div v-if="slotProps.message.detail" class="gp-notification-toast-detail">{{ slotProps.message.detail }}</div>
-          <div class="gp-notification-toast-hint">{{ notificationToastHint(slotProps.message) }}</div>
+          <ToastMessageContent :message="slotProps.message">
+            <span class="gp-toast-action">{{ notificationToastHint(slotProps.message) }}</span>
+          </ToastMessageContent>
         </button>
       </template>
     </Toast>
@@ -74,6 +72,7 @@ import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
 import ErrorReferenceToast from './ErrorReferenceToast.vue'
+import ToastMessageContent from './ToastMessageContent.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 
@@ -305,53 +304,21 @@ onUnmounted(() => {
   background: transparent;
 }
 
+/* The whole notification toast is clickable: the button takes the place of the toast's content row, so it lays
+   out the icon and text the way .p-toast-message-content does. */
 .gp-notification-toast {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--p-toast-content-gap);
+  padding: 0;
   border: none;
   background: transparent;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.gp-action-toast {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.gp-action-toast-summary {
-  font-weight: 700;
-  color: var(--gp-text-primary);
-}
-
-.gp-action-toast-detail {
-  color: var(--gp-text-secondary);
-  line-height: 1.35;
-}
-
-.gp-action-toast-link {
-  color: var(--gp-primary);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.gp-notification-toast-summary {
-  font-weight: 700;
-}
-
-.gp-notification-toast-detail {
-  color: var(--gp-text-secondary);
-}
-
-.gp-notification-toast-hint {
-  font-size: 0.75rem;
-  color: var(--gp-primary);
 }
 
 /* Responsive */

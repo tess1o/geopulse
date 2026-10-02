@@ -616,16 +616,17 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 
 :deep(.btn-hero-primary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 :deep(.btn-hero-primary:hover) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-:deep(.btn-hero-static.p-button),
-:deep(.btn-hero-static.p-button:hover),
-:deep(.btn-hero-static.p-button:focus),
-:deep(.btn-hero-static.p-button:active) {
-  padding: 0.875rem 1.75rem !important;
-  border: none !important;
-  transform: none !important;
-  transition: none !important;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25) !important;
+/* Cancels the hover lift: .landing-page puts these above the global `.p-button:hover:not(…)` rules. */
+.landing-page :deep(.btn-hero-static.p-button),
+.landing-page :deep(.btn-hero-static.p-button:hover),
+.landing-page :deep(.btn-hero-static.p-button:focus),
+.landing-page :deep(.btn-hero-static.p-button:active) {
+  padding: 0.875rem 1.75rem;
+  border: none;
+  transform: none;
+  transition: none;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
 }
 
 :deep(.btn-hero-secondary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: color-mix(in srgb, var(--gp-surface-emphasis) 80%, transparent); border: 1px solid var(--gp-landing-glass-border); color: var(--gp-text-secondary); transition: transform 0.2s ease, background 0.2s ease; }

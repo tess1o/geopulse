@@ -3,7 +3,7 @@
     v-model:visible="internalVisible"
     modal
     :header="dialogHeader"
-    class="gp-dialog-xl trip-reconstruction-dialog"
+    class="trip-reconstruction-dialog"
     @hide="handleClose"
   >
     <div class="reconstruction-layout">
@@ -605,7 +605,7 @@ watch(activeSegmentId, () => {
 
 <style>
 .trip-reconstruction-dialog {
-  width: 96vw !important;
-  max-width: 1600px !important;
+  width: 96vw;
+  max-width: 1600px;
 }
 </style>

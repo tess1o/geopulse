@@ -548,15 +548,15 @@ onUnmounted(() => {
 }
 
 .place-details-link {
-  color: var(--gp-primary) !important;
-  min-width: 28px !important;
-  width: 28px !important;
-  height: 28px !important;
+  color: var(--gp-primary);
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
 }
 
 .place-details-link:hover {
-  background-color: var(--gp-primary-light) !important;
+  background-color: var(--gp-primary-light);
 }
 
 .location-address {

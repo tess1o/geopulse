@@ -717,7 +717,7 @@ const emitCopy = (text) => {
   }
 
   .yaml-config {
-    font-size: 0.8rem !important;
+    font-size: 0.8rem;
     line-height: 1.3;
   }
 }

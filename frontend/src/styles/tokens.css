@@ -93,6 +93,21 @@
     --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
     --gp-timeline-purple-text: #6d28d9;
 
+    /* Timeline sidebar card backgrounds. Light: the translucent tints above. Dark: opaque colours, because a tint
+       over the blue-slate panel drifts towards blue (green turns teal, violet turns indigo) and the card types
+       stop looking different. Same lightness for every type, a step above the panel. (A lower-saturation set was
+       tried and read as grey; the type colour needs to show in the card itself.) */
+    --gp-timeline-card-stay: var(--gp-timeline-blue-light);
+    --gp-timeline-card-trip: var(--gp-timeline-green-light);
+    --gp-timeline-card-overnight: var(--gp-timeline-purple-light);
+    --gp-timeline-card-gap: var(--gp-timeline-orange-light);
+
+    /* Weather icon on the timeline cards' weather chip (UI, so it flips; map markers use --gp-map-marker-weather-*) */
+    --gp-weather-icon-neutral: #0f766e;
+    --gp-weather-icon-wet: #2563eb;
+    --gp-weather-icon-snow: #0284c7;
+    --gp-weather-icon-clear: #ca8a04;
+
     --gp-map-accent-light: rgba(0, 188, 212, 0.7);
     --gp-map-accent-bg: rgba(0, 188, 212, 0.1);
 
@@ -248,6 +263,16 @@
     --gp-timeline-orange-light: rgba(245, 158, 11, 0.12);
     --gp-timeline-purple-light: rgba(139, 92, 246, 0.12);
     --gp-timeline-purple-text: #c4b5fd;
+
+    --gp-timeline-card-stay: #24334c;
+    --gp-timeline-card-trip: #1f372f;
+    --gp-timeline-card-overnight: #352b50;
+    --gp-timeline-card-gap: #3c3120;
+
+    --gp-weather-icon-neutral: #2dd4bf;
+    --gp-weather-icon-wet: #60a5fa;
+    --gp-weather-icon-snow: #38bdf8;
+    --gp-weather-icon-clear: #facc15;
 
     --gp-map-backdrop: var(--gp-surface-card);
     --gp-map-popup-background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));

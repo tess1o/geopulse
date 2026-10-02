@@ -849,7 +849,7 @@ defineExpose({
   width: 100%;
   justify-content: center;
   text-align: center;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: var(--gp-spacing-lg);
@@ -948,7 +948,7 @@ defineExpose({
 }
 
 .reports-link {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 500;
   text-decoration: none;
   font-size: 0.8125rem;

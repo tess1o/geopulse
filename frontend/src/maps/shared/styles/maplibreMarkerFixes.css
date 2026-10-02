@@ -1,8 +1,9 @@
+/* !important only to undo `.custom-marker { position: relative !important }` in styles/maps.css. */
 .maplibregl-marker.custom-marker,
 .maplibregl-marker.timeline-stack-marker,
 .maplibregl-marker.timeline-stack-marker-highlighted {
   position: absolute !important;
-  transition: none !important;
+  transition: none;
 }
 
 .maplibregl-map,
@@ -18,5 +19,5 @@
 .maplibregl-marker.custom-marker div,
 .maplibregl-marker.timeline-stack-marker,
 .maplibregl-marker.timeline-stack-marker-highlighted {
-  transition: none !important;
+  transition: none;
 }

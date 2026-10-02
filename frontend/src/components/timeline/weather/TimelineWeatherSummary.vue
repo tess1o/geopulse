@@ -202,20 +202,20 @@ onBeforeUnmount(() => {
 }
 
 .weather-summary-main > i {
-  color: #0f766e;
+  color: var(--gp-weather-icon-neutral);
 }
 
 .weather-summary-button--rain .weather-summary-main > i,
 .weather-summary-button--storm .weather-summary-main > i {
-  color: #2563eb;
+  color: var(--gp-weather-icon-wet);
 }
 
 .weather-summary-button--snow .weather-summary-main > i {
-  color: #0284c7;
+  color: var(--gp-weather-icon-snow);
 }
 
 .weather-summary-button--clear .weather-summary-main > i {
-  color: #ca8a04;
+  color: var(--gp-weather-icon-clear);
 }
 
 .weather-summary-main {
@@ -291,15 +291,15 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  /* Popover writes top, left/right and z-index inline when it opens; the width comes from popoverBreakpoints. */
   :global(.weather-details-popover.p-popover) {
-    position: fixed !important;
+    position: fixed;
     top: 50% !important;
     left: 12px !important;
     right: 12px !important;
-    bottom: auto !important;
-    transform: translateY(-50%) !important;
+    bottom: auto;
+    transform: translateY(-50%);
     z-index: 2200 !important;
-    width: auto !important;
     max-width: calc(100vw - 24px);
   }
 
@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
 
   :global(.weather-details-popover.p-popover::before),
   :global(.weather-details-popover.p-popover::after) {
-    display: none !important;
+    display: none;
   }
 
   .weather-details {

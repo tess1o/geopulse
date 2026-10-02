@@ -2377,10 +2377,11 @@ defineExpose({
   pointer-events: auto;
 }
 
-.timeline-viewer-location-control {
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
+/* The stack prefix outranks ViewerLocationControl's own absolute placement. */
+.timeline-map-control-stack > .timeline-viewer-location-control {
+  position: relative;
+  top: auto;
+  right: auto;
   z-index: auto;
 }
 

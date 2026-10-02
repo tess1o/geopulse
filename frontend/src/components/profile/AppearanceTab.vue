@@ -548,8 +548,9 @@ const handleReset = () => {
   color: var(--gp-text-secondary);
 }
 
-.color-field-control {
-  flex-direction: row !important;
+/* .field-control outranks UserProfilePage's `:deep(.field-control)` column layout. */
+.field-control.color-field-control {
+  flex-direction: row;
   align-items: center;
   flex-wrap: wrap;
 }

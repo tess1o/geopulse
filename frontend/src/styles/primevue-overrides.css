@@ -7,30 +7,32 @@
 
 /* ================================
    DIALOG STANDARDIZED SIZES
-   ================================ */
+   ================================
+   Dialog sets no inline width, so these beat Aura without !important. A dialog that needs another size gets its
+   own class instead of one of these (a `:style` width would beat them). */
 
 /* Small Dialog - Simple forms, basic inputs (max 500px) */
 .gp-dialog-sm {
-  width: 90vw !important;
-  max-width: 500px !important;
+  width: 90vw;
+  max-width: 500px;
 }
 
 /* Medium Dialog - Standard content, typical forms (max 700px) */
 .gp-dialog-md {
-  width: 90vw !important;
-  max-width: 700px !important;
+  width: 90vw;
+  max-width: 700px;
 }
 
 /* Large Dialog - Complex forms, maps, detailed content (max 900px) */
 .gp-dialog-lg {
-  width: 90vw !important;
-  max-width: 900px !important;
+  width: 90vw;
+  max-width: 900px;
 }
 
 /* Extra Large Dialog - Photo viewers, extensive content (max 1200px) */
 .gp-dialog-xl {
-  width: 90vw !important;
-  max-width: 1200px !important;
+  width: 90vw;
+  max-width: 1200px;
 }
 
 /* Responsive breakpoints for all dialog sizes */
@@ -39,7 +41,7 @@
   .gp-dialog-md,
   .gp-dialog-lg,
   .gp-dialog-xl {
-    width: 92vw !important;
+    width: 92vw;
   }
 }
 
@@ -48,45 +50,47 @@
   .gp-dialog-md,
   .gp-dialog-lg,
   .gp-dialog-xl {
-    width: 95vw !important;
+    width: 95vw;
   }
 }
 
+/* DatePicker writes the panel's width and min-width inline when it opens, so those two need !important. */
 .trip-date-range-panel {
   --p-datepicker-date-width: 2.2rem;
   --p-datepicker-date-height: 2.2rem;
   width: min(92vw, 22rem) !important;
   min-width: min(92vw, 22rem) !important;
-  max-width: min(92vw, 22rem) !important;
+  max-width: min(92vw, 22rem);
 }
 
 .trip-date-range-panel .p-datepicker-calendar-container {
-  width: 100% !important;
+  width: 100%;
 }
 
 .trip-date-range-panel .p-datepicker-header {
-  padding: var(--gp-spacing-sm) !important;
+  padding: var(--gp-spacing-sm);
 }
 
 .trip-date-range-panel .p-datepicker-day,
 .trip-date-range-panel .p-datepicker-weekday {
-  font-size: 0.95rem !important;
+  font-size: 0.95rem;
 }
 
 .trip-date-range-panel .p-datepicker-month,
 .trip-date-range-panel .p-datepicker-year {
-  padding: 0.35rem 0.45rem !important;
+  padding: 0.35rem 0.45rem;
 }
 
 @media (max-width: 640px) {
   .trip-date-range-panel {
     width: min(92vw, 19rem) !important;
     min-width: min(92vw, 19rem) !important;
-    max-width: min(92vw, 19rem) !important;
+    max-width: min(92vw, 19rem);
   }
 }
 
-/* Keep focused mobile form controls at 16px to prevent iOS Safari auto-zoom. */
+/* Keep focused mobile form controls at 16px to prevent iOS Safari auto-zoom. !important because it has to win over
+   every component and utility class that sizes an input. */
 @media (max-width: 768px), (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
   textarea,
@@ -109,7 +113,7 @@
   }
 
   .p-datepicker-panel {
-    max-width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem);
   }
 }
 

@@ -225,13 +225,6 @@ const handleNavigate = (item) => {
   z-index: 1000;
 }
 
-/* Transparent Navbar */
-.gp-navbar--transparent {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .gp-navbar-datepicker {
@@ -419,9 +412,9 @@ const handleNavigate = (item) => {
   }
 
   .gp-app-navbar-with-datepicker .gp-bell-trigger {
-    width: 2rem !important;
-    height: 2rem !important;
-    padding: 0 !important;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
   }
 }
 
@@ -430,12 +423,6 @@ const handleNavigate = (item) => {
     padding: 0 var(--gp-spacing-sm);
     padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left));
     padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right));
-  }
-
-  .gp-app-navbar-with-datepicker .gp-bell-trigger {
-    width: 2rem !important;
-    height: 2rem !important;
-    padding: 0 !important;
   }
 
   .gp-navbar-datepicker .p-floatlabel label {

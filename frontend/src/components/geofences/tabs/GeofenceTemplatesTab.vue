@@ -230,12 +230,12 @@
                   <div class="p-toast-message-content">
                     <i
                       :class="[
-                        'p-toast-icon',
+                        'p-toast-message-icon',
                         'pi',
                         toast.eventLabel === 'ENTER' ? 'pi-sign-in' : 'pi-sign-out'
                       ]"
                     />
-                    <div class="preview-toast-copy">
+                    <div class="p-toast-message-text">
                       <div class="p-toast-summary" :class="{ 'preview-empty': !toast.title }">
                         {{ toast.title || t('geofences.templatesTab.noTitleTemplate') }}
                       </div>
@@ -700,8 +700,8 @@ const templateEnabledModel = createFieldModel('enabled')
 
 :deep(.p-inputtext.p-invalid),
 :deep(.p-textarea.p-invalid) {
-  border-color: var(--p-red-500, #ef4444) !important;
-  box-shadow: 0 0 0 0.06rem color-mix(in srgb, var(--p-red-500, #ef4444) 35%, transparent) !important;
+  border-color: var(--p-red-500, #ef4444);
+  box-shadow: 0 0 0 0.06rem color-mix(in srgb, var(--p-red-500, #ef4444) 35%, transparent);
 }
 
 .sticky-stack {
@@ -735,13 +735,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .preview-toast {
-  margin-bottom: 0 !important;
-}
-
-.preview-toast-copy {
-  min-width: 0;
-  display: grid;
-  gap: 0.15rem;
+  margin-bottom: 0;
 }
 
 .preview-empty {

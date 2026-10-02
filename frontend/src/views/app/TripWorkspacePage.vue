@@ -186,7 +186,7 @@
       v-model:visible="showPlanItemDialog"
       modal
       :header="editingPlanItemId ? t('trips.workspacePage.planItemDialog.editHeader') : t('trips.workspacePage.planItemDialog.createHeader')"
-      class="gp-dialog-xl plan-item-dialog"
+      class="plan-item-dialog"
       @hide="resetPlanItemForm"
     >
       <div class="plan-item-dialog-layout">
@@ -2711,8 +2711,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
 
 <style>
 .plan-item-dialog {
-  width: 95vw !important;
-  max-width: 1480px !important;
+  width: 95vw;
+  max-width: 1480px;
 }
 
 .plan-item-dialog-marker-icon {

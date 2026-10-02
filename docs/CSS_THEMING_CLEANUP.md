@@ -30,7 +30,7 @@ Light/dark mode was broken across the app because of a few root causes:
 ## Target architecture
 
 | Piece | Role |
-|---|---|
+|---|---|---|
 | `src/presets/GeopulsePreset.js` | Single source of colours. Slate in both schemes; PrimeVue components are themed by tokens, not CSS. |
 | `src/styles/tokens.css` | All `--gp-*` tokens. The **only** place with light and dark values. Aliases `--p-*` where the concept exists. |
 | `src/styles/layers.css` | Layer order: `tailwind-base, vendor, primevue, app-components, tailwind-utilities`. |
@@ -42,7 +42,7 @@ Light/dark mode was broken across the app because of a few root causes:
 | `src/maps/shared/mapColors.js` | Marker colours used from JS; the ones CSS also uses are mirrored as `--gp-map-marker-*` tokens. |
 | `src/styles/index.css` | Entry point, imported once from `main.js`. |
 
-Conventions (enforced in Phase 7):
+Conventions (enforced by `src/styles/cssTokens.test.js` since Phase 7):
 
 - Components use tokens and don't re-colour themselves under `.p-dark`. If a colour must differ between the
   schemes and no token fits, add a semantic token in `tokens.css`.
@@ -55,7 +55,7 @@ Conventions (enforced in Phase 7):
 ### Surface and border tokens
 
 | Token | Light | Dark | Use |
-|---|---|---|---|
+|---|---|---|---|---|
 | `--gp-surface-ground` | #f8fafc | #0f172a | page background |
 | `--gp-surface-card` | #ffffff | #1e293b | cards, panels, dialogs (= `--p-content-background`) |
 | `--gp-surface-muted` | #f8fafc | #334155 | nested block inside a card |
@@ -73,7 +73,7 @@ variant has a dark value.
 ### Rename map (Phase 4 codemod)
 
 | Old | New |
-|---|---|
+|---|---|---|
 | `--gp-surface-white`, `--surface-card`, `--surface-0`, `--gp-surface-0`, `--p-surface-card` | `--gp-surface-card` |
 | `--surface-ground`, `--gp-surface-ground-dark`, `--gp-surface-darker` used as page background | `--gp-surface-ground` |
 | `--gp-surface-light`, `--surface-50`, `--surface-100`, `--surface-section`, `--gp-surface-lighter`, `--gp-surface-50`, `--gp-surface-100` | `--gp-surface-muted` |
@@ -104,14 +104,14 @@ Runtime-set variables are kept: `--gp-friend-marker-color`, `--gp-navbar-datepic
 
 ## Metrics
 
-| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | After Phase 6 | Target |
-|---|---|---|---|---|---|---|---|---|
-| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | 142 | < 150 |
-| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | 4 in 1 file (`tokens.css`) | `tokens.css` plus a few justified cases |
-| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 | 0 |
-| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
-| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
+| Metric | Start | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 | After Phase 6 | After Phase 7 | Target |
+|---|---|---|---|---|---|---|---|---|---|
+| `!important` in `src` | 1407 | 1403 | 968 | 868 | 495 | 326 | 142 | 54 (39 declarations, the rest in comments) | < 150 |
+| lines containing `p-dark` (`.vue` and `.css`) | 1114 in 141 files | 1107 in 140 files | 939 in 139 files | 869 in 140 files | 170 in 21 files | 104 in 14 files | 4 in 1 file (`tokens.css`) | 4 in 1 file (`tokens.css`) | `tokens.css` plus a few justified cases |
+| PrimeVue 3 `var(--…)` uses (incl. aliased `--text-color*`) | 564 | 564 | 563 | 555 | 0 | 0 | 0 | 0 | 0 |
+| undefined `--gp-*` names | 60 | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 51 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 (+2 set at runtime) | 0 |
+| bare `.p-dark{}` rules in the built CSS (excluding token blocks) | 13 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `.p-dark :deep(` / `:deep(.p-dark` selectors (never match) | 19 / 2 | 19 / 2 | 19 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
 
 ---
 
@@ -467,15 +467,78 @@ Left for later phases:
   light mode and light in dark mode.
 - Journey insights and digest movement bars: public transport and train have the same colours in both.
 
-### Phase 7: Guard test
-- [ ] Add `src/styles/cssTokens.test.js` (vitest). It fails on:
-  - undefined `--gp-*` names;
-  - PrimeVue 3 variables;
-  - `html.dark`, `[data-theme`, `.dark `;
-  - `:global(.p-dark)` followed by more selector text, and `.p-dark :deep(`;
-  - `:root` inside `<style scoped>`;
-  - `.p-dark` token definitions outside `tokens.css`.
-- [ ] Final metrics in the table above.
+### Phase 7: Guard test ✅
+- [x] Added `src/styles/cssTokens.test.js` (vitest). It reads every `.vue`, `.css` and `.js` file under `src` (tests
+  excluded) from disk, with CSS comments blanked, and reports each offence as `file:line text`. It fails on:
+  - undefined `--gp-*` names: every `var(--gp-…)` (CSS, templates, inline styles) and every `'--gp-…'` string literal
+    in scripts (`readCssToken`, `setProperty`, `:style` keys) must be declared in `tokens.css`. The two names set
+    from JS (`--gp-friend-marker-color`, `--gp-navbar-datepicker-width`) are an explicit allowlist, and a second
+    test fails if either file stops setting its name, so the list can't go stale;
+  - `--gp-*` declared outside `tokens.css` (a component redefining a token, or a local `--gp-` name);
+  - PrimeVue 3 variables (`--surface-*`, `--text-color*`, `--primary-color*`, `--primary-N`, the palette
+    `--green-500` etc., `--border-radius`, `--font-family`, …) and the PrimeVue 3 names with the `--p-` prefix that
+    Phase 4 found (`--p-surface-<name>`, `--p-text-color-secondary`, `--p-shadow-*`);
+  - `html.dark`, `[data-theme`, `.dark`, and `prefers-color-scheme` in CSS;
+  - `:global(.p-dark)` followed by more selector text, `.p-dark :deep(` and `:deep(.p-dark`;
+  - `:root` inside `<style scoped>`, including `.css` files pulled in with `<style scoped src>` (timeline-card.css);
+  - custom properties declared inside a `.p-dark` rule (or one nested in it) outside `tokens.css`.
+  - A sanity test checks the helpers still parse `tokens.css`, so a broken regex can't make the others pass empty.
+- [x] Checked by planting one violation of each kind in a probe component: every check reported exactly the planted
+  lines, and the valid look-alikes (`:global(.p-dark .x)`, `.gp-button--gp-primary:hover`) passed.
+- [x] Final metrics in the table above: no change from Phase 6, which already met every target.
+- [x] `!important` audit: each remaining use was checked against what it competes with. 142 down to 54 hits, of which
+  39 are declarations (the rest are comments). Cascade facts used: unlayered rules beat the `primevue` and `vendor`
+  layers without `!important`; only inline styles, PrimeVue's injected `breakpoints` rules and more specific
+  unlayered rules need more.
+  - Removed, because the only competitor was a layer, an earlier rule in the same file, or nothing:
+    - the `gp-dialog-*` widths. Dialog sets no inline width, and the one dialog with a `:style` that repeated
+      the class (Immich gallery) lost it;
+    - the Trips date-range panel's `max-width` and the rules inside it, plus the phone `.p-datepicker-panel` max-width;
+    - PhotoViewerDialog size (its `padding: 0` line is gone too: `content-style` already sets it inline);
+    - the weather popover's `position`, `bottom`, `transform` and arrow rules. Its `width: auto` is deleted: the
+      `breakpoints` prop injects its own `!important` width, which already won;
+    - every NotificationBell rule. The Phase 4 reason (the global `.p-button` shadow) doesn't apply: that rule
+      excludes `.p-button-text` and the bell is a text button;
+    - the navbar bell size, where a duplicate 480px block was deleted, and the scoped `.gp-navbar--transparent`
+      block, which repeated the unscoped one;
+    - StaysTable's place link, ProfileTab's avatar, PlaceVisitsTable's phone column hiding, SharedTimelinePage,
+      TimelineSplitLayout, GeofenceTemplatesTab, the yaml snippets, the viewer-location message, the
+      autocomplete loader, Journey insights' city icon;
+    - the `transition: none` in maplibreMarkerFixes.css (the markers also set it inline).
+  - Replaced by a selector or markup change:
+    - the plan-item, trip-reconstruction and trip-stay-split dialogs no longer carry a `gp-dialog-*` class they
+      fully overrode;
+    - PlacesMap's inline size moved into CSS, so the phone rule needs no `!important`;
+    - Home's static hero button: `.landing-page` prefix;
+    - AppNavigation compact toggle: `.p-button.` prefix;
+    - AppearanceTab's colour row: `.field-control.color-field-control`;
+    - TimelineMap's viewer-location control: `.timeline-map-control-stack >` prefix.
+  - Bug fixed: GeofenceRulesTab's template selects and cooldown input had `!important` widths, so their phone
+    rule (`width: 100%`, no `!important`) never applied. They now go full width on phones.
+  - Kept (39):
+    - inline styles: the DatePicker panel `width`/`min-width` (4), the weather popover's `top`, `left`, `right`
+      and `z-index` (4), the Leaflet popup content width (1), the toast z-index (1);
+    - the iOS 16px input rule (1), which has to win over every component;
+    - TimelineReportsPage `.stat-item` (1), against MetricItem's more specific divider rule;
+    - reduced-motion blocks (4);
+    - the map marker rules in `maps.css` (22) and maplibreMarkerFixes' `position` (1). Not changed, because their
+      effect depends on Leaflet layout that needs a UI check: `.custom-marker { position: relative !important }`
+      and `.leaflet-marker-icon { margin: 0 !important }` override the inline `position: absolute` and anchor
+      margins that `mapHelpers`' patched `_setIconStyles` sets. The three `.leaflet-div-icon` rules look dead:
+      every `divIcon` in `src` passes a `className`, which replaces `leaflet-div-icon`.
+
+**Check in the UI** (the `!important` audit; everything should look as before unless noted):
+- Dialog sizes: a `gp-dialog-sm/md/lg/xl` dialog at desktop, 900px and phone widths; the trip plan-item,
+  trip-reconstruction and stay-split dialogs; the places map dialog (Favorites); the Immich gallery (Location
+  analytics); the photo viewer at desktop and phone width.
+- Trips page date-range picker panel, desktop and phone.
+- Weather popover on a phone-width timeline: centred, 12px from the sides, above the bottom sheet.
+- Notification bell: colours, hover and pressed states in both modes; 2rem size in the phone navbar.
+- Home: the "Try demo" hero button doesn't lift on hover.
+- Timeline map: the viewer-location button sits in the right-hand control stack.
+- Profile: the avatar is 44px; Appearance's path colour rows are a row (picker and value side by side).
+- Geofences rules tab on a phone: template selects and the cooldown input are full width (a visible change).
+- Stays table: the place link button is 28px with the same hover.
 
 ---
 
@@ -535,6 +598,20 @@ Check each in light, dark and system mode (switch the OS theme on an open page);
   (popups, tooltips, controls) follows the theme through `--gp-map-*` tokens.
 - Phase 6: the context menu's look comes from preset tokens. Only the radius is GeoPulse-specific; the old
   `--gp-border-medium` border and custom shadow became Aura's `content.border` and overlay shadow.
+- Phase 7: the guard test goes slightly past the plan's list, covering conventions already written down elsewhere:
+  `prefers-color-scheme` in CSS (the `tokens.css` header forbids it; `themeMode.js` reads it from JS, which is
+  fine), `--gp-*` declarations outside `tokens.css`, `:deep(.p-dark`, and the PrimeVue 3 names with a `--p-` prefix.
+  It checks for PrimeVue 3 names with a denylist rather than validating every `--p-*` against the preset.
+- Timeline cards (after Phase 7): primary used as text in the timeline sidebar is `--gp-primary-text`. Dark primary
+  (#3b82f6) is about 3.4:1 on the dark card tints and the overnight card's `--gp-primary-dark` (#1d4ed8) about 1.9:1;
+  `--gp-primary-text` (#60a5fa) is 4.8–5.1:1. Light mode is unchanged, apart from the overnight stay card
+  (#1e40af to #2563eb, still 4.7:1). The weather chip icons get `--gp-weather-icon-*` tokens with dark values; the
+  photo chip's hover is `--gp-primary-soft` instead of solid blue under blue text.
+- Timeline cards, dark backgrounds: `--gp-timeline-card-{stay,trip,overnight,gap}` are opaque in dark mode (#24334c,
+  #1f372f, #352b50, #3c3120) instead of 12% tints, which drifted towards blue over the slate panel (trip read teal,
+  overnight indigo). Equal lightness, a step above the panel. A half-saturation set was tried and rejected: it read as
+  grey. The card border is `--gp-border` (it was `--gp-border-medium`, which outlined the cards in dark mode). Data
+  gap text uses `--gp-warning-text` (the solid warning orange was 2:1 on the light gap card).
 - Phase 2, toasts: Aura's severity colours (proper dark variants) instead of the old soft background with a solid
   border in light and card background in dark. The confirm dialog's light restyle (dividers, custom paddings,
   1.125rem title, all non-outlined buttons forced to primary) was dropped, as planned: tokens can't express it.

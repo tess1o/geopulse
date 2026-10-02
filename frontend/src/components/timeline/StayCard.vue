@@ -423,12 +423,12 @@ const formattedTimestamp = computed(() => {
 }
 
 .timeline-card--stay {
-  background-color: var(--gp-timeline-blue-light);
+  background-color: var(--gp-timeline-card-stay);
   border-left: 4px solid var(--gp-primary);
 }
 
 .location-name {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
 }
 
@@ -436,7 +436,7 @@ const formattedTimestamp = computed(() => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -484,7 +484,7 @@ const formattedTimestamp = computed(() => {
 }
 
 .duration-text {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
 }
 
@@ -502,6 +502,6 @@ const formattedTimestamp = computed(() => {
 
 .duration-detail .duration-value {
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 </style>
