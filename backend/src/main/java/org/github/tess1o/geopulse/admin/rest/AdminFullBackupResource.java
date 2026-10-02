@@ -3,7 +3,6 @@ package org.github.tess1o.geopulse.admin.rest;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import io.vertx.core.http.HttpServerRequest;
-import io.quarkiverse.httpproblem.HttpProblem;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;

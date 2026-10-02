@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.auth.service;
 
-import io.quarkiverse.httpproblem.HttpProblem;
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
@@ -12,6 +11,7 @@ import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.ext.Provider;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -63,13 +63,13 @@ public class CsrfProtectionFilter implements ContainerRequestFilter, ContainerRe
         String headerToken = requestContext.getHeaderString(CSRF_HEADER);
         if (headerToken == null || headerToken.isBlank()) {
             if (isFormRequest(requestContext.getMediaType())) {
-                throw csrfProblem("CSRF token is required");
+                throw new GeoPulseException(CSRF_TOKEN_INVALID, "CSRF token is required");
             }
             return;
         }
 
         if (csrfCookie == null || !constantTimeEquals(csrfCookie.getValue(), headerToken)) {
-            throw csrfProblem("CSRF token is invalid");
+            throw new GeoPulseException(CSRF_TOKEN_INVALID, "CSRF token is invalid");
         }
     }
 
@@ -109,14 +109,5 @@ public class CsrfProtectionFilter implements ContainerRequestFilter, ContainerRe
         }
         return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
                 actual.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private HttpProblem csrfProblem(String detail) {
-        return HttpProblem.builder()
-                .withStatus(CSRF_TOKEN_INVALID.statusCode())
-                .withTitle(CSRF_TOKEN_INVALID.title())
-                .withDetail(detail)
-                .with("code", CSRF_TOKEN_INVALID)
-                .build();
     }
 }
