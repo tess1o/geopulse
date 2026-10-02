@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.064ae357.css">
-<script src="/assets/js/runtime~main.84a7ab1e.js" defer="defer"></script>
-<script src="/assets/js/main.06e8822a.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.3a078ae6.js" defer="defer"></script>
+<script src="/assets/js/main.b0993e09.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -33,6 +33,7 @@ Valhalla is the routing service GeoPulse uses to match GPS traces to OpenStreetM
 <li class="">Open <strong>Profile</strong> from your avatar menu.</li>
 <li class="">Go to <strong>Display Settings</strong>.</li>
 <li class="">Turn on <strong>Map Matching</strong>.</li>
+<li class="">Optionally choose movement types under <strong>Show raw GPS for</strong>.</li>
 <li class="">Save your changes.</li>
 </ol>
 <p>If the switch is disabled, Map Matching is not currently available on your GeoPulse instance. Ask your administrator to
@@ -46,6 +47,9 @@ GPS path together with the matched path. Use this when you want to inspect how m
 recorded GPS trace. The comparison control is only shown when a matched trip is selected.</p>
 <p>Some trips may still appear as raw GPS paths:</p>
 <ul>
+<li class="">Their current movement type is selected under <strong>Show raw GPS for</strong>. This also applies after manually changing a trip&#x27;s
+movement type. GeoPulse hides matching progress, comparison controls, and Map Matching details for these trips, although
+matching may continue in the background.</li>
 <li class="">GeoPulse is still processing the match.</li>
 <li class="">The trip type is not supported for matching.</li>
 <li class="">Valhalla does not have map data for that region.</li>
@@ -54,6 +58,10 @@ recorded GPS trace. The comparison control is only shown when a matched trip is 
 </ul>
 <p>In these cases, GeoPulse keeps the raw GPS path visible. It does not hide the trip or replace it with a low-confidence
 route.</p>
+<p>To see what happened to a specific trip, right-click the trip card (long-press on a touch device) and choose <strong>Map
+matching details...</strong>. It confirms when a route was refined and when that happened, tells you if the trip is still
+waiting to be matched, or explains why it was not — for example that the routing engine has no map data for the area or
+that the trip type is not supported.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="future-trips">Future Trips<a href="#future-trips" class="hash-link" aria-label="Direct link to Future Trips" title="Direct link to Future Trips" translate="no">​</a></h2>
 <p>New trips may appear as raw GPS paths first. If automatic matching is enabled by your administrator, GeoPulse waits until
 the trip is stable before sending it to Valhalla. This avoids repeatedly matching a trip that is still changing as new GPS
@@ -65,6 +73,9 @@ skipped, the raw path remains.</p>
 so GeoPulse gradually prepares matched routes for past trips.</p>
 <p>If backfill has not reached a trip yet, opening a timeline page may still queue visible trips for matching on demand,
 depending on your instance settings. While this happens, the raw path stays visible so the map remains usable.</p>
+<p>When your administrator changes how matching works — for example the Valhalla server or the matching limits — past trips
+keep the routes they already have. Each trip is matched again the next time you view it, and an administrator can update
+all past trips at once instead of waiting for them to come up.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="raw-gps-still-matters">Raw GPS Still Matters<a href="#raw-gps-still-matters" class="hash-link" aria-label="Direct link to Raw GPS Still Matters" title="Direct link to Raw GPS Still Matters" translate="no">​</a></h2>
 <p>Map Matching changes how a trip can look on the map, not what GeoPulse stores as your location history.</p>
 <p>Your raw GPS data continues to control:</p>

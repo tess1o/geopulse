@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.064ae357.css">
-<script src="/assets/js/runtime~main.84a7ab1e.js" defer="defer"></script>
-<script src="/assets/js/main.06e8822a.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.3a078ae6.js" defer="defer"></script>
+<script src="/assets/js/main.b0993e09.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -58,7 +58,7 @@
 <p>The system supports several trip types:</p>
 <ul>
 <li class=""><strong>Walking (WALK):</strong> Low-speed movement where both average and maximum speeds are below the defined walking thresholds (default: ≤6 km/h average, ≤8 km/h maximum).</li>
-<li class=""><strong>Car (CAR):</strong> Motorized transport including cars, buses, and motorcycles. Classified when average speed is ≥10 km/h OR maximum speed is ≥15 km/h.</li>
+<li class=""><strong>Motor vehicle labels (CAR, MOTORCYCLE, PUBLIC_TRANSPORT):</strong> Car-like travel is classified when average speed is ≥10 km/h OR maximum speed is ≥15 km/h. The selected label is a user preference; Public Transportation is not specific bus detection.</li>
 <li class=""><strong>Bicycle (BICYCLE):</strong> Optional type for cycling and running (8-25 km/h). Must be explicitly enabled in Timeline Preferences.</li>
 <li class=""><strong>Train (TRAIN):</strong> Optional type for rail travel (30-150 km/h with low speed variance). Must be explicitly enabled.</li>
 <li class=""><strong>Flight (FLIGHT):</strong> Optional type for air travel (400+ km/h average OR 500+ km/h peak). Must be explicitly enabled.</li>
@@ -106,7 +106,7 @@
 <p>This likely represents you moving your car to a different parking spot. The merging process will combine these three events into a single, longer stay at the &quot;Local Shopping Center,&quot; absorbing the short trip into the stay&#x27;s duration.</p>
 <p>This merge only happens if the trip between the two stays is very short, based on configurable time and distance thresholds. This feature helps to produce a cleaner, more intuitive timeline by removing insignificant movements.</p>
 <hr>
-<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-automatic-timeline-builder">The Automatic Timeline Builder<a href="#the-automatic-timeline-builder" class="hash-link" aria-label="Direct link to The Automatic Timeline Builder" title="Direct link to The Automatic Timeline Builder" translate="no"> ​</a></h2>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-automatic-timeline-builder">The Automatic Timeline Builder<a href="#the-automatic-timeline-builder" class="hash-link" aria-label="Direct link to The Automatic Timeline Builder" title="Direct link to The Automatic Timeline Builder" translate="no">​</a></h2>
 <p>The timeline generation process is fully automatic and designed to be both responsive and accurate.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-rebuild-process">The Rebuild Process<a href="#the-rebuild-process" class="hash-link" aria-label="Direct link to The Rebuild Process" title="Direct link to The Rebuild Process" translate="no">​</a></h3>
 <p>A background job runs automatically every few minutes (typically 5 by default, but this is configurable). Instead of just adding new data to the end, this job performs a &quot;smart rebuild&quot;:</p>

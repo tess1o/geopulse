@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.064ae357.css">
-<script src="/assets/js/runtime~main.84a7ab1e.js" defer="defer"></script>
-<script src="/assets/js/main.06e8822a.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.3a078ae6.js" defer="defer"></script>
+<script src="/assets/js/main.b0993e09.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -104,7 +104,7 @@
 <p>By default, GeoPulse stores persistent files under:</p>
 <div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">/mnt/user/appdata/geopulse</span><br></span></code></pre></div></div>
 <p>The compose files create these paths:</p>
-<table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td><code>postgres/</code></td><td>PostgreSQL/PostGIS database files.</td></tr><tr><td><code>keys/</code></td><td>JWT keys and AI encryption key generated on first start.</td></tr><tr><td><code>import-drop/</code></td><td>Optional server-side import drop folder.</td></tr><tr><td><code>mosquitto/</code></td><td>MQTT config, data, and logs when using the complete compose file.</td></tr></tbody></table>
+<table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td><code>postgres/</code></td><td>PostgreSQL/PostGIS database files.</td></tr><tr><td><code>keys/</code></td><td>JWT keys and AI encryption key generated on first start.</td></tr><tr><td><code>import-drop/</code></td><td>Optional server-side import drop folder.</td></tr><tr><td><code>mosquitto/</code></td><td>MQTT config and data when using the complete compose file. Broker logs use Docker stdout rotation.</td></tr></tbody></table>
 <p>To use another appdata path, set <code>GEOPULSE_APPDATA</code> before starting the stack:</p>
 <div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_APPDATA=/mnt/user/appdata/geopulse</span><br></span></code></pre></div></div>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="reverse-proxy">Reverse Proxy<a href="#reverse-proxy" class="hash-link" aria-label="Direct link to Reverse Proxy" title="Direct link to Reverse Proxy" translate="no">​</a></h2>
