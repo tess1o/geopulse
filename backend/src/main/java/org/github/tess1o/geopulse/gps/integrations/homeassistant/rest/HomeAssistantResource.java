@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.homeassistant.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -8,13 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/homeassistant")
+@Path(ApiPaths.GPS_INGEST + "/home-assistant")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -32,17 +37,18 @@ public class HomeAssistantResource {
     @POST
     @Operation(summary = "Ingest Home Assistant location",
             description = "Receives a Home Assistant location update and stores it for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted")
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
-        log.info("Received payload for home assistant: {}", data);
-
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        gpsPointService.saveHomeAssitantGpsPoint(data, userId, GpsSourceType.HOME_ASSISTANT, config);
+        var summary = gpsPointService.saveHomeAssitantGpsPoint(data, userId, GpsSourceType.HOME_ASSISTANT, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.HOME_ASSISTANT, started);
         return Response.ok().build();
     }
 }

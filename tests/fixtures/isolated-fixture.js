@@ -20,9 +20,11 @@ export const test = base.extend({
   dbManager: [async ({}, use) => {
     const dbManager = new DatabaseManager();
     await dbManager.connect();
+    UserFactory.setDatabaseManager(dbManager);
 
     await use(dbManager);
 
+    UserFactory.setDatabaseManager(null);
     await dbManager.disconnect();
   }, { scope: 'worker' }],
 

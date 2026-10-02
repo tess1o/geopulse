@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "oidc_providers")
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

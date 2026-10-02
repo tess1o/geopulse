@@ -19,7 +19,7 @@ public class TripRepository implements PanacheRepository<TripEntity> {
         return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
     }
 
-    public Optional<TripEntity> findByPeriodTagIdAndUserId(Long periodTagId, UUID userId) {
-        return find("periodTag.id = ?1 and user.id = ?2", periodTagId, userId).firstResultOptional();
+    public Optional<TripEntity> findByTimelineLabelIdAndUserId(Long timelineLabelId, UUID userId) {
+        return find("timelineLabel.id = ?1 and user.id = ?2", timelineLabelId, userId).firstResultOptional();
     }
 }

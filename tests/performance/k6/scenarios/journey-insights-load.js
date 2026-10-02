@@ -1,7 +1,7 @@
 /**
  * GeoPulse k6 Load Test - Journey Insights Endpoint
  *
- * Tests the /api/journey-insights endpoint.
+ * Tests the /api/v1/journey-insights endpoint.
  * This endpoint returns comprehensive journey insights including geographic patterns,
  * time patterns, achievements, and distance traveled.
  */
@@ -63,7 +63,7 @@ export default function (data) {
   const auth = getAuthManager(data.users);
 
   // Journey insights endpoint (no date range parameters)
-  const insightsUrl = `${config.baseUrl}/api/journey-insights`;
+  const insightsUrl = `${config.baseUrl}/api/v1/journey-insights`;
 
   // Make request to journey insights endpoint
   const response = http.get(insightsUrl, {

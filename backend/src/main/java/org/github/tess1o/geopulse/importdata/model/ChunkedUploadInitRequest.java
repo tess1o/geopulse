@@ -10,5 +10,5 @@ public class ChunkedUploadInitRequest {
     private String fileName;
     private long fileSize;
     private String importFormat;
-    private String options;  // JSON string of ImportOptions
+    private ImportOptions options;  // Optional; defaults apply when omitted
 }

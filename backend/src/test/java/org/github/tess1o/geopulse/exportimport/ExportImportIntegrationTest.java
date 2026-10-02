@@ -39,8 +39,8 @@ import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
 import org.github.tess1o.geopulse.notes.model.NoteLocationSource;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
 import org.github.tess1o.geopulse.notes.repository.TimelineNoteRepository;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -64,9 +64,6 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -114,7 +111,7 @@ class ExportImportIntegrationTest {
     @Inject
     GpsSourceRepository gpsSourceRepository;
     @Inject
-    PeriodTagRepository periodTagRepository;
+    TimelineLabelRepository timelineLabelRepository;
     @Inject
     TripRepository tripRepository;
     @Inject
@@ -136,7 +133,6 @@ class ExportImportIntegrationTest {
     @Inject
     AIEncryptionService encryptionService;
 
-    private final GeometryFactory geometryFactory = new GeometryFactory();
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -150,7 +146,7 @@ class ExportImportIntegrationTest {
     private TimelineDataGapEntity testDataGap;
     private GpsPointEntity testGpsPoint;
     private GpsSourceConfigEntity testGpsSource;
-    private PeriodTagEntity testPeriodTag;
+    private TimelineLabelEntity testTimelineLabel;
     private TimelineTripMovementOverrideEntity testTripOverride;
     private TimelineDataGapStayOverrideEntity testGapOverride;
     private TripEntity testTrip;
@@ -276,13 +272,6 @@ class ExportImportIntegrationTest {
                 .build();
         timelineStayRepository.persist(testStay);
 
-        Coordinate[] pathCoordinates = new Coordinate[]{
-                new Coordinate(-122.4194, 37.7749),
-                new Coordinate(-122.4150, 37.7770),
-                new Coordinate(-122.4120, 37.7800),
-                new Coordinate(-122.4094, 37.7849)
-        };
-        LineString tripPath = geometryFactory.createLineString(pathCoordinates);
         testTimelineTrip = TimelineTripEntity.builder()
                 .user(testUser)
                 .timestamp(BASE_TIME.minus(90, ChronoUnit.MINUTES))
@@ -292,7 +281,6 @@ class ExportImportIntegrationTest {
                 .tripDuration(1800)
                 .movementType("WALKING")
                 .movementTypeSource(MovementTypeSource.MANUAL)
-                .path(tripPath)
                 .avgGpsSpeed(1.3)
                 .maxGpsSpeed(2.1)
                 .speedVariance(0.4)
@@ -347,9 +335,9 @@ class ExportImportIntegrationTest {
     }
 
     private void createNewGeoPulseExportData() {
-        testPeriodTag = PeriodTagEntity.builder()
+        testTimelineLabel = TimelineLabelEntity.builder()
                 .user(testUser)
-                .tagName("Winter Travel")
+                .name("Winter Travel")
                 .startTime(BASE_TIME.minus(1, ChronoUnit.DAYS))
                 .endTime(BASE_TIME.plus(1, ChronoUnit.DAYS))
                 .source("manual")
@@ -359,7 +347,7 @@ class ExportImportIntegrationTest {
                 .createdAt(BASE_TIME.minus(2, ChronoUnit.DAYS))
                 .updatedAt(BASE_TIME.minus(1, ChronoUnit.DAYS))
                 .build();
-        periodTagRepository.persist(testPeriodTag);
+        timelineLabelRepository.persist(testTimelineLabel);
 
         testTripOverride = TimelineTripMovementOverrideEntity.builder()
                 .user(testUser)
@@ -401,7 +389,7 @@ class ExportImportIntegrationTest {
 
         testTrip = TripEntity.builder()
                 .user(testUser)
-                .periodTag(testPeriodTag)
+                .timelineLabel(testTimelineLabel)
                 .name("Conference Trip")
                 .startTime(BASE_TIME.minus(1, ChronoUnit.DAYS))
                 .endTime(BASE_TIME.plus(3, ChronoUnit.DAYS))
@@ -581,10 +569,6 @@ class ExportImportIntegrationTest {
 
     private OriginalData captureOriginalData() {
         return QuarkusTransaction.requiringNew().call(() -> {
-            TimelineTripEntity timelineTrip = timelineTripRepository.findById(testTimelineTrip.getId());
-            assertNotNull(timelineTrip.getPath());
-            assertEquals(4, timelineTrip.getPath().getNumPoints());
-
             return new OriginalData(
                     testGeocodingLocation.getRequestCoordinates().getX(),
                     testGeocodingLocation.getRequestCoordinates().getY(),
@@ -605,9 +589,9 @@ class ExportImportIntegrationTest {
                     testGpsSource.getMaxAllowedSpeed(),
                     testGpsSource.isEnableDuplicateDetection(),
                     testGpsSource.getDuplicateDetectionThresholdMinutes(),
-                    testPeriodTag.getTagName(),
-                    testPeriodTag.getStartTime(),
-                    testPeriodTag.getColor(),
+                    testTimelineLabel.getName(),
+                    testTimelineLabel.getStartTime(),
+                    testTimelineLabel.getColor(),
                     testTripOverride.getMovementType(),
                     testGapOverride.getSelectedLocationName(),
                     testTrip.getName(),
@@ -683,7 +667,7 @@ class ExportImportIntegrationTest {
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.USER_INFO));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.LOCATION_SOURCES));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.REVERSE_GEOCODING));
-        assertTrue(entries.containsKey(ExportImportConstants.FileNames.PERIOD_TAGS));
+        assertTrue(entries.containsKey(ExportImportConstants.FileNames.TIMELINE_LABELS));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.TRIP_WORKSPACE));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES));
@@ -728,9 +712,9 @@ class ExportImportIntegrationTest {
         assertEquals(25.0, exportedTrip.getWaterDistanceMeters(), 0.001);
         assertTrue(exportedTrip.getWaterEvidenceAvailable());
 
-        PeriodTagsDataDto periodTags = read(entries, ExportImportConstants.FileNames.PERIOD_TAGS, PeriodTagsDataDto.class);
-        assertEquals(1, periodTags.getPeriodTags().size());
-        assertEquals("Winter Travel", periodTags.getPeriodTags().get(0).getTagName());
+        TimelineLabelsDataDto timelineLabels = read(entries, ExportImportConstants.FileNames.TIMELINE_LABELS, TimelineLabelsDataDto.class);
+        assertEquals(1, timelineLabels.getTimelineLabels().size());
+        assertEquals("Winter Travel", timelineLabels.getTimelineLabels().get(0).getName());
 
         TimelineOverridesDataDto overrides = read(entries, ExportImportConstants.FileNames.TIMELINE_OVERRIDES, TimelineOverridesDataDto.class);
         assertEquals(1, overrides.getTripMovementOverrides().size());
@@ -860,7 +844,7 @@ class ExportImportIntegrationTest {
         entityManager.createQuery("DELETE FROM TimelineDataGapEntity gap WHERE gap.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
-        entityManager.createQuery("DELETE FROM PeriodTagEntity tag WHERE tag.user.id = :userId")
+        entityManager.createQuery("DELETE FROM TimelineLabelEntity tag WHERE tag.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
         entityManager.createQuery("DELETE FROM GpsPointEntity point WHERE point.user.id = :userId")
@@ -879,7 +863,7 @@ class ExportImportIntegrationTest {
 
     private void mutateExistingImportTargets() {
         QuarkusTransaction.requiringNew().run(() -> {
-            periodTagRepository.findByUserId(testUser.getId()).get(0).setColor("#000000");
+            timelineLabelRepository.findByUserId(testUser.getId()).get(0).setColor("#000000");
             findTripOverride().setMovementType("DRIVING");
             findGapOverride().setSelectedLocationName("Changed Location");
             notificationTemplateRepository.findByUser(testUser.getId()).stream()
@@ -943,10 +927,10 @@ class ExportImportIntegrationTest {
             assertEquals(originalData.gpsSourceEnableDuplicateDetection(), importedGpsSource.isEnableDuplicateDetection());
             assertEquals(originalData.gpsSourceDuplicateDetectionThresholdMinutes(), importedGpsSource.getDuplicateDetectionThresholdMinutes());
 
-            PeriodTagEntity periodTag = periodTagRepository.findByUserId(testUser.getId()).get(0);
-            assertEquals(originalData.periodTagName(), periodTag.getTagName());
-            assertEquals(originalData.periodTagStartTime(), periodTag.getStartTime());
-            assertEquals(originalData.periodTagColor(), periodTag.getColor());
+            TimelineLabelEntity timelineLabel = timelineLabelRepository.findByUserId(testUser.getId()).get(0);
+            assertEquals(originalData.timelineLabelName(), timelineLabel.getName());
+            assertEquals(originalData.timelineLabelStartTime(), timelineLabel.getStartTime());
+            assertEquals(originalData.timelineLabelColor(), timelineLabel.getColor());
 
             assertEquals(originalData.tripOverrideMovementType(), findTripOverride().getMovementType());
             assertEquals(originalData.gapOverrideLocationName(), findGapOverride().getSelectedLocationName());
@@ -954,7 +938,7 @@ class ExportImportIntegrationTest {
             TripEntity trip = tripRepository.findByUserId(testUser.getId()).get(0);
             assertEquals(originalData.tripName(), trip.getName());
             assertEquals(originalData.tripNotes(), trip.getNotes());
-            assertEquals(periodTag.getId(), trip.getPeriodTag().getId());
+            assertEquals(timelineLabel.getId(), trip.getTimelineLabel().getId());
 
             TripPlanItemEntity planItem = tripPlanItemRepository.findByTripId(trip.getId()).get(0);
             assertEquals(originalData.planItemTitle(), planItem.getTitle());
@@ -1042,7 +1026,7 @@ class ExportImportIntegrationTest {
     }
 
     private void assertNativeSectionCounts(UUID userId, long expected) {
-        assertEquals(expected, periodTagRepository.count("user.id = ?1", userId), "period tags");
+        assertEquals(expected, timelineLabelRepository.count("user.id = ?1", userId), "timeline labels");
         assertEquals(expected, entityManager.createQuery(
                 "SELECT COUNT(override) FROM TimelineTripMovementOverrideEntity override WHERE override.user.id = :userId",
                 Long.class).setParameter("userId", userId).getSingleResult(), "trip overrides");
@@ -1082,7 +1066,7 @@ class ExportImportIntegrationTest {
                 ExportImportConstants.DataTypes.LOCATION_SOURCES,
                 ExportImportConstants.DataTypes.FAVORITES,
                 ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
-                ExportImportConstants.DataTypes.PERIOD_TAGS,
+                ExportImportConstants.DataTypes.TIMELINE_LABELS,
                 ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
                 ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                 ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,
@@ -1100,7 +1084,7 @@ class ExportImportIntegrationTest {
                 ExportImportConstants.DataTypes.LOCATION_SOURCES,
                 ExportImportConstants.DataTypes.FAVORITES,
                 ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
-                ExportImportConstants.DataTypes.PERIOD_TAGS,
+                ExportImportConstants.DataTypes.TIMELINE_LABELS,
                 ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
                 ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                 ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,
@@ -1131,9 +1115,9 @@ class ExportImportIntegrationTest {
             Integer gpsSourceMaxAllowedSpeed,
             boolean gpsSourceEnableDuplicateDetection,
             Integer gpsSourceDuplicateDetectionThresholdMinutes,
-            String periodTagName,
-            Instant periodTagStartTime,
-            String periodTagColor,
+            String timelineLabelName,
+            Instant timelineLabelStartTime,
+            String timelineLabelColor,
             String tripOverrideMovementType,
             String gapOverrideLocationName,
             String tripName,

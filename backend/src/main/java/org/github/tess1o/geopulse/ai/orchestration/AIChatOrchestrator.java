@@ -50,7 +50,7 @@ public class AIChatOrchestrator {
 
         boolean loggingEnabled = systemSettingsService.getBoolean("ai.logging.enabled");
         if (loggingEnabled) {
-            log.info("Starting AI chat for user " + userId + " with message: " + userMessage);
+            log.info("AI chat started: provider=OPENAI, model={}", settings.getOpenaiModel());
         }
 
         // 2. Function calling loop
@@ -89,7 +89,7 @@ public class AIChatOrchestrator {
                 // Normal completion - store final assistant response in persistent memory
                 chatMemory.addMessage(userId, assistantMessage); // This is the final answer after tool calls
                 if (loggingEnabled) {
-                    log.info("Chat completed normally for user " + userId);
+                    log.info("AI chat completed: provider=OPENAI, model={}, status=success", settings.getOpenaiModel());
                 }
                 return assistantMessage.getContent();
             }
@@ -111,7 +111,7 @@ public class AIChatOrchestrator {
                     String arguments = toolCall.function().arguments();
 
                     if (loggingEnabled) {
-                        log.info("Executing tool: " + toolName + " with arguments: " + arguments);
+                        log.info("Executing AI tool: {}", toolName);
                     }
 
                     try {
@@ -130,7 +130,7 @@ public class AIChatOrchestrator {
                         }
 
                         if (loggingEnabled) {
-                            log.info("Tool " + toolName + " returned: " + truncatedResult);
+                            log.info("AI tool completed: tool={}, resultCharacters={}", toolName, truncatedResult.length());
                         }
 
                         ChatMessage toolResponse = new ChatMessage("tool", truncatedResult, null, null);
@@ -139,7 +139,7 @@ public class AIChatOrchestrator {
                         // Add to current conversation only, NOT to persistent chat memory
                         messages.add(toolResponse);
                     } catch (Exception e) {
-                        log.error("Error executing tool " + toolName, e);
+                        log.error("AI tool failed: tool={}, status=error, errorClass={}", toolName, e.getClass().getSimpleName());
                         String errorMessage = "{\"error\": \"Failed to execute tool: " + e.getMessage() + "\"}";
                         ChatMessage toolResponse = new ChatMessage("tool", errorMessage, null, null);
                         toolResponse.setToolCallId(toolCall.id());
@@ -158,7 +158,7 @@ public class AIChatOrchestrator {
 
             if ("length".equals(finishReason)) {
                 if (loggingEnabled) {
-                    log.info("Response too long for user " + userId);
+                    log.info("AI chat completed: provider=OPENAI, model={}, status=response_too_long", settings.getOpenaiModel());
                 }
                 return "Response too long. Please ask a more specific question.";
             }
@@ -169,7 +169,7 @@ public class AIChatOrchestrator {
         }
 
         if (loggingEnabled) {
-            log.info("Max function calls reached for user " + userId);
+            log.info("AI chat completed: provider=OPENAI, model={}, status=max_tool_calls", settings.getOpenaiModel());
         }
         return "Query too complex. Please break it into smaller questions.";
     }

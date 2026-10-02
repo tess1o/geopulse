@@ -39,6 +39,7 @@ public class GeographicInsightService {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<String> countryNames = query.getResultList();
         return countryNames.stream()
                 .map(this::mapCountryNameToCountry)
@@ -66,6 +67,7 @@ public class GeographicInsightService {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
         return results.stream()
                 .map(row -> new City((String) row[0], ((Number) row[1]).intValue()))

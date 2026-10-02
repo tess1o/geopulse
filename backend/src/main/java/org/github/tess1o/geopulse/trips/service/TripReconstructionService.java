@@ -242,7 +242,7 @@ public class TripReconstructionService {
             type = SegmentType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
-                    "Segment " + (index + 1) + " has invalid segmentType. Allowed values: STAY, TRIP"
+                    "Segment " + (index + 1) + " has invalid segmentType. Allowed values: STAY, TRIP", ex
             );
         }
 
@@ -299,8 +299,8 @@ public class TripReconstructionService {
         try {
             return TripType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException(
-                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, BOAT, UNKNOWN"
+            throw new IllegalArgumentException(
+                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, BOAT, UNKNOWN", ex
             );
         }
     }
@@ -495,7 +495,7 @@ public class TripReconstructionService {
             );
             case BOAT -> new SpeedRange(0.5d, positiveOrDefault(config.getBoatMaxPlausibleSpeed(), 120.0d));
             case UNKNOWN -> new SpeedRange(3.0d, 50.0d);
-            case CAR, MOTORCYCLE -> {
+            case CAR, MOTORCYCLE, PUBLIC_TRANSPORT -> {
                 double min = positiveOrDefault(config.getCarMinAvgSpeed(), 10.0d);
                 double max = positiveOrDefault(config.getTrainMinAvgSpeed(), 120.0d) - 1.0d;
                 if (max <= min) {

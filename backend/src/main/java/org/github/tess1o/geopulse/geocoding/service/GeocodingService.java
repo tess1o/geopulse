@@ -32,12 +32,9 @@ public class GeocodingService {
             throw new IllegalArgumentException("Point cannot be null");
         }
 
-        double longitude = point.getX();
-        double latitude = point.getY();
-
         // NOTE: Cache lookup is handled by LocationPointResolver with userId context.
         // This service just fetches from external provider and caches as original.
-        log.info("Fetching from external geocoding service: lon={}, lat={}", longitude, latitude);
+        log.debug("Fetching from external geocoding service");
         return QuarkusTransaction.suspendingExisting().call(() -> fetchAndCacheLocationName(point));
     }
 
@@ -51,25 +48,24 @@ public class GeocodingService {
 
             // Defensive null check - should never happen with proper adapter/service implementation
             if (geocodingResult == null) {
-                log.error("Geocoding provider returned null result for coordinates: lon={}, lat={}", longitude, latitude);
+                log.error("Geocoding provider returned a null result");
                 throw new IllegalStateException("Geocoding provider returned null result");
             }
 
-            log.info("Successfully fetched address from {}: lon={}, lat={}, displayName={}",
-                    geocodingResult.getProviderName(), longitude, latitude, geocodingResult.getFormattedDisplayName());
+            log.debug("Successfully fetched address from provider {}", geocodingResult.getProviderName());
 
             // Cache the structured result
             try {
                 cacheService.cacheGeocodingResult(geocodingResult);
-                log.debug("Successfully cached result for coordinates: lon={}, lat={}", longitude, latitude);
+                log.debug("Successfully cached geocoding result");
             } catch (Exception cacheError) {
-                log.warn("Failed to cache result for coordinates: lon={}, lat={}", longitude, latitude, cacheError);
+                log.warn("Failed to cache geocoding result", cacheError);
             }
 
             return geocodingResult;
 
         } catch (Exception e) {
-            log.error("Error getting address from coordinates: lon={}, lat={}", longitude, latitude, e);
+            log.error("Error getting address from geocoding provider", e);
             // Return a fallback FormattableGeocodingResult
             return SimpleFormattableResult.builder()
                     .requestCoordinates(point)

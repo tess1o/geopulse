@@ -40,6 +40,5 @@ public class TripReconstructionSegmentDto {
 
     private String movementType;
 
-    @Valid
-    private List<TripReconstructionWaypointDto> waypoints;
+    private List<@Valid TripReconstructionWaypointDto> waypoints;
 }

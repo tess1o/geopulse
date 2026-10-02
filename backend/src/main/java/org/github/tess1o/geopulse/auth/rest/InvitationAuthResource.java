@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -15,12 +17,15 @@ import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
 
-@Path("/api/auth/invitation")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+
+@Path("/registration-invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @PermitAll
@@ -41,8 +46,8 @@ public class InvitationAuthResource {
      * Validate an invitation token (public endpoint)
      */
     @GET
-    @Path("/{token}/validate")
-    public Response validateToken(@PathParam("token") String token) {
+    @Path("/{token}")
+    public ValidateInvitationResponse validateToken(@PathParam("token") String token) {
         try {
             UserInvitationEntity invitation = invitationService.validateToken(token);
 
@@ -52,20 +57,9 @@ public class InvitationAuthResource {
                     .message(getStatusMessage(invitation))
                     .build();
 
-            return Response.ok(response).build();
+            return response;
         } catch (IllegalArgumentException e) {
-            ValidateInvitationResponse response = ValidateInvitationResponse.builder()
-                    .valid(false)
-                    .status(null)
-                    .message("Invalid invitation token")
-                    .build();
-
-            return Response.status(Response.Status.NOT_FOUND).entity(response).build();
-        } catch (Exception e) {
-            log.error("Error validating invitation token", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to validate invitation"))
-                    .build();
+            throw new GeoPulseException(INVITATION_NOT_FOUND, "Invalid invitation token", e);
         }
     }
 
@@ -73,57 +67,52 @@ public class InvitationAuthResource {
      * Register a new user via invitation (public endpoint, bypasses registration checks)
      */
     @POST
-    @Path("/register")
-    public Response registerViaInvitation(@Valid InvitationRegisterRequest request) {
+    @Path("/{token}/registrations")
+    public RestResponse<UserResponse> registerViaInvitation(
+            @PathParam("token") String token,
+            @Valid InvitationRegisterRequest request) {
         try {
             // Validate the invitation token first
-            UserInvitationEntity invitation = invitationService.validateToken(request.getToken());
+            UserInvitationEntity invitation = invitationService.validateToken(token);
 
             if (!invitation.isValid()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error(getStatusMessage(invitation)))
-                        .build();
+                throw new GeoPulseException(INVALID_INVITATION, getStatusMessage(invitation).fallback());
             }
 
             // Register the user (this bypasses registration enabled checks)
             UserEntity user = userService.registerUserViaInvitation(
-                    request.getToken(),
+                    token,
                     request.getEmail(),
                     request.getPassword(),
                     request.getFullName(),
-                    request.getTimezone()
+                    request.getTimezone(),
+                    request.getLanguage()
             );
 
             // Mark invitation as used
-            invitationService.markAsUsed(request.getToken(), user.getId());
+            invitationService.markAsUsed(token, user.getId());
 
             UserResponse response = userMapper.toResponse(user);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(response))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED, response);
 
         } catch (IllegalArgumentException e) {
-            log.warn("Registration via invitation failed: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error registering user via invitation", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Registration failed"))
-                    .build();
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 
     /**
      * Get human-readable status message
      */
-    private String getStatusMessage(UserInvitationEntity invitation) {
+    private MessageDescriptor getStatusMessage(UserInvitationEntity invitation) {
         return switch (invitation.getStatus()) {
-            case PENDING -> "Invitation is valid and ready to use";
-            case USED -> "This invitation has already been used";
-            case EXPIRED -> "This invitation has expired";
-            case REVOKED -> "This invitation has been revoked";
+            case PENDING -> new MessageDescriptor("invitations.status.pending", Map.of(),
+                    "Invitation is valid and ready to use");
+            case USED -> new MessageDescriptor("invitations.status.used", Map.of(),
+                    "This invitation has already been used");
+            case EXPIRED -> new MessageDescriptor("invitations.status.expired", Map.of(),
+                    "This invitation has expired");
+            case REVOKED -> new MessageDescriptor("invitations.status.revoked", Map.of(),
+                    "This invitation has been revoked");
         };
     }
 }

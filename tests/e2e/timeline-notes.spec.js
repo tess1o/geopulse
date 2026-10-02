@@ -291,13 +291,32 @@ const closeNotesViewer = async (viewer) => {
   await expect(viewer).toBeHidden({ timeout: 10000 });
 };
 
-const openFirstNoteMarker = async (page, rootSelector) => {
-  const marker = page.locator(`${rootSelector} .gp-note-marker-wrapper`).first();
-  await expect(marker).toBeVisible({ timeout: 15000 });
-  await marker.dispatchEvent('click');
+// Vector notes are native MapLibre layers (clustered), so there are no DOM markers to count or click:
+// count the note groups in the layer source and click where the first one is drawn.
+const NOTE_LAYER_TOKEN = 'gp-notes';
 
+const expectNoteMarkerCount = async (page, rootSelector, expected) => {
+  const mapHarness = new MapEngineHarness(page);
+  await expect.poll(async () => {
+    const { count } = await mapHarness.countVectorSourceFeatures({ sourceIncludes: [NOTE_LAYER_TOKEN], rootSelector });
+    return count;
+  }, { timeout: 15000 }).toBe(expected);
+};
+
+const openFirstNoteMarker = async (page, rootSelector) => {
+  const mapHarness = new MapEngineHarness(page);
   const viewer = page.locator('.notes-viewer-dialog:visible').last();
-  await expect(viewer).toBeVisible({ timeout: 10000 });
+
+  // Clicking a cluster only zooms in, so keep clicking until a single note group opens the viewer.
+  await expect.poll(async () => {
+    if (await viewer.isVisible().catch(() => false)) {
+      return true;
+    }
+    await mapHarness.clickVectorRenderedFeature({ layerIncludes: [NOTE_LAYER_TOKEN], rootSelector });
+    await page.waitForTimeout(500);
+    return viewer.isVisible().catch(() => false);
+  }, { timeout: 20000 }).toBe(true);
+
   return viewer;
 };
 
@@ -499,7 +518,7 @@ test.describe('Timeline GeoPulse notes', () => {
 
     await waitForVectorMap(page, '.map-view-container');
     await page.locator('.map-controls .control-button[title="Show Notes"]').first().click();
-    await expect(page.locator('.map-view-container .gp-note-marker-wrapper')).toHaveCount(2, { timeout: 15000 });
+    await expectNoteMarkerCount(page, '.map-view-container', 2);
     viewer = await openFirstNoteMarker(page, '.map-view-container');
     await expect(viewer).toContainText(/Visible (stay|trip) note/);
     await closeNotesViewer(viewer);
@@ -580,7 +599,7 @@ test.describe('Place details GeoPulse notes', () => {
 
     const placeDetailsPage = new PlaceDetailsPage(page);
     await placeDetailsPage.navigateToFavorite(favoriteId);
-    await expect(page.locator('.place-header')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.location-details-header')).toBeVisible({ timeout: 15000 });
     await waitForVectorMap(page, '.place-map-container');
 
     const notesCard = page.locator('.place-notes-card').first();
@@ -592,9 +611,11 @@ test.describe('Place details GeoPulse notes', () => {
     await expect(notesCard).not.toContainText('Place window miss');
     await expect(notesCard).not.toContainText('Other user nearby note');
 
-    await expect(page.locator('.place-map-container .gp-note-marker-wrapper')).toHaveCount(2, { timeout: 15000 });
+    // Notes within ~15m share one marker, and these two are ~7m apart.
+    await expectNoteMarkerCount(page, '.place-map-container', 1);
     let viewer = await openFirstNoteMarker(page, '.place-map-container');
-    await expect(viewer).toContainText(/nearby note/i);
+    await expect(viewer).toContainText('Place nearby note');
+    await expect(viewer).toContainText('Second nearby note');
     await closeNotesViewer(viewer);
 
     await notesCard.getByRole('button', { name: /View all/i }).click();
@@ -631,7 +652,7 @@ test.describe('Place details GeoPulse notes', () => {
     await expect(notesCard.locator('.place-note-item')).toHaveCount(1, { timeout: 15000 });
     await expect(notesCard).not.toContainText('Place nearby note edited');
     await expect(notesCard).toContainText('Second nearby note');
-    await expect(page.locator('.place-map-container .gp-note-marker-wrapper')).toHaveCount(1, { timeout: 15000 });
+    await expectNoteMarkerCount(page, '.place-map-container', 1);
     await expect.poll(async () => {
       const note = await findGeoPulseNoteById(dbManager, editableNoteId);
       return note?.deleted_at !== null;

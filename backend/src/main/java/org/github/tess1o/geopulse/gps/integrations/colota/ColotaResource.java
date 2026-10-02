@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.colota;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -8,13 +11,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/colota")
+@Path(ApiPaths.GPS_INGEST + "/colota")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,19 +42,22 @@ public class ColotaResource {
     @POST
     @Operation(summary = "Ingest Colota location",
             description = "Receives a Colota-compatible location update and stores it for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleColota(ColotaLocationMessage payload,
                                  @HeaderParam("Authorization") String authHeader) {
-        log.info("Received Colota payload: {}", payload);
-
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.COLOTA, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
 
-        gpsPointService.saveColotaGpsPoint(payload, userId, GpsSourceType.COLOTA, config);
+        var summary = gpsPointService.saveColotaGpsPoint(payload, userId, GpsSourceType.COLOTA, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.COLOTA, started);
         return Response.ok("[]").build();
     }
 }

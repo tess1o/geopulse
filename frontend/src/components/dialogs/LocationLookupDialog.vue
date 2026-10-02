@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Visits near this point"
+    :header="t('miscDialogs.locationLookup.header')"
     :modal="true"
     class="gp-dialog-md location-lookup-dialog"
     :dismissable-mask="!loading"
@@ -11,22 +11,22 @@
       <div v-if="point" class="lookup-point-summary">
         <i class="pi pi-map-marker"></i>
         <span>{{ point.lat.toFixed(6) }}, {{ point.lng.toFixed(6) }}</span>
-        <span v-if="result" class="lookup-radius">within {{ result.matchRadiusMeters }} m</span>
+        <span v-if="result" class="lookup-radius">{{ t('miscDialogs.locationLookup.withinRadius', { radius: result.matchRadiusMeters }) }}</span>
       </div>
 
       <div v-if="loading" class="lookup-loading">
         <ProgressSpinner />
-        <span>Checking your recorded stays…</span>
+        <span>{{ t('miscDialogs.locationLookup.checkingStays') }}</span>
       </div>
 
       <Message v-else-if="error" severity="error" :closable="false">
         {{ error }}
-        <Button label="Try again" text size="small" @click="$emit('retry')" />
+        <Button :label="t('miscDialogs.locationLookup.tryAgain')" text size="small" @click="$emit('retry')" />
       </Message>
 
       <template v-else-if="result">
         <Message v-if="result.visitMatches?.length" severity="success" :closable="false">
-          You have recorded visits at this location.
+          {{ t('miscDialogs.locationLookup.hasVisits') }}
         </Message>
 
         <section v-if="result.visitMatches?.length" class="lookup-section">
@@ -37,12 +37,12 @@
           >
             <div class="lookup-match-header">
               <div>
-                <h3>{{ match.name || 'Recorded stay' }}</h3>
+                <h3>{{ match.name || t('miscDialogs.locationLookup.recordedStayFallback') }}</h3>
                 <p>{{ match.matchReason }}<span v-if="match.nearestDistanceMeters != null"> · {{ formatDistance(match.nearestDistanceMeters) }}</span></p>
               </div>
               <Button
                 v-if="placeDetailsRoute(match)"
-                label="Place Details"
+                :label="t('miscDialogs.locationLookup.placeDetails')"
                 icon="pi pi-external-link"
                 text
                 size="small"
@@ -51,9 +51,9 @@
             </div>
 
             <div class="lookup-match-stats">
-              <span>{{ match.visitCount }} visit{{ match.visitCount === 1 ? '' : 's' }}</span>
-              <span v-if="match.firstVisit">First: {{ formatDate(match.firstVisit) }}</span>
-              <span v-if="match.lastVisit">Last: {{ formatDate(match.lastVisit) }}</span>
+              <span>{{ t('miscDialogs.locationLookup.visitCount', { count: match.visitCount }, match.visitCount) }}</span>
+              <span v-if="match.firstVisit">{{ t('miscDialogs.locationLookup.firstVisit', { date: formatDate(match.firstVisit) }) }}</span>
+              <span v-if="match.lastVisit">{{ t('miscDialogs.locationLookup.lastVisit', { date: formatDate(match.lastVisit) }) }}</span>
             </div>
 
             <div v-if="match.visits?.length" class="lookup-visits">
@@ -65,9 +65,9 @@
                     icon="pi pi-calendar"
                     text
                     size="small"
-                    aria-label="Open visit day in timeline"
-                    title="Open visit day in timeline"
-                    v-tooltip.top="'Open visit day in timeline'"
+                    :aria-label="t('miscDialogs.locationLookup.openVisitDayTooltip')"
+                    :title="t('miscDialogs.locationLookup.openVisitDayTooltip')"
+                    v-tooltip.top="t('miscDialogs.locationLookup.openVisitDayTooltip')"
                     @click="openVisitInTimeline(visit)"
                   />
                 </span>
@@ -77,27 +77,27 @@
         </section>
 
         <section v-if="result.favoriteMatches?.length" class="lookup-section lookup-favorites">
-          <h3>Saved places at this point</h3>
+          <h3>{{ t('miscDialogs.locationLookup.savedPlacesHeading') }}</h3>
           <div v-for="favorite in result.favoriteMatches" :key="favorite.id" class="lookup-favorite-row">
-            <span><i class="pi pi-star"></i> {{ favorite.name || 'Unnamed favorite' }}</span>
+            <span><i class="pi pi-star"></i> {{ favorite.name || t('miscDialogs.locationLookup.unnamedFavorite') }}</span>
             <span>{{ favorite.relation }}</span>
           </div>
         </section>
 
         <section v-if="!result.visitMatches?.length" class="lookup-section">
           <Message severity="info" :closable="false">
-            No recorded visit was found within {{ result.matchRadiusMeters }} m of this point.
+            {{ t('miscDialogs.locationLookup.noVisitFound', { radius: result.matchRadiusMeters }) }}
           </Message>
 
           <div v-if="result.nearestStays?.length" class="lookup-fallback">
-            <h3>Closest recorded stays</h3>
+            <h3>{{ t('miscDialogs.locationLookup.closestStaysHeading') }}</h3>
             <div v-for="stay in result.nearestStays" :key="stay.id" class="lookup-visit-row">
-              <span>{{ formatDateTime(stay.timestamp) }} · {{ stay.locationName || 'Unknown location' }}</span>
+              <span>{{ formatDateTime(stay.timestamp) }} · {{ stay.locationName || t('miscDialogs.locationLookup.unknownLocation') }}</span>
               <span class="lookup-fallback-actions">
                 <span>{{ formatDistance(stay.distanceMeters) }}</span>
                 <Button
                   v-if="placeDetailsRoute(stay)"
-                  label="Place Details"
+                  :label="t('miscDialogs.locationLookup.placeDetails')"
                   icon="pi pi-external-link"
                   text
                   size="small"
@@ -107,27 +107,28 @@
                   icon="pi pi-calendar"
                   text
                   size="small"
-                  aria-label="Open visit day in timeline"
-                  title="Open visit day in timeline"
-                  v-tooltip.top="'Open visit day in timeline'"
+                  :aria-label="t('miscDialogs.locationLookup.openVisitDayTooltip')"
+                  :title="t('miscDialogs.locationLookup.openVisitDayTooltip')"
+                  v-tooltip.top="t('miscDialogs.locationLookup.openVisitDayTooltip')"
                   @click="openVisitInTimeline(stay)"
                 />
               </span>
             </div>
           </div>
-          <p v-else class="lookup-empty">No recorded stays were found.</p>
+          <p v-else class="lookup-empty">{{ t('miscDialogs.locationLookup.noRecordedStays') }}</p>
         </section>
       </template>
     </div>
 
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('miscDialogs.locationLookup.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -136,6 +137,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -247,7 +250,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-match {
-  border: 1px solid var(--gp-border-color, #e2e8f0);
+  border: 1px solid var(--gp-border, #e2e8f0);
   border-radius: var(--gp-radius-medium, 0.5rem);
   padding: 0.9rem;
 }
@@ -293,7 +296,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-visit-row {
-  border-top: 1px solid var(--gp-border-color, #e2e8f0);
+  border-top: 1px solid var(--gp-border, #e2e8f0);
   padding-top: 0.45rem;
 }
 
@@ -312,7 +315,7 @@ const openVisitInTimeline = (visit) => {
 }
 
 .lookup-favorites {
-  border-top: 1px solid var(--gp-border-color, #e2e8f0);
+  border-top: 1px solid var(--gp-border, #e2e8f0);
   padding-top: 0.9rem;
 }
 

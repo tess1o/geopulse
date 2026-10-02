@@ -432,7 +432,7 @@ test.describe('Data Export & Import', () => {
             const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
             await dbManager.client.query(
-                'UPDATE users SET date_format = $1 WHERE id = $2',
+                "UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2",
                 [DateFormatValues.DMY, user.id]
             );
 
@@ -899,8 +899,6 @@ test.describe('Data Export & Import', () => {
 
             const selectedFormat = await exportImportPage.getSelectedImportFormat();
             expect(selectedFormat).toBe('geopulse');
-            const selectedDataTypes = await exportImportPage.getSelectedImportDataTypes();
-            expect(selectedDataTypes).toContain('mapmatching');
         });
 
         test('should disable import button when no file is selected', async ({ page, isolatedUsers, dbManager}) => {

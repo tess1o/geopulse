@@ -8,51 +8,58 @@
           <div class="workspace-page-title-wrap">
             <h1 class="workspace-page-title">{{ pageTitle }}</h1>
             <p class="workspace-page-subtitle">{{ pageSubtitle }}</p>
+            <p class="workspace-page-subtitle workspace-page-subtitle--compact">{{ pageSubtitleCompact }}</p>
           </div>
         </div>
       </template>
       <template #actions>
         <div class="workspace-header-actions">
+          <!-- Left to right: the range you are looking at, the control that resets it, then the
+               trip-level actions. Source order is the visual order on every viewport. -->
+          <Button
+            v-if="isUnplannedTrip && isOwner"
+            icon="pi pi-calendar-plus"
+            :label="t('trips.workspacePage.setTripDates')"
+            class="gp-btn-primary"
+            @click="openTripScheduling"
+          />
+          <!-- Available to everyone, owner included. It used to render only for
+               non-owners, so an owner could not re-scope their own trip, and a
+               non-owner on an unplanned trip got a picker with no bounds. -->
+          <DatePicker
+            v-if="!isUnplannedTrip"
+            v-model="selectedDateRange"
+            selectionMode="range"
+            :manualInput="false"
+            :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+            :minDate="tripMinDate"
+            :maxDate="tripMaxDate"
+            @update:model-value="handleDateRangeChange"
+            class="workspace-date-picker"
+          />
+          <Button
+            v-if="!isUnplannedTrip"
+            icon="pi pi-history"
+            text
+            rounded
+            :aria-label="t('trips.workspacePage.resetToFullTripRange')"
+            @click="resetToTripRange"
+            v-tooltip.bottom="t('trips.workspacePage.resetToFullTripRange')"
+          />
           <Button
             v-if="canReconstructTrip"
             icon="pi pi-map"
             outlined
-            label="Add Missing Trip Data"
+            :label="t('trips.workspacePage.addMissingTripData')"
             @click="openReconstructionDialog"
-          />
-          <Button
-            v-if="isUnplannedTrip && isOwner"
-            icon="pi pi-calendar-plus"
-            label="Set Trip Dates"
-            class="gp-btn-primary"
-            @click="openTripScheduling"
           />
           <Button
             v-if="isOwner"
             icon="pi pi-users"
             outlined
-            label="Collaborators"
+            :label="t('trips.workspacePage.collaborators')"
             @click="openCollaboratorsDialog"
           />
-          <template v-else>
-            <DatePicker
-              v-model="selectedDateRange"
-              selectionMode="range"
-              :manualInput="false"
-              :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              :minDate="tripMinDate"
-              :maxDate="tripMaxDate"
-              @update:model-value="handleDateRangeChange"
-              class="workspace-date-picker"
-            />
-            <Button
-              icon="pi pi-history"
-              text
-              rounded
-              @click="resetToTripRange"
-              v-tooltip.bottom="'Reset to full trip range'"
-            />
-          </template>
         </div>
       </template>
 
@@ -65,48 +72,34 @@
       </Message>
 
       <template v-else>
-        <div class="workspace-tabs">
-          <Button
-            v-for="tab in workspaceTabs"
-            :key="tab.key"
-            :label="tab.label"
-            :icon="tab.icon"
-            :class="{ 'active-workspace-tab': activeWorkspaceTab === tab.key }"
-            @click="selectWorkspaceTab(tab.key)"
-          />
-        </div>
-
         <Message v-if="isUnplannedTrip" severity="info" :closable="false" class="unplanned-trip-banner">
-          This trip is unplanned. Add planned stops now, then set trip dates to enable timeline, path, and analytics.
+          {{ t('trips.workspacePage.unplannedBanner') }}
         </Message>
         <Message v-if="showAccessModeBanner" severity="warn" :closable="false" class="trip-access-banner">
           {{ accessModeBannerText }}
         </Message>
 
-        <div v-if="showOverviewSection" class="summary-strip">
-          <div class="summary-chip">
-            <span>Completion</span>
-            <strong>{{ summaryCompletion }}</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Visited</span>
-            <strong>{{ summaryVisitedCount }} / {{ summaryPlanTotal }}</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Must visits</span>
-            <strong>{{ mustVisitedCount }} / {{ mustPlanTotal }} ({{ mustCompletionLabel }})</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Distance / Duration</span>
-            <strong>{{ formatDistance(tripSummary?.totalDistanceMeters || 0) }} • {{ formatDuration(tripSummary?.totalTripDurationSeconds || 0) }}</strong>
-          </div>
-        </div>
+        <!-- Always visible. These metrics used to live inside the Overview tab, so they
+             disappeared on the Plan tab and were absent entirely for future trips. -->
+        <TripSummaryBar
+          :completion-rate="summaryCompletion"
+          :visited-count="summaryVisitedCount"
+          :total-count="summaryPlanTotal"
+          :must-visited="mustVisitedCount"
+          :must-total="mustPlanTotal"
+          :distance-label="formatDistance(tripSummary?.totalDistanceMeters || 0)"
+          :duration-label="formatDuration(tripSummary?.totalTripDurationSeconds || 0)"
+        />
 
-        <BaseCard v-if="showOverviewSection || showPlanningPanelMode" class="workspace-card">
+        <!-- One layout, in every trip state. Nothing here appears or disappears based on
+             trip status; only the rail's contents change. -->
+        <BaseCard class="workspace-card">
           <TimelineSplitLayout
-            v-if="showOverviewSection"
             ref="timelineSplitLayoutRef"
             class="workspace-timeline-split"
+            :collapsed-label="t('trips.workspacePage.stopsLabel')"
+            :expanded-label="t('trips.workspacePage.stopsLabel')"
+            handle-mobile-only
             @layout-resize="triggerWorkspaceMapResize"
           >
             <template #map>
@@ -114,8 +107,8 @@
                 <ProgressSpinner />
               </div>
               <TimelineMap
-                ref="timelineMapRef"
                 v-else
+                ref="timelineMapRef"
                 class="workspace-timeline-map"
                 :style="workspaceTimelineMapStyle"
                 :pathData="hasPathData ? workspacePath : null"
@@ -129,6 +122,7 @@
                 :showHeatmapControl="false"
                 :enableFavoriteContextMenu="canEditPlanItems"
                 :showCurrentLocation="false"
+                :read-only="demoReadOnly"
                 @timeline-marker-click="handleWorkspaceTimelineMarkerClick"
                 @highlighted-path-click="handleWorkspaceHighlightedPathClick"
                 @plan-to-visit="handlePlanToVisit"
@@ -138,161 +132,51 @@
             </template>
 
             <template #side>
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <TimelineContainer
-                v-else
-                ref="timelineContainerRef"
-                :timeline-data="workspaceTimeline"
-                :timelineNoData="!workspaceTimeline.length"
-                :timelineDataLoading="workspaceLoading"
-                :dateRange="activeDateRangeArray"
-                :loadImmichPhotos="false"
-                :weather-samples="weatherSamples"
-                :showTimelineLabels="false"
-                @timeline-item-click="handleWorkspaceTimelineItemClick"
-                @rename-stay="handleWorkspaceRenameStay"
-                @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
-                @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
-                @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
-              />
+              <TripStopsRail
+                :stops="sortedTripPlanItems"
+                :loading="workspaceLoading"
+                :can-edit="canEditPlanItems"
+                :has-actual-data="hasTimelineData || hasPathData"
+                :lens="railLens"
+                :selected-id="focusedPlanItemId"
+                @update:lens="railLens = $event"
+                @add-stop="handleAddStopFromRail"
+                @focus-stop="focusPlannedItemOnMap"
+                @edit-stop="openEditPlanItemDialog"
+                @delete-stop="confirmDeletePlanItem"
+                @mark-visited="handleMarkVisitedFromRail"
+              >
+                <template #actual>
+                  <div class="trip-actual-lens">
+                    <TimelineContainer
+                      ref="timelineContainerRef"
+                      :timeline-data="workspaceTimeline"
+                      :timelineNoData="!workspaceTimeline.length"
+                      :timelineDataLoading="workspaceLoading"
+                      :dateRange="activeDateRangeArray"
+                      :loadImmichPhotos="false"
+                      :weather-samples="weatherSamples"
+                      :showTimelineLabels="false"
+                      @timeline-item-click="handleWorkspaceTimelineItemClick"
+                      @rename-stay="handleWorkspaceRenameStay"
+                      @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
+                      @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
+                      @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
+                    />
+
+                    <ImmichLatestPhotosSection
+                      v-if="showTripPhotosSection"
+                      :title="t('trips.workspacePage.tripPhotosTitle')"
+                      :search-params="tripImmichSearchParams"
+                      :use-store-photos="true"
+                      :empty-message="t('trips.workspacePage.tripPhotosEmpty')"
+                      @show-on-map="handleTripPhotoShowOnMap"
+                    />
+                  </div>
+                </template>
+              </TripStopsRail>
             </template>
           </TimelineSplitLayout>
-
-          <div v-else class="workspace-layout">
-            <div class="workspace-map">
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <TimelineMap
-                ref="timelineMapRef"
-                v-else
-                class="workspace-timeline-map"
-                :style="workspaceTimelineMapStyle"
-                :pathData="hasPathData ? workspacePath : null"
-                :timelineData="workspaceTimeline"
-                :weather-samples="weatherSamples"
-                :plannedItemsData="tripPlanMapItems"
-                :showFavoritesByDefault="false"
-                :showImmichByDefault="true"
-                :showPlanToVisitAction="canEditPlanItems"
-                :showFavoritesContextActions="false"
-                :showHeatmapControl="false"
-                :enableFavoriteContextMenu="canEditPlanItems"
-                :showCurrentLocation="false"
-                @plan-to-visit="handlePlanToVisit"
-                @plan-item-edit="handlePlanItemEditFromMap"
-                @plan-item-delete="handlePlanItemDeleteFromMap"
-              />
-            </div>
-
-            <div class="workspace-timeline">
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <div v-else-if="showPlanningPanelMode" class="planning-panel">
-                <div class="planning-callout">
-                  <i class="pi pi-calendar planning-panel-icon"></i>
-                  <div class="planning-callout-content">
-                    <h4>{{ planningPanelTitle }}</h4>
-                    <p>{{ planningPanelPrimaryText }}</p>
-                    <p>{{ planningPanelHintText }}</p>
-                  </div>
-                </div>
-                <div v-if="planningPanelItems.length > 0" class="planning-list">
-                  <div class="planning-list-header">
-                    Planned places ({{ planningPanelItems.length }})
-                  </div>
-                  <div
-                    v-for="item in planningPanelItems"
-                    :key="item.id"
-                    class="planning-list-item"
-                  >
-                    <button
-                      type="button"
-                      class="planning-list-main"
-                      @click="focusPlannedItemOnMap(item)"
-                    >
-                      <span class="planning-list-title-row">
-                        <Tag
-                          :value="item.priority || 'OPTIONAL'"
-                          :severity="getPrioritySeverity(item.priority)"
-                        />
-                        <span class="planning-list-title">{{ item.title }}</span>
-                      </span>
-                      <small v-if="item.notes" class="planning-list-notes">{{ item.notes }}</small>
-                      <small>{{ formatPlannedDay(item.plannedDay) }}</small>
-                    </button>
-                    <div class="planning-list-actions">
-                      <Button
-                        v-if="canEditPlanItems"
-                        icon="pi pi-pencil"
-                        text
-                        rounded
-                        size="small"
-                        v-tooltip.top="'Edit item'"
-                        @click.stop="openEditPlanItemDialog(item)"
-                      />
-                      <Button
-                        v-if="canEditPlanItems"
-                        icon="pi pi-trash"
-                        text
-                        rounded
-                        size="small"
-                        severity="danger"
-                        v-tooltip.top="'Delete item'"
-                        @click.stop="confirmDeletePlanItem(item)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
-
-        <ImmichLatestPhotosSection
-          v-if="showTripPhotosSection"
-          title="Trip Photos"
-          :search-params="tripImmichSearchParams"
-          :use-store-photos="true"
-          empty-message="No Immich photos found for this trip range."
-          @show-on-map="handleTripPhotoShowOnMap"
-        />
-
-        <BaseCard v-if="showPlanSection || isPlanningMode" class="plan-card" :title="comparisonCardTitle">
-          <template #header>
-            <div class="workspace-card-header">
-              <h3 class="workspace-title">{{ comparisonCardTitle }}</h3>
-              <div class="workspace-header-actions">
-                <Button
-                  v-if="canEditPlanItems && hasPlanItems"
-                  icon="pi pi-plus"
-                  label="Add Place"
-                  class="gp-btn-primary"
-                  @click="openCreatePlanItemDialog"
-                />
-              </div>
-            </div>
-          </template>
-
-          <div class="plan-content">
-            <div class="plan-content-table">
-              <TripPlanItemsTable
-                :items="sortedTripPlanItems"
-                :isPlanningMode="isPlanningWorkspace"
-                :isActiveTrip="isActiveTrip"
-                :visitSuggestions="visitSuggestions"
-                :canEdit="canEditPlanItems"
-                @focus-item="focusPlannedItemOnMap"
-                @override="handlePlanItemOverrideFromTable"
-                @edit-item="openEditPlanItemDialog"
-                @delete-item="confirmDeletePlanItem"
-                @add-item="openCreatePlanItemDialog"
-              />
-            </div>
-          </div>
         </BaseCard>
 
       </template>
@@ -301,45 +185,45 @@
     <Dialog
       v-model:visible="showPlanItemDialog"
       modal
-      :header="editingPlanItemId ? 'Edit Plan Item' : 'Add Plan Item'"
-      class="gp-dialog-xl plan-item-dialog"
+      :header="editingPlanItemId ? t('trips.workspacePage.planItemDialog.editHeader') : t('trips.workspacePage.planItemDialog.createHeader')"
+      class="plan-item-dialog"
       @hide="resetPlanItemForm"
     >
       <div class="plan-item-dialog-layout">
         <div class="plan-item-dialog-form">
           <div v-if="isResolvingPlanSuggestion">
-            <Message severity="info" :closable="false">Resolving place details...</Message>
+            <Message severity="info" :closable="false">{{ t('trips.workspacePage.planItemDialog.resolvingPlaceDetails') }}</Message>
           </div>
           <div v-if="planItemMapSourceHint">
             <Message severity="info" :closable="false">{{ planItemMapSourceHint }}</Message>
           </div>
 
           <div>
-            <label for="planTitle" class="field-label">Title *</label>
+            <label for="planTitle" class="field-label">{{ t('trips.workspacePage.planItemDialog.titleLabel') }}</label>
             <InputText
               id="planTitle"
               v-model="planItemForm.title"
               class="w-full"
-              placeholder="e.g., Sagrada Familia"
+              :placeholder="t('trips.workspacePage.planItemDialog.titlePlaceholder')"
               :class="{ 'p-invalid': planItemErrors.title }"
             />
             <small v-if="planItemErrors.title" class="p-error">{{ planItemErrors.title }}</small>
           </div>
 
           <div>
-            <label for="planNotes" class="field-label">Notes</label>
+            <label for="planNotes" class="field-label">{{ t('trips.workspacePage.planItemDialog.notesLabel') }}</label>
             <Textarea
               id="planNotes"
               v-model="planItemForm.notes"
               rows="3"
               class="w-full"
-              placeholder="Optional context..."
+              :placeholder="t('trips.workspacePage.planItemDialog.notesPlaceholder')"
             />
           </div>
 
           <div class="plan-item-dialog-row">
             <div>
-              <label for="planDate" class="field-label">Planned Day</label>
+              <label for="planDate" class="field-label">{{ t('trips.workspacePage.planItemDialog.plannedDayLabel') }}</label>
               <DatePicker
                 id="planDate"
                 v-model="planItemForm.plannedDay"
@@ -349,7 +233,7 @@
               />
             </div>
             <div>
-              <label for="planPriority" class="field-label">Priority</label>
+              <label for="planPriority" class="field-label">{{ t('trips.workspacePage.planItemDialog.priorityLabel') }}</label>
               <Select
                 id="planPriority"
                 v-model="planItemForm.priority"
@@ -363,7 +247,7 @@
 
           <div class="plan-item-dialog-row">
             <div>
-              <label for="planOrder" class="field-label">Order</label>
+              <label for="planOrder" class="field-label">{{ t('trips.workspacePage.planItemDialog.orderLabel') }}</label>
               <InputNumber
                 id="planOrder"
                 v-model="planItemForm.orderIndex"
@@ -373,26 +257,32 @@
               />
             </div>
             <div>
-              <label class="field-label">Coordinates</label>
+              <label class="field-label">{{ t('trips.workspacePage.planItemDialog.coordinatesLabel') }}</label>
               <div class="plan-item-coordinate-pill">
                 <span v-if="hasPlanItemCoordinates">
                   {{ Number(planItemForm.latitude).toFixed(5) }}, {{ Number(planItemForm.longitude).toFixed(5) }}
                 </span>
-                <span v-else>Not selected yet</span>
+                <span v-else>{{ t('trips.workspacePage.planItemDialog.notSelectedYet') }}</span>
               </div>
             </div>
+
+            <PlanItemPoiImages
+              :latitude="planItemForm.latitude"
+              :longitude="planItemForm.longitude"
+              @select="handlePoiSuggestionSelect"
+            />
           </div>
         </div>
 
         <div class="plan-item-dialog-map-pane">
           <div>
-            <label for="planLocationSearch" class="field-label">Search place</label>
+            <label for="planLocationSearch" class="field-label">{{ t('trips.workspacePage.planItemDialog.searchPlaceLabel') }}</label>
             <TripPlanLocationSearchInput
               input-id="planLocationSearch"
               ref="planLocationSearchRef"
               v-model="planItemLocationSearchQuery"
               :suggestions="planItemLocationSearchSuggestions"
-              placeholder="Search saved places or providers..."
+              :placeholder="t('trips.search.defaultPlaceholder')"
               :loading="isPlanItemLocationSearchLoading"
               :error="planItemLocationSearchError"
               class="plan-item-location-search"
@@ -417,15 +307,15 @@
           </div>
 
           <small class="plan-item-dialog-map-hint">
-            Search by place name or click the map to pin this stop.
+            {{ t('trips.workspacePage.planItemDialog.mapHint') }}
           </small>
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" outlined @click="showPlanItemDialog = false" />
+        <Button :label="t('common.cancel')" icon="pi pi-times" outlined @click="showPlanItemDialog = false" />
         <Button
-          :label="editingPlanItemId ? 'Update Item' : 'Create Item'"
+          :label="editingPlanItemId ? t('trips.workspacePage.planItemDialog.updateItem') : t('trips.workspacePage.planItemDialog.createItem')"
           icon="pi pi-check"
           :loading="isSubmittingPlanItem"
           @click="submitPlanItem"
@@ -436,13 +326,13 @@
     <Dialog
       v-model:visible="showCollaboratorsDialog"
       modal
-      header="Trip Collaborators"
+      :header="t('trips.workspacePage.collaboratorsDialog.header')"
       class="gp-dialog-md"
       @show="loadCollaboratorsData"
     >
       <div class="collaborators-content">
         <Message severity="info" :closable="false">
-          Only invited friends can access this trip. Choose Viewer or Editor per friend.
+          {{ t('trips.workspacePage.collaboratorsDialog.infoMessage') }}
         </Message>
 
         <div class="collaborator-add-row">
@@ -451,7 +341,7 @@
             :options="availableFriendOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select friend"
+            :placeholder="t('trips.workspacePage.collaboratorsDialog.selectFriendPlaceholder')"
             class="w-full"
             filter
           />
@@ -464,7 +354,7 @@
           />
           <Button
             icon="pi pi-plus"
-            label="Add"
+            :label="t('trips.workspacePage.collaboratorsDialog.add')"
             :loading="isSavingCollaborator"
             :disabled="!newCollaboratorFriendId"
             @click="addCollaborator"
@@ -476,7 +366,7 @@
         </div>
 
         <div v-else-if="collaborators.length === 0" class="collaborators-empty">
-          No collaborators yet.
+          {{ t('trips.workspacePage.collaboratorsDialog.empty') }}
         </div>
 
         <div v-else class="collaborators-list">
@@ -539,7 +429,7 @@
     <Dialog
       v-model:visible="showTimelineGenerationDialog"
       modal
-      header="Timeline Generation"
+      :header="t('trips.workspacePage.timelineGenerationDialog.header')"
       class="gp-dialog-md timeline-generation-dialog"
       :closable="timelineJobCanClose"
       :dismissableMask="timelineJobCanClose"
@@ -549,7 +439,7 @@
         <div class="timeline-generation-status-row">
           <Tag :value="timelineJobStatusLabel" :severity="timelineJobStatusSeverity" />
           <small v-if="trackedTimelineJobId" class="timeline-generation-job-id">
-            Job: {{ trackedTimelineJobId }}
+            {{ t('trips.workspacePage.timelineGenerationDialog.jobId', { id: trackedTimelineJobId }) }}
           </small>
         </div>
 
@@ -579,21 +469,21 @@
           severity="info"
           :closable="false"
         >
-          Refreshing workspace data...
+          {{ t('trips.workspacePage.timelineGenerationDialog.refreshingWorkspace') }}
         </Message>
       </div>
 
       <template #footer>
         <Button
           v-if="timelineJobStatus === 'FAILED'"
-          label="Retry Status"
+          :label="t('trips.workspacePage.timelineGenerationDialog.retryStatus')"
           icon="pi pi-refresh"
           outlined
           :disabled="!trackedTimelineJobId"
           @click="retryTimelineJobProgress"
         />
         <Button
-          label="Close"
+          :label="t('trips.workspacePage.timelineGenerationDialog.close')"
           icon="pi pi-times"
           :disabled="!timelineJobCanClose"
           @click="showTimelineGenerationDialog = false"
@@ -607,6 +497,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -621,7 +512,8 @@ import { useTripsStore } from '@/stores/trips'
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import { useTimelineStore } from '@/stores/timeline'
-import friendsService from '@/services/friendsService'
+import { useFriendsStore } from '@/stores/friends'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -631,7 +523,9 @@ import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 import TimelineLocationEditDialogs from '@/components/timeline/TimelineLocationEditDialogs.vue'
 import TimelineSplitLayout from '@/components/timeline/TimelineSplitLayout.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
-import TripPlanItemsTable from '@/components/trips/TripPlanItemsTable.vue'
+import TripStopsRail from '@/components/trips/workspace/TripStopsRail.vue'
+import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vue'
+import TripSummaryBar from '@/components/trips/workspace/TripSummaryBar.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import L from 'leaflet'
 import maplibregl from 'maplibre-gl'
@@ -649,11 +543,13 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import {
   getTripPlanSuggestionCoordinates,
   useTripPlanLocationSearch
 } from '@/composables/useTripPlanLocationSearch'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -663,6 +559,7 @@ const authStore = useAuthStore()
 const tripsStore = useTripsStore()
 const immichStore = useImmichStore()
 const timelineStore = useTimelineStore()
+const friendsStore = useFriendsStore()
 
 const {
   currentTrip,
@@ -747,7 +644,7 @@ const {
   reset: resetPlanItemLocationSearchState
 } = useTripPlanLocationSearch({
   getBias: () => resolvePlanItemLocationSearchBias(),
-  fallbackLabel: 'Planned place'
+  fallbackLabel: t('trips.search.plannedPlaceFallback')
 })
 const collaboratorsLoading = ref(false)
 const isSavingCollaborator = ref(false)
@@ -774,15 +671,15 @@ const planItemForm = ref({
   orderIndex: 0
 })
 
-const priorityOptions = [
-  { label: 'Optional', value: 'OPTIONAL' },
-  { label: 'Must', value: 'MUST' }
-]
+const priorityOptions = computed(() => [
+  { label: t('trips.stopsRail.priorityOptional'), value: 'OPTIONAL' },
+  { label: t('trips.stopsRail.priorityMust'), value: 'MUST' }
+])
 
-const collaboratorRoleOptions = [
-  { label: 'Viewer', value: 'VIEW' },
-  { label: 'Editor', value: 'EDIT' }
-]
+const collaboratorRoleOptions = computed(() => [
+  { label: t('trips.managementPage.access.viewer'), value: 'VIEW' },
+  { label: t('trips.managementPage.access.editor'), value: 'EDIT' }
+])
 
 const tripId = computed(() => Number(route.params.tripId))
 const isOwner = computed(() => Boolean(currentTrip.value?.isOwner) || String(currentTrip.value?.accessRole || '').toUpperCase() === 'OWNER')
@@ -792,30 +689,67 @@ const canReconstructTrip = computed(() => isOwner.value && !isUnplannedTrip.valu
 const showAccessModeBanner = computed(() => !isOwner.value)
 const accessModeBannerText = computed(() => {
   if (accessRole.value === 'EDIT') {
-    return 'Editor access: you can update planned stops and visit states, but only the owner can change trip metadata.'
+    return t('trips.workspacePage.editorAccessBanner')
   }
-  return 'Viewer access: this trip is read-only for you.'
+  return t('trips.workspacePage.viewerAccessBanner')
 })
 
-const pageTitle = computed(() => currentTrip.value?.name || 'Trip Planner')
+const TRIP_STATUS_LABEL_KEYS = {
+  UNPLANNED: 'trips.managementPage.status.unplanned',
+  UPCOMING: 'trips.managementPage.status.upcoming',
+  ACTIVE: 'trips.managementPage.status.active',
+  COMPLETED: 'trips.managementPage.status.completed',
+  CANCELLED: 'trips.managementPage.status.cancelled'
+}
+
+const getTripStatusLabel = (status) => {
+  const value = String(status || '').toUpperCase()
+  return t(TRIP_STATUS_LABEL_KEYS[value] || 'trips.managementPage.status.unknown')
+}
+
+const pageTitle = computed(() => currentTrip.value?.name || t('trips.workspacePage.defaultTitle'))
 const pageSubtitle = computed(() => {
-  if (!currentTrip.value) return 'Workspace'
+  if (!currentTrip.value) return t('trips.workspacePage.subtitleWorkspace')
 
   if (isUnplannedTrip.value) {
-    return 'Unplanned • Set trip dates later to unlock timeline and analytics'
+    return t('trips.workspacePage.subtitleUnplanned')
   }
 
-  const status = String(currentTrip.value.status || '').toLowerCase()
-  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'
-  return `${statusLabel} • ${formatDateTime(currentTrip.value.startTime)} - ${formatDateTime(currentTrip.value.endTime)}`
+  const statusLabel = getTripStatusLabel(currentTrip.value.status)
+  return t('trips.workspacePage.subtitleWithRange', {
+    status: statusLabel,
+    start: formatDateTime(currentTrip.value.startTime),
+    end: formatDateTime(currentTrip.value.endTime)
+  })
+})
+
+/**
+ * Mobile-only subtitle. The date picker in the action row already shows the trip range, so
+ * repeating "01/10/2026 00:00 - 04/10/2026 23:59" here costs two lines and adds nothing.
+ * What the picker cannot show is where the trip stands and how long it runs.
+ */
+const pageSubtitleCompact = computed(() => {
+  if (!currentTrip.value) return t('trips.workspacePage.subtitleWorkspace')
+  if (isUnplannedTrip.value) return t('trips.workspacePage.subtitleUnplannedCompact')
+
+  const statusLabel = getTripStatusLabel(currentTrip.value.status)
+
+  const start = currentTrip.value.startTime ? timezone.fromUtc(currentTrip.value.startTime) : null
+  const end = currentTrip.value.endTime ? timezone.fromUtc(currentTrip.value.endTime) : null
+  const days = start && end
+    ? Math.max(1, end.startOf('day').diff(start.startOf('day'), 'day') + 1)
+    : null
+
+  return days
+    ? t('trips.workspacePage.subtitleCompactWithDays', { status: statusLabel, count: days }, days)
+    : statusLabel
 })
 
 const summaryPlanTotal = computed(() => tripSummary.value?.planItemsTotal || 0)
 const summaryVisitedCount = computed(() => tripSummary.value?.planItemsVisited || 0)
-const summaryCompletion = computed(() => {
-  const raw = tripSummary.value?.planCompletionRate || 0
-  return `${Math.round(raw)}%`
-})
+// Numeric, not pre-formatted: TripSummaryBar renders the unit so the bar stays the
+// single place that decides how a metric is displayed.
+const summaryCompletion = computed(() => Math.round(tripSummary.value?.planCompletionRate || 0))
 const mustPlanTotal = computed(() => (tripPlanItems.value || []).filter((item) => item?.priority === 'MUST').length)
 const mustVisitedCount = computed(() => (tripPlanItems.value || []).filter((item) => item?.priority === 'MUST' && item?.isVisited).length)
 const mustCompletionLabel = computed(() => {
@@ -843,10 +777,15 @@ const isPlanningWorkspace = computed(() => isUnplannedTrip.value || isPlanningMo
 const isActiveTrip = computed(() => String(currentTrip.value?.status || '').toUpperCase() === 'ACTIVE')
 const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value && !isUnplannedTrip.value)
 const showPlanSection = computed(() => activeWorkspaceTab.value === 'plan')
+const showDiscoverSection = computed(() => activeWorkspaceTab.value === 'discover')
 const showPlanningPanelMode = computed(() => isPlanningWorkspace.value || (showPlanSection.value && isActiveTrip.value))
 const workspaceTabs = computed(() => {
+  // Discovery is offered for trips that have not happened yet - the case where the user
+  // has never been there and needs ideas. It is the same trip type that has no Overview.
+  const discover = { key: 'discover', label: 'Discover', icon: 'pi pi-compass' }
+
   if (isUnplannedTrip.value) {
-    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }]
+    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }, discover]
   }
 
   const tabs = []
@@ -854,6 +793,7 @@ const workspaceTabs = computed(() => {
     tabs.push({ key: 'overview', label: 'Overview', icon: 'pi pi-chart-line' })
   }
   tabs.push({ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' })
+  tabs.push(discover)
   return tabs
 })
 const comparisonCardTitle = computed(() => ((isPlanningWorkspace.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
@@ -922,10 +862,10 @@ const planItemMapSourceHint = computed(() => {
   const longitude = Number(planItemLocationSource.value.longitude)
   const source = planItemLocationSource.value.source
   const sourceLabel = source === 'context-menu'
-    ? 'Pinned from map (context menu)'
+    ? t('trips.workspacePage.planItemDialog.pinnedFromMapContextMenu')
     : source === 'dialog-map'
-      ? 'Pinned from map (dialog)'
-      : 'Pinned from map'
+      ? t('trips.workspacePage.planItemDialog.pinnedFromMapDialog')
+      : t('trips.workspacePage.planItemDialog.pinnedFromMap')
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return `${sourceLabel}.`
@@ -943,12 +883,19 @@ const tripPlanMapItems = computed(() => {
     .filter((item) => typeof item.latitude === 'number' && typeof item.longitude === 'number')
     .map((item) => ({
       id: `trip-plan-${item.id}`,
-      name: item.title || 'Planned place',
+      name: item.title || t('trips.search.plannedPlaceFallback'),
       type: 'trip-plan',
       planItemId: item.id,
       priority: item.priority || 'OPTIONAL',
       latitude: item.latitude,
-      longitude: item.longitude
+      longitude: item.longitude,
+      // Carried through for the marker's hover card, which otherwise had nothing to
+      // show beyond a name and always reported "no day" / "not visited".
+      plannedDay: item.plannedDay || null,
+      notes: item.notes || '',
+      isVisited: Boolean(item.isVisited),
+      visitConfidence: item.visitConfidence ?? null,
+      manualOverrideState: item.manualOverrideState || null
     }))
 })
 const workspaceFallbackCenter = computed(() => {
@@ -1022,15 +969,15 @@ const timelineJobCanClose = computed(() => {
 const timelineJobStatusLabel = computed(() => {
   switch (timelineJobStatus.value) {
     case 'QUEUED':
-      return 'Queued'
+      return t('trips.workspacePage.timelineGenerationDialog.statusQueued')
     case 'RUNNING':
-      return 'Running'
+      return t('trips.workspacePage.timelineGenerationDialog.statusRunning')
     case 'COMPLETED':
-      return 'Completed'
+      return t('trips.workspacePage.timelineGenerationDialog.statusCompleted')
     case 'FAILED':
-      return 'Failed'
+      return t('trips.workspacePage.timelineGenerationDialog.statusFailed')
     default:
-      return 'Starting'
+      return t('trips.workspacePage.timelineGenerationDialog.statusStarting')
   }
 })
 const timelineJobStatusSeverity = computed(() => {
@@ -1048,8 +995,10 @@ const timelineJobStatusSeverity = computed(() => {
   }
 })
 const timelineJobCurrentStep = computed(() => (
-  timelineJobProgress.value?.currentStep
-  || (timelineJobStatus.value === 'FAILED' ? 'Timeline generation failed.' : 'Preparing timeline generation...')
+  formatMessageDescriptor(timelineJobProgress.value?.currentStep)
+  || (timelineJobStatus.value === 'FAILED'
+    ? t('trips.workspacePage.timelineGenerationDialog.stepFailed')
+    : t('trips.workspacePage.timelineGenerationDialog.stepPreparing'))
 ))
 const timelineJobProgressValue = computed(() => {
   const raw = Number(timelineJobProgress.value?.progressPercentage)
@@ -1059,9 +1008,9 @@ const timelineJobProgressValue = computed(() => {
 const timelineJobDurationLabel = computed(() => {
   const durationMs = Number(timelineJobProgress.value?.durationMs)
   if (!Number.isFinite(durationMs) || durationMs < 0) {
-    return 'Duration: —'
+    return t('trips.workspacePage.timelineGenerationDialog.durationDash')
   }
-  return `Duration: ${formatJobDuration(durationMs)}`
+  return t('trips.workspacePage.timelineGenerationDialog.durationValue', { duration: formatJobDuration(durationMs) })
 })
 
 const formatDateTime = (value) => {
@@ -1072,16 +1021,20 @@ const formatDateTime = (value) => {
 const formatJobDuration = (durationMs) => {
   const totalSeconds = Math.floor(durationMs / 1000)
   if (totalSeconds < 60) {
-    return `${totalSeconds}s`
+    return t('trips.workspacePage.timelineGenerationDialog.secondsShort', { count: totalSeconds })
   }
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+    return seconds > 0
+      ? t('trips.workspacePage.timelineGenerationDialog.minutesSecondsShort', { minutes, seconds })
+      : t('trips.workspacePage.timelineGenerationDialog.minutesShort', { count: minutes })
   }
   const hours = Math.floor(minutes / 60)
   const minutesRemainder = minutes % 60
-  return minutesRemainder > 0 ? `${hours}h ${minutesRemainder}m` : `${hours}h`
+  return minutesRemainder > 0
+    ? t('trips.workspacePage.timelineGenerationDialog.hoursMinutesShort', { hours, minutes: minutesRemainder })
+    : t('trips.workspacePage.timelineGenerationDialog.hoursShort', { count: hours })
 }
 
 const formatPlannedDay = (plannedDay) => {
@@ -1094,12 +1047,12 @@ const getPrioritySeverity = (priority) => {
   return String(priority || '').toUpperCase() === 'MUST' ? 'danger' : 'warn'
 }
 
-const ensurePlanEditAccess = (message = 'You have read-only access to this trip plan.') => {
+const ensurePlanEditAccess = (message) => {
   if (canEditPlanItems.value) return true
   toast.add({
     severity: 'warn',
-    summary: 'Read-Only Access',
-    detail: message,
+    summary: t('trips.workspacePage.toasts.readOnlyAccessSummary'),
+    detail: message || t('trips.workspacePage.toasts.readOnlyAccessDefault'),
     life: 3500
   })
   return false
@@ -1154,17 +1107,17 @@ const loadCollaboratorsData = async () => {
   if (!isOwner.value) return
   collaboratorsLoading.value = true
   try {
-    const [loadedCollaborators, friendsResponse] = await Promise.all([
+    const [loadedCollaborators, loadedFriends] = await Promise.all([
       tripsStore.fetchTripCollaborators(tripId.value),
-      friendsService.getFriends()
+      friendsStore.fetchFriends()
     ])
     collaborators.value = Array.isArray(loadedCollaborators) ? loadedCollaborators : []
-    availableFriends.value = Array.isArray(friendsResponse?.data) ? friendsResponse.data : []
+    availableFriends.value = Array.isArray(loadedFriends) ? loadedFriends : []
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Load Collaborators',
-      detail: error.response?.data?.message || error.message || 'Could not load collaborators.',
+      summary: t('trips.workspacePage.toasts.loadCollaboratorsFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.loadCollaboratorsFailedFallback')),
       life: 5000
     })
   } finally {
@@ -1182,15 +1135,15 @@ const addCollaborator = async () => {
     await loadCollaboratorsData()
     toast.add({
       severity: 'success',
-      summary: 'Collaborator Added',
-      detail: 'Trip collaborator updated successfully.',
+      summary: t('trips.workspacePage.toasts.collaboratorAddedSummary'),
+      detail: t('trips.workspacePage.toasts.collaboratorAddedDetail'),
       life: 2500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Add Collaborator',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      summary: t('trips.workspacePage.toasts.addCollaboratorFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1207,16 +1160,16 @@ const updateCollaboratorRole = async (collaborator, nextRole) => {
     await tripsStore.setTripCollaborator(tripId.value, collaborator.userId, nextRole)
     toast.add({
       severity: 'success',
-      summary: 'Role Updated',
-      detail: 'Collaborator role updated.',
+      summary: t('trips.workspacePage.toasts.roleUpdatedSummary'),
+      detail: t('trips.workspacePage.toasts.roleUpdatedDetail'),
       life: 2200
     })
   } catch (error) {
     collaborator.accessRole = previousRole
     toast.add({
       severity: 'error',
-      summary: 'Failed to Update Role',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      summary: t('trips.workspacePage.toasts.updateRoleFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1232,15 +1185,15 @@ const removeCollaborator = async (collaborator) => {
     collaborators.value = collaborators.value.filter((item) => String(item.userId) !== String(collaborator.userId))
     toast.add({
       severity: 'success',
-      summary: 'Collaborator Removed',
-      detail: 'Access revoked.',
+      summary: t('trips.workspacePage.toasts.collaboratorRemovedSummary'),
+      detail: t('trips.workspacePage.toasts.collaboratorRemovedDetail'),
       life: 2200
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Remove Collaborator',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      summary: t('trips.workspacePage.toasts.removeCollaboratorFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1359,8 +1312,8 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Reset Manual Stay Override',
-    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    header: t('trips.workspacePage.toasts.resetStayOverrideHeader'),
+    message: t('trips.workspacePage.toasts.resetStayOverrideMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -1368,16 +1321,15 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
         await handleWorkspaceTimelineRefreshRequested()
         toast.add({
           severity: 'success',
-          summary: 'Override Reset',
-          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          summary: t('trips.workspacePage.toasts.overrideResetSummary'),
+          detail: t('trips.workspacePage.toasts.overrideResetDetail'),
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: errorMessage,
+          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetOverrideFailedFallback')),
           life: 5000
         })
       }
@@ -1392,8 +1344,8 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Undo Manual Trip Split',
-    message: 'Undo this manual trip split and regenerate timeline segments?',
+    header: t('trips.workspacePage.toasts.undoTripSplitHeader'),
+    message: t('trips.workspacePage.toasts.undoTripSplitMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -1401,16 +1353,15 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
         await handleWorkspaceTimelineRefreshRequested()
         toast.add({
           severity: 'success',
-          summary: 'Split Reset',
-          detail: 'Manual trip split was reset to automatic behavior.',
+          summary: t('trips.workspacePage.toasts.splitResetSummary'),
+          detail: t('trips.workspacePage.toasts.splitResetDetail'),
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual trip split'
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: errorMessage,
+          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetSplitFailedFallback')),
           life: 5000
         })
       }
@@ -1494,14 +1445,14 @@ const loadWorkspace = async () => {
 
     const initialRange = resolveInitialRange()
     if (!initialRange.start || !initialRange.end) {
-      throw new Error('Trip date range is invalid')
+      throw new Error(t('trips.workspacePage.toasts.invalidDateRange'))
     }
 
     syncCalendarRange(initialRange)
     await fetchWorkspaceRange(initialRange, true)
     await refreshVisitComparisons()
   } catch (error) {
-    pageError.value = error.response?.data?.message || error.message || 'Failed to load trip planner'
+    pageError.value = formatApiErrorDetail(error, t('trips.workspacePage.toasts.loadWorkspaceFailedFallback'))
   } finally {
     isInitialLoading.value = false
   }
@@ -1535,7 +1486,7 @@ const applyPlanSuggestionToForm = async (suggestion) => {
     return
   }
 
-  const resolvedTitle = suggestion.title || planItemForm.value.title || 'Planned place'
+  const resolvedTitle = suggestion.title || planItemForm.value.title || t('trips.search.plannedPlaceFallback')
   planItemForm.value.title = resolvedTitle
   planItemForm.value.latitude = typeof suggestion.latitude === 'number' ? suggestion.latitude : planItemForm.value.latitude
   planItemForm.value.longitude = typeof suggestion.longitude === 'number' ? suggestion.longitude : planItemForm.value.longitude
@@ -1727,8 +1678,8 @@ const resolvePlanSuggestionForCoordinates = async (latitude, longitude, {
     }
     toast.add({
       severity: 'warn',
-      summary: 'Plan suggestion unavailable',
-      detail: error.response?.data?.message || error.message || 'You can still edit title and save.',
+      summary: t('trips.workspacePage.toasts.planSuggestionUnavailableSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.planSuggestionUnavailableFallback')),
       life: 3000
     })
   } finally {
@@ -1818,7 +1769,14 @@ const handlePlanToVisit = async (event) => {
   await openPlanItemDialogFromCoordinates(lat, lon, 'context-menu')
 }
 
+// Which stop the map is currently focused on, so the rail can highlight it.
+const focusedPlanItemId = ref(null)
+
+// The rail's lens. 'plan' = the stops you intended; 'actual' = what happened.
+const railLens = ref('plan')
+
 const focusPlannedItemOnMap = (item) => {
+  focusedPlanItemId.value = item?.id ?? null
   if (!item || typeof item.latitude !== 'number' || typeof item.longitude !== 'number') {
     return
   }
@@ -1954,10 +1912,77 @@ const validatePlanItem = () => {
   planItemErrors.value = {}
 
   if (!planItemForm.value.title || !planItemForm.value.title.trim()) {
-    planItemErrors.value.title = 'Title is required'
+    planItemErrors.value.title = t('trips.workspacePage.planItemDialog.titleRequired')
   }
 
   return Object.keys(planItemErrors.value).length === 0
+}
+
+/**
+ * Names the stop from a suggested POI. Only fills fields the user has not already set, so
+ * clicking a photo can never overwrite typing they have done.
+ */
+const handlePoiSuggestionSelect = (poi) => {
+  if (!poi) return
+
+  // The title is set unconditionally: the dialog pre-fills it from reverse geocoding, so
+  // a fill-if-empty rule meant clicking a photo appeared to do nothing. An explicit click
+  // is an explicit choice - it outranks the automatic suggestion.
+  planItemForm.value.title = poi.name
+
+  // Notes are only filled when blank, so a click cannot discard something the user wrote.
+  if (!planItemForm.value.notes?.trim() && poi.description) {
+    planItemForm.value.notes = poi.description
+  }
+
+  if (Number.isFinite(poi.latitude) && Number.isFinite(poi.longitude)) {
+    planItemForm.value.latitude = poi.latitude
+    planItemForm.value.longitude = poi.longitude
+    // Move the dialog's map too, otherwise the pin stays behind while the coordinates
+    // underneath it change.
+    syncPlanItemDialogMapLocation({ recenter: true, zoom: 15 })
+  }
+}
+
+/**
+ * Adds a stop from the rail's add panel, whether it came from a name search or from
+ * discovery. Deliberately one click: the full plan-item dialog asks for day, priority and
+ * order, which is too much ceremony for "add this museum". It is refined afterwards in the
+ * rail, where the stop appears immediately with its day group.
+ */
+const handleAddStopFromRail = async (place) => {
+  if (!place?.title || !ensurePlanEditAccess()) return
+
+  try {
+    await tripsStore.createTripPlanItem(tripId.value, {
+      title: place.title,
+      notes: place.description || null,
+      latitude: place.latitude ?? null,
+      longitude: place.longitude ?? null,
+      plannedDay: null,
+      priority: 'OPTIONAL',
+      orderIndex: (tripPlanItems.value || []).length
+    })
+    toast.add({
+      severity: 'success',
+      summary: t('trips.workspacePage.toasts.addedToPlanSummary'),
+      detail: t('trips.workspacePage.toasts.addedToPlanDetail', { title: place.title }),
+      life: 2500
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('trips.workspacePage.toasts.couldNotAddPlaceSummary'),
+      detail: error?.userMessage || error?.message || t('trips.workspacePage.toasts.couldNotAddPlaceFallback'),
+      life: 3000
+    })
+  }
+}
+
+/** Mark a stop visited from the rail, through the same override path used everywhere else. */
+const handleMarkVisitedFromRail = (stop) => {
+  if (!stop || !ensurePlanEditAccess()) return
+  applyVisitOverride(stop, 'CONFIRM_VISITED')
 }
 
 const submitPlanItem = async () => {
@@ -1980,16 +2005,16 @@ const submitPlanItem = async () => {
       await tripsStore.updateTripPlanItem(tripId.value, editingPlanItemId.value, payload)
       toast.add({
         severity: 'success',
-        summary: 'Plan Item Updated',
-        detail: 'Trip plan item updated successfully',
+        summary: t('trips.workspacePage.toasts.planItemUpdatedSummary'),
+        detail: t('trips.workspacePage.toasts.planItemUpdatedDetail'),
         life: 2500
       })
     } else {
       await tripsStore.createTripPlanItem(tripId.value, payload)
       toast.add({
         severity: 'success',
-        summary: 'Plan Item Added',
-        detail: 'Trip plan item added successfully',
+        summary: t('trips.workspacePage.toasts.planItemAddedSummary'),
+        detail: t('trips.workspacePage.toasts.planItemAddedDetail'),
         life: 2500
       })
     }
@@ -2003,8 +2028,8 @@ const submitPlanItem = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Save Plan Item',
-      detail: error.response?.data?.message || error.message || 'Request failed',
+      summary: t('trips.workspacePage.toasts.savePlanItemFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.savePlanItemFailedFallback')),
       life: 5000
     })
   } finally {
@@ -2016,8 +2041,8 @@ const confirmDeletePlanItem = (item) => {
   if (!ensurePlanEditAccess()) return
   confirm.require({
     group: 'trip-workspace-plan-item',
-    message: `Delete plan item "${item.title}"?`,
-    header: 'Delete Plan Item',
+    message: t('trips.workspacePage.toasts.deletePlanItemMessage', { title: item.title }),
+    header: t('trips.workspacePage.toasts.deletePlanItemHeader'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
@@ -2029,15 +2054,15 @@ const confirmDeletePlanItem = (item) => {
         ])
         toast.add({
           severity: 'success',
-          summary: 'Plan Item Deleted',
-          detail: 'Trip plan item removed',
+          summary: t('trips.workspacePage.toasts.planItemDeletedSummary'),
+          detail: t('trips.workspacePage.toasts.planItemDeletedDetail'),
           life: 2500
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Failed to Delete Plan Item',
-          detail: error.response?.data?.message || error.message || 'Delete failed',
+          summary: t('trips.workspacePage.toasts.deletePlanItemFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.deleteFailedFallback')),
           life: 5000
         })
       }
@@ -2060,15 +2085,15 @@ const applyVisitOverride = async (item, action) => {
     ])
     toast.add({
       severity: 'success',
-      summary: 'Visit Status Updated',
-      detail: 'Plan item visit status has been updated',
+      summary: t('trips.workspacePage.toasts.visitStatusUpdatedSummary'),
+      detail: t('trips.workspacePage.toasts.visitStatusUpdatedDetail'),
       life: 2500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Update Visit Status',
-      detail: error.response?.data?.message || error.message || 'Update failed',
+      summary: t('trips.workspacePage.toasts.updateVisitStatusFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.updateVisitStatusFailedFallback')),
       life: 5000
     })
   }
@@ -2104,15 +2129,15 @@ const openTimelineGenerationDialogForJob = async (jobId) => {
 
         toast.add({
           severity: 'success',
-          summary: 'Timeline Generation Complete',
-          detail: 'Trip workspace was refreshed with regenerated data.',
+          summary: t('trips.workspacePage.toasts.timelineGenCompleteSummary'),
+          detail: t('trips.workspacePage.toasts.timelineGenCompleteDetail'),
           life: 3200
         })
       } catch (error) {
         toast.add({
           severity: 'warn',
-          summary: 'Refresh Incomplete',
-          detail: error.response?.data?.message || error.message || 'Timeline completed, but workspace refresh failed.',
+          summary: t('trips.workspacePage.toasts.refreshIncompleteSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.refreshIncompleteFallback')),
           life: 5000
         })
       } finally {
@@ -2122,15 +2147,15 @@ const openTimelineGenerationDialogForJob = async (jobId) => {
     onFailed: (progress) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Generation Failed',
-        detail: progress?.errorMessage || timelineJobError.value || 'Job failed.',
+        summary: t('trips.workspacePage.toasts.timelineGenFailedSummary'),
+        detail: progress?.errorMessage || timelineJobError.value || t('trips.workspacePage.toasts.timelineGenFailedFallback'),
         life: 5000
       })
     },
     onTrackingError: (error) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Job Tracking Failed',
+        summary: t('trips.workspacePage.toasts.timelineJobTrackingFailedSummary'),
         detail: error,
         life: 5000
       })
@@ -2228,46 +2253,9 @@ watch(showPlanItemDialog, async (nextVisible) => {
   line-height: 1.4;
 }
 
-.workspace-tabs {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-sm);
-  margin-top: var(--gp-spacing-sm);
-  margin-bottom: var(--gp-spacing-sm);
-  position: relative;
-  z-index: 2;
-}
-
-.workspace-tabs .p-button {
-  min-width: 108px;
-  background: transparent;
-  border: 1px solid var(--gp-border-light);
-  color: var(--gp-text-secondary);
-  box-shadow: none;
-  position: relative;
-  z-index: 1;
-}
-
-.workspace-tabs .active-workspace-tab {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: var(--gp-surface-white);
-}
-
-.workspace-tabs .p-button:not(.active-workspace-tab):hover {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-primary);
-  color: var(--gp-text-primary);
-  box-shadow: none;
-}
-
-.workspace-tabs .p-button:not(.active-workspace-tab):focus,
-.workspace-tabs .p-button:not(.active-workspace-tab):focus-visible,
-.workspace-tabs .active-workspace-tab:hover,
-.workspace-tabs .active-workspace-tab:focus,
-.workspace-tabs .active-workspace-tab:focus-visible {
-  border: 1px solid var(--gp-primary);
-  box-shadow: none;
+/* Desktop shows the full datetime subtitle; the compact status line takes over at <=768px. */
+.workspace-page-subtitle--compact {
+  display: none;
 }
 
 .unplanned-trip-banner {
@@ -2278,75 +2266,11 @@ watch(showPlanItemDialog, async (nextVisible) => {
   margin-bottom: var(--gp-spacing-sm);
 }
 
-.summary-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gp-spacing-sm);
-  margin-bottom: var(--gp-spacing-sm);
-}
-
-.summary-chip {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-sm);
-  min-height: 0;
-}
-
-.summary-chip span {
-  color: var(--gp-text-secondary);
-  font-size: 0.74rem;
-  line-height: 1.1;
-}
-
-.summary-chip strong {
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-
-.workspace-card,
-.plan-card {
+.workspace-card {
   margin-bottom: var(--gp-spacing-md);
-}
-
-.plan-content {
-  display: block;
-}
-
-.plan-content-table {
-  min-width: 0;
-}
-
-.workspace-card :deep(.p-card-body) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.workspace-card :deep(.p-card-content) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.workspace-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-md);
-  width: 100%;
-  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
-}
-
-.workspace-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
+  /* Grows into the space the summary strip leaves. Only takes effect once the page frame has
+     a definite height - see the mobile block at the end of this sheet. */
+  flex: 1 1 auto;
 }
 
 .workspace-header-actions {
@@ -2400,7 +2324,7 @@ watch(showPlanItemDialog, async (nextVisible) => {
   grid-template-columns: 1fr auto auto;
   gap: var(--gp-spacing-sm);
   align-items: center;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
 }
@@ -2414,17 +2338,14 @@ watch(showPlanItemDialog, async (nextVisible) => {
   color: var(--gp-text-secondary);
 }
 
-.workspace-layout {
-  --workspace-map-height: clamp(550px, 70vh, 760px);
-  display: flex;
-  gap: 0;
-  height: var(--workspace-map-height);
-  min-height: 0;
-}
-
 .workspace-card .workspace-timeline-split {
   --workspace-map-height: clamp(550px, 70vh, 760px);
   --timeline-split-side-width: clamp(360px, 22vw, 460px);
+  /* The component ships `flex: 1`, i.e. flex-basis: 0%, and this element is the only child of
+     the card's auto-height flex column. In a flex column the base size is what decides the
+     main size, so with `0%` the `height` below is ignored and only `min-height` holds the card
+     up. `auto` puts the declared height back in charge; the min-height stays as the backstop. */
+  flex: 1 1 auto;
   height: calc(var(--workspace-map-height) + 0.5rem);
   min-height: calc(550px + 0.5rem);
 }
@@ -2446,158 +2367,20 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .workspace-timeline-split :deep(.map-container-wrapper),
-.workspace-timeline-split :deep(.base-map),
-.workspace-map :deep(.map-container-wrapper),
-.workspace-map :deep(.base-map) {
+.workspace-timeline-split :deep(.base-map) {
   height: 100%;
 }
 
+/* Desktop only. The rail inside the pane is absolutely positioned, so the pane has to be
+   the containing block and carry a definite height - otherwise the rail grows with its
+   content and the whole page scrolls. On mobile that same declaration fights the
+   component's bottom sheet, so it is undone by the media block at the end of this sheet. */
 .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
   max-height: none;
-  background: var(--gp-surface-white);
-}
-
-.workspace-map,
-.workspace-timeline {
-  border: 0;
-  border-radius: 0;
-  overflow: hidden;
-  height: 100%;
+  background: var(--gp-surface-card);
+  position: relative;
   min-height: 0;
-  background: var(--gp-surface-white);
-}
-
-.workspace-map {
-  flex: 5;
-  margin-top: 0.5rem;
-  margin-left: 0.5rem;
-  margin-right: 1rem;
-  max-height: none;
-  min-height: var(--workspace-map-height);
-  min-width: 0;
-}
-
-.workspace-timeline {
-  flex: 1;
-  margin-top: 0.5rem;
-  margin-right: 0.5rem;
-  min-width: 0;
-  max-width: none;
-  max-height: none;
-  overflow-y: auto;
-}
-
-.planning-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
-  gap: var(--gp-spacing-sm);
-  padding: var(--gp-spacing-lg);
-  color: var(--gp-text-secondary);
-}
-
-.planning-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--gp-spacing-sm);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
-
-.planning-callout-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.planning-panel h4 {
-  margin: 0;
-  color: var(--gp-text-primary);
-}
-
-.planning-panel p {
-  margin: 0;
-}
-
-.planning-panel-icon {
-  font-size: 2rem;
-  color: var(--gp-text-muted);
-}
-
-.planning-list {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-xs);
-  margin-top: var(--gp-spacing-sm);
-}
-
-.planning-list-header {
-  font-size: 0.8rem;
-  color: var(--gp-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.planning-list-item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gp-spacing-xs);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-}
-
-.planning-list-main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  border: 0;
-  background: transparent;
-  color: var(--gp-text-primary);
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  flex: 1;
-}
-
-.planning-list-main:hover {
-  color: var(--gp-primary, #1a56db);
-}
-
-.planning-list-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-xs);
-}
-
-.planning-list-title {
-  font-weight: 600;
-}
-
-.planning-list-item small {
-  color: var(--gp-text-secondary);
-}
-
-.planning-list-notes {
-  display: block;
-  max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.planning-list-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.1rem;
 }
 
 .pane-loading {
@@ -2638,8 +2421,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
 .plan-item-coordinate-pill {
   min-height: 2.5rem;
   border-radius: var(--gp-radius-small);
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
   padding: 0.55rem 0.7rem;
   color: var(--gp-text-secondary);
   font-size: 0.83rem;
@@ -2654,10 +2437,10 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .plan-item-dialog-map-wrap {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .plan-item-dialog-map-hint {
@@ -2701,20 +2484,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 @media (max-width: 1279px) {
-  .summary-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .workspace-card .workspace-timeline-split {
     --timeline-split-side-width: clamp(340px, 30vw, 420px);
-  }
-
-  .workspace-map {
-    flex: 5;
-  }
-
-  .workspace-timeline {
-    flex: 2;
   }
 }
 
@@ -2722,39 +2493,16 @@ watch(showPlanItemDialog, async (nextVisible) => {
   .workspace-card .workspace-timeline-split {
     --timeline-split-side-width: clamp(360px, 24vw, 440px);
   }
-
-  .workspace-map {
-    flex: 5;
-  }
-
-  .workspace-timeline {
-    flex: 2;
-  }
 }
 
 @media (min-width: 1600px) {
-  .workspace-layout,
   .workspace-card .workspace-timeline-split {
     --workspace-map-height: clamp(580px, 75vh, 860px);
     --timeline-split-side-width: clamp(380px, 20vw, 460px);
   }
-
-  .workspace-map {
-    flex: 4;
-  }
-
-  .workspace-timeline {
-    flex: 1;
-  }
 }
 
 @media (max-width: 1024px) {
-  .workspace-layout {
-    flex-direction: column;
-    height: auto;
-    min-height: auto;
-  }
-
   .workspace-card .workspace-timeline-split {
     --workspace-map-height: clamp(500px, 70vh, 640px);
     height: calc(var(--workspace-map-height) + 0.5rem);
@@ -2764,51 +2512,102 @@ watch(showPlanItemDialog, async (nextVisible) => {
   .plan-item-dialog-layout {
     grid-template-columns: 1fr;
   }
-
-  .workspace-map,
-  .workspace-timeline {
-    max-height: none;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .workspace-map {
-    min-height: var(--workspace-map-height);
-  }
-
-  .workspace-timeline {
-    min-height: 460px;
-  }
-
 }
 
 @media (max-width: 768px) {
   .workspace-card .workspace-timeline-split {
-    --workspace-map-height: clamp(460px, calc(100dvh - 240px), 560px);
+    /* Budget measured from the top of the viewport, after the chrome below was compacted:
+         60 navbar + 8 padding + 43 title/subtitle + 12 gap + 44 action row
+       + 12 header margin + 60 summary strip = ~239px, plus the card's own padding and the
+       0.5rem the split adds. env() is subtracted because 100dvh includes the safe areas
+       and both the navbar height and .gp-app-layout's bottom padding already claim them. */
+    --workspace-map-height: clamp(
+      260px,
+      calc(100dvh - 288px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      560px
+    );
     height: calc(var(--workspace-map-height) + 0.5rem);
-    min-height: calc(460px + 0.5rem);
+    /* The height above is this element's flex base size (flex-basis is `auto` here), so it is
+       what the card is sized by, and the mobile frame normally stretches it past this value.
+       260px is a floor for the frame being shorter than the clamp, not the card's height: at 0
+       the card collapsed to its own padding (18px) and took the map and the sheet with it,
+       because on mobile both panes are out of flow and contribute no height. */
+    min-height: 260px;
   }
 
-  .workspace-tabs {
-    flex-wrap: wrap;
+  .workspace-page-title {
+    font-size: 1.25rem;
+    line-height: 1.25;
   }
 
-  .summary-strip {
-    grid-template-columns: 1fr;
+  /* The picker in the action row already shows the range, so the full "Upcoming •
+     01/10/2026 00:00 - 04/10/2026 23:59" line is replaced by status + trip length.
+     Swapped in CSS rather than behind a JS flag so it cannot disagree with the media
+     query that actually positions the sheet. */
+  .workspace-page-subtitle:not(.workspace-page-subtitle--compact) {
+    display: none;
   }
 
-  .workspace-card-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .workspace-page-subtitle--compact {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  /* The dense map is the point of the card; 16px of card padding on each side was chrome. */
+  .workspace-card :deep(.gp-card-content) {
+    padding: var(--gp-spacing-sm);
+  }
+
+  /* ~60px of roll-up numbers that are only read, never acted on, and on a future trip are all
+     zeros. The map is the page on a phone, and per-stop visited state already lives in the
+     Stops list. Desktop keeps the strip. Same trade-off as the landscape block below, which
+     still covers wide-but-short windows this query does not match. */
+  .trip-summary-bar {
+    display: none;
+  }
+
+  /* One 44px row: the picker flexes, the rest are icon-only square buttons. This replaces
+     a wrap that produced three rows (Add Missing / picker / reset + Collaborators). */
+  .workspace-header-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--gp-spacing-xs);
   }
 
   .workspace-date-picker {
-    min-width: 100%;
-    width: 100%;
+    /* The picker is the primary control and leads the row in the template, so it needs no
+       `order` override - it used to sit between two icon buttons and was pulled to the front
+       from here. */
+    flex: 1 1 auto;
+    /* Load-bearing: the base rule sets min-width: 260px, which would force a second row. */
+    min-width: 0;
+    width: auto;
+    max-width: none;
   }
 
-  .workspace-header-actions {
+  .workspace-date-picker :deep(.p-datepicker-input) {
+    min-height: 2.75rem;
     width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  /* Icon-only. The label is hidden visually only - PrimeVue derives aria-label from the
+     `label` prop, so the accessible name survives. Because `label` is still set PrimeVue
+     never adds `p-button-icon-only`, hence the explicit 44px sizing. */
+  .workspace-header-actions :deep(.p-button-label) {
+    display: none;
+  }
+
+  .workspace-header-actions :deep(.p-button) {
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
   }
 
   .collaborator-add-row {
@@ -2823,12 +2622,97 @@ watch(showPlanItemDialog, async (nextVisible) => {
     grid-template-columns: 1fr;
   }
 }
+
+/* Mobile sheet mode. The rule further up this file (which desktop needs, because the rail
+   inside the pane is absolutely positioned and would otherwise anchor to
+   .timeline-split-main) also matched here and turned the pane back into an in-flow flex
+   child, so it landed at the top of the card with the map painted behind it. Identical
+   selector, later in the sheet -> this wins; media queries add no specificity.
+   Deliberately the same query the component uses, so landscape phones
+   (max-height: 520px + coarse pointer) are covered - a max-width-only block is not. */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    /* The desktop rule above sets `max-height: none` at (0,4,0), which beats the
+       component's mobile `max-height: calc(100% - 24px)` at (0,2,0). Restore it, or the
+       sheet can grow past the card. */
+    max-height: calc(100% - 24px);
+  }
+}
+
+/* Landscape phones and short windows. The component is in sheet mode here too, so the card
+   has to shrink with it. The max-width guard keeps a wide-but-short desktop window out. */
+@media (max-height: 520px) and (max-width: 1024px) {
+  .workspace-page-subtitle,
+  .workspace-page-subtitle--compact {
+    display: none;
+  }
+
+  .workspace-page-title {
+    font-size: 1rem;
+  }
+
+  .workspace-card .workspace-timeline-split {
+    --workspace-map-height: clamp(
+      180px,
+      calc(100dvh - 184px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      340px
+    );
+    height: calc(var(--workspace-map-height) + 0.5rem);
+    /* Base size again, not a target: the mobile frame stretches this to fill the screen. */
+    min-height: 180px;
+  }
+
+  /* Landscape phones, and wide-but-short windows where the portrait mobile block above does
+     not match. Same trade-off there: metrics are unavailable until the user rotates back or
+     widens the window. */
+  .trip-summary-bar {
+    display: none;
+  }
+}
+
+/* Mobile: give the frame a definite height so the card can take whatever the navbar, page
+   padding, title, action row and summary strip leave over. Deliberately last in this sheet:
+   the clamp blocks above become the flex base size rather than the final height, so the card
+   keeps a sane minimum but is no longer capped - the 560px ceiling is what left the bottom of
+   the screen empty while the map stayed short.
+
+   Scoped to this page by the header class rather than applied to AppLayout/PageContainer
+   globally: a `.gp-app-layout` rule alone would tie on specificity with the
+   `min-height: 100vh` AppLayout itself sets, and lose or win by stylesheet order. */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .gp-app-layout:has(.workspace-page-header) {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  /* Each of these is a flex item with the default `min-height: auto`, which would refuse to
+     shrink and push the overflow out of the frame instead of giving the card a smaller share. */
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-app-main),
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-page-container),
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-page-content) {
+    min-height: 0;
+  }
+
+  /* The card has no height of its own to give the split - it is a block wrapping a flex
+     column - so it has to hand its resolved height down explicitly. */
+  .workspace-card :deep(.gp-card-content) {
+    height: 100%;
+  }
+
+  /* 16px of page background under a card that is meant to reach the bottom of the screen. */
+  .workspace-card {
+    margin-bottom: 0;
+  }
+}
 </style>
 
 <style>
 .plan-item-dialog {
-  width: 95vw !important;
-  max-width: 1480px !important;
+  width: 95vw;
+  max-width: 1480px;
 }
 
 .plan-item-dialog-marker-icon {

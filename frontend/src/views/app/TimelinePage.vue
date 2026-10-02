@@ -3,11 +3,11 @@
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
-          Current date range matches trip plan:
+          {{ t('timeline.page.workspaceBanner.lead') }}
           <strong>{{ matchingTripWorkspace.name }}</strong>
         </span>
         <Button
-          label="Open Trip Planner"
+          :label="t('timeline.page.workspaceBanner.openPlanner')"
           icon="pi pi-briefcase"
           size="small"
           outlined
@@ -32,12 +32,14 @@
         ref="timelineSplitLayoutRef"
         :show-date-navigation="isSingleDaySelected"
         :date-label="selectedDateLabel"
+        :collapsed-label="t('timeline.layout.collapsedLabel')"
+        :expanded-label="t('timeline.layout.expandedLabel')"
         @navigate-date="navigateTimelineDay"
         @layout-resize="triggerMapResize"
       >
         <template #map>
           <div v-if="mapNoData" class="loading-messages">
-            No data to show on the map. Try to select different date range.
+            {{ t('timeline.page.map.noData') }}
           </div>
           <div v-if="mapDataLoading" class="loading-messages">
             <ProgressSpinner />
@@ -62,6 +64,7 @@
               :panoramax-endpoint="panoramaxEndpoint"
               :enable-trip-replay="true"
               :auto-show-trip-replay-controls="autoShowTripReplayControls"
+              :enable3d-buildings-by-default="enable3dBuildingsByDefault"
               :read-only="demoReadOnly"
               @timeline-marker-click="handleTimelineMarkerClick"
               @highlighted-path-click="handleHighlightedPathClick"
@@ -79,6 +82,7 @@
               :timelineDataLoading="timelineDataLoading"
               :dateRange="dateRange"
               :read-only="demoReadOnly"
+              :map-matching-by-trip-id="mapMatchingByTripId"
               @timeline-item-click="handleTimelineItemClick"
               @tag-clicked="handleTagClicked"
               @rename-stay="handleRenameStay"
@@ -136,6 +140,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -147,7 +152,6 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -158,6 +162,8 @@ import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEdi
 import { useTimelineMapMatching } from '@/composables/useTimelineMapMatching'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { errorToastOptions } from '@/utils/errorHandler'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
@@ -169,6 +175,7 @@ import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 
 const toast = useToast()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -246,6 +253,9 @@ const readTimelineDisplayFallback = () => {
     ? user.customMapStyleUrl
     : cachedProfile.customMapStyleUrl
   const mapMatchingAvailable = user.mapMatchingAvailable ?? cachedProfile.mapMatchingAvailable
+  const mapMatchingExcludedMovementTypes = user.mapMatchingExcludedMovementTypes
+    ?? cachedProfile.mapMatchingExcludedMovementTypes
+    ?? []
 
   return {
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
@@ -257,9 +267,15 @@ const readTimelineDisplayFallback = () => {
     autoShowTripReplayControls: user.autoShowTripReplayControls
       ?? cachedProfile.autoShowTripReplayControls
       ?? true,
+    enable3dBuildingsByDefault: user.enable3dBuildingsByDefault
+      ?? cachedProfile.enable3dBuildingsByDefault
+      ?? false,
     mapMatchingEnabled: mapMatchingAvailable === false
       ? false
       : (user.mapMatchingEnabled ?? cachedProfile.mapMatchingEnabled ?? false),
+    mapMatchingExcludedMovementTypes: Array.isArray(mapMatchingExcludedMovementTypes)
+      ? mapMatchingExcludedMovementTypes
+      : [],
     panoramaxAvailable: false,
     panoramaxEndpoint: null
   }
@@ -282,7 +298,9 @@ const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
+const enable3dBuildingsByDefault = ref(initialTimelineDisplaySettings.enable3dBuildingsByDefault)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
+const mapMatchingExcludedMovementTypes = ref(initialTimelineDisplaySettings.mapMatchingExcludedMovementTypes)
 const panoramaxAvailable = ref(initialTimelineDisplaySettings.panoramaxAvailable)
 const panoramaxEndpoint = ref(initialTimelineDisplaySettings.panoramaxEndpoint)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
@@ -342,11 +360,13 @@ const visibleTrips = computed(() => {
 const {
   activePathData,
   matchedTripIds,
+  mapMatchingByTripId,
   statusText: mapMatchingStatusText,
   resolve: resolveMapMatching,
   reset: resetMapMatching
 } = useTimelineMapMatching({
   enabled: mapMatchingEnabled,
+  excludedMovementTypes: mapMatchingExcludedMovementTypes,
   visibleTrips,
   rawPathData: pathData
 })
@@ -399,16 +419,16 @@ const handleFavoriteDelete = (favorite) => {
   }
 
   confirm.require({
-    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
-    header: 'Delete Favorite',
+    message: t('timeline.page.favorite.deleteConfirm.message'),
+    header: t('timeline.page.favorite.deleteConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
       const action = () => favoritesStore.deleteFavorite(favorite.id)
 
       withTimelineRegeneration(action, {
         modalType: 'favorite-delete',
-        successMessage: `Favorite "${favorite.name}" deleted successfully. Timeline is regenerating.`,
-        errorMessage: 'Failed to delete favorite location.',
+        successMessage: t('timeline.page.favorite.deleteSuccess', { name: favorite.name }),
+        errorMessage: t('timeline.page.favorite.deleteFailed'),
         onSuccess: () => {
           favoritesStore.fetchFavoritePlaces()
         }
@@ -428,7 +448,7 @@ const fetchLocationData = async (startDate, endDate) => {
     if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
       toast.add({
         severity: 'info',
-        detail: 'No location data for given date range',
+        detail: t('timeline.page.toasts.noLocationData'),
         life: 3000
       })
       mapNoData.value = true
@@ -436,12 +456,11 @@ const fetchLocationData = async (startDate, endDate) => {
   } catch (error) {
     console.error('Error fetching location data:', error)
     mapNoData.value = true
-    const errorMessage = error.response?.data?.message || error.message || error.toString()
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch location data',
-      detail: errorMessage,
-      life: 3000
+      summary: t('timeline.page.toasts.locationFetchFailed'),
+      detail: formatApiErrorDetail(error, t('timeline.page.toasts.locationFetchFailed')),
+      ...errorToastOptions(error, 3000)
     })
   } finally {
     mapDataLoading.value = false
@@ -450,12 +469,7 @@ const fetchLocationData = async (startDate, endDate) => {
 
 const checkDatasetSize = async (startDate, endDate) => {
   try {
-    const response = await apiService.get('/streaming-timeline/count', {
-      startTime: startDate,
-      endTime: endDate
-    })
-
-    const counts = response.data
+    const counts = await timelineStore.fetchTimelineCount(startDate, endDate)
     datasetCounts.value = {
       totalItems: counts.totalItems || 0,
       stays: counts.stays || 0,
@@ -489,19 +503,18 @@ const fetchTimelineData = async (startDate, endDate) => {
     if (timelineData.value == null || timelineData.value.length === 0) {
       toast.add({
         severity: 'info',
-        detail: 'No timeline data for given date range',
+        detail: t('timeline.page.toasts.noTimelineData'),
         life: 3000
       })
       timelineNoData.value = true
     }
   } catch (error) {
     console.error('Error fetching timeline data:', error)
-    const errorMessage = error.response?.data?.message || error.message || error.toString()
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch timeline',
-      detail: errorMessage,
-      life: 3000
+      summary: t('timeline.page.toasts.timelineFetchFailed'),
+      detail: formatApiErrorDetail(error, t('timeline.page.toasts.timelineLoadFailed')),
+      ...errorToastOptions(error, 8000)
     })
     timelineNoData.value = true
   } finally {
@@ -611,8 +624,8 @@ const handleTagClicked = (tag) => {
 
   toast.add({
     severity: 'info',
-    summary: `Viewing ${tag.tagName}`,
-    detail: `Timeline updated to show ${tag.tagName} period`,
+    summary: t('timeline.page.toasts.viewingTag', { name: tag.name }),
+    detail: t('timeline.page.toasts.tagPeriod', { name: tag.name }),
     life: 3000
   })
 }
@@ -640,8 +653,8 @@ const handleResetDataGapOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Reset Manual Stay Override',
-    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    header: t('timeline.page.resetDataGapOverride.confirmHeader'),
+    message: t('timeline.page.resetDataGapOverride.confirmMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -649,16 +662,15 @@ const handleResetDataGapOverride = (stayItem) => {
         await reloadCurrentRange()
         toast.add({
           severity: 'success',
-          summary: 'Override Reset',
-          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          summary: t('timeline.page.resetDataGapOverride.successSummary'),
+          detail: t('timeline.page.resetDataGapOverride.successDetail'),
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: errorMessage,
+          summary: t('timeline.page.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('timeline.page.resetDataGapOverride.failedDetail')),
           life: 5000
         })
       }
@@ -673,8 +685,8 @@ const handleResetTripSplitOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Undo Manual Trip Split',
-    message: 'Undo this manual trip split and regenerate timeline segments?',
+    header: t('timeline.page.resetTripSplitOverride.confirmHeader'),
+    message: t('timeline.page.resetTripSplitOverride.confirmMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -682,16 +694,15 @@ const handleResetTripSplitOverride = (stayItem) => {
         await reloadCurrentRange()
         toast.add({
           severity: 'success',
-          summary: 'Split Reset',
-          detail: 'Manual trip split was reset to automatic behavior.',
+          summary: t('timeline.page.resetTripSplitOverride.successSummary'),
+          detail: t('timeline.page.resetTripSplitOverride.successDetail'),
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual trip split'
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: errorMessage,
+          summary: t('timeline.page.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('timeline.page.resetTripSplitOverride.failedDetail')),
           life: 5000
         })
       }
@@ -740,23 +751,23 @@ const handleReconstructionCommitted = async (result) => {
       await reloadCurrentRange()
       toast.add({
         severity: 'success',
-        summary: 'Timeline Updated',
-        detail: 'Missing timeline data has been added.',
+        summary: t('timeline.page.reconstruction.updatedSummary'),
+        detail: t('timeline.page.reconstruction.updatedDetail'),
         life: 3200
       })
     },
     onFailed: (progress) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Generation Failed',
-        detail: progress?.errorMessage || 'Timeline generation job failed.',
+        summary: t('timeline.page.reconstruction.failedSummary'),
+        detail: progress?.errorMessage || t('timeline.page.reconstruction.failedDetail'),
         life: 5000
       })
     },
     onTrackingError: (error) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Job Tracking Failed',
+        summary: t('timeline.page.reconstruction.trackingFailedSummary'),
         detail: error,
         life: 5000
       })
@@ -768,8 +779,7 @@ const loadTimelineDisplaySettings = async () => {
   const fallback = readTimelineDisplayFallback()
 
   try {
-    const response = await apiService.get('/users/preferences/timeline/display')
-    const data = response?.data || response
+    const data = await authStore.fetchTimelineDisplayPreferences()
     showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = hasOwnPreference(data, 'customMapTileUrl')
       ? data.customMapTileUrl || null
@@ -779,7 +789,11 @@ const loadTimelineDisplaySettings = async () => {
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
     autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
+    enable3dBuildingsByDefault.value = data?.enable3dBuildingsByDefault ?? fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = data?.mapMatchingEnabled ?? fallback.mapMatchingEnabled
+    mapMatchingExcludedMovementTypes.value = Array.isArray(data?.mapMatchingExcludedMovementTypes)
+      ? data.mapMatchingExcludedMovementTypes
+      : fallback.mapMatchingExcludedMovementTypes
     panoramaxAvailable.value = data?.panoramaxAvailable ?? false
     panoramaxEndpoint.value = data?.panoramaxEndpoint || null
   } catch (error) {
@@ -788,7 +802,9 @@ const loadTimelineDisplaySettings = async () => {
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
     autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
+    enable3dBuildingsByDefault.value = fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = fallback.mapMatchingEnabled
+    mapMatchingExcludedMovementTypes.value = fallback.mapMatchingExcludedMovementTypes
     panoramaxAvailable.value = false
     panoramaxEndpoint.value = null
   } finally {
@@ -1170,24 +1186,23 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 .loading-messages {
   color: var(--gp-text-secondary);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
   padding: var(--gp-spacing-lg);
   margin-top: 1rem;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  min-height: 200px;
   text-align: center;
 }
 
-/* Dark mode for loading messages */
-.p-dark .loading-messages {
-  color: var(--gp-text-primary);
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
+.loading-messages .p-progressspinner {
+  margin-bottom: 1rem;
 }
 
 /* Responsive design */
@@ -1203,7 +1218,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     height: calc(100vh - 150px);
   }
 }
-
 </style>
 
 <style>
@@ -1218,15 +1232,15 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Override padding on the timeline container */
 .p-timeline-left .p-timeline-event-opposite {
-  display: none !important; /* optional: remove opposite content space */
+  display: none; /* optional: remove opposite content space */
 }
 
 .p-timeline-left .p-timeline-event {
-  margin-left: 0 !important; /* remove extra margin */
+  margin-left: 0; /* remove extra margin */
 }
 
 /* Adjust the content container */
 .p-timeline-left .p-timeline-event-content {
-  padding-left: 0.5rem !important; /* or 0 if you want no space */
+  padding-left: 0.5rem; /* or 0 if you want no space */
 }
 </style>

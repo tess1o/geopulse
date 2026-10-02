@@ -109,5 +109,3 @@ const normalizedRows = computed(() => (
     }))
 ))
 </script>
-
-<style src="../styles/mapPopup.css"></style>

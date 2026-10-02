@@ -1,21 +1,30 @@
 package org.github.tess1o.geopulse.streaming.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
-import org.github.tess1o.geopulse.streaming.model.dto.PagedPlaceVisitsDTO;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlacePhotoSearchWindowDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceVisitDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.UpdatePlaceNameRequest;
 import org.github.tess1o.geopulse.streaming.service.PlaceDetailsService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -28,11 +37,16 @@ import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PLACE_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PLACE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PLACE_RENAME_NOT_ALLOWED;
+
 /**
  * REST API resource for place details and visit history.
  * Provides endpoints to view comprehensive information about specific locations.
  */
-@Path("/api/place-details")
+@Path("/places")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -56,29 +70,13 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getPlaceDetails(@PathParam("type") String type, @PathParam("id") Long id) {
+    public PlaceDetailsDTO getPlaceDetails(@PathParam("type") String type, @PathParam("id") Long id) {
         UserEntity user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         log.info("Place details request from user {} for {}:{}", userId, type, id);
 
-        try {
-            Optional<PlaceDetailsDTO> placeDetails = placeDetailsService.getPlaceDetails(
-                    type, id, userId, user.getTimezone());
-
-            if (placeDetails.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Place not found or access denied"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(placeDetails.get())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get place details for user {}, {}:{}", userId, type, id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get place details: " + e.getMessage()))
-                    .build();
-        }
+        return placeDetailsService.getPlaceDetails(type, id, userId, user.getTimezone())
+                .orElseThrow(() -> new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied"));
     }
 
     /**
@@ -93,7 +91,7 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}/photo-search-window")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getPlacePhotoSearchWindow(
+    public PlacePhotoSearchWindowDTO getPlacePhotoSearchWindow(
             @PathParam("type") String type,
             @PathParam("id") Long id,
             @QueryParam("radiusMeters") @DefaultValue("100") double radiusMeters) {
@@ -103,28 +101,11 @@ public class PlaceDetailsResource {
                 userId, type, id, radiusMeters);
 
         if (radiusMeters <= 0 || radiusMeters > 5000) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("radiusMeters must be between 0 and 5000"))
-                    .build();
+            throw new GeoPulseException(INVALID_PLACE_REQUEST, "radiusMeters must be between 0 and 5000");
         }
 
-        try {
-            Optional<PlacePhotoSearchWindowDTO> windowOpt =
-                    placeDetailsService.getPlacePhotoSearchWindow(type, id, userId, radiusMeters);
-
-            if (windowOpt.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Place not found or access denied"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(windowOpt.get())).build();
-        } catch (Exception e) {
-            log.error("Failed to get place photo search window for user {}, {}:{}", userId, type, id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get photo search window: " + e.getMessage()))
-                    .build();
-        }
+        return placeDetailsService.getPlacePhotoSearchWindow(type, id, userId, radiusMeters)
+                .orElseThrow(() -> new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied"));
     }
 
     /**
@@ -141,7 +122,7 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}/visits")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getPlaceVisits(
+    public PageResponse<PlaceVisitDTO> getPlaceVisits(
             @PathParam("type") String type,
             @PathParam("id") Long id,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -153,25 +134,10 @@ public class PlaceDetailsResource {
         log.info("Place visits request from user {} for {}:{} (page={}, size={}, sortBy={}, dir={})",
                 userId, type, id, page, size, sortBy, sortDirection);
 
-        try {
-            // Validate page number
-            if (page < 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Page number must be non-negative"))
-                        .build();
-            }
-
-            PagedPlaceVisitsDTO visits = placeDetailsService.getPlaceVisits(
-                    type, id, userId, page, size, sortBy, sortDirection);
-
-            return Response.ok(ApiResponse.success(visits)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get place visits for user {}, {}:{}", userId, type, id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get place visits: " + e.getMessage()))
-                    .build();
+        if (page < 0) {
+            throw new GeoPulseException(INVALID_PAGE, "Page number must be non-negative");
         }
+        return placeDetailsService.getPlaceVisits(type, id, userId, page, size, sortBy, sortDirection);
     }
 
     /**
@@ -185,37 +151,21 @@ public class PlaceDetailsResource {
     @PUT
     @Path("/{type}/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response updatePlaceName(
+    @APIResponse(responseCode = "204", description = "Place name updated")
+    public RestResponse<Void> updatePlaceName(
             @PathParam("type") String type,
             @PathParam("id") Long id,
-            UpdatePlaceNameRequest request) {
+            @NotNull @Valid UpdatePlaceNameRequest request) {
 
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Update place name request from user {} for {}:{}", userId, type, id);
 
-        try {
-            if (request == null || request.getName() == null || request.getName().trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Place name cannot be empty"))
-                        .build();
-            }
-
-            boolean updated = placeDetailsService.updatePlaceName(type, id, userId, request.getName());
-
-            if (!updated) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Cannot update place name. Only favorite locations can be renamed."))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success("Place name updated successfully")).build();
-
-        } catch (Exception e) {
-            log.error("Failed to update place name for user {}, {}:{}", userId, type, id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update place name: " + e.getMessage()))
-                    .build();
+        boolean updated = placeDetailsService.updatePlaceName(type, id, userId, request.name().trim());
+        if (!updated) {
+            throw new GeoPulseException(PLACE_RENAME_NOT_ALLOWED,
+                    "Only favorite locations can be renamed");
         }
+        return RestResponse.noContent();
     }
 
     /**
@@ -232,6 +182,8 @@ public class PlaceDetailsResource {
     @Path("/{type}/{id}/visits/export")
     @Produces("text/csv")
     @RolesAllowed({"USER", "ADMIN"})
+    @APIResponse(responseCode = "200", description = "Place visits CSV export",
+            content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
     public Response exportPlaceVisits(
             @PathParam("type") String type,
             @PathParam("id") Long id,
@@ -242,14 +194,11 @@ public class PlaceDetailsResource {
         UUID userId = user.getId();
         log.info("Export visits request from user {} for {}:{}", userId, type, id);
 
-        try {
             // Get place details for metadata
             Optional<PlaceDetailsDTO> placeDetailsOpt = placeDetailsService.getPlaceDetails(
                     type, id, userId, user.getTimezone());
             if (placeDetailsOpt.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity("Place not found or access denied")
-                        .build();
+                throw new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied");
             }
 
             PlaceDetailsDTO placeDetails = placeDetailsOpt.get();
@@ -324,12 +273,6 @@ public class PlaceDetailsResource {
                     .header("Content-Type", "text/csv; charset=utf-8")
                     .build();
 
-        } catch (Exception e) {
-            log.error("Failed to export visits for user {}, {}:{}", userId, type, id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Failed to export visits: " + e.getMessage())
-                    .build();
-        }
     }
 
     /**
@@ -366,18 +309,4 @@ public class PlaceDetailsResource {
         }
     }
 
-    /**
-     * Request DTO for updating place name.
-     */
-    public static class UpdatePlaceNameRequest {
-        private String name;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-    }
 }

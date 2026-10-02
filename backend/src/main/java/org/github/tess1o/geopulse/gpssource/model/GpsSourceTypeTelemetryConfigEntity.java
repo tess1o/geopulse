@@ -1,11 +1,13 @@
 package org.github.tess1o.geopulse.gpssource.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
+import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,10 +36,11 @@ public class GpsSourceTypeTelemetryConfigEntity {
     private UserEntity user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false)
+    @Column(name = "source_type", nullable = false, length = 32)
     private GpsSourceType sourceType;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "mapping", columnDefinition = "jsonb", nullable = false)
     private List<GpsTelemetryMappingEntry> mapping;
 }

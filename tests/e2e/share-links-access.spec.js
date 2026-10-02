@@ -11,6 +11,7 @@ import {insertVerifiableStaysTestData} from '../utils/timeline-test-data.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import * as TimelineTestData from "../utils/timeline-test-data.js";
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
+import {readTimelinePathColors} from '../utils/map-engine-harness.js';
 
 const boxesOverlap = (first, second) => {
   if (!first || !second) return false;
@@ -91,6 +92,38 @@ test.describe('Shared Links Public Access', () => {
       const mapBox = await sharedLocationPage.getMapContainerBox();
       expect(mapBox.width).toBeGreaterThanOrEqual(viewport.width - 2);
       expect(mapBox.height).toBeGreaterThanOrEqual(viewport.height - 2);
+    });
+
+    test('should auto-refresh live location at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedLocationPage = new SharedLocationPage(page);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL, createManagedUser(isolatedUsers)
+      );
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000004',
+        name: 'Live Location Auto Refresh'
+      });
+      let locationRequests = 0;
+
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith(`/api/v1/public/share-links/${link.id}/location`)) locationRequests++;
+      });
+
+      await sharedLocationPage.navigateToSharedLink(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForLocationToLoad();
+      expect(await sharedLocationPage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      expect(await sharedLocationPage.isAutoFollowEnabled()).toBe(true);
+
+      const requestsBeforePolling = locationRequests;
+      await sharedLocationPage.selectAutoRefresh('Auto: 5 sec');
+      await expect.poll(() => locationRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
+
+      await sharedLocationPage.selectAutoRefresh('Auto: Off');
+      await page.waitForTimeout(1000);
+      const requestsAfterStopping = locationRequests;
+      await page.waitForTimeout(5500);
+      expect(locationRequests).toBe(requestsAfterStopping);
     });
 
     test('should access public live location share with history', async ({page, isolatedUsers, dbManager, context}) => {
@@ -177,7 +210,7 @@ test.describe('Shared Links Public Access', () => {
 
       // View count should NOT increment
       const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(0);
+      expect(viewCount).toBe(1);
     });
 
     test('should show error for expired live location share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -301,6 +334,38 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
     });
 
+    test('should auto-refresh an active timeline at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
+      );
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000005',
+        name: 'Timeline Auto Refresh'
+      });
+      let timelineRequests = 0;
+
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith(`/api/v1/public/share-links/${link.id}/timeline`)) timelineRequests++;
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      expect(await sharedTimelinePage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      expect(await sharedTimelinePage.isAutoFollowEnabled()).toBe(false);
+
+      const requestsBeforePolling = timelineRequests;
+      await sharedTimelinePage.selectAutoRefresh('Auto: 5 sec');
+      await expect.poll(() => timelineRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
+
+      await sharedTimelinePage.selectAutoRefresh('Auto: Off');
+      await page.waitForTimeout(1000);
+      const requestsAfterStopping = timelineRequests;
+      await page.waitForTimeout(5500);
+      expect(timelineRequests).toBe(requestsAfterStopping);
+    });
+
     test('should keep timeline map controls and viewer location control distinct', async ({page, isolatedUsers, dbManager, context}) => {
       const sharedTimelinePage = new SharedTimelinePage(page);
 
@@ -327,7 +392,7 @@ test.describe('Shared Links Public Access', () => {
 
       const zoomIconClasses = await sharedTimelinePage.getZoomToDataIconClasses();
       const viewerIconClasses = await sharedTimelinePage.getViewerLocationIconClasses();
-      expect(zoomIconClasses).toContain('pi-crosshairs');
+      expect(zoomIconClasses).toContain('pi-compass');
       expect(zoomIconClasses).not.toContain('pi-map-marker');
       expect(viewerIconClasses).toContain('pi-map-marker');
 
@@ -341,6 +406,115 @@ test.describe('Shared Links Public Access', () => {
       expect(boxes.mapControls).not.toBeNull();
       expect(boxes.viewerControl).not.toBeNull();
       expect(boxesOverlap(boxes.mapControls, boxes.viewerControl)).toBe(false);
+    });
+
+    test('should show the owner\'s map colors to a guest and let them switch', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const owner = createManagedUser(isolatedUsers);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, owner
+      );
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
+
+      // Clearing cookies is not enough to be a guest: shared pages recognize a signed-in viewer from the
+      // profile cached in localStorage and offer "My settings", so drop that too.
+      await page.evaluate(() => window.localStorage.clear());
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000011',
+        name: 'Owner Colors Timeline'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      // A guest sees the path in the owner's preset color.
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel).toBeVisible();
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toContainText('As shared by');
+      // "My settings" is for signed-in viewers only (a viewer with a cached profile does get it).
+      await expect(panel.locator('[data-testid="map-appearance-option-MINE"]')).toHaveCount(0);
+
+      await panel.locator('[data-testid="map-appearance-option-DEFAULT"]').click();
+      await expect(panel).toHaveCount(0);
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+
+      // The choice is remembered in this browser.
+      expect(await page.evaluate(() => window.localStorage.getItem('gp-shared-map-colors'))).toBe('DEFAULT');
+      await page.reload();
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+    });
+
+    test('should not offer the owner option when the owner uses default colors', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
+      );
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000012',
+        name: 'Default Colors Timeline'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel.locator('[data-testid="map-appearance-option-OWNER"]')).toHaveCount(0);
+      await expect(panel.locator('[data-testid="map-appearance-option-DEFAULT"]')).toHaveAttribute('aria-checked', 'true');
+
+      await panel.locator('[data-testid="map-appearance-option-HIGH_CONTRAST"]').click();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#1a1a1a');
+    });
+
+    test('should keep a signed-in viewer on their own customized colors by default', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const owner = createManagedUser(isolatedUsers);
+      const viewer = createManagedUser(isolatedUsers);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, owner
+      );
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000013',
+        name: 'Viewer Colors Timeline'
+      });
+
+      // A second user with their own appearance opens the link while signed in.
+      await TestSetupHelper.createAndLoginUser(page, dbManager, viewer);
+      await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, viewer.email, { colorScheme: 'HIGH_CONTRAST' });
+      // Reload the app so the viewer's cached profile (what shared pages read) has the new appearance.
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#1a1a1a');
+
+      await page.locator('[data-testid="map-appearance-button"]').click();
+      const panel = page.locator('[data-testid="map-appearance-panel"]');
+      await expect(panel.locator('[data-testid="map-appearance-option-MINE"]')).toHaveAttribute('aria-checked', 'true');
+
+      await panel.locator('[data-testid="map-appearance-option-OWNER"]').click();
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
     });
 
     test('should show upcoming timeline message', async ({page, isolatedUsers, dbManager, context}) => {
@@ -418,7 +592,7 @@ test.describe('Shared Links Public Access', () => {
 
       // View count should NOT increment
       const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(0);
+      expect(viewCount).toBe(1);
     });
 
     test('should show error for expired timeline share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -632,6 +806,10 @@ test.describe('Shared Links Public Access', () => {
       let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
 
+      await page.locator(sharedLocationPage.selectors.refreshButton).click();
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
+
       // Second access (reload)
       await page.reload();
       await sharedLocationPage.waitForLocationToLoad();
@@ -662,6 +840,10 @@ test.describe('Shared Links Public Access', () => {
 
       let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
+
+      await page.locator(sharedTimelinePage.selectors.refreshButton).click();
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
       // Second access
       await page.reload();

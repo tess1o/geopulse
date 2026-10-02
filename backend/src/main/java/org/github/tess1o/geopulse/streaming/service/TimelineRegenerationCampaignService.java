@@ -173,7 +173,8 @@ public class TimelineRegenerationCampaignService {
 
             jobId = jobProgressService.createJob(work.userId());
             campaignUserRepository.assignJobId(work.campaignUserId(), jobId);
-            jobProgressService.updateProgress(jobId, "Forced timeline regeneration queued", 1, 1,
+            jobProgressService.updateProgress(jobId,
+                    TimelineJobProgressService.step("regenerationQueued", "Forced timeline regeneration queued", null), 1, 1,
                     Map.of(
                             "campaignId", work.campaignId().toString(),
                             "campaignKey", work.campaignKey(),
@@ -374,7 +375,7 @@ public class TimelineRegenerationCampaignService {
 
         try {
             if (!jobTerminal) {
-                jobProgressService.updateProgress(jobId, "Recalculating achievement badges", 9, 99, null);
+                jobProgressService.updateProgress(jobId, TimelineJobProgressService.step("recalculatingBadges", "Recalculating achievement badges", null), 9, 99, null);
             }
             badgeRecalculationService.recalculateAllBadgesForUser(userId);
         } catch (Exception e) {
@@ -383,7 +384,7 @@ public class TimelineRegenerationCampaignService {
         }
 
         if (!jobTerminal) {
-            jobProgressService.updateProgress(jobId, "Timeline generation completed", 9, 100, null);
+            jobProgressService.updateProgress(jobId, TimelineJobProgressService.step("completed", "Timeline generation completed", null), 9, 100, null);
             jobProgressService.completeJob(jobId);
         }
     }

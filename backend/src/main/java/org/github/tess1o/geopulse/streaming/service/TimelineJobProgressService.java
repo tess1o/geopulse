@@ -2,7 +2,9 @@ package org.github.tess1o.geopulse.streaming.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineJobStatistics;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -21,6 +23,22 @@ public class TimelineJobProgressService {
     private static final int TOTAL_STEPS = 9;
     private static final int MAX_JOBS_IN_MEMORY = 1000;
     private static final Duration JOB_RETENTION_PERIOD = Duration.ofHours(24);
+
+    /**
+     * Frontend catalog namespace for {@link #step(String, String, Map)}. Keys live under
+     * {@code timelineJobs.js}'s {@code progressMessages} block.
+     */
+    private static final String STEP_KEY_PREFIX = "timelineJobs.progressMessages.";
+
+    /**
+     * Build a translatable step descriptor. {@code key} is a short suffix (e.g. {@code "acquiringLock"})
+     * appended to {@link #STEP_KEY_PREFIX}; {@code fallback} is the English text shown when the active
+     * locale has no translation for the key yet; {@code params} are the interpolation values (may be
+     * {@code null} for a step with no placeholders).
+     */
+    public static MessageDescriptor step(String key, String fallback, Map<String, Object> params) {
+        return new MessageDescriptor(STEP_KEY_PREFIX + key, params, fallback);
+    }
 
     /**
      * In-memory storage of job progress indexed by job ID
@@ -45,7 +63,7 @@ public class TimelineJobProgressService {
                 .jobId(jobId)
                 .userId(userId)
                 .status(TimelineJobProgress.JobStatus.QUEUED)
-                .currentStep("Initializing timeline generation")
+                .currentStep(step("initializing", "Initializing timeline generation", null))
                 .currentStepIndex(0)
                 .totalSteps(TOTAL_STEPS)
                 .progressPercentage(0)
@@ -68,12 +86,12 @@ public class TimelineJobProgressService {
      * Update the progress of a job
      *
      * @param jobId The job ID
-     * @param step Human-readable step description
+     * @param step Translatable description of the current step
      * @param stepIndex Step index (1-9)
      * @param percentage Progress percentage (0-100)
      * @param details Additional step-specific details
      */
-    public void updateProgress(UUID jobId, String step, int stepIndex, int percentage, Map<String, Object> details) {
+    public void updateProgress(UUID jobId, MessageDescriptor step, int stepIndex, int percentage, Map<String, Object> details) {
         TimelineJobProgress job = jobStore.get(jobId);
         if (job == null) {
             log.warn("Attempted to update non-existent job {}", jobId);
@@ -91,7 +109,7 @@ public class TimelineJobProgressService {
             job.getDetails().putAll(details);
         }
 
-        log.debug("Job {} progress: {}% - {}", jobId, percentage, step);
+        log.debug("Job {} progress: {}% - {}", jobId, percentage, step.fallback());
     }
 
     /**
@@ -107,7 +125,7 @@ public class TimelineJobProgressService {
         }
 
         job.setStatus(TimelineJobProgress.JobStatus.COMPLETED);
-        job.setCurrentStep("Timeline generation completed");
+        job.setCurrentStep(step("completed", "Timeline generation completed", null));
         job.setProgressPercentage(100);
         job.setEndTime(Instant.now());
 
@@ -217,22 +235,14 @@ public class TimelineJobProgressService {
      *
      * @return Map with statistics
      */
-    public Map<String, Object> getStatistics() {
+    public TimelineJobStatistics getStatistics() {
         long total = jobStore.size();
         long queued = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.QUEUED).count();
         long running = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.RUNNING).count();
         long completed = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.COMPLETED).count();
         long failed = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.FAILED).count();
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalJobs", total);
-        stats.put("queuedJobs", queued);
-        stats.put("runningJobs", running);
-        stats.put("completedJobs", completed);
-        stats.put("failedJobs", failed);
-        stats.put("activeUserJobs", userActiveJobIndex.size());
-
-        return stats;
+        return new TimelineJobStatistics(total, queued, running, completed, failed, userActiveJobIndex.size());
     }
 
     /**

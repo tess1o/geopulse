@@ -5,42 +5,45 @@
       <h1>{{ title }}</h1>
       <p>{{ message }}</p>
       <template v-if="maintenance.manualRestartRequired">
-        <p class="restart-instructions"><strong>GeoPulse has not reconnected.</strong> Check the backend logs. If the backend stopped or did not restart, restart only the GeoPulse backend manually. Do not restart PostgreSQL.</p>
-        <p>Use Docker Compose, Kubernetes, Unraid, Proxmox, or the service controls used by your installation.</p>
+        <p class="restart-instructions"><strong>{{ t('admin.restoreMaintenanceScreen.restartInstructionsBold') }}</strong> {{ t('admin.restoreMaintenanceScreen.restartInstructionsRest') }}</p>
+        <p>{{ t('admin.restoreMaintenanceScreen.dockerNote') }}</p>
       </template>
-      <p v-if="maintenance.unavailable" class="connection-note">Check the backend logs and make sure GeoPulse starts again. This page will update automatically when it reconnects.</p>
-      <button v-if="maintenance.unavailable" type="button" @click="refreshMaintenance">Check connection</button>
-      <p class="connection-note">PostgreSQL must remain running while the GeoPulse backend restarts.</p>
+      <p v-if="maintenance.unavailable" class="connection-note">{{ t('admin.restoreMaintenanceScreen.connectionUnavailable') }}</p>
+      <button v-if="maintenance.unavailable" type="button" @click="refreshMaintenance">{{ t('admin.restoreMaintenanceScreen.checkConnection') }}</button>
+      <p class="connection-note">{{ t('admin.restoreMaintenanceScreen.postgresNote') }}</p>
     </section>
   </main>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { maintenance, refreshMaintenance } from '@/stores/maintenance'
+
+const { t } = useI18n()
 
 const restarting = computed(() => maintenance.unavailable || maintenance.state === 'SWAPPED_PENDING_RESTART')
 const title = computed(() => maintenance.activated
-  ? 'Restoration completed. Signing out…'
+  ? t('admin.restoreMaintenanceScreen.activationCompleteTitle')
   : maintenance.state === 'ACTIVATION_FAILED'
-    ? 'Administrator action required'
-    : restarting.value ? 'GeoPulse backend restart' : 'Activating restored data')
+    ? t('admin.restoreMaintenanceScreen.adminActionRequiredTitle')
+    : restarting.value ? t('admin.restoreMaintenanceScreen.backendRestartTitle') : t('admin.restoreMaintenanceScreen.activatingTitle'))
 const message = computed(() => maintenance.activated
-  ? 'Clearing the previous session before returning to sign in. This page will update automatically.'
+  ? t('admin.restoreMaintenanceScreen.activatedMessage')
   : restarting.value
-    ? 'Restored data was activated and the backend stopped to complete restoration. A configured container or service manager may restart it automatically.'
-    : maintenance.message || 'Activating restored data. Please wait.')
+    ? t('admin.restoreMaintenanceScreen.restartingMessage')
+    : maintenance.message || t('admin.restoreMaintenanceScreen.activatingMessage'))
 const icon = computed(() => maintenance.manualRestartRequired || maintenance.state === 'ACTIVATION_FAILED' ? 'pi pi-exclamation-triangle' : 'pi pi-spin pi-spinner')
 </script>
 
 <style scoped>
 .restore-maintenance {
-  --restore-accent: #b45309;
+  --restore-accent: var(--gp-warning-text);
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 2rem;
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
   color: var(--gp-text-primary, #1e293b);
 }
 .restore-maintenance-card {
@@ -48,7 +51,7 @@ const icon = computed(() => maintenance.manualRestartRequired || maintenance.sta
   border: 1px solid var(--gp-border-medium, #e2e8f0);
   border-radius: 1rem;
   padding: clamp(1.5rem, 5vw, 3rem);
-  background: var(--gp-surface-white, #ffffff);
+  background: var(--gp-surface-card, #ffffff);
   box-shadow: var(--gp-shadow-dialog, 0 10px 25px rgba(0, 0, 0, .1));
 }
 .restore-maintenance-card > i { font-size: 2.5rem; color: var(--restore-accent); }
@@ -60,12 +63,11 @@ button {
   padding: .8rem 1rem;
   border: 1px solid var(--gp-border-medium, #cbd5e1);
   border-radius: .5rem;
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted, #f8fafc);
   color: var(--gp-text-primary, #1e293b);
   cursor: pointer;
 }
-button:hover { background: var(--gp-surface-gray, #f1f5f9); }
+button:hover { background: var(--gp-surface-emphasis, #f1f5f9); }
 button:focus-visible { outline: 3px solid color-mix(in srgb, var(--gp-primary, #1a56db) 35%, transparent); outline-offset: 2px; }
 button:disabled { opacity: .5; cursor: wait; }
-:global(.p-dark) .restore-maintenance { --restore-accent: #f59e0b; }
 </style>

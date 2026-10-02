@@ -7,6 +7,16 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['name', 'display name', 'user name']
   },
   {
+    id: 'language',
+    title: 'Language',
+    // Resolved through the catalogs by buildProfileSettingsIndex, which reads `titleKey` when present.
+    // Keywords stay bilingual so the setting is findable whichever language the UI is in.
+    titleKey: 'settings.language.title',
+    tab: 'profile',
+    subtitle: 'Profile',
+    keywords: ['language', 'locale', 'translation', 'english', 'ukrainian', 'мова', 'українська', 'переклад']
+  },
+  {
     id: 'timezone',
     title: 'Timezone',
     tab: 'profile',
@@ -115,6 +125,13 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['replay', 'trip replay', 'controls', 'trip selection']
   },
   {
+    id: 'enable3dBuildingsByDefault',
+    title: 'Enable 3D Buildings by Default',
+    tab: 'timelineDisplay',
+    subtitle: 'Map display',
+    keywords: ['3d', 'buildings', 'maptiler', 'vector map']
+  },
+  {
     id: 'pathSimplificationEnabled',
     title: 'Enable Path Simplification',
     tab: 'timelineDisplay',
@@ -144,6 +161,55 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     subtitle: 'Display',
     keywords: ['adaptive', 'path simplification', 'auto'],
     visibilityHint: 'Enable "Path Simplification" to edit this setting.'
+  },
+  {
+    id: 'colorScheme',
+    title: 'Color Vision Preset',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['color blind', 'colorblind', 'color vision', 'daltonism', 'deuteranopia', 'protanopia', 'tritanopia', 'high contrast', 'accessibility', 'palette']
+  },
+  {
+    id: 'defaultPathColor',
+    title: 'Path Color',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['path color', 'default color', 'trip line', 'appearance']
+  },
+  {
+    id: 'activePathColor',
+    title: 'Selected Trip Color',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['path color', 'highlighted', 'active', 'colorblind', 'color blind', 'accessibility', 'red', 'yellow']
+  },
+  {
+    id: 'pathWidth',
+    title: 'Line Width',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['line width', 'thickness', 'thick', 'path width', 'visibility', 'accessibility']
+  },
+  {
+    id: 'pathOutlineEnabled',
+    title: 'Line Outline',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['outline', 'border', 'halo', 'contrast', 'satellite', 'visibility', 'accessibility']
+  },
+  {
+    id: 'speedBandPalette',
+    title: 'Driving Speed Colors',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['speed', 'speed colors', 'car', 'driving', 'red green', 'colorblind', 'color blind', 'deuteranopia', 'protanopia', 'satellite']
+  },
+  {
+    id: 'heatmapGradient',
+    title: 'Heatmap Colors',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['heatmap', 'gradient', 'viridis', 'cividis', 'colorblind', 'color blind']
   },
 
   {

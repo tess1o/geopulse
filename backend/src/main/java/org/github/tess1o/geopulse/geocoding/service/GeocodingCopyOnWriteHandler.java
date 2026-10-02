@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.geocoding.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ForbiddenException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
@@ -11,6 +11,8 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
 
 /**
  * Handler for copy-on-write operations on geocoding entities.
@@ -68,7 +70,7 @@ public class GeocodingCopyOnWriteHandler {
         // Case 3: User trying to modify another user's custom entity
         log.warn("User {} attempted to modify geocoding entity {} owned by user {}",
                 currentUserId, entity.getId(), entity.getUser().getId());
-        throw new ForbiddenException("Cannot modify another user's geocoding data");
+        throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
     }
 
     /**

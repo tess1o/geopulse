@@ -413,3 +413,52 @@ export function getExpectedMarkerPositions() {
     { name: 'NYC Brooklyn Bridge', lat: 40.7061, lon: -73.9969 }
   ];
 }
+/**
+ * Insert one CAR trip with GPS points that cover all three speed bands
+ * (slow < 10 km/h, medium 10-25 km/h, fast > 25 km/h), so a highlighted trip shows every speed color.
+ * Points are 30 seconds apart on 2025-09-21 from 12:00 UTC.
+ */
+export async function insertCarTripSpeedBandsData(dbManager, userId) {
+  const start = new Date('2025-09-21T12:00:00Z');
+  const sections = [
+    { points: 12, metersPerStep: 40 },   // ~5 km/h
+    { points: 12, metersPerStep: 150 },  // ~18 km/h
+    { points: 20, metersPerStep: 500 }   // ~60 km/h
+  ];
+
+  let latitude = 40.7128;
+  let longitude = -74.0060;
+  let bearing = 0.6;
+  let elapsedSeconds = 0;
+  let distanceMeters = 0;
+  const points = [];
+
+  for (const section of sections) {
+    for (let i = 0; i < section.points; i += 1) {
+      points.push({ latitude, longitude, elapsedSeconds });
+      latitude += (section.metersPerStep * Math.cos(bearing)) / 111320;
+      longitude += (section.metersPerStep * Math.sin(bearing)) / (111320 * Math.cos(latitude * Math.PI / 180));
+      elapsedSeconds += 30;
+      distanceMeters += section.metersPerStep;
+    }
+    bearing += 0.5;
+  }
+  points.push({ latitude, longitude, elapsedSeconds });
+
+  for (const point of points) {
+    const timestamp = new Date(start.getTime() + point.elapsedSeconds * 1000);
+    await dbManager.client.query(`
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, ['test-device', userId, `POINT(${point.longitude} ${point.latitude})`, timestamp, 10.0, 100, 0.0, 20.0, 'OVERLAND', timestamp]);
+  }
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  await dbManager.client.query(`
+    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+    VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, 'CAR', NOW(), NOW())
+  `, [userId, start, last.elapsedSeconds, first.longitude, first.latitude, last.longitude, last.latitude, Math.round(distanceMeters)]);
+
+  return { start, durationSeconds: last.elapsedSeconds, distanceMeters, pointCount: points.length };
+}

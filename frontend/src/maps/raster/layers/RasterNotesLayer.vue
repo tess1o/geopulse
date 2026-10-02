@@ -23,6 +23,7 @@ import NotesViewerDialog from '@/components/timeline/NotesViewerDialog.vue'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useNotesStore } from '@/stores/notes'
 import { createNoteMarkerHtml, getNoteIdentityKey, groupNotesByCoordinate } from '@/maps/shared/noteMapMarkers'
+import { createMarkerClusterGroup } from '@/maps/raster/utils/createMarkerClusterGroup'
 import '@/styles/note-map-markers.css'
 
 const props = defineProps({
@@ -56,6 +57,7 @@ const baseLayerRef = ref(null)
 const loading = ref(false)
 const selectedNotes = ref([])
 const notesViewerVisible = ref(false)
+const markerClusterGroup = ref(null)
 
 const effectiveNotes = computed(() => (
   Array.isArray(props.notes) ? props.notes : notesStore.notes
@@ -64,6 +66,9 @@ const effectiveNotes = computed(() => (
 const canFetchNotes = computed(() => props.loadNotes && !Array.isArray(props.notes))
 
 const clearNoteMarkers = () => {
+  if (markerClusterGroup.value) {
+    markerClusterGroup.value.clearLayers()
+  }
   baseLayerRef.value?.clearLayer?.()
 }
 
@@ -105,13 +110,17 @@ const renderNoteMarkers = () => {
       popupAnchor: L.point(0, -16)
     })
 
-    const marker = L.marker([group.latitude, group.longitude], { icon })
+    const marker = L.marker([group.latitude, group.longitude], { icon, noteCount: group.notes.length })
     marker.on('click', (event) => {
       event.originalEvent?.stopPropagation?.()
       openNotesViewer(group.notes)
     })
 
-    baseLayerRef.value?.addToLayer?.(marker)
+    if (markerClusterGroup.value) {
+      markerClusterGroup.value.addLayer(marker)
+    } else {
+      baseLayerRef.value?.addToLayer?.(marker)
+    }
   })
 }
 
@@ -157,6 +166,24 @@ const handleNoteChanged = async () => {
 }
 
 const handleLayerReady = async () => {
+  markerClusterGroup.value = createMarkerClusterGroup({
+    iconCreateFunction: (cluster) => {
+      const totalNotes = cluster.getAllChildMarkers()
+        .reduce((sum, marker) => sum + Number(marker.options?.noteCount || 1), 0)
+
+      return L.divIcon({
+        html: createNoteMarkerHtml(totalNotes),
+        className: 'gp-note-marker-wrapper',
+        iconSize: L.point(32, 32),
+        iconAnchor: L.point(16, 16)
+      })
+    }
+  })
+
+  if (markerClusterGroup.value && props.map) {
+    props.map.addLayer(markerClusterGroup.value)
+  }
+
   if (props.visible) {
     await fetchAndRenderNotes()
   }
@@ -184,6 +211,14 @@ watch(
 watch(
   () => props.visible,
   async (newVisible) => {
+    if (markerClusterGroup.value && props.map) {
+      if (newVisible) {
+        props.map.addLayer(markerClusterGroup.value)
+      } else {
+        props.map.removeLayer(markerClusterGroup.value)
+      }
+    }
+
     if (!newVisible) {
       clearNoteMarkers()
       return
@@ -200,6 +235,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearNoteMarkers()
+
+  if (markerClusterGroup.value && props.map) {
+    props.map.removeLayer(markerClusterGroup.value)
+    markerClusterGroup.value = null
+  }
 })
 
 defineExpose({

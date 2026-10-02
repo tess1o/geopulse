@@ -3,19 +3,19 @@
     <PageContainer>
       <div class="data-export-import-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Data Export & Import</h1>
-              <p class="page-description">
-                Export your GeoPulse data for backup or import previously exported data
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('data.exportImportPage.pageTitle') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('data.exportImportPage.pageDescription') }}
               </p>
             </div>
           </div>
         </div>
 
         <Message v-if="demoModeEnabled" severity="error" :closable="false" class="demo-disabled-message">
-          Demo mode: exporting and importing data are disabled to keep the shared demo dataset stable.
+          {{ t('data.exportImportPage.demoDisabledMessage') }}
         </Message>
 
         <!-- Info Banner -->
@@ -26,9 +26,9 @@
                 <i class="pi pi-info-circle"></i>
               </div>
               <div class="banner-text">
-                <h3 class="banner-title">Data Security & Privacy</h3>
+                <h3 class="banner-title">{{ t('data.exportImportPage.bannerTitle') }}</h3>
                 <p class="banner-description">
-                  Export files are not stored on the server. Make sure you download them before leaving this page.
+                  {{ t('data.exportImportPage.bannerDescription') }}
                 </p>
               </div>
             </div>
@@ -55,6 +55,7 @@
 
 <script setup>
 import {ref, computed, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute, useRouter} from 'vue-router'
 import {storeToRefs} from 'pinia'
 import Message from 'primevue/message'
@@ -69,6 +70,7 @@ import DataExportTab from '@/components/data-export-import/DataExportTab.vue'
 import DataImportTab from '@/components/data-export-import/DataImportTab.vue'
 import {useAuthStore} from '@/stores/auth'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -82,14 +84,14 @@ const normalizeTab = (value) => {
 const activeTab = ref(normalizeTab(route.query.tab))
 
 // Tab configuration
-const tabItems = ref([
+const tabItems = computed(() => [
   {
-    label: 'Export Data',
+    label: t('data.exportImportPage.exportTab'),
     icon: 'pi pi-download',
     key: 'export'
   },
   {
-    label: 'Import Data',
+    label: t('data.exportImportPage.importTab'),
     icon: 'pi pi-upload',
     key: 'import'
   }
@@ -136,49 +138,13 @@ watch(() => route.query.tab, (tab) => {
   }
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
 /* Info Banner */
 .info-banner {
   margin-bottom: 2rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border: 1px solid var(--gp-border-medium);
   border-left: 4px solid var(--gp-primary);
   border-radius: var(--gp-radius-large);
-}
-
-.p-dark .info-banner {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-left: 4px solid var(--gp-primary) !important;
 }
 
 .banner-content {
@@ -285,9 +251,9 @@ watch(() => route.query.tab, (tab) => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: all 0.2s ease;
 }
 
@@ -346,15 +312,6 @@ watch(() => route.query.tab, (tab) => {
   width: 100%;
 }
 
-.p-dark :deep(.date-picker .p-datepicker-dropdown .p-icon) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark :deep(.date-picker .p-datepicker-dropdown) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
 :deep(.date-range-presets) {
   display: flex;
   gap: 0.5rem;
@@ -368,7 +325,7 @@ watch(() => route.query.tab, (tab) => {
   align-items: center;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 :deep(.export-button),
@@ -480,9 +437,9 @@ watch(() => route.query.tab, (tab) => {
   align-items: stretch;
   gap: 0;
   padding: 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -494,7 +451,7 @@ watch(() => route.query.tab, (tab) => {
 
 :deep(.format-option.selected) {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-50);
+  background: var(--p-primary-50);
 }
 
 :deep(.format-radio) {
@@ -530,8 +487,8 @@ watch(() => route.query.tab, (tab) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-primary-200);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--p-primary-200);
   border-radius: var(--gp-radius-small);
   color: var(--gp-text-primary);
   font-size: 0.9rem;
@@ -541,11 +498,6 @@ watch(() => route.query.tab, (tab) => {
 :deep(.timeline-info i) {
   color: var(--gp-primary);
   font-size: 1rem;
-}
-
-.p-dark :deep(.timeline-info) {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-primary-300) !important;
 }
 
 :deep(.history-header) {
@@ -617,16 +569,6 @@ watch(() => route.query.tab, (tab) => {
     padding: 0 1rem;
   }
 
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1.5rem;
-  }
-
   :deep(.data-types-grid) {
     grid-template-columns: 1fr;
   }
@@ -664,10 +606,6 @@ watch(() => route.query.tab, (tab) => {
 @media (max-width: 480px) {
   .data-export-import-page {
     padding: 0 0.75rem;
-  }
-
-  .page-title {
-    font-size: 1.3rem;
   }
 
   :deep(.data-type-option) {

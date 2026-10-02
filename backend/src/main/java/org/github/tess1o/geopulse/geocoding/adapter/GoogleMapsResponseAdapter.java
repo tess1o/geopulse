@@ -39,8 +39,7 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
     public FormattableGeocodingResult adapt(GoogleMapsResponse googleResponse, Point requestCoordinates, String providerName) {
 
         if (googleResponse == null || googleResponse.getResults() == null || googleResponse.getResults().isEmpty()) {
-            log.warn("Empty or null Google Maps response for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
+            log.warn("Empty or null Google Maps response");
             throw new GeocodingException("Google Maps returned empty or null response");
         }
 

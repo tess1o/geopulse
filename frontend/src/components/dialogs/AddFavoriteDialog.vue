@@ -5,11 +5,11 @@
           class="gp-dialog-sm"
           @hide="onDialogHide">
     <div class="dialog-content">
-      <InputText v-model="locationName" placeholder="Location name" class="w-full"/>
+      <InputText v-model="locationName" :placeholder="t('favoritesGeocodingDialogs.addFavorite.locationNamePlaceholder')" class="w-full"/>
     </div>
     <template #footer>
-      <Button label="Cancel" @click="onDialogHide"/>
-      <Button label="Save" @click="onSaveButton"/>
+      <Button :label="t('common.cancel')" @click="onDialogHide"/>
+      <Button :label="t('favoritesGeocodingDialogs.addFavorite.save')" @click="onSaveButton"/>
     </template>
   </Dialog>
 </template>
@@ -18,10 +18,15 @@
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
+import { useI18n } from 'vue-i18n';
 
 export default {
   name: "AddFavoriteDialog",
   components: {InputText, Dialog, Button},
+  setup() {
+    const { t } = useI18n();
+    return { t };
+  },
   props: {
     visible: Boolean,
     header: String,

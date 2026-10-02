@@ -1,11 +1,14 @@
 package org.github.tess1o.geopulse.user.model;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateProfileRequest {
@@ -18,16 +21,10 @@ public class UpdateProfileRequest {
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
     private String timezone;
 
-    private DistanceUnit distanceUnit;
-
-    private TemperatureUnit temperatureUnit;
-
-    @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
-    private String defaultRedirectUrl;
-
-    @Pattern(regexp = "^(MDY|DMY|YMD)$", message = "Date format must be one of: MDY, DMY, YMD")
-    private String dateFormat;
-
-    @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")
-    private String timeFormat;
+    /**
+     * UI preferences to change. Null fields are left unchanged; an empty string resets a text preference
+     * to its default.
+     */
+    @Valid
+    private UserUiPreferences uiPreferences;
 }

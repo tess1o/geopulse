@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -115,7 +116,7 @@ public class PlaceDetailsService {
      * @param sortDirection "asc" or "desc"
      * @return paginated visits
      */
-    public PagedPlaceVisitsDTO getPlaceVisits(
+    public PageResponse<PlaceVisitDTO> getPlaceVisits(
             String type, Long id, UUID userId,
             int page, int pageSize, String sortBy, String sortDirection) {
 
@@ -138,13 +139,7 @@ public class PlaceDetailsService {
                     id, userId, page, validPageSize, validSortBy, ascending);
             totalCount = timelineStayRepository.countByGeocodingLocationId(id, userId);
         } else {
-            return PagedPlaceVisitsDTO.builder()
-                    .visits(List.of())
-                    .currentPage(page)
-                    .pageSize(validPageSize)
-                    .totalCount(0)
-                    .totalPages(0)
-                    .build();
+            return new PageResponse<>(List.of(), page, validPageSize, 0, 0);
         }
 
         List<PlaceVisitDTO> visits = stays.stream()
@@ -153,13 +148,7 @@ public class PlaceDetailsService {
 
         int totalPages = (int) Math.ceil((double) totalCount / validPageSize);
 
-        return PagedPlaceVisitsDTO.builder()
-                .visits(visits)
-                .currentPage(page)
-                .pageSize(validPageSize)
-                .totalCount(totalCount)
-                .totalPages(totalPages)
-                .build();
+        return new PageResponse<>(visits, page, validPageSize, totalCount, totalPages);
     }
 
     /**

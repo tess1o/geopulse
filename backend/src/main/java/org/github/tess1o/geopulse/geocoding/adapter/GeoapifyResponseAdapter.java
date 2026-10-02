@@ -23,8 +23,7 @@ public class GeoapifyResponseAdapter implements GeocodingResponseAdapter<Geoapif
     public FormattableGeocodingResult adapt(GeoapifyResponse response, Point requestCoordinates, String providerName) {
         java.util.List<GeoapifyResponse.Result> results = response == null ? java.util.List.of() : response.getEffectiveResults();
         if (results.isEmpty()) {
-            log.warn("Empty or null Geoapify response for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
+            log.warn("Empty or null Geoapify response");
             throw new GeocodingException("Geoapify returned empty or null response");
         }
 

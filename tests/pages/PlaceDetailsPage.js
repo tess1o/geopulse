@@ -7,10 +7,10 @@ export class PlaceDetailsPage {
     this.selectors = {
       // Page container
       pageContainer: '.gp-page-container',
-      pageTitle: '.gp-page-title',
-      pageSubtitle: '.gp-page-subtitle',
-      breadcrumbNav: '.breadcrumb-nav',
-      backButton: 'button:has-text("Back")',
+      // The page renders LocationDetailsHeader instead of a titled PageContainer
+      pageTitle: '.location-details-header .identity-copy h1',
+      pageSubtitle: '.location-details-header .identity-copy p',
+      backButton: '.location-details-header .back-button',
 
       // Loading & Error states
       loadingContainer: '.loading-container',
@@ -21,11 +21,16 @@ export class PlaceDetailsPage {
       retryButton: 'button:has-text("Try Again")',
 
       // Place Header
-      placeHeader: '.place-header',
-      locationName: '.location-name',
-      locationInfo: '.location-info',
-      editButton: '.place-header button:has-text("Edit")',
-      createFavoriteButton: '.place-header button:has-text("Create Favorite")',
+      placeHeader: '.location-details-header',
+      locationName: '.location-details-header .identity-copy h1',
+      locationInfo: '.location-details-header .identity-copy p',
+      placeTypeTag: '.location-details-header .identity-metadata .p-tag',
+      placeCoordinates: '.location-details-header .place-coordinates',
+      // Favorites show "Edit", geocoding locations show "Edit Details"
+      editButton: '.location-details-header .identity-actions button:has(.p-button-label:text-is("Edit")), '
+        + '.location-details-header .identity-actions button:has(.p-button-label:text-is("Edit Details"))',
+      editDetailsButton: '.location-details-header .identity-actions button:has(.p-button-label:text-is("Edit Details"))',
+      createFavoriteButton: '.location-details-header .identity-actions button:has(.p-button-label:text-is("Create Favorite"))',
 
       // Related Favorite Notice
       relatedFavoriteNotice: '.related-favorite-notice',
@@ -38,18 +43,17 @@ export class PlaceDetailsPage {
       viewFavoriteButton: '.view-favorite-button',
 
       // Statistics Card
-      statsCard: '.gp-card:has(.gp-card-title:text("Place Statistics"))',
-      statsGrid: '.stats-grid',
-      statSection: '.stat-section',
-      sectionTitle: '.section-title',
-      statItems: '.stat-items',
-      statItemFull: '.stat-item-full',
-      statValue: '.stat-value',
-      statLabel: '.stat-label',
+      statsCard: '.gp-card.place-statistics',
+      statsGrid: '.place-statistics .summary-grid',
+      statSection: '.place-statistics .stats-group',
+      sectionTitle: '.place-statistics .stats-group h3',
+      statItems: '.place-statistics .gp-metric-item',
+      statItemFull: '.place-statistics .gp-metric-item',
+      statValue: '.gp-metric-value',
+      statLabel: '.gp-metric-label',
 
       // Map
       mapContainer: '.place-map-container',
-      mapCard: '.gp-card:has(.gp-card-title:text("Location"))',
       leafletMap: '.leaflet-container',
 
       // Visits Table
@@ -248,34 +252,30 @@ export class PlaceDetailsPage {
     const statItems = await this.page.locator(this.selectors.statItemFull).all();
 
     for (const item of statItems) {
-      const labelElement = await item.locator(this.selectors.statLabel);
-      const valueElement = await item.locator(this.selectors.statValue);
+      // MetricItem renders the label as plain text inside .gp-metric-label
+      const label = (await item.locator(this.selectors.statLabel).textContent())?.trim();
+      const value = (await item.locator(this.selectors.statValue).textContent())?.trim();
 
-      // Get the text content (label includes icon, so get just the span text)
-      const labelSpan = await labelElement.locator('span').textContent();
-      const value = await valueElement.textContent();
-
-      stats[labelSpan.trim()] = value.trim();
+      if (label) {
+        stats[label] = value ?? '';
+      }
     }
 
     return stats;
   }
 
   async getStatValue(label) {
-    // Find stat item that has a label span containing the text
-    const statItems = await this.page.locator(this.selectors.statItemFull).all();
+    const item = this.page
+      .locator(this.selectors.statItemFull)
+      .filter({ has: this.page.locator(`.gp-metric-label:text-is("${label}")`) })
+      .first();
 
-    for (const item of statItems) {
-      const labelSpan = await item.locator(`${this.selectors.statLabel} span`);
-      const labelText = await labelSpan.textContent();
-
-      if (labelText.trim() === label) {
-        const value = await item.locator(this.selectors.statValue);
-        return await value.textContent();
-      }
+    if (await item.count() === 0) {
+      return null;
     }
 
-    return null;
+    const value = await item.locator(this.selectors.statValue).textContent();
+    return value?.trim() ?? null;
   }
 
   // ===========================================
@@ -522,8 +522,9 @@ export class PlaceDetailsPage {
   }
 
   async getCoordinatesFromPage() {
-    // Extract coordinates from the page (e.g., from coordinates info)
-    const coordsText = await this.page.locator('.coordinates-info').textContent();
+    // Extract coordinates from the always-rendered header metadata
+    // (.coordinates-info only exists inside the Create Favorite dialog)
+    const coordsText = await this.page.locator(this.selectors.placeCoordinates).textContent();
     const matches = coordsText.match(/([-\d.]+),\s*([-\d.]+)/);
     if (matches) {
       return {

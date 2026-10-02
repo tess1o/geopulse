@@ -6,13 +6,13 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -28,6 +28,7 @@ import org.locationtech.jts.geom.Polygon;
 import java.time.Instant;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
 /**
  * Integration tests for GeocodingCopyOnWriteHandler using real database.
  * Tests complete workflows with actual persistence and database constraints.
@@ -155,7 +156,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertEquals(1, repository.count("user.id = ?1", testUserId));
     }
     @Test
-    @DisplayName("Should throw ForbiddenException when modifying another user's entity")
+    @DisplayName("Should deny modifying another user's entity")
     @Transactional
     void testUserTryingToModifyAnotherUsersEntity() {
         // Given
@@ -166,9 +167,10 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
                 .displayName("Hacker Name")
                 .build();
         // When / Then
-        assertThrows(ForbiddenException.class, () -> {
+        GeoPulseException exception = assertThrows(GeoPulseException.class, () -> {
             handler.handleUserUpdate(testUserId, otherUserEntity, updateDTO);
         });
+        assertEquals(GEOCODING_ACCESS_DENIED, exception.code());
         // Verify entity was not modified in database
         entityManager.flush();
         entityManager.clear();

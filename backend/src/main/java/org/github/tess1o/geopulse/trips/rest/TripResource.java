@@ -1,33 +1,48 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripDto;
 import org.github.tess1o.geopulse.trips.service.TripService;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/trips")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_LABEL_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+
+@Path("/trips")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
-@Tag(name = "User: Trips", description = "Manage trips, collaborators, and period-tag links.")
+@Tag(name = "User: Trips", description = "Manage trips, collaborators, and timeline-label links.")
 public class TripResource {
 
     private final TripService tripService;
@@ -40,221 +55,131 @@ public class TripResource {
     }
 
     @GET
-    public Response getTrips(@QueryParam("status") String status) {
+    public List<TripDto> getTrips(@QueryParam("status") String status) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<TripDto> trips = tripService.getTrips(userId, status);
-            return Response.ok(ApiResponse.success(trips)).build();
+            return tripService.getTrips(currentUserService.getCurrentUserId(), status);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trips", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trips"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @GET
     @Path("/{id}")
-    public Response getTrip(@PathParam("id") Long id) {
+    public TripDto getTrip(@PathParam("id") Long id) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripDto trip = tripService.getTrip(userId, id);
-            return Response.ok(ApiResponse.success(trip)).build();
+            return tripService.getTrip(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trip {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip"))
-                    .build();
+            throw notFound(id, e);
         }
     }
 
     @POST
-    public Response createTrip(@Valid CreateTripDto dto) {
+    public RestResponse<TripDto> createTrip(@Valid CreateTripDto dto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripDto created = tripService.createTrip(userId, dto);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(created))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED,
+                    tripService.createTrip(currentUserService.getCurrentUserId(), dto));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create trip", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create trip"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @POST
-    @Path("/from-period-tag/{periodTagId}")
-    public Response createTripFromPeriodTag(@PathParam("periodTagId") Long periodTagId) {
+    @Path("/from-timeline-label/{timelineLabelId}")
+    public RestResponse<TripDto> createTripFromTimelineLabel(@PathParam("timelineLabelId") Long timelineLabelId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripDto created = tripService.createTripFromPeriodTag(userId, periodTagId);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(created))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED,
+                    tripService.createTripFromTimelineLabel(currentUserService.getCurrentUserId(), timelineLabelId));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Period tag not found"))
-                    .build();
+            throw new GeoPulseException(TIMELINE_LABEL_NOT_FOUND, "Timeline label not found", Map.of("timelineLabelId", timelineLabelId), e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create trip from period tag {}", periodTagId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create trip from period tag"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateTrip(@PathParam("id") Long id, @Valid UpdateTripDto dto) {
+    public TripDto updateTrip(@PathParam("id") Long id, @Valid UpdateTripDto dto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripDto updated = tripService.updateTrip(userId, id, dto);
-            return Response.ok(ApiResponse.success(updated)).build();
+            return tripService.updateTrip(currentUserService.getCurrentUserId(), id, dto);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw notFound(id, e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update trip {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update trip"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @DELETE
     @Path("/{id}")
-    public Response deleteTrip(@PathParam("id") Long id,
-                               @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
+    public RestResponse<Void> deleteTrip(@PathParam("id") Long id,
+                                         @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
+        if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
+            throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid delete mode",
+                    Map.of("mode", mode, "allowedValues", "unlink_only,delete_both"));
+        }
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Invalid delete mode. Supported values: unlink_only, delete_both"))
-                        .build();
-            }
-            tripService.deleteTrip(userId, id, "delete_both".equalsIgnoreCase(mode));
-            return Response.ok(ApiResponse.success("Trip deleted successfully")).build();
+            tripService.deleteTrip(currentUserService.getCurrentUserId(), id, "delete_both".equalsIgnoreCase(mode));
+            return RestResponse.noContent();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete trip {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete trip"))
-                    .build();
+            throw notFound(id, e);
         }
     }
 
-    @POST
-    @Path("/{id}/unlink")
-    public Response unlinkTripFromPeriodTag(@PathParam("id") Long id) {
+    @DELETE
+    @Path("/{id}/timeline-label")
+    public TripDto unlinkTripFromTimelineLabel(@PathParam("id") Long id) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripDto updated = tripService.unlinkTripFromPeriodTag(userId, id);
-            return Response.ok(ApiResponse.success(updated)).build();
+            return tripService.unlinkTripFromTimelineLabel(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to unlink trip {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to unlink trip"))
-                    .build();
+            throw notFound(id, e);
         }
     }
 
     @GET
     @Path("/{id}/collaborators")
-    public Response getTripCollaborators(@PathParam("id") Long id) {
+    public List<TripCollaboratorDto> getTripCollaborators(@PathParam("id") Long id) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<TripCollaboratorDto> collaborators = tripService.getTripCollaborators(userId, id);
-            return Response.ok(ApiResponse.success(collaborators)).build();
+            return tripService.getTripCollaborators(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trip collaborators for trip {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip collaborators"))
-                    .build();
+            throw notFound(id, e);
         }
     }
 
     @PUT
     @Path("/{id}/collaborators/{friendId}")
-    public Response upsertTripCollaborator(@PathParam("id") Long id,
-                                           @PathParam("friendId") String friendId,
-                                           @Valid UpdateTripCollaboratorDto dto) {
+    public TripCollaboratorDto upsertTripCollaborator(
+            @PathParam("id") Long id,
+            @PathParam("friendId") String friendId,
+            @Valid UpdateTripCollaboratorDto dto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendUserId = UUID.fromString(friendId);
-            TripCollaboratorDto collaborator = tripService.upsertTripCollaborator(userId, id, friendUserId, dto);
-            return Response.ok(ApiResponse.success(collaborator)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            return tripService.upsertTripCollaborator(
+                    currentUserService.getCurrentUserId(), id, UUID.fromString(friendId), dto);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update trip collaborator for trip {} friend {}", id, friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update trip collaborator"))
-                    .build();
+            throw notFound(id, e);
+        } catch (IllegalArgumentException e) {
+            throw invalid(e);
         }
     }
 
     @DELETE
     @Path("/{id}/collaborators/{friendId}")
-    public Response removeTripCollaborator(@PathParam("id") Long id,
-                                           @PathParam("friendId") String friendId) {
+    public RestResponse<Void> removeTripCollaborator(
+            @PathParam("id") Long id, @PathParam("friendId") String friendId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendUserId = UUID.fromString(friendId);
-            tripService.removeTripCollaborator(userId, id, friendUserId);
-            return Response.ok(ApiResponse.success("Trip collaborator removed")).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            tripService.removeTripCollaborator(
+                    currentUserService.getCurrentUserId(), id, UUID.fromString(friendId));
+            return RestResponse.noContent();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to remove trip collaborator for trip {} friend {}", id, friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to remove trip collaborator"))
-                    .build();
+            throw notFound(id, e);
+        } catch (IllegalArgumentException e) {
+            throw invalid(e);
         }
+    }
+
+    private static GeoPulseException notFound(Long tripId, NotFoundException cause) {
+        return new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), cause);
+    }
+
+    private static GeoPulseException invalid(IllegalArgumentException exception) {
+        return new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid trip request", exception);
     }
 }

@@ -37,6 +37,7 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(TRACKING_DATES_QUERY);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<LocalDate> trackingDates = (List<LocalDate>) query.getResultList();
 
         if (trackingDates == null || trackingDates.isEmpty()) {

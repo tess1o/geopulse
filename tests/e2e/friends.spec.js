@@ -872,10 +872,10 @@ test.describe('Friends Page', () => {
       const friendCoordinatesHistory = [];
       let trackedFriendId = null;
 
-      await page.route('**/api/friends**', async (route) => {
+      await page.route('**/api/v1/friends**', async (route) => {
         const request = route.request();
         const pathname = new URL(request.url()).pathname;
-        const isFriendsEndpoint = /\/api\/friends\/?$/.test(pathname);
+        const isFriendsEndpoint = /\/api\/v1\/friends\/?$/.test(pathname);
 
         if (!isFriendsEndpoint || request.method() !== 'GET') {
           await route.continue();
@@ -889,7 +889,7 @@ test.describe('Friends Page', () => {
 
         try {
           const payload = JSON.parse(body);
-          const friendsData = Array.isArray(payload?.data) ? payload.data : [];
+          const friendsData = Array.isArray(payload) ? payload : [];
 
           if (trackedFriendId) {
             const trackedFriendIdNormalized = String(trackedFriendId).toLowerCase();
@@ -943,7 +943,7 @@ test.describe('Friends Page', () => {
       expect(initialCoordinates.lon).toBeCloseTo(30.5234, 4);
       const callsBeforeLocationUpdate = friendsEndpointGetCalls;
 
-      // Insert a newer GPS point for the same friend (same source of truth used by /api/friends).
+      // Insert a newer GPS point for the same friend (same source of truth used by /api/v1/friends).
       const newerTimestamp = new Date(Date.now() + 60_000).toISOString();
       await dbManager.client.query(`
         INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
@@ -961,7 +961,7 @@ test.describe('Friends Page', () => {
         newerTimestamp
       ]);
 
-      // Polling should fetch /api/friends again and update marker position automatically.
+      // Polling should fetch /api/v1/friends again and update marker position automatically.
       await expect.poll(() => friendsEndpointGetCalls, {
         timeout: 45000
       }).toBeGreaterThan(callsBeforeLocationUpdate);
@@ -1030,7 +1030,7 @@ test.describe('Friends Page', () => {
     test('should display friend timeline data with date range selection', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
         await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
-      await dbManager.client.query('UPDATE users SET date_format = $1 WHERE id = $2', [DateFormatValues.DMY, user.id]);
+      await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2", [DateFormatValues.DMY, user.id]);
 
       // Create friendships with timeline permissions BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id, {

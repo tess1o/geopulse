@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.streaming.service;
 
-import io.quarkus.panache.common.Parameters;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -8,6 +7,9 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Service that recovers users stuck in timeline processing states after backend crashes/restarts.
@@ -30,8 +32,8 @@ public class TimelineStatusRecoveryService {
             // Reset all stuck statuses to IDLE
             int recoveredUsers = UserEntity.update(
                 "timelineStatus = :idleStatus WHERE timelineStatus IN (:stuckStatuses)",
-                Parameters.with("idleStatus", TimelineStatus.IDLE)
-                          .and("stuckStatuses", java.util.List.of(TimelineStatus.PROCESSING, TimelineStatus.REGENERATING))
+                Map.of("idleStatus", TimelineStatus.IDLE,
+                        "stuckStatuses", List.of(TimelineStatus.PROCESSING, TimelineStatus.REGENERATING))
             );
             
             if (recoveredUsers > 0) {

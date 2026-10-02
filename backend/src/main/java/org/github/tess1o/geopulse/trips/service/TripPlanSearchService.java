@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
@@ -10,6 +11,8 @@ import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.trips.model.dto.PlanSearchExternalStatus;
+import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResultDto;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -40,10 +43,13 @@ public class TripPlanSearchService {
         this.geocodingProviderFactory = geocodingProviderFactory;
     }
 
-    public List<PlanSearchResultDto> search(UUID userId, String query, Double latitude, Double longitude, Integer limit) {
+    public PlanSearchResponseDto search(UUID userId, String query, Double latitude, Double longitude, Integer limit) {
         String safeQuery = query == null ? "" : query.trim();
         if (safeQuery.length() < 2) {
-            return List.of();
+            return PlanSearchResponseDto.builder()
+                    .results(List.of())
+                    .externalStatus(PlanSearchExternalStatus.OK)
+                    .build();
         }
 
         int safeLimit = clampLimit(limit);
@@ -53,9 +59,16 @@ public class TripPlanSearchService {
         List<PlanSearchResultDto> combined = new ArrayList<>();
         combined.addAll(searchFavorites(userId, safeQuery, localFetchLimit));
         combined.addAll(searchGeocoding(userId, safeQuery, localFetchLimit));
-        combined.addAll(searchExternal(safeQuery, biasPoint, localFetchLimit));
 
-        return dedupeAndLimit(combined, safeLimit);
+        ExternalSearchOutcome external = searchExternal(safeQuery, biasPoint, localFetchLimit);
+        combined.addAll(external.results());
+
+        return PlanSearchResponseDto.builder()
+                .results(dedupeAndLimit(combined, safeLimit))
+                .externalStatus(external.status())
+                .externalProvider(external.provider())
+                .externalMessage(external.message())
+                .build();
     }
 
     private List<PlanSearchResultDto> searchFavorites(UUID userId, String query, int limit) {
@@ -113,7 +126,19 @@ public class TripPlanSearchService {
         return results;
     }
 
-    private List<PlanSearchResultDto> searchExternal(String query, Point biasPoint, int limit) {
+    /**
+     * Outcome of the external leg: the results plus why it produced them (or did not).
+     * Kept separate from the merged list so a provider problem never looks like an
+     * empty search.
+     */
+    private record ExternalSearchOutcome(List<PlanSearchResultDto> results,
+                                         PlanSearchExternalStatus status,
+                                         String provider,
+                                         String message) {
+    }
+
+    private ExternalSearchOutcome searchExternal(String query, Point biasPoint, int limit) {
+        String primaryProvider = geocodingProviderFactory.getPrimaryProvider();
         try {
             List<GeocodingSearchResult> providerResults = geocodingProviderFactory
                     .forwardSearch(query, biasPoint, limit)
@@ -121,7 +146,8 @@ public class TripPlanSearchService {
                     .indefinitely();
 
             if (providerResults == null || providerResults.isEmpty()) {
-                return List.of();
+                // The provider answered. An empty list here is a genuine "nothing matched".
+                return new ExternalSearchOutcome(List.of(), PlanSearchExternalStatus.OK, primaryProvider, null);
             }
 
             List<PlanSearchResultDto> results = new ArrayList<>();
@@ -140,11 +166,50 @@ public class TripPlanSearchService {
                         .build());
             }
 
-            return results;
+            return new ExternalSearchOutcome(results, PlanSearchExternalStatus.OK, primaryProvider, null);
         } catch (Exception e) {
-            log.warn("Forward provider search failed for query '{}': {}", query, e.getMessage());
-            return List.of();
+            // Full trace, not just the message: this path used to be completely silent,
+            // which is why a misconfigured instance was indistinguishable from no matches.
+            log.warn("Forward provider search failed for query '{}' (primary='{}', fallback='{}')",
+                    query, primaryProvider, geocodingProviderFactory.getFallbackProvider(), e);
+            return classifyForwardSearchFailure(e, primaryProvider);
         }
+    }
+
+    /**
+     * Maps a forward-search failure onto a user-actionable reason.
+     *
+     * <p>Message matching is used because {@code GeocodingProviderFactory.callProviderForward}
+     * wraps every provider problem in a {@link org.github.tess1o.geopulse.geocoding.exception.GeocodingException}
+     * carrying only a string. The cause chain is walked, and the whole chain is considered so a
+     * wrapper does not hide the underlying reason.
+     */
+    private ExternalSearchOutcome classifyForwardSearchFailure(Throwable failure, String primaryProvider) {
+        StringBuilder chain = new StringBuilder();
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t.getMessage() != null) {
+                chain.append(' ').append(t.getMessage());
+            }
+            if (t instanceof CircuitBreakerOpenException) {
+                return new ExternalSearchOutcome(List.of(), PlanSearchExternalStatus.FAILED, primaryProvider,
+                        "The place search provider is temporarily unavailable (circuit open). Try again shortly.");
+            }
+        }
+        String reason = chain.toString().toLowerCase(Locale.ROOT);
+
+        if (reason.contains("disabled for public host")) {
+            return new ExternalSearchOutcome(List.of(), PlanSearchExternalStatus.DISABLED, primaryProvider,
+                    "Forward search is disabled on the public Nominatim host. Enable "
+                            + "'geocoding.nominatim.public-host-forward-search-enabled', or configure a "
+                            + "self-hosted or fallback provider in Admin → Settings → Geocoding.");
+        }
+        if (reason.contains("is disabled") || reason.contains("not configured") || reason.contains("unknown provider")) {
+            return new ExternalSearchOutcome(List.of(), PlanSearchExternalStatus.DISABLED, primaryProvider,
+                    "No geocoding provider is available for place search. Enable one in "
+                            + "Admin → Settings → Geocoding (a fallback provider is recommended).");
+        }
+        return new ExternalSearchOutcome(List.of(), PlanSearchExternalStatus.FAILED, primaryProvider,
+                "Could not reach the place search provider. Check the geocoding provider settings and connectivity.");
     }
 
     private List<PlanSearchResultDto> dedupeAndLimit(List<PlanSearchResultDto> candidates, int limit) {

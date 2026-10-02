@@ -12,6 +12,7 @@ export const TIMELINE_PREFERENCE_LABELS = {
   walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
   carEnabled: 'Car Label Enabled',
   motorcycleEnabled: 'Motorcycle Label Enabled',
+  publicTransportationEnabled: 'Public Transportation Label Enabled',
   preferredMotorizedType: 'Preferred Motor Vehicle Label',
   carMinAvgSpeed: 'Motor Vehicle Minimum Average Speed',
   carMinMaxSpeed: 'Motor Vehicle Minimum Peak Speed',
@@ -67,6 +68,7 @@ export const TIMELINE_PREFERENCE_TAB_BY_KEY = {
   walkingMaxMaxSpeed: 'trips',
   carEnabled: 'trips',
   motorcycleEnabled: 'trips',
+  publicTransportationEnabled: 'trips',
   preferredMotorizedType: 'trips',
   carMinAvgSpeed: 'trips',
   carMinMaxSpeed: 'trips',
@@ -119,5 +121,5 @@ export const TIMELINE_PREFERENCE_VISIBILITY_HINTS = {
   gapTripInferenceMinDistanceMeters: 'Enable "Gap Trip Inference" to edit this setting.',
   gapTripInferenceMinGapHours: 'Enable "Gap Trip Inference" to edit this setting.',
   gapTripInferenceMaxGapHours: 'Enable "Gap Trip Inference" to edit this setting.',
-  preferredMotorizedType: 'Enable both "Car Label" and "Motorcycle Label" to edit this setting.'
+  preferredMotorizedType: 'Enable at least two motor vehicle labels to edit this setting.'
 }

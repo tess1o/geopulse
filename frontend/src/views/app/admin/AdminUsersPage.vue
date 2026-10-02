@@ -1,21 +1,25 @@
 <template>
   <AppLayout>
-    <div class="admin-users">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>User Management</h1>
-          <p class="text-muted">Manage user accounts</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.usersPage.title') }}</h1>
+            <p class="gp-page-subtitle">{{ t('admin.usersPage.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <router-link to="/app/admin/invitations" class="no-underline">
+              <Button
+                :label="t('admin.usersPage.userInvitations')"
+                icon="pi pi-send"
+                severity="secondary"
+                outlined
+              />
+            </router-link>
+          </div>
         </div>
-        <router-link to="/app/admin/invitations" class="no-underline">
-          <Button
-            label="User Invitations"
-            icon="pi pi-send"
-            severity="secondary"
-            outlined
-          />
-        </router-link>
       </div>
 
       <DemoReadOnlyBanner />
@@ -24,14 +28,14 @@
     <div class="search-container">
       <InputText
         v-model="searchQuery"
-        placeholder="Search users..."
+        :placeholder="t('admin.usersPage.searchPlaceholder')"
         @input="onSearch"
         class="w-full"
       />
     </div>
 
     <!-- Desktop Table View -->
-    <div class="card desktop-only">
+    <div class="gp-admin-card desktop-only">
       <DataTable
         :value="users"
         :loading="loading"
@@ -45,9 +49,9 @@
         responsiveLayout="scroll"
         :rowsPerPageOptions="[10, 25, 50]"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
+        :currentPageReportTemplate="t('admin.usersPage.currentPageReport')"
       >
-        <Column field="email" header="Email" sortable>
+        <Column field="email" :header="t('admin.usersPage.columnEmail')" sortable>
           <template #body="{ data }">
             <router-link :to="`/app/admin/users/${data.id}`" class="text-primary no-underline">
               {{ data.email }}
@@ -55,33 +59,33 @@
           </template>
         </Column>
 
-        <Column field="fullName" header="Name" sortable />
+        <Column field="fullName" :header="t('admin.usersPage.columnName')" sortable />
 
-        <Column field="role" header="Role" sortable>
+        <Column field="role" :header="t('admin.usersPage.columnRole')" sortable>
           <template #body="{ data }">
             <Tag :severity="data.role === 'ADMIN' ? 'warning' : 'info'" :value="data.role" />
           </template>
         </Column>
 
-        <Column field="active" header="Status" sortable>
+        <Column field="active" :header="t('admin.usersPage.columnStatus')" sortable>
           <template #body="{ data }">
-            <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Active' : 'Disabled'" />
+            <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
           </template>
         </Column>
 
-        <Column field="gpsPointsCount" header="GPS Points">
+        <Column field="gpsPointsCount" :header="t('admin.usersPage.columnGpsPoints')">
           <template #body="{ data }">
             {{ formatNumber(data.gpsPointsCount) }}
           </template>
         </Column>
 
-        <Column field="createdAt" header="Created" sortable>
+        <Column field="createdAt" :header="t('admin.usersPage.columnCreated')" sortable>
           <template #body="{ data }">
             {{ formatDate(data.createdAt) }}
           </template>
         </Column>
 
-        <Column header="Actions" :exportable="false" style="min-width: 150px">
+        <Column :header="t('admin.usersPage.columnActions')" :exportable="false" style="min-width: 150px">
           <template #body="{ data }">
             <div class="flex gap-2">
               <Button
@@ -90,7 +94,7 @@
                 text
                 severity="info"
                 @click="viewUser(data)"
-                v-tooltip="'View Details'"
+                v-tooltip="t('admin.usersPage.viewDetails')"
               />
               <Button
                 :icon="data.active ? 'pi pi-ban' : 'pi pi-check'"
@@ -98,7 +102,7 @@
                 text
                 :severity="data.active ? 'warning' : 'success'"
                 @click="toggleUserStatus(data)"
-                v-tooltip="data.active ? 'Disable User' : 'Enable User'"
+                v-tooltip="data.active ? t('admin.usersPage.disableUser') : t('admin.usersPage.enableUser')"
                 :disabled="adminReadOnly || data.id === currentUserId"
               />
               <Button
@@ -107,7 +111,7 @@
                 text
                 severity="danger"
                 @click="confirmDelete(data)"
-                v-tooltip="'Delete User'"
+                v-tooltip="t('admin.usersPage.deleteUser')"
                 :disabled="adminReadOnly || data.id === currentUserId"
               />
             </div>
@@ -116,7 +120,7 @@
 
         <template #empty>
           <div class="text-center p-4">
-            No users found.
+            {{ t('admin.usersPage.noUsersFound') }}
           </div>
         </template>
       </DataTable>
@@ -128,35 +132,35 @@
         <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
       </div>
 
-      <div v-else-if="users.length === 0" class="text-center p-4 card">
-        No users found.
+      <div v-else-if="users.length === 0" class="text-center p-4 gp-admin-card">
+        {{ t('admin.usersPage.noUsersFound') }}
       </div>
 
-      <div v-else class="user-cards">
-        <div v-for="user in users" :key="user.id" class="user-card" @click="viewUser(user)">
-          <div class="user-card-header">
+      <div v-else class="gp-admin-list">
+        <div v-for="user in users" :key="user.id" class="gp-admin-list-card gp-admin-list-card--interactive" @click="viewUser(user)">
+          <div class="gp-admin-list-card-header">
             <div class="user-info">
               <div class="user-email">{{ user.email }}</div>
               <div class="user-name">{{ user.fullName }}</div>
             </div>
             <div class="user-badges">
               <Tag :severity="user.role === 'ADMIN' ? 'warning' : 'info'" :value="user.role" />
-              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? 'Active' : 'Disabled'" />
+              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
             </div>
           </div>
 
-          <div class="user-card-body">
+          <div class="gp-admin-list-card-body">
             <div class="user-stat">
-              <span class="stat-label">GPS Points</span>
+              <span class="stat-label">{{ t('admin.usersPage.columnGpsPoints') }}</span>
               <span class="stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
             </div>
             <div class="user-stat">
-              <span class="stat-label">Created</span>
+              <span class="stat-label">{{ t('admin.usersPage.columnCreated') }}</span>
               <span class="stat-value">{{ formatDate(user.createdAt) }}</span>
             </div>
           </div>
 
-          <div class="user-card-actions" @click.stop>
+          <div class="gp-admin-list-card-actions user-card-actions" @click.stop>
             <Button
               icon="pi pi-eye"
               rounded
@@ -202,7 +206,7 @@
           :disabled="page === 0"
         />
         <span class="pagination-info">
-          Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+          {{ t('admin.usersPage.pageOf', { page: page + 1, total: Math.ceil(totalRecords / pageSize) }) }}
         </span>
         <Button
           icon="pi pi-angle-right"
@@ -222,21 +226,23 @@
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="deleteDialogVisible"
-      header="Confirm Delete"
+      :header="t('admin.usersPage.confirmDeleteHeader')"
       :modal="true"
       :style="{ width: '450px' }"
     >
       <div class="flex align-items-center gap-3 mb-3">
         <i class="pi pi-exclamation-triangle text-4xl text-red-500"></i>
         <span>
-          Are you sure you want to delete user <strong>{{ userToDelete?.email }}</strong>?
+          <i18n-t keypath="admin.usersPage.confirmDeleteMessage" tag="span">
+            <template #email><strong>{{ userToDelete?.email }}</strong></template>
+          </i18n-t>
           <br><br>
-          This will permanently delete all their data including GPS points, timeline, and settings.
+          {{ t('admin.usersPage.confirmDeleteDetail') }}
         </span>
       </div>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" />
+        <Button :label="t('admin.usersPage.cancel')" icon="pi pi-times" text @click="deleteDialogVisible = false" />
+        <Button :label="t('admin.usersPage.delete')" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" />
       </template>
     </Dialog>
 
@@ -247,6 +253,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -262,11 +269,14 @@ import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 
@@ -274,12 +284,12 @@ const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'Users' }
+  { label: t('admin.usersPage.breadcrumbTitle') }
 ])
 
 const users = ref([])
@@ -312,15 +322,15 @@ const loadUsers = async () => {
       params.append('search', searchQuery.value)
     }
 
-    const response = await apiService.get(`/admin/users?${params.toString()}`)
-    users.value = response.content
+    const response = await adminStore.getUsers(Object.fromEntries(params))
+    users.value = response.items
     totalRecords.value = response.totalElements
   } catch (error) {
     console.error('Failed to load users:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load users',
+      summary: t('common.error'),
+      detail: t('admin.usersPage.toasts.loadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -357,24 +367,22 @@ const viewUser = (user) => {
 
 const toggleUserStatus = async (user) => {
   try {
-    await apiService.put(`/admin/users/${user.id}/status`, {
-      active: !user.active
-    })
+    await adminStore.updateUserStatus(user.id, !user.active)
 
     user.active = !user.active
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: `User ${user.active ? 'enabled' : 'disabled'}`,
+      summary: t('common.success'),
+      detail: user.active ? t('admin.usersPage.toasts.userEnabled') : t('admin.usersPage.toasts.userDisabled'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to update user status:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update user status',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.updateStatusFailedFallback')),
       life: 3000
     })
   }
@@ -390,12 +398,12 @@ const deleteUser = async () => {
 
   deleting.value = true
   try {
-    await apiService.delete(`/admin/users/${userToDelete.value.id}`)
+    await adminStore.deleteUser(userToDelete.value.id)
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'User deleted successfully',
+      summary: t('common.success'),
+      detail: t('admin.usersPage.toasts.deletedDetail'),
       life: 3000
     })
 
@@ -406,8 +414,8 @@ const deleteUser = async () => {
     console.error('Failed to delete user:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete user',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.deleteFailedFallback')),
       life: 3000
     })
   } finally {
@@ -460,39 +468,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-users {
-  padding: 1.5rem;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
 .no-underline {
   text-decoration: none;
-}
-
-.card {
-  background: var(--surface-card);
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1rem;
-}
-
-.text-muted {
-  color: var(--text-color-secondary);
 }
 
 /* Search Container */
@@ -509,45 +486,6 @@ onMounted(() => {
   display: none;
 }
 
-/* Mobile User Cards */
-.user-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.user-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-:global(.p-dark) .user-card,
-:global([data-theme="dark"]) .user-card,
-:global(html.dark) .user-card {
-  background: var(--gp-surface-dark);
-}
-
-.user-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.user-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
-}
-
 .user-info {
   flex: 1;
   min-width: 0;
@@ -555,7 +493,7 @@ onMounted(() => {
 
 .user-email {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   margin-bottom: 0.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -564,7 +502,7 @@ onMounted(() => {
 
 .user-name {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .user-badges {
@@ -572,14 +510,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   align-items: flex-end;
-}
-
-.user-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
 }
 
 .user-stat {
@@ -590,7 +520,7 @@ onMounted(() => {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
 }
 
@@ -604,7 +534,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Mobile Pagination */
@@ -615,41 +545,18 @@ onMounted(() => {
   gap: 0.5rem;
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   border-radius: 8px;
 }
 
 .pagination-info {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   padding: 0 0.5rem;
 }
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-users {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .page-header p {
-    margin: 0.25rem 0 0 0;
-  }
-
   .search-container {
     margin-bottom: 0.75rem;
   }
@@ -662,27 +569,6 @@ onMounted(() => {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-users {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .user-card {
-    padding: 0.75rem;
-  }
-
-  .user-card-body {
-    gap: 1rem;
-  }
-}
 </style>

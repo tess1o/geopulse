@@ -4,17 +4,17 @@
       <!-- Loading overlay -->
       <div v-if="isLoading" class="map-loading-overlay">
         <ProgressSpinner size="small"/>
-        <p class="text-sm text-surface-500 mt-2">Loading friend locations...</p>
+        <p class="text-sm text-muted-color mt-2">Loading friend locations...</p>
       </div>
 
       <!-- Empty state overlay -->
       <div v-else-if="!hasLocations" class="map-empty-overlay">
         <div class="empty-content">
-          <i class="pi pi-map-marker text-4xl text-surface-400 mb-3"></i>
+          <i class="pi pi-map-marker text-4xl text-muted-color mb-3"></i>
           <h3 class="text-lg font-medium text-surface-600 dark:text-surface-400 mb-2">
             No Friend Locations
           </h3>
-          <p class="text-sm text-surface-500 text-center max-w-sm">
+          <p class="text-sm text-muted-color text-center max-w-sm">
             {{
               friends?.length ? 'Your friends haven\'t shared their locations yet.' : 'Add friends to see their locations on the map.'
             }}
@@ -91,6 +91,7 @@ import {ProgressSpinner} from 'primevue'
 // Map components
 import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { getFriendTrailColor } from '@/maps/shared/friendTrailColors'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
@@ -123,33 +124,11 @@ const processedFriendsData = computed(() => {
   return processFriendsForMap(props.friends)
 })
 
-const FRIEND_TRAIL_COLOR_PALETTE = [
-  '#E53935',
-  '#43A047',
-  '#1E88E5',
-  '#FDD835',
-  '#8E24AA',
-  '#F57C00',
-  '#00ACC1',
-  '#3949AB',
-  '#6D4C41',
-  '#546E7A',
-  '#00897B',
-  '#6A1B9A'
-]
-
 const getFriendLocationKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id || friend?.email
 }
 
-const getColorByFriend = (friend, index) => {
-  const key = String(getFriendLocationKey(friend) || `friend-${index}`)
-  const hash = key
-      .split('')
-      .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % FRIEND_TRAIL_COLOR_PALETTE.length, 0)
-
-  return FRIEND_TRAIL_COLOR_PALETTE[hash]
-}
+const getColorByFriend = getFriendTrailColor
 
 const getFriendTrailPoints = (friend) => {
   const key = getFriendLocationKey(friend)
@@ -705,13 +684,6 @@ export default {
   flex-direction: column;
 }
 
-.friends-map-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--p-surface-200);
-  background: var(--p-surface-50);
-  flex-shrink: 0;
-}
-
 .friends-map-content {
   flex: 1;
   min-height: 400px; /* Important for flexbox */
@@ -728,38 +700,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--p-surface-50);
+  background: var(--gp-surface-ground);
   z-index: 1000;
 }
 
 .empty-content {
   text-align: center;
   padding: 2rem;
-}
-
-/* Friends Map Title */
-.friends-map-title {
-  color: var(--p-surface-900);
-}
-
-/* Dark mode support */
-.dark .friends-map-container {
-  background: var(--p-surface-900);
-  border-color: var(--p-surface-700);
-}
-
-.dark .friends-map-header {
-  background: var(--p-surface-800);
-  border-bottom-color: var(--p-surface-700);
-}
-
-.dark .friends-map-title {
-  color: var(--p-surface-100);
-}
-
-.dark .map-loading-overlay,
-.dark .map-empty-overlay {
-  background: var(--p-surface-800);
 }
 
 .custom-map-control-button {
@@ -799,10 +746,6 @@ export default {
 
   .friends-map-content {
     min-height: 300px;
-  }
-
-  .friends-map-header {
-    padding: 0.75rem;
   }
 }
 </style>

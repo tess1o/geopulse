@@ -1,14 +1,14 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Notes"
+    :header="t('timeline.notesViewer.header')"
     modal
     class="notes-viewer-dialog"
     :close-on-escape="!editorVisible"
     @hide="handleHide"
   >
     <div v-if="notes.length === 0" class="notes-empty">
-      No notes for this timeline item.
+      {{ t('timeline.notesViewer.empty') }}
     </div>
 
     <div v-else class="notes-list">
@@ -34,8 +34,8 @@
               icon="pi pi-pencil"
               text
               rounded
-              aria-label="Edit note"
-              v-tooltip.left="'Edit note'"
+              :aria-label="t('timeline.notesViewer.editNote')"
+              v-tooltip.left="t('timeline.notesViewer.editNote')"
               @click="editNote(note)"
             />
             <Button
@@ -44,8 +44,8 @@
               text
               rounded
               severity="danger"
-              aria-label="Delete note"
-              v-tooltip.left="'Delete note'"
+              :aria-label="t('timeline.notesViewer.deleteNote')"
+              v-tooltip.left="t('timeline.notesViewer.deleteNote')"
               @click="confirmDeleteNote(note)"
             />
             <Button
@@ -53,8 +53,8 @@
               icon="pi pi-external-link"
               text
               rounded
-              aria-label="Open in Memos"
-              v-tooltip.left="'Open in Memos'"
+              :aria-label="t('timeline.notesViewer.openInMemos')"
+              v-tooltip.left="t('timeline.notesViewer.openInMemos')"
               @click="openExternal(note.externalUrl)"
             />
           </div>
@@ -62,23 +62,23 @@
 
         <div class="note-markdown" v-html="renderSafeMarkdown(noteBody(note))"></div>
         <Message v-if="note.truncated" severity="warn" :closable="false" class="note-truncated">
-          This Memos note is large, so GeoPulse shows a truncated preview.
+          {{ t('timeline.notesViewer.truncatedNotice') }}
         </Message>
         <div v-if="isDeletePending(note)" class="note-delete-confirm">
           <div class="note-delete-confirm-message">
             <i class="pi pi-exclamation-triangle" aria-hidden="true" />
-            <span>Delete this GeoPulse note?</span>
+            <span>{{ t('timeline.notesViewer.deleteConfirm') }}</span>
           </div>
           <div class="note-delete-confirm-actions">
-            <Button label="Cancel" size="small" outlined :disabled="deleting" @click="cancelDelete" />
-            <Button label="Delete" size="small" icon="pi pi-trash" severity="danger" :loading="deleting" @click="deleteSelectedNote" />
+            <Button :label="t('timeline.notesViewer.cancel')" size="small" outlined :disabled="deleting" @click="cancelDelete" />
+            <Button :label="t('timeline.notesViewer.delete')" size="small" icon="pi pi-trash" severity="danger" :loading="deleting" @click="deleteSelectedNote" />
           </div>
         </div>
       </article>
     </div>
 
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('timeline.notesViewer.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 
@@ -92,6 +92,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -99,7 +100,10 @@ import { useToast } from 'primevue/usetoast'
 import { useTimezone } from '@/composables/useTimezone'
 import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 import { useNotesStore } from '@/stores/notes'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import NoteEditorDialog from './NoteEditorDialog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {
@@ -153,16 +157,16 @@ const noteKey = (note) => {
   const identity = note?.id ?? note?.externalId ?? note?.eventTime ?? note?.createdAt ?? note?.updatedAt ?? ''
   return `${note?.source || 'note'}-${identity}`
 }
-const sourceLabel = (note) => note.source === 'MEMOS' ? 'Memos' : 'GeoPulse'
+const sourceLabel = (note) => note.source === 'MEMOS' ? t('timeline.noteEditor.destinations.memos') : t('timeline.noteEditor.destinations.geopulse')
 const sourceClass = (note) => note.source === 'MEMOS' ? 'note-source-memos' : 'note-source-geopulse'
 const canManageNote = (note) => props.canManage && note?.source === 'GEOPULSE' && note?.editable !== false && note?.id != null
 const formatDateTime = (value) => value ? `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}` : ''
 const formatLocationSource = (source) => {
   const labels = {
-    EXPLICIT: 'Geotagged',
-    DERIVED_STAY: 'Stay location',
-    DERIVED_TRIP_GPS: 'Trip GPS',
-    DERIVED_TRIP_INTERPOLATED: 'Trip estimate'
+    EXPLICIT: t('timeline.notesViewer.locationSources.explicit'),
+    DERIVED_STAY: t('timeline.notesViewer.locationSources.derivedStay'),
+    DERIVED_TRIP_GPS: t('timeline.notesViewer.locationSources.derivedTripGps'),
+    DERIVED_TRIP_INTERPOLATED: t('timeline.notesViewer.locationSources.derivedTripInterpolated')
   }
   return labels[source] || source
 }
@@ -236,8 +240,8 @@ const deleteSelectedNote = async () => {
     await notesStore.deleteNote(note.id)
     toast.add({
       severity: 'success',
-      summary: 'Note deleted',
-      detail: 'GeoPulse note was deleted',
+      summary: t('timeline.notesViewer.toasts.deletedTitle'),
+      detail: t('timeline.notesViewer.toasts.deletedDetail'),
       life: 3000
     })
     notePendingDelete.value = null
@@ -245,8 +249,8 @@ const deleteSelectedNote = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Delete failed',
-      detail: error.userMessage || error.message || 'Failed to delete note',
+      summary: t('timeline.notesViewer.toasts.deleteFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.notesViewer.toasts.deleteFailedDetail')),
       life: 5000
     })
   } finally {
@@ -298,10 +302,10 @@ watch(
 }
 
 .note-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .note-header {
@@ -360,13 +364,13 @@ watch(
 }
 
 .note-source-memos {
-  color: #0f5f8f;
-  background: #e0f2fe;
+  color: var(--gp-info-text);
+  background: var(--gp-info-soft);
 }
 
 .note-source-geopulse {
-  color: #166534;
-  background: #dcfce7;
+  color: var(--gp-success-text);
+  background: var(--gp-success-soft);
 }
 
 .note-markdown {
@@ -391,22 +395,22 @@ watch(
 
 .note-markdown :deep(pre) {
   overflow: auto;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   padding: var(--gp-spacing-sm);
 }
 
 .note-delete-confirm {
   margin-top: var(--gp-spacing-sm);
-  border: 1px solid #ef4444;
+  border: 1px solid var(--gp-danger);
   border-radius: var(--gp-radius-small);
-  background: #fef2f2;
+  background: var(--gp-danger-soft);
   padding: var(--gp-spacing-sm);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--gp-spacing-sm);
-  color: #7f1d1d;
+  color: var(--gp-danger-text);
   line-height: 1.45;
 }
 
@@ -418,7 +422,7 @@ watch(
 }
 
 .note-delete-confirm-message i {
-  color: #dc2626;
+  color: var(--gp-danger-text);
   flex-shrink: 0;
 }
 
@@ -432,26 +436,6 @@ watch(
 
 .note-truncated {
   margin-top: var(--gp-spacing-sm);
-}
-
-:global(.p-dark) .note-delete-confirm {
-  border-color: rgba(239, 68, 68, 0.55);
-  background: rgba(127, 29, 29, 0.35);
-  color: #fee2e2;
-}
-
-:global(.p-dark) .note-delete-confirm-message i {
-  color: #fca5a5;
-}
-
-:global(.p-dark) .note-source-memos {
-  color: #bae6fd;
-  background: rgba(14, 116, 144, 0.35);
-}
-
-:global(.p-dark) .note-source-geopulse {
-  color: #bbf7d0;
-  background: rgba(22, 101, 52, 0.35);
 }
 
 @media (max-width: 640px) {

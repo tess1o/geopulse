@@ -1,12 +1,12 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
-
-const unwrapApiData = (response) => response?.data ?? response
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
     state: () => ({
         timelinePreferences: null,
-        lastUpdateResponseData: null
+        lastUpdateResponseData: null,
+        error: null
     }),
 
     getters: {
@@ -34,6 +34,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         getWalkingMaxMaxSpeed: (state) => state.timelinePreferences?.walkingMaxMaxSpeed ?? 8.0,
         getCarEnabled: (state) => state.timelinePreferences?.carEnabled ?? true,
         getMotorcycleEnabled: (state) => state.timelinePreferences?.motorcycleEnabled ?? false,
+        getPublicTransportationEnabled: (state) => state.timelinePreferences?.publicTransportationEnabled ?? false,
         getPreferredMotorizedType: (state) => state.timelinePreferences?.preferredMotorizedType ?? 'CAR',
         getCarMinAvgSpeed: (state) => state.timelinePreferences?.carMinAvgSpeed ?? 8.0,
         getCarMinMaxSpeed: (state) => state.timelinePreferences?.carMinMaxSpeed ?? 15.0,
@@ -68,41 +69,40 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         // API Actions
         async fetchTimelinePreferences() {
             try {
-                const response = await apiService.get(`/streaming-timeline/user/preferences`)
+                const response = await apiService.get(`/timeline/preferences`)
                 this.setTimelinePreferences(response)
                 return response
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load timeline preferences')
+                throw this.error
             }
         },
 
         async updateTimelinePreferences(changes) {
             try {
-                const response = await apiService.put(`/users/preferences/timeline`, {...changes})
-                const responseData = unwrapApiData(response)
-
+                const response = await apiService.put(`/preferences/timeline`, {...changes})
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
 
-                this.lastUpdateResponseData = responseData || null
-                return responseData?.jobId || responseData?.boatSetupJobId || null
+                this.lastUpdateResponseData = response || null
+                return response?.jobId || response?.boatSetupJobId || null
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to update timeline preferences')
+                throw this.error
             }
         },
 
         async resetTimelinePreferencesToDefaults() {
             try {
-                const response = await apiService.delete(`/users/preferences/timeline`)
+                const response = await apiService.delete(`/preferences/timeline`)
 
                 // Refresh preferences after reset
                 await this.fetchTimelinePreferences()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to reset timeline preferences')
+                throw this.error
             }
         },
     }

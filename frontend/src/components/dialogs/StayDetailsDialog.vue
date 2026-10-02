@@ -9,7 +9,7 @@
     <div class="stay-details-content">
       <!-- Map Section -->
       <div class="map-section">
-        <h4 class="section-title">Location Map</h4>
+        <h4 class="section-title">{{ t('miscDialogs.stayDetails.mapSectionTitle') }}</h4>
         <MapContainer
           :map-id="`stay-details-map-${mapId}`"
           :center="mapCenter"
@@ -25,24 +25,24 @@
       <div class="details-section">
         <!-- Location Name Header -->
         <div class="location-header">
-          <h3 class="location-name">{{ stay?.locationName || 'Unknown Location' }}</h3>
+          <h3 class="location-name">{{ stay?.locationName || t('miscDialogs.stayDetails.unknownLocation') }}</h3>
           <p v-if="stay?.address" class="location-address">{{ stay.address }}</p>
         </div>
         
         <div class="details-grid">
           <!-- Timing Information -->
           <div class="detail-group">
-            <h4 class="section-title">Timing</h4>
+            <h4 class="section-title">{{ t('miscDialogs.stayDetails.timingTitle') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Start:</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.start') }}</span>
               <span class="detail-value">{{ getStartDateTime() }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">End:</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.end') }}</span>
               <span class="detail-value">{{ getEndDateTime() }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Duration:</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.duration') }}</span>
               <span class="detail-value duration-badge">
                 {{ formatDuration(stay?.stayDuration) }}
               </span>
@@ -51,17 +51,17 @@
 
           <!-- Location Information -->
           <div class="detail-group">
-            <h4 class="section-title">Coordinates</h4>
+            <h4 class="section-title">{{ t('miscDialogs.stayDetails.coordinatesTitle') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Latitude:</span>
-              <span class="detail-value coordinate">{{ stay?.latitude?.toFixed(6) || 'N/A' }}</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.latitude') }}</span>
+              <span class="detail-value coordinate">{{ stay?.latitude?.toFixed(6) || t('miscDialogs.stayDetails.notAvailable') }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Longitude:</span>
-              <span class="detail-value coordinate">{{ stay?.longitude?.toFixed(6) || 'N/A' }}</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.longitude') }}</span>
+              <span class="detail-value coordinate">{{ stay?.longitude?.toFixed(6) || t('miscDialogs.stayDetails.notAvailable') }}</span>
             </div>
             <div v-if="stay?.latitude && stay?.longitude" class="detail-item">
-              <span class="detail-label">Coordinates:</span>
+              <span class="detail-label">{{ t('miscDialogs.stayDetails.coordinates') }}</span>
               <span class="detail-value copyable" @click="copyToClipboard(`${stay.latitude}, ${stay.longitude}`)">
                 {{ stay.latitude?.toFixed(6) }}, {{ stay.longitude?.toFixed(6) }}
                 <i class="pi pi-copy copy-icon"></i>
@@ -76,13 +76,14 @@
 
     <!-- Dialog Footer -->
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('miscDialogs.stayDetails.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
@@ -92,6 +93,7 @@ import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { createDetailsMapAdapter } from '@/maps/details/runtime/createDetailsMapAdapter'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const toast = useToast()
 
@@ -117,7 +119,7 @@ const mapAdapter = ref(null)
 
 // Computed
 const dialogTitle = computed(() => {
-  return `Stay Details - ${props.stay?.locationName || 'Unknown Location'}`
+  return t('miscDialogs.stayDetails.titleWithLocation', { location: props.stay?.locationName || t('miscDialogs.stayDetails.unknownLocation') })
 })
 
 const mapCenter = computed(() => {
@@ -129,12 +131,12 @@ const mapCenter = computed(() => {
 
 // Methods
 const getStartDateTime = () => {
-  if (!props.stay?.timestamp) return 'N/A'
+  if (!props.stay?.timestamp) return t('miscDialogs.stayDetails.notAvailable')
   return `${timezone.formatDateDisplay(props.stay.timestamp)} ${timezone.formatTime(props.stay.timestamp, { withSeconds: true })}`
 }
 
 const getEndDateTime = () => {
-  if (!props.stay?.timestamp || !props.stay?.stayDuration) return 'N/A'
+  if (!props.stay?.timestamp || !props.stay?.stayDuration) return t('miscDialogs.stayDetails.notAvailable')
   
   // Create a moment object from the timestamp and add the duration in seconds
   const startTime = timezone.fromUtc(props.stay.timestamp)
@@ -154,16 +156,16 @@ const copyToClipboard = async (text) => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied!',
-      detail: 'Coordinates copied to clipboard',
+      summary: t('miscDialogs.stayDetails.toasts.copiedSummary'),
+      detail: t('miscDialogs.stayDetails.toasts.copiedDetail'),
       life: 2000
     })
   } else {
     console.error('Failed to copy to clipboard')
     toast.add({
       severity: 'error',
-      summary: 'Copy failed',
-      detail: 'Unable to copy coordinates',
+      summary: t('miscDialogs.stayDetails.toasts.copyFailedSummary'),
+      detail: t('miscDialogs.stayDetails.toasts.copyFailedDetail'),
       life: 3000
     })
   }
@@ -245,9 +247,9 @@ onBeforeUnmount(() => {
   text-align: center;
   margin-bottom: var(--gp-spacing-lg);
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .location-name {
@@ -271,10 +273,10 @@ onBeforeUnmount(() => {
 }
 
 .detail-group {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   padding: var(--gp-spacing-md);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .detail-item {
@@ -282,7 +284,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: var(--gp-spacing-xs) 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .detail-item:last-child {
@@ -305,7 +307,7 @@ onBeforeUnmount(() => {
 }
 
 .detail-value.coordinate {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.9rem;
 }
 
@@ -328,8 +330,8 @@ onBeforeUnmount(() => {
 }
 
 .duration-badge {
-  background: var(--gp-primary-light);
-  color: var(--gp-primary);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
   padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
   border-radius: var(--gp-radius-small);
   font-size: 0.95rem;
@@ -338,26 +340,6 @@ onBeforeUnmount(() => {
 
 .place-type-tag {
   font-size: 0.8rem;
-}
-
-/* Dark Mode */
-.p-dark .location-header {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .detail-group {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .detail-item {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .duration-badge {
-  background: rgba(30, 64, 175, 0.2);
-  color: var(--gp-primary);
 }
 
 /* Responsive */

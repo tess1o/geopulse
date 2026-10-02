@@ -1,10 +1,10 @@
 <template>
   <div class="user-selection-panel">
     <div class="panel-header">
-      <h3>Select Friends</h3>
+      <h3>{{ t('friends.selection.title') }}</h3>
       <div class="selection-controls">
-        <Button label="All" outlined size="small" @click="$emit('select-all')" />
-        <Button label="None" outlined size="small" @click="$emit('deselect-all')" />
+        <Button :label="t('friends.filters.all')" outlined size="small" @click="$emit('select-all')" />
+        <Button :label="t('friends.filters.none')" outlined size="small" @click="$emit('deselect-all')" />
       </div>
     </div>
 
@@ -29,7 +29,7 @@
         <div class="user-info">
           <span class="user-name">
             {{ user.fullName }}
-            <span v-if="user.userId === requestingUserId" class="you-label">(You)</span>
+            <span v-if="user.userId === requestingUserId" class="you-label">{{ t('friends.selection.youLabel') }}</span>
           </span>
         </div>
         <Badge :value="user.itemCount" severity="info" class="item-badge" />
@@ -40,6 +40,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useFriendsTimelineStore } from '@/stores/friendsTimeline'
 import Checkbox from 'primevue/checkbox'
@@ -47,6 +48,7 @@ import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import Badge from 'primevue/badge'
 
+const { t } = useI18n()
 const friendsTimelineStore = useFriendsTimelineStore()
 const { selectedUserIds } = storeToRefs(friendsTimelineStore)
 
@@ -68,8 +70,8 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
 
 <style scoped>
 .user-selection-panel {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 1rem;
 }
@@ -80,7 +82,7 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .panel-header h3 {
@@ -114,7 +116,7 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   transition: background-color 0.2s;
 }
 
@@ -162,23 +164,5 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
 
 .item-badge {
   flex-shrink: 0;
-}
-
-/* Dark mode */
-.p-dark .user-selection-panel {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .panel-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .user-item {
-  background: var(--gp-surface-medium);
-}
-
-.p-dark .user-item:hover {
-  background: var(--gp-surface-hover);
 }
 </style>

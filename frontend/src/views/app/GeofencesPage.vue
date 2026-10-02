@@ -2,12 +2,12 @@
   <AppLayout variant="default">
     <ConfirmDialog />
     <PageContainer
-      title="Geofences"
-      subtitle="Monitor enter/leave events for you and friends"
+      :title="t('geofences.page.title')"
+      :subtitle="t('geofences.page.subtitle')"
       variant="fullwidth"
     >
       <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-        Demo mode: geofence rules, notification templates, and event seen states are read-only. Create, update, delete, test, and mark-seen actions are disabled.
+        {{ t('geofences.page.demoDisabled') }}
       </Message>
 
       <TabContainer
@@ -106,12 +106,15 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLocationStore } from '@/stores/location'
-import apiService from '@/utils/apiService'
+import { useFriendsStore } from '@/stores/friends'
+import { useGeofencesStore } from '@/stores/geofences'
 import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
 import { useTimezone } from '@/composables/useTimezone'
 import { createGeofenceRulesMapAdapter } from '@/maps/geofences/runtime/createGeofenceRulesMapAdapter'
@@ -126,22 +129,34 @@ import GeofenceTemplatesTab from '@/components/geofences/tabs/GeofenceTemplatesT
 import GeofenceEventsTab from '@/components/geofences/tabs/GeofenceEventsTab.vue'
 import Message from 'primevue/message'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const locationStore = useLocationStore()
+const friendsStore = useFriendsStore()
+const geofencesStore = useGeofencesStore()
+const {
+  rules,
+  templates,
+  capabilities: templateDeliveryCapabilities,
+  events: geofenceEvents,
+  eventsTotal: geofenceEventsTotal,
+  unreadCount: geofenceUnreadCount
+} = storeToRefs(geofencesStore)
 const timezone = useTimezone()
 const FALLBACK_GEOFENCE_CENTER = [50.4501, 30.5234]
 const LAST_KNOWN_MAP_ZOOM = 12
 
 const tabs = computed(() => [
-  { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
-  { label: 'Templates', icon: 'pi pi-envelope', key: 'templates' },
+  { label: t('geofences.page.tabs.rules'), icon: 'pi pi-map', key: 'rules' },
+  { label: t('geofences.page.tabs.templates'), icon: 'pi pi-envelope', key: 'templates' },
   {
-    label: 'Events',
+    label: t('geofences.page.tabs.events'),
     icon: 'pi pi-bell',
     key: 'events',
     badge: unreadCount.value > 0 ? unreadCount.value : null,
@@ -152,22 +167,13 @@ const tabs = computed(() => [
 const activeTab = ref('rules')
 const activeTabIndex = computed(() => tabs.value.findIndex(t => t.key === activeTab.value))
 
-const rules = ref([])
-const templates = ref([])
 const friends = ref([])
-const templateDeliveryCapabilities = ref({
-  appriseEnabled: false,
-  appriseConfigured: false
-})
 
 const savingRule = ref(false)
 const savingTemplate = ref(false)
 const testingTemplateConnection = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
-const geofenceEvents = ref([])
-const geofenceEventsTotal = ref(0)
-const geofenceUnreadCount = ref(0)
 const refreshingEvents = ref(false)
 const geofenceEventsQuery = ref(defaultGeofenceEventsQuery())
 const ruleFormErrors = ref({
@@ -232,10 +238,10 @@ const initialRulesLoaded = ref(false)
 const mapViewportInitialized = ref(false)
 const knownSubjectLabels = ref({})
 
-const statusOptions = [
-  { label: 'Active', value: 'ACTIVE' },
-  { label: 'Paused', value: 'PAUSED' }
-]
+const statusOptions = computed(() => [
+  { label: t('geofences.rulesTab.statusActive'), value: 'ACTIVE' },
+  { label: t('geofences.rulesTab.statusPaused'), value: 'PAUSED' }
+])
 
 const ruleForm = ref(defaultRuleForm())
 const templateForm = ref(defaultTemplateForm())
@@ -274,7 +280,7 @@ const subjectOptions = computed(() => {
   }
 
   if (authStore.userId) {
-    const meLabel = authStore.userName ? `${authStore.userName} (Me)` : `${authStore.userEmail} (Me)`
+    const meLabel = t('geofences.page.meLabel', { name: authStore.userName || authStore.userEmail })
     pushOption(authStore.userId, meLabel)
   }
 
@@ -288,8 +294,8 @@ const subjectOptions = computed(() => {
     if (!normalizedValue || seen.has(normalizedValue)) {
       continue
     }
-    const label = knownSubjectLabels.value[normalizedValue] || `Unknown subject (${normalizedValue.slice(0, 8)})`
-    pushOption(normalizedValue, `${label} (Unavailable)`, true)
+    const label = knownSubjectLabels.value[normalizedValue] || t('geofences.page.unknownSubject', { idPrefix: normalizedValue.slice(0, 8) })
+    pushOption(normalizedValue, t('geofences.page.unavailableSuffix', { label }), true)
   }
 
   return items
@@ -306,7 +312,7 @@ const eventSubjectFilterOptions = computed(() => {
 
 const templateOptionItems = computed(() => {
   return templates.value.map(template => ({
-    label: template.enabled ? template.name : `${template.name} (Disabled)`,
+    label: template.enabled ? template.name : t('geofences.page.disabledSuffix', { name: template.name }),
     value: template.id
   }))
 })
@@ -323,7 +329,7 @@ const enterTemplateOptions = computed(() => {
   const options = [...templateOptionItems.value]
   if (enabledDefaultEnterTemplate.value) {
     options.unshift({
-      label: `Use default ENTER template (${enabledDefaultEnterTemplate.value.name})`,
+      label: t('geofences.page.useDefaultEnterTemplate', { name: enabledDefaultEnterTemplate.value.name }),
       value: null
     })
   }
@@ -334,7 +340,7 @@ const leaveTemplateOptions = computed(() => {
   const options = [...templateOptionItems.value]
   if (enabledDefaultLeaveTemplate.value) {
     options.unshift({
-      label: `Use default LEAVE template (${enabledDefaultLeaveTemplate.value.name})`,
+      label: t('geofences.page.useDefaultLeaveTemplate', { name: enabledDefaultLeaveTemplate.value.name }),
       value: null
     })
   }
@@ -344,7 +350,7 @@ const templateNameById = computed(() => {
   const map = new Map()
   for (const template of templates.value) {
     if (template?.id !== null && template?.id !== undefined) {
-      map.set(String(template.id), template.name || `Template ${template.id}`)
+      map.set(String(template.id), template.name || t('geofences.page.templateFallbackName', { id: template.id }))
     }
   }
   return map
@@ -365,68 +371,73 @@ const selectedAreaSummary = computed(() => {
     return ''
   }
 
-  return `Selected area: NE (${Number(northEastLat).toFixed(5)}, ${Number(northEastLon).toFixed(5)}), SW (${Number(southWestLat).toFixed(5)}, ${Number(southWestLon).toFixed(5)})`
+  return t('geofences.page.selectedAreaSummary', {
+    neLat: Number(northEastLat).toFixed(5),
+    neLon: Number(northEastLon).toFixed(5),
+    swLat: Number(southWestLat).toFixed(5),
+    swLon: Number(southWestLon).toFixed(5)
+  })
 })
 
-const templateMacros = [
+const templateMacros = computed(() => [
   {
     key: '{{subjectName}}',
     placeholder: 'subjectName',
-    description: 'Tracked subject display name',
+    description: t('geofences.page.macros.subjectName'),
     example: 'Peter'
   },
   {
     key: '{{eventCode}}',
     placeholder: 'eventCode',
-    description: 'Event code (ENTER or LEAVE)',
+    description: t('geofences.page.macros.eventCode'),
     example: 'ENTER'
   },
   {
     key: '{{eventVerb}}',
     placeholder: 'eventVerb',
-    description: 'Event verb (entered or left)',
+    description: t('geofences.page.macros.eventVerb'),
     example: 'entered'
   },
   {
     key: '{{geofenceName}}',
     placeholder: 'geofenceName',
-    description: 'Geofence rule name',
+    description: t('geofences.page.macros.geofenceName'),
     example: 'Home'
   },
   {
     key: '{{timestamp}}',
     placeholder: 'timestamp',
-    description: 'Event timestamp in your timezone/date format',
+    description: t('geofences.page.macros.timestamp'),
     example: '03/24/2026 02:04:47'
   },
   {
     key: '{{timestampUtc}}',
     placeholder: 'timestampUtc',
-    description: 'Event timestamp in UTC ISO-8601',
+    description: t('geofences.page.macros.timestampUtc'),
     example: PREVIEW_TIMESTAMP_UTC
   },
   {
     key: '{{lat}}',
     placeholder: 'lat',
-    description: 'Point latitude',
+    description: t('geofences.page.macros.lat'),
     example: '49.547085'
   },
   {
     key: '{{lon}}',
     placeholder: 'lon',
-    description: 'Point longitude',
+    description: t('geofences.page.macros.lon'),
     example: '25.595918'
   }
-]
-const allowedTemplateMacroNames = new Set(templateMacros.map(macro => macro.placeholder))
+])
+const allowedTemplateMacroNames = new Set(templateMacros.value.map(macro => macro.placeholder))
 const currentDefaultEnterTemplate = computed(() => templates.value.find(template => template.defaultForEnter) || null)
 const currentDefaultLeaveTemplate = computed(() => templates.value.find(template => template.defaultForLeave) || null)
-const currentDefaultEnterName = computed(() => currentDefaultEnterTemplate.value?.name || 'None')
-const currentDefaultLeaveName = computed(() => currentDefaultLeaveTemplate.value?.name || 'None')
+const currentDefaultEnterName = computed(() => currentDefaultEnterTemplate.value?.name || t('geofences.page.none'))
+const currentDefaultLeaveName = computed(() => currentDefaultLeaveTemplate.value?.name || t('geofences.page.none'))
 const templatePreviewContexts = computed(() => {
   const base = {
-    subjectName: authStore.userName || authStore.userEmail || 'John Doe',
-    geofenceName: 'Home',
+    subjectName: authStore.userName || authStore.userEmail || t('geofences.page.previewDefaults.subjectName'),
+    geofenceName: t('geofences.page.previewDefaults.geofenceName'),
     timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
     timestampUtc: PREVIEW_TIMESTAMP_UTC,
     lat: '49.547085',
@@ -440,7 +451,7 @@ const templatePreviewContexts = computed(() => {
       eventLabel: 'ENTER',
       ...base,
       eventCode: 'ENTER',
-      eventVerb: 'entered'
+      eventVerb: t('geofences.page.previewDefaults.eventVerbEnter')
     },
     {
       id: 'leave',
@@ -448,7 +459,7 @@ const templatePreviewContexts = computed(() => {
       eventLabel: 'LEAVE',
       ...base,
       eventCode: 'LEAVE',
-      eventVerb: 'left'
+      eventVerb: t('geofences.page.previewDefaults.eventVerbLeave')
     }
   ]
 })
@@ -468,10 +479,10 @@ const templatePreviewToasts = computed(() => {
   })
 })
 
-const appriseRoutingModeOptions = [
-  { label: 'Destination URL(s)', value: APPRISE_EXTERNAL_ROUTING_MODES.URLS },
-  { label: 'Config Key + Tag', value: APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG }
-]
+const appriseRoutingModeOptions = computed(() => [
+  { label: t('geofences.page.routingModes.destinationUrls'), value: APPRISE_EXTERNAL_ROUTING_MODES.URLS },
+  { label: t('geofences.page.routingModes.configKeyTag'), value: APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG }
+])
 
 function defaultRuleForm() {
   return {
@@ -618,10 +629,10 @@ function validateDestinationLines(destination) {
   for (let index = 0; index < destinationLines.length; index += 1) {
     const line = destinationLines[index]
     if (line.includes(',') || line.includes(';')) {
-      return `Line ${index + 1} contains multiple URLs. Use one destination per line.`
+      return t('geofences.page.validation.destinationMultipleUrls', { line: index + 1 })
     }
     if (!DESTINATION_URL_PATTERN.test(line)) {
-      return `Line ${index + 1} must be a valid URL (scheme://...).`
+      return t('geofences.page.validation.destinationInvalidUrl', { line: index + 1 })
     }
   }
   return ''
@@ -629,9 +640,9 @@ function validateDestinationLines(destination) {
 
 function confirmAction({
   message,
-  header = 'Confirmation',
-  acceptLabel = 'Confirm',
-  rejectLabel = 'Cancel',
+  header = t('geofences.page.confirmDefaults.header'),
+  acceptLabel = t('geofences.page.confirmDefaults.accept'),
+  rejectLabel = t('common.cancel'),
   acceptClass = 'p-button-danger'
 }) {
   return new Promise((resolve) => {
@@ -674,13 +685,13 @@ function validateTemplateSyntax(template, fieldLabel) {
   }
 
   if (unknownMacros.size > 0) {
-    return `${fieldLabel} has unsupported macros: ${Array.from(unknownMacros).join(', ')}.`
+    return t('geofences.page.validation.unsupportedMacros', { field: fieldLabel, macros: Array.from(unknownMacros).join(', ') })
   }
 
   TEMPLATE_MACRO_PATTERN.lastIndex = 0
   const withoutValidMacros = template.replace(TEMPLATE_MACRO_PATTERN, '')
   if (withoutValidMacros.includes('{{') || withoutValidMacros.includes('}}')) {
-    return `${fieldLabel} has invalid macro syntax. Use {{macroName}}.`
+    return t('geofences.page.validation.invalidMacroSyntax', { field: fieldLabel })
   }
 
   return ''
@@ -721,9 +732,9 @@ function validateTemplateForm() {
 
   const normalizedName = (form.name || '').trim()
   if (!normalizedName) {
-    errors.name = 'Template name is required.'
+    errors.name = t('geofences.page.validation.templateNameRequired')
   } else if (normalizedName.length > 120) {
-    errors.name = 'Template name must be 120 characters or less.'
+    errors.name = t('geofences.page.validation.templateNameTooLong')
   }
 
   const externalEnabled = appriseEnabled.value && form.sendExternal
@@ -735,38 +746,38 @@ function validateTemplateForm() {
     : splitDestinationLines(form.destination).length > 0
   const hasAnyEnabledChannel = !!form.sendInApp || (externalEnabled && hasExternalRoute)
   if (form.enabled && !hasAnyEnabledChannel) {
-    errors.general = 'Enabled templates must have at least one active channel: in-app or external.'
+    errors.general = t('geofences.page.validation.needsActiveChannel')
   }
 
   if (externalEnabled) {
     if (routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
       const configKey = form.appriseConfigKey?.trim() || ''
       if (!configKey) {
-        errors.appriseConfigKey = 'Apprise config key is required in Config Key + Tag mode.'
+        errors.appriseConfigKey = t('geofences.page.validation.configKeyRequired')
       } else if (configKey.length > 255) {
-        errors.appriseConfigKey = 'Apprise config key must be 255 characters or less.'
+        errors.appriseConfigKey = t('geofences.page.validation.configKeyTooLong')
       }
 
       const tag = form.appriseTag?.trim() || ''
       if (tag.length > 255) {
-        errors.appriseTag = 'Apprise tag must be 255 characters or less.'
+        errors.appriseTag = t('geofences.page.validation.tagTooLong')
       }
     } else {
       const destinationError = validateDestinationLines(form.destination)
       if (destinationError) {
         errors.destination = destinationError
       } else if (splitDestinationLines(form.destination).length === 0) {
-        errors.destination = 'Add at least one destination URL or disable external providers.'
+        errors.destination = t('geofences.page.validation.needsDestination')
       }
     }
   }
 
-  const titleSyntaxError = validateTemplateSyntax(form.titleTemplate, 'Title template')
+  const titleSyntaxError = validateTemplateSyntax(form.titleTemplate, t('geofences.page.validation.titleTemplateLabel'))
   if (titleSyntaxError) {
     errors.titleTemplate = titleSyntaxError
   }
 
-  const bodySyntaxError = validateTemplateSyntax(form.bodyTemplate, 'Body template')
+  const bodySyntaxError = validateTemplateSyntax(form.bodyTemplate, t('geofences.page.validation.bodyTemplateLabel'))
   if (bodySyntaxError) {
     errors.bodyTemplate = bodySyntaxError
   }
@@ -792,7 +803,7 @@ function renderTemplateWithContext(template, context) {
 
 function insertMacro(macroKey) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Editing notification templates is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.insertMacro'))
     return
   }
 
@@ -821,16 +832,7 @@ function insertMacro(macroKey) {
   }
 }
 
-function extractApiErrorMessage(error, fallback) {
-  return error?.response?.data?.message
-    || error?.response?.data?.error
-    || error?.response?.data?.data?.message
-    || error?.userMessage
-    || error?.message
-    || fallback
-}
-
-function showDemoGeofenceReadOnlyToast(detail = 'Geofence changes are disabled in demo mode.') {
+function showDemoGeofenceReadOnlyToast(detail = t('geofences.page.demoToasts.default')) {
   showDemoModeToast(toast, detail)
 }
 
@@ -840,22 +842,22 @@ function validateRuleForm() {
   const form = ruleForm.value
 
   if (!form.name || !form.name.trim()) {
-    errors.name = 'Rule name is required.'
+    errors.name = t('geofences.page.validation.ruleNameRequired')
   }
 
   const selectedSubjects = Array.isArray(form.subjectUserIds)
     ? form.subjectUserIds.map(normalizeSubjectId).filter(Boolean)
     : []
   if (selectedSubjects.length === 0) {
-    errors.subjectUserIds = 'Please select at least one subject to track.'
+    errors.subjectUserIds = t('geofences.page.validation.subjectRequired')
   }
 
   if (!hasValidAreaBounds(form)) {
-    errors.area = 'Please draw a rectangle on the map.'
+    errors.area = t('geofences.page.validation.areaRequired')
   }
 
   if (!form.monitorEnter && !form.monitorLeave) {
-    errors.monitoring = 'Enable at least one event type (Enter or Leave).'
+    errors.monitoring = t('geofences.page.validation.monitoringRequired')
   }
 
   ruleFormErrors.value = {
@@ -908,7 +910,7 @@ function handleMapReady(map) {
 
 function startRectangleDraw() {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Drawing geofence areas is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.drawArea'))
     return
   }
 
@@ -1017,8 +1019,7 @@ function syncInitialRulesMapViewport() {
 }
 
 async function loadRules() {
-  const response = await apiService.get('/geofences/rules')
-  const rawRules = response?.data || []
+  const rawRules = await geofencesStore.loadRules()
   rules.value = rawRules.map(normalizeRule)
   initialRulesLoaded.value = true
   syncAllRuleAreasOnMap()
@@ -1026,23 +1027,17 @@ async function loadRules() {
 }
 
 async function loadTemplates() {
-  const response = await apiService.get('/geofences/templates')
-  templates.value = response?.data || []
+  await geofencesStore.loadTemplates()
   syncAllRuleAreasOnMap()
 }
 
 async function loadTemplateDeliveryCapabilities() {
-  const response = await apiService.get('/geofences/templates/capabilities')
-  const data = response?.data || {}
-  templateDeliveryCapabilities.value = {
-    appriseEnabled: !!data.appriseEnabled,
-    appriseConfigured: !!data.appriseConfigured
-  }
+  await geofencesStore.loadCapabilities()
 }
 
 async function testTemplateConnection() {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Testing geofence notification templates is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.testTemplate'))
     return
   }
 
@@ -1053,8 +1048,8 @@ async function testTemplateConnection() {
   if (!templateForm.value.sendExternal) {
     toast.add({
       severity: 'warn',
-      summary: 'External providers disabled',
-      detail: 'Enable external delivery first to test connection.',
+      summary: t('geofences.page.connectionTest.externalDisabledSummary'),
+      detail: t('geofences.page.connectionTest.externalDisabledDetail'),
       life: 3500
     })
     return
@@ -1067,12 +1062,12 @@ async function testTemplateConnection() {
   if (routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
     const configKey = templateForm.value.appriseConfigKey?.trim() || ''
     if (!configKey) {
-      const detail = 'Add an Apprise config key to test connection.'
+      const detail = t('geofences.page.connectionTest.configKeyNeeded')
       templateFormErrors.value.appriseConfigKey = detail
       templateConnectionTestResult.value = null
       toast.add({
         severity: 'error',
-        summary: 'Invalid Config Key',
+        summary: t('geofences.page.connectionTest.invalidConfigKeySummary'),
         detail,
         life: 4500
       })
@@ -1083,12 +1078,12 @@ async function testTemplateConnection() {
     const destinationError = validateDestinationLines(templateForm.value.destination)
     const destinationLines = splitDestinationLines(templateForm.value.destination)
     if (destinationError || destinationLines.length === 0) {
-      const detail = destinationError || 'Add at least one destination URL to test connection.'
+      const detail = destinationError || t('geofences.page.connectionTest.destinationNeeded')
       templateFormErrors.value.destination = detail
       templateConnectionTestResult.value = null
       toast.add({
         severity: 'error',
-        summary: 'Invalid Destination URL',
+        summary: t('geofences.page.connectionTest.invalidDestinationSummary'),
         detail,
         life: 4500
       })
@@ -1114,35 +1109,35 @@ async function testTemplateConnection() {
       body: enterPreview?.body?.trim() ? enterPreview.body.trim() : null
     }
 
-    const response = await apiService.post('/geofences/templates/test-connection', payload)
-    const detail = response?.message || response?.data?.message || 'Connection test succeeded'
-    const statusCode = response?.data?.statusCode ?? null
+    const response = await geofencesStore.testTemplateConnection(payload)
+    const succeeded = !!response?.success
+    const detail = response?.detail || (succeeded ? t('geofences.page.connectionTest.succeeded') : t('geofences.page.connectionTest.failed'))
+    const statusCode = response?.statusCode ?? null
 
     templateConnectionTestResult.value = {
-      severity: 'success',
-      summary: 'Connection test succeeded',
+      severity: succeeded ? 'success' : 'error',
+      summary: succeeded ? t('geofences.page.connectionTest.succeeded') : t('geofences.page.connectionTest.failed'),
       detail,
       statusCode
     }
 
     toast.add({
-      severity: 'success',
-      summary: 'Connection OK',
+      severity: succeeded ? 'success' : 'error',
+      summary: succeeded ? t('geofences.page.connectionTest.connectionOk') : t('geofences.page.connectionTest.connectionFailed'),
       detail,
-      life: 4000
+      life: succeeded ? 4000 : 5000
     })
   } catch (error) {
-    const detail = extractApiErrorMessage(error, 'Connection test failed')
-    const statusCode = error?.response?.data?.data?.statusCode ?? null
+    const detail = formatApiErrorDetail(error, t('geofences.page.connectionTest.failed'))
     templateConnectionTestResult.value = {
       severity: 'error',
-      summary: 'Connection test failed',
+      summary: t('geofences.page.connectionTest.failed'),
       detail,
-      statusCode
+      statusCode: null
     }
     toast.add({
       severity: 'error',
-      summary: 'Connection Failed',
+      summary: t('geofences.page.connectionTest.connectionFailed'),
       detail,
       life: 5000
     })
@@ -1160,16 +1155,16 @@ async function refreshEvents() {
   try {
     const params = {
       page: geofenceEventsQuery.value.page,
-      pageSize: geofenceEventsQuery.value.pageSize,
+      size: geofenceEventsQuery.value.pageSize,
       sortBy: geofenceEventsQuery.value.sortBy,
-      sortDir: geofenceEventsQuery.value.sortDir,
+      sortDirection: geofenceEventsQuery.value.sortDir,
       unreadOnly: geofenceEventsQuery.value.unreadOnly
     }
     if (geofenceEventsQuery.value.dateFrom) {
-      params.dateFrom = geofenceEventsQuery.value.dateFrom
+      params.from = geofenceEventsQuery.value.dateFrom
     }
     if (geofenceEventsQuery.value.dateTo) {
-      params.dateTo = geofenceEventsQuery.value.dateTo
+      params.to = geofenceEventsQuery.value.dateTo
     }
     if (Array.isArray(geofenceEventsQuery.value.subjectUserIds) && geofenceEventsQuery.value.subjectUserIds.length > 0) {
       params.subjectUserIds = geofenceEventsQuery.value.subjectUserIds.join(',')
@@ -1178,21 +1173,12 @@ async function refreshEvents() {
       params.eventTypes = geofenceEventsQuery.value.eventTypes.join(',')
     }
 
-    const [eventsPageResponse, unreadResponse] = await Promise.all([
-      apiService.get('/geofences/events', params),
-      apiService.get('/geofences/events/unread-count')
-    ])
-
-    geofenceEvents.value = Array.isArray(eventsPageResponse?.data?.items)
-      ? eventsPageResponse.data.items
-      : []
-    geofenceEventsTotal.value = Number(eventsPageResponse?.data?.totalCount || 0)
-    geofenceUnreadCount.value = Number(unreadResponse?.data?.count || 0)
+    await geofencesStore.loadEvents(params)
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Events Error',
-      detail: extractApiErrorMessage(error, 'Failed to load geofence events'),
+      summary: t('geofences.page.toasts.eventsErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.eventsLoadFailed')),
       life: 5000
     })
   } finally {
@@ -1201,22 +1187,21 @@ async function refreshEvents() {
 }
 
 async function loadFriends() {
-  const response = await apiService.get('/friends')
-  const all = response?.data || []
-  friends.value = all.filter(friend => friend.friendSharesLiveLocation)
+  await friendsStore.fetchFriends()
+  friends.value = friendsStore.friends.filter(friend => friend.friendSharesLiveLocation)
 }
 
 async function saveRule() {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Creating and updating geofence rules is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.saveRule'))
     return
   }
 
   if (!validateRuleForm()) {
     toast.add({
       severity: 'warn',
-      summary: 'Validation Error',
-      detail: 'Please fix the highlighted fields before saving.',
+      summary: t('geofences.page.toasts.validationErrorSummary'),
+      detail: t('geofences.page.toasts.fixRuleFieldsDetail'),
       life: 4000
     })
     return
@@ -1234,11 +1219,11 @@ async function saveRule() {
     }
 
     if (editingRuleId.value) {
-      await apiService.patch(`/geofences/rules/${editingRuleId.value}`, payload)
-      toast.add({ severity: 'success', summary: 'Updated', detail: 'Rule updated', life: 3000 })
+      await geofencesStore.updateRule(editingRuleId.value, payload)
+      toast.add({ severity: 'success', summary: t('geofences.page.toasts.updatedSummary'), detail: t('geofences.page.toasts.ruleUpdatedDetail'), life: 3000 })
     } else {
-      await apiService.post('/geofences/rules', payload)
-      toast.add({ severity: 'success', summary: 'Created', detail: 'Rule created', life: 3000 })
+      await geofencesStore.createRule(payload)
+      toast.add({ severity: 'success', summary: t('geofences.page.toasts.createdSummary'), detail: t('geofences.page.toasts.ruleCreatedDetail'), life: 3000 })
     }
 
     resetRuleForm()
@@ -1247,8 +1232,8 @@ async function saveRule() {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Rule Error',
-      detail: extractApiErrorMessage(error, 'Failed to save rule'),
+      summary: t('geofences.page.toasts.ruleErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.ruleSaveFailed')),
       life: 5000
     })
   } finally {
@@ -1258,7 +1243,7 @@ async function saveRule() {
 
 function editRule(rule) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Editing geofence rules is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.editRule'))
     return
   }
 
@@ -1286,15 +1271,15 @@ function editRule(rule) {
 
 async function deleteRule(rule) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Deleting geofence rules is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.deleteRule'))
     return
   }
 
   const confirmed = await confirmAction({
-    header: 'Delete Rule',
-    message: `Delete geofence rule "${rule.name}"?`,
-    acceptLabel: 'Delete',
-    rejectLabel: 'Cancel',
+    header: t('geofences.page.deleteRuleConfirm.header'),
+    message: t('geofences.page.deleteRuleConfirm.message', { name: rule.name }),
+    acceptLabel: t('geofences.page.deleteRuleConfirm.acceptLabel'),
+    rejectLabel: t('common.cancel'),
     acceptClass: 'p-button-danger'
   })
   if (!confirmed) {
@@ -1302,14 +1287,14 @@ async function deleteRule(rule) {
   }
 
   try {
-    await apiService.delete(`/geofences/rules/${rule.id}`)
-    toast.add({ severity: 'success', summary: 'Deleted', detail: 'Rule deleted', life: 3000 })
+    await geofencesStore.deleteRule(rule.id)
+    toast.add({ severity: 'success', summary: t('geofences.page.toasts.deletedSummary'), detail: t('geofences.page.toasts.ruleDeletedDetail'), life: 3000 })
     await loadRules()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Delete Error',
-      detail: extractApiErrorMessage(error, 'Failed to delete rule'),
+      summary: t('geofences.page.toasts.deleteErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.ruleDeleteFailed')),
       life: 5000
     })
   }
@@ -1326,15 +1311,15 @@ function resetRuleForm() {
 
 async function saveTemplate() {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Creating and updating geofence templates is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.saveTemplate'))
     return
   }
 
   if (!validateTemplateForm()) {
     toast.add({
       severity: 'warn',
-      summary: 'Validation Error',
-      detail: 'Please fix template form errors before saving.',
+      summary: t('geofences.page.toasts.validationErrorSummary'),
+      detail: t('geofences.page.toasts.fixTemplateFieldsDetail'),
       life: 4500
     })
     return
@@ -1394,21 +1379,21 @@ async function saveTemplate() {
     delete payload.sendExternal
 
     if (editingTemplateId.value) {
-      await apiService.patch(`/geofences/templates/${editingTemplateId.value}`, payload)
-      toast.add({ severity: 'success', summary: 'Updated', detail: 'Template updated', life: 3000 })
+      await geofencesStore.updateTemplate(editingTemplateId.value, payload)
+      toast.add({ severity: 'success', summary: t('geofences.page.toasts.updatedSummary'), detail: t('geofences.page.toasts.templateUpdatedDetail'), life: 3000 })
     } else {
-      await apiService.post('/geofences/templates', payload)
-      toast.add({ severity: 'success', summary: 'Created', detail: 'Template created', life: 3000 })
+      await geofencesStore.createTemplate(payload)
+      toast.add({ severity: 'success', summary: t('geofences.page.toasts.createdSummary'), detail: t('geofences.page.toasts.templateCreatedDetail'), life: 3000 })
     }
 
     resetTemplateForm()
     await Promise.all([loadTemplates(), loadTemplateDeliveryCapabilities()])
     await loadRules()
   } catch (error) {
-    templateFormErrors.value.general = extractApiErrorMessage(error, 'Failed to save template')
+    templateFormErrors.value.general = formatApiErrorDetail(error, t('geofences.page.toasts.templateSaveFailed'))
     toast.add({
       severity: 'error',
-      summary: 'Template Error',
+      summary: t('geofences.page.toasts.templateErrorSummary'),
       detail: templateFormErrors.value.general,
       life: 5000
     })
@@ -1419,7 +1404,7 @@ async function saveTemplate() {
 
 function editTemplate(template) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Editing geofence templates is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.editTemplate'))
     return
   }
 
@@ -1453,7 +1438,7 @@ function editTemplate(template) {
 
 async function deleteTemplate(template) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Deleting geofence templates is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.deleteTemplate'))
     return
   }
 
@@ -1461,14 +1446,14 @@ async function deleteTemplate(template) {
     rule.enterTemplateId === template.id || rule.leaveTemplateId === template.id
   )
   const warning = usages.length > 0
-    ? `\n\nWarning: this template is currently used by ${usages.length} rule(s).`
+    ? t('geofences.page.deleteTemplateConfirm.usageWarning', { count: usages.length })
     : ''
 
   const confirmed = await confirmAction({
-    header: 'Delete Template',
-    message: `Delete template "${template.name}"?${warning}`,
-    acceptLabel: 'Delete',
-    rejectLabel: 'Cancel',
+    header: t('geofences.page.deleteTemplateConfirm.header'),
+    message: t('geofences.page.deleteTemplateConfirm.message', { name: template.name, warning }),
+    acceptLabel: t('geofences.page.deleteRuleConfirm.acceptLabel'),
+    rejectLabel: t('common.cancel'),
     acceptClass: 'p-button-danger'
   })
   if (!confirmed) {
@@ -1476,15 +1461,15 @@ async function deleteTemplate(template) {
   }
 
   try {
-    await apiService.delete(`/geofences/templates/${template.id}`)
-    toast.add({ severity: 'success', summary: 'Deleted', detail: 'Template deleted', life: 3000 })
+    await geofencesStore.deleteTemplate(template.id)
+    toast.add({ severity: 'success', summary: t('geofences.page.toasts.deletedSummary'), detail: t('geofences.page.toasts.templateDeletedDetail'), life: 3000 })
     await loadTemplates()
     await loadRules()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Delete Error',
-      detail: extractApiErrorMessage(error, 'Failed to delete template'),
+      summary: t('geofences.page.toasts.deleteErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.templateDeleteFailed')),
       life: 5000
     })
   }
@@ -1500,7 +1485,7 @@ function resetTemplateForm() {
 
 async function markEventSeen(event) {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Updating geofence event seen states is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.eventSeen'))
     return
   }
 
@@ -1510,13 +1495,13 @@ async function markEventSeen(event) {
 
   markingEventId.value = event.id
   try {
-    await apiService.post(`/geofences/events/${event.id}/seen`, {})
+    await geofencesStore.markEventSeen(event.id)
     await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Event Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark event as seen'),
+      summary: t('geofences.page.toasts.eventErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.markEventSeenFailed')),
       life: 5000
     })
   } finally {
@@ -1526,19 +1511,19 @@ async function markEventSeen(event) {
 
 async function markAllEventsSeen() {
   if (demoReadOnly.value) {
-    showDemoGeofenceReadOnlyToast('Updating geofence event seen states is disabled in demo mode.')
+    showDemoGeofenceReadOnlyToast(t('geofences.page.demoToasts.eventSeen'))
     return
   }
 
   markingAllSeen.value = true
   try {
-    await apiService.post('/geofences/events/seen-all', {})
+    await geofencesStore.markAllEventsSeen()
     await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Event Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark events as seen'),
+      summary: t('geofences.page.toasts.eventErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.markAllEventsSeenFailed')),
       life: 5000
     })
   } finally {
@@ -1556,43 +1541,45 @@ function handleEventsQueryUpdate(patch) {
 
 function eventSummary(rule) {
   const events = []
-  if (rule.monitorEnter) events.push('Enter')
-  if (rule.monitorLeave) events.push('Leave')
+  if (rule.monitorEnter) events.push(t('geofences.eventsTab.eventTypes.enter'))
+  if (rule.monitorLeave) events.push(t('geofences.eventsTab.eventTypes.leave'))
   return events.join(' / ')
 }
 
 function defaultSummary(template) {
   const flags = []
-  if (template.defaultForEnter) flags.push('Enter')
-  if (template.defaultForLeave) flags.push('Leave')
-  return flags.length ? flags.join(' + ') : 'No'
+  if (template.defaultForEnter) flags.push(t('geofences.eventsTab.eventTypes.enter'))
+  if (template.defaultForLeave) flags.push(t('geofences.eventsTab.eventTypes.leave'))
+  return flags.length ? flags.join(' + ') : t('geofences.templatesTab.enabledNo')
 }
 
 function formatExternalRoute(template) {
   if (!template || typeof template !== 'object') {
-    return 'In-app only'
+    return t('geofences.page.formatExternalRoute.inAppOnly')
   }
 
   const mode = template.externalRoutingMode || APPRISE_EXTERNAL_ROUTING_MODES.URLS
   if (mode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
     const key = String(template.appriseConfigKey || '').trim()
     if (!key) {
-      return 'In-app only'
+      return t('geofences.page.formatExternalRoute.inAppOnly')
     }
     const maskedKey = key.length <= 8 ? key : `${key.slice(0, 8)}***`
     const tag = String(template.appriseTag || '').trim()
-    return tag ? `key:${maskedKey} tag:${tag}` : `key:${maskedKey}`
+    return tag
+      ? t('geofences.page.formatExternalRoute.keyWithTag', { key: maskedKey, tag })
+      : t('geofences.page.formatExternalRoute.keyOnly', { key: maskedKey })
   }
 
   const destinations = splitDestinationLines(template.destination, true)
   if (destinations.length === 0) {
-    return 'In-app only'
+    return t('geofences.page.formatExternalRoute.inAppOnly')
   }
   const firstMasked = maskDestination(destinations[0])
   if (destinations.length === 1) {
     return firstMasked
   }
-  return `${firstMasked} (+${destinations.length - 1} more)`
+  return t('geofences.page.formatExternalRoute.moreDestinations', { first: firstMasked, count: destinations.length - 1 })
 }
 
 function maskDestination(destination) {
@@ -1618,18 +1605,18 @@ function resolveRuleTemplateLabel(templateId, type) {
     if (resolved) {
       return resolved
     }
-    return `Unknown template (${String(templateId).slice(0, 8)})`
+    return t('geofences.page.unknownTemplate', { idPrefix: String(templateId).slice(0, 8) })
   }
 
   if (type === 'enter') {
     return enabledDefaultEnterTemplate.value
-      ? `Default (${enabledDefaultEnterTemplate.value.name})`
-      : 'Built-in message'
+      ? t('geofences.page.defaultTemplateLabel', { name: enabledDefaultEnterTemplate.value.name })
+      : t('geofences.rulesTab.templatePlaceholder')
   }
 
   return enabledDefaultLeaveTemplate.value
-    ? `Default (${enabledDefaultLeaveTemplate.value.name})`
-    : 'Built-in message'
+    ? t('geofences.page.defaultTemplateLabel', { name: enabledDefaultLeaveTemplate.value.name })
+    : t('geofences.rulesTab.templatePlaceholder')
 }
 
 function formatRuleSubjects(rule) {
@@ -1649,33 +1636,33 @@ function formatRuleSubjects(rule) {
 function buildRuleAreaPopupModel(rule) {
   const rows = [
     {
-      label: 'Subjects',
+      label: t('geofences.rulesTab.columns.subjects'),
       value: formatRuleSubjects(rule)
     },
     {
-      label: 'Status',
+      label: t('geofences.rulesTab.columns.status'),
       value: rule?.status || '-'
     },
     {
-      label: 'Events',
-      value: eventSummary(rule) || 'None'
+      label: t('geofences.rulesTab.columns.events'),
+      value: eventSummary(rule) || t('geofences.page.none')
     },
     {
-      label: 'Cooldown',
-      value: `${Number(rule?.cooldownSeconds || 0)} sec`
+      label: t('geofences.rulesTab.columns.cooldown'),
+      value: t('geofences.page.popup.cooldownValue', { seconds: Number(rule?.cooldownSeconds || 0) })
     },
     {
-      label: 'Enter template',
+      label: t('geofences.page.popup.enterTemplateLabel'),
       value: resolveRuleTemplateLabel(rule?.enterTemplateId, 'enter')
     },
     {
-      label: 'Leave template',
+      label: t('geofences.page.popup.leaveTemplateLabel'),
       value: resolveRuleTemplateLabel(rule?.leaveTemplateId, 'leave')
     }
   ]
 
   return {
-    title: rule?.name || 'Geofence',
+    title: rule?.name || t('geofences.page.popup.fallbackTitle'),
     iconClass: 'pi pi-bell',
     rows,
     variant: 'compact'
@@ -1704,10 +1691,10 @@ function handleDefaultToggleChange(type, enabled) {
   }
 
   void confirmAction({
-    header: 'Set Default Template',
-    message: `Set this as default ${type.toUpperCase()} template? Current default "${currentDefault.name}" will be unset.`,
-    acceptLabel: 'Set Default',
-    rejectLabel: 'Cancel',
+    header: t('geofences.page.setDefaultConfirm.header'),
+    message: t('geofences.page.setDefaultConfirm.message', { type: type.toUpperCase(), name: currentDefault.name }),
+    acceptLabel: t('geofences.page.setDefaultConfirm.acceptLabel'),
+    rejectLabel: t('common.cancel'),
     acceptClass: 'p-button-primary'
   }).then((confirmed) => {
     if (confirmed) {
@@ -1742,8 +1729,8 @@ onMounted(async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Load Error',
-      detail: extractApiErrorMessage(error, 'Failed to load geofence data'),
+      summary: t('geofences.page.toasts.loadErrorSummary'),
+      detail: formatApiErrorDetail(error, t('geofences.page.toasts.loadFailed')),
       life: 5000
     })
   }
@@ -1991,7 +1978,7 @@ onBeforeUnmount(() => {
 :deep(.geofence-area-tooltip__title) {
   font-size: 0.96rem;
   font-weight: 700;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 :deep(.geofence-area-tooltip__row) {
@@ -2006,13 +1993,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 :deep(.geofence-area-tooltip__value) {
   font-size: 0.83rem;
   line-height: 1.25;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   overflow-wrap: anywhere;
 }
 </style>

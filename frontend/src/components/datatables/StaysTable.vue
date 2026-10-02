@@ -1,17 +1,17 @@
 <template>
-  <BaseCard title="Stays" class="stays-table-card">
+  <BaseCard :title="t('data.tables.stays.title')" class="stays-table-card">
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
         <div v-if="!isMobile" class="table-title-section">
-          <h3 class="table-title">Stays</h3>
-          <span class="table-count">{{ filteredStaysData.length }} stays</span>
+          <h3 class="table-title">{{ t('data.tables.stays.title') }}</h3>
+          <span class="table-count">{{ t('data.tables.stays.count', { count: filteredStaysData.length }) }}</span>
         </div>
         <div class="table-actions">
           <div class="filter-controls">
-            <InputText 
+            <InputText
               v-model="searchTerm"
-              placeholder="Search locations..."
+              :placeholder="t('data.tables.searchLocations')"
               class="search-input"
             />
             <Select
@@ -19,19 +19,19 @@
               :options="durationFilterOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Duration"
+              :placeholder="t('data.tables.durationPlaceholder')"
               showClear
               class="duration-filter"
             />
           </div>
           <Button
-            :label="isMobile ? null : 'Export CSV'"
-            :aria-label="'Export CSV'"
+            :label="isMobile ? null : t('data.tables.exportCsv')"
+            :aria-label="t('data.tables.exportCsv')"
             icon="pi pi-download"
             @click="$emit('export')"
             outlined
             :disabled="exportDisabled"
-            v-tooltip.bottom="exportDisabled ? 'Export is disabled in demo mode' : 'Export stays to CSV'"
+            v-tooltip.bottom="exportDisabled ? t('data.tables.exportDisabledDemo') : t('data.tables.stays.exportTooltip')"
             class="export-button"
             :class="{ 'export-button--icon': isMobile }"
           />
@@ -57,19 +57,11 @@
       :virtualScrollerOptions="{
         itemSize: 73
       }"
-      :pt="{
-        root: 'bg-surface-0 dark:bg-surface-950',
-        header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
-        tbody: 'bg-surface-0 dark:bg-surface-950',
-        row: 'bg-surface-0 dark:bg-surface-950 hover:bg-surface-50 dark:hover:bg-surface-800',
-        cell: 'text-surface-900 dark:text-surface-100 border-surface-200 dark:border-surface-700',
-        paginator: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700'
-      }"
     >
       <!-- Start Time Column -->
-      <Column 
-        field="timestamp" 
-        header="Start Time" 
+      <Column
+        field="timestamp"
+        :header="t('data.tables.stays.startTimeHeader')"
         :sortable="true"
         :style="{ 'min-width': '150px' }"
       >
@@ -82,9 +74,9 @@
       </Column>
 
       <!-- End Time Column -->
-      <Column 
-        field="endTime" 
-        header="End Time"
+      <Column
+        field="endTime"
+        :header="t('data.tables.stays.endTimeHeader')"
         :sortable="true" 
         :style="{ 'min-width': '150px' }"
       >
@@ -97,9 +89,9 @@
       </Column>
 
       <!-- Duration Column -->
-      <Column 
-        field="stayDuration" 
-        header="Duration" 
+      <Column
+        field="stayDuration"
+        :header="t('data.tables.stays.durationHeader')"
         :sortable="true"
         :style="{ 'min-width': '100px' }"
       >
@@ -113,7 +105,7 @@
       <!-- Location Name Column -->
       <Column
         field="locationName"
-        header="Location"
+        :header="t('data.tables.stays.locationHeader')"
         :sortable="true"
         :style="{ 'min-width': '200px' }"
       >
@@ -121,12 +113,12 @@
           <div class="location-info">
             <div class="location-name-wrapper">
               <span class="location-name">
-                {{ slotProps.data.locationName || 'Unknown Location' }}
+                {{ slotProps.data.locationName || t('data.tables.unknownLocation') }}
               </span>
               <Button
                 v-if="hasPlaceDetails(slotProps.data)"
                 icon="pi pi-external-link"
-                v-tooltip.top="'View Place Details'"
+                v-tooltip.top="t('data.tables.viewPlaceDetails')"
                 text
                 rounded
                 size="small"
@@ -142,9 +134,9 @@
       </Column>
 
       <!-- Coordinates Column -->
-      <Column 
-        field="coordinates" 
-        header="Coordinates"
+      <Column
+        field="coordinates"
+        :header="t('data.tables.stays.coordinatesHeader')"
         :style="{ 'min-width': '150px' }"
       >
         <template #body="slotProps">
@@ -155,8 +147,8 @@
       </Column>
 
       <!-- Actions Column -->
-      <Column 
-        header="Actions" 
+      <Column
+        :header="t('data.tables.stays.actionsHeader')"
         :exportable="false"
         :style="{ 'min-width': '120px' }"
       >
@@ -164,7 +156,7 @@
           <div class="row-actions">
             <Button
               icon="pi pi-info-circle"
-              v-tooltip.top="'View details'"
+              v-tooltip.top="t('data.tables.viewDetails')"
               outlined
               rounded
               size="small"
@@ -188,7 +180,7 @@
         <header class="mobile-stay-card-header">
           <div class="mobile-location-block">
             <div class="mobile-location-title-row">
-              <h4 class="mobile-location-title">{{ stay.locationName || 'Unknown Location' }}</h4>
+              <h4 class="mobile-location-title">{{ stay.locationName || t('data.tables.unknownLocation') }}</h4>
               <Button
                 v-if="hasPlaceDetails(stay)"
                 icon="pi pi-external-link"
@@ -208,15 +200,15 @@
 
         <div class="mobile-stay-meta">
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
             <span class="mobile-meta-value">{{ formatDate(stay.timestamp) }} {{ formatTime(stay.timestamp) }}</span>
           </div>
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
             <span class="mobile-meta-value">{{ getEndDate(stay) }} {{ getEndTime(stay) }}</span>
           </div>
           <div v-if="stay.latitude && stay.longitude" class="mobile-meta-row">
-            <span class="mobile-meta-label">Coords</span>
+            <span class="mobile-meta-label">{{ t('data.tables.coords') }}</span>
             <span class="mobile-meta-value coordinates">{{ formatCoordinates(stay) }}</span>
           </div>
         </div>
@@ -224,7 +216,7 @@
         <div class="mobile-stay-actions">
           <Button
             icon="pi pi-info-circle"
-            label="Details"
+            :label="t('data.tables.details')"
             outlined
             size="small"
             @click="showDetails(stay)"
@@ -234,11 +226,11 @@
     </div>
 
     <!-- No Data State -->
-    <div v-if="!loading && filteredStaysData.length === 0" class="no-data-state">
-      <i class="pi pi-map-marker no-data-icon"></i>
-      <h4 class="no-data-title">No Stays Found</h4>
-      <p class="no-data-message">
-        No stays found for the selected date range and filters.
+    <div v-if="!loading && filteredStaysData.length === 0" class="gp-empty-state">
+      <i class="pi pi-map-marker gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('data.tables.stays.noDataTitle') }}</h4>
+      <p class="gp-empty-state-message">
+        {{ t('data.tables.stays.noDataMessage') }}
       </p>
     </div>
 
@@ -253,6 +245,7 @@
 
 <script setup>
 import { ref, computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -270,6 +263,7 @@ const StayDetailsDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/StayDetailsDialog.vue')
 )
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const router = useRouter()
 
@@ -296,10 +290,10 @@ const {
   useStaysFilter
 } = useTableFilters({
   durationOptions: [
-    { label: 'Less than 1 hour', value: 'short', maxDuration: 3600 },
-    { label: '1-4 hours', value: 'medium', minDuration: 3600, maxDuration: 14400 },
-    { label: '4-8 hours', value: 'long', minDuration: 14400, maxDuration: 28800 },
-    { label: 'More than 8 hours', value: 'overnight', minDuration: 28800 }
+    { label: t('data.tables.stays.durationOptions.lessThan1Hour'), value: 'short', maxDuration: 3600 },
+    { label: t('data.tables.stays.durationOptions.oneToFourHours'), value: 'medium', minDuration: 3600, maxDuration: 14400 },
+    { label: t('data.tables.stays.durationOptions.fourToEightHours'), value: 'long', minDuration: 14400, maxDuration: 28800 },
+    { label: t('data.tables.stays.durationOptions.moreThan8Hours'), value: 'overnight', minDuration: 28800 }
   ]
 })
 
@@ -328,7 +322,7 @@ const formatDuration = (seconds) => {
 }
 
 const formatDateTime = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('data.tables.notAvailable')
   const cacheKeyFormat = `DATETIME_DISPLAY:${timezone.getDateFormat()}:${timezone.getTimeFormat()}:s`
   return memoizedDateTimeFormat(
     timestamp,
@@ -338,7 +332,7 @@ const formatDateTime = (timestamp) => {
 }
 
 const getEndDateTime = (stay) => {
-  if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
+  if (!stay?.timestamp || !stay?.stayDuration) return t('data.tables.notAvailable')
 
   return memoizedEndTimeFormat(
     stay.timestamp,
@@ -353,7 +347,7 @@ const getEndDateTime = (stay) => {
 }
 
 const getEndDate = (stay) => {
-  if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
+  if (!stay?.timestamp || !stay?.stayDuration) return t('data.tables.notAvailable')
 
   return memoizedEndTimeFormat(
     stay.timestamp,
@@ -368,7 +362,7 @@ const getEndDate = (stay) => {
 }
 
 const getEndTime = (stay) => {
-  if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
+  if (!stay?.timestamp || !stay?.stayDuration) return t('data.tables.notAvailable')
 
   return memoizedEndTimeFormat(
     stay.timestamp,
@@ -383,7 +377,7 @@ const getEndTime = (stay) => {
 }
 
 const formatCoordinates = (stay) => {
-  if (!stay?.latitude || !stay?.longitude) return 'N/A'
+  if (!stay?.latitude || !stay?.longitude) return t('data.tables.notAvailable')
   return `${stay.latitude.toFixed(4)}, ${stay.longitude.toFixed(4)}`
 }
 
@@ -512,14 +506,14 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .end-time {
@@ -528,8 +522,8 @@ onUnmounted(() => {
 }
 
 .duration-badge {
-  background: var(--gp-primary-50);
-  color: var(--gp-primary-700);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
@@ -554,15 +548,15 @@ onUnmounted(() => {
 }
 
 .place-details-link {
-  color: var(--gp-primary) !important;
-  min-width: 28px !important;
-  width: 28px !important;
-  height: 28px !important;
+  color: var(--gp-primary);
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
 }
 
 .place-details-link:hover {
-  background-color: var(--gp-primary-light) !important;
+  background-color: var(--gp-primary-light);
 }
 
 .location-address {
@@ -575,7 +569,7 @@ onUnmounted(() => {
 }
 
 .coordinates {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
 }
@@ -600,10 +594,10 @@ onUnmounted(() => {
 }
 
 .mobile-stay-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
@@ -672,46 +666,6 @@ onUnmounted(() => {
 .mobile-stay-actions {
   display: flex;
   justify-content: flex-end;
-}
-
-.no-data-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl);
-  color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  opacity: 0.5;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-}
-
-/* Dark Mode */
-.p-dark .duration-badge {
-  background: var(--gp-primary-900);
-  color: var(--gp-primary-300);
-}
-
-.p-dark .mobile-stay-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
 }
 
 /* Mobile Responsive */
@@ -795,82 +749,4 @@ onUnmounted(() => {
   }
 }
 
-/* PrimeVue DataTable Dark Mode Styling */
-.p-dark .stays-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-paginator-bottom),
-.p-dark .stays-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-top: 1px solid var(--gp-border-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-datatable-wrapper) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-next),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-prev),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-first),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-last) {
-  color: var(--gp-text-primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  margin: 0 2px !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-next:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-prev:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-first:hover),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .stays-data-table :deep(.p-paginator .p-paginator-current) {
-  color: var(--gp-text-secondary) !important;
-}
 </style>

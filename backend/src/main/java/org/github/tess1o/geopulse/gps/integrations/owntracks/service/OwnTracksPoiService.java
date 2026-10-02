@@ -46,11 +46,11 @@ public class OwnTracksPoiService {
         Double lon = message.getLon();
 
         if (lat == null || lon == null) {
-            log.warn("POI message missing coordinates: poi={}", poiName);
+            log.warn("OwnTracks POI message is missing coordinates");
             return;
         }
 
-        log.debug("Processing OwnTracks POI: {} at [{}, {}]", poiName, lat, lon);
+        log.debug("Processing OwnTracks POI");
 
         Point point = GeoUtils.createPoint(lon, lat);
 
@@ -69,7 +69,7 @@ public class OwnTracksPoiService {
             // Regenerate timeline after adding favorite
             favoriteLocationService.createTimelineRegenerationJob(userId);
 
-            log.info("Created favorite from OwnTracks POI: '{}' at [{}, {}]", poiName, lat, lon);
+            log.info("Created favorite from OwnTracks POI");
         } else {
             // Update existing favorite name if different
             // Can be either a point or an area
@@ -81,10 +81,9 @@ public class OwnTracksPoiService {
                     dto.setCity(existingPoint.getCity());
                     dto.setCountry(existingPoint.getCountry());
                     favoriteLocationService.updateFavorite(userId, existingPoint.getId(), dto);
-                    log.info("Updated favorite point '{}' to '{}' based on OwnTracks POI",
-                            existingPoint.getName(), poiName);
+                    log.info("Updated favorite point based on OwnTracks POI");
                 } else {
-                    log.debug("Favorite point already exists with same name: {}", poiName);
+                    log.debug("OwnTracks POI favorite point already exists");
                 }
             } else if (!existingFavorite.getAreas().isEmpty()) {
                 FavoriteAreaDto existingArea = existingFavorite.getAreas().getFirst();
@@ -94,10 +93,9 @@ public class OwnTracksPoiService {
                     dto.setCity(existingArea.getCity());
                     dto.setCountry(existingArea.getCountry());
                     favoriteLocationService.updateFavorite(userId, existingArea.getId(), dto);
-                    log.info("Updated favorite area '{}' to '{}' based on OwnTracks POI",
-                            existingArea.getName(), poiName);
+                    log.info("Updated favorite area based on OwnTracks POI");
                 } else {
-                    log.debug("Favorite area already exists with same name: {}", poiName);
+                    log.debug("OwnTracks POI favorite area already exists");
                 }
             }
         }

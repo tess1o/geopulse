@@ -279,7 +279,7 @@ export class FavoritesManagementPage {
   async searchPlaceToAdd(query) {
     const input = this.page.locator(this.selectors.placeSearchInput).first();
     const searchResponse = this.page.waitForResponse((response) => {
-      return response.url().includes('/api/trips/plan-search')
+      return response.url().includes('/api/v1/trip-planning/searches')
         && response.request().method() === 'GET';
     }, { timeout: 10000 }).catch(() => {});
     await input.fill(query);

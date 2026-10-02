@@ -3,12 +3,12 @@
     <PageContainer>
       <div class="timeline-jobs-list-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Timeline Generation Jobs</h1>
-              <p class="page-description">
-                View timeline generation work that is running now or finished recently.
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('timelineJobs.listPage.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('timelineJobs.listPage.description') }}
               </p>
             </div>
           </div>
@@ -19,7 +19,7 @@
           <template #content>
             <div class="loading-content">
               <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-              <p class="loading-text">Looking for active jobs...</p>
+              <p class="loading-text">{{ t('timelineJobs.listPage.loading') }}</p>
             </div>
           </template>
         </Card>
@@ -29,21 +29,21 @@
           <template #content>
             <div class="no-job-content">
               <i class="pi pi-info-circle no-job-icon"></i>
-              <h2>No timeline jobs are running now</h2>
+              <h2>{{ t('timelineJobs.listPage.noJob.title') }}</h2>
               <p class="no-job-message">
-                If you opened this from a notification, the scheduled refresh may already be complete. Recent completed or failed jobs are shown below when available.
+                {{ t('timelineJobs.listPage.noJob.message') }}
               </p>
               <p class="info-hint">
-                Timeline jobs can be started by timeline preference changes, favorite updates, manual regeneration, or scheduled GeoPulse maintenance.
+                {{ t('timelineJobs.listPage.noJob.hint') }}
               </p>
               <div class="action-buttons">
                 <Button
-                  label="Timeline Preferences"
+                  :label="t('nav.items.preferences')"
                   icon="pi pi-cog"
                   @click="goToPreferences"
                 />
                 <Button
-                  label="View Timeline"
+                  :label="t('timelineJobs.listPage.noJob.viewTimelineButton')"
                   icon="pi pi-calendar"
                   severity="secondary"
                   outlined
@@ -57,10 +57,10 @@
         <!-- Error State -->
         <Message v-if="error" severity="error" class="error-message">
           <div class="error-content">
-            <strong>Failed to check for active jobs</strong>
+            <strong>{{ t('timelineJobs.listPage.error.title') }}</strong>
             <p>{{ error }}</p>
             <Button
-              label="Try Again"
+              :label="t('common.tryAgain')"
               size="small"
               @click="checkForActiveJob"
               class="mt-2"
@@ -71,9 +71,9 @@
         <!-- Historical Jobs Section -->
         <div v-if="!loading" class="history-section">
           <div class="section-header">
-            <h2 class="section-title">Job History</h2>
+            <h2 class="section-title">{{ t('timelineJobs.listPage.history.title') }}</h2>
             <p class="section-description">
-              Recent timeline generation jobs
+              {{ t('timelineJobs.listPage.history.description') }}
             </p>
           </div>
 
@@ -82,7 +82,7 @@
             <template #content>
               <div class="loading-content">
                 <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
-                <p class="loading-text">Loading job history...</p>
+                <p class="loading-text">{{ t('timelineJobs.listPage.history.loading') }}</p>
               </div>
             </template>
           </Card>
@@ -92,7 +92,7 @@
             <template #content>
               <div class="no-history-content">
                 <i class="pi pi-inbox"></i>
-                <p>No recent timeline jobs found.</p>
+                <p>{{ t('timelineJobs.listPage.history.empty') }}</p>
               </div>
             </template>
           </Card>
@@ -111,21 +111,21 @@
                     <div class="job-status">
                       <i
                         :class="job.status === 'COMPLETED' ? 'pi pi-check-circle' : 'pi pi-times-circle'"
-                        :style="{ color: job.status === 'COMPLETED' ? 'var(--green-500)' : 'var(--red-500)' }"
+                        :style="{ color: job.status === 'COMPLETED' ? 'var(--p-green-500)' : 'var(--p-red-500)' }"
                       ></i>
                       <span class="status-text">{{ job.status }}</span>
                     </div>
                     <span class="job-date">{{ formatDate(job.startTime) }}</span>
                   </div>
                   <div class="job-details">
-                    <span class="job-duration">Duration: {{ formatDuration(job.durationMs) }}</span>
+                    <span class="job-duration">{{ t('timelineJobs.listPage.history.duration', { duration: formatDuration(job.durationMs) }) }}</span>
                     <span v-if="job.details && job.details.totalGpsPoints" class="job-stat">
-                      {{ job.details.totalGpsPoints.toLocaleString() }} GPS points
+                      {{ t('timelineJobs.listPage.history.gpsPoints', { count: job.details.totalGpsPoints.toLocaleString() }) }}
                     </span>
                   </div>
                   <div class="job-action">
                     <i class="pi pi-arrow-right"></i>
-                    <span>View Details</span>
+                    <span>{{ t('timelineJobs.listPage.history.viewDetails') }}</span>
                   </div>
                 </div>
               </template>
@@ -140,6 +140,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -148,7 +149,9 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const timelineStore = useTimelineStore()
 const timezone = useTimezone()
@@ -179,7 +182,7 @@ const checkForActiveJob = async () => {
     }
   } catch (err) {
     console.error('Failed to check for active job:', err)
-    error.value = err.message || 'Failed to check for active jobs'
+    error.value = formatApiErrorDetail(err, t('timelineJobs.listPage.error.title'))
     loading.value = false
   }
 }
@@ -204,20 +207,20 @@ const viewJobDetails = (jobId) => {
 }
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('timelineJobs.listPage.notAvailable')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp)}`
 }
 
 const formatDuration = (durationMs) => {
-  if (!durationMs) return 'N/A'
+  if (!durationMs) return t('timelineJobs.listPage.notAvailable')
   const seconds = Math.floor(durationMs / 1000)
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
 
   if (minutes > 0) {
-    return `${minutes}m ${remainingSeconds}s`
+    return t('timelineJobs.listPage.durationMinutesSeconds', { minutes, seconds: remainingSeconds })
   }
-  return `${seconds}s`
+  return t('timelineJobs.listPage.durationSeconds', { seconds })
 }
 
 const goToPreferences = () => {
@@ -239,31 +242,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.header-text h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.header-text p {
-  margin: 0;
-  color: var(--text-color-secondary);
-  font-size: 1rem;
-}
-
 .loading-card,
 .no-job-card,
 .error-message {
@@ -279,7 +257,7 @@ onMounted(() => {
 }
 
 .loading-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -294,19 +272,19 @@ onMounted(() => {
 
 .no-job-icon {
   font-size: 4rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   opacity: 0.6;
 }
 
 .no-job-content h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .no-job-content p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   max-width: 500px;
 }
 
@@ -348,13 +326,13 @@ onMounted(() => {
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .section-description {
   font-size: 0.95rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -369,7 +347,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 2rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .no-history-content i {
@@ -386,15 +364,15 @@ onMounted(() => {
 .history-job-card {
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid var(--surface-border);
-  background: var(--surface-card);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
 }
 
 .history-job-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: var(--primary-color);
-  background: var(--surface-hover);
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-hover);
 }
 
 .history-job-card:active {
@@ -431,14 +409,14 @@ onMounted(() => {
 
 .job-date {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .job-details {
   display: flex;
   gap: 1.5rem;
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .job-duration,
@@ -451,12 +429,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 0.9rem;
   font-weight: 500;
   margin-top: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 .job-action i {

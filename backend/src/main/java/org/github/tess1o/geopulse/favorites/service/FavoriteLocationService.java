@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
@@ -82,8 +83,7 @@ public class FavoriteLocationService {
     public void addFavorite(UUID userId, AddPointToFavoritesDto favorite) {
         validatePointFavorite(favorite);
 
-        log.debug("Adding point favorite for user {}: {} at [{}, {}]",
-                userId, favorite.getName(), favorite.getLat(), favorite.getLon());
+        log.debug("Adding point favorite for user {}", userId);
 
         FavoritesEntity entity = mapper.toEntity(favorite, userId);
 
@@ -96,27 +96,22 @@ public class FavoriteLocationService {
             entity.setCity(normalized.city());
             entity.setCountry(normalized.country());
 
-            log.debug("Populated geocoding data for favorite: city={}, country={}",
-                    normalized.city(), normalized.country());
+            log.debug("Populated geocoding data for favorite");
         } catch (Exception e) {
-            log.warn("Failed to get geocoding data for favorite at [{}, {}]: {}",
-                    favorite.getLat(), favorite.getLon(), e.getMessage());
+            log.warn("Failed to get geocoding data for favorite", e);
             // Continue without geocoding data - city and country will be null
         }
 
         repository.persist(entity);
 
-        log.info("Successfully added point favorite {} for user {}", favorite.getName(), userId);
+        log.info("Successfully added point favorite for user {}", userId);
     }
 
     @Transactional
     public void addFavorite(UUID userId, AddAreaToFavoritesDto favorite) {
         validateAreaFavorite(favorite);
 
-        log.debug("Adding area favorite for user {}: {} with bounds NE[{}, {}] SW[{}, {}]",
-                userId, favorite.getName(),
-                favorite.getNorthEastLat(), favorite.getNorthEastLon(),
-                favorite.getSouthWestLat(), favorite.getSouthWestLon());
+        log.debug("Adding area favorite for user {}", userId);
 
         FavoritesEntity entity = mapper.toEntity(favorite, userId);
 
@@ -132,8 +127,7 @@ public class FavoriteLocationService {
             entity.setCity(normalized.city());
             entity.setCountry(normalized.country());
 
-            log.debug("Populated geocoding data for area favorite using center point [{}, {}]: city={}, country={}",
-                    centerLat, centerLon, normalized.city(), normalized.country());
+            log.debug("Populated geocoding data for area favorite");
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for area favorite: {}", e.getMessage());
             // Continue without geocoding data - city and country will be null
@@ -170,16 +164,14 @@ public class FavoriteLocationService {
                     entity.setCity(normalized.city());
                     entity.setCountry(normalized.country());
                 } catch (Exception e) {
-                    log.warn("Failed to get geocoding data for point favorite '{}' at [{}, {}]: {}",
-                            pointDto.getName(), pointDto.getLat(), pointDto.getLon(), e.getMessage());
+                    log.warn("Failed to get geocoding data for point favorite in bulk operation", e);
                     // Continue without geocoding data
                 }
 
                 repository.persist(entity);
 
                 createdFavoriteIds.add(entity.getId());
-                log.debug("Successfully added point favorite '{}' (ID: {}) in bulk operation",
-                        pointDto.getName(), entity.getId());
+                log.debug("Successfully added point favorite ID {} in bulk operation", entity.getId());
 
             } catch (Exception e) {
                 log.warn("Failed to add point favorite at index {}: {}", index, e.getMessage());
@@ -607,12 +599,12 @@ public class FavoriteLocationService {
             Point point;
             if (favorite.getType() == FavoriteLocationType.POINT) {
                 // For points, use the point coordinates directly
-                org.locationtech.jts.geom.Point geomPoint = (org.locationtech.jts.geom.Point) favorite.getGeometry();
+                Point geomPoint = (Point) favorite.getGeometry();
                 point = GeoUtils.createPoint(geomPoint.getX(), geomPoint.getY());
             } else {
                 // For areas, use the center point
                 Polygon polygon = (Polygon) favorite.getGeometry();
-                org.locationtech.jts.geom.Coordinate centroid = polygon.getCentroid().getCoordinate();
+                Coordinate centroid = polygon.getCentroid().getCoordinate();
                 point = GeoUtils.createPoint(centroid.x, centroid.y);
             }
 

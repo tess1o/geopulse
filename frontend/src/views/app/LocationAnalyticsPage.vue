@@ -1,8 +1,8 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Location Analytics"
-      subtitle="Explore your visits by map, city, and country"
+      :title="t('analytics.locationAnalyticsPage.title')"
+      :subtitle="t('analytics.locationAnalyticsPage.subtitle')"
       variant="fullwidth"
     >
       <template #actions>
@@ -13,7 +13,7 @@
 
           <div class="analytics-tabs">
             <Button
-              label="Map"
+              :label="t('analytics.locationAnalyticsPage.mapTab')"
               icon="pi pi-map-marker"
               :class="{ 'active-tab': activeTab === 'map' }"
               @click="handleTabClick('map')"
@@ -51,7 +51,7 @@
           <template #header>
             <div class="map-places-title">
               <div class="map-places-heading">
-                <span class="map-places-label">Recent places in view</span>
+                <span class="map-places-label">{{ t('analytics.locationAnalyticsPage.recentPlacesInView') }}</span>
                 <span class="map-places-count">{{ sortedMapPlaces.length }}</span>
               </div>
               <div class="map-places-controls">
@@ -60,7 +60,7 @@
                   text
                   rounded
                   :disabled="!canScrollRailLeft"
-                  aria-label="Scroll places left"
+                  :aria-label="t('analytics.locationAnalyticsPage.scrollPlacesLeft')"
                   @click="scrollPlacesRail(-1)"
                 />
                 <Button
@@ -68,7 +68,7 @@
                   text
                   rounded
                   :disabled="!canScrollRailRight"
-                  aria-label="Scroll places right"
+                  :aria-label="t('analytics.locationAnalyticsPage.scrollPlacesRight')"
                   @click="scrollPlacesRail(1)"
                 />
               </div>
@@ -79,7 +79,7 @@
           </div>
           <div v-else-if="sortedMapPlaces.length === 0" class="empty-state compact">
             <i class="pi pi-map-marker empty-icon"></i>
-            <p>No places found for this area.</p>
+            <p>{{ t('analytics.locationAnalyticsPage.noPlacesInArea') }}</p>
           </div>
           <div v-else class="map-places-rail-wrapper">
             <div
@@ -104,28 +104,28 @@
                 <i class="pi pi-map-marker"></i>
               </div>
               <div class="map-place-main">
-                <div class="map-place-name">{{ place.locationName || 'Unknown location' }}</div>
+                <div class="map-place-name">{{ place.locationName || t('analytics.locationAnalyticsPage.unknownLocation') }}</div>
                 <div class="map-place-meta">
-                  {{ [place.city, place.country].filter(Boolean).join(', ') || 'Unknown area' }}
+                  {{ [place.city, place.country].filter(Boolean).join(', ') || t('analytics.locationAnalyticsPage.unknownArea') }}
                 </div>
                 <div class="map-place-timeline">
-                  Last visit: {{ formatLastVisitFull(place.lastVisit) }}
+                  {{ t('analytics.locationAnalyticsPage.lastVisit', { value: formatLastVisitFull(place.lastVisit) }) }}
                 </div>
-                <div v-if="getMapPlacePeriodTag(place) || getMapPlaceTrip(place)" class="map-place-trip">
+                <div v-if="getMapPlaceTimelineLabel(place) || getMapPlaceTrip(place)" class="map-place-trip">
                   <span
-                    v-if="getMapPlacePeriodTag(place)"
+                    v-if="getMapPlaceTimelineLabel(place)"
                     class="map-place-tag-chip"
-                    :style="{ '--tag-color': getPeriodTagColor(getMapPlacePeriodTag(place)) }"
-                    title="Timeline label match. Click to open timeline range."
+                    :style="{ '--tag-color': getTimelineLabelColor(getMapPlaceTimelineLabel(place)) }"
+                    :title="t('analytics.locationAnalyticsPage.timelineLabelMatchTitle')"
                     role="button"
                     tabindex="0"
-                    aria-label="Open timeline label range"
-                    @click.stop="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
-                    @keydown.enter="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
-                    @keydown.space.prevent="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
+                    :aria-label="t('analytics.locationAnalyticsPage.openTimelineLabelRange')"
+                    @click.stop="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
+                    @keydown.enter="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
+                    @keydown.space.prevent="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
                   >
                     <span class="map-place-tag-dot"></span>
-                    {{ getMapPlacePeriodTagLabel(getMapPlacePeriodTag(place)) }}
+                    {{ getMapPlaceTimelineLabelLabel(getMapPlaceTimelineLabel(place)) }}
                   </span>
                   <Button
                     v-if="showSecondaryTripAction(place)"
@@ -133,18 +133,18 @@
                     class="map-place-chip-action"
                     text
                     rounded
-                    title="Open linked trip planner"
-                    aria-label="Open linked trip planner"
+                    :title="t('analytics.locationAnalyticsPage.openLinkedTripPlanner')"
+                    :aria-label="t('analytics.locationAnalyticsPage.openLinkedTripPlanner')"
                     @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                   />
                   <span
                     v-if="showStandaloneTripChip(place)"
                     class="map-place-trip-chip"
                     :style="{ '--trip-tag-color': getTripColor(getMapPlaceTrip(place)) }"
-                    title="Trip plan match. Click to open trip planner."
+                    :title="t('analytics.locationAnalyticsPage.tripPlanMatchTitle')"
                     role="button"
                     tabindex="0"
-                    aria-label="Open trip planner"
+                    :aria-label="t('analytics.locationAnalyticsPage.openTripPlanner')"
                     @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                     @keydown.enter="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                     @keydown.space.prevent="handleMapPlaceTripClick(getMapPlaceTrip(place))"
@@ -155,16 +155,16 @@
                 </div>
               </div>
               <div class="map-place-side">
-                <div class="map-place-visits" :title="`${place.visitCount} visits`">
+                <div class="map-place-visits" :title="t('analytics.locationAnalyticsPage.visitsCountTitle', { count: place.visitCount })">
                   <span class="value">{{ place.visitCount }}</span>
-                  <span class="label">visits</span>
+                  <span class="label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
                 </div>
                 <Button
                   icon="pi pi-external-link"
                   class="map-place-open-btn"
                   text
                   rounded
-                  aria-label="Open place details"
+                  :aria-label="t('analytics.locationAnalyticsPage.openPlaceDetails')"
                   @click.stop="openMapPlaceDetails(place)"
                 />
               </div>
@@ -182,32 +182,35 @@
 
         <div v-else-if="cities.length === 0" class="empty-state">
           <i class="pi pi-building empty-icon"></i>
-          <p>No cities found in your travel history</p>
+          <p>{{ t('analytics.locationAnalyticsPage.noCitiesFound') }}</p>
         </div>
 
         <div v-else class="location-grid">
-          <BaseCard
+          <RouterLink
             v-for="city in cities"
             :key="`${city.cityName}-${city.country}`"
+            :to="`/app/location-analytics/city/${encodeURIComponent(city.cityName)}`"
             class="location-card"
-            @click="navigateToCity(city.cityName)"
           >
             <div class="location-icon">
               <i class="pi pi-building"></i>
             </div>
-            <h3 class="location-name">{{ city.cityName }}</h3>
-            <p class="location-country">{{ city.country }}</p>
+            <div class="location-copy">
+              <h3 class="location-name">{{ city.cityName }}</h3>
+              <p class="location-country">{{ city.country }}</p>
+            </div>
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ city.visitCount }}</span>
-                <span class="stat-label">visits</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ city.uniquePlaces }}</span>
-                <span class="stat-label">places</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.places') }}</span>
               </div>
             </div>
-          </BaseCard>
+            <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
+          </RouterLink>
         </div>
       </div>
 
@@ -219,35 +222,38 @@
 
         <div v-else-if="countries.length === 0" class="empty-state">
           <i class="pi pi-globe empty-icon"></i>
-          <p>No countries found in your travel history</p>
+          <p>{{ t('analytics.locationAnalyticsPage.noCountriesFound') }}</p>
         </div>
 
         <div v-else class="location-grid">
-          <BaseCard
+          <RouterLink
             v-for="country in countries"
             :key="country.countryName"
+            :to="`/app/location-analytics/country/${encodeURIComponent(country.countryName)}`"
             class="location-card"
-            @click="navigateToCountry(country.countryName)"
           >
             <div class="location-icon">
               <i class="pi pi-globe"></i>
             </div>
-            <h3 class="location-name">{{ country.countryName }}</h3>
+            <div class="location-copy">
+              <h3 class="location-name">{{ country.countryName }}</h3>
+            </div>
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ country.visitCount }}</span>
-                <span class="stat-label">visits</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ country.cityCount }}</span>
-                <span class="stat-label">cities</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.cities') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ country.uniquePlaces }}</span>
-                <span class="stat-label">places</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.places') }}</span>
               </div>
             </div>
-          </BaseCard>
+            <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
+          </RouterLink>
         </div>
       </div>
     </PageContainer>
@@ -256,6 +262,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -270,23 +277,25 @@ import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 import LocationAnalyticsMap from '@/components/location-analytics/LocationAnalyticsMap.vue'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTripsStore } from '@/stores/trips'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import {
   findMatchingTripForTimestamp,
   normalizeTripColor
 } from '@/utils/tripHelpers'
 import {
-  buildTimelineQueryForPeriodTag,
-  findMatchingPeriodTagForTimestamp,
-  normalizePeriodTagColor
-} from '@/utils/periodTagHelpers'
+  buildTimelineQueryForTimelineLabel,
+  findMatchingTimelineLabelForTimestamp,
+  normalizeTimelineLabelColor
+} from '@/utils/timelineLabelHelpers'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const store = useLocationAnalyticsStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const tripsStore = useTripsStore()
 const timezone = useTimezone()
 
@@ -298,7 +307,7 @@ const {
   citiesLoading,
   countriesLoading
 } = storeToRefs(store)
-const { periodTags } = storeToRefs(periodTagsStore)
+const { timelineLabels } = storeToRefs(timelineLabelsStore)
 
 const TAB_MAP = 'map'
 const TAB_CITIES = 'cities'
@@ -374,8 +383,8 @@ const sortedMapPlaces = computed(() => {
 })
 
 const mapPlacesPreview = computed(() => sortedMapPlaces.value.slice(0, 60))
-const citiesTabLabel = computed(() => (citiesLoaded.value ? `Cities (${cities.value.length})` : 'Cities'))
-const countriesTabLabel = computed(() => (countriesLoaded.value ? `Countries (${countries.value.length})` : 'Countries'))
+const citiesTabLabel = computed(() => (citiesLoaded.value ? t('analytics.locationAnalyticsPage.citiesTabCount', { count: cities.value.length }) : t('analytics.locationAnalyticsPage.citiesTab')))
+const countriesTabLabel = computed(() => (countriesLoaded.value ? t('analytics.locationAnalyticsPage.countriesTabCount', { count: countries.value.length }) : t('analytics.locationAnalyticsPage.countriesTab')))
 const mapPlaceTripsByKey = computed(() => {
   const result = new Map()
   const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
@@ -384,17 +393,17 @@ const mapPlaceTripsByKey = computed(() => {
   }
   return result
 })
-const mapPlacePeriodTagsByKey = computed(() => {
+const mapPlaceTimelineLabelsByKey = computed(() => {
   const result = new Map()
-  const tags = Array.isArray(periodTags.value) ? periodTags.value : []
+  const tags = Array.isArray(timelineLabels.value) ? timelineLabels.value : []
   for (const place of mapPlacesPreview.value) {
-    result.set(getPlaceKey(place), findMatchingPeriodTagForTimestamp(place?.lastVisit, tags))
+    result.set(getPlaceKey(place), findMatchingTimelineLabelForTimestamp(place?.lastVisit, tags))
   }
   return result
 })
 
 const formatLastVisitFull = (timestamp) => {
-  if (!timestamp) return 'Unknown'
+  if (!timestamp) return t('analytics.locationAnalyticsPage.unknown')
   return timezone.formatDateDisplay(timestamp)
 }
 
@@ -402,40 +411,40 @@ const getMapPlaceTrip = (place) => {
   return mapPlaceTripsByKey.value.get(getPlaceKey(place)) || null
 }
 
-const getMapPlacePeriodTag = (place) => {
-  return mapPlacePeriodTagsByKey.value.get(getPlaceKey(place)) || null
+const getMapPlaceTimelineLabel = (place) => {
+  return mapPlaceTimelineLabelsByKey.value.get(getPlaceKey(place)) || null
 }
 
 const getMapPlaceTripLabel = (trip) => {
   if (!trip) return ''
-  return trip.name || `Trip #${trip.id}`
+  return trip.name || t('analytics.locationAnalyticsPage.tripFallback', { id: trip.id })
 }
 
-const getMapPlacePeriodTagLabel = (tag) => {
+const getMapPlaceTimelineLabelLabel = (tag) => {
   if (!tag) return ''
-  return tag.tagName || `Label #${tag.id}`
+  return tag.name || t('analytics.locationAnalyticsPage.labelFallback', { id: tag.id })
 }
 
 const isLinkedPair = (tag, trip) => {
   if (!tag || !trip) return false
-  return Number(trip.periodTagId) === Number(tag.id)
+  return Number(trip.timelineLabelId) === Number(tag.id)
 }
 
 const showStandaloneTripChip = (place) => {
-  const tag = getMapPlacePeriodTag(place)
+  const tag = getMapPlaceTimelineLabel(place)
   const trip = getMapPlaceTrip(place)
   if (!trip) return false
   return !isLinkedPair(tag, trip)
 }
 
 const showSecondaryTripAction = (place) => {
-  const tag = getMapPlacePeriodTag(place)
+  const tag = getMapPlaceTimelineLabel(place)
   const trip = getMapPlaceTrip(place)
   return isLinkedPair(tag, trip)
 }
 
 const getTripColor = (trip) => normalizeTripColor(trip?.color)
-const getPeriodTagColor = (tag) => normalizePeriodTagColor(tag?.color)
+const getTimelineLabelColor = (tag) => normalizeTimelineLabelColor(tag?.color)
 
 const handleMapPlaceTripClick = (trip) => {
   if (!trip?.id) return
@@ -450,9 +459,9 @@ const handleMapPlaceTripClick = (trip) => {
   newWindow.opener = null
 }
 
-const handleMapPlacePeriodTagClick = (tag) => {
+const handleMapPlaceTimelineLabelClick = (tag) => {
   if (!tag) return
-  const timelineQuery = buildTimelineQueryForPeriodTag(tag)
+  const timelineQuery = buildTimelineQueryForTimelineLabel(tag)
   const resolvedRoute = timelineQuery
     ? router.resolve({ path: '/app/timeline', query: timelineQuery })
     : router.resolve('/app/timeline-labels')
@@ -485,11 +494,11 @@ const ensureTripsLoaded = async () => {
   }
 }
 
-const ensurePeriodTagsLoaded = async () => {
-  if (Array.isArray(periodTags.value) && periodTags.value.length > 0) return
-  if (periodTagsStore.isLoading) return
+const ensureTimelineLabelsLoaded = async () => {
+  if (Array.isArray(timelineLabels.value) && timelineLabels.value.length > 0) return
+  if (timelineLabelsStore.isLoading) return
   try {
-    await periodTagsStore.fetchPeriodTags()
+    await timelineLabelsStore.fetchTimelineLabels()
   } catch (error) {
     console.error('Failed to load timeline labels for location analytics associations:', error)
   }
@@ -598,8 +607,8 @@ const fetchMapPlaces = async (force = false) => {
     console.error('Failed to fetch map places:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load map places',
+      summary: t('analytics.locationAnalyticsPage.errorSummary'),
+      detail: formatApiErrorDetail(error, t('analytics.locationAnalyticsPage.mapPlacesLoadFailed')),
       life: 5000
     })
   }
@@ -650,14 +659,6 @@ const openMapPlaceDetails = (place) => {
   newWindow.opener = null
 }
 
-const navigateToCity = (cityName) => {
-  router.push(`/app/location-analytics/city/${encodeURIComponent(cityName)}`)
-}
-
-const navigateToCountry = (countryName) => {
-  router.push(`/app/location-analytics/country/${encodeURIComponent(countryName)}`)
-}
-
 watch(activeTab, async (newTab) => {
   try {
     await syncTabQuery(newTab)
@@ -671,8 +672,8 @@ watch(activeTab, async (newTab) => {
     console.error('Failed to load location analytics tab data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load location data',
+      summary: t('analytics.locationAnalyticsPage.errorSummary'),
+      detail: formatApiErrorDetail(error, t('analytics.locationAnalyticsPage.tabDataLoadFailed')),
       life: 5000
     })
   }
@@ -708,7 +709,7 @@ onMounted(() => {
   window.addEventListener('resize', updateRailScrollState, { passive: true })
   void prefetchTabCounts()
   void ensureTripsLoaded()
-  void ensurePeriodTagsLoaded()
+  void ensureTimelineLabelsLoaded()
 })
 
 onBeforeUnmount(() => {
@@ -757,7 +758,7 @@ onBeforeUnmount(() => {
 .analytics-tabs .p-button {
   min-width: 120px;
   background: transparent;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   color: var(--gp-text-secondary);
   box-shadow: none;
 }
@@ -769,8 +770,8 @@ onBeforeUnmount(() => {
 }
 
 .analytics-tabs .p-button:not(.active-tab):hover {
-  background: var(--gp-surface-light);
-  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-light));
+  background: var(--gp-surface-muted);
+  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border));
   color: var(--gp-text-primary);
 }
 
@@ -807,8 +808,8 @@ onBeforeUnmount(() => {
 .map-places-count {
   font-size: 0.76rem;
   color: var(--gp-text-secondary);
-  background: color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-white));
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 25%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 10%, var(--gp-surface-card));
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 25%, var(--gp-border));
   border-radius: 999px;
   padding: 0.14rem 0.5rem;
   line-height: 1.2;
@@ -839,7 +840,7 @@ onBeforeUnmount(() => {
 }
 
 .map-places-rail::-webkit-scrollbar-thumb {
-  background: var(--gp-border-light);
+  background: var(--gp-border);
   border-radius: 8px;
 }
 
@@ -854,7 +855,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 0.68rem;
   cursor: pointer;
@@ -864,17 +865,17 @@ onBeforeUnmount(() => {
 
 .map-place-item:hover {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .map-place-item.hovered {
   border-color: var(--gp-primary);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .map-place-item.active {
   border-color: var(--gp-primary);
-  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card));
 }
 
 .map-place-thumb {
@@ -882,7 +883,7 @@ onBeforeUnmount(() => {
   height: 2.25rem;
   min-width: 2.25rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-card));
   color: var(--gp-primary);
   display: flex;
   align-items: center;
@@ -931,9 +932,9 @@ onBeforeUnmount(() => {
   max-width: 100%;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tag-color) 55%, white);
-  background: color-mix(in srgb, var(--tag-color) 10%, white);
-  color: color-mix(in srgb, var(--tag-color) 78%, black);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--tag-color) 78%, var(--gp-text-primary));
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.2;
@@ -969,9 +970,9 @@ onBeforeUnmount(() => {
   max-width: 100%;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, white);
-  background: color-mix(in srgb, var(--trip-tag-color) 10%, white);
-  color: color-mix(in srgb, var(--trip-tag-color) 78%, black);
+  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--trip-tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--trip-tag-color) 78%, var(--gp-text-primary));
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1035,22 +1036,6 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.p-dark .map-place-trip-chip {
-  border-color: color-mix(in srgb, var(--trip-tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--trip-tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--trip-tag-color) 70%, white);
-}
-
-.p-dark .map-place-tag-chip {
-  border-color: color-mix(in srgb, var(--tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--tag-color) 70%, white);
-}
-
-.p-dark .map-place-chip-action {
-  color: var(--gp-text-secondary);
-}
-
 .loading-container {
   display: flex;
   justify-content: center;
@@ -1075,69 +1060,97 @@ onBeforeUnmount(() => {
 
 .location-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--gp-spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: var(--gp-spacing-md);
   padding: 0 var(--gp-spacing-lg);
 }
 
 .location-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
-  padding: var(--gp-spacing-xl);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  min-height: 5rem;
+  padding: var(--gp-spacing-md);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-large);
+  background: var(--gp-surface-card);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--gp-shadow-subtle);
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
 .location-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--gp-shadow-medium);
+  transform: translateY(-2px);
   border-color: var(--gp-primary);
+  background: var(--gp-surface-ground);
+}
+
+.location-card:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
 }
 
 .location-icon {
-  font-size: 3rem;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--gp-radius-medium);
+  background: color-mix(in srgb, var(--gp-primary) 12%, var(--gp-surface-card));
   color: var(--gp-primary);
-  margin-bottom: var(--gp-spacing-md);
+  font-size: 1rem;
+}
+
+.location-copy {
+  min-width: 0;
 }
 
 .location-name {
-  margin: 0 0 var(--gp-spacing-xs);
-  font-size: 1.25rem;
+  margin: 0;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .location-country {
-  margin: 0 0 var(--gp-spacing-lg);
-  font-size: 0.875rem;
+  margin: .15rem 0 0;
+  font-size: 0.8rem;
   color: var(--gp-text-secondary);
 }
 
 .location-stats {
   display: flex;
-  justify-content: center;
-  gap: var(--gp-spacing-lg);
-  padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  gap: var(--gp-spacing-md);
+  padding-left: var(--gp-spacing-md);
+  border-left: 1px solid var(--gp-border);
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--gp-spacing-xs);
+  gap: .1rem;
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--gp-primary);
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   color: var(--gp-text-secondary);
-  letter-spacing: 0.5px;
+  letter-spacing: .04em;
+}
+
+.location-chevron {
+  color: var(--gp-text-muted);
+  font-size: .8rem;
 }
 
 @media (max-width: 768px) {
@@ -1184,40 +1197,27 @@ onBeforeUnmount(() => {
   }
 
   .location-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: var(--gp-spacing-sm);
+    padding: 0 var(--gp-spacing-sm);
   }
 
   .location-card {
-    padding: var(--gp-spacing-sm);
-  }
-
-  .location-icon {
-    font-size: 1.75rem;
-    margin-bottom: var(--gp-spacing-xs);
-  }
-
-  .location-name {
-    font-size: 0.95rem;
-    margin: 0 0 var(--gp-spacing-xxs);
-  }
-
-  .location-country {
-    font-size: 0.75rem;
-    margin: 0 0 var(--gp-spacing-xs);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 0;
   }
 
   .location-stats {
-    gap: var(--gp-spacing-sm);
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    border-left: 0;
+    border-top: 1px solid var(--gp-border);
+    padding-left: 0;
     padding-top: var(--gp-spacing-xs);
   }
 
-  .stat-value {
-    font-size: 1rem;
-  }
-
-  .stat-label {
-    font-size: 0.65rem;
+  .location-chevron {
+    display: none;
   }
 }
 </style>

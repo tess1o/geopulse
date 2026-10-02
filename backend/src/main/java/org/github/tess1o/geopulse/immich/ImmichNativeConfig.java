@@ -9,6 +9,8 @@ import org.github.tess1o.geopulse.immich.model.*;
         ImmichSearchResponse.class,
         ImmichSearchResponse.ImmichSearchAssets.class,
         ImmichAsset.class,
+        ImmichAlbum.class,
+        ImmichAlbumDetail.class,
         ImmichPhotoDto.class,
         ImmichPhotoSearchRequest.class,
         ImmichPhotoSearchResponse.class,
@@ -17,6 +19,7 @@ import org.github.tess1o.geopulse.immich.model.*;
         ImmichExifInfo.class,
         TestImmichConnectionRequest.class,
         TestImmichConnectionResponse.class,
+        ImmichConnectionStatus.class,
         ImmichPhotoMapMarkerDto.class,
         ImmichPhotoMapMarkersResponse.class
 })

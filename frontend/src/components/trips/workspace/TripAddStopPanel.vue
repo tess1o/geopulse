@@ -1,0 +1,168 @@
+<template>
+  <div class="trip-add">
+    <SelectButton
+      :model-value="mode"
+      :options="modes"
+      option-label="label"
+      option-value="value"
+      :allow-empty="false"
+      class="trip-add-modes"
+      @update:model-value="mode = $event"
+    />
+
+    <!-- Search a place you can already name -->
+    <div v-if="mode === 'search'" class="trip-add-search">
+      <TripPlanLocationSearchInput
+        input-id="tripAddStopSearch"
+        v-model="query"
+        :suggestions="suggestions"
+        :placeholder="t('trips.search.defaultPlaceholder')"
+        :loading="isSearching"
+        :error="searchError"
+        @complete="handleSearch"
+        @select="handleSearchSelect"
+      />
+      <p class="trip-add-hint">
+        {{ t('trips.addStopPanel.hint') }}
+      </p>
+    </div>
+
+    <!-- Discover places nearby, with photos -->
+    <div v-else class="trip-add-explore">
+      <PoiDiscoveryPanel :plan-items="planItems" :show-header="false" @add-to-plan="handlePoiSelect" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import SelectButton from 'primevue/selectbutton'
+import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
+import PoiDiscoveryPanel from '@/components/trips/discovery/PoiDiscoveryPanel.vue'
+import {
+  getTripPlanSuggestionCoordinates,
+  useTripPlanLocationSearch
+} from '@/composables/useTripPlanLocationSearch'
+
+const { t } = useI18n()
+
+const props = defineProps({
+  planItems: { type: Array, default: () => [] }
+})
+
+const emit = defineEmits(['add-stop'])
+
+const modes = computed(() => [
+  { label: t('trips.addStopPanel.modeSearch'), value: 'search' },
+  { label: t('trips.addStopPanel.modeExplore'), value: 'explore' }
+])
+
+const mode = ref('search')
+
+const {
+  query,
+  suggestions,
+  isLoading: isSearching,
+  error: searchError,
+  search: runSearch
+} = useTripPlanLocationSearch({ fallbackLabel: t('trips.addStopPanel.stopFallback'), limit: 10 })
+
+const handleSearch = (event) => runSearch(event)
+
+const handleSearchSelect = (suggestion) => {
+  if (!suggestion) return
+  const coordinates = getTripPlanSuggestionCoordinates(suggestion)
+  emit('add-stop', {
+    title: suggestion.title || suggestion.displayName,
+    description: null,
+    latitude: coordinates?.latitude ?? null,
+    longitude: coordinates?.longitude ?? null
+  })
+}
+
+/** A discovered POI already carries a name, a description and coordinates. */
+const handlePoiSelect = (poi) => {
+  emit('add-stop', {
+    title: poi.name,
+    description: poi.description || null,
+    latitude: poi.latitude,
+    longitude: poi.longitude
+  })
+}
+</script>
+
+<style scoped>
+.trip-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-md);
+}
+
+/* Styled explicitly rather than relying on SelectButton defaults: on the dark theme the
+   default active segment rendered as a light chip that neither matched the app nor
+   separated cleanly from its neighbour. */
+.trip-add-modes {
+  align-self: stretch;
+}
+
+.trip-add-modes :deep(.p-selectbutton) {
+  display: flex;
+  width: 100%;
+  gap: 2px;
+  padding: 2px;
+  background: var(--gp-surface-emphasis);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+}
+
+.trip-add-modes :deep(.p-togglebutton) {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: var(--gp-radius-small);
+  color: var(--gp-text-secondary);
+  font-weight: 600;
+  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+}
+
+.trip-add-modes :deep(.p-togglebutton:not(.p-togglebutton-checked):hover) {
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
+}
+
+/* The label sits inside .p-togglebutton-content > .p-togglebutton-label, each of which
+   carries its own colour, so setting it on the button alone leaves grey text on the
+   primary fill. */
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked),
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked .p-togglebutton-content),
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked .p-togglebutton-label) {
+  background: var(--gp-primary);
+  color: #ffffff;
+}
+
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked:hover),
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked:hover .p-togglebutton-content),
+.trip-add-modes :deep(.p-togglebutton.p-togglebutton-checked:hover .p-togglebutton-label) {
+  background: var(--gp-primary-hover);
+  color: #ffffff;
+}
+
+.trip-add-modes :deep(.p-togglebutton .p-togglebutton-content) {
+  background: transparent;
+}
+
+.trip-add-hint {
+  margin: var(--gp-spacing-sm) 0 0;
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+}
+
+.trip-add-explore :deep(.poi-discovery-controls) {
+  margin-top: 0;
+}
+
+.trip-add-explore :deep(.poi-grid) {
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+</style>

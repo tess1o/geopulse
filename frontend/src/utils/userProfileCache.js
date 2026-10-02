@@ -10,35 +10,28 @@ export function readCachedUserProfile() {
     }
 }
 
+// Expects the store's normalized, flat user (see normalizeUser in stores/auth.js).
 export function writeCachedUserProfile(user) {
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify({
-        id: user.id,
-        userId: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        avatar: user.avatar,
-        timezone: user.timezone,
-        createdAt: user.createdAt,
-        hasPassword: user.hasPassword,
-        customMapTileUrl: user.customMapTileUrl,
-        customMapStyleUrl: user.customMapStyleUrl,
-        mapRenderMode: user.mapRenderMode || 'VECTOR',
-        distanceUnit: user.distanceUnit,
-        temperatureUnit: user.temperatureUnit,
-        defaultRedirectUrl: user.defaultRedirectUrl,
-        dateFormat: user.dateFormat,
-        timeFormat: user.timeFormat,
-        defaultDateRangePreset: user.defaultDateRangePreset,
-        autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
-        mapMatchingEnabled: user.mapMatchingEnabled ?? false,
-        mapMatchingAvailable: user.mapMatchingAvailable ?? false,
-        demoMode: !!user.demoMode,
-        canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',
-        adminReadOnly: !!user.adminReadOnly,
-        role: user.role
-    }))
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(user))
 }
 
 export function clearCachedUserProfile() {
     localStorage.removeItem(USER_INFO_KEY)
+}
+
+/**
+ * Update just the language on the cached profile.
+ *
+ * A merge rather than a full write: the language can change on its own (the profile language picker)
+ * and must not blank out the rest of the cached profile, which the pre-Pinia bootstrap reads.
+ */
+export function writeCachedUserLanguage(language) {
+    try {
+        localStorage.setItem(USER_INFO_KEY, JSON.stringify({
+            ...readCachedUserProfile(),
+            language
+        }))
+    } catch (error) {
+        console.warn('[userProfileCache] Failed to cache user language:', error)
+    }
 }

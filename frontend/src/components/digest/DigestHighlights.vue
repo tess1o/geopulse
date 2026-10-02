@@ -2,7 +2,7 @@
   <div class="digest-highlights">
     <h3 class="highlights-title">
       <i class="pi pi-star-fill"></i>
-      Highlights
+      {{ t('analytics.digest.highlights.title') }}
     </h3>
 
     <div v-if="hasHighlights" class="highlights-grid">
@@ -10,7 +10,7 @@
       <div class="highlight-card" v-if="highlights.longestTrip">
         <div class="highlight-icon">🚗</div>
         <div class="highlight-content">
-          <div class="highlight-title">Longest Trip</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.longestTrip') }}</div>
           <div class="highlight-value">
             {{ formatDistance(highlights.longestTrip.distance) }}
           </div>
@@ -22,9 +22,9 @@
       <div class="highlight-card" v-if="highlights.mostVisited">
         <div class="highlight-icon">📍</div>
         <div class="highlight-content">
-          <div class="highlight-title">Most Visited Place</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.mostVisitedPlace') }}</div>
           <div class="highlight-value">{{ highlights.mostVisited.name }}</div>
-          <div class="highlight-date">{{ highlights.mostVisited.visits }} visits</div>
+          <div class="highlight-date">{{ t('analytics.digest.highlights.visitsCount', { count: highlights.mostVisited.visits }, highlights.mostVisited.visits) }}</div>
         </div>
       </div>
 
@@ -32,8 +32,8 @@
       <div class="highlight-card" v-if="highlights.busiestDay">
         <div class="highlight-icon">⚡</div>
         <div class="highlight-content">
-          <div class="highlight-title">Busiest Day</div>
-          <div class="highlight-value">{{ highlights.busiestDay.trips }} trips</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.busiestDay') }}</div>
+          <div class="highlight-value">{{ t('analytics.digest.highlights.tripsCount', { count: highlights.busiestDay.trips }, highlights.busiestDay.trips) }}</div>
           <div class="highlight-date">
             {{ formatDate(highlights.busiestDay.date) }} - {{ formatDistance(highlights.busiestDay.distance) }}
           </div>
@@ -42,16 +42,18 @@
     </div>
     <div v-else class="no-highlights-placeholder">
       <i class="pi pi-star"></i>
-      <p>No highlights for this period.</p>
+      <p>{{ t('analytics.digest.highlights.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { formatDistance } from '@/utils/calculationsHelpers';
 import { useTimezone } from '@/composables/useTimezone';
 
+const { t } = useI18n();
 const timezone = useTimezone();
 
 const props = defineProps({
@@ -76,14 +78,7 @@ const formatDate = (date) => {
 </script>
 
 <style scoped>
-.digest-highlights {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-highlights { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); border-bottom: 1px solid var(--gp-border); }
 
 .highlights-title {
   display: flex;
@@ -105,21 +100,9 @@ const formatDate = (date) => {
   gap: var(--gp-spacing-md);
 }
 
-.highlight-card {
-  display: flex;
-  gap: var(--gp-spacing-md);
-  background: var(--gp-timeline-blue);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  padding: var(--gp-spacing-lg);
-  transition: all 0.3s ease;
-}
+.highlight-card { display: flex; gap: var(--gp-spacing-md); background: var(--gp-surface-ground); border: 1px solid var(--gp-border); border-radius: 14px; padding: var(--gp-spacing-lg); transition: border-color 0.2s ease, background 0.2s ease; }
 
-.highlight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-card-hover);
-  border-color: var(--gp-primary);
-}
+.highlight-card:hover { border-color: var(--gp-primary); background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-muted)); }
 
 .highlight-icon {
   font-size: 2.5rem;
@@ -177,21 +160,6 @@ const formatDate = (date) => {
   font-weight: 500;
   margin-top: var(--gp-spacing-xs);
   font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .digest-highlights {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .highlight-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .highlights-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

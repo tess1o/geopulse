@@ -119,7 +119,7 @@ public class StreamingTimelineAggregator {
      * @param aiTrips list of AI trips to populate
      * @param aiStays list of AI stays to use for origin/destination lookup
      */
-    private void populateOriginDestination(java.util.List<AITimelineTripDTO> aiTrips, java.util.List<AITimelineStayDTO> aiStays) {
+    private void populateOriginDestination(List<AITimelineTripDTO> aiTrips, List<AITimelineStayDTO> aiStays) {
         for (AITimelineTripDTO trip : aiTrips) {
             Instant tripStart = trip.getTimestamp();
             Instant tripEnd = tripStart.plusSeconds(trip.getTripDuration());
@@ -131,7 +131,7 @@ public class StreamingTimelineAggregator {
             for (AITimelineStayDTO stay : aiStays) {
                 Instant stayEnd = stay.getTimestamp().plusSeconds(stay.getStayDurationSeconds());
                 if (stayEnd.isBefore(tripStart) || stayEnd.equals(tripStart)) {
-                    long gap = java.time.Duration.between(stayEnd, tripStart).toSeconds();
+                    long gap = Duration.between(stayEnd, tripStart).toSeconds();
                     if (gap < minOriginGap) {
                         minOriginGap = gap;
                         origin = stay;
@@ -146,7 +146,7 @@ public class StreamingTimelineAggregator {
             for (AITimelineStayDTO stay : aiStays) {
                 Instant stayStart = stay.getTimestamp();
                 if (stayStart.isAfter(tripEnd) || stayStart.equals(tripEnd)) {
-                    long gap = java.time.Duration.between(tripEnd, stayStart).toSeconds();
+                    long gap = Duration.between(tripEnd, stayStart).toSeconds();
                     if (gap < minDestinationGap) {
                         minDestinationGap = gap;
                         destination = stay;

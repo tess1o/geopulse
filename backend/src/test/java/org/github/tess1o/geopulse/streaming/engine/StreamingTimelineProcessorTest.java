@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -145,7 +146,7 @@ class StreamingTimelineProcessorTest {
         ArgumentCaptor<Integer> percentageCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(jobProgressService).updateProgress(
             eq(jobId),
-            eq("Processing GPS points through state machine"),
+            argThat(descriptor -> descriptor.key().equals("timelineJobs.progressMessages.processingStateMachine")),
             eq(4),
             percentageCaptor.capture(),
             any()

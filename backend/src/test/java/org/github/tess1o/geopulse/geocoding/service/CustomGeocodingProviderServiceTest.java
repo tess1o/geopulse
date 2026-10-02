@@ -2,13 +2,13 @@ package org.github.tess1o.geopulse.geocoding.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.ws.rs.NotFoundException;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
 import org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity;
 import org.github.tess1o.geopulse.geocoding.repository.CustomGeocodingProviderRepository;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOT_FOUND;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -151,8 +152,10 @@ class CustomGeocodingProviderServiceTest {
         when(repository.findByName("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.update("missing", request("missing", "Missing", "photon", "https://example.com")))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("Custom geocoding provider not found: missing");
+                .isInstanceOfSatisfying(GeoPulseException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(NOT_FOUND);
+                    assertThat(exception.detail()).isEqualTo("Custom geocoding provider not found");
+                });
     }
 
     private CustomGeocodingProviderRequest request(String name, String displayName, String type, String url) {

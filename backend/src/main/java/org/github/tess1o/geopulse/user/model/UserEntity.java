@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.user.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -11,8 +10,11 @@ import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosPreferences;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
-import org.hibernate.annotations.Type;
+import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -72,98 +74,53 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private String timezone = "UTC";
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "timeline_preferences")
     public TimelinePreferences timelinePreferences;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "immich_preferences")
     public ImmichPreferences immichPreferences;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "memos_preferences")
     public MemosPreferences memosPreferences;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
+    @Column(columnDefinition = "jsonb", name = "notification_preferences")
+    public NotificationPreferences notificationPreferences;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "timeline_status", nullable = false)
+    @Column(name = "timeline_status", nullable = false, length = 20)
     @Builder.Default
     private TimelineStatus timelineStatus = TimelineStatus.IDLE;
 
     @Column(name = "ai_settings_encrypted", columnDefinition = "TEXT")
     private String aiSettingsEncrypted;
 
-    @Column(name = "ai_settings_key_id")
+    @Column(name = "ai_settings_key_id", length = 50)
     private String aiSettingsKeyId;
 
-    @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
-    @Column(name = "custom_map_tile_url", length = 1000)
-    private String customMapTileUrl;
-
-    @Size(max = 1000, message = "Custom map style URL cannot exceed 1000 characters")
-    @Column(name = "custom_map_style_url", length = 1000)
-    private String customMapStyleUrl;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "map_render_mode", nullable = false, length = 32)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
+    @Column(columnDefinition = "jsonb", name = "ui_preferences", nullable = false)
     @Builder.Default
-    private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
+    private UserUiPreferences uiPreferences = new UserUiPreferences();
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "distance_unit", length = 32)
+    /** Affect ONLY UI rendering, not timeline generation. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
+    @Column(columnDefinition = "jsonb", name = "timeline_display_preferences", nullable = false)
     @Builder.Default
-    private DistanceUnit distanceUnit = DistanceUnit.KILOMETERS;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "temperature_unit", length = 32)
-    @Builder.Default
-    private TemperatureUnit temperatureUnit = TemperatureUnit.CELSIUS;
-
-    @Size(max = 1000, message = "Default redirect URL after login or when we navigate to / page")
-    @Column(name = "default_redirect_url", length = 1000)
-    private String defaultRedirectUrl;
-
-    @Size(max = 16, message = "Date format cannot exceed 16 characters")
-    @Column(name = "date_format", length = 16)
-    private String dateFormat;
-
-    @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")
-    @Size(max = 16, message = "Time format cannot exceed 16 characters")
-    @Column(name = "time_format", length = 16, nullable = false)
-    @Builder.Default
-    private String timeFormat = "24h";
-
-    @Size(max = 32, message = "Default date range preset cannot exceed 32 characters")
-    @Column(name = "default_date_range_preset", length = 32)
-    private String defaultDateRangePreset;
+    private TimelineDisplayPreferences timelineDisplayPreferences = new TimelineDisplayPreferences();
 
     @Column(name = "coverage_enabled", nullable = false)
     @Builder.Default
     private boolean coverageEnabled = false;
-
-    // Timeline Display Preferences - affect ONLY UI rendering, not timeline generation
-    @Column(name = "timeline_display_path_simplification_enabled")
-    private Boolean timelineDisplayPathSimplificationEnabled;
-
-    @Column(name = "timeline_display_path_simplification_tolerance")
-    private Double timelineDisplayPathSimplificationTolerance;
-
-    @Column(name = "timeline_display_path_max_points")
-    private Integer timelineDisplayPathMaxPoints;
-
-    @Column(name = "timeline_display_path_adaptive_simplification")
-    private Boolean timelineDisplayPathAdaptiveSimplification;
-
-    @Column(name = "timeline_display_show_current_location_telemetry")
-    @Builder.Default
-    private Boolean timelineDisplayShowCurrentLocationTelemetry = true;
-
-    @Column(name = "timeline_display_auto_show_trip_replay_controls", nullable = false)
-    @Builder.Default
-    private Boolean timelineDisplayAutoShowTripReplayControls = true;
-
-    @Column(name = "timeline_display_map_matching_enabled", nullable = false)
-    @Builder.Default
-    private Boolean timelineDisplayMapMatchingEnabled = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
@@ -171,15 +128,40 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<FriendInvitationEntity> sentInvitations = new ArrayList<>();
 
     @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<FriendInvitationEntity> receivedInvitations = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
+    @Builder.Default
     private List<UserFriendEntity> friends = new ArrayList<>();
+
+    /**
+     * Stored UI preferences, never null (initialized on first access for entities not built via the builder).
+     * Unset values are null; see {@link UserUiPreferences#withDefaults()}.
+     */
+    public UserUiPreferences getUiPreferences() {
+        if (uiPreferences == null) {
+            uiPreferences = new UserUiPreferences();
+        }
+        return uiPreferences;
+    }
+
+    /**
+     * Stored display preferences, never null (initialized on first access for entities not built via the builder).
+     * Unset values are null; see {@link TimelineDisplayPreferences#withDefaults()}.
+     */
+    public TimelineDisplayPreferences getTimelineDisplayPreferences() {
+        if (timelineDisplayPreferences == null) {
+            timelineDisplayPreferences = new TimelineDisplayPreferences();
+        }
+        return timelineDisplayPreferences;
+    }
 
     @PrePersist
     protected void onCreate() {

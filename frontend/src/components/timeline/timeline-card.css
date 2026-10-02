@@ -1,0 +1,74 @@
+/* Shared base of the timeline sidebar cards: StayCard, TripCard, DataGapCard and their Overnight* variants.
+   Each card includes it with `<style scoped src="./timeline-card.css">` ahead of its own scoped block, which keeps
+   only that card's colours (.timeline-card--<kind>, timestamp and subtitle colour) and body styles. Being scoped,
+   the class names don't leak (ShareLinksPage has its own .timeline-card). */
+.timeline-card {
+    margin-top: var(--gp-spacing-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: var(--gp-radius-medium);
+    border: 1px solid var(--gp-border);
+    overflow: hidden;
+    padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+}
+
+.timeline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--gp-shadow-medium);
+}
+
+.timeline-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gp-spacing-sm);
+    flex-wrap: wrap;
+}
+
+.timeline-title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.timeline-timestamp {
+    color: var(--gp-primary-text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 0;
+    line-height: 1.2;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.timeline-subtitle {
+    margin: var(--gp-spacing-xs) 0 0 0;
+    color: var(--gp-text-primary);
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+
+@media (max-width: 768px) {
+    .timeline-card {
+        margin-top: var(--gp-spacing-sm);
+        padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+    }
+
+    .timeline-timestamp,
+    .timeline-subtitle {
+        font-size: 0.875rem;
+    }
+}
+
+/* The cards open a context menu on long press: no text selection or iOS callout while pressing. */
+@media (hover: none) and (pointer: coarse) {
+    .timeline-card {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: pan-y;
+    }
+}

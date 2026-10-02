@@ -63,14 +63,16 @@ export class DataExportImportPage {
           reversegeocodinglocation: '#reversegeocodinglocation',
           locationsources: '#locationsources',
           userinfo: '#userinfo',
-          periodtags: '#periodtags',
+          timelinelabels: '#timelinelabels',
           timelineoverrides: '#timelineoverrides',
           tripworkspace: '#tripworkspace',
           notificationtemplates: '#notificationtemplates',
           geofencing: '#geofencing',
           notes: '#notes',
           weathersamples: '#weathersamples',
-          mapmatching: '#mapmatching'
+          mapmatching: '#mapmatching',
+          friends: '#friends',
+          friendpermissions: '#friendpermissions'
         },
 
         // Date range
@@ -123,7 +125,7 @@ export class DataExportImportPage {
           reversegeocodinglocation: '#import-reversegeocodinglocation',
           locationsources: '#import-locationsources',
           userinfo: '#import-userinfo',
-          periodtags: '#import-periodtags',
+          timelinelabels: '#import-timelinelabels',
           timelineoverrides: '#import-timelineoverrides',
           tripworkspace: '#import-tripworkspace',
           notificationtemplates: '#import-notificationtemplates',

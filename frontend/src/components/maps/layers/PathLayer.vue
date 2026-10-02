@@ -6,7 +6,11 @@
     :path-data="pathData"
     :visible="visible"
     :highlighted-trip="highlightedTrip"
-    :path-options="pathOptions"
+    :path-options="resolvedPathOptions"
+    :highlighted-path-color="resolvedHighlightedPathColor"
+    :speed-band-colors="appearance.speedBandColors"
+    :highlighted-path-width="appearance.highlightedPathWidth"
+    :outline="resolvedOutline"
     :replay-state="replayState"
     :focus-highlighted-trip="focusHighlightedTrip"
     :inspection-enabled="inspectionEnabled"
@@ -25,6 +29,7 @@ import { computed, ref } from 'vue'
 import RasterPathLayer from '@/maps/raster/layers/RasterPathLayer.vue'
 import VectorPathLayer from '@/maps/vector/layers/VectorPathLayer.vue'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { useMapAppearance } from '@/composables/useMapAppearance'
 
 const props = defineProps({
   map: {
@@ -43,14 +48,18 @@ const props = defineProps({
     type: Object,
     default: null
   },
+  // Colors, width and outline default to the viewer's map appearance preferences; pass these only to override.
   pathOptions: {
     type: Object,
-    default: () => ({
-      color: '#007bff',
-      weight: 4,
-      opacity: 0.8,
-      smoothFactor: 1
-    })
+    default: null
+  },
+  highlightedPathColor: {
+    type: String,
+    default: null
+  },
+  outline: {
+    type: Boolean,
+    default: null
   },
   replayState: {
     type: Object,
@@ -83,10 +92,22 @@ const emit = defineEmits([
 ])
 
 const implRef = ref(null)
+const appearance = useMapAppearance()
+const resolvedPathOptions = computed(() => props.pathOptions || {
+  color: appearance.value.defaultPathColor,
+  weight: appearance.value.pathWidth,
+  opacity: 0.8,
+  smoothFactor: 1
+})
+const resolvedHighlightedPathColor = computed(() => props.highlightedPathColor || appearance.value.activePathColor)
+const resolvedOutline = computed(() => props.outline ?? appearance.value.outlineEnabled)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
 const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorPathLayer : RasterPathLayer)
 
+const getHighlightedEndpointObstacles = () => implRef.value?.getHighlightedEndpointObstacles?.() ?? []
+
 defineExpose({
-  implRef
+  implRef,
+  getHighlightedEndpointObstacles
 })
 </script>

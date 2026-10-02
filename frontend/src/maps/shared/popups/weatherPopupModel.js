@@ -5,6 +5,7 @@ import {
   formatWindSpeed,
   getWeatherCodeInfo
 } from '@/utils/weatherDisplay'
+import { t } from '@/locales'
 
 export const buildWeatherPopupModel = (sample, {
   distanceUnit = 'KILOMETERS',
@@ -12,30 +13,31 @@ export const buildWeatherPopupModel = (sample, {
   timezone
 } = {}) => {
   const info = getWeatherCodeInfo(sample?.weatherCode)
+  const conditionLabel = t(info.key)
   const precipitation = formatPrecipitation(sample?.precipitation, distanceUnit)
   const rows = [
     {
-      label: 'Observed',
+      label: t('maps.popups.weather.observed'),
       value: formatObservedTime(sample, timezone)
     },
     {
-      label: 'Temperature',
-      value: formatTemperature(sample?.temperature, temperatureUnit) || 'n/a'
+      label: t('maps.popups.weather.temperature'),
+      value: formatTemperature(sample?.temperature, temperatureUnit) || t('maps.popups.common.notAvailable')
     },
     precipitation
       ? {
-          label: 'Precipitation',
+          label: t('maps.popups.weather.precipitation'),
           value: precipitation
         }
       : null,
     {
-      label: 'Wind',
-      value: formatWindSpeed(sample?.windSpeed, distanceUnit) || 'n/a'
+      label: t('maps.popups.weather.wind'),
+      value: formatWindSpeed(sample?.windSpeed, distanceUnit) || t('maps.popups.common.notAvailable')
     }
   ].filter(Boolean)
 
   return {
-    title: info.label,
+    title: conditionLabel,
     iconClass: info.icon,
     rows,
     variant: 'compact'

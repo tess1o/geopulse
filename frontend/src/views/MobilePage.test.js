@@ -1,11 +1,15 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import MobilePage from './MobilePage.vue'
 import apiService from '@/utils/apiService'
 
 vi.mock('@/utils/apiService', () => ({
   default: {
-    get: vi.fn(),
+    post: vi.fn(),
     logoutStrict: vi.fn(),
+    // authStore.clearUser() calls this after a successful strict logout.
+    clearAuthData: vi.fn(),
+    handleError: vi.fn(),
   },
 }))
 
@@ -17,6 +21,7 @@ describe('MobilePage', () => {
   let closeMock
 
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
     assignMock = vi.fn()
     closeMock = vi.fn()
@@ -51,18 +56,16 @@ describe('MobilePage', () => {
   })
 
   it('redirects immediately using deeplinkUrl returned by the mobile auth endpoint', async () => {
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockResolvedValue(undefined)
 
     const wrapper = mount(MobilePage)
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledWith('/auth/mobile')
+    expect(apiService.post).toHaveBeenCalledWith('/auth/mobile-codes', {})
     expect(apiService.logoutStrict).toHaveBeenCalled()
     expect(wrapper.text()).toContain('Opening the app...')
     expect(assignMock).toHaveBeenCalledWith('app://auth/code/exchange?code=generated-code')
@@ -70,10 +73,8 @@ describe('MobilePage', () => {
   })
 
   it('shows an error message when deeplinkUrl is missing from the payload', async () => {
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
     })
 
     const wrapper = mount(MobilePage)
@@ -87,11 +88,9 @@ describe('MobilePage', () => {
 
   it('shows timeout message when app opening does not switch tab', async () => {
     vi.useFakeTimers()
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockResolvedValue(undefined)
 
@@ -110,11 +109,9 @@ describe('MobilePage', () => {
       configurable: true,
       get: () => 'hidden',
     })
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockResolvedValue(undefined)
 
@@ -130,11 +127,9 @@ describe('MobilePage', () => {
 
   it('tries to close page 10 seconds after opening timeout', async () => {
     vi.useFakeTimers()
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockResolvedValue(undefined)
 
@@ -150,11 +145,9 @@ describe('MobilePage', () => {
 
   it('cleans scheduled timers on unmount and never calls close', async () => {
     vi.useFakeTimers()
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockResolvedValue(undefined)
 
@@ -168,11 +161,9 @@ describe('MobilePage', () => {
   })
 
   it('does not redirect when browser logout fails before deeplink handoff', async () => {
-    apiService.get.mockResolvedValue({
-      data: {
-        code: 'generated-code',
-        deeplinkUrl: 'app://auth/code/exchange',
-      },
+    apiService.post.mockResolvedValue({
+      code: 'generated-code',
+      deeplinkUrl: 'app://auth/code/exchange',
     })
     apiService.logoutStrict.mockRejectedValue(new Error('logout failed'))
 

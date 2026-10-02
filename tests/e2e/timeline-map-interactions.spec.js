@@ -6,7 +6,8 @@ import * as MapTestData from '../utils/map-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 import { randomUUID } from 'crypto';
-import { MAP_POPUP_CONTENT_SELECTOR } from '../utils/map-engine-harness.js';
+import { MAP_POPUP_CONTENT_SELECTOR, readTimelinePathColors } from '../utils/map-engine-harness.js';
+import {TestSetupHelper} from '../utils/test-setup-helper.js';
 
 const getUtcTodayDate = () => {
   const now = new Date();
@@ -207,7 +208,7 @@ const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCur
 
   await dbManager.client.query(`
     UPDATE users
-    SET timeline_display_show_current_location_telemetry = $2
+    SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{showCurrentLocationTelemetry}', to_jsonb($2::boolean))
     WHERE id = $1
   `, [userId, showCurrentLocationTelemetry]);
 };
@@ -249,7 +250,7 @@ const insertStayPopupTelemetryScenario = async (dbManager, userId, showCurrentLo
 
   await dbManager.client.query(`
     UPDATE users
-    SET timeline_display_show_current_location_telemetry = $2
+    SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{showCurrentLocationTelemetry}', to_jsonb($2::boolean))
     WHERE id = $1
   `, [userId, showCurrentLocationTelemetry]);
 };
@@ -393,7 +394,7 @@ test.describe('Timeline Map Interactions', () => {
         }
       });
 
-      await page.route('**/api/users/preferences/timeline/display', async (route) => {
+      await page.route('**/api/v1/preferences/timeline-display', async (route) => {
         if (route.request().method() !== 'GET') {
           await route.continue();
           return;
@@ -447,6 +448,97 @@ test.describe('Timeline Map Interactions', () => {
       KnownDateStrings.sep21_2025.DMY,
       KnownDateStrings.sep21_2025.MDY
     );
+  });
+
+  test.describe('Map appearance', () => {
+    const CAR_TRIP_RANGE = { startDate: new Date('2025-09-21'), endDate: new Date('2025-09-21') };
+    const RED_GREEN_SAFE_BANDS = ['#4b2991', '#56b4e9', '#fde725'];
+    const DEFAULT_BANDS = ['#ef4444', '#f59e0b', '#22c55e'];
+
+    const setupCarTrip = async (page, isolatedUsers, dbManager, mapMode, preferences) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
+
+      await setupTimelineWithMapMode(
+        timelinePage,
+        dbManager,
+        async (manager, userId) => {
+          await TestSetupHelper.applyTimelineDisplayPreferences(manager, testUser.email, preferences);
+          return MapTestData.insertCarTripSpeedBandsData(manager, userId);
+        },
+        testUser,
+        CAR_TRIP_RANGE,
+        mapMode
+      );
+      await mapPage.waitForMapReady();
+
+      return { timelinePage, mapPage };
+    };
+
+    const selectCarTrip = async (timelinePage) => {
+      const tripCard = timelinePage.getTimelineCards('trips').first();
+      await expect(tripCard).toBeVisible({ timeout: 15000 });
+      await tripCard.click();
+    };
+
+    test('should draw paths and car speed bands in the default colors', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {});
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors)
+        .toEqual(expect.arrayContaining(DEFAULT_BANDS));
+    });
+
+    test('should use the color vision preset for paths, speed bands and the legend', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, { colorScheme: 'RED_GREEN_SAFE' });
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#0072b2');
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors)
+        .toEqual(expect.arrayContaining(RED_GREEN_SAFE_BANDS));
+      const colors = (await readTimelinePathColors(page)).highlightedColors;
+      DEFAULT_BANDS.forEach((color) => expect(colors).not.toContain(color));
+
+      // The legend explains the bands in words, in the trip summary or the replay bar's place.
+      const legend = page.locator('.map-color-legend--speed').first();
+      if (await legend.count()) {
+        await expect(legend).toContainText('Under 10 km/h');
+        await expect(legend).toContainText('Over 25 km/h');
+      }
+    });
+
+    test('should draw a car trip in the selected trip color when speed colors are off', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
+        speedBandPalette: 'OFF',
+        activePathColor: '#ffb000'
+      });
+
+      await selectCarTrip(timelinePage);
+
+      await expect.poll(async () => (await readTimelinePathColors(page)).highlightedColors).toEqual(['#ffb000']);
+      await expect(page.locator('.map-color-legend--speed')).toHaveCount(0);
+    });
+
+    test('should show the speed legend in the trip summary when replay controls are not auto-shown', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
+        colorScheme: 'RED_GREEN_SAFE',
+        autoShowTripReplayControls: false
+      });
+
+      await selectCarTrip(timelinePage);
+
+      const legend = page.locator('.trip-summary .map-color-legend--speed');
+      await expect(legend).toBeVisible({ timeout: 15000 });
+      await expect(legend).toContainText('Under 10 km/h');
+      await expect(legend).toContainText('10–25 km/h');
+      await expect(legend).toContainText('Over 25 km/h');
+    });
   });
 
   test.describe('Current Location Telemetry', () => {
@@ -612,8 +704,8 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location first
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8888, $1, 'Test Favorite', 'Test City', 'Test Country', 'POINT', 
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'Test Favorite', 'Test City', 'Test Country', 'POINT', 
                 ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
       `, [user.id]);
       
@@ -834,9 +926,9 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8889, $1, 'Original Name', 'Test City', 'Test Country', 'POINT', 
-                ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'Original Name', 'Test City', 'Test Country', 'POINT', 
+                ST_GeomFromText('POINT(-74.0060 40.7300)', 4326))
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
@@ -850,7 +942,8 @@ test.describe('Timeline Map Interactions', () => {
         await mapPage.toggleLayerControl('favorites');
       }
 
-      await mapPage.focusMapOnCoordinates(40.7128, -74.0060, 12);
+      // Keep the favorite well clear of every stay marker (Home is at 40.7128) so the right-click cannot hit a stay icon.
+      await mapPage.focusMapOnCoordinates(40.7300, -74.0060, 14);
       await expect.poll(() => mapPage.countMarkers('favorite'), { timeout: 30000 }).toBeGreaterThan(0);
 
       try {
@@ -907,9 +1000,9 @@ test.describe('Timeline Map Interactions', () => {
       // Insert a favorite location
       await dbManager.client.query(`
         INSERT INTO favorite_locations 
-        (id, user_id, name, city, country, type, geometry) 
-        VALUES (8890, $1, 'To Delete', 'Test City', 'Test Country', 'POINT', 
-                ST_GeomFromText('POINT(-74.0060 40.7128)', 4326))
+        (user_id, name, city, country, type, geometry) 
+        VALUES ($1, 'To Delete', 'Test City', 'Test Country', 'POINT', 
+                ST_GeomFromText('POINT(-74.0060 40.7300)', 4326))
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
@@ -923,7 +1016,8 @@ test.describe('Timeline Map Interactions', () => {
         await mapPage.toggleLayerControl('favorites');
       }
 
-      await mapPage.focusMapOnCoordinates(40.7128, -74.0060, 12);
+      // Keep the favorite well clear of every stay marker (Home is at 40.7128) so the right-click cannot hit a stay icon.
+      await mapPage.focusMapOnCoordinates(40.7300, -74.0060, 14);
       await expect.poll(() => mapPage.countMarkers('favorite'), { timeout: 30000 }).toBeGreaterThan(0);
       const favoriteCountBeforeDelete = await mapPage.countMarkers('favorite');
 

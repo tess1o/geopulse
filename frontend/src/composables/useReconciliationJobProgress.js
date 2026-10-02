@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { useGeocodingStore } from '@/stores/geocoding'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 /**
  * Composable for polling reconciliation job progress.
@@ -62,7 +63,7 @@ export function useReconciliationJobProgress() {
       error.value = null
     } catch (err) {
       console.error('Failed to fetch reconciliation job progress:', err)
-      error.value = err.message || 'Failed to fetch job progress'
+      error.value = formatApiErrorDetail(err, 'Failed to fetch job progress')
       jobProgress.value = {
         ...(jobProgress.value || {}),
         status: 'FAILED',

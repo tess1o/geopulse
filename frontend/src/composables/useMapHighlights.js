@@ -121,38 +121,6 @@ export function useMapHighlights() {
     )
   })
 
-  // Highlight configuration for different types
-  const highlightConfig = computed(() => ({
-    timeline: {
-      active: activeTimelineHighlight.value,
-      highlight: highlightTimelineItem,
-      clear: clearTimelineHighlight,
-      color: '#27AE60',
-      pulse: true
-    },
-    path: {
-      active: activePathHighlight.value,
-      highlight: highlightPath,
-      clear: clearPathHighlight,
-      color: '#ff6b6b',
-      weight: 6
-    },
-    friend: {
-      active: activeFriendHighlight.value,
-      highlight: highlightFriend,
-      clear: clearFriendHighlight,
-      color: '#F39C12',
-      pulse: true
-    },
-    favorite: {
-      active: activeFavoriteHighlight.value,
-      highlight: highlightFavorite,
-      clear: clearFavoriteHighlight,
-      color: '#e91e63',
-      glow: true
-    }
-  }))
-
   // Auto-clear temporary highlights after a delay
   const autoCleanupTimeouts = ref(new Map())
 
@@ -248,9 +216,6 @@ export function useMapHighlights() {
 
     // Status checks
     hasActiveHighlights,
-    hasTempHighlights,
-
-    // Configuration
-    highlightConfig
+    hasTempHighlights
   }
 }

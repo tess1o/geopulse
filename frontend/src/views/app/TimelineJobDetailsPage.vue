@@ -3,17 +3,17 @@
     <PageContainer>
       <div class="timeline-job-details-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Timeline Generation Progress</h1>
-              <p class="page-description">
-                Real-time progress tracking for timeline regeneration job.
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('timelineJobs.detailsPage.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('timelineJobs.detailsPage.description') }}
               </p>
             </div>
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <Button
-                label="Back to Timeline"
+                :label="t('timelineJobs.detailsPage.backButton')"
                 icon="pi pi-arrow-left"
                 severity="secondary"
                 outlined
@@ -28,7 +28,7 @@
           <template #content>
             <div class="loading-content">
               <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-              <p class="loading-text">Loading job details...</p>
+              <p class="loading-text">{{ t('timelineJobs.detailsPage.loading') }}</p>
             </div>
           </template>
         </Card>
@@ -36,10 +36,10 @@
         <!-- Error State -->
         <Message v-if="error" severity="error" class="error-message">
           <div class="error-content">
-            <strong>Failed to load job details</strong>
+            <strong>{{ t('timelineJobs.detailsPage.error.title') }}</strong>
             <p>{{ error }}</p>
             <Button
-              label="Try Again"
+              :label="t('common.tryAgain')"
               size="small"
               @click="retryFetch"
               class="mt-2"
@@ -58,7 +58,7 @@
                     <i :class="statusIcon" :style="{ color: statusColor }"></i>
                     {{ statusText }}
                   </h2>
-                  <p class="job-id">Job ID: {{ jobId }}</p>
+                  <p class="job-id">{{ t('timelineJobs.detailsPage.jobIdLabel', { jobId }) }}</p>
                 </div>
                 <div class="status-badge">
                   <Tag :value="jobProgress.status" :severity="statusSeverity" />
@@ -68,7 +68,7 @@
               <!-- Progress Bar -->
               <div class="progress-section" v-if="jobProgress.status !== 'FAILED'">
                 <div class="progress-header">
-                  <span class="progress-label">{{ jobProgress.currentStep }}</span>
+                  <span class="progress-label">{{ formatMessageDescriptor(jobProgress.currentStep) }}</span>
                   <span class="progress-percentage">{{ jobProgress.progressPercentage }}%</span>
                 </div>
                 <ProgressBar
@@ -81,20 +81,20 @@
               <!-- Job Details -->
               <div class="job-details">
                 <div class="detail-row">
-                  <span class="detail-label">Started:</span>
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.started') }}</span>
                   <span class="detail-value">{{ formatTimestamp(jobProgress.startTime) }}</span>
                 </div>
                 <div class="detail-row" v-if="jobProgress.endTime">
-                  <span class="detail-label">Completed:</span>
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.completed') }}</span>
                   <span class="detail-value">{{ formatTimestamp(jobProgress.endTime) }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Duration:</span>
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.duration') }}</span>
                   <span class="detail-value">{{ formatDuration(jobProgress.durationMs) }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Current Step:</span>
-                  <span class="detail-value">{{ jobProgress.currentStepIndex }} of {{ jobProgress.totalSteps }}</span>
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.currentStep') }}</span>
+                  <span class="detail-value">{{ t('timelineJobs.detailsPage.details.stepOf', { current: jobProgress.currentStepIndex, total: jobProgress.totalSteps }) }}</span>
                 </div>
               </div>
 
@@ -110,7 +110,7 @@
             <template #title>
               <div class="card-title">
                 <i class="pi pi-list"></i>
-                Processing Steps
+                {{ t('timelineJobs.detailsPage.stepsTitle') }}
               </div>
             </template>
             <template #content>
@@ -130,19 +130,19 @@
                       <!-- GPS Loading Details -->
                       <div v-if="jobProgress.details.gpsPointsLoaded" class="detail-item">
                         <i class="pi pi-map-marker"></i>
-                        GPS Points: {{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }}
+                        {{ t('timelineJobs.detailsPage.detail.gpsPoints', { loaded: jobProgress.details.gpsPointsLoaded.toLocaleString(), total: jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }) }}
                       </div>
 
                       <!-- GPS Processing Details (State Machine) -->
                       <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-section">
                         <div class="detail-item detail-header">
                           <i class="pi pi-cog"></i>
-                          <strong>Processing GPS Points: {{ jobProgress.details.processedPoints?.toLocaleString() || 0 }} / {{ jobProgress.details.totalPoints?.toLocaleString() || '?' }}</strong>
+                          <strong>{{ t('timelineJobs.detailsPage.detail.processingHeader', { processed: jobProgress.details.processedPoints?.toLocaleString() || 0, total: jobProgress.details.totalPoints?.toLocaleString() || '?' }) }}</strong>
                         </div>
 
                         <div v-if="jobProgress.details.pointsRemaining !== undefined && jobProgress.details.pointsRemaining > 0" class="detail-item detail-sub">
                           <i class="pi pi-clock"></i>
-                          Remaining: {{ jobProgress.details.pointsRemaining.toLocaleString() }} points
+                          {{ t('timelineJobs.detailsPage.detail.remaining', { count: jobProgress.details.pointsRemaining.toLocaleString() }) }}
                         </div>
                       </div>
 
@@ -150,27 +150,27 @@
                       <div v-if="jobProgress.details.totalLocations" class="detail-section">
                         <div class="detail-item detail-header">
                           <i class="pi pi-globe"></i>
-                          <strong>Reverse Geocoding: {{ jobProgress.details.totalResolved || 0 }} / {{ jobProgress.details.totalLocations }} locations</strong>
+                          <strong>{{ t('timelineJobs.detailsPage.detail.geocodingHeader', { resolved: jobProgress.details.totalResolved || 0, total: jobProgress.details.totalLocations }) }}</strong>
                         </div>
 
                         <div v-if="jobProgress.details.favoritesResolved" class="detail-item detail-sub">
                           <i class="pi pi-star"></i>
-                          Favorites (Instant): {{ jobProgress.details.favoritesResolved }}
+                          {{ t('timelineJobs.detailsPage.detail.favoritesInstant', { count: jobProgress.details.favoritesResolved }) }}
                         </div>
 
                         <div v-if="jobProgress.details.cachedResolved" class="detail-item detail-sub">
                           <i class="pi pi-database"></i>
-                          Cached in Database: {{ jobProgress.details.cachedResolved }}
+                          {{ t('timelineJobs.detailsPage.detail.cachedInDatabase', { count: jobProgress.details.cachedResolved }) }}
                         </div>
 
                         <div v-if="jobProgress.details.externalCompleted" class="detail-item detail-sub">
                           <i class="pi pi-cloud"></i>
-                          External API Calls: {{ jobProgress.details.externalCompleted }}
+                          {{ t('timelineJobs.detailsPage.detail.externalApiCalls', { count: jobProgress.details.externalCompleted }) }}
                         </div>
 
                         <div v-if="jobProgress.details.externalPending > 0" class="detail-item detail-sub detail-pending">
                           <i class="pi pi-clock"></i>
-                          Pending: {{ jobProgress.details.externalPending }}
+                          {{ t('timelineJobs.detailsPage.detail.pending', { count: jobProgress.details.externalPending }) }}
                         </div>
                       </div>
                     </div>
@@ -185,12 +185,12 @@
             <Card>
               <template #content>
                 <div class="completion-message">
-                  <i class="pi pi-check-circle" style="font-size: 3rem; color: var(--green-500)"></i>
-                  <h2>Timeline Generation Complete!</h2>
-                  <p>Your timeline has been successfully regenerated with all the latest GPS data.</p>
+                  <i class="pi pi-check-circle" style="font-size: 3rem; color: var(--p-green-500)"></i>
+                  <h2>{{ t('timelineJobs.detailsPage.completion.title') }}</h2>
+                  <p>{{ t('timelineJobs.detailsPage.completion.message') }}</p>
                   <div class="action-buttons">
                     <Button
-                      label="View Timeline"
+                      :label="t('timelineJobs.listPage.noJob.viewTimelineButton')"
                       icon="pi pi-calendar"
                       @click="goToTimeline"
                       size="large"
@@ -209,8 +209,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
@@ -220,6 +222,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const timezone = useTimezone()
@@ -229,27 +232,33 @@ const jobId = computed(() => route.params.jobId)
 const { jobProgress, error, startPolling, fetchProgress } = useTimelineJobProgress()
 
 // Timeline processing steps
-const steps = [
-  { index: 1, title: 'Acquiring Lock', description: 'Ensuring exclusive access to timeline data' },
-  { index: 2, title: 'Cleaning Up', description: 'Removing old timeline events' },
-  { index: 3, title: 'Preparing GPS Processing', description: 'Counting GPS points and preparing streaming iterator' },
-  { index: 4, title: 'Processing & Geocoding', description: 'Streaming and processing GPS points through state machine, then resolving location names' },
-  { index: 5, title: 'Post-Processing Trips', description: 'Validating and refining trip detection' },
-  { index: 6, title: 'Merging & Simplifying', description: 'Applying timeline optimizations' },
-  { index: 7, title: 'Persisting Timeline', description: 'Saving timeline events to database' },
-  { index: 8, title: 'Data Gap Detection', description: 'Identifying gaps in GPS coverage' },
-  { index: 9, title: 'Finalizing', description: 'Calculating milestones and completing generation' }
+const stepKeys = [
+  'acquiringLock',
+  'cleaningUp',
+  'preparingGpsProcessing',
+  'processingGeocoding',
+  'postProcessingTrips',
+  'mergingSimplifying',
+  'persistingTimeline',
+  'dataGapDetection',
+  'finalizing'
 ]
+
+const steps = computed(() => stepKeys.map((key, i) => ({
+  index: i + 1,
+  title: t(`timelineJobs.detailsPage.steps.${key}.title`),
+  description: t(`timelineJobs.detailsPage.steps.${key}.description`)
+})))
 
 // Computed properties
 const statusText = computed(() => {
-  if (!jobProgress.value) return 'Loading...'
+  if (!jobProgress.value) return t('timelineJobs.detailsPage.status.loading')
 
   switch (jobProgress.value.status) {
-    case 'QUEUED': return 'Queued for Processing'
-    case 'RUNNING': return 'Processing Timeline'
-    case 'COMPLETED': return 'Completed Successfully'
-    case 'FAILED': return 'Failed'
+    case 'QUEUED': return t('timelineJobs.detailsPage.status.queued')
+    case 'RUNNING': return t('timelineJobs.detailsPage.status.running')
+    case 'COMPLETED': return t('timelineJobs.detailsPage.status.completed')
+    case 'FAILED': return t('timelineJobs.detailsPage.status.failed')
     default: return jobProgress.value.status
   }
 })
@@ -267,14 +276,14 @@ const statusIcon = computed(() => {
 })
 
 const statusColor = computed(() => {
-  if (!jobProgress.value) return 'var(--primary-color)'
+  if (!jobProgress.value) return 'var(--gp-primary)'
 
   switch (jobProgress.value.status) {
-    case 'QUEUED': return 'var(--blue-500)'
-    case 'RUNNING': return 'var(--primary-color)'
-    case 'COMPLETED': return 'var(--green-500)'
-    case 'FAILED': return 'var(--red-500)'
-    default: return 'var(--text-color)'
+    case 'QUEUED': return 'var(--p-blue-500)'
+    case 'RUNNING': return 'var(--gp-primary)'
+    case 'COMPLETED': return 'var(--p-green-500)'
+    case 'FAILED': return 'var(--p-red-500)'
+    default: return 'var(--gp-text-primary)'
   }
 })
 
@@ -332,23 +341,23 @@ const isCurrentStep = (stepIndex) => {
 }
 
 const formatTimestamp = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('timelineJobs.listPage.notAvailable')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
 }
 
 const formatDuration = (durationMs) => {
-  if (!durationMs) return '0s'
+  if (!durationMs) return t('timelineJobs.detailsPage.durationZero')
 
   const seconds = Math.floor(durationMs / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
 
   if (hours > 0) {
-    return `${hours}h ${minutes % 60}m ${seconds % 60}s`
+    return t('timelineJobs.detailsPage.durationHoursMinutesSeconds', { hours, minutes: minutes % 60, seconds: seconds % 60 })
   } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`
+    return t('timelineJobs.detailsPage.durationMinutesSeconds', { minutes, seconds: seconds % 60 })
   } else {
-    return `${seconds}s`
+    return t('timelineJobs.detailsPage.durationSeconds', { seconds })
   }
 }
 
@@ -377,31 +386,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.header-text h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.header-text p {
-  margin: 0;
-  color: var(--text-color-secondary);
-  font-size: 1rem;
-}
-
 .loading-card,
 .error-message {
   margin-bottom: 2rem;
@@ -416,7 +400,7 @@ onMounted(() => {
 }
 
 .loading-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -433,7 +417,7 @@ onMounted(() => {
 }
 
 .status-card {
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .status-header {
@@ -455,9 +439,9 @@ onMounted(() => {
 
 .job-id {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .progress-section {
@@ -472,16 +456,16 @@ onMounted(() => {
 
 .progress-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .progress-percentage {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .progress-complete :deep(.p-progressbar-value) {
-  background: var(--green-500);
+  background: var(--p-green-500);
 }
 
 .job-details {
@@ -489,8 +473,8 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   padding: 1rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-row {
@@ -501,13 +485,13 @@ onMounted(() => {
 
 .detail-label {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
 .detail-value {
   font-size: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-weight: 600;
 }
 
@@ -528,23 +512,23 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   padding: 1.25rem;
-  border-left: 3px solid var(--surface-border);
+  border-left: 3px solid var(--gp-border);
   position: relative;
   transition: all 0.3s ease;
 }
 
 .step-item:not(:last-child) {
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .step-completed {
   opacity: 0.7;
-  border-left-color: var(--green-500);
+  border-left-color: var(--p-green-500);
 }
 
 .step-active {
-  background: var(--primary-50);
-  border-left-color: var(--primary-color);
+  background: var(--p-primary-50);
+  border-left-color: var(--gp-primary);
 }
 
 .step-pending {
@@ -562,15 +546,15 @@ onMounted(() => {
 }
 
 .step-completed .step-indicator {
-  color: var(--green-500);
+  color: var(--p-green-500);
 }
 
 .step-active .step-indicator {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .step-pending .step-indicator {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .step-content {
@@ -581,12 +565,12 @@ onMounted(() => {
   margin: 0 0 0.25rem 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .step-description {
   margin: 0 0 0.75rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -596,8 +580,8 @@ onMounted(() => {
   gap: 0.75rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--surface-ground);
-  border-radius: var(--border-radius);
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-section {
@@ -611,18 +595,18 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .detail-item i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
 .detail-header {
   font-size: 0.95rem;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   margin-bottom: 0.25rem;
 }
 
@@ -632,12 +616,12 @@ onMounted(() => {
 }
 
 .detail-pending {
-  color: var(--orange-600);
+  color: var(--p-orange-600);
   font-weight: 500;
 }
 
 .detail-pending i {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .completion-message {
@@ -652,12 +636,12 @@ onMounted(() => {
 .completion-message h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .completion-message p {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   max-width: 500px;
 }
 
@@ -668,11 +652,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .job-details {
     grid-template-columns: 1fr;
   }

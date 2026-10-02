@@ -2,7 +2,7 @@
   <div class="digest-places">
     <h3 class="places-title">
       <i class="pi pi-map-marker"></i>
-      Top Places
+      {{ t('analytics.digest.places.title') }}
     </h3>
 
     <div class="places-list" v-if="places && places.length > 0">
@@ -14,20 +14,23 @@
         <div class="place-rank">{{ index + 1 }}</div>
         <div class="place-info">
           <div class="place-name">{{ place.name }}</div>
-          <div class="place-stats">{{ place.visits }} visits</div>
+          <div class="place-stats">{{ t('analytics.digest.places.visitsCount', { count: place.visits }, place.visits) }}</div>
         </div>
       </div>
     </div>
 
     <div class="no-places-placeholder" v-else>
       <i class="pi pi-compass"></i>
-      <p>No places visited during this period.</p>
+      <p>{{ t('analytics.digest.places.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   places: {
@@ -46,14 +49,7 @@ const displayedPlaces = computed(() => {
 </script>
 
 <style scoped>
-.digest-places {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-places { background: var(--gp-surface-muted); border: 1px solid var(--gp-border); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .places-title {
   display: flex;
@@ -66,7 +62,7 @@ const displayedPlaces = computed(() => {
 }
 
 .places-title i {
-  color: var(--gp-error);
+  color: var(--gp-danger);
 }
 
 .places-list {
@@ -79,8 +75,8 @@ const displayedPlaces = computed(() => {
   display: flex;
   align-items: center;
   gap: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   transition: all 0.2s ease;
@@ -96,7 +92,7 @@ const displayedPlaces = computed(() => {
   height: 32px;
   background: var(--gp-primary);
   color: white;
-  border-radius: 50%;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,25 +137,6 @@ const displayedPlaces = computed(() => {
   font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .digest-places {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .place-item {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .place-item:hover {
-  background: rgba(30, 64, 175, 0.2);
-}
-
-.p-dark .places-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

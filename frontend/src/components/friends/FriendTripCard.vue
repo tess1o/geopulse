@@ -9,22 +9,22 @@
   >
     <template #subtitle>
       <template v-if="transitionDestinationName">
-        🔄 Transition to <span class="transition-destination">{{ transitionDestinationName }}</span>
+        🔄 {{ t('timeline.trip.transitionTo') }} <span class="transition-destination">{{ transitionDestinationName }}</span>
       </template>
       <template v-else>
-        🔄 Transition to new place
+        🔄 {{ t('timeline.trip.transitionToNewPlace') }}
       </template>
     </template>
 
     <template #content>
       <p class="trip-detail">
-        ⏱️ Duration: <span class="font-bold">{{ formatDuration(item.tripDuration) }}</span>
+        ⏱️ {{ t('timeline.trip.durationLabel') }} <span class="font-bold">{{ formatDuration(item.tripDuration) }}</span>
       </p>
       <p class="trip-detail">
-        📏 Distance: <span class="font-bold">{{ formatDistance(item.distanceMeters) }}</span>
+        📏 {{ t('timeline.trip.distanceLabel') }} <span class="font-bold">{{ formatDistance(item.distanceMeters) }}</span>
       </p>
       <p class="trip-detail">
-        🚦 Movement: <span class="font-bold">{{ movementIcon }} {{ movementLabel }}</span>
+        🚦 {{ t('timeline.trip.movementLabel') }} <span class="font-bold">{{ movementIcon }} {{ movementLabel }}</span>
       </p>
       <p v-if="hasEndLocation" class="trip-detail trip-detail--secondary">
         → {{ item.endLocationName }}
@@ -35,8 +35,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
 import BaseFriendTimelineCard from './BaseFriendTimelineCard.vue'
+
+const { t, te } = useI18n()
 
 const props = defineProps({
   item: {
@@ -63,26 +66,28 @@ const props = defineProps({
 
 defineEmits(['click'])
 
-const movementTypeMap = {
-  WALK: { label: 'Walk', icon: '🚶' },
-  BICYCLE: { label: 'Bicycle', icon: '🚴' },
-  RUNNING: { label: 'Running', icon: '🏃' },
-  CAR: { label: 'Car', icon: '🚗' },
-  MOTORCYCLE: { label: 'Motorcycle', icon: '🏍️' },
-  TRAIN: { label: 'Train', icon: '🚊' },
-  FLIGHT: { label: 'Flight', icon: '✈️' },
-  BOAT: { label: 'Boat', icon: '⛵' },
-  UNKNOWN: { label: 'Unknown', icon: '❓' }
+const movementTypeIcons = {
+  WALK: '🚶',
+  BICYCLE: '🚴',
+  RUNNING: '🏃',
+  CAR: '🚗',
+  MOTORCYCLE: '🏍️',
+  PUBLIC_TRANSPORT: '🚌',
+  TRAIN: '🚊',
+  FLIGHT: '✈️',
+  BOAT: '⛵',
+  UNKNOWN: '❓'
 }
 
 const movementIcon = computed(() => {
   const type = props.item.movementType || 'UNKNOWN'
-  return movementTypeMap[type]?.icon || 'pi pi-map'
+  return movementTypeIcons[type] || 'pi pi-map'
 })
 
 const movementLabel = computed(() => {
   const type = props.item.movementType || 'UNKNOWN'
-  return movementTypeMap[type]?.label || 'Trip'
+  const key = `movementTypes.${type}`
+  return te(key) ? t(key) : t('maps.popups.timeline.tripFallback')
 })
 
 const transitionDestinationName = computed(() => {
@@ -124,10 +129,6 @@ const hasEndLocation = computed(() => {
 
 .font-bold {
   font-weight: 600;
-}
-
-.p-dark .trip-detail {
-  color: var(--gp-text-primary);
 }
 
 @media (max-width: 768px) {

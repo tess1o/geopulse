@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Authentication Settings">
+    <SettingSection :title="t('adminSettings.authenticationTab.title')">
       <SettingItem
         v-for="setting in primaryAuthSettings"
         :key="setting.key"
@@ -17,8 +17,8 @@
     </SettingSection>
 
     <details class="advanced-settings">
-      <summary>OIDC Advanced</summary>
-      <SettingSection title="OIDC Advanced">
+      <summary>{{ t('adminSettings.authenticationTab.oidcAdvanced') }}</summary>
+      <SettingSection :title="t('adminSettings.authenticationTab.oidcAdvanced')">
         <SettingItem
           v-for="setting in oidcAdvancedSettings"
           :key="setting.key"
@@ -53,6 +53,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import InputText from 'primevue/inputtext'
@@ -60,6 +61,7 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const authSettings = ref([])
 const oidcAdvancedKeys = [

@@ -4,18 +4,22 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventDto;
-import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_QUERY;
 
 @ApplicationScoped
 public class GeofenceEventService {
@@ -32,16 +36,16 @@ public class GeofenceEventService {
         this.notificationProjectionService = notificationProjectionService;
     }
 
-    public GeofenceEventPageDto listEventsPage(UUID ownerUserId, GeofenceEventQueryDto queryDto) {
+    public PageResponse<GeofenceEventDto> listEventsPage(UUID ownerUserId, GeofenceEventQueryDto queryDto) {
         GeofenceEventQueryDto query = normalizeQuery(queryDto);
         GeofenceEventRepository.GeofenceEventPageResult pageResult = eventRepository.findPageByOwner(ownerUserId, query);
 
-        return GeofenceEventPageDto.builder()
-                .items(pageResult.items().stream().map(this::toDto).toList())
-                .totalCount(pageResult.totalCount())
-                .page(query.getPage())
-                .pageSize(query.getPageSize())
-                .build();
+        return new PageResponse<>(
+                pageResult.items().stream().map(this::toDto).toList(),
+                query.getPage(),
+                query.getPageSize(),
+                pageResult.totalCount(),
+                (int) Math.ceil((double) pageResult.totalCount() / query.getPageSize()));
     }
 
     public long countUnread(UUID ownerUserId) {
@@ -51,7 +55,7 @@ public class GeofenceEventService {
     @Transactional
     public GeofenceEventDto markSeen(UUID ownerUserId, Long eventId) {
         GeofenceEventEntity event = eventRepository.findByIdAndOwner(eventId, ownerUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Geofence event not found"));
+                .orElseThrow(() -> new NoSuchElementException("Geofence event not found"));
 
         Instant seenAt = event.getSeenAt() == null ? Instant.now() : event.getSeenAt();
         if (event.getSeenAt() == null) {
@@ -118,7 +122,7 @@ public class GeofenceEventService {
         int pageSize = Math.min(Math.max(source.getPageSize(), 1), MAX_PAGE_SIZE);
 
         if (source.getDateFrom() != null && source.getDateTo() != null && source.getDateFrom().isAfter(source.getDateTo())) {
-            throw new IllegalArgumentException("dateFrom must be before or equal to dateTo");
+            throw new GeoPulseException(INVALID_GEOFENCE_QUERY, "dateFrom must be before or equal to dateTo");
         }
 
         List<UUID> subjectUserIds = source.getSubjectUserIds() == null
@@ -151,7 +155,7 @@ public class GeofenceEventService {
             case "subject", "subjectdisplayname" -> "subjectDisplayName";
             case "event", "eventtype" -> "eventType";
             case "time", "occurredat" -> "occurredAt";
-            default -> throw new IllegalArgumentException(
+            default -> throw new GeoPulseException(INVALID_GEOFENCE_QUERY,
                     "Unsupported sortBy value. Supported values: occurredAt, subjectDisplayName, eventType."
             );
         };

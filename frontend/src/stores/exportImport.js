@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import chunkedUploadService from '../utils/chunkedUploadService'
 import { isMaintenanceInterruption } from './maintenance'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 
 const TERMINAL_IMPORT_STATUSES = new Set(['completed', 'failed'])
 
@@ -23,10 +25,12 @@ export const useExportImportStore = defineStore('exportImport', {
         // Export state
         exportJobs: [],
         currentExportJob: null,
+        exportError: null,
 
         // Import state
         importJobs: [],
         currentImportJob: null,
+        importError: null,
 
         // UI state
         isExporting: false,
@@ -42,6 +46,7 @@ export const useExportImportStore = defineStore('exportImport', {
         // Export getters
         getExportJobs: (state) => state.exportJobs,
         getCurrentExportJob: (state) => state.currentExportJob,
+        getExportError: (state) => state.exportError,
         hasActiveExportJob: (state) => {
             return state.currentExportJob && 
                    ['processing', 'validating'].includes(state.currentExportJob.status)
@@ -56,6 +61,7 @@ export const useExportImportStore = defineStore('exportImport', {
         // Import getters
         getImportJobs: (state) => state.importJobs,
         getCurrentImportJob: (state) => state.currentImportJob,
+        getImportError: (state) => state.importError,
         hasActiveImportJob: (state) => {
             return state.currentImportJob && 
                    ['processing', 'validating'].includes(state.currentImportJob.status)
@@ -74,6 +80,16 @@ export const useExportImportStore = defineStore('exportImport', {
     },
 
     actions: {
+        failExport(error, fallback) {
+            this.exportError = normalizeApiError(error, fallback)
+            return this.exportError
+        },
+
+        failImport(error, fallback) {
+            this.importError = normalizeApiError(error, fallback)
+            return this.importError
+        },
+
         // Export actions
         setExportJobs(jobs) {
             this.exportJobs = jobs
@@ -160,6 +176,7 @@ export const useExportImportStore = defineStore('exportImport', {
         // API Actions - Export
         async createExportJob(dataTypes, dateRange, format = 'json', options = null) {
             this.isExporting = true
+            this.exportError = null
             try {
                 const payload = {
                     dataTypes,
@@ -170,102 +187,61 @@ export const useExportImportStore = defineStore('exportImport', {
                     payload.options = options
                 }
 
-                const response = await apiService.post('/export/create', payload)
-
-                // Handle successful response
-                if (response.success) {
-                    this.setCurrentExportJob(response)
-                    this.addExportJob(response)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'Export creation failed')
-                }
+                const job = await apiService.post('/exports', payload)
+                this.setCurrentExportJob(job)
+                this.addExportJob(job)
+                return job
             } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'Export creation failed')
-                }
-                throw error
+                throw this.failExport(error, 'Failed to create export')
             } finally {
                 this.isExporting = false
             }
         },
 
         async fetchExportStatus(exportJobId) {
+            this.exportError = null
             try {
-                const response = await apiService.get(`/export/status/${exportJobId}`)
-                
-                // Handle successful response
-                if (response.success) {
-                    this.updateExportJob(exportJobId, response)
-                    
-                    if (this.currentExportJob?.exportJobId === exportJobId) {
-                        this.setCurrentExportJob(response)
-                    }
-                    
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'Failed to fetch export status')
+                const job = await apiService.get(`/exports/${exportJobId}`)
+                this.updateExportJob(exportJobId, job)
+
+                if (this.currentExportJob?.exportJobId === exportJobId) {
+                    this.setCurrentExportJob(job)
                 }
+
+                return job
             } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'Failed to fetch export status')
-                }
-                throw error
+                throw this.failExport(error, 'Failed to fetch export status')
             }
         },
 
-        async fetchExportJobs(limit = 10, offset = 0) {
+        async fetchExportJobs(page = 0, size = 10) {
+            this.exportError = null
             try {
-                const response = await apiService.get(`/export/jobs?limit=${limit}&offset=${offset}`)
-                
-                // Handle successful response
-                if (response.success) {
-                    this.setExportJobs(response.jobs)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'Failed to fetch export jobs')
-                }
+                const response = await apiService.get('/exports', { page, size })
+                this.setExportJobs(response.items)
+                return response
             } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'Failed to fetch export jobs')
-                }
-                throw error
+                throw this.failExport(error, 'Failed to fetch export jobs')
             }
         },
 
         async downloadExportFile(exportJobId) {
+            this.exportError = null
             try {
-                // This will trigger a file download directly from the backend
-                const response = await apiService.download(`/export/download/${exportJobId}`)
-                return response
+                return await apiService.download(`/exports/${exportJobId}/content`)
             } catch (error) {
-                throw error
+                throw this.failExport(error, 'Failed to download export')
             }
         },
 
         async deleteExportJob(exportJobId) {
+            this.exportError = null
             try {
-                const response = await apiService.delete(`/export/jobs/${exportJobId}`)
-                // Handle successful response
-                if (response.status === 'success') {
-                    this.removeExportJob(exportJobId)
-                    return true
-                } else {
-                    throw new Error(response.error?.message || 'Failed to delete export job')
-                }
+                await apiService.delete(`/exports/${exportJobId}`)
+                this.removeExportJob(exportJobId)
+                return true
             } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'Failed to delete export job')
-                }
-                throw error
+                throw this.failExport(error, 'Failed to delete export')
             }
         },
 
@@ -284,36 +260,7 @@ export const useExportImportStore = defineStore('exportImport', {
         // API Actions - Export (GPX)
         // Convenience wrapper for createExportJob with GPX format
         async createGpxExportJob(dateRange, zipPerTrip = false, zipGroupBy = 'individual') {
-            this.isExporting = true
-            try {
-                const response = await apiService.post('/export/create', {
-                    dataTypes: ['raw_gps'],
-                    dateRange,
-                    format: 'gpx',
-                    options: {
-                        zipPerTrip,
-                        zipGroupBy
-                    }
-                })
-
-                // Handle successful response
-                if (response.success) {
-                    this.setCurrentExportJob(response)
-                    this.addExportJob(response)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'GPX export creation failed')
-                }
-            } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'GPX export creation failed')
-                }
-                throw error
-            } finally {
-                this.isExporting = false
-            }
+            return this.createExportJob(['raw_gps'], dateRange, 'gpx', { zipPerTrip, zipGroupBy })
         },
 
         // API Actions - Export (CSV)
@@ -324,33 +271,55 @@ export const useExportImportStore = defineStore('exportImport', {
 
         // Download CSV template
         async downloadCsvTemplate() {
+            this.exportError = null
             try {
-                await apiService.download('/export/csv/template')
-                return true
+                return await apiService.download('/exports/csv-template')
             } catch (error) {
-                throw error
+                throw this.failExport(error, 'Failed to download CSV template')
             }
         },
 
         // API Actions - Export single trip as GPX
         async exportTripAsGpx(tripId) {
+            this.exportError = null
             try {
-                // This will trigger a file download directly from the backend
-                const response = await apiService.download(`/export/gpx/trip/${tripId}`)
-                return response
+                return await apiService.download(`/exports/trips/${tripId}/gpx`)
             } catch (error) {
-                throw error
+                throw this.failExport(error, 'Failed to export trip')
             }
         },
 
         // API Actions - Export single stay as GPX
         async exportStayAsGpx(stayId) {
+            this.exportError = null
             try {
-                // This will trigger a file download directly from the backend
-                const response = await apiService.download(`/export/gpx/stay/${stayId}`)
-                return response
+                return await apiService.download(`/exports/stays/${stayId}/gpx`)
             } catch (error) {
-                throw error
+                throw this.failExport(error, 'Failed to export stay')
+            }
+        },
+
+        async downloadDebugExport(request) {
+            this.exportError = null
+            try {
+                const response = await apiService.post('/exports/debug', request, { responseType: 'blob' })
+                if (!(response.data instanceof Blob)) {
+                    throw new Error('Invalid debug export response')
+                }
+
+                const url = window.URL.createObjectURL(response.data)
+                const link = document.createElement('a')
+                link.href = url
+                const disposition = response.headers?.['content-disposition'] || ''
+                const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+                link.download = match?.[1]?.replace(/['"]/g, '') || 'geopulse-debug.zip'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                window.URL.revokeObjectURL(url)
+                return true
+            } catch (error) {
+                throw this.failExport(error, 'Failed to export debug data')
             }
         },
 
@@ -375,7 +344,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 formData.append('format', importFormat)
                 formData.append('options', JSON.stringify(options))
 
-                const response = await apiService.post('/import/upload', formData, {
+                const response = await apiService.post('/imports', formData, {
                     onUploadProgress: (progressEvent) => {
                         // Cap at 99% during upload, reach 100% only when response received
                         const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
@@ -391,13 +360,14 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Import
-        async uploadImportFile(file, options = {}) {
+        async _uploadImportFile(file, importFormat, options = {}) {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
             this.currentChunkInfo = null
+            this.importError = null
             try {
-                const response = await this._performUpload(file, 'geopulse', options)
+                const response = await this._performUpload(file, importFormat, options)
 
                 // Keep upload card visible for 500ms to show completion
                 await new Promise(resolve => setTimeout(resolve, 500))
@@ -407,7 +377,7 @@ export const useExportImportStore = defineStore('exportImport', {
 
                 return response
             } catch (error) {
-                throw error
+                throw this.failImport(error, 'Failed to start import')
             } finally {
                 this.isImporting = false
                 this.isUploading = false
@@ -416,133 +386,34 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
-        // API Actions - Import (OwnTracks)
+        async uploadImportFile(file, options = {}) {
+            return this._uploadImportFile(file, 'geopulse', options)
+        },
+
         async uploadOwnTracksImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            this.currentChunkInfo = null
-            try {
-                const response = await this._performUpload(file, 'owntracks', options)
-
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                this.setCurrentImportJob(response)
-                this.addImportJob(response)
-
-                return response
-            } catch (error) {
-                throw error
-            } finally {
-                this.isImporting = false
-                this.isUploading = false
-                this.uploadProgress = 0
-                this.currentChunkInfo = null
-            }
+            return this._uploadImportFile(file, 'owntracks', options)
         },
 
         async uploadGpxImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            this.currentChunkInfo = null
-            try {
-                const response = await this._performUpload(file, 'gpx', options)
-
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                this.setCurrentImportJob(response)
-                this.addImportJob(response)
-
-                return response
-            } catch (error) {
-                throw error
-            } finally {
-                this.isImporting = false
-                this.isUploading = false
-                this.uploadProgress = 0
-                this.currentChunkInfo = null
-            }
+            return this._uploadImportFile(file, 'gpx', options)
         },
 
-        // API Actions - Import (Google Timeline)
         async uploadGoogleTimelineImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            this.currentChunkInfo = null
-            try {
-                const response = await this._performUpload(file, 'google-timeline', options)
-
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                this.setCurrentImportJob(response)
-                this.addImportJob(response)
-
-                return response
-            } catch (error) {
-                throw error
-            } finally {
-                this.isImporting = false
-                this.isUploading = false
-                this.uploadProgress = 0
-                this.currentChunkInfo = null
-            }
+            return this._uploadImportFile(file, 'google-timeline', options)
         },
 
-        // API Actions - Import (GeoJSON)
         async uploadGeoJsonImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            this.currentChunkInfo = null
-            try {
-                const response = await this._performUpload(file, 'geojson', options)
-
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                this.setCurrentImportJob(response)
-                this.addImportJob(response)
-
-                return response
-            } catch (error) {
-                throw error
-            } finally {
-                this.isImporting = false
-                this.isUploading = false
-                this.uploadProgress = 0
-                this.currentChunkInfo = null
-            }
+            return this._uploadImportFile(file, 'geojson', options)
         },
 
-        // API Actions - Import (CSV)
         async uploadCsvImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            this.currentChunkInfo = null
-            try {
-                const response = await this._performUpload(file, 'csv', options)
-
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                this.setCurrentImportJob(response)
-                this.addImportJob(response)
-
-                return response
-            } catch (error) {
-                throw error
-            } finally {
-                this.isImporting = false
-                this.isUploading = false
-                this.uploadProgress = 0
-                this.currentChunkInfo = null
-            }
+            return this._uploadImportFile(file, 'csv', options)
         },
 
         async fetchImportStatus(importJobId) {
+            this.importError = null
             try {
-                const response = await apiService.get(`/import/status/${importJobId}`)
+                const response = await apiService.get(`/imports/${importJobId}`)
                 
                 this.updateImportJob(importJobId, response)
                 
@@ -552,19 +423,33 @@ export const useExportImportStore = defineStore('exportImport', {
                 
                 return response
             } catch (error) {
-                throw error
+                throw this.failImport(error, 'Failed to fetch import status')
             }
         },
 
-        async fetchImportJobs(limit = 10, offset = 0) {
+        async fetchImportJobs(size = 10, page = 0) {
+            this.importError = null
             try {
-                const response = await apiService.get(`/import/jobs?limit=${limit}&offset=${offset}`)
+                const response = await apiService.get('/imports', { page, size })
                 
-                this.setImportJobs(response.jobs)
+                this.setImportJobs(response.items)
                 
                 return response
             } catch (error) {
-                throw error
+                throw this.failImport(error, 'Failed to fetch import jobs')
+            }
+        },
+
+        async uploadDebugImport(file, clearExistingData, updateTimelineConfig) {
+            this.importError = null
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('clearExistingData', clearExistingData)
+            formData.append('updateTimelineConfig', updateTimelineConfig)
+            try {
+                await apiService.post('/debug-imports', formData)
+            } catch (error) {
+                throw this.failImport(error, 'Failed to import debug data')
             }
         },
 
@@ -627,6 +512,7 @@ export const useExportImportStore = defineStore('exportImport', {
             this.importJobs = []
             this.currentExportJob = null
             this.currentImportJob = null
+            this.importError = null
             this.isExporting = false
             this.isImporting = false
             this.currentChunkInfo = null
@@ -634,29 +520,18 @@ export const useExportImportStore = defineStore('exportImport', {
 
         // Get data type display names
         getDataTypeDisplayName(dataType) {
-            const displayNames = {
-                rawgps: 'Raw GPS Data',
-                favorites: 'Favorite Locations',
-                reversegeocodinglocation: 'Reverse Geocoding Data',
-                locationsources: 'Location Sources',
-                userinfo: 'User Information',
-                periodtags: 'Timeline Labels',
-                timelineoverrides: 'Timeline Overrides',
-                tripworkspace: 'Trip Plans',
-                notificationtemplates: 'Notification Templates',
-                geofencing: 'Geofences',
-                notes: 'Timeline Notes',
-                weathersamples: 'Weather Samples',
-                mapmatching: 'Map Matching',
-                statistics: 'Statistics'
-            }
-            return displayNames[dataType] || dataType
+            const knownTypes = new Set([
+                'rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo',
+                'timelinelabels', 'timelineoverrides', 'tripworkspace', 'notificationtemplates',
+                'geofencing', 'notes', 'weathersamples', 'mapmatching', 'statistics'
+            ])
+            return knownTypes.has(dataType) ? t(`data.dataTypes.${dataType}.label`) : dataType
         },
 
         // Get file size display
         getFileSizeDisplay(bytes) {
-            if (!bytes) return 'Unknown'
-            
+            if (!bytes) return t('common.unknown')
+
             const units = ['B', 'KB', 'MB', 'GB']
             let size = bytes
             let unitIndex = 0
@@ -672,10 +547,10 @@ export const useExportImportStore = defineStore('exportImport', {
         // Get status display info
         getStatusDisplayInfo(status) {
             const statusInfo = {
-                processing: { label: 'Processing', severity: 'info', icon: 'pi pi-spin pi-spinner' },
-                validating: { label: 'Validating', severity: 'info', icon: 'pi pi-spin pi-spinner' },
-                completed: { label: 'Completed', severity: 'success', icon: 'pi pi-check' },
-                failed: { label: 'Failed', severity: 'error', icon: 'pi pi-times' }
+                processing: { label: t('data.jobStatus.processing'), severity: 'info', icon: 'pi pi-spin pi-spinner' },
+                validating: { label: t('data.jobStatus.validating'), severity: 'info', icon: 'pi pi-spin pi-spinner' },
+                completed: { label: t('data.jobStatus.completed'), severity: 'success', icon: 'pi pi-check' },
+                failed: { label: t('data.jobStatus.failed'), severity: 'error', icon: 'pi pi-times' }
             }
             return statusInfo[status] || { label: status, severity: 'secondary', icon: 'pi pi-question' }
         }

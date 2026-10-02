@@ -5,68 +5,68 @@
       v-if="showWelcomeMessage"
       class="welcome-message"
     >
-      <h4 class="welcome-title">🎉 Welcome to GeoPulse!</h4>
-      <p class="welcome-description">Ready to start tracking your location journey? Let's set up your first location source.</p>
+      <h4 class="welcome-title">{{ t('ui.onboardingTour.welcomeTitle') }}</h4>
+      <p class="welcome-description">{{ t('ui.onboardingTour.welcomeDescription') }}</p>
       <div class="welcome-actions">
-        <button 
+        <button
           @click="startTour"
           class="btn btn-primary"
         >
-          🚀 Start Tour
+          {{ t('ui.onboardingTour.startTour') }}
         </button>
-        <button 
+        <button
           @click="dismissWelcomeMessage"
           class="btn btn-secondary"
         >
-          I'll explore myself
+          {{ t('ui.onboardingTour.exploreOnMyOwn') }}
         </button>
       </div>
     </div>
 
     <!-- Tour Steps -->
-    <div 
+    <div
       v-if="showTourStep"
       :style="tourStepStyle"
       class="tour-step-container"
     >
       <div class="tour-step-card">
         <!-- Close button -->
-        <button 
+        <button
           @click="finishTour"
           class="tour-close-btn"
-          title="Close tour"
+          :title="t('ui.onboardingTour.closeTour')"
         >
           ×
         </button>
-        
+
         <h4 class="tour-step-title">{{ currentStep.title }}</h4>
         <p class="tour-step-description">{{ currentStep.description }}</p>
-        
+
         <!-- Progress indicator -->
         <div class="tour-progress">
-          <div 
-            v-for="(step, index) in tourSteps" 
+          <div
+            v-for="(step, index) in tourSteps"
             :key="index"
             class="tour-progress-bar"
             :class="{ 'tour-progress-active': index <= currentStepIndex }"
           ></div>
         </div>
-        
+
         <div class="tour-step-footer">
-          <span class="tour-step-counter">{{ currentStepIndex + 1 }} of {{ tourSteps.length }}</span>
+          <span class="tour-step-counter">{{ t('ui.onboardingTour.stepCounter', { current: currentStepIndex + 1, total: tourSteps.length }) }}</span>
           <div class="tour-step-actions">
-            <button 
+            <button
               v-if="currentStepIndex > 0"
               @click="previousStep"
               class="btn btn-outline"
             >
-              Previous
+              {{ t('ui.onboardingTour.previous') }}
             </button>
-            <button 
+            <button
               @click="nextStep"
               class="btn btn-primary"
             >
-              {{ currentStepIndex === tourSteps.length - 1 ? 'Get Started!' : 'Next' }}
+              {{ currentStepIndex === tourSteps.length - 1 ? t('ui.onboardingTour.getStarted') : t('ui.onboardingTour.next') }}
             </button>
           </div>
         </div>
@@ -77,8 +77,11 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 // Stores
 const onboardingStore = useOnboardingStore()
@@ -90,31 +93,31 @@ const showTourStep = ref(false)
 const currentStepIndex = ref(0)
 
 // Tour steps
-const tourSteps = [
+const tourSteps = computed(() => [
   {
-    title: 'Welcome to GeoPulse!',
-    description: 'First, let\'s set up your location sources so we can start tracking your journey.',
+    title: t('ui.onboardingTour.steps.welcome.title'),
+    description: t('ui.onboardingTour.steps.welcome.description'),
     target: '.location-sources-header'
   },
   {
-    title: 'Add Your First Location Source',
-    description: 'Click the "Add New Source" button to add OwnTracks or Overland as your location source.',
+    title: t('ui.onboardingTour.steps.addSource.title'),
+    description: t('ui.onboardingTour.steps.addSource.description'),
     target: '[data-tour="add-source-btn"]'
   },
   {
-    title: 'Follow Setup Instructions',
-    description: 'Once you add a source, you\'ll see detailed setup instructions with your unique endpoint and token.',
+    title: t('ui.onboardingTour.steps.followInstructions.title'),
+    description: t('ui.onboardingTour.steps.followInstructions.description'),
     target: '.quick-setup-guide'
   },
   {
-    title: 'You\'re All Set!',
-    description: 'Once your location source is configured, visit your Timeline to see your location history and explore GeoPulse!',
+    title: t('ui.onboardingTour.steps.allSet.title'),
+    description: t('ui.onboardingTour.steps.allSet.description'),
     target: '.location-sources-header'
   }
-]
+])
 
 // Computed
-const currentStep = computed(() => tourSteps[currentStepIndex.value])
+const currentStep = computed(() => tourSteps.value[currentStepIndex.value])
 
 const tourStepStyle = computed(() => {
   const target = document.querySelector(currentStep.value.target)
@@ -144,7 +147,7 @@ const startTour = () => {
 }
 
 const nextStep = () => {
-  if (currentStepIndex.value < tourSteps.length - 1) {
+  if (currentStepIndex.value < tourSteps.value.length - 1) {
     currentStepIndex.value++
   } else {
     finishTour()
@@ -196,7 +199,7 @@ defineExpose({
 /* Welcome Message */
 .welcome-message {
   background: var(--p-primary-600);
-  color: var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
   padding: 1.25rem;
   margin: 1.25rem 0;
   border-radius: var(--p-border-radius-md);
@@ -230,10 +233,10 @@ defineExpose({
 }
 
 .tour-step-card {
-  background: var(--p-content-background);
-  border: 2px solid var(--p-primary-600);
+  background: var(--gp-surface-card);
+  border: 2px solid var(--gp-primary-text);
   border-radius: var(--p-border-radius-md);
-  box-shadow: var(--p-shadow-lg);
+  box-shadow: var(--gp-shadow-large);
   max-width: 350px;
   padding: 1.25rem;
   position: relative;
@@ -245,7 +248,7 @@ defineExpose({
   right: 0.5rem;
   background: transparent;
   border: none;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
   font-size: 1.125rem;
   cursor: pointer;
   width: 1.5rem;
@@ -258,8 +261,8 @@ defineExpose({
 }
 
 .tour-close-btn:hover {
-  background: var(--p-surface-100);
-  color: var(--p-text-color);
+  background: var(--gp-surface-hover);
+  color: var(--gp-text-primary);
 }
 
 .tour-step-title {
@@ -267,12 +270,12 @@ defineExpose({
   padding-right: 1.25rem;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .tour-step-description {
   margin: 0 0 1rem 0;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   font-size: 0.9rem;
 }
@@ -288,12 +291,12 @@ defineExpose({
   width: 1.875rem;
   height: 0.25rem;
   border-radius: var(--p-border-radius-xs);
-  background: var(--p-surface-200);
+  background: var(--gp-border);
   transition: background-color 0.3s ease;
 }
 
 .tour-progress-active {
-  background: var(--p-primary-600);
+  background: var(--gp-primary);
 }
 
 /* Tour Footer */
@@ -305,7 +308,7 @@ defineExpose({
 
 .tour-step-counter {
   font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  color: var(--gp-text-secondary);
 }
 
 .tour-step-actions {
@@ -330,8 +333,8 @@ defineExpose({
 
 .btn-primary {
   background: var(--p-primary-600);
-  color: var(--p-primary-contrast-color);
-  border: 2px solid var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
+  border: 2px solid var(--gp-primary-contrast);
 }
 
 .btn-primary:hover {
@@ -341,8 +344,8 @@ defineExpose({
 
 .btn-secondary {
   background: transparent;
-  color: var(--p-primary-contrast-color);
-  border: 1px solid var(--p-primary-contrast-color);
+  color: var(--gp-primary-contrast);
+  border: 1px solid var(--gp-primary-contrast);
 }
 
 .btn-secondary:hover {
@@ -351,41 +354,14 @@ defineExpose({
 
 .btn-outline {
   background: transparent;
-  color: var(--p-text-muted-color);
-  border: 1px solid var(--p-surface-300);
+  color: var(--gp-text-secondary);
+  border: 1px solid var(--gp-border-medium);
 }
 
 .btn-outline:hover {
-  background: var(--p-surface-50);
-  color: var(--p-text-color);
+  background: var(--gp-surface-hover);
+  color: var(--gp-text-primary);
   border-color: var(--p-surface-400);
-}
-
-/* Dark Mode Support */
-.p-dark .tour-step-card {
-  background: var(--p-surface-900);
-  border-color: var(--p-primary-500);
-}
-
-.p-dark .tour-close-btn:hover {
-  background: var(--p-surface-800);
-}
-
-.p-dark .tour-progress-bar {
-  background: var(--p-surface-700);
-}
-
-.p-dark .tour-progress-active {
-  background: var(--p-primary-500);
-}
-
-.p-dark .btn-outline {
-  border-color: var(--p-surface-600);
-}
-
-.p-dark .btn-outline:hover {
-  background: var(--p-surface-800);
-  border-color: var(--p-surface-500);
 }
 
 /* Responsive Design */

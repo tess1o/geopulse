@@ -20,9 +20,9 @@ helm install geopulse geopulse/geopulse -f custom-values.yaml
 
 For comprehensive documentation, please visit:
 
-- **[Kubernetes Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm)** - Step-by-step deployment instructions
-- **[Helm Chart Documentation](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm)** - Chart overview and examples
-- **[Helm Configuration Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-configuration-guide)** - Complete configuration reference
+- **[Kubernetes Deployment Guide](https://geopulse.cc/docs/getting-started/deployment/kubernetes-helm)** - Step-by-step deployment instructions
+- **[Helm Chart Documentation](https://geopulse.cc/docs/getting-started/deployment/helm)** - Chart overview and examples
+- **[Helm Configuration Guide](https://geopulse.cc/docs/getting-started/deployment/helm-configuration-guide)** - Complete configuration reference
 
 ## Essential Configuration
 
@@ -125,7 +125,7 @@ For restore activation, scale the backend deployment to exactly one replica and 
 | `backend.backupPersistence.enabled` | Enable durable backup and restore work storage | `true` |
 | `backend.backupPersistence.size` | Backup storage size | `20Gi` |
 
-For the complete list of parameters, see the [values.yaml](values.yaml) file or visit the [Helm Configuration Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-configuration-guide).
+For the complete list of parameters, see the [values.yaml](values.yaml) file or visit the [Helm Configuration Guide](https://geopulse.cc/docs/getting-started/deployment/helm-configuration-guide).
 
 ## Features
 

@@ -15,56 +15,70 @@
     <!-- Form State -->
     <div v-else class="timeline-share-form">
       <div class="field">
-        <label for="name">Name (optional)</label>
-        <InputText id="name" v-model="formData.name" placeholder="e.g., Italy Vacation 2025"
+        <label for="name">{{ t('sharing.timelineDialog.fields.name') }}</label>
+        <InputText id="name" v-model="formData.name" :placeholder="t('sharing.timelineDialog.fields.namePlaceholder')"
                    class="w-full" />
       </div>
 
       <div class="field">
-        <label for="start-date">Start Date *</label>
+        <label for="start-date">{{ t('sharing.timelineDialog.fields.startDate') }}</label>
         <Calendar id="start-date" v-model="formData.start_date"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full" :class="{'p-invalid': errors.start_date}"
-                  placeholder="Select start date" />
+                  :placeholder="t('sharing.timelineDialog.fields.startDatePlaceholder')" />
         <small v-if="errors.start_date" class="p-error">{{ errors.start_date }}</small>
       </div>
 
       <div class="field">
-        <label for="end-date">End Date *</label>
+        <label for="end-date">{{ t('sharing.timelineDialog.fields.endDate') }}</label>
         <Calendar id="end-date" v-model="formData.end_date"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full" :class="{'p-invalid': errors.end_date}"
-                  placeholder="Select end date" />
+                  :placeholder="t('sharing.timelineDialog.fields.endDatePlaceholder')" />
         <small v-if="errors.end_date" class="p-error">{{ errors.end_date }}</small>
       </div>
 
       <div class="field">
-        <label for="expires-at">Link Expiration</label>
+        <label for="expires-at">{{ t('sharing.timelineDialog.fields.expiresAt') }}</label>
         <Calendar id="expires-at" v-model="formData.expires_at"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full"
-                  placeholder="Leave empty for no expiration" />
-        <small class="p-text-secondary">When the link becomes inaccessible</small>
+                  :placeholder="t('sharing.timelineDialog.fields.expiresAtPlaceholder')" />
+        <small class="p-text-secondary">{{ t('sharing.timelineDialog.fields.expiresAtHelp') }}</small>
       </div>
 
       <div class="field-checkbox">
         <Checkbox id="show-current" v-model="formData.show_current_location" :binary="true" />
-        <label for="show-current">Show current location during trip</label>
-        <small class="p-text-secondary block ml-4">Only visible when viewing during the trip dates</small>
+        <label for="show-current">{{ t('sharing.timelineDialog.fields.showCurrentLocation') }}</label>
+        <small class="p-text-secondary block ml-4">{{ t('sharing.timelineDialog.fields.showCurrentLocationHelp') }}</small>
       </div>
 
       <div class="field-checkbox">
         <Checkbox id="show-photos" v-model="formData.show_photos" :binary="true" />
-        <label for="show-photos">Include photos from Immich (if available)</label>
+        <label for="show-photos">{{ t('sharing.timelineDialog.fields.showPhotos') }}</label>
+      </div>
+
+      <div v-if="formData.show_photos && immichAlbumOptions.length > 1" class="field">
+        <label for="immich-album">{{ t('sharing.timelineDialog.fields.immichAlbum') }}</label>
+        <Dropdown
+          id="immich-album"
+          v-model="formData.immich_album_id"
+          :options="immichAlbumOptions"
+          optionLabel="label"
+          optionValue="value"
+          :loading="immichAlbumsLoading"
+          class="w-full"
+        />
+        <small class="p-text-secondary">{{ t('sharing.timelineDialog.fields.immichAlbumHelp') }}</small>
       </div>
 
       <div class="field-checkbox">
         <Checkbox id="show-notes" v-model="formData.show_notes" :binary="true" />
-        <label for="show-notes">Include notes from GeoPulse and Memos (if available)</label>
+        <label for="show-notes">{{ t('sharing.timelineDialog.fields.showNotes') }}</label>
       </div>
 
       <div class="field-checkbox">
-        <label for="map-render-mode">Map render mode</label>
+        <label for="map-render-mode">{{ t('sharing.timelineDialog.fields.mapRenderMode') }}</label>
       </div>
       <div class="field">
         <Dropdown
@@ -79,7 +93,7 @@
 
       <div class="field-checkbox">
         <Checkbox id="use-custom-tiles" v-model="formData.use_custom_tiles" :binary="true" />
-        <label for="use-custom-tiles">Use custom raster tiles</label>
+        <label for="use-custom-tiles">{{ t('sharing.timelineDialog.fields.useCustomTiles') }}</label>
       </div>
 
       <div v-if="formData.use_custom_tiles" class="custom-tiles-section">
@@ -87,24 +101,23 @@
           <div class="warning-content">
             <i class="pi pi-exclamation-triangle"></i>
             <div>
-              <strong>Security Notice:</strong>
-              The custom tile URL (including any API keys) will be visible to all viewers.
-              Only enable if you trust the recipients.
+              <strong>{{ t('sharing.timelineDialog.fields.securityNoticeTitle') }}</strong>
+              {{ t('sharing.timelineDialog.fields.securityNoticeBody') }}
             </div>
           </div>
         </Message>
 
         <div class="field">
-          <label for="custom-tile-url">Custom Tile URL</label>
+          <label for="custom-tile-url">{{ t('sharing.timelineDialog.fields.customTileUrl') }}</label>
           <InputText
             id="custom-tile-url"
             v-model="formData.custom_map_tile_url"
-            placeholder="https://tile-provider.com/{z}/{x}/{y}.png"
+            :placeholder="t('sharing.timelineDialog.fields.customTileUrlPlaceholder')"
             class="w-full"
             :class="{'p-invalid': errors.custom_map_tile_url}"
           />
           <small class="p-text-secondary">
-            Placeholders: {z} zoom, {x}/{y} coordinates, {s} subdomains
+            {{ t('sharing.timelineDialog.fields.customTileUrlHelp') }}
           </small>
           <small v-if="errors.custom_map_tile_url" class="p-error">
             {{ errors.custom_map_tile_url }}
@@ -114,21 +127,21 @@
 
       <div class="field-checkbox">
         <Checkbox id="use-custom-style" v-model="formData.use_custom_style" :binary="true" />
-        <label for="use-custom-style">Use custom vector style</label>
+        <label for="use-custom-style">{{ t('sharing.timelineDialog.fields.useCustomStyle') }}</label>
       </div>
 
       <div v-if="formData.use_custom_style" class="custom-tiles-section">
         <div class="field">
-          <label for="custom-style-url">Custom Vector Style URL</label>
+          <label for="custom-style-url">{{ t('sharing.timelineDialog.fields.customStyleUrl') }}</label>
           <InputText
             id="custom-style-url"
             v-model="formData.custom_map_style_url"
-            placeholder="https://tiles.openfreemap.org/styles/liberty"
+            :placeholder="t('sharing.timelineDialog.fields.customStyleUrlPlaceholder')"
             class="w-full"
             :class="{'p-invalid': errors.custom_map_style_url}"
           />
           <small class="p-text-secondary">
-            Style JSON URL (HTTP/HTTPS)
+            {{ t('sharing.timelineDialog.fields.customStyleUrlHelp') }}
           </small>
           <small v-if="errors.custom_map_style_url" class="p-error">
             {{ errors.custom_map_style_url }}
@@ -138,23 +151,23 @@
 
       <div class="field-checkbox">
         <Checkbox id="has-password" v-model="formData.has_password" :binary="true" />
-        <label for="has-password">Password protect this link</label>
+        <label for="has-password">{{ t('sharing.timelineDialog.fields.hasPassword') }}</label>
       </div>
 
       <div v-if="formData.has_password" class="field">
-        <label for="password">Password</label>
+        <label for="password">{{ t('sharing.timelineDialog.fields.password') }}</label>
         <Password id="password" v-model="formData.password" toggleMask
                   :feedback="false" class="w-full"
                   :class="{'p-invalid': errors.password}"
-                  placeholder="Enter password (6-100 characters)" />
+                  :placeholder="t('sharing.timelineDialog.fields.passwordPlaceholder')" />
         <small v-if="errors.password" class="p-error">{{ errors.password }}</small>
       </div>
     </div>
 
     <template #footer>
       <div v-if="!showSuccessState">
-        <Button label="Cancel" icon="pi pi-times" text @click="dialogVisible = false" />
-        <Button :label="isEditMode ? 'Update' : 'Create Link'" icon="pi pi-check"
+        <Button :label="t('sharing.timelineDialog.actions.cancel')" icon="pi pi-times" text @click="dialogVisible = false" />
+        <Button :label="isEditMode ? t('sharing.timelineDialog.actions.update') : t('sharing.timelineDialog.actions.createLink')" icon="pi pi-check"
                 @click="handleSubmit" :loading="loading" />
       </div>
     </template>
@@ -163,8 +176,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useShareLinksStore } from '@/stores/shareLinks'
+import { useImmichStore } from '@/stores/immich'
 import { useTimezone } from '@/composables/useTimezone'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -194,8 +209,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'created', 'updated'])
 
+const { t } = useI18n()
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
+const immichStore = useImmichStore()
 const timezone = useTimezone()
 
 const dialogVisible = computed({
@@ -209,8 +226,8 @@ const showSuccessState = ref(false)
 const createdShare = ref(null)
 
 const dialogHeader = computed(() => {
-  if (showSuccessState.value) return 'Share Link Created'
-  return isEditMode.value ? 'Edit Timeline Share' : 'Create Timeline Share'
+  if (showSuccessState.value) return t('sharing.timelineDialog.header.created')
+  return isEditMode.value ? t('sharing.timelineDialog.header.edit') : t('sharing.timelineDialog.header.create')
 })
 
 const formData = ref({
@@ -221,6 +238,7 @@ const formData = ref({
   map_render_mode: 'VECTOR',
   show_current_location: true,
   show_photos: false,
+  immich_album_id: null,
   show_notes: false,
   has_password: false,
   password: '',
@@ -237,14 +255,35 @@ const errors = ref({
   custom_map_tile_url: null,
   custom_map_style_url: null
 })
-const mapRenderModeOptions = [
-  { label: 'Vector (MapLibre)', value: 'VECTOR' },
-  { label: 'Raster (Leaflet)', value: 'RASTER' }
-]
+const mapRenderModeOptions = computed(() => [
+  { label: t('sharing.timelineDialog.mapRenderModeOptions.vector'), value: 'VECTOR' },
+  { label: t('sharing.timelineDialog.mapRenderModeOptions.raster'), value: 'RASTER' }
+])
+
+const immichAlbums = ref([])
+const immichAlbumsLoading = ref(false)
+const immichAlbumOptions = computed(() => [
+  { label: t('sharing.timelineDialog.fields.immichAlbumAll'), value: null },
+  ...immichAlbums.value.map(album => ({ label: album.albumName, value: album.id }))
+])
+
+async function loadImmichAlbums() {
+  if (immichAlbumsLoading.value) return
+  immichAlbumsLoading.value = true
+  try {
+    immichAlbums.value = await immichStore.listAlbums()
+  } catch (error) {
+    console.error('Failed to load Immich albums:', error)
+    immichAlbums.value = []
+  } finally {
+    immichAlbumsLoading.value = false
+  }
+}
 
 // Initialize form data when dialog opens
 watch(() => props.visible, (visible) => {
   if (visible) {
+    loadImmichAlbums()
     if (props.editingShare) {
       const [calendarStart, calendarEnd] = timezone.convertUtcRangeToCalendarDates(
         props.editingShare.start_date,
@@ -258,6 +297,7 @@ watch(() => props.visible, (visible) => {
         expires_at: props.editingShare.expires_at ? new Date(props.editingShare.expires_at) : null,
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
+        immich_album_id: props.editingShare.immich_album_id ?? null,
         show_notes: props.editingShare.show_notes ?? false,
         map_render_mode: props.editingShare.map_render_mode || 'VECTOR',
         has_password: props.editingShare.has_password || false,
@@ -281,6 +321,7 @@ watch(() => props.visible, (visible) => {
         expires_at: expiresAt,
         show_current_location: true,
         show_photos: false,
+        immich_album_id: null,
         show_notes: false,
         map_render_mode: 'VECTOR',
         has_password: false,
@@ -306,6 +347,7 @@ function resetForm() {
     expires_at: null,
     show_current_location: true,
     show_photos: false,
+    immich_album_id: null,
     show_notes: false,
     map_render_mode: 'VECTOR',
     has_password: false,
@@ -357,18 +399,18 @@ function validateForm() {
   let isValid = true
 
   if (!formData.value.start_date) {
-    errors.value.start_date = 'Start date is required'
+    errors.value.start_date = t('sharing.timelineDialog.errors.startDateRequired')
     isValid = false
   }
 
   if (!formData.value.end_date) {
-    errors.value.end_date = 'End date is required'
+    errors.value.end_date = t('sharing.timelineDialog.errors.endDateRequired')
     isValid = false
   }
 
   if (formData.value.start_date && formData.value.end_date) {
     if (formData.value.end_date < formData.value.start_date) {
-      errors.value.end_date = 'End date must be after start date'
+      errors.value.end_date = t('sharing.timelineDialog.errors.endDateBeforeStart')
       isValid = false
     }
   }
@@ -376,17 +418,17 @@ function validateForm() {
   if (formData.value.has_password) {
     const passwordLength = (formData.value.password || '').length
     if (passwordLength < 6 || passwordLength > 100) {
-      errors.value.password = 'Password must be between 6 and 100 characters'
+      errors.value.password = t('sharing.timelineDialog.errors.passwordLength')
       isValid = false
     }
   }
 
   if (formData.value.use_custom_tiles) {
     if (!formData.value.custom_map_tile_url || !formData.value.custom_map_tile_url.trim()) {
-      errors.value.custom_map_tile_url = 'Custom tile URL required when enabled'
+      errors.value.custom_map_tile_url = t('sharing.timelineDialog.errors.customTileUrlRequired')
       isValid = false
     } else if (formData.value.custom_map_tile_url.length > 1000) {
-      errors.value.custom_map_tile_url = 'URL cannot exceed 1000 characters'
+      errors.value.custom_map_tile_url = t('sharing.timelineDialog.errors.urlTooLong')
       isValid = false
     }
   }
@@ -394,13 +436,13 @@ function validateForm() {
     const styleUrl = formData.value.custom_map_style_url || ''
     const normalizedUrl = styleUrl.trim().toLowerCase()
     if (!styleUrl.trim()) {
-      errors.value.custom_map_style_url = 'Custom style URL required when enabled'
+      errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.customStyleUrlRequired')
       isValid = false
     } else if (styleUrl.length > 1000) {
-      errors.value.custom_map_style_url = 'URL cannot exceed 1000 characters'
+      errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.urlTooLong')
       isValid = false
     } else if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-      errors.value.custom_map_style_url = 'URL must use HTTP or HTTPS protocol'
+      errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.urlMustBeHttp')
       isValid = false
     } else if (
       normalizedUrl.includes('javascript:') ||
@@ -408,15 +450,15 @@ function validateForm() {
       normalizedUrl.includes('file:') ||
       normalizedUrl.includes('ftp:')
     ) {
-      errors.value.custom_map_style_url = 'Invalid URL protocol'
+      errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.urlInvalidProtocol')
       isValid = false
     } else if (styleUrl.includes('..')) {
-      errors.value.custom_map_style_url = 'Invalid URL format'
+      errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.urlInvalidFormat')
       isValid = false
     } else {
       const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
       if (!looksLikeStyleUrl) {
-        errors.value.custom_map_style_url = 'URL should point to a style JSON endpoint'
+        errors.value.custom_map_style_url = t('sharing.timelineDialog.errors.urlShouldBeStyleEndpoint')
         isValid = false
       }
     }
@@ -446,6 +488,7 @@ async function handleSubmit() {
       expires_at: formData.value.expires_at ? formData.value.expires_at.toISOString() : null,
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
+      immich_album_id: formData.value.show_photos ? formData.value.immich_album_id : null,
       show_notes: formData.value.show_notes,
       map_render_mode: formData.value.map_render_mode || 'VECTOR',
       password: formData.value.has_password ? formData.value.password : null,
@@ -470,8 +513,8 @@ async function handleSubmit() {
     console.error('Failed to save timeline share:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.userMessage || error.message || 'Failed to save timeline share',
+      summary: t('sharing.timelineDialog.saveErrorSummary'),
+      detail: error.userMessage || error.message || t('sharing.timelineDialog.saveErrorDetail'),
       life: 5000
     })
   } finally {
@@ -531,7 +574,7 @@ function onHide() {
 }
 
 .field-checkbox small {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
@@ -544,7 +587,7 @@ function onHide() {
 .custom-tiles-section {
   margin-left: 1.75rem;
   padding-left: 1rem;
-  border-left: 3px solid var(--orange-500);
+  border-left: 3px solid var(--p-orange-500);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -562,7 +605,7 @@ function onHide() {
 
 .warning-content i {
   font-size: 1.25rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -586,6 +629,5 @@ function onHide() {
   .custom-tiles-section {
     margin-left: 1rem;
   }
-
 }
 </style>

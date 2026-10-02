@@ -52,6 +52,8 @@
             :show-panoramax-control="panoramaxControlAvailable"
             :panoramax-enabled="showPanoramax"
             :panoramax-supported="isVectorMapMode"
+            :show3d-buildings-control="show3dBuildingsControl"
+            :buildings3d-enabled="buildings3dEnabled"
             :zoom-control-title="zoomControlTitle"
             :zoom-control-icon="zoomControlIcon"
             @toggle-favorites="toggleFavorites"
@@ -63,6 +65,7 @@
             @toggle-notes="toggleNotes"
             @toggle-weather="toggleWeather"
             @toggle-panoramax="togglePanoramax"
+            @toggle-3d-buildings="handleToggle3dBuildings"
             @toggle-heatmap="handleToggleHeatmap"
             @heatmap-layer-change="handleHeatmapLayerChange"
             @zoom-to-data="handleZoomToData"
@@ -106,7 +109,6 @@
           :path-data="processedPathData"
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
-          :path-options="normalPathOptions"
           :replay-state="pathReplayState"
           :show-highlighted-trip-popup="showHighlightedTripPopup"
           @path-click="handlePathClick"
@@ -123,6 +125,7 @@
           :highlighted-trip="null"
           :visible="showPath && routeDisplayModeUsesComparison && rawComparisonPathData.length > 0"
           :path-options="rawComparisonPathOptions"
+          :outline="false"
           :inspection-enabled="false"
           :focus-highlighted-trip="false"
           :show-highlighted-trip-popup="false"
@@ -145,8 +148,10 @@
           :timeline-data="processedTimelineData"
           :highlighted-item="activeTimelineHighlight"
           :visible="timelineLayerVisible"
+          :item-weather="stayWeatherByTimelineIndex"
           @marker-click="handleTimelineMarkerClick"
           @marker-contextmenu="handleTimelineMarkerContextMenu"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <!-- Favorites Layer -->
@@ -177,9 +182,12 @@
           ref="immichLayerRef"
           :map="map"
           :visible="showImmich"
+          :photos="photosForLayer"
+          :auth-token="props.photoAuthToken"
           @photo-click="handlePhotoClick"
           @photo-hover="handlePhotoHover"
           @error="handleImmichError"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <!-- Notes Layer -->
@@ -192,14 +200,30 @@
           :load-notes="!props.isPublicView"
           :can-manage-notes="!props.isPublicView"
           @error="handleNotesError"
+          @groups-change="requestCrossTypeCompute"
+        />
+
+        <!-- Combo markers for Stays/Trips, Notes and Photos that overlap each other (vector maps only). -->
+        <VectorCrossTypeCollisionLayer
+          v-if="map && isReady && isVectorMapMode"
+          ref="crossTypeLayerRef"
+          :map="map"
+          :get-sources="getCrossTypeSources"
+          :item-weather="stayWeatherByTimelineIndex"
+          @select-timeline="handleTimelineMarkerClick"
+          @select-notes="handleCrossTypeNotesSelect"
+          @select-photos="openPhotoViewerFromPayload"
         />
 
         <WeatherLayer
           v-if="map && isReady && !props.isPublicView"
+          ref="weatherLayerRef"
           :map="map"
-          :samples="weatherSamples"
+          :samples="weatherLayerSamples"
           :visible="showWeather"
           :highlighted-item="activeTimelineHighlight"
+          :managed="isVectorMapMode"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <VectorPanoramaxLayer
@@ -255,7 +279,7 @@
         <AddFavoriteDialog
           v-if="addToFavoritesDialogVisible"
           :visible="addToFavoritesDialogVisible"
-          :header="'Add To Favorites'"
+          :header="t('maps.timelineMap.addFavoriteDialog.pointHeader')"
           @add-to-favorites="onFavoritePointSubmit"
           @close="closeAddFavoritePoint"
         />
@@ -263,7 +287,7 @@
         <AddFavoriteDialog
           v-if="addAreaShowDialog"
           :visible="addAreaShowDialog"
-          :header="'Add Area To Favorites'"
+          :header="t('maps.timelineMap.addFavoriteDialog.areaHeader')"
           @add-to-favorites="onFavoriteAreaSubmit"
           @close="closeAddFavoriteArea"
         />
@@ -273,6 +297,7 @@
           v-model:visible="photoViewerVisible"
           :photos="photoViewerPhotos"
           :initial-photo-index="photoViewerIndex"
+          :auth-token="props.photoAuthToken"
           @show-on-map="handlePhotoShowOnMap"
           @close="closePhotoViewer"
         />
@@ -306,40 +331,65 @@
       </template>
     </MapContainer>
 
+    <MapColorLegend
+      v-if="showHeatmapLegend"
+      class="heatmap-legend"
+      variant="heatmap"
+      :gradient="heatmapGradient"
+    />
+
     <div v-if="mapMatchingStatusText" class="map-matching-status" aria-live="polite">
       <i class="pi pi-sync map-matching-status-icon" aria-hidden="true" />
       <span>{{ mapMatchingStatusText }}</span>
     </div>
 
+    <!-- Docked summary of the highlighted trip (all viewports): kept off the route itself. -->
+    <!-- While the replay bar is open, the summary is its header row instead (see TripReplayControls). -->
     <div
-      v-if="showMobileTripSummary"
-      class="mobile-trip-summary"
-      :class="{
-        'mobile-trip-summary--above-replay': showTripReplayBar,
-        'mobile-trip-summary--above-restore': showTripReplayRestoreButton && !showTripReplayBar
-      }"
+      v-if="showTripSummary && !showTripReplayBar"
+      class="trip-summary"
       @mousedown.stop
       @touchstart.stop
       @click.stop
     >
-      <div class="mobile-trip-summary-icon">
-        <i :class="mobileTripSummary.iconClass"></i>
+      <div class="trip-summary-icon">
+        <i :class="tripSummary.iconClass"></i>
       </div>
-      <div class="mobile-trip-summary-content">
-        <div class="mobile-trip-summary-title">{{ mobileTripSummary.title }}</div>
-        <div class="mobile-trip-summary-meta">
-          <span>{{ mobileTripSummary.duration }}</span>
-          <span class="mobile-trip-summary-dot"></span>
-          <span>{{ mobileTripSummary.distance }}</span>
-          <span v-if="mobileTripSummary.averageSpeed" class="mobile-trip-summary-dot"></span>
-          <span v-if="mobileTripSummary.averageSpeed">{{ mobileTripSummary.averageSpeed }}</span>
+      <div class="trip-summary-content">
+        <div class="trip-summary-title">{{ tripSummary.title }}</div>
+        <div class="trip-summary-meta">
+          <template v-for="(item, index) in tripSummary.metaItems" :key="index">
+            <span v-if="index > 0" class="trip-summary-dot"></span>
+            <span>{{ item }}</span>
+          </template>
+        </div>
+        <MapColorLegend
+          v-if="showSpeedLegend"
+          class="trip-summary-legend"
+          variant="speed"
+          :speed-colors="mapAppearance.speedBandColors"
+          :outline="mapAppearance.outlineEnabled"
+        />
+        <div v-if="!isMobileTripSelectionViewport" class="trip-summary-hint">
+          {{ t('maps.timelineMap.tripSummaryHoverHint') }}
         </div>
       </div>
+      <!-- Replaces the separate floating "Replay" button once the replay bar is dismissed. -->
+      <button
+        v-if="showTripReplayRestoreButton"
+        type="button"
+        class="trip-summary-replay"
+        :title="t('maps.tripReplay.showControls')"
+        @click="restoreTripReplayControls"
+      >
+        <i class="pi pi-play-circle"></i>
+        {{ t('maps.tripReplay.replay') }}
+      </button>
       <button
         type="button"
-        class="mobile-trip-summary-close"
-        title="Clear trip selection"
-        aria-label="Clear trip selection"
+        class="trip-summary-close"
+        :title="t('maps.timelineMap.clearTripSelection')"
+        :aria-label="t('maps.timelineMap.clearTripSelection')"
         @click="clearAllMapHighlights"
       >
         <i class="pi pi-times"></i>
@@ -348,7 +398,8 @@
 
     <TripReplayControls
       :show-bar="showTripReplayBar"
-      :show-restore-button="showTripReplayRestoreButton"
+      :show-restore-button="showTripReplayRestoreButton && !showTripSummary"
+      :summary="tripSummary"
       :is-playing="isReplayPlaying"
       :elapsed-label="replayElapsedLabel"
       :duration-label="replayDurationLabel"
@@ -373,6 +424,7 @@
 <script setup>
 import {computed, markRaw, nextTick, onMounted, onUnmounted, readonly, ref, shallowRef, watch} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
@@ -381,24 +433,29 @@ import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { setMapTilerBuildings3dEnabled, supportsMapTilerBuildings3d } from '@/maps/vector/utils/maptilerBuildings3d'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { useMapMatchingComparison } from '@/composables/useMapMatchingComparison'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
+import { partitionWeatherSamplesByStay } from '@/maps/shared/stayWeather'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
+import VectorCrossTypeCollisionLayer from '@/maps/vector/layers/VectorCrossTypeCollisionLayer.vue'
 import VectorPanoramaxLayer from '@/maps/vector/layers/VectorPanoramaxLayer.vue'
 import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDialog.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
+import MapColorLegend from '@/components/maps/MapColorLegend.vue'
+import { useMapAppearance } from '@/composables/useMapAppearance'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
-import apiService from '@/utils/apiService'
-import timelineService from '@/services/timelineService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import LocationLookupDialog from '@/components/dialogs/LocationLookupDialog.vue'
@@ -415,12 +472,17 @@ import {useImmichStore} from '@/stores/immich'
 import {useNotesStore} from '@/stores/notes'
 import {useDigestStore} from '@/stores/digest'
 import {useDateRangeStore} from '@/stores/dateRange'
+import {useTechnicalDataStore} from '@/stores/technicalData'
 
 // Props
 const props = defineProps({
   pathData: {
     type: Object,
     default: () => null
+  },
+  preserveViewportOnDataRefresh: {
+    type: Boolean,
+    default: false
   },
   rawPathData: {
     type: Object,
@@ -494,6 +556,14 @@ const props = defineProps({
     type: Array,
     default: null
   },
+  photos: {
+    type: Array,
+    default: null
+  },
+  photoAuthToken: {
+    type: String,
+    default: null
+  },
   weatherSamples: {
     type: Array,
     default: () => []
@@ -554,6 +624,10 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  enable3dBuildingsByDefault: {
+    type: Boolean,
+    default: false
+  },
   panoramaxAvailable: {
     type: Boolean,
     default: false
@@ -582,6 +656,7 @@ const emit = defineEmits([
 
 // Router
 const router = useRouter()
+const { t, te } = useI18n()
 const MOBILE_TRIP_SELECTION_MEDIA = '(max-width: 768px), (pointer: coarse)'
 const TIMELINE_SINGLE_LOCATION_ZOOM = 14
 const TIMELINE_FIT_BOUNDS_MAX_ZOOM = 16
@@ -625,6 +700,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 const digestStore = useDigestStore()
 const dateRangeStore = useDateRangeStore()
+const technicalDataStore = useTechnicalDataStore()
 
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
@@ -657,6 +733,8 @@ const favoritesLayerRef = ref(null)
 const tripPlanLayerRef = ref(null)
 const immichLayerRef = ref(null)
 const notesLayerRef = ref(null)
+const crossTypeLayerRef = ref(null)
+const weatherLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
 const stayContextMenuRef = ref(null)
@@ -665,6 +743,7 @@ const isMobileTripSelectionViewport = ref(false)
 
 const confirm = useConfirm()
 const toast = useToast()
+const timezone = useTimezone()
 
 // Local state
 const map = shallowRef(null)
@@ -676,6 +755,10 @@ const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
 const rawGpsPoints = ref([])
 const rawGpsPointsLoading = ref(false)
+const buildings3dEnabled = ref(false)
+const mapTilerBuildings3dSupported = ref(false)
+let mapTilerBuildings3dListenerMap = null
+let mapTilerBuildings3dStyleListener = null
 let heatmapRequestId = 0
 let rawGpsPointsRequestId = 0
 const heatmapPrefetches = new Map()
@@ -684,12 +767,8 @@ const rawGpsLocationCache = new Map()
 const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
 
-const normalPathOptions = {
-  color: '#007bff',
-  weight: 4,
-  opacity: 0.8,
-  smoothFactor: 1
-}
+// Path colors, width and outline come from the viewer's appearance preferences (see PathLayer).
+const mapAppearance = useMapAppearance()
 
 const rawComparisonPathOptions = {
   color: '#a855f7',
@@ -762,14 +841,24 @@ const photoViewerIndex = ref(0)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
 const addAreaShowDialog = computed(() => dialogState.value.addAreaVisible)
 
-// Map configuration - start with null to avoid showing default location before data loads
-const mapCenter = computed(() => {
-  // Return first available data point, or null if no data yet
-  if (dataBounds.value && dataBounds.value.length > 0) {
-    return dataBounds.value[0]
-  }
-  return props.defaultCenterWhenEmpty
-})
+// Map configuration - start with null to avoid showing default location before data loads.
+//
+// `mapCenter` freezes to the first data point it sees (set by a watcher
+// further down, once `dataBounds` is declared) and stops tracking
+// `dataBounds` after that. It exists only to give the map a reasonable
+// initial position before any real "fit to data" has run - ongoing camera
+// updates as more data arrives are owned exclusively by the debounced
+// `applyTimelineDataViewport` watcher below (which does a proper
+// multi-point fitBounds, not just a single-point recenter).
+//
+// If this stayed reactive to `dataBounds`, it would independently re-fire
+// VectorMapHost's own `:center` prop watcher (which calls `jumpTo`) every
+// time `dataBounds` recomputes - and since timeline data and path data
+// resolve as two separate async fetches, that meant the camera would jump
+// to an intermediate center, then jump again once the final data arrived,
+// on top of (and independent from) the fitBounds watcher's own transition.
+const frozenMapCenter = ref(null)
+const mapCenter = computed(() => frozenMapCenter.value || props.defaultCenterWhenEmpty)
 const mapZoom = ref(13)
 
 const toFiniteMapCoordinate = (value) => {
@@ -877,7 +966,7 @@ const canZoomToCurrentLocation = computed(() => (
 ))
 
 const zoomControlTitle = computed(() => (
-  canZoomToCurrentLocation.value ? 'Zoom to Current Location' : 'Zoom to Data'
+  canZoomToCurrentLocation.value ? t('maps.timelineMap.zoomControl.currentLocation') : t('maps.timelineMap.zoomControl.data')
 ))
 
 const zoomControlIcon = computed(() => (
@@ -892,7 +981,14 @@ const controlsProps = computed(() => ({
 }))
 
 // Immich computed properties
-const immichConfigured = computed(() => immichStore.isConfigured)
+// For public views, "configured" means the share allows photos (there's no authenticated
+// immichStore session to check), so the map-controls toggle button stays reachable.
+const immichConfigured = computed(() => {
+  if (props.isPublicView) {
+    return shouldShowImmich.value
+  }
+  return immichStore.isConfigured
+})
 const immichLoading = computed(() => immichStore.photosLoading || immichStore.configLoading)
 const notesLoading = computed(() => notesStore.notesLoading)
 
@@ -903,6 +999,10 @@ const shouldShowImmich = computed(() => {
   }
   return true // For non-public views, always allow (controlled by toggle)
 })
+
+const photosForLayer = computed(() => (
+  Array.isArray(props.photos) ? props.photos : null
+))
 
 const shouldShowNotesLayer = computed(() => {
   if (props.isPublicView) {
@@ -931,16 +1031,12 @@ const heatmapStyle = computed(() => {
     : { radius: 32, blur: 24, minOpacity: 0.3, max: 1.0 }
 })
 
-const heatmapGradient = {
-  0.0: '#2563eb',
-  0.35: '#22c55e',
-  0.6: '#eab308',
-  0.8: '#f97316',
-  1.0: '#dc2626',
-}
+const heatmapGradient = computed(() => mapAppearance.value.heatmapGradient)
+const showHeatmapLegend = computed(() => heatmapEnabled.value && heatmapAvailable.value)
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+const show3dBuildingsControl = computed(() => isVectorMapMode.value && mapTilerBuildings3dSupported.value)
 const panoramaxControlAvailable = computed(() => !props.isPublicView && props.panoramaxAvailable && Boolean(props.panoramaxEndpoint))
 
 const openPanoramaxViewer = (selection) => {
@@ -969,19 +1065,28 @@ const highlightedTripHasMatchedPath = computed(() => (
 ))
 
 const formatTripMovementTitle = (movementType) => {
-  const normalized = String(movementType || 'Movement')
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .toLowerCase()
+  const label = movementType && te(`movementTypes.${movementType}`)
+    ? t(`movementTypes.${movementType}`)
+    : t('maps.popups.timeline.unknownMovement')
 
-  const label = normalized
-    ? normalized.replace(/\b\w/g, (letter) => letter.toUpperCase())
-    : 'Movement'
-
-  return `${label} Trip`
+  return t('maps.popups.timeline.movementTrip', { movementType: label })
 }
 
-const mobileTripSummary = computed(() => {
+// "19:35 → 20:10", or with the end date when the trip ends on another day.
+const formatTripTimeRange = (trip) => {
+  const startMs = Date.parse(trip?.timestamp)
+  if (!Number.isFinite(startMs)) return null
+
+  const start = new Date(startMs).toISOString()
+  const end = new Date(startMs + Math.max(Number(trip.tripDuration) || 0, 0) * 1000).toISOString()
+  const endText = timezone.isSameDay(start, end)
+    ? timezone.formatTime(end)
+    : `${timezone.formatDateDisplay(end)} ${timezone.formatTime(end)}`
+
+  return `${timezone.formatTime(start)} → ${endText}`
+}
+
+const tripSummary = computed(() => {
   const trip = activeHighlightedTrip.value
   if (!trip) return null
 
@@ -990,15 +1095,20 @@ const mobileTripSummary = computed(() => {
   return {
     iconClass: getTripMovementIconClass(trip.movementType),
     title: formatTripMovementTitle(trip.movementType),
-    duration: formatDuration(Number(trip.tripDuration) || 0),
-    distance: formatDistance(Number(trip.distanceMeters) || 0),
-    averageSpeed: Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
+    metaItems: [
+      formatTripTimeRange(trip),
+      formatDuration(Number(trip.tripDuration) || 0),
+      formatDistance(Number(trip.distanceMeters) || 0),
+      Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
+    ].filter(Boolean)
   }
 })
 
-const showMobileTripSummary = computed(() => (
-  isMobileTripSelectionViewport.value
-  && Boolean(mobileTripSummary.value)
+const showTripSummary = computed(() => Boolean(tripSummary.value))
+// Car trips are drawn in speed bands; the legend explains them unless the user turned bands off.
+const showSpeedLegend = computed(() => (
+  mapAppearance.value.speedBandsEnabled
+  && String(activeHighlightedTrip.value?.movementType || '').trim().toUpperCase() === 'CAR'
 ))
 const {
   showTripReplayBar,
@@ -1030,8 +1140,21 @@ const {
   autoShowControls: computed(() => props.autoShowTripReplayControls)
 })
 
+const getCrossTypeSources = () => ({
+  timeline: timelineLayerRef.value,
+  notes: notesLayerRef.value,
+  photos: immichLayerRef.value,
+  weather: weatherLayerRef.value,
+  // The highlighted trip's start/end markers: nothing may hide under them.
+  getFocusObstacles: () => pathLayerRef.value?.getHighlightedEndpointObstacles?.() ?? []
+})
+const requestCrossTypeCompute = () => crossTypeLayerRef.value?.requestCompute?.()
+const handleCrossTypeNotesSelect = (notes) => notesLayerRef.value?.openNotes?.(notes)
+
 const hideTimelineMarkersForReplay = computed(() => showTripReplayBar.value && isReplayPlaying.value)
 const timelineLayerVisible = computed(() => showTimeline.value && !hideTimelineMarkersForReplay.value)
+
+watch([timelineLayerVisible, showImmich, showNotesLayer, activeTimelineHighlight], () => requestCrossTypeCompute())
 
 const showReadOnlyToast = () => {
   showDemoModeToast(toast)
@@ -1041,7 +1164,7 @@ const showReadOnlyToast = () => {
 const mapMenuItems = computed(() => {
   const items = [
     {
-      label: 'Was I here?',
+      label: t('maps.timelineMap.contextMenu.wasIHere'),
       icon: 'pi pi-clock',
       command: () => openLocationLookup(dialogState.value.addToFavoritesLatLng)
     }
@@ -1049,7 +1172,7 @@ const mapMenuItems = computed(() => {
 
   if (props.showPlanToVisitAction) {
     items.push({
-      label: 'Plan to visit here',
+      label: t('maps.timelineMap.contextMenu.planToVisitHere'),
       icon: 'pi pi-map-marker',
       disabled: props.readOnly,
       command: () => {
@@ -1068,7 +1191,7 @@ const mapMenuItems = computed(() => {
   if (props.showFavoritesContextActions) {
     items.push(
       {
-        label: 'Add to Favorites',
+        label: t('maps.timelineMap.contextMenu.addToFavorites'),
         icon: 'pi pi-star',
         disabled: props.readOnly,
         command: () => {
@@ -1080,7 +1203,7 @@ const mapMenuItems = computed(() => {
         }
       },
       {
-        label: 'Add an area to Favorites',
+        label: t('maps.timelineMap.contextMenu.addAreaToFavorites'),
         icon: 'pi pi-star',
         disabled: props.readOnly,
         command: () => {
@@ -1100,7 +1223,7 @@ const mapMenuItems = computed(() => {
 // Favorite context menu items
 const favoriteMenuItems = computed(() => [
   {
-    label: 'View all visits',
+    label: t('maps.timelineMap.contextMenu.viewAllVisits'),
     icon: 'pi pi-chart-line',
     command: () => {
       if (dialogState.value.selectedFavorite) {
@@ -1112,7 +1235,7 @@ const favoriteMenuItems = computed(() => [
     separator: true
   },
   {
-    label: 'Edit',
+    label: t('maps.timelineMap.contextMenu.edit'),
     icon: 'pi pi-pencil',
     disabled: props.readOnly,
     command: () => {
@@ -1126,7 +1249,7 @@ const favoriteMenuItems = computed(() => [
     }
   },
   {
-    label: 'Delete',
+    label: t('maps.timelineMap.contextMenu.delete'),
     icon: 'pi pi-trash',
     disabled: props.readOnly,
     command: () => {
@@ -1143,7 +1266,7 @@ const favoriteMenuItems = computed(() => [
 
 const stayMenuItems = computed(() => [
   {
-    label: 'View all visits',
+    label: t('maps.timelineMap.contextMenu.viewAllVisits'),
     icon: 'pi pi-chart-line',
     command: () => {
       if (dialogState.value.selectedStay) {
@@ -1153,9 +1276,9 @@ const stayMenuItems = computed(() => [
   }
 ])
 
-const plannedItemMenuItems = ref([
+const plannedItemMenuItems = computed(() => [
   {
-    label: 'Edit planned item',
+    label: t('maps.timelineMap.contextMenu.editPlannedItem'),
     icon: 'pi pi-pencil',
     command: () => {
       if (dialogState.value.selectedPlannedItem) {
@@ -1164,7 +1287,7 @@ const plannedItemMenuItems = ref([
     }
   },
   {
-    label: 'Delete planned item',
+    label: t('maps.timelineMap.contextMenu.deletePlannedItem'),
     icon: 'pi pi-trash',
     command: () => {
       if (dialogState.value.selectedPlannedItem) {
@@ -1175,8 +1298,62 @@ const plannedItemMenuItems = ref([
 ])
 
 // Map event handlers
+const detachMapTilerBuildings3dListener = () => {
+  if (mapTilerBuildings3dListenerMap && mapTilerBuildings3dStyleListener) {
+    mapTilerBuildings3dListenerMap.off?.('style.load', mapTilerBuildings3dStyleListener)
+  }
+  mapTilerBuildings3dListenerMap = null
+  mapTilerBuildings3dStyleListener = null
+}
+
+const syncMapTilerBuildings3dSupport = (mapInstance) => {
+  const supported = supportsMapTilerBuildings3d(mapInstance)
+  mapTilerBuildings3dSupported.value = supported
+  if (!supported) {
+    const wasEnabled = buildings3dEnabled.value
+    buildings3dEnabled.value = false
+    if (wasEnabled) {
+      mapInstance?.easeTo?.({ pitch: 0, duration: 300, essential: true })
+    }
+    return
+  }
+  if (buildings3dEnabled.value) {
+    if (!setMapTilerBuildings3dEnabled(mapInstance, true)) {
+      mapTilerBuildings3dSupported.value = false
+      buildings3dEnabled.value = false
+      return
+    }
+    mapInstance?.easeTo?.({ pitch: 45, duration: 300, essential: true })
+  }
+}
+
+const handleToggle3dBuildings = (enabled) => {
+  if (!map.value || !mapTilerBuildings3dSupported.value) return
+
+  if (!setMapTilerBuildings3dEnabled(map.value, enabled)) {
+    mapTilerBuildings3dSupported.value = false
+    buildings3dEnabled.value = false
+    return
+  }
+
+  buildings3dEnabled.value = enabled
+  map.value.easeTo?.({ pitch: enabled ? 45 : 0, duration: 300, essential: true })
+}
+
 const handleMapReady = (mapInstance) => {
+  detachMapTilerBuildings3dListener()
+  buildings3dEnabled.value = props.enable3dBuildingsByDefault
   map.value = mapInstance ? markRaw(mapInstance) : null
+  syncMapTilerBuildings3dSupport(mapInstance)
+  if (mapInstance?.on) {
+    mapTilerBuildings3dListenerMap = mapInstance
+    mapTilerBuildings3dStyleListener = () => {
+      if (map.value === mapInstance) {
+        syncMapTilerBuildings3dSupport(mapInstance)
+      }
+    }
+    mapInstance.on('style.load', mapTilerBuildings3dStyleListener)
+  }
   
   // Initialize rectangle drawing
   initializeDrawing(mapInstance)
@@ -1184,11 +1361,18 @@ const handleMapReady = (mapInstance) => {
   
   // Fit map to data if available
   if (hasAnyData.value && dataBounds.value) {
+    lastBoundsString = JSON.stringify(dataBounds.value)
     nextTick(() => {
       applyTimelineDataViewport(dataBounds.value)
     })
   }
 }
+
+watch(() => props.enable3dBuildingsByDefault, (enabled) => {
+  if (map.value && mapTilerBuildings3dSupported.value) {
+    handleToggle3dBuildings(enabled)
+  }
+})
 
 const syncMobileTripSelectionViewport = () => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -1214,14 +1398,15 @@ const openLocationLookup = async (point) => {
   dialogState.value.locationLookupVisible = true
 
   try {
-    const response = await timelineService.lookupLocation(latitude, longitude)
+    const response = await timelineStore.lookupLocation(latitude, longitude)
     if (requestId !== locationLookupRequestId) return
-    dialogState.value.locationLookupResult = response?.data || null
+    dialogState.value.locationLookupResult = response || null
   } catch (error) {
     if (requestId !== locationLookupRequestId) return
-    dialogState.value.locationLookupError = error?.response?.data?.message
-      || error?.message
-      || 'Could not check visits at this location.'
+    dialogState.value.locationLookupError = formatApiErrorDetail(
+      error,
+      'Could not check visits at this location.'
+    )
   } finally {
     if (requestId === locationLookupRequestId) {
       dialogState.value.locationLookupLoading = false
@@ -1383,23 +1568,23 @@ const focusOnPhoto = (photo) => {
 }
 
 const handleImmichError = (event) => {
-  
-  let title = 'Immich Photos Error'
-  let detail = 'Failed to load photos from Immich'
-  
+
+  let title = t('maps.timelineMap.immichError.genericTitle')
+  let detail = t('maps.timelineMap.immichError.genericDetail')
+
   // Customize error messages based on error type
   switch (event.type) {
     case 'fetch':
-      title = 'Failed to Load Photos'
-      detail = event.message || 'Unable to fetch photos from your Immich server. Please check your configuration.'
+      title = t('maps.timelineMap.immichError.fetchTitle')
+      detail = event.message || t('maps.timelineMap.immichError.fetchDetailFallback')
       break
     case 'refresh':
-      title = 'Refresh Failed'
-      detail = event.message || 'Unable to refresh photos from Immich. Please try again.'
+      title = t('maps.timelineMap.immichError.refreshTitle')
+      detail = event.message || t('maps.timelineMap.immichError.refreshDetailFallback')
       break
     case 'config':
-      title = 'Configuration Error'
-      detail = event.message || 'Immich configuration is invalid. Please check your server settings.'
+      title = t('maps.timelineMap.immichError.configTitle')
+      detail = event.message || t('maps.timelineMap.immichError.configDetailFallback')
       break
     default:
       detail = event.message || detail
@@ -1414,17 +1599,17 @@ const handleImmichError = (event) => {
 }
 
 const handleNotesError = (event) => {
-  let title = 'Notes Error'
-  let detail = 'Failed to load notes'
+  let title = t('maps.timelineMap.notesError.genericTitle')
+  let detail = t('maps.timelineMap.notesError.genericDetail')
 
   switch (event.type) {
     case 'fetch':
-      title = 'Failed to Load Notes'
-      detail = event.message || 'Unable to fetch notes for this date range.'
+      title = t('maps.timelineMap.notesError.fetchTitle')
+      detail = event.message || t('maps.timelineMap.notesError.fetchDetailFallback')
       break
     case 'refresh':
-      title = 'Refresh Failed'
-      detail = event.message || 'Unable to refresh notes. Please try again.'
+      title = t('maps.timelineMap.notesError.refreshTitle')
+      detail = event.message || t('maps.timelineMap.notesError.refreshDetailFallback')
       break
     default:
       detail = event.message || detail
@@ -1623,8 +1808,8 @@ const onFavoritePointSubmit = (favoriteData) => {
   if (!pointLatLng) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Could not add favorite. Location data was missing. Please try again.',
+      summary: t('common.error'),
+      detail: t('maps.timelineMap.addFavoriteFailed'),
       life: 4000
     })
     closeAddFavoritePoint()
@@ -1824,14 +2009,13 @@ const loadRawGpsPoints = async () => {
   rawGpsPointsLoading.value = true
 
   try {
-    const response = await apiService.get('/gps/map-points', {
+    const data = await technicalDataStore.fetchRawMapPoints({
       startTime,
       endTime,
       limit: 10000
     })
     if (requestId !== rawGpsPointsRequestId) return
 
-    const data = response?.data || {}
     const points = Array.isArray(data.points) ? data.points : []
     const meta = {
       totalCount: Number(data.totalCount || 0),
@@ -1847,8 +2031,8 @@ const loadRawGpsPoints = async () => {
       rawGpsLimitWarningKeys.add(key)
       toast.add({
         severity: 'warn',
-        summary: 'Raw GPS points limited',
-        detail: `Showing ${meta.returnedCount} of ${meta.totalCount} points. Narrow the date range for exact inspection.`,
+        summary: t('maps.timelineMap.rawGpsLimited.summary'),
+        detail: t('maps.timelineMap.rawGpsLimited.detail', { returnedCount: meta.returnedCount, totalCount: meta.totalCount }),
         life: 5000
       })
     }
@@ -1858,8 +2042,8 @@ const loadRawGpsPoints = async () => {
     console.error('Failed to load raw GPS points:', error)
     toast.add({
       severity: 'error',
-      summary: 'Raw GPS Points',
-      detail: 'Failed to load raw GPS points for this date range.',
+      summary: t('maps.timelineMap.rawGpsLoadFailed.summary'),
+      detail: t('maps.timelineMap.rawGpsLoadFailed.detail'),
       life: 5000
     })
   } finally {
@@ -1886,9 +2070,7 @@ const resolveRawGpsPointLocation = async (point) => {
     return rawGpsLocationCache.get(key)
   }
 
-  const promise = apiService
-    .get(`/gps/points/${point.id}/location`)
-    .then((response) => response?.data)
+  const promise = technicalDataStore.resolveRawPointLocation(point.id)
 
   rawGpsLocationCache.set(key, promise)
   try {
@@ -1931,6 +2113,17 @@ const pathDataToSegments = (pathData) => {
 const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
+
+// On vector maps a stay's weather is a badge on the stay marker (its samples sit
+// exactly on the stay), so only the remaining trip samples get their own markers.
+const stayWeatherPartition = computed(() => {
+  if (!isVectorMapMode.value || !showWeather.value || props.isPublicView) {
+    return null
+  }
+  return partitionWeatherSamplesByStay(processedTimelineData.value, props.weatherSamples)
+})
+const stayWeatherByTimelineIndex = computed(() => stayWeatherPartition.value?.weatherByTimelineIndex ?? null)
+const weatherLayerSamples = computed(() => stayWeatherPartition.value?.remainingSamples ?? props.weatherSamples)
 
 const {
   routeDisplayMode,
@@ -2029,16 +2222,36 @@ const dataBounds = computed(() => {
   return bounds.length > 0 ? bounds : null
 })
 
+// Sets the one-time initial map center (see `frozenMapCenter` declaration above).
+watch(dataBounds, (newBounds) => {
+  if (!frozenMapCenter.value && newBounds && newBounds.length > 0) {
+    frozenMapCenter.value = newBounds[0]
+  }
+}, { immediate: true })
+
 // Watch for data bounds changes and update map view
 let lastBoundsString = ''
+let pendingFitTimeoutId = null
 watch(dataBounds, (newBounds) => {
   if (map.value && newBounds && hasAnyData.value) {
     const boundsString = JSON.stringify(newBounds)
     if (boundsString !== lastBoundsString) {
+      const shouldFitBounds = !lastBoundsString || !props.preserveViewportOnDataRefresh
       lastBoundsString = boundsString
+      if (!shouldFitBounds) return
       nextTick(() => {
-        // Delay fitBounds to let initial tiles load
-        setTimeout(() => {
+        // Debounced: cancel any fit still pending from an earlier bounds
+        // change so staggered data arrival (e.g. timeline data and path
+        // data resolving as two separate async fetches) coalesces into a
+        // single fit using the latest bounds, instead of the camera
+        // visibly jumping to an intermediate view and then again to the
+        // final one.
+        if (pendingFitTimeoutId !== null) {
+          clearTimeout(pendingFitTimeoutId)
+        }
+
+        pendingFitTimeoutId = setTimeout(() => {
+          pendingFitTimeoutId = null
           if (map.value) {
             applyTimelineDataViewport(newBounds, {
               animate: false // Disable animation to prevent tile issues
@@ -2100,6 +2313,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  detachMapTilerBuildings3dListener()
   window.removeEventListener('resize', syncMobileTripSelectionViewport)
   window.visualViewport?.removeEventListener?.('resize', syncMobileTripSelectionViewport)
 
@@ -2115,7 +2329,7 @@ const invalidateSize = () => {
   mapContainerRef.value?.invalidateSize?.()
 }
 
-const setView = (center, zoom, options = {}) => {
+const setView = (center, zoom = map.value?.getZoom?.(), options = {}) => {
   mapContainerRef.value?.setView?.(center, zoom, options)
 }
 
@@ -2141,7 +2355,7 @@ defineExpose({
   height: 100%;
   min-height: 400px;
   position: relative;
-  background-color: var(--gp-surface-light, #f8fafc);
+  background-color: var(--gp-surface-muted);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2149,13 +2363,13 @@ defineExpose({
 
 .timeline-map-control-stack {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
   z-index: 900;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: var(--gp-spacing-sm, 0.5rem);
+  gap: var(--gp-spacing-sm);
   pointer-events: none;
 }
 
@@ -2163,32 +2377,36 @@ defineExpose({
   pointer-events: auto;
 }
 
-.timeline-viewer-location-control {
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
+/* The stack prefix outranks ViewerLocationControl's own absolute placement. */
+.timeline-map-control-stack > .timeline-viewer-location-control {
+  position: relative;
+  top: auto;
+  right: auto;
   z-index: auto;
 }
 
 .map-matching-status {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  left: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-left));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left));
   z-index: 905;
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   max-width: min(18rem, calc(100% - 7rem));
   padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--gp-surface-card) 94%, transparent);
+  color: var(--gp-text-primary);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
   font-size: 0.82rem;
   font-weight: 700;
   pointer-events: none;
 }
+
+/* Both overlays below were written against the light theme only, so on a dark map they
+   showed up as white pills with dark text. */
 
 .map-matching-status-icon {
   animation: mapMatchingPulse 1.4s ease-in-out infinite;
@@ -2200,35 +2418,48 @@ defineExpose({
   50% { opacity: 1; transform: rotate(12deg); }
 }
 
-.mobile-trip-summary {
+/* Bottom-left, clear of the attribution (bottom-right) and the docked trip summary (bottom-centre). */
+.heatmap-legend {
+  position: absolute;
+  left: calc(0.75rem + env(safe-area-inset-left));
+  bottom: calc(2.35rem + env(safe-area-inset-bottom));
+  z-index: 905;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--gp-border-medium);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gp-surface-card) 94%, transparent);
+  color: var(--gp-text-primary);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  pointer-events: none;
+}
+
+.trip-summary-legend {
+  margin-top: 0.3rem;
+}
+
+/* Desktop: docked bottom-centre, where the replay bar also lives. */
+.trip-summary {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
+  bottom: calc(2.35rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 940;
-  width: min(22rem, calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  width: min(30rem, calc(100% - 2rem));
   display: flex;
   align-items: center;
   gap: 0.65rem;
   padding: 0.55rem 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.58);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.98);
-  color: #0f172a;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  /* Same card as the replay bar it stands in for (TripReplayControls .trip-replay-bar). */
+  border: 1px solid var(--gp-border-medium);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--gp-surface-card) 95%, transparent);
+  color: var(--gp-text-primary);
+  box-shadow: var(--gp-shadow-large);
   backdrop-filter: blur(4px);
   pointer-events: auto;
 }
 
-.mobile-trip-summary--above-replay {
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 9rem + env(safe-area-inset-bottom));
-}
-
-.mobile-trip-summary--above-restore {
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 5.75rem + env(safe-area-inset-bottom));
-}
-
-.mobile-trip-summary-icon {
+.trip-summary-icon {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
@@ -2236,19 +2467,19 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   color: #ffffff;
   font-size: 0.9rem;
 }
 
-.mobile-trip-summary-content {
+.trip-summary-content {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.mobile-trip-summary-title {
+.trip-summary-title {
   overflow: hidden;
-  color: #0f172a;
+  color: var(--gp-text-primary);
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.2;
@@ -2256,75 +2487,84 @@ defineExpose({
   white-space: nowrap;
 }
 
-.mobile-trip-summary-meta {
+.trip-summary-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.38rem;
   overflow: visible;
-  color: #334155;
+  color: var(--gp-text-secondary);
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
   white-space: normal;
 }
 
-.mobile-trip-summary-dot {
+.trip-summary-hint {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  color: var(--gp-text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-summary-dot {
   flex: 0 0 4px;
   width: 4px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.7);
+  background: var(--gp-text-muted);
 }
 
-.mobile-trip-summary-close {
+.trip-summary-close {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(248, 250, 252, 0.98);
-  color: #334155;
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.mobile-trip-summary-close:hover,
-.mobile-trip-summary-close:focus-visible {
-  border-color: var(--gp-primary-light, #60a5fa);
-  background: rgba(239, 246, 255, 0.98);
-  color: var(--gp-primary, #1a56db);
+.trip-summary-replay {
+  flex: 0 0 auto;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--gp-border-medium);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-:global(.p-dark) .mobile-trip-summary {
-  border-color: rgba(100, 116, 139, 0.65);
-  background: rgba(15, 23, 42, 0.94);
-  color: rgba(248, 250, 252, 0.96);
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.48);
-}
-
-:global(.p-dark) .mobile-trip-summary-title {
-  color: rgba(248, 250, 252, 0.96);
-}
-
-:global(.p-dark) .mobile-trip-summary-meta {
-  color: rgba(203, 213, 225, 0.88);
-}
-
-:global(.p-dark) .mobile-trip-summary-close {
-  border-color: rgba(100, 116, 139, 0.65);
-  background: rgba(30, 41, 59, 0.95);
-  color: rgba(203, 213, 225, 0.92);
+.trip-summary-replay:hover,
+.trip-summary-replay:focus-visible,
+.trip-summary-close:hover,
+.trip-summary-close:focus-visible {
+  border-color: var(--gp-primary-light);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .timeline-map-control-stack {
-    top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
-    right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
+    top: calc(var(--gp-spacing-md) + env(safe-area-inset-top));
+    right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
     align-items: flex-end;
   }
 
@@ -2334,38 +2574,45 @@ defineExpose({
     min-height: 300px;
   }
 
+  /* Lift the bottom controls (attribution) above the mobile bottom sheet. The control container has z-index 0 in
+     maplibreMarkerFixes.css, which would keep them under the markers. */
+  .map-view-container :global(.maplibregl-control-container) {
+    z-index: auto;
+  }
+
   .map-view-container :global(.leaflet-bottom),
   .map-view-container :global(.maplibregl-ctrl-bottom-left),
   .map-view-container :global(.maplibregl-ctrl-bottom-right) {
-    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom)) !important;
-    z-index: 880 !important;
-    pointer-events: none !important;
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom));
+    z-index: 880;
+    pointer-events: none;
   }
 
   .map-view-container :global(.leaflet-bottom.leaflet-left),
   .map-view-container :global(.maplibregl-ctrl-bottom-left) {
-    left: calc(0.5rem + env(safe-area-inset-left)) !important;
+    left: calc(0.5rem + env(safe-area-inset-left));
   }
 
   .map-view-container :global(.leaflet-bottom.leaflet-right),
   .map-view-container :global(.maplibregl-ctrl-bottom-right) {
-    right: calc(0.5rem + env(safe-area-inset-right)) !important;
+    right: calc(0.5rem + env(safe-area-inset-right));
   }
 
   .map-view-container :global(.leaflet-control-attribution),
   .map-view-container :global(.maplibregl-ctrl-attrib) {
     max-width: calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     box-sizing: border-box;
-    pointer-events: auto !important;
+    pointer-events: auto;
   }
 
   .map-view-container :global(.maplibregl-ctrl-attrib) {
-    margin-bottom: 0 !important;
-    font-size: 9px !important;
+    margin-bottom: 0;
+    font-size: 9px;
     white-space: nowrap;
   }
 
-  .mobile-trip-summary {
+  .trip-summary {
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
     width: calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     max-width: 22rem;
   }

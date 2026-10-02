@@ -1,25 +1,29 @@
 <template>
   <div class="invitation-register-page">
+    <div class="locale-switcher-corner">
+      <LocaleSwitcher />
+    </div>
+
     <div class="register-container">
       <div class="register-card">
         <div class="text-center mb-4">
-          <h1 class="app-title">GeoPulse</h1>
-          <p class="text-muted">Complete your registration</p>
+          <h1 class="app-title">{{ t('auth.invitation.brand') }}</h1>
+          <p class="text-muted">{{ t('auth.invitation.title') }}</p>
         </div>
 
         <!-- Loading State -->
         <div v-if="validating" class="text-center p-5">
           <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-          <p class="mt-3">Validating invitation...</p>
+          <p class="mt-3">{{ t('auth.invitation.validating') }}</p>
         </div>
 
         <!-- Invalid/Expired Invitation -->
         <div v-else-if="!invitationValid" class="text-center p-4">
           <i class="pi pi-exclamation-circle text-6xl text-red-500 mb-3"></i>
-          <h3>Invalid Invitation</h3>
+          <h3>{{ t('auth.invitation.invalidTitle') }}</h3>
           <p class="text-muted">{{ validationMessage }}</p>
           <Button
-            label="Go to Login"
+            :label="t('auth.invitation.goToLogin')"
             icon="pi pi-sign-in"
             class="mt-3"
             @click="router.push('/login')"
@@ -33,12 +37,12 @@
           </Message>
 
           <div class="field">
-            <label for="email">Email</label>
+            <label for="email">{{ t('auth.invitation.emailLabel') }}</label>
             <InputText
               id="email"
               v-model="form.email"
               type="email"
-              placeholder="Enter your email"
+              :placeholder="t('auth.invitation.emailPlaceholder')"
               required
               autocomplete="email"
               :class="{ 'p-invalid': errors.email }"
@@ -47,21 +51,21 @@
           </div>
 
           <div class="field">
-            <label for="fullName">Full Name</label>
+            <label for="fullName">{{ t('auth.invitation.fullNameLabel') }}</label>
             <InputText
               id="fullName"
               v-model="form.fullName"
-              placeholder="Enter your full name"
+              :placeholder="t('auth.invitation.fullNamePlaceholder')"
               autocomplete="name"
             />
           </div>
 
           <div class="field">
-            <label for="password">Password</label>
+            <label for="password">{{ t('auth.invitation.passwordLabel') }}</label>
             <Password
               id="password"
               v-model="form.password"
-              placeholder="Enter password"
+              :placeholder="t('auth.invitation.passwordPlaceholder')"
               :feedback="true"
               toggleMask
               required
@@ -72,11 +76,11 @@
           </div>
 
           <div class="field">
-            <label for="confirmPassword">Confirm Password</label>
+            <label for="confirmPassword">{{ t('auth.invitation.confirmPasswordLabel') }}</label>
             <Password
               id="confirmPassword"
               v-model="form.confirmPassword"
-              placeholder="Confirm password"
+              :placeholder="t('auth.invitation.confirmPasswordPlaceholder')"
               :feedback="false"
               toggleMask
               required
@@ -87,7 +91,7 @@
           </div>
 
           <div class="field">
-            <label for="timezone">Timezone</label>
+            <label for="timezone">{{ t('auth.invitation.timezoneLabel') }}</label>
             <Select
               id="timezone"
               v-model="form.timezone"
@@ -96,12 +100,12 @@
               :placeholder="form.timezone"
               class="w-full"
             />
-            <small class="text-muted">Detected: {{ form.timezone }}</small>
+            <small class="text-muted">{{ t('auth.invitation.timezoneDetected', { timezone: form.timezone }) }}</small>
           </div>
 
           <Button
             type="submit"
-            label="Create Account"
+            :label="t('auth.invitation.createAccount')"
             icon="pi pi-user-plus"
             class="w-full mt-3"
             :loading="submitting"
@@ -109,7 +113,7 @@
 
           <div class="text-center mt-3">
             <router-link to="/login" class="text-primary">
-              Already have an account? Sign in
+              {{ t('auth.invitation.loginLink') }}
             </router-link>
           </div>
         </form>
@@ -117,11 +121,13 @@
     </div>
 
     <Toast />
+    <ErrorReferenceToast />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -129,15 +135,21 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useLocale } from '@/composables/useLocale'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
+const { locale } = useLocale()
 
 const token = ref(route.params.token)
 const validating = ref(true)
@@ -229,13 +241,13 @@ const timezones = ref([
 const validateInvitation = async () => {
   validating.value = true
   try {
-    const response = await apiService.get(`/auth/invitation/${token.value}/validate`)
+    const response = await authStore.validateInvitation(token.value)
     invitationValid.value = response.valid
-    validationMessage.value = response.message || 'This invitation is not valid'
+    validationMessage.value = formatMessageDescriptor(response.message) || t('auth.invitation.invalidMessage')
   } catch (error) {
     console.error('Failed to validate invitation:', error)
     invitationValid.value = false
-    validationMessage.value = 'Failed to validate invitation'
+    validationMessage.value = t('auth.invitation.errors.validateFailed')
   } finally {
     validating.value = false
   }
@@ -251,23 +263,23 @@ const validateForm = () => {
   let isValid = true
 
   if (!form.value.email) {
-    errors.value.email = 'Email is required'
+    errors.value.email = t('auth.validation.emailRequired')
     isValid = false
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-    errors.value.email = 'Invalid email format'
+    errors.value.email = t('auth.invitation.validation.emailInvalid')
     isValid = false
   }
 
   if (!form.value.password) {
-    errors.value.password = 'Password is required'
+    errors.value.password = t('auth.validation.passwordRequired')
     isValid = false
   } else if (form.value.password.length < 3) {
-    errors.value.password = 'Password must be at least 3 characters'
+    errors.value.password = t('auth.invitation.validation.passwordTooShort')
     isValid = false
   }
 
   if (form.value.password !== form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Passwords do not match'
+    errors.value.confirmPassword = t('auth.validation.mismatch')
     isValid = false
   }
 
@@ -285,23 +297,23 @@ const handleSubmit = async () => {
 
   try {
     const payload = {
-      token: token.value,
       email: form.value.email,
       password: form.value.password,
       fullName: form.value.fullName || form.value.email.split('@')[0],
-      timezone: form.value.timezone
+      timezone: form.value.timezone,
+      language: locale.value
     }
 
     // Register user via invitation
-    await apiService.post('/auth/invitation/register', payload)
+    await authStore.registerInvitation(token.value, payload)
 
     // Log in the user automatically after successful registration
     await authStore.login(form.value.email, form.value.password)
 
     toast.add({
       severity: 'success',
-      summary: 'Welcome to GeoPulse!',
-      detail: 'Your account has been created successfully',
+      summary: t('auth.invitation.toasts.created.title'),
+      detail: t('auth.invitation.toasts.created.detail'),
       life: 3000
     })
 
@@ -310,7 +322,7 @@ const handleSubmit = async () => {
 
   } catch (error) {
     console.error('Registration failed:', error)
-    errorMessage.value = error.response?.data?.error || 'Registration failed. Please try again.'
+    errorMessage.value = formatApiErrorDetail(error, t('auth.invitation.errors.registrationFailed'))
   } finally {
     submitting.value = false
   }
@@ -343,7 +355,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
   z-index: 0;
 }
 
@@ -359,12 +371,12 @@ onMounted(() => {
 }
 
 /* Dark Mode */
-.p-dark .invitation-register-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
 
-.p-dark .invitation-register-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+.locale-switcher-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 3;
 }
 
 /* Container */
@@ -377,15 +389,10 @@ onMounted(() => {
 }
 
 .register-card {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: 12px;
   padding: 2.5rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-}
-
-.p-dark .register-card {
-  background: var(--gp-surface-dark);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Title */
@@ -398,7 +405,7 @@ onMounted(() => {
 }
 
 .text-muted {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0.5rem 0 0 0;
 }
 
@@ -415,11 +422,11 @@ onMounted(() => {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .p-error {
-  color: var(--red-500);
+  color: var(--p-red-500);
   font-size: 0.875rem;
   margin-top: 0.25rem;
   display: block;

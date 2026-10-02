@@ -136,6 +136,10 @@ Map Matching does not change your original GPS data, timeline detection, movemen
 statistics. If matching is still processing, unavailable, unsupported for a trip type, or not confident enough, GeoPulse
 keeps showing the raw GPS path.
 
+When Map Matching is on, **Show raw GPS for** lets you keep the original path for selected supported movement types.
+These trips do not show matching progress, comparison controls, or Map Matching details. Matching may still run in the
+background, and changing a trip's movement type manually updates which path is shown.
+
 :::info Availability
 The Map Matching switch is only available after an administrator enables Valhalla-backed Map Matching for the instance.
 If the switch is disabled, ask your administrator to review the

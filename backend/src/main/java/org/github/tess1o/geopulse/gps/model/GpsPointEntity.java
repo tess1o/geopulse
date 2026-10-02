@@ -1,14 +1,16 @@
 package org.github.tess1o.geopulse.gps.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
+import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
 import java.io.Serializable;
@@ -49,7 +51,8 @@ public class GpsPointEntity implements GpsPoint, Serializable {
     @Column(name = "created_at")
     private Instant createdAt;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "telemetry", columnDefinition = "jsonb")
     private LinkedHashMap<String, Object> telemetry;
 

@@ -19,37 +19,38 @@
 
           <!-- Navigation Sections -->
           <nav class="gp-nav-content">
-            <!-- Main Features -->
-            <NavigationSection 
-              title="Main Features" 
-              :items="mainItems"
-              @item-click="handleItemClick"
-            />
-
-            <!-- Account & Settings -->
             <NavigationSection
-              title="Account & Settings"
-              :items="accountItems"
+              v-for="section in navigationSections"
+              :key="section.title"
+              :title="section.title"
+              :items="section.items"
               @item-click="handleItemClick"
             />
 
             <!-- Administration (Admin only) -->
             <template v-if="canViewAdmin">
               <div class="gp-nav-admin-header">
-                <span class="gp-nav-section-title">Administration</span>
+                <span class="gp-nav-section-title">{{ t('nav.sections.administration') }}</span>
               </div>
 
-              <!-- User Management -->
               <NavigationSection
-                title="User Management"
-                :items="adminUserManagementItems"
+                :title="t('nav.sections.overview')"
+                :items="adminOverviewItems"
                 @item-click="handleItemClick"
               />
-
-              <!-- System Configuration -->
               <NavigationSection
-                title="System Configuration"
-                :items="adminSystemItems"
+                :title="t('nav.sections.operations')"
+                :items="adminOperationsItems"
+                @item-click="handleItemClick"
+              />
+              <NavigationSection
+                :title="t('nav.sections.peopleAndAccess')"
+                :items="adminPeopleItems"
+                @item-click="handleItemClick"
+              />
+              <NavigationSection
+                :title="t('nav.sections.configuration')"
+                :items="adminConfigurationItems"
                 @item-click="handleItemClick"
               />
             </template>
@@ -57,10 +58,10 @@
             <!-- Theme & Settings -->
             <div class="gp-nav-theme">
               <div class="gp-nav-theme-header">
-                <span class="gp-nav-section-title">Appearance</span>
+                <span class="gp-nav-section-title">{{ t('nav.sections.appearance') }}</span>
               </div>
               <div class="gp-nav-theme-control">
-                <span class="gp-theme-label">Theme: {{ themeModeLabel }}</span>
+                <span class="gp-theme-label">{{ t('nav.theme.label', { mode: themeModeLabel }) }}</span>
                 <DarkModeSwitcher class="gp-theme-switcher" />
               </div>
             </div>
@@ -68,12 +69,12 @@
             <!-- User Profile Section -->
             <div class="gp-nav-user">
               <div class="gp-nav-user-info">
-                <span class="gp-nav-user-label">Logged in as:</span>
+                <span class="gp-nav-user-label">{{ t('nav.loggedInAs') }}</span>
                 <span class="gp-nav-user-name">{{ userName }}</span>
               </div>
               <BaseButton
                 icon="pi pi-sign-out"
-                label="Logout"
+                :label="t('nav.logout')"
                 variant="gp-minimal"
                 @click="handleLogout"
                 class="gp-nav-logout"
@@ -82,7 +83,7 @@
 
             <!-- Version Display -->
             <div class="gp-nav-version">
-              <span class="gp-nav-version-label">Version</span>
+              <span class="gp-nav-version-label">{{ t('nav.version') }}</span>
               <span class="gp-nav-version-number">{{ appVersion }}</span>
               <a
                 v-if="updateAvailable && latestVersion"
@@ -92,7 +93,7 @@
                 class="gp-nav-version-update"
               >
                 <i class="pi pi-arrow-circle-up" />
-                <span>New: {{ latestVersion }} available</span>
+                <span>{{ t('nav.newVersionAvailable', { version: latestVersion }) }}</span>
               </a>
             </div>
           </nav>
@@ -114,6 +115,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Drawer from 'primevue/drawer'
 import BaseButton from '../base/BaseButton.vue'
@@ -123,9 +125,11 @@ import { useThemeMode } from '@/composables/useThemeMode'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useVersionStore } from '@/stores/version'
 import { useErrorHandler } from '@/composables/useErrorHandler'
-import apiService from '@/utils/apiService'
 import { isMaintenanceInterruption } from '@/stores/maintenance'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -142,6 +146,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const friendsStore = useFriendsStore()
 const notificationsStore = useNotificationsStore()
+const versionStore = useVersionStore()
 const { handleError } = useErrorHandler()
 const { themeMode, themeModes } = useThemeMode()
 
@@ -168,207 +173,130 @@ const toggleClasses = computed(() => ({
 }))
 
 const themeModeLabel = computed(() => {
-  if (themeMode.value === themeModes.LIGHT) return 'Light'
-  if (themeMode.value === themeModes.DARK) return 'Dark'
-  return 'System'
+  if (themeMode.value === themeModes.LIGHT) return t('nav.theme.modes.light')
+  if (themeMode.value === themeModes.DARK) return t('nav.theme.modes.dark')
+  return t('nav.theme.modes.system')
 })
 
-const mainItems = computed(() => [
+// Labels are resolved from the catalogs here rather than stored as display text. This computed reads
+// the reactive locale, so the whole navigation re-renders when the language changes. Each entry keeps
+// its stable `key`, which is also the catalog key (`nav.items.<key>`) and matches route meta.titleKey.
+const navigationSections = computed(() => [
   {
-    label: 'Home',
-    icon: 'pi pi-home',
-    to: '/',
-    key: 'home'
+    title: t('nav.sections.timeline'),
+    items: [
+      { label: t('nav.items.timeline'), icon: 'pi pi-calendar', to: '/app/timeline', key: 'timeline' },
+      { label: t('nav.items.dashboard'), icon: 'pi pi-chart-bar', to: '/app/dashboard', key: 'dashboard' },
+      { label: t('nav.items.timeline-labels'), icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'timeline-labels' },
+      { label: t('nav.items.trips'), icon: 'pi pi-briefcase', to: '/app/trips', key: 'trips' }
+    ]
   },
   {
-    label: 'Timeline',
-    icon: 'pi pi-calendar',
-    to: '/app/timeline',
-    key: 'timeline'
+    title: t('nav.sections.explore'),
+    items: [
+      { label: t('nav.items.location-analytics'), icon: 'pi pi-map', to: '/app/location-analytics', key: 'location-analytics' },
+      { label: t('nav.items.journey-insights'), icon: 'pi pi-compass', to: '/app/journey-insights', key: 'journey-insights' },
+      { label: t('nav.items.rewind'), icon: 'pi pi-calendar-clock', to: '/app/rewind', key: 'rewind' },
+      { label: t('nav.items.coverage-explorer'), icon: 'pi pi-globe', to: '/app/coverage', key: 'coverage-explorer' },
+      { label: t('nav.items.ai-chat'), icon: 'pi pi-sparkles', to: '/app/ai/chat', key: 'ai-chat' }
+    ]
   },
   {
-    label: 'Timeline Labels',
-    icon: 'pi pi-calendar-times',
-    to: '/app/timeline-labels',
-    key: 'period-tags'
+    title: t('nav.sections.organizeAndShare'),
+    items: [
+      { label: t('nav.items.favorites-management'), icon: 'pi pi-heart', to: '/app/favorites-management', key: 'favorites-management' },
+      { label: t('nav.items.geofences'), icon: 'pi pi-map-marker', to: '/app/geofences', key: 'geofences' },
+      {
+        label: t('nav.items.friends'),
+        icon: 'pi pi-users',
+        to: '/app/friends',
+        key: 'friends',
+        badge: receivedInvitesCount.value > 0 ? receivedInvitesCount.value : null,
+        badgeType: 'danger'
+      },
+      { label: t('nav.items.share-links'), icon: 'pi pi-share-alt', to: '/app/share-links', key: 'share-links' }
+    ]
   },
   {
-    label: 'Trip Plans',
-    icon: 'pi pi-briefcase',
-    to: '/app/trips',
-    key: 'trips'
-  },
-  {
-    label: 'Dashboard',
-    icon: 'pi pi-chart-bar',
-    to: '/app/dashboard',
-    key: 'dashboard'
-  },
-  {
-    label: 'Journey Insights',
-    icon: 'pi pi-compass',
-    to: '/app/journey-insights',
-    key: 'journey-insights'
-  },
-  {
-    label: 'Location Analytics',
-    icon: 'pi pi-map',
-    to: '/app/location-analytics',
-    key: 'location-analytics'
-  },
-  {
-    label: 'Coverage Explorer',
-    icon: 'pi pi-globe',
-    to: '/app/coverage',
-    key: 'coverage-explorer'
-  },
-  {
-    label: 'Rewind',
-    icon: 'pi pi-calendar-clock',
-    to: '/app/rewind',
-    key: 'rewind'
-  },
-  {
-    label: 'AI Chat',
-    icon: 'pi pi-sparkles',
-    to: '/app/ai/chat',
-    key: 'ai-chat'
-  },
-  {
-    label: 'Friends',
-    icon: 'pi pi-users',
-    to: '/app/friends',
-    key: 'friends',
-    badge: receivedInvitesCount.value > 0 ? receivedInvitesCount.value : null,
-    badgeType: 'danger'
+    title: t('nav.sections.settingsAndData'),
+    items: [
+      { label: t('nav.items.profile'), icon: 'pi pi-user', to: '/app/profile', key: 'profile' },
+      {
+        label: t('nav.items.notifications'),
+        icon: 'pi pi-bell',
+        to: '/app/notifications',
+        key: 'notifications',
+        badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
+        badgeType: 'danger'
+      },
+      { label: t('nav.items.location-sources'), icon: 'pi pi-mobile', to: '/app/location-sources', key: 'location-sources' },
+      { label: t('nav.items.preferences'), icon: 'pi pi-cog', to: '/app/timeline/preferences', key: 'preferences' },
+      { label: t('nav.items.gps-data'), icon: 'pi pi-database', to: '/app/gps-data', key: 'gps-data' },
+      { label: t('nav.items.geocoding-management'), icon: 'pi pi-map-marker', to: '/app/geocoding-management', key: 'geocoding-management' },
+      { label: t('nav.items.export'), icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' },
+      { label: t('nav.items.help'), icon: 'pi pi-question-circle', to: '/app/help', key: 'help' }
+    ]
   }
 ])
 
-const accountItems = computed(() => [
+const adminOverviewItems = computed(() => [
   {
-    label: 'Profile',
-    icon: 'pi pi-user',
-    to: '/app/profile',
-    key: 'profile'
-  },
+    label: t('nav.items.admin-dashboard'),
+    icon: 'pi pi-th-large',
+    to: '/app/admin',
+    key: 'admin-dashboard'
+  }
+])
+
+const adminOperationsItems = computed(() => [
   {
-    label: 'Location Sources',
-    icon: 'pi pi-mobile',
-    to: '/app/location-sources',
-    key: 'location-sources'
-  },
-  {
-    label: 'Share Links',
-    icon: 'pi pi-share-alt',
-    to: '/app/share-links',
-    key: 'share-links'
-  },
-  {
-    label: 'Export / Import',
-    icon: 'pi pi-download',
-    to: '/app/data-export-import',
-    key: 'export'
-  },
-  {
-    label: 'GPS Data',
+    label: t('nav.items.admin-backups'),
     icon: 'pi pi-database',
-    to: '/app/gps-data',
-    key: 'gps-data'
+    to: '/app/admin/backups',
+    key: 'admin-backups'
   },
   {
-    label: 'Geocoding Management',
-    icon: 'pi pi-map-marker',
-    to: '/app/geocoding-management',
-    key: 'geocoding-management'
-  },
-  {
-    label: 'Favorites Management',
-    icon: 'pi pi-heart',
-    to: '/app/favorites-management',
-    key: 'favorites-management'
-  },
-  {
-    label: 'Notifications',
-    icon: 'pi pi-bell',
-    to: '/app/notifications',
-    key: 'notifications',
-    badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
-    badgeType: 'danger'
-  },
-  {
-    label: 'Geofences',
-    icon: 'pi pi-bell',
-    to: '/app/geofences',
-    key: 'geofences'
-  },
-  {
-    label: 'Timeline Preferences',
-    icon: 'pi pi-cog',
-    to: '/app/timeline/preferences',
-    key: 'preferences'
-  },
-  {
-    label: 'Help & Support',
-    icon: 'pi pi-question-circle',
-    to: '/app/help',
-    key: 'help'
+    label: t('nav.items.admin-timeline-regeneration'),
+    icon: 'pi pi-refresh',
+    to: '/app/admin/timeline-regeneration-campaigns',
+    key: 'admin-timeline-regeneration'
   }
 ])
 
-const adminUserManagementItems = computed(() => [
+const adminPeopleItems = computed(() => [
   {
-    label: 'Manage Users',
+    label: t('nav.items.admin-users'),
     icon: 'pi pi-users',
     to: '/app/admin/users',
     key: 'admin-users'
   },
   {
-    label: 'Invitations',
+    label: t('nav.items.admin-invitations'),
     icon: 'pi pi-send',
     to: '/app/admin/invitations',
     key: 'admin-invitations'
   },
   {
-    label: 'OIDC Providers',
+    label: t('nav.items.admin-oidc-providers'),
     icon: 'pi pi-key',
     to: '/app/admin/oidc-providers',
     key: 'admin-oidc-providers'
+  },
+  {
+    label: t('nav.items.admin-audit-logs'),
+    icon: 'pi pi-history',
+    to: '/app/admin/audit-logs',
+    key: 'admin-audit-logs',
+    disabled: adminReadOnly.value
   }
 ])
 
-const adminSystemItems = computed(() => {
-  const items = [
-    {
-      label: 'System Settings',
-      icon: 'pi pi-cog',
-      to: '/app/admin/settings',
-      key: 'admin-settings'
-    },
-    {
-      label: 'Admin Dashboard',
-      icon: 'pi pi-th-large',
-      to: '/app/admin',
-      key: 'admin-dashboard'
-    },
-    {
-      label: 'Timeline Regeneration',
-      icon: 'pi pi-refresh',
-      to: '/app/admin/timeline-regeneration-campaigns',
-      key: 'admin-timeline-regeneration'
-    }
-  ]
-
-  if (!adminReadOnly.value) {
-    items.push({
-      label: 'Audit Logs',
-      icon: 'pi pi-history',
-      to: '/app/admin/audit-logs',
-      key: 'admin-audit-logs'
-    })
-  }
-
-  return items
-})
+const adminConfigurationItems = computed(() => [{
+  label: t('nav.items.admin-settings'),
+  icon: 'pi pi-cog',
+  to: '/app/admin/settings',
+  key: 'admin-settings'
+}])
 
 // Methods
 const handleItemClick = (item) => {
@@ -392,7 +320,7 @@ const handleLogout = async () => {
 // Version fetching
 const fetchVersionStatus = async () => {
   try {
-    const response = await apiService.get('/version/status')
+    const response = await versionStore.fetchStatus()
     appVersion.value = response.currentVersion || response.version || 'Unknown'
     latestVersion.value = response.latestVersion || ''
     updateAvailable.value = response.updateAvailable === true
@@ -404,7 +332,7 @@ const fetchVersionStatus = async () => {
     releaseUrl.value = DEFAULT_RELEASE_URL
 
     try {
-      const response = await apiService.get('/version')
+      const response = await versionStore.fetchVersion()
       appVersion.value = response.version || 'Unknown'
     } catch (fallbackError) {
       console.warn('Failed to fetch app version fallback:', fallbackError)
@@ -438,8 +366,9 @@ onMounted(async () => {
 }
 
 /* Navigation Toggle Button */
-.gp-nav-toggle--compact {
-  padding: var(--gp-spacing-xs) !important;
+/* .p-button outranks the global phone rule `.p-button.p-button-sm` in primevue-overrides.css. */
+.p-button.gp-nav-toggle--compact {
+  padding: var(--gp-spacing-xs);
 }
 
 /* Drawer Container */
@@ -447,7 +376,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 /* Navigation Header */
@@ -456,7 +385,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -486,27 +415,19 @@ onMounted(async () => {
 .gp-nav-admin-header {
   padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-sm);
   margin-top: var(--gp-spacing-md);
-  border-top: 2px solid var(--gp-primary);
+  border-top: 2px solid var(--gp-primary-text);
 }
 
 .gp-nav-admin-header .gp-nav-section-title {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-size: 0.875rem;
   font-weight: 700;
-}
-
-.p-dark .gp-nav-admin-header {
-  border-top-color: var(--gp-primary-light);
-}
-
-.p-dark .gp-nav-admin-header .gp-nav-section-title {
-  color: var(--gp-primary-light);
 }
 
 /* Theme Section */
 .gp-nav-theme {
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -539,7 +460,7 @@ onMounted(async () => {
 .gp-nav-user {
   margin-top: auto;
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   flex-shrink: 0;
 }
 
@@ -572,9 +493,9 @@ onMounted(async () => {
 /* Version Section */
 .gp-nav-version {
   padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   text-align: center;
-  background: var(--gp-surface-lighter, rgba(0, 0, 0, 0.02));
+  background: var(--gp-surface-muted, rgba(0, 0, 0, 0.02));
   flex-shrink: 0;
 }
 
@@ -594,7 +515,7 @@ onMounted(async () => {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--gp-text-secondary);
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .gp-nav-version-update {
@@ -604,8 +525,8 @@ onMounted(async () => {
   margin-top: var(--gp-spacing-xs);
   padding: 2px 8px;
   border-radius: var(--gp-radius-pill);
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
@@ -617,60 +538,11 @@ onMounted(async () => {
 }
 
 /* Dark Mode */
-.p-dark .gp-nav-container {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gp-nav-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-theme {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-section-title {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-theme-label {
-  color: var(--gp-text-primary);
-}
 
 .gp-theme-switcher :deep(.p-button) {
   min-width: 2.25rem;
   min-height: 2.25rem;
   padding: 0.5rem;
-}
-
-.p-dark .gp-nav-user {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-user-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-nav-user-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-nav-version {
-  background: var(--gp-surface-darker, rgba(255, 255, 255, 0.03));
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-nav-version-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .gp-nav-version-number {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .gp-nav-version-update {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
 }
 
 /* Compact variant */
@@ -720,41 +592,7 @@ onMounted(async () => {
   width: 240px;
 }
 
-/* Dark mode drawer styling - More specific selectors */
-.p-dark .gp-app-navigation .p-drawer.p-component {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
-}
-
-.p-dark .gp-app-navigation .p-drawer-content {
-  background: var(--gp-surface-dark) !important;
-  border: none !important;
-}
-
-.p-dark .gp-app-navigation .p-drawer-mask {
-  background: rgba(0, 0, 0, 0.6) !important;
-  border: none !important;
-}
-
-/* Additional PrimeVue specific overrides for dark mode */
-.p-dark .p-drawer.p-component[data-pc-name="drawer"] {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .p-drawer[data-pc-name="drawer"][data-p="left open modal"] {
-  background: var(--gp-surface-dark) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-}
-
 /* Override any potential CSS variables that PrimeVue might be using */
-.p-dark .p-drawer {
-  --p-drawer-background: var(--gp-surface-dark) !important;
-  --p-drawer-border-color: var(--gp-border-dark) !important;
-  --p-drawer-color: var(--gp-text-primary) !important;
-}
 
 /* Responsive drawer */
 @media (max-width: 768px) {

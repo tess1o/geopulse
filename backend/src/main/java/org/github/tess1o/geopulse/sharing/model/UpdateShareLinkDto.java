@@ -48,6 +48,10 @@ public class UpdateShareLinkDto {
     @JsonProperty("show_photos")
     private Boolean showPhotos;
 
+    @Size(max = 255, message = "Immich album id cannot exceed 255 characters")
+    @JsonProperty("immich_album_id")
+    private String immichAlbumId;
+
     @JsonProperty("show_notes")
     private Boolean showNotes;
 

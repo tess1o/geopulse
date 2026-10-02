@@ -44,15 +44,6 @@ defineProps({
   word-break: break-word;
 }
 
-/* Dark Mode */
-.p-dark .detail-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .detail-value {
-  color: var(--gp-text-primary);
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .detail-item {

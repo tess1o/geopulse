@@ -7,10 +7,8 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.github.tess1o.geopulse.admin.model.SettingDefinition;
-import org.github.tess1o.geopulse.admin.model.SettingInfo;
-import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
-import org.github.tess1o.geopulse.admin.model.ValueType;
+import org.github.tess1o.geopulse.admin.event.LoggingSettingsChangedEvent;
+import org.github.tess1o.geopulse.admin.model.*;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
@@ -37,10 +35,13 @@ public class SystemSettingsService {
     private final AIEncryptionService encryptionService;
     private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
     private final Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent;
+    private final Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
     private static final String DEFAULT_DISTANCE_UNIT_KEY = "system.user.default-distance-unit";
     private static final String DEFAULT_TEMPERATURE_UNIT_KEY = "system.user.default-temperature-unit";
+    public static final String APPLICATION_LOG_LEVEL_KEY = "system.logging.application-level";
+    private static final String APPRISE_DESTINATION_KEY = "backup.health.apprise.destination";
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -119,6 +120,32 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.geoapify.api-key", "", ValueType.ENCRYPTED, "geocoding", "Geoapify API key (encrypted)"));
         SETTING_DEFINITIONS.put("geocoding.geoapify.language",
                 new SettingDefinition("geocoding.provider.geoapify.language", "", ValueType.STRING, "geocoding", "Geoapify language preference (optional)"));
+
+        // Place discovery (POIs worth visiting) and their photos (Wikimedia Commons).
+        // Keys follow the geopulse.poi.* convention so the env vars are GEOPULSE_POI_*.
+        // The endpoint entries must NOT point at quarkus.rest-client.*.url: those bind at
+        // startup, so an Admin UI change would be saved and silently ignored. The clients
+        // are built per call from these properties instead (see PoiRestClientFactory).
+        SETTING_DEFINITIONS.put("poi.enabled",
+                new SettingDefinition("geopulse.poi.enabled", "true", ValueType.BOOLEAN, "poi", "Enable place discovery"));
+        SETTING_DEFINITIONS.put("poi.wikidata.endpoint",
+                new SettingDefinition("geopulse.poi.wikidata.endpoint", "https://query.wikidata.org", ValueType.STRING, "poi", "Wikidata Query Service base URL (self-hostable)"));
+        SETTING_DEFINITIONS.put("poi.commons.endpoint",
+                new SettingDefinition("geopulse.poi.commons.endpoint", "https://commons.wikimedia.org", ValueType.STRING, "poi", "Wikimedia Commons API base URL"));
+        SETTING_DEFINITIONS.put("poi.user-agent",
+                new SettingDefinition("geopulse.poi.user-agent", "GeoPulse/1.39.0 (+https://github.com/tess1o/geopulse)", ValueType.STRING, "poi", "User-Agent sent to Wikidata and Commons (identify your instance!)"));
+        SETTING_DEFINITIONS.put("poi.language",
+                new SettingDefinition("geopulse.poi.language", "en", ValueType.STRING, "poi", "Preferred language for place names and descriptions"));
+        SETTING_DEFINITIONS.put("poi.max-results",
+                new SettingDefinition("geopulse.poi.max-results", "40", ValueType.INTEGER, "poi", "Maximum places fetched per area"));
+        SETTING_DEFINITIONS.put("poi.commons.thumb-width",
+                new SettingDefinition("geopulse.poi.commons.thumb-width", "640", ValueType.INTEGER, "poi", "Photo thumbnail width in pixels"));
+        SETTING_DEFINITIONS.put("poi.cache.ttl-days",
+                new SettingDefinition("geopulse.poi.cache.ttl-days", "30", ValueType.INTEGER, "poi", "Days to cache place data before refetching"));
+        SETTING_DEFINITIONS.put("poi.cache.image-ttl-days",
+                new SettingDefinition("geopulse.poi.cache.image-ttl-days", "90", ValueType.INTEGER, "poi", "Days to cache photos before refetching"));
+        SETTING_DEFINITIONS.put("poi.attribution.enabled",
+                new SettingDefinition("geopulse.poi.attribution.enabled", "true", ValueType.BOOLEAN, "poi", "Show photo and data attribution (required by the Wikimedia licences)"));
 
         SETTING_DEFINITIONS.put("geocoding.chibigeo.enabled",
                 new SettingDefinition("geocoding.provider.chibigeo.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable ChibiGeo geocoding provider"));
@@ -340,6 +367,18 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.backup.retention.count", "7", ValueType.INTEGER, "backup", "Number of local full backups to retain"));
         SETTING_DEFINITIONS.put("backup.operation.timeout-minutes",
                 new SettingDefinition("geopulse.backup.operation.timeout-minutes", "120", ValueType.INTEGER, "backup", "Maximum duration for full backup and restore operations"));
+        SETTING_DEFINITIONS.put("backup.health.max-age-days",
+                new SettingDefinition("geopulse.backup.health.max-age-days", "2", ValueType.INTEGER, "backup", "Maximum age of the latest local backup before an alert"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.enabled",
+                new SettingDefinition("geopulse.backup.health.apprise.enabled", "false", ValueType.BOOLEAN, "backup", "Send backup health alerts through Apprise"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.routing-mode",
+                new SettingDefinition("geopulse.backup.health.apprise.routing-mode", "URLS", ValueType.STRING, "backup", "Apprise routing mode for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.destination",
+                new SettingDefinition("geopulse.backup.health.apprise.destination", "", ValueType.STRING, "backup", "Apprise destination URLs for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.config-key",
+                new SettingDefinition("geopulse.backup.health.apprise.config-key", "", ValueType.STRING, "backup", "Apprise config key for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.tag",
+                new SettingDefinition("geopulse.backup.health.apprise.tag", "", ValueType.STRING, "backup", "Optional Apprise tag for backup health alerts"));
 
         // System performance
         SETTING_DEFINITIONS.put(DEFAULT_DISTANCE_UNIT_KEY,
@@ -392,6 +431,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.notifications.user-notifications.cleanup.enabled", "true", ValueType.BOOLEAN, "system", "Enable scheduled cleanup of old user inbox notifications"));
         SETTING_DEFINITIONS.put("system.notifications.user-notifications.retention-days",
                 new SettingDefinition("geopulse.notifications.user-notifications.retention-days", "90", ValueType.INTEGER, "system", "Delete user inbox notifications older than N days"));
+        SETTING_DEFINITIONS.put(APPLICATION_LOG_LEVEL_KEY,
+                new SettingDefinition("geopulse.log.level", "inherit", ValueType.STRING, "system", "Application log level: ERROR, WARN, INFO, or DEBUG; reset to inherit the environment/default"));
 
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",
@@ -409,11 +450,13 @@ public class SystemSettingsService {
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
-            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
+            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent,
+            Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent) {
         this.repository = repository;
         this.encryptionService = encryptionService;
         this.weatherSettingsChangedEvent = weatherSettingsChangedEvent;
         this.mapMatchingSettingsChangedEvent = mapMatchingSettingsChangedEvent;
+        this.loggingSettingsChangedEvent = loggingSettingsChangedEvent;
         this.config = ConfigProvider.getConfig();
     }
 
@@ -423,7 +466,15 @@ public class SystemSettingsService {
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
-        this(repository, encryptionService, weatherSettingsChangedEvent, null);
+        this(repository, encryptionService, weatherSettingsChangedEvent, null, null);
+    }
+
+    public SystemSettingsService(
+            SystemSettingsRepository repository,
+            AIEncryptionService encryptionService,
+            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
+            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
+        this(repository, encryptionService, weatherSettingsChangedEvent, mapMatchingSettingsChangedEvent, null);
     }
 
     /**
@@ -461,10 +512,19 @@ public class SystemSettingsService {
         return Collections.unmodifiableMap(SETTING_DEFINITIONS);
     }
 
+    public boolean isSensitiveForAudit(String key) {
+        SettingDefinition definition = SETTING_DEFINITIONS.get(key);
+        return APPRISE_DESTINATION_KEY.equals(key)
+                || (definition != null && definition.valueType() == ValueType.ENCRYPTED);
+    }
+
     public void validateValueForImport(String key, String value) {
         SettingDefinition def = SETTING_DEFINITIONS.get(key);
         if (def == null) {
             throw new IllegalArgumentException("Unknown setting key: " + key);
+        }
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            value = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
         }
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
@@ -486,15 +546,13 @@ public class SystemSettingsService {
                             entity.getValue(),
                             entity.getEncryptionKeyId()
                     );
-                    log.trace("Using decrypted DB value for setting: {}", key);
                     return decrypted;
                 } catch (Exception e) {
                     log.error("Failed to decrypt setting {}: {}", key, e.getMessage());
-                    throw new RuntimeException("Decryption failed for setting: " + key, e);
+                    throw new SettingDecryptionFailedException("Decryption failed for setting: " + key, e);
                 }
             }
 
-            log.trace("Using DB value for setting: {}", key);
             return entity.getValue();
         }
 
@@ -510,7 +568,6 @@ public class SystemSettingsService {
             if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
                 envValue = parseTemperatureUnitOrDefault(envValue).name();
             }
-            log.trace("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
         }
 
@@ -565,6 +622,10 @@ public class SystemSettingsService {
             throw new IllegalArgumentException("Unknown setting key: " + key);
         }
 
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            value = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        }
+
         // Validate value type
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
@@ -607,6 +668,7 @@ public class SystemSettingsService {
         log.info("Setting {} updated by user {}", key, updatedBy);
         fireWeatherSettingsChanged(key);
         fireMapMatchingSettingsChanged(key);
+        fireLoggingSettingsChanged(key);
     }
 
     /**
@@ -618,6 +680,7 @@ public class SystemSettingsService {
         log.info("Setting {} reset to default", key);
         fireWeatherSettingsChanged(key);
         fireMapMatchingSettingsChanged(key);
+        fireLoggingSettingsChanged(key);
     }
 
     private void fireWeatherSettingsChanged(String key) {
@@ -631,6 +694,12 @@ public class SystemSettingsService {
             if (mapMatchingSettingsChangedEvent != null) {
                 mapMatchingSettingsChangedEvent.fire(new MapMatchingSettingsChangedEvent(key));
             }
+        }
+    }
+
+    private void fireLoggingSettingsChanged(String key) {
+        if (key != null && key.startsWith("system.logging.") && loggingSettingsChangedEvent != null) {
+            loggingSettingsChangedEvent.fire(new LoggingSettingsChangedEvent(key));
         }
     }
 
@@ -692,7 +761,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "weather", "map-matching", "panoramax", "ai", "gps", "import", "export", "system")) {
+        for (String category : List.of("auth", "geocoding", "weather", "poi", "map-matching", "panoramax", "ai", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 
@@ -710,7 +779,7 @@ public class SystemSettingsService {
                 try {
                     Integer.parseInt(value);
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid integer value: " + value);
+            throw new IllegalArgumentException("Invalid integer value: " + value, e);
                 }
                 break;
             case STRING:
@@ -721,6 +790,10 @@ public class SystemSettingsService {
     }
 
     private void validateSettingConstraints(String key, String value) {
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)
+                && !Set.of("ERROR", "WARN", "INFO", "DEBUG").contains(value.toUpperCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Setting " + key + " must be ERROR, WARN, INFO, or DEBUG; use reset to inherit");
+        }
         if ("system.notifications.geofence-events.retention-days".equals(key)) {
             int parsed = Integer.parseInt(value);
             if (parsed < 1) {
@@ -890,7 +963,7 @@ public class SystemSettingsService {
         try {
             return DistanceUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES");
+            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES", e);
         }
     }
 
@@ -911,7 +984,7 @@ public class SystemSettingsService {
         try {
             return TemperatureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT");
+            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT", e);
         }
     }
 }

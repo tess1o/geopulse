@@ -89,14 +89,12 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             // Update last accessed time asynchronously to prevent deadlocks
             updateAccessTimestampAsync(result.getId());
 
-            log.debug("Found cached location for user {} at coordinates: lon={}, lat={}, provider={}, isUserSpecific={}",
-                    userId, requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName(),
-                    result.getUser() != null);
+            log.debug("Found cached location for user {}: provider={}, isUserSpecific={}",
+                    userId, result.getProviderName(), result.getUser() != null);
             return result;
         }
 
-        log.debug("No cached location found for user {} at coordinates: lon={}, lat={} within {}m",
-                userId, requestCoordinates.getX(), requestCoordinates.getY(), toleranceMeters);
+        log.debug("No cached location found for user {} within configured tolerance", userId);
         return null;
     }
 
@@ -135,20 +133,6 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         return results.isEmpty() ? null : results.get(0);
     }
 
-//    /**
-//     * Find reverse geocoding locations by their IDs.
-//     * Used for export functionality to collect referenced geocoding data.
-//     *
-//     * @param ids List of reverse geocoding location IDs
-//     * @return List of found reverse geocoding locations
-//     */
-//    public List<ReverseGeocodingLocationEntity> findByIds(List<Long> ids) {
-//        if (ids == null || ids.isEmpty()) {
-//            return List.of();
-//        }
-//        return find("id in ?1", ids).list();
-//    }
-
     /**
      * Update access timestamp asynchronously in a separate transaction to prevent deadlocks.
      * This is a non-critical operation that shouldn't block the main geocoding flow.
@@ -163,7 +147,6 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                     .executeUpdate();
         } catch (Exception e) {
             // Silently ignore - timestamp updates are non-critical
-            log.trace("Failed to update access timestamp for geocoding entity {}: {}", entityId, e.getMessage());
         }
     }
 

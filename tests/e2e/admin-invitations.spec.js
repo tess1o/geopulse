@@ -36,7 +36,7 @@ test.describe('Admin Invitations', () => {
     await loginPage.login(adminUser.email, adminUser.password);
     await TestHelpers.waitForNavigation(page, '**/app/timeline');
 
-    const deleteResponse = await page.request.delete(`/api/admin/users/${invitedDbUser.id}`);
+    const deleteResponse = await page.request.delete(`/api/v1/admin/users/${invitedDbUser.id}`);
     expect(deleteResponse.ok()).toBe(true);
 
     const deletedUserResult = await dbManager.client.query(
@@ -60,7 +60,7 @@ test.describe('Admin Invitations', () => {
     const invitationRow = page.locator('tbody tr').filter({ hasText: tokenPreview }).first();
 
     await expect(invitationRow).toBeVisible();
-    await expect(invitationRow).toContainText('USED');
+    await expect(invitationRow).toContainText(/used/i);
     await expect(invitationRow).toContainText('Deleted user');
   });
 });

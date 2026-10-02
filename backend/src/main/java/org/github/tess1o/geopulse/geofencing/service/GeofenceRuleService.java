@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -88,7 +89,7 @@ public class GeofenceRuleService {
     @Transactional
     public GeofenceRuleDto updateRule(UUID ownerUserId, Long ruleId, UpdateGeofenceRuleRequest request) {
         GeofenceRuleEntity entity = ruleRepository.findByIdAndOwner(ruleId, ownerUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Geofence rule not found"));
+                .orElseThrow(() -> new NoSuchElementException("Geofence rule not found"));
 
         double northEastLat = request.getNorthEastLat() != null ? request.getNorthEastLat() : entity.getNorthEastLat();
         double northEastLon = request.getNorthEastLon() != null ? request.getNorthEastLon() : entity.getNorthEastLon();
@@ -150,7 +151,7 @@ public class GeofenceRuleService {
     @Transactional
     public void deleteRule(UUID ownerUserId, Long ruleId) {
         GeofenceRuleEntity entity = ruleRepository.findByIdAndOwner(ruleId, ownerUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Geofence rule not found"));
+                .orElseThrow(() -> new NoSuchElementException("Geofence rule not found"));
         ruleRepository.delete(entity);
     }
 

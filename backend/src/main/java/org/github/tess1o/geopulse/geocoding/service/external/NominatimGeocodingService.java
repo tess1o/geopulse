@@ -91,25 +91,23 @@ public class NominatimGeocodingService {
         String language = configService.getNominatimLanguage().orElse(null);
 
         if (language != null) {
-            log.debug("Calling Nominatim for coordinates: lon={}, lat={}, language={}",
-                      longitude, latitude, language);
+            log.debug("Calling Nominatim reverse geocoding with language={}", language);
         } else {
-            log.debug("Calling Nominatim for coordinates: lon={}, lat={} (no language header)",
-                      longitude, latitude);
+            log.debug("Calling Nominatim reverse geocoding without a language header");
         }
 
         NominatimRestClient client = getClient();
         return client.getAddress("json", longitude, latitude, language)
                 .map(response -> {
-                    log.debug("Nominatim response received: {}", response.getDisplayName());
+                    log.debug("Nominatim response received");
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
                 .onItem().ifNull().failWith(() -> {
-                    log.error("Nominatim adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    log.error("Nominatim adapter returned a null result");
                     return new GeocodingException("Nominatim adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
-                    log.error("Nominatim API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
+                    log.error("Nominatim API call failed", failure);
                     return new GeocodingException("Nominatim geocoding failed", failure);
                 });
     }
@@ -195,6 +193,18 @@ public class NominatimGeocodingService {
                     log.error("Nominatim forward search failed for query='{}'", safeQuery, failure);
                     return new GeocodingException("Nominatim forward search failed", failure);
                 });
+    }
+
+    /**
+     * Whether forward search can actually run with the current configuration.
+     *
+     * <p>Forward search is a separate capability from reverse geocoding: on the public
+     * Nominatim host reverse geocoding works while forward search is blocked unless
+     * explicitly enabled. A configuration can therefore be valid for geocoding yet
+     * unable to answer place-name searches.
+     */
+    public boolean isForwardSearchAvailable() {
+        return configService.isNominatimPublicHostForwardSearchEnabled() || !isPublicNominatimHost();
     }
 
     private boolean isPublicNominatimHost() {

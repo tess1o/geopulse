@@ -58,7 +58,7 @@ public class AdminBackupStorageService {
                     .sorted(Comparator.comparing(AdminBackupFileDto::getLastModifiedAt).reversed())
                     .toList();
         } catch (UncheckedIOException e) {
-            throw e.getCause();
+            throw e.getCause(); // NOPMD - deliberately rethrow the original checked cause
         }
     }
 

@@ -26,27 +26,27 @@ defineProps({
 
 <style scoped>
 .preferences-section {
-  padding: 2rem 0;
+  padding: 1rem 0 0;
 }
 
 .section-header {
-  margin-bottom: 2rem;
-  text-align: center;
+  margin-bottom: 1rem;
+  text-align: left;
 }
 
 .section-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .section-description {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--gp-text-secondary);
   line-height: 1.5;
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: 48rem;
+  margin: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
@@ -55,7 +55,7 @@ defineProps({
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -64,7 +64,7 @@ defineProps({
 @media (max-width: 768px) {
   .section-header {
     text-align: left;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .section-title {
@@ -74,19 +74,19 @@ defineProps({
   .section-description {
     font-size: 0.9rem;
     max-width: 100%;
-    padding: 0 0.5rem;
+    padding: 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
 
   .preferences-section {
-    padding: 1.5rem 0;
+    padding: 0.75rem 0 0;
     width: 100%;
     overflow: hidden;
   }
 
   .settings-grid {
-    gap: 1.25rem;
+    gap: 1rem;
     padding: 0;
     margin: 0;
   }

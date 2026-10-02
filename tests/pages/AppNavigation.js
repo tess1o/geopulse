@@ -13,7 +13,7 @@ export class AppNavigation {
     try {
       // Start waiting before clicking to avoid missing very fast responses.
       const logoutResponsePromise = this.page.waitForResponse(
-        (resp) => resp.url().includes('/api/auth/logout') && resp.request().method() === 'POST',
+        (resp) => resp.url().includes('/api/v1/auth/sessions/current') && resp.request().method() === 'DELETE',
         { timeout: 7000 }
       ).catch(() => null);
 

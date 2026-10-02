@@ -1,6 +1,6 @@
 <template>
   <div class="configured-sources">
-    <h2 class="section-title">Configured Sources</h2>
+    <h2 class="section-title">{{ t('locationSources.list.configuredSources') }}</h2>
     <div class="sources-grid">
       <Card v-for="source in sources" :key="source.id" class="source-card">
         <template #title>
@@ -14,7 +14,7 @@
             </div>
             <div class="source-status-column">
               <Badge
-                :value="source.active ? 'Active' : 'Inactive'"
+                :value="source.active ? t('locationSources.list.active') : t('locationSources.list.inactive')"
                 :severity="source.active ? 'success' : 'secondary'"
                 class="status-badge"
               />
@@ -26,7 +26,7 @@
               />
               <Badge
                 v-if="source.type === 'OWNTRACKS' && source.hasPayloadEncryptionSecret"
-                value="Encrypted"
+                :value="t('locationSources.list.encrypted')"
                 severity="success"
                 class="connection-badge"
               />
@@ -40,20 +40,20 @@
                 v-model="source.active"
                 @update:modelValue="(value) => emit('status-change', { id: source.id, status: value })"
               />
-              <span class="toggle-label">{{ source.active ? 'Enabled' : 'Disabled' }}</span>
+              <span class="toggle-label">{{ source.active ? t('locationSources.list.enabled') : t('locationSources.list.disabled') }}</span>
             </div>
 
             <div class="action-buttons">
               <Button
                 icon="pi pi-eye"
-                label="Instructions"
+                :label="t('locationSources.list.instructions')"
                 size="small"
                 outlined
                 @click="emit('show-instructions', source)"
               />
               <Button
                 icon="pi pi-pencil"
-                label="Edit"
+                :label="t('locationSources.list.edit')"
                 size="small"
                 outlined
                 @click="emit('edit-source', source)"
@@ -74,11 +74,14 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import {
   getLocationSourceDisplayName,
   getLocationSourceIcon,
   getLocationSourceIdentifier
 } from '@/components/location-sources/locationSourceMeta'
+
+const { t } = useI18n()
 
 defineProps({
   sources: {
@@ -147,7 +150,7 @@ const emit = defineEmits([
   font-size: 0.9rem;
   color: var(--gp-text-secondary);
   margin: 0.25rem 0 0 0;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--gp-font-mono, monospace);
 }
 
 .source-status-column {
@@ -188,32 +191,6 @@ const emit = defineEmits([
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.p-dark .section-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-type {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-identifier {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .toggle-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .source-card {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .source-card :deep(.p-card) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
 }
 
 @media (max-width: 768px) {

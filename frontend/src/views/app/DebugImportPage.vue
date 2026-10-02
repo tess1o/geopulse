@@ -3,12 +3,12 @@
     <PageContainer>
       <div class="debug-import-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Import Debug Data</h1>
-              <p class="page-description">
-                Import GPS data and timeline configuration from a debug export ZIP file
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('data.debugImport.pageTitle') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('data.debugImport.pageDescription') }}
               </p>
             </div>
           </div>
@@ -22,11 +22,9 @@
                 <i class="pi pi-exclamation-triangle"></i>
               </div>
               <div class="banner-text">
-                <h3 class="banner-title">Important</h3>
+                <h3 class="banner-title">{{ t('data.debugImport.importantTitle') }}</h3>
                 <p class="banner-description">
-                  This import is designed for troubleshooting purposes. It will import shifted GPS data,
-                  anonymized favorite locations, and timeline configuration. By default, it will clear
-                  all your existing data before import.
+                  {{ t('data.debugImport.importantDescription') }}
                 </p>
               </div>
             </div>
@@ -37,7 +35,7 @@
         <Card class="upload-card">
           <template #content>
             <div class="upload-section">
-              <h2 class="section-title">Upload Debug Export ZIP</h2>
+              <h2 class="section-title">{{ t('data.debugImport.sectionTitle') }}</h2>
 
               <!-- File Upload -->
               <div class="upload-area" @click="triggerFileInput" @drop.prevent="handleDrop" @dragover.prevent>
@@ -51,8 +49,8 @@
 
                 <div v-if="!selectedFile" class="upload-prompt">
                   <i class="pi pi-cloud-upload upload-icon"></i>
-                  <p class="upload-text">Click to select or drag & drop a ZIP file</p>
-                  <p class="upload-hint">Only .zip files from debug export are accepted</p>
+                  <p class="upload-text">{{ t('data.debugImport.uploadPromptText') }}</p>
+                  <p class="upload-hint">{{ t('data.debugImport.uploadHint') }}</p>
                 </div>
 
                 <div v-else class="file-info">
@@ -60,7 +58,7 @@
                   <p class="file-name">{{ selectedFile.name }}</p>
                   <p class="file-size">{{ formatFileSize(selectedFile.size) }}</p>
                   <Button
-                    label="Remove"
+                    :label="t('data.debugImport.remove')"
                     icon="pi pi-times"
                     size="small"
                     severity="danger"
@@ -72,17 +70,16 @@
 
               <!-- Import Options -->
               <div class="form-group">
-                <label class="form-label">Import Options</label>
+                <label class="form-label">{{ t('data.debugImport.importOptionsLabel') }}</label>
                 <div class="checkbox-group">
                   <div class="checkbox-item">
                     <Checkbox v-model="clearExistingData" :binary="true" inputId="clearData" />
                     <label for="clearData" class="checkbox-label">
-                      Clear existing data before import
+                      {{ t('data.debugImport.clearExistingData') }}
                     </label>
                   </div>
                   <small class="checkbox-help">
-                    This will delete all your GPS points, timeline data, and favorite locations before importing.
-                    Recommended for troubleshooting on a fresh user account.
+                    {{ t('data.debugImport.clearExistingDataHelp') }}
                   </small>
                 </div>
 
@@ -90,12 +87,11 @@
                   <div class="checkbox-item">
                     <Checkbox v-model="updateTimelineConfig" :binary="true" inputId="updateConfig" />
                     <label for="updateConfig" class="checkbox-label">
-                      Update timeline configuration
+                      {{ t('data.debugImport.updateTimelineConfig') }}
                     </label>
                   </div>
                   <small class="checkbox-help">
-                    This will replace your current timeline settings with the configuration from the ZIP file.
-                    Required to reproduce the exact same timeline.
+                    {{ t('data.debugImport.updateTimelineConfigHelp') }}
                   </small>
                 </div>
               </div>
@@ -103,7 +99,7 @@
               <!-- Import Button -->
               <div class="form-actions">
                 <Button
-                  label="Import Debug Data"
+                  :label="t('data.debugImport.importButton')"
                   icon="pi pi-upload"
                   :loading="isImporting"
                   :disabled="!selectedFile"
@@ -117,7 +113,7 @@
               <div v-if="importError" class="import-error-box">
                 <div class="error-header">
                   <i class="pi pi-times-circle"></i>
-                  <span>Import Failed</span>
+                  <span>{{ t('data.debugImport.importFailedLabel') }}</span>
                 </div>
                 <div class="error-message">
                   {{ importError }}
@@ -131,35 +127,35 @@
         <Card class="info-card">
           <template #content>
             <div class="info-content">
-              <h3 class="info-title">What Will Be Imported?</h3>
+              <h3 class="info-title">{{ t('data.debugImport.whatWillBeImportedTitle') }}</h3>
               <p class="info-description">
-                The ZIP file should contain the following files from a debug export:
+                {{ t('data.debugImport.zipDescription') }}
               </p>
               <ul class="info-list">
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>metadata.json</strong> - Export metadata and validation info
+                  <strong>metadata.json</strong> - {{ t('data.debugImport.items.metadata') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>gps_data.json</strong> - GPS points with shifted coordinates
+                  <strong>gps_data.json</strong> - {{ t('data.debugImport.items.gpsData') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>timeline_config.json</strong> - Timeline generation settings
+                  <strong>timeline_config.json</strong> - {{ t('data.debugImport.items.timelineConfig') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_locations.json</strong> - Anonymized favorite locations
+                  <strong>favorite_locations.json</strong> - {{ t('data.debugImport.items.favoriteLocations') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_areas.json</strong> - Anonymized favorite areas
+                  <strong>favorite_areas.json</strong> - {{ t('data.debugImport.items.favoriteAreas') }}
                 </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
-                After import, the timeline will be automatically regenerated using the imported data and configuration.
+                {{ t('data.debugImport.importNote') }}
               </p>
             </div>
           </template>
@@ -171,6 +167,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -178,10 +175,13 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
-import apiService from '@/utils/apiService'
+import { useExportImportStore } from '@/stores/exportImport'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
+const exportImportStore = useExportImportStore()
 
 // Form state
 const selectedFile = ref(null)
@@ -214,8 +214,8 @@ const validateAndSetFile = (file) => {
   if (!file.name.endsWith('.zip')) {
     toast.add({
       severity: 'error',
-      summary: 'Invalid File',
-      detail: 'Please select a ZIP file',
+      summary: t('data.debugImport.invalidFileSummary'),
+      detail: t('data.debugImport.invalidFileDetail'),
       life: 3000
     })
     return
@@ -248,21 +248,16 @@ const importData = async () => {
   isImporting.value = true
 
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    formData.append('clearExistingData', clearExistingData.value)
-    formData.append('updateTimelineConfig', updateTimelineConfig.value)
-
-    await apiService.post('/import/debug/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    await exportImportStore.uploadDebugImport(
+      selectedFile.value,
+      clearExistingData.value,
+      updateTimelineConfig.value
+    )
 
     toast.add({
       severity: 'success',
-      summary: 'Import Successful',
-      detail: 'Debug data has been imported and timeline regenerated',
+      summary: t('data.debugImport.importSuccessSummary'),
+      detail: t('data.debugImport.importSuccessDetail'),
       life: 5000
     })
 
@@ -274,18 +269,13 @@ const importData = async () => {
   } catch (error) {
     console.error('Failed to import debug data:', error)
 
-    let errorMessage = 'Failed to import debug data'
-    if (error.response?.data?.error?.message) {
-      errorMessage = error.response.data.error.message
-    } else if (error.message) {
-      errorMessage = error.message
-    }
+    const errorMessage = formatApiErrorDetail(error, t('data.debugImport.importFailedFallback'))
 
     importError.value = errorMessage
 
     toast.add({
       severity: 'error',
-      summary: 'Import Failed',
+      summary: t('data.debugImport.importFailedLabel'),
       detail: errorMessage,
       life: 5000
     })
@@ -302,26 +292,9 @@ const importData = async () => {
   padding: 2rem 0;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content .header-text .page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-  margin: 0 0 0.5rem 0;
-}
-
-.header-content .header-text .page-description {
-  font-size: 1rem;
-  color: var(--text-color-secondary);
-  margin: 0;
-}
-
 .warning-banner {
   margin-bottom: 2rem;
-  border-left: 4px solid var(--orange-500);
+  border-left: 4px solid var(--p-orange-500);
 }
 
 .warning-banner .banner-content {
@@ -332,7 +305,7 @@ const importData = async () => {
 
 .warning-banner .banner-icon {
   font-size: 1.5rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
 }
 
@@ -340,12 +313,12 @@ const importData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .warning-banner .banner-text .banner-description {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -357,11 +330,11 @@ const importData = async () => {
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .upload-area {
-  border: 2px dashed var(--surface-border);
+  border: 2px dashed var(--gp-border);
   border-radius: 8px;
   padding: 3rem 2rem;
   text-align: center;
@@ -371,27 +344,27 @@ const importData = async () => {
 }
 
 .upload-area:hover {
-  border-color: var(--primary-color);
-  background: var(--surface-ground);
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-ground);
 }
 
 .upload-prompt .upload-icon,
 .file-info .upload-icon {
   font-size: 3rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 1rem;
 }
 
 .upload-prompt .upload-text {
   font-size: 1.1rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .upload-prompt .upload-hint {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -405,13 +378,13 @@ const importData = async () => {
 .file-info .file-name {
   font-size: 1.1rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0;
 }
 
 .file-info .file-size {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
 }
 
@@ -423,7 +396,7 @@ const importData = async () => {
   display: block;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .checkbox-group {
@@ -443,7 +416,7 @@ const importData = async () => {
 
 .checkbox-item .checkbox-label {
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-weight: 500;
 }
 
@@ -451,7 +424,7 @@ const importData = async () => {
   display: block;
   margin-left: 1.75rem;
   margin-top: 0.25rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -498,12 +471,12 @@ const importData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-description {
   margin: 0 0 1rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -515,7 +488,7 @@ const importData = async () => {
 
 .info-card .info-content .info-list li {
   padding: 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.6;
   display: flex;
   align-items: flex-start;
@@ -523,23 +496,23 @@ const importData = async () => {
 }
 
 .info-card .info-content .info-list li i {
-  color: var(--green-500);
+  color: var(--p-green-500);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
 
 .info-card .info-content .info-list li strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--blue-50);
-  border-left: 3px solid var(--primary-color);
+  background: var(--p-blue-50);
+  border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   display: flex;
   align-items: flex-start;
@@ -547,7 +520,7 @@ const importData = async () => {
 }
 
 .info-card .info-content .info-note i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
@@ -556,10 +529,6 @@ const importData = async () => {
 @media (max-width: 768px) {
   .debug-import-page {
     padding: 1rem 0;
-  }
-
-  .page-header .header-text .page-title {
-    font-size: 1.5rem;
   }
 
   .upload-area {

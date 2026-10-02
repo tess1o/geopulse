@@ -29,7 +29,8 @@ After the administrator has enabled it:
 1. Open **Profile** from your avatar menu.
 2. Go to **Display Settings**.
 3. Turn on **Map Matching**.
-4. Save your changes.
+4. Optionally choose movement types under **Show raw GPS for**.
+5. Save your changes.
 
 If the switch is disabled, Map Matching is not currently available on your GeoPulse instance. Ask your administrator to
 enable Valhalla-backed Map Matching. Administrators can use the
@@ -46,6 +47,9 @@ recorded GPS trace. The comparison control is only shown when a matched trip is 
 
 Some trips may still appear as raw GPS paths:
 
+- Their current movement type is selected under **Show raw GPS for**. This also applies after manually changing a trip's
+  movement type. GeoPulse hides matching progress, comparison controls, and Map Matching details for these trips, although
+  matching may continue in the background.
 - GeoPulse is still processing the match.
 - The trip type is not supported for matching.
 - Valhalla does not have map data for that region.
@@ -54,6 +58,11 @@ Some trips may still appear as raw GPS paths:
 
 In these cases, GeoPulse keeps the raw GPS path visible. It does not hide the trip or replace it with a low-confidence
 route.
+
+To see what happened to a specific trip, right-click the trip card (long-press on a touch device) and choose **Map
+matching details...**. It confirms when a route was refined and when that happened, tells you if the trip is still
+waiting to be matched, or explains why it was not — for example that the routing engine has no map data for the area or
+that the trip type is not supported.
 
 ## Future Trips
 
@@ -71,6 +80,10 @@ so GeoPulse gradually prepares matched routes for past trips.
 
 If backfill has not reached a trip yet, opening a timeline page may still queue visible trips for matching on demand,
 depending on your instance settings. While this happens, the raw path stays visible so the map remains usable.
+
+When your administrator changes how matching works — for example the Valhalla server or the matching limits — past trips
+keep the routes they already have. Each trip is matched again the next time you view it, and an administrator can update
+all past trips at once instead of waiting for them to come up.
 
 ## Raw GPS Still Matters
 

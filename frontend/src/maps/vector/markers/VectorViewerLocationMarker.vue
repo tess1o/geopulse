@@ -104,8 +104,10 @@ onUnmounted(() => {
   box-shadow: 0 0 0 7px rgba(14, 165, 233, 0.22), 0 2px 8px rgba(15, 23, 42, 0.35);
 }
 
+/* Approximate position: hollow, dashed ring, so it is distinguishable without relying on color. */
 .maplibre-viewer-location-dot.fallback {
-  background: #f59e0b;
+  background: #ffffff;
+  border: 3px dashed #f59e0b;
   box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.24), 0 2px 8px rgba(15, 23, 42, 0.35);
 }
 </style>

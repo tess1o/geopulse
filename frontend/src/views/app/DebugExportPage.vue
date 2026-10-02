@@ -3,12 +3,12 @@
     <PageContainer>
       <div class="debug-export-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Debug Data Export</h1>
-              <p class="page-description">
-                Export your GPS data with privacy-preserving coordinate shifts for debugging timeline issues
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('data.debugExport.pageTitle') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('data.debugExport.pageDescription') }}
               </p>
             </div>
           </div>
@@ -22,11 +22,9 @@
                 <i class="pi pi-shield"></i>
               </div>
               <div class="banner-text">
-                <h3 class="banner-title">Privacy Protection</h3>
+                <h3 class="banner-title">{{ t('data.debugExport.privacyTitle') }}</h3>
                 <p class="banner-description">
-                  All GPS coordinates will be shifted by a constant offset to protect your privacy.
-                  The shift preserves relative distances and shapes for accurate timeline debugging.
-                  Your actual location coordinates will not be revealed in the export.
+                  {{ t('data.debugExport.privacyDescription') }}
                 </p>
               </div>
             </div>
@@ -34,50 +32,50 @@
         </Card>
 
         <Message v-if="demoModeEnabled" severity="error" :closable="false" class="demo-disabled-message">
-          Demo mode: debug data export is disabled. The form is read-only to avoid actions that are blocked in the public demo.
+          {{ t('data.debugExport.demoDisabledMessage') }}
         </Message>
 
         <!-- Export Configuration Card -->
         <Card class="export-config-card">
           <template #content>
             <div class="config-section">
-              <h2 class="section-title">Export Configuration</h2>
+              <h2 class="section-title">{{ t('data.debugExport.sectionTitle') }}</h2>
 
               <!-- Date Range Selection -->
               <div class="form-group">
-                <label class="form-label">Time Range</label>
+                <label class="form-label">{{ t('data.debugExport.timeRangeLabel') }}</label>
                 <div class="date-range-selector">
                   <Calendar
                       v-model="startDate"
                       hourFormat="24"
                       dateFormat="yy-mm-dd"
-                      placeholder="Start Date"
+                      :placeholder="t('data.debugExport.startDatePlaceholder')"
                       :maxDate="new Date()"
                       :disabled="demoModeEnabled"
                       class="date-input"
                   />
-                  <span class="date-separator">to</span>
+                  <span class="date-separator">{{ t('data.debugExport.dateRangeSeparator') }}</span>
                   <Calendar
                       v-model="endDate"
                       hourFormat="24"
                       dateFormat="yy-mm-dd"
-                      placeholder="End Date"
+                      :placeholder="t('data.debugExport.endDatePlaceholder')"
                       :maxDate="new Date()"
                       :disabled="demoModeEnabled"
                       class="date-input"
                   />
                 </div>
                 <small class="form-help-text">
-                  Export includes full days in your timezone (00:00:00 to 23:59:59) to ensure no data is missed.
+                  {{ t('data.debugExport.timeRangeHelp') }}
                 </small>
               </div>
 
               <!-- Coordinate Shift Configuration -->
               <div class="form-group">
                 <div class="form-label-with-action">
-                  <label class="form-label">Coordinate Shift (degrees)</label>
+                  <label class="form-label">{{ t('data.debugExport.coordinateShiftLabel') }}</label>
                   <Button
-                      label="Generate New Random Shift"
+                      :label="t('data.debugExport.generateNewShift')"
                       icon="pi pi-refresh"
                       size="small"
                       :disabled="demoModeEnabled"
@@ -87,56 +85,55 @@
                 </div>
                 <div class="shift-inputs">
                   <div class="shift-input-group">
-                    <label class="input-label">Latitude Shift</label>
+                    <label class="input-label">{{ t('data.debugExport.latitudeShiftLabel') }}</label>
                     <InputNumber
                         v-model="latitudeShift"
                         :minFractionDigits="6"
                         :maxFractionDigits="6"
                         :allowEmpty="false"
-                        placeholder="e.g., 12.345678"
+                        :placeholder="t('data.debugExport.latitudeShiftPlaceholder')"
                         :disabled="demoModeEnabled"
                         class="shift-input"
                     />
                   </div>
                   <div class="shift-input-group">
-                    <label class="input-label">Longitude Shift</label>
+                    <label class="input-label">{{ t('data.debugExport.longitudeShiftLabel') }}</label>
                     <InputNumber
                         v-model="longitudeShift"
                         :minFractionDigits="6"
                         :maxFractionDigits="6"
                         :allowEmpty="false"
-                        placeholder="e.g., 45.678901"
+                        :placeholder="t('data.debugExport.longitudeShiftPlaceholder')"
                         :disabled="demoModeEnabled"
                         class="shift-input"
                     />
                   </div>
                 </div>
                 <small class="form-help-text">
-                  A random shift has been generated automatically. You can regenerate it or modify the values manually.
-                  The same shift is applied to all coordinates to preserve relative positions.
+                  {{ t('data.debugExport.shiftHelp') }}
                 </small>
               </div>
 
               <!-- Options -->
               <div class="form-group">
-                <label class="form-label">Export Options</label>
+                <label class="form-label">{{ t('data.debugExport.exportOptionsLabel') }}</label>
                 <div class="checkbox-group">
                   <div class="checkbox-item">
                     <Checkbox v-model="includeConfiguration" :binary="true" inputId="includeConfig" :disabled="demoModeEnabled" />
                     <label for="includeConfig" class="checkbox-label">
-                      Include Timeline Configuration
+                      {{ t('data.debugExport.includeConfiguration') }}
                     </label>
                   </div>
                 </div>
                 <small class="form-help-text">
-                  Timeline configuration helps reproduce the exact timeline generation parameters used.
+                  {{ t('data.debugExport.includeConfigurationHelp') }}
                 </small>
               </div>
 
               <!-- Export Button -->
               <div class="form-actions">
                 <Button
-                    label="Export Debug Data"
+                    :label="t('data.debugExport.exportButton')"
                     icon="pi pi-download"
                     :loading="isExporting"
                     :disabled="!isFormValid || demoModeEnabled"
@@ -155,7 +152,7 @@
               <div v-if="exportError" class="export-error-box">
                 <div class="error-header">
                   <i class="pi pi-times-circle"></i>
-                  <span>Export Failed</span>
+                  <span>{{ t('data.debugExport.exportFailedLabel') }}</span>
                 </div>
                 <div class="error-message">
                   {{ exportError }}
@@ -169,37 +166,35 @@
         <Card class="info-card">
           <template #content>
             <div class="info-content">
-              <h3 class="info-title">What Will Be Exported?</h3>
+              <h3 class="info-title">{{ t('data.debugExport.whatWillBeExportedTitle') }}</h3>
               <p class="info-description">
-                The export will create a ZIP file containing:
+                {{ t('data.debugExport.zipDescription') }}
               </p>
               <ul class="info-list">
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>metadata.json</strong> - Export metadata (date range, counts, version)
+                  <strong>metadata.json</strong> - {{ t('data.debugExport.items.metadata') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>gps_data.json</strong> - All GPS points in OwnTracks format with shifted coordinates
+                  <strong>gps_data.json</strong> - {{ t('data.debugExport.items.gpsData') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>timeline_config.json</strong> - Your complete timeline configuration (if selected)
+                  <strong>timeline_config.json</strong> - {{ t('data.debugExport.items.timelineConfig') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_locations.json</strong> - Anonymized favorite locations with shifted coordinates
+                  <strong>favorite_locations.json</strong> - {{ t('data.debugExport.items.favoriteLocations') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_areas.json</strong> - Anonymized favorite areas with shifted boundaries
+                  <strong>favorite_areas.json</strong> - {{ t('data.debugExport.items.favoriteAreas') }}
                 </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
-                All coordinates are shifted by the same offset. Favorite location names are anonymized
-                (e.g., "Home" becomes "Location 1"). This preserves timeline structure while protecting privacy.
-                The coordinate shift values are NOT included in the export for privacy protection.
+                {{ t('data.debugExport.privacyNote') }}
               </p>
             </div>
           </template>
@@ -211,6 +206,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useTimezone } from '@/composables/useTimezone'
@@ -223,12 +219,15 @@ import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import { useAuthStore } from '@/stores/auth'
-import apiService from "@/utils/apiService";
+import { useExportImportStore } from '@/stores/exportImport'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { showDemoModeToast } from '@/utils/demoMode'
 
+const { t } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const authStore = useAuthStore()
+const exportImportStore = useExportImportStore()
 const { demoModeEnabled } = storeToRefs(authStore)
 
 // Form state
@@ -278,22 +277,22 @@ const isFormValid = computed(() => {
   }
 
   if (!startDate.value || !endDate.value) {
-    validationError.value = 'Please select start and end dates'
+    validationError.value = t('data.debugExport.validation.selectDates')
     return false
   }
 
   if (startDate.value > endDate.value) {
-    validationError.value = 'Start date must be before end date'
+    validationError.value = t('data.debugExport.validation.startBeforeEnd')
     return false
   }
 
   if (startDate.value > new Date()) {
-    validationError.value = 'Start date cannot be in the future'
+    validationError.value = t('data.debugExport.validation.startNotFuture')
     return false
   }
 
   if (latitudeShift.value === null || longitudeShift.value === null) {
-    validationError.value = 'Please generate or enter coordinate shift values'
+    validationError.value = t('data.debugExport.validation.enterShift')
     return false
   }
 
@@ -304,7 +303,7 @@ const isFormValid = computed(() => {
 // Export debug data
 const exportDebugData = async () => {
   if (demoModeEnabled.value) {
-    showDemoModeToast(toast, 'Debug data export is disabled in demo mode.')
+    showDemoModeToast(toast, t('data.debugExport.demoToast'))
     return
   }
 
@@ -329,61 +328,18 @@ const exportDebugData = async () => {
       includeConfiguration: includeConfiguration.value
     }
 
-    const response = await apiService.post('/export/debug/create', requestData, {
-      responseType: 'blob'
-    })
-
-    // Ensure we have valid blob data
-    if (!response.data || !(response.data instanceof Blob)) {
-      throw new Error('Invalid response data received')
-    }
-
-    // Create download link (response.data is already a Blob)
-    const url = window.URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = url
-
-    // Generate filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
-    link.download = `geopulse-debug-${timestamp}.zip`
-
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    await exportImportStore.downloadDebugExport(requestData)
 
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: 'Debug data has been downloaded as ZIP file',
+      summary: t('data.debugExport.exportSuccessSummary'),
+      detail: t('data.debugExport.exportSuccessDetail'),
       life: 5000
     })
   } catch (error) {
     console.error('Failed to export debug data:', error)
 
-    let errorMessage = 'Failed to export debug data'
-
-    // Handle different error response formats
-    if (error.response?.data) {
-      // Check if error.response.data is a Blob (from responseType: 'blob')
-      if (error.response.data instanceof Blob) {
-        // If we got a Blob error response, it's actually JSON
-        try {
-          const text = await error.response.data.text()
-          const errorData = JSON.parse(text)
-          if (errorData.error?.message) {
-            errorMessage = errorData.error.message
-          }
-        } catch (e) {
-          console.error('Failed to parse blob error:', e)
-        }
-      } else if (error.response.data.error?.message) {
-        // Regular JSON error response
-        errorMessage = error.response.data.error.message
-      }
-    } else if (error.message) {
-      errorMessage = error.message
-    }
+    const errorMessage = formatApiErrorDetail(error, t('data.debugExport.exportFailedFallback'))
 
     // Set the export error for persistent display
     exportError.value = errorMessage
@@ -391,7 +347,7 @@ const exportDebugData = async () => {
     // Also show toast notification
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
+      summary: t('data.debugExport.exportFailedLabel'),
       detail: errorMessage,
       life: 5000
     })
@@ -408,29 +364,12 @@ const exportDebugData = async () => {
   padding: 2rem 0;
 }
 
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content .header-text .page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-color);
-  margin: 0 0 0.5rem 0;
-}
-
-.header-content .header-text .page-description {
-  font-size: 1rem;
-  color: var(--text-color-secondary);
-  margin: 0;
-}
-
 .info-banner {
   margin-bottom: 2rem;
 }
 
 .info-banner.warning {
-  border-left: 4px solid var(--primary-color);
+  border-left: 4px solid var(--gp-primary);
 }
 
 .info-banner .banner-content {
@@ -441,7 +380,7 @@ const exportDebugData = async () => {
 
 .info-banner .banner-content .banner-icon {
   font-size: 1.5rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
@@ -449,12 +388,12 @@ const exportDebugData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-banner .banner-content .banner-text .banner-description {
   margin: 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -466,7 +405,7 @@ const exportDebugData = async () => {
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group {
@@ -477,7 +416,7 @@ const exportDebugData = async () => {
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group .form-label-with-action {
@@ -504,7 +443,7 @@ const exportDebugData = async () => {
 }
 
 .export-config-card .config-section .form-group .date-range-selector .date-separator {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
@@ -517,7 +456,7 @@ const exportDebugData = async () => {
 .export-config-card .config-section .form-group .shift-inputs .shift-input-group .input-label {
   display: block;
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -534,13 +473,13 @@ const exportDebugData = async () => {
 
 .export-config-card .config-section .form-group .checkbox-group .checkbox-item .checkbox-label {
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .export-config-card .config-section .form-group .form-help-text {
   display: block;
   margin-top: 0.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
   line-height: 1.4;
 }
@@ -560,10 +499,10 @@ const exportDebugData = async () => {
 .export-config-card .config-section .validation-error {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: var(--red-50);
-  border: 1px solid var(--red-200);
+  background: var(--p-red-50);
+  border: 1px solid var(--p-red-200);
   border-radius: 6px;
-  color: var(--red-700);
+  color: var(--p-red-700);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -609,12 +548,12 @@ const exportDebugData = async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.75rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-description {
   margin: 0 0 1rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
 }
 
@@ -626,7 +565,7 @@ const exportDebugData = async () => {
 
 .info-card .info-content .info-list li {
   padding: 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.6;
   display: flex;
   align-items: flex-start;
@@ -634,23 +573,23 @@ const exportDebugData = async () => {
 }
 
 .info-card .info-content .info-list li i {
-  color: var(--green-500);
+  color: var(--p-green-500);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
 
 .info-card .info-content .info-list li strong {
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--blue-50);
-  border-left: 3px solid var(--primary-color);
+  background: var(--p-blue-50);
+  border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   line-height: 1.5;
   display: flex;
   align-items: flex-start;
@@ -658,7 +597,7 @@ const exportDebugData = async () => {
 }
 
 .info-card .info-content .info-note i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.1rem;
   flex-shrink: 0;
   margin-top: 0.1rem;
@@ -667,10 +606,6 @@ const exportDebugData = async () => {
 @media (max-width: 768px) {
   .debug-export-page {
     padding: 1rem 0;
-  }
-
-  .page-header .header-text .page-title {
-    font-size: 1.5rem;
   }
 
   .export-config-card .config-section .form-group .shift-inputs {

@@ -2,42 +2,44 @@
   <AppLayout>
     <PageContainer>
       <div class="notifications-page">
-        <div class="page-header">
-          <div>
-            <h1>Notifications</h1>
-            <p>Review timeline, geofence, import, export, and friend notifications.</p>
-          </div>
-          <div class="page-actions">
-            <Button
-              label="Refresh"
-              icon="pi pi-refresh"
-              severity="secondary"
-              outlined
-              :loading="loading"
-              @click="loadNotifications"
-            />
-            <Button
-              label="Mark all seen"
-              icon="pi pi-check"
-              severity="secondary"
-              outlined
-              :disabled="unreadCount === 0"
-              @click="markAllSeen"
-            />
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('notifications.page.title') }}</h1>
+              <p class="gp-page-subtitle">{{ t('notifications.page.description') }}</p>
+            </div>
+            <div class="gp-page-actions">
+              <Button
+                :label="t('notifications.page.refresh')"
+                icon="pi pi-refresh"
+                severity="secondary"
+                outlined
+                :loading="loading"
+                @click="loadNotifications"
+              />
+              <Button
+                :label="t('notifications.page.markAllSeen')"
+                icon="pi pi-check"
+                severity="secondary"
+                outlined
+                :disabled="unreadCount === 0"
+                @click="markAllSeen"
+              />
+            </div>
           </div>
         </div>
 
         <div class="notification-filters">
           <div class="seen-filters">
             <Button
-              label="Unread"
+              :label="t('notifications.filters.unread')"
               size="small"
               :severity="seenFilter === 'unread' ? 'primary' : 'secondary'"
               :outlined="seenFilter !== 'unread'"
               @click="setSeenFilter('unread')"
             />
             <Button
-              label="All"
+              :label="t('notifications.filters.all')"
               size="small"
               :severity="seenFilter === 'all' ? 'primary' : 'secondary'"
               :outlined="seenFilter !== 'all'"
@@ -62,7 +64,7 @@
             responsiveLayout="scroll"
             class="notifications-table"
           >
-            <Column field="source" header="Source" style="min-width: 150px">
+            <Column field="source" :header="t('notifications.table.source')" style="min-width: 150px">
               <template #body="{ data }">
                 <Tag
                   :value="notificationDisplay(data).sourceLabel"
@@ -71,27 +73,27 @@
                 />
               </template>
             </Column>
-            <Column header="Notification" style="min-width: 320px">
+            <Column :header="t('notifications.table.notification')" style="min-width: 320px">
               <template #body="{ data }">
                 <div class="notification-title">{{ itemTitle(data) }}</div>
                 <div v-if="showTypeLabel(data)" class="notification-type">{{ notificationDisplay(data).typeLabel }}</div>
-                <div class="notification-message">{{ data.message || 'New notification.' }}</div>
+                <div class="notification-message">{{ data.message || t('notifications.newNotification') }}</div>
               </template>
             </Column>
-            <Column field="occurredAt" header="Time" style="min-width: 180px">
+            <Column field="occurredAt" :header="t('notifications.table.time')" style="min-width: 180px">
               <template #body="{ data }">
                 {{ formatDateTime(data.occurredAt) }}
               </template>
             </Column>
-            <Column field="seen" header="Status" style="min-width: 110px">
+            <Column field="seen" :header="t('notifications.table.status')" style="min-width: 110px">
               <template #body="{ data }">
                 <Tag
                   :severity="data.seen ? 'secondary' : 'danger'"
-                  :value="data.seen ? 'Seen' : 'Unread'"
+                  :value="data.seen ? t('notifications.status.seen') : t('notifications.status.unread')"
                 />
               </template>
             </Column>
-            <Column header="Actions" :exportable="false" style="min-width: 240px">
+            <Column :header="t('notifications.table.actions')" :exportable="false" style="min-width: 240px">
               <template #body="{ data }">
                 <div class="table-actions">
                   <Button
@@ -103,7 +105,7 @@
                   />
                   <Button
                     v-if="!data.seen"
-                    label="Mark seen"
+                    :label="t('notifications.markSeen')"
                     icon="pi pi-check"
                     size="small"
                     text
@@ -148,12 +150,12 @@
                 />
                 <Tag
                   :severity="item.seen ? 'secondary' : 'danger'"
-                  :value="item.seen ? 'Seen' : 'Unread'"
+                  :value="item.seen ? t('notifications.status.seen') : t('notifications.status.unread')"
                 />
               </div>
               <div class="notification-title">{{ itemTitle(item) }}</div>
               <div v-if="showTypeLabel(item)" class="notification-type">{{ notificationDisplay(item).typeLabel }}</div>
-              <div class="notification-message">{{ item.message || 'New notification.' }}</div>
+              <div class="notification-message">{{ item.message || t('notifications.newNotification') }}</div>
               <div class="notification-time">{{ formatDateTime(item.occurredAt) }}</div>
               <div class="card-actions">
                 <Button
@@ -165,7 +167,7 @@
                 />
                 <Button
                   v-if="!item.seen"
-                  label="Mark seen"
+                  :label="t('notifications.markSeen')"
                   icon="pi pi-check"
                   size="small"
                   text
@@ -190,6 +192,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
@@ -203,6 +206,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useNotificationsStore } from '@/stores/notifications'
 
+const { t } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const notificationsStore = useNotificationsStore()
@@ -216,17 +220,20 @@ const pageSize = ref(25)
 const seenFilter = ref('unread')
 const sourceFilter = ref('ALL')
 
-const sourceOptions = [
-  { label: 'All sources', value: 'ALL' },
-  { label: 'Geofence', value: 'GEOFENCE' },
-  { label: 'Timeline', value: 'TIMELINE' },
-  { label: 'Import', value: 'IMPORT' },
-  { label: 'Export', value: 'EXPORT' },
-  { label: 'Friends', value: 'FRIEND_INVITE' }
-]
+// `optionLabel="label"` reads a field, so the labels resolve through the catalog in a computed.
+const sourceOptions = computed(() => [
+  { label: t('notifications.sourceOptions.all'), value: 'ALL' },
+  { label: t('notifications.sourceOptions.geofence'), value: 'GEOFENCE' },
+  { label: t('notifications.sourceOptions.timeline'), value: 'TIMELINE' },
+  { label: t('notifications.sourceOptions.import'), value: 'IMPORT' },
+  { label: t('notifications.sourceOptions.export'), value: 'EXPORT' },
+  { label: t('notifications.sourceOptions.friends'), value: 'FRIEND_INVITE' }
+])
 
 const emptyMessage = computed(() => (
-  seenFilter.value === 'unread' ? 'No unread notifications.' : 'No notifications found.'
+  seenFilter.value === 'unread'
+    ? t('notifications.empty.unread')
+    : t('notifications.empty.none')
 ))
 
 const loadNotifications = async () => {
@@ -239,14 +246,14 @@ const loadNotifications = async () => {
       source: sourceFilter.value === 'ALL' ? null : sourceFilter.value
     })
     notifications.value = Array.isArray(response.items) ? response.items : []
-    totalCount.value = Number(response.totalCount || 0)
+    totalCount.value = Number(response.totalElements || 0)
     page.value = Number(response.page || 0)
-    pageSize.value = Number(response.pageSize || pageSize.value)
+    pageSize.value = Number(response.size || pageSize.value)
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Notification Error',
-      detail: extractApiErrorMessage(error, 'Failed to load notifications'),
+      summary: t('notifications.toast.errorSummary'),
+      detail: extractApiErrorMessage(error, t('notifications.toast.loadFailed')),
       life: 5000
     })
   } finally {
@@ -287,8 +294,8 @@ const markSeen = async (item) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Notification Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark notification as seen'),
+      summary: t('notifications.toast.errorSummary'),
+      detail: extractApiErrorMessage(error, t('notifications.toast.markSeenFailed')),
       life: 5000
     })
   }
@@ -302,8 +309,8 @@ const markAllSeen = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Notification Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark all notifications as seen'),
+      summary: t('notifications.toast.errorSummary'),
+      detail: extractApiErrorMessage(error, t('notifications.toast.markAllSeenFailed')),
       life: 5000
     })
   }
@@ -318,7 +325,7 @@ const notificationDisplay = (item) => {
 }
 
 const itemTitle = (item) => {
-  return notificationDisplay(item).title || 'Notification'
+  return notificationDisplay(item).title || t('notifications.titleFallback')
 }
 
 const showTypeLabel = (item) => {
@@ -357,25 +364,12 @@ onMounted(() => {
   width: 100%;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+/* The page is a flex column with its own gap. */
+.gp-page-header {
+  margin-bottom: 0;
 }
 
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  color: var(--gp-text-primary);
-}
-
-.page-header p {
-  margin: 0.35rem 0 0;
-  color: var(--gp-text-secondary);
-}
-
-.page-actions,
+.gp-page-actions,
 .notification-filters,
 .seen-filters,
 .table-actions,
@@ -386,16 +380,16 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.page-actions {
+.gp-page-actions {
   justify-content: flex-end;
 }
 
 .notification-filters {
   justify-content: space-between;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 0.75rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .source-filter {
@@ -411,7 +405,7 @@ onMounted(() => {
 }
 
 .notifications-table {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -445,12 +439,12 @@ onMounted(() => {
 
 .empty-state,
 .mobile-loading {
-  border: 1px dashed var(--gp-border-light);
+  border: 1px dashed var(--gp-border);
   border-radius: 8px;
   color: var(--gp-text-secondary);
   padding: 1rem;
   text-align: center;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .mobile-loading i {
@@ -463,15 +457,15 @@ onMounted(() => {
 }
 
 .notification-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 8px;
   padding: 0.85rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .notification-card--unread {
   border-color: var(--gp-primary);
-  background: color-mix(in srgb, var(--gp-primary) 6%, var(--gp-surface-white));
+  background: color-mix(in srgb, var(--gp-primary) 6%, var(--gp-surface-card));
 }
 
 .notification-card-header {
@@ -495,21 +489,27 @@ onMounted(() => {
 }
 
 :deep(.p-tag.p-tag-warning) {
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-  }
-
-  .page-actions,
+  .gp-page-actions,
   .notification-filters {
     width: 100%;
   }
 
-  .page-actions :deep(.p-button),
+  /* Keep the shared phone header's column layout from centring the buttons at content width: lay them out in
+     a row that fills the width, wrapping to one full-width button per line when a label is too long. */
+  .gp-page-actions {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .gp-page-actions :deep(.p-button) {
+    flex: 1 1 auto;
+  }
+
   .source-filter {
     flex: 1;
   }

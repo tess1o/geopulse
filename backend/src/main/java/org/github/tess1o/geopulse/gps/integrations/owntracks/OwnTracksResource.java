@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,15 +18,20 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTa
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.jboss.resteasy.reactive.RestHeader;
 
 import java.time.Instant;
 import java.util.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/owntracks")
+@Path(ApiPaths.GPS_INGEST + "/owntracks")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -61,12 +69,14 @@ public class OwnTracksResource {
     @POST
     @Operation(summary = "Ingest OwnTracks location",
             description = "Receives an OwnTracks location update and stores it as a GPS point for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {
         long requestStart = metricsStart();
         String result = "success";
-        log.info("Received OwnTracks HTTP payload type: {}, device: {}", payload.get("_type"), deviceId);
 
         try {
             if (!"location".equals(payload.get("_type")) && !payloadDecryptionService.isEncryptedPayload(payload)) {
@@ -79,7 +89,7 @@ public class OwnTracksResource {
             recordStage(stageStart, "auth", authResult.isEmpty() ? "unauthorized" : "success");
             if (authResult.isEmpty()) {
                 result = "unauthorized";
-                return Response.status(Response.Status.UNAUTHORIZED).build();
+                throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
             }
 
             UUID userId = authResult.get().getUserId();
@@ -135,7 +145,9 @@ public class OwnTracksResource {
                 recordStage(stageStart, "tag", tagResult);
             }
 
-            gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
+            var summary = gpsPointService.saveOwnTracksGpsPoint(
+                    ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
+            if (summary != null) summary.logCompletion(GpsSourceType.OWNTRACKS, requestStart);
             return Response.ok(EMPTY_JSON_ARRAY).build();
         } catch (Exception e) {
             result = "error";
@@ -185,5 +197,4 @@ public class OwnTracksResource {
                 "stage", stage,
                 "result", result);
     }
-
 }

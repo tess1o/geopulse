@@ -6,10 +6,10 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import io.quarkiverse.httpproblem.HttpProblem;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
 
 import java.util.Locale;
 
@@ -31,14 +31,16 @@ public class DemoModeWriteGuardFilter implements ContainerRequestFilter {
         }
 
         String method = requestContext.getMethod().toUpperCase(Locale.ROOT);
-        String path = normalizePath(requestContext.getUriInfo().getPath());
+        String path = normalizePath(requestContext.getUriInfo().getRequestUri().getPath());
 
         if (isBlocked(method, path, securityIdentity)) {
-            requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
-                    .type(MediaType.APPLICATION_JSON)
-                    .header(DEMO_BLOCK_HEADER, "true")
-                    .entity(ApiResponse.error("This action is disabled in demo mode."))
-                    .build());
+            throw HttpProblem.builder()
+                    .withStatus(ACCESS_DENIED.statusCode())
+                    .withTitle(ACCESS_DENIED.title())
+                    .withDetail("This action is disabled in demo mode.")
+                    .with("code", ACCESS_DENIED)
+                    .withHeader(DEMO_BLOCK_HEADER, "true")
+                    .build();
         }
     }
 
@@ -74,8 +76,15 @@ public class DemoModeWriteGuardFilter implements ContainerRequestFilter {
             return false;
         }
 
-        return path.equals("api/users/register")
-                || path.equals("api/auth/invitation/register")
+        return path.equals("api/v1/registrations")
+                || path.matches("api/v1/registration-invitations/[^/]+/registrations")
+                || path.equals("api/v1/gps/ingest/owntracks")
+                || path.equals("api/v1/gps/ingest/overland")
+                || path.equals("api/v1/gps/ingest/traccar")
+                || path.equals("api/v1/gps/ingest/gpslogger")
+                || path.equals("api/v1/gps/ingest/home-assistant")
+                || path.equals("api/v1/gps/ingest/colota")
+                || path.equals("api/v1/gps/ingest/dawarich/points")
                 || path.equals("api/owntracks")
                 || path.equals("api/overland")
                 || path.equals("api/traccar")
@@ -87,27 +96,30 @@ public class DemoModeWriteGuardFilter implements ContainerRequestFilter {
 
     private boolean isExportRead(String method, String path) {
         return "GET".equals(method)
-                && (path.equals("api/gps/export")
-                || path.equals("api/export")
-                || path.startsWith("api/export/")
-                || path.matches("api/location-analytics/.+/visits/export")
-                || path.matches("api/place-details/.+/visits/export"));
+                && (path.equals("api/v1/exports")
+                || path.startsWith("api/v1/exports/")
+                || path.equals("api/v1/gps/points/exports")
+                || path.matches("api/v1/location-analytics/.+/visits/export")
+                || path.matches("api/v1/places/.+/visits/export"));
     }
 
     private boolean isAllowedDemoWrite(String method, String path) {
-        if (!"POST".equals(method)) {
-            return false;
+        if ("POST".equals(method)) {
+            return path.equals("api/v1/auth/sessions")
+                    || path.equals("api/v1/auth/api-sessions")
+                    || path.equals("api/v1/auth/demo-sessions")
+                    || path.equals("api/v1/auth/sessions/current/refresh")
+                    || path.equals("api/v1/auth/api-sessions/current/refresh")
+                    || path.matches("api/v1/auth/oidc/login-authorizations/[^/]+")
+                    || path.equals("api/v1/auth/oidc/callbacks")
+                    || path.matches("api/v1/public/share-links/[^/]+/access-tokens");
         }
 
-        return path.equals("api/auth/login")
-                || path.equals("api/auth/api-login")
-                || path.equals("api/auth/demo-login")
-                || path.equals("api/auth/refresh")
-                || path.equals("api/auth/refresh-cookie")
-                || path.equals("api/auth/logout")
-                || path.startsWith("api/auth/oidc/login/")
-                || path.equals("api/auth/oidc/callback")
-                || path.matches("api/shared/[^/]+/verify");
+        if ("DELETE".equals(method)) {
+            return path.equals("api/v1/auth/sessions/current");
+        }
+
+        return false;
     }
 
     private String normalizePath(String path) {

@@ -136,7 +136,7 @@ public class TimelineEventFinalizationService {
                 // Update stay with location data (Stay objects should be mutable for this)
                 updateStayLocation(stay, locationResult);
             } else {
-                log.warn("No location result found for stay at {}, using fallback", coordKey);
+                log.warn("No location result found for stay; using fallback");
                 updateStayLocation(stay, LocationResolutionResult.fromGeocoding("Unknown Location", null));
             }
         }

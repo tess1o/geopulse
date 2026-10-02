@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.Role;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
@@ -74,7 +73,6 @@ public class DemoUserProvisioningService {
                     .emailVerified(true)
                     .role(Role.USER)
                     .isActive(true)
-                    .mapRenderMode(MapRenderMode.VECTOR)
                     .coverageEnabled(false)
                     .build();
         }
@@ -82,10 +80,12 @@ public class DemoUserProvisioningService {
         user.setEmail(persona.email());
         user.setFullName(persona.fullName());
         user.setTimezone(persona.timezone());
-        user.setDistanceUnit(persona.distanceUnit());
-        user.setTemperatureUnit(persona.temperatureUnit());
-        user.setDateFormat(persona.dateFormat());
-        user.setTimeFormat(persona.timeFormat());
+        user.setUiPreferences(user.getUiPreferences().toBuilder()
+                .distanceUnit(persona.distanceUnit())
+                .temperatureUnit(persona.temperatureUnit())
+                .dateFormat(persona.dateFormat())
+                .timeFormat(persona.timeFormat())
+                .build());
         user.setActive(true);
         user.setEmailVerified(true);
         user.setRole(Role.USER);

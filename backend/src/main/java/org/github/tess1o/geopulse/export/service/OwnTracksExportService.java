@@ -50,7 +50,7 @@ public class OwnTracksExportService {
     public void generateOwnTracksExport(ExportJob job) throws IOException {
         log.info("Starting streaming OwnTracks export for user {}", job.getUserId());
 
-        job.updateProgress(5, "Initializing OwnTracks export...");
+        job.updateProgress(5, "initializingOwnTracks", "Initializing OwnTracks export...");
         String ownTracksFormat = resolveOwnTracksFormat(job);
 
         // Create temp file
@@ -59,7 +59,7 @@ public class OwnTracksExportService {
         try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
                 java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(os)) {
 
-            job.updateProgress(10, "Starting to stream GPS data...");
+            job.updateProgress(10, "startingStreamGps", "Starting to stream GPS data...");
 
             int batchSize = streamingExportService.getBatchSize();
             long totalRecords = gpsPointRepository.countByUserIdAndTimePeriod(
@@ -103,8 +103,8 @@ public class OwnTracksExportService {
         job.setContentType("application/json");
         job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
-        job.updateProgress(95, "Finalizing OwnTracks export...");
-        job.updateProgress(100, "Export completed");
+        job.updateProgress(95, "finalizingOwnTracks", "Finalizing OwnTracks export...");
+        job.updateProgress(100, "exportCompleted", "Export completed");
     }
 
     private void streamExportPoints(ExportJob job, int batchSize, Consumer<List<GpsPointEntity>> batchConsumer) {

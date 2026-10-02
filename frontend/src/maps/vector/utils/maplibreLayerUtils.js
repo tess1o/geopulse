@@ -217,12 +217,18 @@ export function ensureClusterSource(map, sourceId, data, options = {}) {
   })
 }
 
-export function ensureLayer(map, layerConfig) {
+// `beforeId` places the new layer under an existing one (e.g. a casing under its line); ignored when absent.
+export function ensureLayer(map, layerConfig, beforeId = null) {
   if (!hasMapLibreStyle(map) || !layerConfig?.id) {
     return
   }
 
   if (hasMapLibreLayer(map, layerConfig.id)) {
+    return
+  }
+
+  if (beforeId && hasMapLibreLayer(map, beforeId)) {
+    map.addLayer(layerConfig, beforeId)
     return
   }
 

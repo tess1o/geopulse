@@ -15,7 +15,8 @@ import { computed } from 'vue'
 export function useClassificationValidation(prefs) {
   const isCarEnabled = () => prefs.value?.carEnabled !== false
   const isMotorcycleEnabled = () => prefs.value?.motorcycleEnabled === true
-  const isMotorVehicleEnabled = () => isCarEnabled() || isMotorcycleEnabled()
+  const isPublicTransportationEnabled = () => prefs.value?.publicTransportationEnabled === true
+  const isMotorVehicleEnabled = () => isCarEnabled() || isMotorcycleEnabled() || isPublicTransportationEnabled()
 
   /**
    * Check for bicycle completely exceeding car threshold (PROBLEMATIC)

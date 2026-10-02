@@ -1,71 +1,70 @@
 <template>
-  <div class="form-section border-t border-gray-200 pt-4">
-    <label class="form-label font-semibold text-lg">GPS Data Filtering</label>
+  <div class="form-section border-t border-surface pt-4">
+    <label class="form-label font-semibold text-lg">{{ t('ui.gpsFiltering.title') }}</label>
     <div class="flex items-center gap-3 mt-2">
       <ToggleSwitch
           :modelValue="settings.filterInaccurateData"
           @update:modelValue="value => emit('update:settings', { ...settings, filterInaccurateData: value })"
           inputId="filterInaccurateData"
       />
-      <label for="filterInaccurateData" class="font-medium">Filter inaccurate data points</label>
+      <label for="filterInaccurateData" class="font-medium">{{ t('ui.gpsFiltering.filterLabel') }}</label>
     </div>
-    <p class="text-sm text-gray-500 mt-1">Enable to filter out GPS points with accuracy or speed beyond the defined
-      limits.</p>
+    <p class="text-sm text-muted-color mt-1">{{ t('ui.gpsFiltering.filterHint') }}</p>
 
     <div v-if="settings.filterInaccurateData" class="grid grid-cols-1 gap-4 mt-4">
             <div class="form-field">
               <div class="flex items-center justify-between">
-                <label for="maxAccuracy" class="form-label">Max Allowed Accuracy (meters)</label>
+                <label for="maxAccuracy" class="form-label">{{ t('ui.gpsFiltering.maxAccuracyLabel') }}</label>
                 <InputNumber
                   id="maxAccuracy"
                   :modelValue="settings.maxAllowedAccuracy"
                   @update:modelValue="value => emit('update:settings', { ...settings, maxAllowedAccuracy: value })"
-                  placeholder="e.g., 100"
+                  :placeholder="t('ui.gpsFiltering.maxAccuracyPlaceholder')"
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">Points with accuracy above this value will be rejected.</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.maxAccuracyHint') }}</small>
             </div>
             <div class="form-field">
               <div class="flex items-center justify-between">
-                <label for="maxSpeed" class="form-label">Max Allowed Speed (km/h)</label>
+                <label for="maxSpeed" class="form-label">{{ t('ui.gpsFiltering.maxSpeedLabel') }}</label>
                 <InputNumber
                   id="maxSpeed"
                   :modelValue="settings.maxAllowedSpeed"
                   @update:modelValue="value => emit('update:settings', { ...settings, maxAllowedSpeed: value })"
-                  placeholder="e.g., 250"
+                  :placeholder="t('ui.gpsFiltering.maxSpeedPlaceholder')"
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">Points with speed above this value will be rejected.</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.maxSpeedHint') }}</small>
             </div>    </div>
   </div>
 
-  <div class="form-section border-t border-gray-200 pt-4 mt-4">
-    <label class="form-label font-semibold text-lg">Duplicate Detection</label>
+  <div class="form-section border-t border-surface pt-4 mt-4">
+    <label class="form-label font-semibold text-lg">{{ t('ui.gpsFiltering.duplicateDetectionTitle') }}</label>
     <div class="flex items-center gap-3 mt-2">
       <ToggleSwitch
           :modelValue="settings.enableDuplicateDetection"
           @update:modelValue="value => emit('update:settings', { ...settings, enableDuplicateDetection: value })"
           inputId="enableDuplicateDetection"
       />
-      <label for="enableDuplicateDetection" class="font-medium">Enable duplicate detection</label>
+      <label for="enableDuplicateDetection" class="font-medium">{{ t('ui.gpsFiltering.duplicateDetectionLabel') }}</label>
     </div>
-    <p class="text-sm text-gray-500 mt-1">Skip GPS points that have the same location within a time window. Useful for devices that send repeated locations when stationary.</p>
+    <p class="text-sm text-muted-color mt-1">{{ t('ui.gpsFiltering.duplicateDetectionHint') }}</p>
 
     <div v-if="settings.enableDuplicateDetection" class="grid grid-cols-1 gap-4 mt-4">
             <div class="form-field">
               <div class="flex items-center justify-between">
-                <label for="duplicateThreshold" class="form-label">Time threshold (minutes)</label>
+                <label for="duplicateThreshold" class="form-label">{{ t('ui.gpsFiltering.thresholdLabel') }}</label>
                 <InputNumber
                   id="duplicateThreshold"
                   :modelValue="settings.duplicateDetectionThresholdMinutes"
                   @update:modelValue="value => emit('update:settings', { ...settings, duplicateDetectionThresholdMinutes: value })"
-                  placeholder="e.g., 2"
+                  :placeholder="t('ui.gpsFiltering.thresholdPlaceholder')"
                   class="narrow-input"
                 />
               </div>
-              <small class="text-gray-500 mt-1">Points with the same coordinates (within ~11m) in this time window will be skipped. Leave empty to use global default.</small>
+              <small class="text-muted-color mt-1">{{ t('ui.gpsFiltering.thresholdHint') }}</small>
             </div>
     </div>
   </div>
@@ -73,8 +72,11 @@
 
 <script setup>
 import {defineProps, defineEmits} from 'vue'
+import {useI18n} from 'vue-i18n'
 import ToggleSwitch from 'primevue/toggleswitch'
 import InputNumber from 'primevue/inputnumber'
+
+const {t} = useI18n()
 
 const props = defineProps({
   settings: {
@@ -96,7 +98,7 @@ const emit = defineEmits(['update:settings'])
 .form-section {
   padding: 1rem;
   border-radius: var(--gp-radius-medium);
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
 }
 
 .form-label {
@@ -104,13 +106,7 @@ const emit = defineEmits(['update:settings'])
   color: var(--gp-text-primary);
 }
 
-.text-gray-500 {
-  color: var(--gp-text-secondary);
-}
-
 .narrow-input {
   max-width: 15rem;
 }
-
-
 </style>

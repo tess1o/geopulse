@@ -1,18 +1,18 @@
 <template>
   <div class="merged-timeline-list">
     <div class="list-header">
-      <h3>Timeline Items</h3>
+      <h3>{{ t('friends.mergedList.header') }}</h3>
       <Badge :value="timelineItems.length" severity="info" />
     </div>
 
     <div v-if="loading" class="loading-state">
       <ProgressSpinner size="small" />
-      <p>Loading timeline items...</p>
+      <p>{{ t('friends.mergedList.loading') }}</p>
     </div>
 
     <div v-else-if="timelineItems.length === 0" class="empty-state">
       <i class="pi pi-inbox"></i>
-      <p>No timeline data for selected date range</p>
+      <p>{{ t('friends.mergedList.empty') }}</p>
     </div>
 
     <div v-else class="timeline-items">
@@ -55,7 +55,7 @@
           </div>
           <div class="gap-content">
             <i class="pi pi-exclamation-triangle"></i>
-            <span>No data for {{ formatDuration(item.durationSeconds) }}</span>
+            <span>{{ t('friends.mergedList.noDataFor', { duration: formatDuration(item.durationSeconds) }) }}</span>
           </div>
         </div>
       </template>
@@ -63,14 +63,14 @@
       <!-- Load More Button -->
       <div v-if="timelineItems.length > displayLimit" class="load-more">
         <Button
-            label="Load More"
+            :label="t('friends.mergedList.loadMore')"
             icon="pi pi-plus"
             @click="loadMore"
             size="small"
             outlined
         />
         <span class="showing-count">
-          Showing {{ displayLimit }} of {{ timelineItems.length }} items
+          {{ t('friends.mergedList.showingCount', { shown: displayLimit, total: timelineItems.length }) }}
         </span>
       </div>
     </div>
@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -88,6 +89,7 @@ import Badge from 'primevue/badge'
 import FriendStayCard from './FriendStayCard.vue'
 import FriendTripCard from './FriendTripCard.vue'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -157,8 +159,8 @@ function formatTimelineTimestamp(item) {
 
 <style scoped>
 .merged-timeline-list {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 1rem;
   display: flex;
@@ -172,7 +174,7 @@ function formatTimelineTimestamp(item) {
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .list-header h3 {
@@ -206,7 +208,7 @@ function formatTimelineTimestamp(item) {
 
 /* Data Gap Item */
 .timeline-item--gap {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border: 2px dashed var(--user-color);
   border-radius: var(--gp-radius-medium);
   padding: 0.75rem;
@@ -220,7 +222,7 @@ function formatTimelineTimestamp(item) {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .gap-user-name {
@@ -256,30 +258,12 @@ function formatTimelineTimestamp(item) {
   gap: 0.5rem;
   padding-top: 1rem;
   margin-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .showing-count {
   font-size: 0.8rem;
   color: var(--gp-text-secondary);
-}
-
-/* Dark mode */
-.p-dark .merged-timeline-list {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .list-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .timeline-item--gap {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gap-header {
-  border-bottom-color: var(--gp-border-dark);
 }
 
 /* Mobile optimizations */

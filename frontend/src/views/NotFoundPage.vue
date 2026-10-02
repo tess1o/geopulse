@@ -11,21 +11,20 @@
             </span>
             <span class="digit-4">4</span>
           </div>
-          <div class="illustration-subtitle">Location Not Found</div>
+          <div class="illustration-subtitle">{{ t('ui.notFound.subtitle') }}</div>
         </div>
 
         <!-- Error Message -->
         <div class="not-found-message">
-          <h1 class="error-title">Oops! You've wandered off the map</h1>
+          <h1 class="error-title">{{ t('ui.notFound.title') }}</h1>
           <p class="error-description">
-            The page you're looking for doesn't exist or has been moved to a different location.
-            Let's get you back on track.
+            {{ t('ui.notFound.description') }}
           </p>
         </div>
 
         <!-- Navigation Options -->
         <div class="navigation-options">
-          <h3 class="options-title">Where would you like to go?</h3>
+          <h3 class="options-title">{{ t('ui.notFound.optionsTitle') }}</h3>
           <div class="options-grid">
             <!-- Home -->
             <router-link to="/" class="option-card">
@@ -33,8 +32,8 @@
                 <i class="pi pi-home"></i>
               </div>
               <div class="option-content">
-                <h4 class="option-title">Home</h4>
-                <p class="option-description">Start your journey from the beginning</p>
+                <h4 class="option-title">{{ t('ui.notFound.options.home.title') }}</h4>
+                <p class="option-description">{{ t('ui.notFound.options.home.description') }}</p>
               </div>
             </router-link>
 
@@ -44,8 +43,8 @@
                 <i class="pi pi-calendar"></i>
               </div>
               <div class="option-content">
-                <h4 class="option-title">Timeline</h4>
-                <p class="option-description">View your location timeline</p>
+                <h4 class="option-title">{{ t('ui.notFound.options.timeline.title') }}</h4>
+                <p class="option-description">{{ t('ui.notFound.options.timeline.description') }}</p>
               </div>
             </router-link>
 
@@ -55,8 +54,8 @@
                 <i class="pi pi-sign-in"></i>
               </div>
               <div class="option-content">
-                <h4 class="option-title">Sign In</h4>
-                <p class="option-description">Access your GeoPulse account</p>
+                <h4 class="option-title">{{ t('ui.notFound.options.signIn.title') }}</h4>
+                <p class="option-description">{{ t('ui.notFound.options.signIn.description') }}</p>
               </div>
             </router-link>
 
@@ -66,8 +65,8 @@
                 <i class="pi pi-chart-bar"></i>
               </div>
               <div class="option-content">
-                <h4 class="option-title">Dashboard</h4>
-                <p class="option-description">Check your location insights</p>
+                <h4 class="option-title">{{ t('ui.notFound.options.dashboard.title') }}</h4>
+                <p class="option-description">{{ t('ui.notFound.options.dashboard.description') }}</p>
               </div>
             </router-link>
 
@@ -77,8 +76,8 @@
                 <i class="pi pi-user-plus"></i>
               </div>
               <div class="option-content">
-                <h4 class="option-title">Sign Up</h4>
-                <p class="option-description">Create a new account</p>
+                <h4 class="option-title">{{ t('ui.notFound.options.signUp.title') }}</h4>
+                <p class="option-description">{{ t('ui.notFound.options.signUp.description') }}</p>
               </div>
             </router-link>
           </div>
@@ -87,7 +86,7 @@
         <!-- Additional Actions -->
         <div class="additional-actions">
           <Button
-            label="Go Back"
+            :label="t('ui.notFound.goBack')"
             icon="pi pi-arrow-left"
             severity="secondary"
             outlined
@@ -99,18 +98,18 @@
         <!-- Help Section -->
         <div class="help-section">
           <details class="help-details">
-            <summary class="help-summary">Need help finding what you're looking for?</summary>
+            <summary class="help-summary">{{ t('ui.notFound.helpSummary') }}</summary>
             <div class="help-content">
-              <p>Here are some common pages you might be looking for:</p>
+              <p>{{ t('ui.notFound.helpIntro') }}</p>
               <ul class="help-list">
-                <li><router-link to="/app/timeline">Timeline</router-link> - View your location history</li>
-                <li><router-link to="/app/dashboard">Dashboard</router-link> - Location insights and analytics</li>
-                <li><router-link to="/app/journey-insights">Journey Insights</router-link> - Discover travel patterns</li>
-                <li><router-link to="/app/friends">Friends</router-link> - Manage your friend connections</li>
-                <li v-if="!authStore.isAuthenticated"><router-link to="/login">Sign In</router-link> - Access your account</li>
+                <li><router-link to="/app/timeline">{{ t('ui.notFound.helpLinks.timeline') }}</router-link> - {{ t('ui.notFound.helpLinks.timelineDesc') }}</li>
+                <li><router-link to="/app/dashboard">{{ t('ui.notFound.helpLinks.dashboard') }}</router-link> - {{ t('ui.notFound.helpLinks.dashboardDesc') }}</li>
+                <li><router-link to="/app/journey-insights">{{ t('ui.notFound.helpLinks.journeyInsights') }}</router-link> - {{ t('ui.notFound.helpLinks.journeyInsightsDesc') }}</li>
+                <li><router-link to="/app/friends">{{ t('ui.notFound.helpLinks.friends') }}</router-link> - {{ t('ui.notFound.helpLinks.friendsDesc') }}</li>
+                <li v-if="!authStore.isAuthenticated"><router-link to="/login">{{ t('ui.notFound.helpLinks.signIn') }}</router-link> - {{ t('ui.notFound.helpLinks.signInDesc') }}</li>
               </ul>
               <p class="help-note">
-                If you believe this is a broken link, please contact support and we'll fix it.
+                {{ t('ui.notFound.helpNote') }}
               </p>
             </div>
           </details>
@@ -122,10 +121,12 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Button from 'primevue/button'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -152,7 +153,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   padding: var(--gp-spacing-lg);
 }
 
@@ -163,11 +164,11 @@ onMounted(() => {
 }
 
 .not-found-content {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xxl);
   box-shadow: var(--gp-shadow-card);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 /* 404 Illustration */
@@ -181,7 +182,7 @@ onMounted(() => {
   justify-content: center;
   gap: var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-lg);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--gp-font-family);
   font-weight: 900;
 }
 
@@ -279,8 +280,8 @@ onMounted(() => {
   align-items: center;
   gap: var(--gp-spacing-lg);
   padding: var(--gp-spacing-xl);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   text-decoration: none;
   transition: all 0.3s ease;
@@ -292,7 +293,7 @@ onMounted(() => {
   transform: translateY(-2px);
   box-shadow: var(--gp-shadow-card-hover);
   border-color: var(--gp-primary);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .option-icon {
@@ -342,7 +343,7 @@ onMounted(() => {
 
 /* Help Section */
 .help-section {
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   padding-top: var(--gp-spacing-lg);
   text-align: left;
 }
@@ -359,22 +360,22 @@ onMounted(() => {
   cursor: pointer;
   padding: var(--gp-spacing-md);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   transition: all 0.2s ease;
 }
 
 .help-summary:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-color: var(--gp-primary);
 }
 
 .help-content {
   padding: var(--gp-spacing-lg);
   margin-top: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .help-content p {
@@ -409,45 +410,6 @@ onMounted(() => {
   font-size: 0.875rem;
   color: var(--gp-text-muted);
   margin: 0;
-}
-
-
-/* Dark Mode */
-.p-dark .not-found-page {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .not-found-content {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .option-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .option-card:hover {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .help-summary {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .help-summary:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .help-content {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .help-section {
-  border-top-color: var(--gp-border-dark);
 }
 
 /* Responsive Design */

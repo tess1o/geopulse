@@ -93,7 +93,6 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         CreateNormalizationRuleRequest.class,
         UpdateNormalizationRuleRequest.class,
         ApplyNormalizationRulesRequest.class,
-        ApplyNormalizationRulesResponse.class,
         UserLocationNormalizationRuleEntity.class,
         NormalizationRuleType.class,
         UserLocationNormalizationService.class,

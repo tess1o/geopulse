@@ -1,15 +1,17 @@
+import { t } from '@/locales'
+
 export function formatDuration(seconds) {
   const numericValue = Number(seconds)
   if (!Number.isFinite(numericValue) || numericValue < 0) {
-    return 'Unknown'
+    return t('common.unknown')
   }
 
   if (numericValue === 0) {
-    return '0 seconds'
+    return t('common.duration.zeroSeconds')
   }
 
   if (numericValue < 60) {
-    return 'less than a minute'
+    return t('common.duration.lessThanMinute')
   }
 
   const minutes = numericValue / 60
@@ -19,16 +21,16 @@ export function formatDuration(seconds) {
   const parts = []
 
   if (days > 0) {
-    parts.push(`${days} day${days > 1 ? 's' : ''}`)
+    parts.push(t('common.duration.days', { count: days }, days))
   }
 
   if (hours > 0) {
-    parts.push(`${hours} hour${hours > 1 ? 's' : ''}`)
+    parts.push(t('common.duration.hours', { count: hours }, hours))
   }
 
   if (remainingMinutes > 0 && days === 0) {
-    parts.push(`${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`)
+    parts.push(t('common.duration.minutes', { count: remainingMinutes }, remainingMinutes))
   }
 
-  return parts.join(' ') || 'Unknown'
+  return parts.join(' ') || t('common.unknown')
 }

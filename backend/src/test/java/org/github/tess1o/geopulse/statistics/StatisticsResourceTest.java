@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.statistics;
 
-import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.*;
 import org.github.tess1o.geopulse.statistics.resource.StatisticsResource;
@@ -51,10 +50,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(eq(testUserId), any(Instant.class), any(Instant.class), eq(ChartGroupMode.DAYS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
-        assertEquals(200, response.getStatus());
-        assertEquals(sampleStatistics, response.getEntity());
+        assertEquals(sampleStatistics, response);
         // Verify service was called with correct parameters
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -70,9 +68,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(null, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(null, endTime);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         // Verify service was called with Epoch as start time
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -88,9 +86,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, null);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, null);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         // Verify service was called with current time as end time
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -107,9 +105,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS));
     }
     @Test
@@ -120,9 +118,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS));
     }
     @Test
@@ -143,10 +141,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getWeeklyStatistics();
+        UserStatistics response = statisticsResource.getWeeklyStatistics();
         // Then
-        assertEquals(200, response.getStatus());
-        assertEquals(sampleStatistics, response.getEntity());
+        assertEquals(sampleStatistics, response);
         // Verify service was called with correct grouping
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -162,10 +159,10 @@ class StatisticsResourceTest {
                 .thenReturn(sampleStatistics);
         // When
         Instant beforeCall = Instant.now();
-        Response response = statisticsResource.getWeeklyStatistics();
+        UserStatistics response = statisticsResource.getWeeklyStatistics();
         Instant afterCall = Instant.now();
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         // Verify the date range calculation (capture arguments)
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -196,10 +193,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getMonthlyStatistics();
+        UserStatistics response = statisticsResource.getMonthlyStatistics();
         // Then
-        assertEquals(200, response.getStatus());
-        assertEquals(sampleStatistics, response.getEntity());
+        assertEquals(sampleStatistics, response);
         // Verify service was called with correct grouping
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -215,10 +211,10 @@ class StatisticsResourceTest {
                 .thenReturn(sampleStatistics);
         // When
         Instant beforeCall = Instant.now();
-        Response response = statisticsResource.getMonthlyStatistics();
+        UserStatistics response = statisticsResource.getMonthlyStatistics();
         Instant afterCall = Instant.now();
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         // Verify the date range calculation
         verify(statisticsService).getStatistics(
                 eq(testUserId),
@@ -291,9 +287,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS));
     }
     @Test
@@ -304,9 +300,9 @@ class StatisticsResourceTest {
         when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
                 .thenReturn(sampleStatistics);
         // When
-        Response response = statisticsResource.getRangeStatistics(startTime, endTime);
+        UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
-        assertEquals(200, response.getStatus());
+        assertEquals(sampleStatistics, response);
         verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS));
     }
     @Test

@@ -1,246 +1,240 @@
 <template>
-  <Card class="profile-info-card">
+  <Card class="profile-info-card profile-settings-card">
     <template #content>
-      <form @submit.prevent="handleSubmit" class="profile-form">
-        <!-- Avatar Section -->
-        <div class="avatar-section">
-          <div class="avatar-preview">
-            <Avatar
-              :image="currentAvatarImage"
-              size="xlarge"
-              class="user-avatar"
-            />
-            <div class="avatar-info">
-              <h3 class="avatar-title">Profile Picture</h3>
-              <p class="avatar-description">Choose a preset avatar or upload your own (optimized for map markers)</p>
-              <div class="avatar-actions">
-                <Button
-                  type="button"
-                  label="Upload Custom Avatar"
-                  icon="pi pi-upload"
-                  size="small"
-                  outlined
-                  :disabled="readOnly"
-                  @click="triggerAvatarUpload"
-                />
-                <input
-                  ref="avatarFileInput"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  class="hidden-avatar-input"
-                  @change="handleAvatarFileChange"
-                />
-                <small class="help-text">Accepted: PNG, JPEG, WEBP. Automatically resized before upload.</small>
-                <small v-if="selectedAvatarFile" class="help-text">Custom avatar selected: {{ selectedAvatarFile.name }}</small>
-                <small v-if="errors.avatar" class="error-message">
-                  {{ errors.avatar }}
-                </small>
-              </div>
-            </div>
+      <form @submit.prevent="handleSubmit" class="profile-form settings-tab">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon"><i class="pi pi-user"></i></div>
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">{{ t('profile.general.title') }}</h3>
+            <p class="settings-tab-description">{{ t('profile.general.description') }}</p>
+          </div>
+        </div>
+
+        <section class="settings-group" aria-labelledby="profile-group-heading">
+          <div class="settings-group-header">
+            <h3 id="profile-group-heading">{{ t('profile.general.profile.heading') }}</h3>
+            <p>{{ t('profile.general.profile.description') }}</p>
           </div>
 
-          <div class="avatar-grid">
-            <div
-              v-for="(avatar, index) in avatarOptions"
-              :key="index"
-              :class="['avatar-option', { active: avatar === localAvatar, disabled: readOnly }]"
-              @click="selectBuiltInAvatar(avatar)"
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.general.profile.fullName.title')"
+              :description="t('profile.general.profile.fullName.description')"
+              setting-id="fullName"
             >
-              <Avatar :image="avatar" size="large" />
-            </div>
-          </div>
-        </div>
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="fullName"
+                    v-model="form.fullName"
+                    :placeholder="t('profile.general.profile.fullName.placeholder')"
+                    :invalid="!!errors.fullName"
+                    :disabled="readOnly"
+                    class="w-full"
+                    :aria-label="t('profile.general.profile.fullName.title')"
+                  />
+                  <small v-if="errors.fullName" class="error-message">{{ errors.fullName }}</small>
+                </div>
+              </template>
+            </SettingCard>
 
-        <!-- Full Name Field -->
-        <div class="form-section">
-          <div class="form-field" data-setting-id="fullName">
-            <label for="fullName" class="form-label">Full Name</label>
-            <InputText
-              id="fullName"
-              v-model="form.fullName"
-              placeholder="Enter your full name"
-              :invalid="!!errors.fullName"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small v-if="errors.fullName" class="error-message">
-              {{ errors.fullName }}
-            </small>
-          </div>
+            <details class="avatar-setting" data-setting-id="profileImage">
+              <summary class="avatar-setting-summary">
+                <div class="avatar-setting-heading">
+                  <h4>{{ t('profile.general.profile.image.heading') }} <span>{{ t('profile.general.profile.image.optional') }}</span></h4>
+                  <p>{{ t('profile.general.profile.image.description') }}</p>
+                </div>
+                <div class="avatar-setting-preview">
+                  <Avatar :image="currentAvatarImage" size="large" class="user-avatar" />
+                  <i class="pi pi-chevron-down" aria-hidden="true"></i>
+                </div>
+              </summary>
 
-          <div class="form-field" data-setting-id="email">
-            <label for="email" class="form-label">Email Address</label>
-            <InputText
-              id="email"
-              :value="userEmail"
-              disabled
-              class="w-full"
-            />
-            <small class="help-text">Email cannot be changed</small>
-          </div>
+              <div class="avatar-setting-content">
+                <div class="avatar-actions">
+                  <Button type="button" :label="t('profile.general.profile.image.upload')" icon="pi pi-upload" size="small" outlined :disabled="readOnly" @click="triggerAvatarUpload" />
+                  <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden-avatar-input" @change="handleAvatarFileChange" />
+                  <small class="help-text">{{ t('profile.general.profile.image.formats') }}</small>
+                  <small v-if="selectedAvatarFile" class="help-text">{{ t('profile.general.profile.image.selected', { name: selectedAvatarFile.name }) }}</small>
+                  <small v-if="errors.avatar" class="error-message">{{ errors.avatar }}</small>
+                </div>
 
-          <div class="form-field" data-setting-id="timezone">
-            <label for="timezone" class="form-label">Timezone</label>
-            <Dropdown
-              id="timezone"
-              v-model="form.timezone"
-              :options="timezoneOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your timezone"
-              filter
-              :filterMatchMode="'contains'"
-              :invalid="!!errors.timezone"
-              :disabled="readOnly"
-              class="w-full"
-              scrollHeight="300px"
-            />
-            <small v-if="errors.timezone" class="error-message">
-              {{ errors.timezone }}
-            </small>
-            <small v-else class="help-text">
-              Your timezone is used for date displays and statistics
-            </small>
+                <div class="avatar-grid">
+                  <button
+                    v-for="(avatar, index) in avatarOptions"
+                    :key="index"
+                    type="button"
+                    :class="['avatar-option', { active: avatar === localAvatar }]"
+                    :disabled="readOnly"
+                    :aria-label="t('profile.general.profile.image.chooseAria', { index: index + 1 })"
+                    :aria-pressed="avatar === localAvatar"
+                    @click="selectBuiltInAvatar(avatar)"
+                  >
+                    <Avatar :image="avatar" size="large" />
+                  </button>
+                </div>
+              </div>
+            </details>
           </div>
+        </section>
 
-          <div class="form-field" data-setting-id="dateFormat">
-            <label for="dateFormat" class="form-label">
-              Date Format
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose how dates are shown across the app (for example in the timeline date range picker).'"></i>
-            </label>
-            <Dropdown
-              id="dateFormat"
-              v-model="form.dateFormat"
-              :options="dateFormatOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your preferred date format"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small class="help-text">
-              Controls numeric date display order in the UI. URL date parameters use a stable ISO format.
-            </small>
+        <section class="settings-group" aria-labelledby="regional-group-heading">
+          <div class="settings-group-header">
+            <h3 id="regional-group-heading">{{ t('profile.general.regional.heading') }}</h3>
+            <p>{{ t('profile.general.regional.description') }}</p>
           </div>
 
-          <div class="form-field" data-setting-id="timeFormat">
-            <label for="timeFormat" class="form-label">
-              Time Format
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose whether times are shown in 24-hour or 12-hour format.'"></i>
-            </label>
-            <Dropdown
-              id="timeFormat"
-              v-model="form.timeFormat"
-              :options="timeFormatOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your preferred time format"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small class="help-text">
-              Controls time display across user-facing timestamps in the app.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('settings.language.title')"
+              :description="t('settings.language.description')"
+              setting-id="language"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown
+                    id="language"
+                    v-model="form.language"
+                    :options="languageOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    :disabled="readOnly"
+                    class="w-full"
+                    :aria-label="t('settings.language.title')"
+                  />
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.general.regional.timezone.title')"
+              :description="t('profile.general.regional.timezone.description')"
+              setting-id="timezone"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown
+                    id="timezone"
+                    v-model="form.timezone"
+                    :options="timezoneOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    :placeholder="t('profile.general.regional.timezone.placeholder')"
+                    filter
+                    :filterMatchMode="'contains'"
+                    :invalid="!!errors.timezone"
+                    :disabled="readOnly"
+                    class="w-full"
+                    scrollHeight="300px"
+                    :aria-label="t('profile.general.regional.timezone.title')"
+                  />
+                  <small v-if="errors.timezone" class="error-message">{{ errors.timezone }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.general.regional.dateFormat.title')"
+              :description="t('profile.general.regional.dateFormat.description')"
+              :details="t('profile.general.regional.dateFormat.details')"
+              setting-id="dateFormat"
+            >
+              <template #control>
+                <Dropdown id="dateFormat" v-model="form.dateFormat" :options="dateFormatOptions" optionLabel="label" optionValue="value" :placeholder="t('profile.general.regional.dateFormat.placeholder')" :disabled="readOnly" class="w-full" :aria-label="t('profile.general.regional.dateFormat.title')" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.general.regional.timeFormat.title')"
+              :description="t('profile.general.regional.timeFormat.description')"
+              setting-id="timeFormat"
+            >
+              <template #control>
+                <Dropdown id="timeFormat" v-model="form.timeFormat" :options="timeFormatOptions" optionLabel="label" optionValue="value" :placeholder="t('profile.general.regional.timeFormat.placeholder')" :disabled="readOnly" class="w-full" :aria-label="t('profile.general.regional.timeFormat.title')" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.general.regional.distanceUnit.title')"
+              :description="t('profile.general.regional.distanceUnit.description')"
+              setting-id="distanceUnit"
+            >
+              <template #control>
+                <Dropdown id="distanceUnit" v-model="form.distanceUnit" :options="distanceUnitOptions" optionLabel="label" optionValue="value" :placeholder="t('profile.general.regional.distanceUnit.placeholder')" :disabled="readOnly" class="w-full" :aria-label="t('profile.general.regional.distanceUnit.title')" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.general.regional.temperatureUnit.title')"
+              :description="t('profile.general.regional.temperatureUnit.description')"
+              setting-id="temperatureUnit"
+            >
+              <template #control>
+                <Dropdown id="temperatureUnit" v-model="form.temperatureUnit" :options="temperatureUnitOptions" optionLabel="label" optionValue="value" :placeholder="t('profile.general.regional.temperatureUnit.placeholder')" :disabled="readOnly" class="w-full" :aria-label="t('profile.general.regional.temperatureUnit.title')" />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-labelledby="navigation-group-heading">
+          <div class="settings-group-header">
+            <h3 id="navigation-group-heading">{{ t('profile.general.navigation.heading') }}</h3>
+            <p>{{ t('profile.general.navigation.description') }}</p>
           </div>
 
-          <div class="form-field" data-setting-id="distanceUnit">
-            <label for="distanceUnit" class="form-label">
-              Distance Unit
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
-            </label>
-            <Dropdown
-                id="distanceUnit"
-                v-model="form.distanceUnit"
-                :options="distanceUnitOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your distance unit"
-                :disabled="readOnly"
-                class="w-full"
-            />
-            <small class="help-text">
-              Affects how distances and speeds are displayed across the app.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.general.navigation.homePage.title')"
+              :description="t('profile.general.navigation.homePage.description')"
+              :details="t('profile.general.navigation.homePage.details')"
+              setting-id="defaultRedirectUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown
+                    id="defaultRedirectUrl"
+                    v-model="form.defaultRedirectUrl"
+                    :options="defaultRedirectUrlOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    :placeholder="t('profile.general.navigation.homePage.placeholder')"
+                    :invalid="!!errors.defaultRedirectUrl"
+                    :disabled="readOnly"
+                    class="w-full"
+                    showClear
+                    :aria-label="t('profile.general.navigation.homePage.title')"
+                  />
+                  <small v-if="errors.defaultRedirectUrl" class="error-message">{{ errors.defaultRedirectUrl }}</small>
+
+                  <div v-if="form.defaultRedirectUrl === 'custom'" class="field-control custom-url-field" data-setting-id="customRedirectUrl">
+                    <label for="customRedirectUrl" class="field-sub-label">{{ t('profile.general.navigation.homePage.customLabel') }}</label>
+                    <InputText
+                      id="customRedirectUrl"
+                      v-model="form.customRedirectUrl"
+                      :placeholder="t('profile.general.navigation.homePage.customPlaceholder')"
+                      :invalid="!!errors.customRedirectUrl"
+                      :disabled="readOnly"
+                      class="w-full"
+                    />
+                    <small v-if="errors.customRedirectUrl" class="error-message">{{ errors.customRedirectUrl }}</small>
+                  </div>
+                </div>
+              </template>
+            </SettingCard>
           </div>
+        </section>
 
-          <div class="form-field" data-setting-id="temperatureUnit">
-            <label for="temperatureUnit" class="form-label">
-              Temperature Unit
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for temperatures.'"></i>
-            </label>
-            <Dropdown
-                id="temperatureUnit"
-                v-model="form.temperatureUnit"
-                :options="temperatureUnitOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your temperature unit"
-                :disabled="readOnly"
-                class="w-full"
-            />
-            <small class="help-text">
-              Affects how temperatures are displayed across weather views.
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="defaultRedirectUrl">
-            <label for="defaultRedirectUrl" class="form-label">
-              Default Home Page
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose where you want to land after login or when you visit the homepage.'"></i>
-            </label>
-            <Dropdown
-                id="defaultRedirectUrl"
-                v-model="form.defaultRedirectUrl"
-                :options="defaultRedirectUrlOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your default page"
-                :invalid="!!errors.defaultRedirectUrl"
-                :disabled="readOnly"
-                class="w-full"
-                showClear
-            />
-            <small v-if="errors.defaultRedirectUrl" class="error-message">
-              {{ errors.defaultRedirectUrl }}
-            </small>
-            <small v-else class="help-text">
-              Choose your preferred default page. Leave empty to use default behavior.
-            </small>
-
-            <!-- Custom URL input (shown when Custom option is selected) -->
-            <div v-if="form.defaultRedirectUrl === 'custom'" class="custom-url-field" data-setting-id="customRedirectUrl">
-              <label for="customRedirectUrl" class="form-label">Custom URL</label>
-              <InputText
-                id="customRedirectUrl"
-                v-model="form.customRedirectUrl"
-                placeholder="/app/your-custom-page"
-                :invalid="!!errors.customRedirectUrl"
-                :disabled="readOnly"
-                class="w-full"
-              />
-              <small v-if="errors.customRedirectUrl" class="error-message">
-                {{ errors.customRedirectUrl }}
-              </small>
-              <small v-else class="help-text">
-                Enter an internal path starting with / (e.g., /app/dashboard).
-              </small>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="form-actions">
+        <div class="settings-actions is-sticky">
           <Button
             type="button"
-            label="Reset"
+            :label="t('profile.general.actions.reset')"
             outlined
             @click="handleReset"
             :disabled="loading || readOnly"
           />
           <Button
             type="submit"
-            label="Save Changes"
+            :label="t('profile.general.actions.save')"
             :loading="loading"
             :disabled="!hasChanges || readOnly"
           />
@@ -252,6 +246,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
+import { LOCALE_OPTIONS } from '@/composables/useLocale'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -294,6 +293,10 @@ const props = defineProps({
   userTimeFormat: {
     type: String,
     default: '24h'
+  },
+  userLanguage: {
+    type: String,
+    default: 'en'
   }
 })
 
@@ -309,6 +312,7 @@ const avatarPreviewUrl = ref('')
 const form = ref({
   fullName: '',
   timezone: '',
+  language: 'en',
   dateFormat: 'MDY',
   timeFormat: '24h',
   distanceUnit: 'KILOMETERS', // Default value
@@ -413,38 +417,41 @@ const timezoneOptions = [
   { label: 'Africa/Nairobi GMT+3', value: 'Africa/Nairobi' }
 ]
 
-const distanceUnitOptions = [
-  { label: 'Kilometers (km, m)', value: 'KILOMETERS' },
-  { label: 'Miles (mi, ft)', value: 'MILES' }
-]
+const distanceUnitOptions = computed(() => [
+  { label: t('profile.general.distanceUnitOptions.kilometers'), value: 'KILOMETERS' },
+  { label: t('profile.general.distanceUnitOptions.miles'), value: 'MILES' }
+])
 
-const temperatureUnitOptions = [
-  { label: 'Celsius (°C)', value: 'CELSIUS' },
-  { label: 'Fahrenheit (°F)', value: 'FAHRENHEIT' }
-]
+const temperatureUnitOptions = computed(() => [
+  { label: t('profile.general.temperatureUnitOptions.celsius'), value: 'CELSIUS' },
+  { label: t('profile.general.temperatureUnitOptions.fahrenheit'), value: 'FAHRENHEIT' }
+])
 
-const dateFormatOptions = [
-  { label: 'DD/MM/YYYY (European)', value: 'DMY' },
-  { label: 'MM/DD/YYYY (US)', value: 'MDY' },
-  { label: 'YYYY-MM-DD (ISO)', value: 'YMD' }
-]
+const dateFormatOptions = computed(() => [
+  { label: t('profile.general.dateFormatOptions.dmy'), value: 'DMY' },
+  { label: t('profile.general.dateFormatOptions.mdy'), value: 'MDY' },
+  { label: t('profile.general.dateFormatOptions.ymd'), value: 'YMD' }
+])
 
-const timeFormatOptions = [
-  { label: '24-hour (13:45)', value: '24h' },
-  { label: '12-hour (1:45 PM)', value: '12h' }
-]
+const timeFormatOptions = computed(() => [
+  { label: t('profile.general.timeFormatOptions.h24'), value: '24h' },
+  { label: t('profile.general.timeFormatOptions.h12'), value: '12h' }
+])
 
-const defaultRedirectUrlOptions = [
-  { label: 'Timeline', value: '/app/timeline' },
-  { label: 'Dashboard', value: '/app/dashboard' },
-  { label: 'Journey Insights', value: '/app/journey-insights' },
-  { label: 'Coverage Explorer', value: '/app/coverage' },
-  { label: 'Friends', value: '/app/friends' },
-  { label: 'Rewind', value: '/app/rewind' },
-  { label: 'GPS Data', value: '/app/gps-data' },
-  { label: 'Location Sources', value: '/app/location-sources' },
-  { label: 'Custom URL...', value: 'custom' }
-]
+// Language names are endonyms and stay untranslated -- see LOCALE_OPTIONS in useLocale.
+const languageOptions = LOCALE_OPTIONS
+
+const defaultRedirectUrlOptions = computed(() => [
+  { label: t('nav.items.timeline'), value: '/app/timeline' },
+  { label: t('nav.items.dashboard'), value: '/app/dashboard' },
+  { label: t('nav.items.journey-insights'), value: '/app/journey-insights' },
+  { label: t('nav.items.coverage-explorer'), value: '/app/coverage' },
+  { label: t('nav.items.friends'), value: '/app/friends' },
+  { label: t('nav.items.rewind'), value: '/app/rewind' },
+  { label: t('nav.items.gps-data'), value: '/app/gps-data' },
+  { label: t('nav.items.location-sources'), value: '/app/location-sources' },
+  { label: t('profile.general.navigation.homePage.customOption'), value: 'custom' }
+])
 
 // Computed
 const hasChanges = computed(() => {
@@ -452,15 +459,14 @@ const hasChanges = computed(() => {
     ? form.value.customRedirectUrl
     : form.value.defaultRedirectUrl
 
-  return selectedAvatarFile.value !== null ||
-         form.value.fullName !== props.userName ||
-         localAvatar.value !== props.userAvatar ||
-         form.value.timezone !== props.userTimezone ||
-         form.value.dateFormat !== props.userDateFormat ||
-         form.value.timeFormat !== props.userTimeFormat ||
-         form.value.distanceUnit !== props.userDistanceUnit ||
-         form.value.temperatureUnit !== props.userTemperatureUnit ||
-         effectiveRedirectUrl !== props.userDefaultRedirectUrl
+  const accountChanged = selectedAvatarFile.value !== null || form.value.fullName !== props.userName || localAvatar.value !== props.userAvatar
+  const preferencesChanged = form.value.timezone !== props.userTimezone ||
+    form.value.dateFormat !== props.userDateFormat || form.value.timeFormat !== props.userTimeFormat ||
+    form.value.language !== props.userLanguage ||
+    form.value.distanceUnit !== props.userDistanceUnit || form.value.temperatureUnit !== props.userTemperatureUnit ||
+    effectiveRedirectUrl !== props.userDefaultRedirectUrl
+
+  return accountChanged || preferencesChanged
 })
 const currentAvatarImage = computed(() => avatarPreviewUrl.value || localAvatar.value || '/avatars/avatar1.png')
 
@@ -507,7 +513,7 @@ const loadImageFromFile = (file) => {
 
     image.onerror = () => {
       URL.revokeObjectURL(imageUrl)
-      reject(new Error('Failed to load image'))
+      reject(new Error(t('profile.general.errors.imageLoad')))
     }
 
     image.src = imageUrl
@@ -530,13 +536,13 @@ const compressAvatar = async (canvas) => {
       }
     }
   }
-  throw new Error('Image is too large after compression. Try a different image.')
+  throw new Error(t('profile.general.errors.imageTooLarge'))
 }
 
 const preprocessAvatarFile = async (file) => {
   const normalizedType = file.type?.toLowerCase() || ''
   if (!SUPPORTED_AVATAR_TYPES.has(normalizedType)) {
-    throw new Error('Unsupported image format. Use PNG, JPEG, or WEBP.')
+    throw new Error(t('profile.general.errors.imageFormat'))
   }
 
   const image = await loadImageFromFile(file)
@@ -550,7 +556,7 @@ const preprocessAvatarFile = async (file) => {
 
   const context = canvas.getContext('2d')
   if (!context) {
-    throw new Error('Image processing is not supported in this browser')
+    throw new Error(t('profile.general.errors.imageUnsupported'))
   }
   context.drawImage(
     image,
@@ -584,7 +590,7 @@ const handleAvatarFileChange = async (event) => {
     avatarPreviewUrl.value = URL.createObjectURL(optimizedFile)
   } catch (error) {
     clearCustomAvatarSelection()
-    errors.value.avatar = error.message || 'Unable to process selected image'
+    errors.value.avatar = error.message || t('profile.general.errors.imageProcess')
   }
 }
 
@@ -593,30 +599,30 @@ const validate = () => {
   errors.value = {}
 
   if (!form.value.fullName?.trim()) {
-    errors.value.fullName = 'Full name is required'
+    errors.value.fullName = t('profile.general.errors.fullNameRequired')
   } else if (form.value.fullName.trim().length < 2) {
-    errors.value.fullName = 'Full name must be at least 2 characters'
+    errors.value.fullName = t('profile.general.errors.fullNameTooShort')
   }
 
   // Validate custom redirect URL if "custom" option is selected
   if (form.value.defaultRedirectUrl === 'custom') {
     if (!form.value.customRedirectUrl || !form.value.customRedirectUrl.trim()) {
-      errors.value.customRedirectUrl = 'Custom URL is required'
+      errors.value.customRedirectUrl = t('profile.general.errors.customUrlRequired')
     } else {
       const url = form.value.customRedirectUrl.trim()
 
       if (!url.startsWith('/')) {
-        errors.value.customRedirectUrl = 'URL must be an internal path starting with /'
+        errors.value.customRedirectUrl = t('profile.general.errors.customUrlInternal')
       } else if (url.includes('..')) {
-        errors.value.customRedirectUrl = 'Invalid URL format'
+        errors.value.customRedirectUrl = t('profile.general.errors.customUrlInvalid')
       } else if (url.length > 1000) {
-        errors.value.customRedirectUrl = 'URL is too long (max 1000 characters)'
+        errors.value.customRedirectUrl = t('profile.general.errors.customUrlTooLong')
       }
     }
   }
 
   if (selectedAvatarFile.value && selectedAvatarFile.value.size > AVATAR_MAX_BYTES) {
-    errors.value.avatar = 'Avatar is too large after compression'
+    errors.value.avatar = t('profile.general.errors.avatarTooLarge')
   }
 
   return Object.keys(errors.value).length === 0
@@ -639,6 +645,7 @@ const handleSubmit = async () => {
       avatar: localAvatar.value,
       avatarFile: selectedAvatarFile.value,
       timezone: form.value.timezone,
+      language: form.value.language,
       dateFormat: form.value.dateFormat,
       timeFormat: form.value.timeFormat,
       distanceUnit: form.value.distanceUnit,
@@ -654,14 +661,16 @@ const handleReset = () => {
   if (props.readOnly) return
   form.value.fullName = props.userName || ''
   form.value.timezone = props.userTimezone || 'UTC'
+  form.value.language = props.userLanguage || 'en'
   form.value.dateFormat = props.userDateFormat || 'MDY'
   form.value.timeFormat = props.userTimeFormat || '24h'
   form.value.distanceUnit = props.userDistanceUnit || 'KILOMETERS'
   form.value.temperatureUnit = props.userTemperatureUnit || 'CELSIUS'
 
-  // Check if the stored URL matches any predefined option
+  // Check if the stored URL matches any predefined option. The option list is a computed (its labels
+  // resolve through the catalogs), so read `.value` here.
   const userRedirectUrl = props.userDefaultRedirectUrl || ''
-  const matchesPredefined = defaultRedirectUrlOptions.some(opt => opt.value === userRedirectUrl && opt.value !== 'custom')
+  const matchesPredefined = defaultRedirectUrlOptions.value.some(opt => opt.value === userRedirectUrl && opt.value !== 'custom')
 
   if (matchesPredefined) {
     form.value.defaultRedirectUrl = userRedirectUrl
@@ -694,7 +703,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userDistanceUnit, props.userTemperatureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userLanguage, props.userDistanceUnit, props.userTemperatureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 
@@ -704,65 +713,89 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.profile-info-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  width: 100%;
-  box-sizing: border-box;
+.avatar-setting {
+  color: var(--gp-text-primary);
 }
 
-.profile-info-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 1.5rem;
-}
-
-/* Avatar Section */
-.avatar-section {
-  margin-bottom: 2rem;
-}
-
-.avatar-preview {
+.avatar-setting-summary {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
+  justify-content: space-between;
+  gap: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.avatar-setting-summary::-webkit-details-marker {
+  display: none;
+}
+
+.avatar-setting-summary:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: -2px;
+}
+
+.avatar-setting-heading {
+  min-width: 0;
+}
+
+.avatar-setting-heading h4 {
+  margin: 0;
+  color: var(--gp-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.avatar-setting-heading h4 span {
+  margin-left: var(--gp-spacing-sm);
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.avatar-setting-heading p {
+  margin: var(--gp-spacing-xs) 0 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.avatar-setting-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  flex: 0 0 auto;
+}
+
+.avatar-setting-preview > i {
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.avatar-setting[open] .avatar-setting-preview > i {
+  transform: rotate(180deg);
+}
+
+.avatar-setting-content {
+  padding: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
+  border-top: 1px solid var(--gp-border);
 }
 
 .user-avatar {
-  width: 80px !important;
-  height: 80px !important;
-  border: 3px solid var(--gp-primary);
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--gp-primary);
   flex-shrink: 0;
-}
-
-.avatar-info {
-  flex: 1;
-}
-
-.avatar-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.avatar-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
 }
 
 .avatar-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  align-items: flex-start;
+  gap: var(--gp-spacing-xs);
+  margin-top: var(--gp-spacing-lg);
 }
 
 .hidden-avatar-input {
@@ -771,10 +804,11 @@ onUnmounted(() => {
 
 .avatar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: var(--gp-spacing-sm);
+  margin-top: var(--gp-spacing-md);
+  padding: var(--gp-spacing-md);
+  background: color-mix(in srgb, var(--gp-surface-card) 45%, var(--gp-surface-muted));
   border-radius: var(--gp-radius-medium);
   max-height: 200px;
   overflow-y: auto;
@@ -784,55 +818,30 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.5rem;
+  padding: var(--gp-spacing-sm);
   border: 2px solid transparent;
   border-radius: var(--gp-radius-small);
   cursor: pointer;
   transition: all 0.2s ease;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .avatar-option:hover {
   border-color: var(--gp-border-medium);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-light);
 }
 
 .avatar-option.active {
   border-color: var(--gp-primary);
   background: var(--gp-primary-light);
-  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.1);
 }
 
-.avatar-option.disabled {
+.avatar-option:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
-.avatar-option.disabled:hover {
+.avatar-option:disabled:hover {
   border-color: transparent;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Form Sections */
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
 }
 
 .help-text {
@@ -840,156 +849,26 @@ onUnmounted(() => {
   font-size: 0.8rem;
 }
 
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.85rem;
-}
-
-/* Location Sharing Field */
-.location-sharing-field {
-  position: relative;
-}
-
-.location-sharing-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  margin-bottom: 0.5rem;
-}
-
-.location-sharing-row .form-label {
-  margin: 0;
-  flex: 1;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-/* Input Styling */
-:deep(.p-inputtext) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-inputtext:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-:deep(.p-inputtext:disabled) {
-  background: var(--gp-surface-light);
-  color: var(--gp-text-secondary);
-}
-
-/* Custom URL Field */
 .custom-url-field {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  margin-top: var(--gp-spacing-xs);
+  padding-top: var(--gp-spacing-sm);
+  border-top: 1px solid var(--gp-border);
 }
 
-/* Button Styling */
-:deep(.p-button) {
-  border-radius: var(--gp-radius-medium);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-button:not(.p-button-outlined)) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-:deep(.p-button:not(.p-button-outlined):hover) {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
-:deep(.p-button-outlined) {
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-button-outlined:hover) {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-primary);
-  color: var(--gp-primary);
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
-  .avatar-preview {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
   .avatar-grid {
     grid-template-columns: repeat(4, 1fr);
     max-height: 150px;
   }
-
-  .form-actions {
-    flex-direction: column;
-  }
 }
 
 @media (max-width: 480px) {
-  .profile-info-card {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  .profile-info-card :deep(.p-card-content) {
-    padding: 1rem;
-  }
-
   .avatar-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .form-actions .p-button {
-    width: 100%;
-    min-height: 48px;
-  }
-
-  .form-label {
-    font-size: 0.9rem;
-  }
-
   .help-text {
     font-size: 0.75rem;
-  }
-
-  .error-message {
-    font-size: 0.8rem;
-  }
-
-  .location-sharing-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .location-sharing-row .form-label {
-    width: 100%;
   }
 }
 </style>

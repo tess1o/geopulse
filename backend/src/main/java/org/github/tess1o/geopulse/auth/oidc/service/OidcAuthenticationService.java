@@ -22,8 +22,7 @@ import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
-import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
-import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
+import org.github.tess1o.geopulse.auth.exceptions.*;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
@@ -36,7 +35,6 @@ import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
 
 import java.net.URI;
 import java.security.SecureRandom;
@@ -178,7 +176,7 @@ public class OidcAuthenticationService {
                     log.debug("Race condition resolved: connection already exists for same user");
                 } else if (existing.isPresent()) {
                     // Different user - this OIDC account is already claimed
-                    throw new IllegalArgumentException("This OIDC account is already linked to another user");
+            throw new IllegalArgumentException("This OIDC account is already linked to another user", e);
                 } else {
                     throw new RuntimeException("Unique constraint violated but connection not found", e);
                 }
@@ -338,7 +336,7 @@ public class OidcAuthenticationService {
             throw e;
         } catch (Exception e) {
             log.error("OIDC callback failed: {}", e.getMessage());
-            throw new RuntimeException("OIDC authentication failed.", e);
+            throw new OIDCAuthFailedException("OIDC authentication failed.", e);
         } finally {
             // Clean up session state in all cases (success or failure)
             // Single cleanup path eliminates redundant database queries
@@ -346,7 +344,7 @@ public class OidcAuthenticationService {
                 try {
                     sessionStateRepository.delete(sessionState);
                 } catch (Exception cleanupError) {
-                    log.warn("Failed to clean up session state for state token: {}", request.getState(), cleanupError);
+                    log.warn("Failed to clean up OIDC session state", cleanupError);
                 }
             }
         }
@@ -378,12 +376,11 @@ public class OidcAuthenticationService {
 
             // If auto-link is enabled, automatically link the OIDC account
             if (authConfigurationService.isAutoLinkAccountsEnabled()) {
-                log.warn("Auto-linking OIDC account - Provider: {}, Email: {}, User ID: {}. " +
-                        "This bypasses verification. Ensure you trust your OIDC provider.",
-                        sessionState.getProviderName(), userInfo.getEmail(), user.getId());
+                log.warn("Auto-linking OIDC account for provider {} and user {}. Ensure this provider is trusted.",
+                        sessionState.getProviderName(), user.getId());
 
                 linkOrUpdateConnectionForUser(user, sessionState.getProviderName(), userInfo);
-                log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getEmail());
+                log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getId());
                 return user;
             }
 
@@ -430,8 +427,7 @@ public class OidcAuthenticationService {
                 .isActive(true)
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
-                .distanceUnit(userService.getDefaultDistanceUnit())
-                .temperatureUnit(userService.getDefaultTemperatureUnit())
+                .uiPreferences(userService.initialUiPreferences(null))
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -501,7 +497,7 @@ public class OidcAuthenticationService {
 
         // Link the ORIGINAL provider, not the verification provider.
         linkOrUpdateConnectionForUser(user, tokenData.newProvider(), tokenData.originalUserInfo());
-        log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getEmail());
+        log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getId());
         return user;
     }
 
@@ -578,10 +574,9 @@ public class OidcAuthenticationService {
                 .post(Entity.form(form))) {
 
             if (response.getStatus() != 200) {
-                String errorBody = response.readEntity(String.class);
-                log.error("Failed to exchange code for token. Provider: {}, Status: {}, Body: {}",
-                        provider.getName(), response.getStatus(), errorBody);
-                throw new RuntimeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
+                log.error("Failed to exchange code for token. Provider: {}, status={}",
+                        provider.getName(), response.getStatus());
+                throw new OidcExchangeCodeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
             }
 
             return response.readEntity(OidcTokenResponse.class);
@@ -637,12 +632,11 @@ public class OidcAuthenticationService {
 
             // Nonce
             if (sessionState.getNonce() == null || !sessionState.getNonce().equals(claims.getClaim("nonce"))) {
-                log.error("ID token nonce mismatch. Provider: {}, Expected: {}, Got: {}",
-                        provider.getName(), sessionState.getNonce(), claims.getClaim("nonce"));
+                log.error("ID token nonce mismatch for provider {}", provider.getName());
                 throw new SecurityException("ID token nonce mismatch. Possible replay attack.");
             }
 
-            log.info("ID token validated successfully for subject: {}", claims.getSubject());
+            log.debug("ID token validated successfully for provider {}", provider.getName());
 
             // 4. Extract user info from claims
             String email = claims.getStringClaim("email");

@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **321** distinct env vars.
+Backend runtime currently includes **335** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -40,6 +40,15 @@ Notes:
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
 | `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
+
+### Logging (4)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_LOG_LEVEL` | `(unset)` | Fallback application log level when no Admin override exists. Property: `geopulse.log.level`. | `ERROR`, `WARN`, `INFO`, or `DEBUG`; case-insensitive. TRACE is not available in production. | Backend restart |
+| `GEOPULSE_LOG_JSON_ENABLED` | `true` in production | Emit backend console records as JSON with flattened MDC fields (`requestId`, `errorId`). | `true` or `false`. | Backend restart |
+| `GEOPULSE_HTTP_ACCESS_LOG_ENABLED` | `true` in production | Emit one sanitized backend request record, excluding health, metrics, invitation, and public share-token paths. | `true` or `false`. | Backend restart |
+| `GEOPULSE_MQTT_VERBOSE_LOGGING` | `false` | Enables verbose Mosquitto and authentication-plugin diagnostics. Debug output may expose credential material; enable only temporarily. | `true` or `false`. | Mosquitto restart |
 
 ### Version Update Check (5)
 
@@ -268,12 +277,13 @@ Full backup settings can be managed in **Administration > Settings > Backup**. F
 | `GEOPULSE_TIMELINE_JOB_DELAY` | `1m` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.job.delay\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_TIMELINE_JOB_INTERVAL` | `5m` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.job.interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_TIMELINE_MOTORCYCLE_ENABLED` | `false` | Enables the Motorcycle label for detected motor vehicle trips. Uses the shared motor vehicle speed thresholds. Property: \`geopulse.timeline.travel.classification.motorcycle.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_TIMELINE_PUBLIC_TRANSPORTATION_ENABLED` | `false` | Enables the Public Transportation label for detected car-like trips; it does not detect a specific transit vehicle. Property: \`geopulse.timeline.travel.classification.public_transportation.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_ADAPTIVE` | `true` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.adaptive\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_ENABLED` | `true` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_MAX_POINTS` | `100` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.max_points\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_TOLERANCE` | `15.0` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.tolerance\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.processing.thread-pool-size\`. | Integer value. | Backend restart |
-| `GEOPULSE_TIMELINE_PREFERRED_MOTORIZED_TYPE` | `CAR` | Preferred label when both Car and Motorcycle labels are enabled for detected motor vehicle trips. Property: \`geopulse.timeline.travel.classification.preferred_motorized_type\`. | One of \`CAR\`, \`MOTORCYCLE\`. | Backend restart |
+| `GEOPULSE_TIMELINE_PREFERRED_MOTORIZED_TYPE` | `CAR` | Preferred enabled label for detected motor vehicle trips. Property: \`geopulse.timeline.travel.classification.preferred_motorized_type\`. | One of \`CAR\`, \`MOTORCYCLE\`, \`PUBLIC_TRANSPORT\`. | Backend restart |
 | `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_DELAY` | `2m` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.delay\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_INTERVAL` | `5m` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_MAX_ATTEMPTS` | `5` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.max-attempts\`. | Integer value. | Backend restart |
@@ -377,6 +387,25 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped weather target queue records. Stored weather samples are not removed by this cleanup. Property: \`geopulse.weather.targets.completed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed weather target queue records. Property: \`geopulse.weather.targets.failed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_IN_PROGRESS_TIMEOUT_MINUTES` | `60` | Age after which locked in-progress weather targets are recovered for retry. Property: \`geopulse.weather.targets.in-progress-timeout-minutes\`. | Positive integer minutes. | Backend restart |
+
+### Place Discovery (POI) (10)
+
+Place discovery suggests notable places worth visiting, with photos, when planning a trip. It reads Wikidata for the places and Wikimedia Commons for the images. Settings can also be managed from **Admin Dashboard > System Settings > Place discovery**. Saved Admin Settings values are stored in the database and take precedence over these environment defaults.
+
+Both endpoints are shared public infrastructure. The place and photo caches are what keep the request volume polite, so prefer longer cache lifetimes unless you are self-hosting. Photo and data attribution is a licence obligation (ODbL for OpenStreetMap-adjacent data, per-file CC licences for Commons media) and should stay enabled.
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_POI_ENABLED` | `true` | Master switch for place discovery and photo suggestions. Property: \`geopulse.poi.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_USER_AGENT` | `GeoPulse/<version> (+https://github.com/tess1o/geopulse)` | User-Agent sent to Wikidata and Commons. Property: \`geopulse.poi.user-agent\`. Keep it identifying your instance; an anonymous client is the one that gets rate-limited. | Non-empty string. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_LANGUAGE` | `en` | Preferred language for place names and descriptions. Property: \`geopulse.poi.language\`. | Simple language tag (e.g. `en`, `de`, `uk`). Invalid values fall back to `en`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_ATTRIBUTION_ENABLED` | `true` | Display photo credits and data attribution. Property: \`geopulse.poi.attribution.enabled\`. Disabling it in your own deployment means you take on the licence obligation yourself. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_WIKIDATA_ENDPOINT` | `https://query.wikidata.org` | Wikidata Query Service base URL. Property: \`geopulse.poi.wikidata.endpoint\`. Point at a self-hosted instance to avoid public rate limits. Query is made with a bounded radius. | Absolute URL, no trailing slash. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_COMMONS_ENDPOINT` | `https://commons.wikimedia.org` | Wikimedia Commons API base URL, used to resolve per-file credits. Property: \`geopulse.poi.commons.endpoint\`. | Absolute URL, no trailing slash. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_MAX_RESULTS` | `40` | Upper limit on places fetched from Wikidata for one area. Property: \`geopulse.poi.max-results\`. Higher values cost more upstream time per uncached area. | Positive integer. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_THUMB_WIDTH` | `640` | Requested photo thumbnail width in pixels. Property: \`geopulse.poi.commons.thumb-width\`. Commons performs the resize, so larger values mean slower fetches and more disk. | Positive integer pixels. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_CACHE_TTL_DAYS` | `30` | Days place data is cached before refetching. Property: \`geopulse.poi.cache.ttl-days\`. The cache is global rather than per user, so one fetch serves everyone. | Positive integer days. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_IMAGE_CACHE_TTL_DAYS` | `90` | Days cached photo bytes are reused before refetching. Property: \`geopulse.poi.cache.image-ttl-days\`. | Positive integer days. | Backend restart for env changes; Admin UI changes apply through system settings |
 
 ### Map Matching (18)
 

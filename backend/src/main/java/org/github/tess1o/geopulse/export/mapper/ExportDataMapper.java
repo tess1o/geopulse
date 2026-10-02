@@ -16,7 +16,7 @@ import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
@@ -330,14 +330,14 @@ public class ExportDataMapper {
                 .build();
     }
 
-    public PeriodTagsDataDto.PeriodTagDto toPeriodTagDto(PeriodTagEntity tag) {
-        return PeriodTagsDataDto.PeriodTagDto.builder()
+    public TimelineLabelsDataDto.TimelineLabelDto toTimelineLabelDto(TimelineLabelEntity tag) {
+        return TimelineLabelsDataDto.TimelineLabelDto.builder()
                 .id(tag.getId())
-                .tagName(tag.getTagName())
+                .name(tag.getName())
                 .startTime(tag.getStartTime())
                 .endTime(tag.getEndTime())
                 .source(tag.getSource())
-                .active(tag.getIsActive())
+                .isActive(tag.getIsActive())
                 .color(tag.getColor())
                 .showAsPreset(tag.getShowAsPreset())
                 .createdAt(tag.getCreatedAt())
@@ -345,13 +345,13 @@ public class ExportDataMapper {
                 .build();
     }
 
-    public PeriodTagsDataDto toPeriodTagsDataDto(List<PeriodTagEntity> tags, ExportJob job) {
-        return PeriodTagsDataDto.builder()
-                .dataType(ExportImportConstants.DataTypes.PERIOD_TAGS)
+    public TimelineLabelsDataDto toTimelineLabelsDataDto(List<TimelineLabelEntity> tags, ExportJob job) {
+        return TimelineLabelsDataDto.builder()
+                .dataType(ExportImportConstants.DataTypes.TIMELINE_LABELS)
                 .exportDate(Instant.now())
                 .startDate(job.getDateRange().getStartDate())
                 .endDate(job.getDateRange().getEndDate())
-                .periodTags(tags.stream().map(this::toPeriodTagDto).collect(Collectors.toList()))
+                .timelineLabels(tags.stream().map(this::toTimelineLabelDto).collect(Collectors.toList()))
                 .build();
     }
 
@@ -428,7 +428,7 @@ public class ExportDataMapper {
             List<TripCollaboratorEntity> collaborators) {
         return TripWorkspaceDataDto.TripDto.builder()
                 .id(trip.getId())
-                .periodTagId(trip.getPeriodTag() != null ? trip.getPeriodTag().getId() : null)
+                .timelineLabelId(trip.getTimelineLabel() != null ? trip.getTimelineLabel().getId() : null)
                 .name(trip.getName())
                 .startTime(trip.getStartTime())
                 .endTime(trip.getEndTime())

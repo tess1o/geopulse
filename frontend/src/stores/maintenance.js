@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
 const STORAGE_KEY = 'geopulse.restore-maintenance'
 const SHARED_STORAGE_KEY = 'geopulse.restore-maintenance-active'
@@ -99,7 +100,7 @@ export function applyMaintenanceStatus(data, { broadcast = true, trusted = true 
     state: data.state,
     blocked: !!data.blocked,
     warning: !!data.warning,
-    message: data.message || '',
+    message: formatMessageDescriptor(data.message),
     backupCreatedAt: data.backupCreatedAt || '',
     initialized: true,
     needsConfirmation: false,
@@ -140,13 +141,13 @@ export async function refreshMaintenance() {
   if (pending) return pending
   pending = (async () => {
     try {
-      const base = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
-      const response = await fetch(`${base}/maintenance/status`, {
+      const base = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1'
+      const response = await fetch(`${base}/system/maintenance`, {
         cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(5000)
       })
       if (!response.ok) throw new Error('Maintenance status unavailable')
       const payload = await response.json()
-      applyMaintenanceStatus(payload.data, { trusted: true })
+      applyMaintenanceStatus(payload, { trusted: true })
     } catch {
       maintenance.initialized = true
       markMaintenanceUnavailable()

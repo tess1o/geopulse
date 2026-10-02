@@ -1038,6 +1038,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param userId user ID
      * @return list of Object arrays containing city summary data
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> getCitiesWithCounts(UUID userId) {
         String query = """
                 SELECT COALESCE(f.city, g.city) as city,
@@ -1065,6 +1066,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param userId user ID
      * @return list of Object arrays containing country summary data
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> getCountriesWithCounts(UUID userId) {
         String query = """
                 SELECT COALESCE(f.country, g.country) as country,
@@ -1101,6 +1103,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @return list of Object[] rows:
      * [type, placeId, locationName, visitCount, lastVisit, latitude, longitude, city, country]
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> findMapPlaces(
             UUID userId,
             Instant startTime,
@@ -1410,6 +1413,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param limit    maximum number of places to return
      * @return list of Object arrays containing place data
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> getTopPlacesInCity(UUID userId, String cityName, int limit) {
         String sql = """
                 SELECT CASE WHEN f.id IS NOT NULL THEN 'favorite' ELSE 'geocoding' END as type,
@@ -1446,6 +1450,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param limit       maximum number of places to return
      * @return list of Object arrays containing place data
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> getTopPlacesInCountry(UUID userId, String countryName, int limit) {
         String sql = """
                 SELECT CASE WHEN f.id IS NOT NULL THEN 'favorite' ELSE 'geocoding' END as type,
@@ -1481,6 +1486,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param countryName country name
      * @return list of Object arrays containing city data
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> getCitiesInCountry(UUID userId, String countryName) {
         String query = """
                 SELECT COALESCE(f.city, g.city) as cityName,
@@ -1497,6 +1503,31 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 ORDER BY visitCount DESC
                 """;
         return getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, countryName)
+                .getResultList();
+    }
+
+    /**
+     * Get centroid coordinates for every visited city in a country.
+     *
+     * @return rows containing [cityName, latitude, longitude]
+     */
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getCityCentroidsInCountry(UUID userId, String countryName) {
+        String sql = """
+                SELECT COALESCE(f.city, g.city) AS city_name,
+                       AVG(ST_Y(s.location)) AS latitude,
+                       AVG(ST_X(s.location)) AS longitude
+                FROM timeline_stays s
+                LEFT JOIN favorite_locations f ON s.favorite_id = f.id
+                LEFT JOIN reverse_geocoding_location g ON s.geocoding_id = g.id
+                WHERE s.user_id = ?1
+                  AND COALESCE(f.country, g.country) = ?2
+                  AND COALESCE(f.city, g.city) IS NOT NULL
+                GROUP BY COALESCE(f.city, g.city)
+                """;
+        return getEntityManager().createNativeQuery(sql)
                 .setParameter(1, userId)
                 .setParameter(2, countryName)
                 .getResultList();
@@ -1580,6 +1611,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param limit  maximum number of results
      * @return list of Object arrays containing [cityName, country, visitCount]
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> searchCitiesByName(UUID userId, String query, int limit) {
         String jpql = """
                 SELECT COALESCE(f.city, g.city) as city,
@@ -1608,6 +1640,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      * @param limit  maximum number of results
      * @return list of Object arrays containing [countryName, visitCount]
      */
+    @SuppressWarnings("unchecked")
     public List<Object[]> searchCountriesByName(UUID userId, String query, int limit) {
         String jpql = """
                 SELECT COALESCE(f.country, g.country) as country,

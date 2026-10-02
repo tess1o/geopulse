@@ -11,6 +11,9 @@ import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClient;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchedPointDTO;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 
 import java.net.URI;
@@ -26,6 +29,9 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
+
+    @Inject
+    ExternalIntegrationHealthService integrationHealthService;
 
     public ValhallaMapMatchingProvider(MapMatchingConfiguration configuration) {
         this.configuration = configuration;
@@ -63,8 +69,10 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
         try {
             response = traceRoute(client, request);
             recordValhallaRequest(started, profile, "success");
+            recordSuccess();
         } catch (RuntimeException e) {
             recordValhallaRequest(started, profile, "failure");
+            recordFailure(e);
             throw e;
         }
         return extractCoordinateSegments(response).stream()
@@ -241,5 +249,26 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
             workloadMetrics.increment("geopulse.map_matching.valhalla.requests",
                     "component", "map_matching", "profile", profile, "result", result);
         }
+    }
+
+    private void recordSuccess() {
+        if (integrationHealthService != null) {
+            integrationHealthService.recordSuccess(ExternalIntegrationType.MAP_MATCHING, providerName());
+        }
+    }
+
+    private void recordFailure(RuntimeException exception) {
+        if (integrationHealthService == null || isTripSpecificInputError(exception)) return;
+        int status = exception instanceof ValhallaHttpException httpException ? httpException.getHttpStatus() : 0;
+        ExternalIntegrationHealthStatus healthStatus = status == 401 || status == 403 || status == 404
+                ? ExternalIntegrationHealthStatus.CONFIG_ERROR
+                : ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE;
+        String errorCode = status > 0 ? "HTTP_" + status : exception.getClass().getSimpleName();
+        integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, providerName(), healthStatus,
+                errorCode, exception.getMessage(), null, null);
+    }
+
+    private boolean isTripSpecificInputError(RuntimeException exception) {
+        return exception instanceof ValhallaHttpException httpException && httpException.getHttpStatus() == 400;
     }
 }

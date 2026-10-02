@@ -1,4 +1,7 @@
+import { TRIP_ENDPOINT_GRADIENTS } from './mapColors'
+
 const ENDPOINT_SIZE = 40
+export const TRIP_ENDPOINT_MARKER_SIZE = ENDPOINT_SIZE
 const ENDPOINT_BORDER = 3
 const ENDPOINT_ICON_SIZE = Math.floor(ENDPOINT_SIZE * 0.7)
 
@@ -7,15 +10,13 @@ const ENDPOINT_TOKENS = {
     className: 'highlight-start-marker',
     shape: 'circle',
     iconClass: 'fas fa-play',
-    gradientStart: '#2ECC71',
-    gradientEnd: '#27AE60'
+    gradient: TRIP_ENDPOINT_GRADIENTS.start
   },
   end: {
     className: 'highlight-end-marker',
     shape: 'square',
     iconClass: 'fas fa-stop',
-    gradientStart: '#D84315',
-    gradientEnd: '#C0392B'
+    gradient: TRIP_ENDPOINT_GRADIENTS.end
   }
 }
 
@@ -38,7 +39,7 @@ export const createTripEndpointMarkerElement = ({ markerType, instant = true, st
   element.style.pointerEvents = 'auto'
 
   const markerStyles = {
-    backgroundColor: token.gradientStart,
+    backgroundColor: token.gradient.from,
     width: `${ENDPOINT_SIZE}px`,
     height: `${ENDPOINT_SIZE}px`,
     border: `${ENDPOINT_BORDER}px solid white`,
@@ -47,7 +48,7 @@ export const createTripEndpointMarkerElement = ({ markerType, instant = true, st
     justifyContent: 'center',
     position: 'relative',
     borderRadius: resolveBorderRadius(token.shape),
-    background: `linear-gradient(135deg, ${token.gradientStart}, ${token.gradientEnd})`,
+    background: `linear-gradient(135deg, ${token.gradient.from}, ${token.gradient.to})`,
     ...styleOverrides
   }
 

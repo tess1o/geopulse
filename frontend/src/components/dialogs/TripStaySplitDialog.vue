@@ -1,24 +1,24 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Split Trip with Stay"
+    :header="t('tripDialogs.staySplit.header')"
     :modal="true"
-    class="gp-dialog-lg trip-stay-split-dialog"
+    class="trip-stay-split-dialog"
     @hide="$emit('close')"
   >
     <div v-if="trip" class="split-content">
       <div class="trip-meta">
-        <Tag value="Trip" severity="success" />
+        <Tag :value="t('trips.reconstruction.segmentsPanel.tripOption')" severity="success" />
         <span>{{ formatTripRange }}</span>
       </div>
 
       <Message v-if="pathError" severity="error" :closable="false">{{ pathError }}</Message>
-      <Message v-else-if="pathLoading" severity="info" :closable="false">Loading trip path...</Message>
+      <Message v-else-if="pathLoading" severity="info" :closable="false">{{ t('tripDialogs.staySplit.loadingPath') }}</Message>
 
       <div class="split-workspace">
         <div class="split-details">
           <Message v-if="!selectedPoint && !selectionError" severity="info" :closable="false">
-            Click on the route to set your stay location.
+            {{ t('tripDialogs.staySplit.clickToSetStay') }}
           </Message>
           <Message v-if="selectionError" severity="warn" :closable="false">{{ selectionError }}</Message>
 
@@ -30,7 +30,7 @@
 
             <div class="time-grid">
               <div class="field">
-                <label for="split-stay-start">Stay start</label>
+                <label for="split-stay-start">{{ t('tripDialogs.staySplit.stayStartLabel') }}</label>
                 <DatePicker
                   id="split-stay-start"
                   v-model="stayStart"
@@ -42,7 +42,7 @@
                 />
               </div>
               <div class="field">
-                <label for="split-stay-end">Stay end</label>
+                <label for="split-stay-end">{{ t('tripDialogs.staySplit.stayEndLabel') }}</label>
                 <DatePicker
                   id="split-stay-end"
                   v-model="stayEnd"
@@ -56,12 +56,12 @@
             </div>
 
             <div class="field">
-              <label for="split-location-name">Place name</label>
+              <label for="split-location-name">{{ t('tripDialogs.staySplit.placeNameLabel') }}</label>
               <InputText
                 id="split-location-name"
                 v-model.trim="locationName"
                 maxlength="500"
-                :placeholder="resolvingPlaceName ? 'Resolving place...' : 'Resolved automatically when empty'"
+                :placeholder="resolvingPlaceName ? t('tripDialogs.staySplit.placeNameResolving') : t('tripDialogs.staySplit.placeNamePlaceholder')"
                 :disabled="saving"
                 @input="locationNameEdited = true"
               />
@@ -69,7 +69,7 @@
 
             <Message v-if="validationError" severity="error" :closable="false">{{ validationError }}</Message>
             <Message v-else-if="previewError" severity="error" :closable="false">{{ previewError }}</Message>
-            <Message v-else-if="previewing" severity="info" :closable="false">Updating split result...</Message>
+            <Message v-else-if="previewing" severity="info" :closable="false">{{ t('tripDialogs.staySplit.updatingPreview') }}</Message>
 
             <Transition name="preview">
               <section v-if="preview" class="split-preview" aria-live="polite">
@@ -78,12 +78,12 @@
                     <i class="pi pi-clock" aria-hidden="true"></i>
                   </span>
                   <div class="preview-copy">
-                    <span class="preview-label">Original trip</span>
+                    <span class="preview-label">{{ t('tripDialogs.staySplit.preview.originalTrip') }}</span>
                     <strong>{{ formatDuration(originalTripDurationSeconds) }}</strong>
                   </div>
                 </div>
 
-                <div class="preview-section-title">Split result</div>
+                <div class="preview-section-title">{{ t('tripDialogs.staySplit.preview.splitResult') }}</div>
 
                 <ol class="preview-steps">
                   <li class="preview-step">
@@ -91,8 +91,8 @@
                       <i class="pi pi-arrow-right" aria-hidden="true"></i>
                     </span>
                     <div class="preview-copy">
-                      <strong>Trip for {{ formatDuration(preview.firstTrip?.tripDuration || 0) }}</strong>
-                      <span>to {{ previewLocationName }}</span>
+                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(preview.firstTrip?.tripDuration || 0) }) }}</strong>
+                      <span>{{ t('tripDialogs.staySplit.preview.to', { name: previewLocationName }) }}</span>
                     </div>
                   </li>
                   <li class="preview-step">
@@ -100,8 +100,8 @@
                       <i class="pi pi-map-marker" aria-hidden="true"></i>
                     </span>
                     <div class="preview-copy">
-                      <strong>Stay at {{ previewLocationName }}</strong>
-                      <span>for {{ formatDuration(previewStayDurationSeconds) }}</span>
+                      <strong>{{ t('tripDialogs.staySplit.preview.stayAt', { name: previewLocationName }) }}</strong>
+                      <span>{{ t('tripDialogs.staySplit.preview.forDuration', { duration: formatDuration(previewStayDurationSeconds) }) }}</span>
                     </div>
                   </li>
                   <li class="preview-step">
@@ -109,8 +109,8 @@
                       <i class="pi pi-arrow-right" aria-hidden="true"></i>
                     </span>
                     <div class="preview-copy">
-                      <strong>Trip for {{ formatDuration(preview.secondTrip?.tripDuration || 0) }}</strong>
-                      <span>from {{ previewLocationName }}</span>
+                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(preview.secondTrip?.tripDuration || 0) }) }}</strong>
+                      <span>{{ t('tripDialogs.staySplit.preview.from', { name: previewLocationName }) }}</span>
                     </div>
                   </li>
                 </ol>
@@ -156,14 +156,15 @@
     </div>
 
     <template #footer>
-      <Button label="Cancel" severity="secondary" outlined :disabled="saving" @click="internalVisible = false" />
-      <Button label="Save Split" icon="pi pi-check" :disabled="!canSubmit" :loading="saving" @click="saveSplit" />
+      <Button :label="t('common.cancel')" severity="secondary" outlined :disabled="saving" @click="internalVisible = false" />
+      <Button :label="t('tripDialogs.staySplit.saveSplit')" icon="pi pi-check" :disabled="!canSubmit" :loading="saving" @click="saveSplit" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
@@ -205,6 +206,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'split'])
 
+const { t } = useI18n()
 const toast = useToast()
 const timelineStore = useTimelineStore()
 const timelinePreferencesStore = useTimelinePreferencesStore()
@@ -252,7 +254,7 @@ const splitRadiusMeters = computed(() => (
 ))
 
 const formatTripRange = computed(() => {
-  if (!tripStart.value || !tripEnd.value) return 'Unknown time range'
+  if (!tripStart.value || !tripEnd.value) return t('tripDialogs.staySplit.unknownTimeRange')
   return `${formatDateTime(tripStart.value)} - ${formatDateTime(tripEnd.value)}`
 })
 
@@ -278,27 +280,27 @@ const activeStaySegment = computed(() => selectedPoint.value
       segmentType: 'STAY',
       latitude: selectedPoint.value.latitude,
       longitude: selectedPoint.value.longitude,
-      locationName: locationName.value || 'Selected stay'
+      locationName: locationName.value || t('tripDialogs.staySplit.selectedStayFallback')
     }
   : null)
 
 const validationError = computed(() => {
-  if (!props.trip?.id) return 'Trip is missing.'
-  if (props.readOnly) return 'Timeline edits are disabled.'
-  if (!selectedPoint.value) return 'Select the stay location on the trip map.'
+  if (!props.trip?.id) return t('tripDialogs.staySplit.validation.tripMissing')
+  if (props.readOnly) return t('tripDialogs.staySplit.validation.readOnly')
+  if (!selectedPoint.value) return t('tripDialogs.staySplit.validation.selectStayLocation')
   const range = selectedRange()
-  if (!range.start || !range.end) return 'Select valid start and end times.'
-  if (new Date(range.end) <= new Date(range.start)) return 'Stay end must be after stay start.'
-  if (new Date(range.end).getTime() - new Date(range.start).getTime() < 60_000) return 'Stay duration must be at least 60 seconds.'
-  if (tripStart.value && new Date(range.start) <= new Date(tripStart.value)) return 'Stay must start after the trip starts.'
-  if (tripEnd.value && new Date(range.end) >= new Date(tripEnd.value)) return 'Stay must end before the trip ends.'
+  if (!range.start || !range.end) return t('tripDialogs.staySplit.validation.selectValidTimes')
+  if (new Date(range.end) <= new Date(range.start)) return t('tripDialogs.staySplit.validation.endAfterStart')
+  if (new Date(range.end).getTime() - new Date(range.start).getTime() < 60_000) return t('tripDialogs.staySplit.validation.minDuration')
+  if (tripStart.value && new Date(range.start) <= new Date(tripStart.value)) return t('tripDialogs.staySplit.validation.startAfterTripStart')
+  if (tripEnd.value && new Date(range.end) >= new Date(tripEnd.value)) return t('tripDialogs.staySplit.validation.endBeforeTripEnd')
   const selectionValidation = validateStayWindowSelection(pathPoints.value, selectedPoint.value, range, {
     radiusMeters: splitRadiusMeters.value,
     tripStart: tripStart.value,
     tripEnd: tripEnd.value
   })
   if (selectionValidation.error) return selectionValidation.error
-  if (locationName.value && locationName.value.length > 500) return 'Place name is too long.'
+  if (locationName.value && locationName.value.length > 500) return t('tripDialogs.staySplit.validation.placeNameTooLong')
   return ''
 })
 
@@ -310,7 +312,7 @@ const originalTripDurationSeconds = computed(() => {
 })
 
 const previewLocationName = computed(() => (
-  preview.value?.locationName || locationName.value || 'selected place'
+  preview.value?.locationName || locationName.value || t('tripDialogs.staySplit.selectedPlaceFallback')
 ))
 
 const previewStayDurationSeconds = computed(() => {
@@ -374,12 +376,12 @@ const loadPath = async () => {
     pathPoints.value = normalizeTripPathPoints(path?.points || [])
     pathSegments.value = normalizeTripPathSegments(path?.segments || [], path?.points || [])
     if (pathPoints.value.length === 0) {
-      pathError.value = 'No path points available for this trip.'
+      pathError.value = t('tripDialogs.staySplit.pathErrors.noPoints')
     }
     await nextTick()
     fitTripPath()
   } catch (error) {
-    pathError.value = error.response?.data?.message || error.message || 'Failed to load trip path'
+    pathError.value = error.response?.data?.message || error.message || t('tripDialogs.staySplit.pathErrors.loadFailed')
   } finally {
     pathLoading.value = false
   }
@@ -400,7 +402,7 @@ const handleStayDragged = ({ latitude, longitude }) => {
 const applyMapSelection = (rawCoordinate) => {
   const coordinate = normalizeLatLngPoint(rawCoordinate)
   if (!coordinate) {
-    selectionError.value = 'Select a valid stay location.'
+    selectionError.value = t('tripDialogs.staySplit.validation.selectValidStayLocation')
     return
   }
 
@@ -485,7 +487,7 @@ const loadPreview = async (token) => {
     preview.value = result
   } catch (error) {
     if (token !== previewRequestToken) return
-    previewError.value = error.response?.data?.message || error.message || 'Could not preview trip split'
+    previewError.value = error.response?.data?.message || error.message || t('tripDialogs.staySplit.previewErrorFallback')
   } finally {
     if (token === previewRequestToken) previewing.value = false
   }
@@ -496,14 +498,19 @@ const saveSplit = async () => {
   saving.value = true
   try {
     const result = await timelineStore.splitTripWithStay(props.trip.id, buildPayload())
-    toast.add({ severity: 'success', summary: 'Trip Split', detail: 'Stay was inserted into the trip.', life: 3000 })
+    toast.add({
+      severity: 'success',
+      summary: t('tripDialogs.staySplit.toasts.splitSummary'),
+      detail: t('tripDialogs.staySplit.toasts.splitDetail'),
+      life: 3000
+    })
     emit('split', result)
     internalVisible.value = false
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Split Failed',
-      detail: error.response?.data?.message || error.message || 'Could not split trip',
+      summary: t('tripDialogs.staySplit.toasts.splitFailedSummary'),
+      detail: error.response?.data?.message || error.message || t('tripDialogs.staySplit.toasts.splitFailedFallback'),
       life: 5000
     })
   } finally {
@@ -539,7 +546,9 @@ const toPickerDate = (utcValue) => {
 
 const formatDateTime = (value) => `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
 const formatCoordinate = (value) => Number.isFinite(value) ? value.toFixed(5) : ''
-const formatDistance = (value) => value < 1000 ? `${Math.round(value)}m from click` : `${(value / 1000).toFixed(1)}km from click`
+const formatDistance = (value) => value < 1000
+  ? t('tripDialogs.staySplit.distanceFromClickMeters', { value: Math.round(value) })
+  : t('tripDialogs.staySplit.distanceFromClickKm', { value: (value / 1000).toFixed(1) })
 </script>
 
 <style scoped>
@@ -574,7 +583,7 @@ const formatDistance = (value) => value < 1000 ? `${Math.round(value)}m from cli
 .split-map {
   height: clamp(360px, 48vh, 460px);
   overflow: hidden;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
 }
 
@@ -637,7 +646,7 @@ const formatDistance = (value) => value < 1000 ? `${Math.round(value)}m from cli
 
 .preview-original {
   padding-bottom: var(--gp-spacing-sm);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .preview-section-title {
@@ -708,8 +717,8 @@ const formatDistance = (value) => value < 1000 ? `${Math.round(value)}m from cli
 }
 
 :global(.trip-stay-split-dialog) {
-  width: 92vw !important;
-  max-width: 1200px !important;
+  width: 92vw;
+  max-width: 1200px;
 }
 
 @media (max-width: 767px) {

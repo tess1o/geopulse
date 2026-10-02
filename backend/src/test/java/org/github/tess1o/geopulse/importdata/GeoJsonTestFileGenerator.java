@@ -135,7 +135,7 @@ public class GeoJsonTestFileGenerator {
         try (JsonParser parser = jsonFactory.createParser(new File(filePath))) {
             // Navigate to features array
             while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.getCurrentName();
+                String fieldName = parser.currentName();
                 if ("features".equals(fieldName)) {
                     parser.nextToken(); // Move to START_ARRAY
 

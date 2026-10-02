@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.home.rest;
 
-import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.home.model.HomeContentResponse;
 import org.github.tess1o.geopulse.home.service.HomeContentService;
 import org.junit.jupiter.api.Tag;
@@ -46,12 +45,9 @@ class HomeContentResourceTest {
                 new HomeContentResponse.Meta("bundled", "2026-03-30T10:00:00Z")
         );
 
-        when(homeContentService.getContent()).thenReturn(payload);
+        when(homeContentService.getContent("uk")).thenReturn(payload);
 
-        Response response = homeContentResource.getHomeContent();
-
-        assertEquals(200, response.getStatus());
-        assertEquals(payload, response.getEntity());
-        verify(homeContentService).getContent();
+        assertEquals(payload, homeContentResource.getHomeContent("uk"));
+        verify(homeContentService).getContent("uk");
     }
 }

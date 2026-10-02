@@ -4,8 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.geocoding.dto.CreateNormalizationRuleRequest;
 import org.github.tess1o.geopulse.geocoding.dto.NormalizationRuleDto;
 import org.github.tess1o.geopulse.geocoding.dto.UpdateNormalizationRuleRequest;
@@ -19,6 +18,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_RULE_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_RULE_NOT_FOUND;
 
 @ApplicationScoped
 public class UserLocationNormalizationService {
@@ -38,9 +40,9 @@ public class UserLocationNormalizationService {
 
     public NormalizationRuleDto getRule(UUID userId, Long ruleId) {
         UserLocationNormalizationRuleEntity entity = repository.findByIdOptional(ruleId)
-                .orElseThrow(() -> new NotFoundException("Normalization rule not found: " + ruleId));
+                .orElseThrow(() -> new GeoPulseException(NORMALIZATION_RULE_NOT_FOUND, "Normalization rule not found"));
         if (!entity.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("Cannot access another user's normalization rule");
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied");
         }
         return toDto(entity);
     }
@@ -65,9 +67,9 @@ public class UserLocationNormalizationService {
     @Transactional
     public NormalizationRuleDto updateRule(UUID userId, Long ruleId, UpdateNormalizationRuleRequest request) {
         UserLocationNormalizationRuleEntity entity = repository.findByIdOptional(ruleId)
-                .orElseThrow(() -> new NotFoundException("Normalization rule not found: " + ruleId));
+                .orElseThrow(() -> new GeoPulseException(NORMALIZATION_RULE_NOT_FOUND, "Normalization rule not found"));
         if (!entity.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("Cannot update another user's normalization rule");
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied");
         }
 
         entity.setRuleType(request.getRuleType());
@@ -85,9 +87,9 @@ public class UserLocationNormalizationService {
     @Transactional
     public void deleteRule(UUID userId, Long ruleId) {
         UserLocationNormalizationRuleEntity entity = repository.findByIdOptional(ruleId)
-                .orElseThrow(() -> new NotFoundException("Normalization rule not found: " + ruleId));
+                .orElseThrow(() -> new GeoPulseException(NORMALIZATION_RULE_NOT_FOUND, "Normalization rule not found"));
         if (!entity.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("Cannot delete another user's normalization rule");
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied");
         }
         repository.delete(entity);
     }

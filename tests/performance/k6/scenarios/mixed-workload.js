@@ -162,7 +162,7 @@ function getAuthManager(users) {
 }
 
 /**
- * Timeline Scenario - Tests /api/streaming-timeline
+ * Timeline Scenario - Tests /api/v1/timeline
  */
 export function timelineScenario(data) {
   const auth = getAuthManager(data.users);
@@ -171,7 +171,7 @@ export function timelineScenario(data) {
   const rangeType = randomItem(rangeTypes);
   const dateRange = generateDateRange(rangeType);
 
-  const timelineUrl = buildUrl(`${config.baseUrl}/api/streaming-timeline`, {
+  const timelineUrl = buildUrl(`${config.baseUrl}/api/v1/timeline`, {
     startTime: dateRange.start,
     endTime: dateRange.end,
   });
@@ -190,7 +190,7 @@ export function timelineScenario(data) {
 }
 
 /**
- * Dashboard Scenario - Tests /api/statistics
+ * Dashboard Scenario - Tests /api/v1/statistics
  */
 export function dashboardScenario(data) {
   const auth = getAuthManager(data.users);
@@ -199,7 +199,7 @@ export function dashboardScenario(data) {
   const rangeType = randomItem(rangeTypes);
   const dateRange = generateDateRange(rangeType);
 
-  const statsUrl = buildUrl(`${config.baseUrl}/api/statistics`, {
+  const statsUrl = buildUrl(`${config.baseUrl}/api/v1/statistics`, {
     startTime: dateRange.start,
     endTime: dateRange.end,
   });
@@ -218,7 +218,7 @@ export function dashboardScenario(data) {
 }
 
 /**
- * Location Analytics Scenario - Tests /api/location-analytics/*
+ * Location Analytics Scenario - Tests /api/v1/location-analytics/*
  */
 export function locationScenario(data) {
   const auth = getAuthManager(data.users);
@@ -226,7 +226,7 @@ export function locationScenario(data) {
   const endpoints = ['cities', 'countries'];
   const endpoint = randomItem(endpoints);
 
-  const locationUrl = `${config.baseUrl}/api/location-analytics/${endpoint}`;
+  const locationUrl = `${config.baseUrl}/api/v1/location-analytics/${endpoint}`;
 
   const response = http.get(locationUrl, {
     headers: auth.getAuthHeader(),
@@ -242,12 +242,12 @@ export function locationScenario(data) {
 }
 
 /**
- * Journey Insights Scenario - Tests /api/journey-insights
+ * Journey Insights Scenario - Tests /api/v1/journey-insights
  */
 export function insightsScenario(data) {
   const auth = getAuthManager(data.users);
 
-  const insightsUrl = `${config.baseUrl}/api/journey-insights`;
+  const insightsUrl = `${config.baseUrl}/api/v1/journey-insights`;
 
   const response = http.get(insightsUrl, {
     headers: auth.getAuthHeader(),

@@ -1,10 +1,8 @@
 package org.github.tess1o.geopulse.auth.rest;
 
-import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.model.MobileAuthInitResponse;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -49,11 +47,7 @@ class MobileAuthenticationResourceTest {
         when(currentUserService.getCurrentUserId()).thenReturn(userId);
         when(mobileDeepLinkService.generateAuthenticationLink(userId)).thenReturn(serviceResponse);
 
-        Response response = resource.generateCode();
-
-        assertEquals(200, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        assertEquals(serviceResponse, apiResponse.getData());
+        assertEquals(serviceResponse, resource.generateCode());
         verify(mobileDeepLinkService).generateAuthenticationLink(userId);
     }
 }

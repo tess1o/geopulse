@@ -3,7 +3,7 @@
     <div class="heatmap-header">
       <h3 class="heatmap-title">
         <i class="pi pi-map"></i>
-        Location Heatmap
+        {{ t('analytics.digest.heatmap.title') }}
       </h3>
       <div class="heatmap-controls" v-if="!isLoading && !hasError">
         <div class="layer-toggle">
@@ -12,14 +12,14 @@
             @click="layerMode = 'stays'"
           >
             <i class="pi pi-home"></i>
-            Stays
+            {{ t('analytics.digest.heatmap.stays') }}
           </button>
           <button
             :class="['toggle-btn', { active: layerMode === 'trips' }]"
             @click="layerMode = 'trips'"
           >
             <i class="pi pi-directions"></i>
-            Trips
+            {{ t('analytics.digest.heatmap.trips') }}
           </button>
         </div>
         <div class="intensity-toggle" v-if="layerMode !== 'trips'">
@@ -28,14 +28,14 @@
             @click="intensityMode = 'duration'"
           >
             <i class="pi pi-clock"></i>
-            By Duration
+            {{ t('analytics.digest.heatmap.byDuration') }}
           </button>
           <button
             :class="['toggle-btn', { active: intensityMode === 'visits' }]"
             @click="intensityMode = 'visits'"
           >
             <i class="pi pi-refresh"></i>
-            By Visits
+            {{ t('analytics.digest.heatmap.byVisits') }}
           </button>
         </div>
       </div>
@@ -44,19 +44,19 @@
     <!-- Loading -->
     <div v-if="isLoading" class="heatmap-state">
       <i class="pi pi-spin pi-spinner heatmap-state-icon"></i>
-      <p>Loading heatmap data…</p>
+      <p>{{ t('analytics.digest.heatmap.loading') }}</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="hasError" class="heatmap-state heatmap-state--error">
       <i class="pi pi-exclamation-triangle heatmap-state-icon"></i>
-      <p>Could not load heatmap data.</p>
+      <p>{{ t('analytics.digest.heatmap.error') }}</p>
     </div>
 
     <!-- Empty -->
     <div v-else-if="!hasData" class="heatmap-state">
       <i class="pi pi-map heatmap-state-icon"></i>
-      <p>No location data available for this period.</p>
+      <p>{{ t('analytics.digest.heatmap.empty') }}</p>
     </div>
 
     <!-- Map -->
@@ -64,6 +64,8 @@
       <BaseMap
         ref="baseMapRef"
         :mapId="mapId"
+        :center="heatmapCenter"
+        :zoom="initialMapZoom"
         height="420px"
         width="100%"
         @map-ready="onMapReady"
@@ -86,9 +88,9 @@
       />
       <!-- Legend -->
       <div class="heatmap-legend">
-        <span class="legend-label">Low</span>
-        <div class="legend-gradient"></div>
-        <span class="legend-label">High</span>
+        <span class="legend-label">{{ t('analytics.digest.heatmap.legendLow') }}</span>
+        <div class="legend-gradient" :style="legendGradientStyle"></div>
+        <span class="legend-label">{{ t('analytics.digest.heatmap.legendHigh') }}</span>
         <span class="legend-hint">{{ legendHint }}</span>
       </div>
     </div>
@@ -97,10 +99,15 @@
 
 <script setup>
 import { ref, watch, computed, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import HeatmapLayer from '@/components/maps/layers/HeatmapLayer.vue'
 import { useDigestStore } from '@/stores/digest'
+import { useMapAppearance } from '@/composables/useMapAppearance'
+import { heatmapGradientToCss } from '@/maps/shared/mapAppearance'
+
+const { t } = useI18n()
 
 const props = defineProps({
   viewMode: { type: String, default: 'monthly' },
@@ -126,11 +133,30 @@ let zoomListenerMap = null
 
 const hasError = computed(() => !!heatmapError.value)
 const hasData  = computed(() => heatPoints.value.length > 0)
+const heatBounds = computed(() => heatPoints.value
+  .map((point) => {
+    const lat = Number(point?.lat)
+    const lng = Number(point?.lng)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null
+  })
+  .filter(Boolean))
+const heatmapCenter = computed(() => {
+  if (!heatBounds.value.length) return null
+
+  const [firstLat, firstLng] = heatBounds.value[0]
+  const extent = heatBounds.value.reduce((result, [lat, lng]) => ({
+    minLat: Math.min(result.minLat, lat), maxLat: Math.max(result.maxLat, lat),
+    minLng: Math.min(result.minLng, lng), maxLng: Math.max(result.maxLng, lng)
+  }), { minLat: firstLat, maxLat: firstLat, minLng: firstLng, maxLng: firstLng })
+
+  return [(extent.minLat + extent.maxLat) / 2, (extent.minLng + extent.maxLng) / 2]
+})
+const initialMapZoom = computed(() => heatBounds.value.length === 1 ? 14 : 8)
 const legendHint = computed(() => {
   if (intensityMode.value === 'duration') {
-    return layerMode.value === 'trips' ? 'Time moving' : 'Time spent'
+    return layerMode.value === 'trips' ? t('analytics.digest.heatmap.hintTimeMoving') : t('analytics.digest.heatmap.hintTimeSpent')
   }
-  return 'Visit count'
+  return t('analytics.digest.heatmap.hintVisitCount')
 })
 
 const valueKey = computed(() => {
@@ -158,13 +184,10 @@ const heatStyle = computed(() => {
   }[layerMode.value] || { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 }
 })
 
-const heatGradient = {
-  0.0: '#2563eb',
-  0.35: '#22c55e',
-  0.6: '#eab308',
-  0.8: '#f97316',
-  1.0: '#dc2626',
-}
+// The viewer's heatmap gradient; the legend below is drawn from the same stops.
+const mapAppearance = useMapAppearance()
+const heatGradient = computed(() => mapAppearance.value.heatmapGradient)
+const legendGradientStyle = computed(() => ({ background: heatmapGradientToCss(heatGradient.value) }))
 
 // ─── Data loading ────────────────────────────────────────────────────────────
 
@@ -196,28 +219,15 @@ const loadHeatmap = async () => {
 }
 
 const fitMap = () => {
-  if (!heatPoints.value.length) return
-  const bounds = heatPoints.value
-    .map((point) => {
-      const lat = Number(point?.lat)
-      const lng = Number(point?.lng)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return null
-      }
-      return [lat, lng]
-    })
-    .filter(Boolean)
-
-  if (bounds.length === 0) {
-    return
-  }
+  const bounds = heatBounds.value
+  if (!bounds.length) return
 
   if (baseMapRef.value?.fitBounds) {
-    baseMapRef.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+    baseMapRef.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: false, duration: 0 })
     return
   }
 
-  mapInstance.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 14 })
+  mapInstance.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 14, animate: false, duration: 0 })
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────
@@ -272,8 +282,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .digest-heatmap {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
@@ -314,8 +324,8 @@ onBeforeUnmount(() => {
 .layer-toggle,
 .intensity-toggle {
   display: flex;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
 }
@@ -352,14 +362,14 @@ onBeforeUnmount(() => {
   padding: var(--gp-spacing-xxl) var(--gp-spacing-xl);
   text-align: center;
   color: var(--gp-text-muted);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   min-height: 200px;
 }
 
 .heatmap-state--error {
-  color: var(--gp-error);
+  color: var(--gp-danger);
 }
 
 .heatmap-state-icon {
@@ -389,9 +399,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--gp-surface-card) 90%, transparent);
   backdrop-filter: blur(6px);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 6px 12px;
   font-size: 0.75rem;
@@ -403,39 +413,12 @@ onBeforeUnmount(() => {
   width: 80px;
   height: 10px;
   border-radius: 5px;
-  background: linear-gradient(to right, #3b82f6, #22c55e, #f59e0b, #ef4444);
 }
 
 .legend-hint {
   font-style: italic;
   opacity: 0.7;
   margin-left: 4px;
-}
-
-/* ── Dark mode ── */
-.p-dark .digest-heatmap {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .intensity-toggle {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .heatmap-state {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .heatmap-legend {
-  background: rgba(30, 30, 40, 0.92);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .heatmap-title {
-  color: var(--gp-text-primary);
 }
 
 /* ── Responsive ── */

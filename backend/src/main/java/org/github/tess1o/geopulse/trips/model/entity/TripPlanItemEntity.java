@@ -41,7 +41,7 @@ public class TripPlanItemEntity {
     private LocalDate plannedDay;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "priority", nullable = false)
+    @Column(name = "priority", nullable = false, length = 16)
     @Builder.Default
     private TripPlanItemPriority priority = TripPlanItemPriority.OPTIONAL;
 
@@ -57,14 +57,14 @@ public class TripPlanItemEntity {
     private Double visitConfidence;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visit_source")
+    @Column(name = "visit_source", length = 16)
     private TripPlanItemVisitSource visitSource;
 
     @Column(name = "visited_at")
     private Instant visitedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "manual_override_state")
+    @Column(name = "manual_override_state", length = 16)
     private TripPlanItemOverrideState manualOverrideState;
 
     @Column(name = "created_at", nullable = false)

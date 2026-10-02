@@ -48,8 +48,8 @@ const severityClass = computed(() => `stat-card--${props.severity}`)
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-medium);
+  background: var(--gp-surface-card);
   transition: all 0.2s ease;
 }
 
@@ -97,65 +97,23 @@ const severityClass = computed(() => `stat-card--${props.severity}`)
 
 /* Severity variants */
 .stat-card--info .stat-icon {
-  background: var(--gp-info-50);
-  color: var(--gp-info-700);
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
 }
 
 .stat-card--success .stat-icon {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .stat-card--warn .stat-icon {
-  background: var(--gp-warn-50);
-  color: var(--gp-warn-700);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 .stat-card--danger .stat-icon {
-  background: var(--gp-danger-50);
-  color: var(--gp-danger-700);
-}
-
-/* Dark Mode */
-.p-dark .stat-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .stat-card:hover {
-  box-shadow: var(--gp-shadow-medium);
-}
-
-.p-dark .stat-card--info .stat-icon {
-  background: var(--gp-info-900);
-  color: var(--gp-info-300);
-}
-
-.p-dark .stat-card--success .stat-icon {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
-}
-
-.p-dark .stat-card--warn .stat-icon {
-  background: var(--gp-warn-900);
-  color: var(--gp-warn-300);
-}
-
-.p-dark .stat-card--danger .stat-icon {
-  background: var(--gp-danger-900);
-  color: var(--gp-danger-300);
-}
-
-.p-dark .stat-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .stat-value {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .stat-hint {
-  color: var(--gp-text-muted);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 /* Mobile Responsive */

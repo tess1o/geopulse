@@ -2,11 +2,11 @@
   <BaseCard v-if="hasPendingFavorites" class="pending-panel" variant="highlighted">
     <template #header>
       <div class="panel-header">
-        <h3 class="panel-title">Pending Favorites</h3>
+        <h3 class="panel-title">{{ t('sharing.favorites.pendingPanel.title') }}</h3>
         <div class="panel-actions">
-          <Tag :value="`${pendingCount} pending`" severity="warning" />
+          <Tag :value="t('sharing.favorites.pendingPanel.pendingCount', { count: pendingCount })" severity="warning" />
           <Button
-            label="Clear All"
+            :label="t('sharing.favorites.pendingPanel.clearAll')"
             icon="pi pi-times"
             severity="secondary"
             size="small"
@@ -14,7 +14,7 @@
             @click="$emit('clear-all')"
           />
           <Button
-            label="Save All"
+            :label="t('sharing.favorites.pendingPanel.saveAll')"
             icon="pi pi-check"
             severity="success"
             size="small"
@@ -37,11 +37,15 @@
           <div class="item-name">{{ item.name }}</div>
           <div class="item-location">
             <span v-if="item.type === 'point'">
-              Point: {{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }}
+              {{ t('sharing.favorites.pendingPanel.pointLocation', { lat: item.lat.toFixed(4), lon: item.lon.toFixed(4) }) }}
             </span>
             <span v-else>
-              Area: {{ item.southWestLat.toFixed(2) }}, {{ item.southWestLon.toFixed(2) }} to
-              {{ item.northEastLat.toFixed(2) }}, {{ item.northEastLon.toFixed(2) }}
+              {{ t('sharing.favorites.pendingPanel.areaLocation', {
+                southWestLat: item.southWestLat.toFixed(2),
+                southWestLon: item.southWestLon.toFixed(2),
+                northEastLat: item.northEastLat.toFixed(2),
+                northEastLon: item.northEastLon.toFixed(2)
+              }) }}
             </span>
           </div>
         </div>
@@ -59,7 +63,7 @@
     <template #footer>
       <div class="footer-info">
         <i class="pi pi-info-circle" />
-        <span>Timeline regeneration will happen once for all favorites</span>
+        <span>{{ t('sharing.favorites.pendingPanel.footerInfo') }}</span>
       </div>
     </template>
   </BaseCard>
@@ -67,6 +71,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFavoritesStore } from '@/stores/favorites'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import Button from 'primevue/button'
@@ -74,6 +79,7 @@ import Tag from 'primevue/tag'
 
 defineEmits(['clear-all', 'save-all', 'remove'])
 
+const { t } = useI18n()
 const favoritesStore = useFavoritesStore()
 
 const hasPendingFavorites = computed(() => favoritesStore.hasPendingFavorites)
@@ -84,7 +90,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 <style scoped>
 .pending-panel {
   margin-bottom: 1.5rem;
-  border: 2px solid var(--yellow-500);
+  border: 2px solid var(--p-yellow-500);
 }
 
 .panel-header {
@@ -97,7 +103,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 .panel-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0;
 }
 
@@ -118,14 +124,14 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   align-items: center;
   gap: 1rem;
   padding: 0.75rem;
-  background: var(--surface-50);
-  border: 1px dashed var(--yellow-500);
+  background: var(--gp-surface-muted);
+  border: 1px dashed var(--p-yellow-500);
   border-radius: 6px;
   transition: background-color 0.2s;
 }
 
 .pending-item:hover {
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
 }
 
 .item-icon {
@@ -134,9 +140,9 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: var(--yellow-100);
+  background: var(--gp-warning-soft);
   border-radius: 50%;
-  color: var(--yellow-700);
+  color: var(--gp-warning-text);
   font-size: 1.25rem;
 }
 
@@ -147,7 +153,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 
 .item-name {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin-bottom: 0.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -156,7 +162,7 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
 
 .item-location {
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -166,26 +172,12 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.875rem;
 }
 
 .footer-info i {
-  color: var(--blue-500);
-}
-
-/* Dark mode */
-.p-dark .pending-item {
-  background: var(--surface-800);
-}
-
-.p-dark .pending-item:hover {
-  background: var(--surface-700);
-}
-
-.p-dark .item-icon {
-  background: var(--yellow-900);
-  color: var(--yellow-300);
+  color: var(--p-blue-500);
 }
 
 /* Responsive */

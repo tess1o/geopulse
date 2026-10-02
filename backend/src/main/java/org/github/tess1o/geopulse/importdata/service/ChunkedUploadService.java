@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ChunkedUploadSession;
+import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.model.UploadStatus;
 
 import java.io.*;
@@ -85,7 +86,7 @@ public class ChunkedUploadService {
      * to ensure consistency between frontend and backend.
      */
     public ChunkedUploadSession initializeUpload(UUID userId, String fileName, long fileSize,
-                                                   String importFormat, String options) {
+                                                   String importFormat, ImportOptions options) {
         // Calculate totalChunks based on configured chunk size
         long chunkSizeBytes = getChunkSizeBytes();
         int totalChunks = (int) Math.ceil((double) fileSize / chunkSizeBytes);
@@ -205,7 +206,7 @@ public class ChunkedUploadService {
                 log.debug("Deleted chunk {} for upload {}", i, uploadId);
             } catch (IOException e) {
                 // Log but don't fail - assembly was successful, cleanup is best-effort
-                log.warn("Failed to delete chunk {} for upload {}: {}", i, uploadId, e.getMessage());
+                log.warn("Failed to delete chunk {} for upload {}: {}", i, uploadId, e.getMessage(), e);
             }
         }
 

@@ -1,6 +1,7 @@
 import { computed, unref } from 'vue'
 import { useRouter } from 'vue-router'
 import { buildTimelineItemGpsRange } from '@/utils/timelineGpsRange'
+import { t } from '@/locales'
 
 export const useTimelineGpsDrilldown = (itemRef) => {
   const router = useRouter()
@@ -24,7 +25,7 @@ export const useTimelineGpsDrilldown = (itemRef) => {
     if (!gpsPointRange.value) return
 
     items.push({
-      label: 'Show GPS points',
+      label: t('timeline.card.showGpsPoints'),
       icon: 'pi pi-map-marker',
       command: navigateToGpsPoints
     })

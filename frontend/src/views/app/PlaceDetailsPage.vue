@@ -1,26 +1,14 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      :title="pageTitle"
-      subtitle="Detailed information about this place and your visit history"
       :loading="isLoading"
-      variant="fullwidth"
+      max-width="xlarge"
     >
-    <!-- Breadcrumb Navigation -->
-    <div class="breadcrumb-nav">
-      <Button
-        label="Back"
-        icon="pi pi-arrow-left"
-        class="p-button-text"
-        @click="goBack"
-      />
-    </div>
-
     <!-- Loading State -->
     <template v-if="isLoading && !placeDetails">
       <div class="loading-container">
         <ProgressSpinner />
-        <p class="loading-text">Loading place details...</p>
+        <p class="loading-text">{{ t('place.detailsPage.loading') }}</p>
       </div>
     </template>
 
@@ -29,10 +17,10 @@
       <BaseCard>
         <div class="error-container">
           <i class="pi pi-exclamation-triangle error-icon"></i>
-          <h3 class="error-title">Failed to Load Place Details</h3>
+          <h3 class="error-title">{{ t('place.detailsPage.errorTitle') }}</h3>
           <p class="error-message">{{ error }}</p>
           <Button
-            label="Try Again"
+            :label="t('common.tryAgain')"
             icon="pi pi-refresh"
             @click="loadPlaceData"
           />
@@ -42,13 +30,43 @@
 
     <!-- Place Details Content -->
     <template v-else-if="placeDetails">
-      <!-- Place Header -->
-      <PlaceHeader
-        :place-details="placeDetails"
-        @update-name="handleUpdateName"
-        @edit-details="handleOpenEditDialog"
-        @create-favorite="handleCreateFavorite"
-      />
+      <LocationDetailsHeader
+        :title="pageTitle"
+        :subtitle="placeSubtitle"
+        :icon="placeIcon"
+        :back-label="t('common.back')"
+        @back="goBack"
+      >
+        <template #metadata>
+          <Tag :value="placeTypeLabel" :severity="placeType === 'favorite' ? 'success' : 'info'" />
+          <span v-if="displayCoordinates" class="place-coordinates">
+            <i class="pi pi-map-marker" aria-hidden="true" />
+            {{ displayCoordinates }}
+          </span>
+        </template>
+        <template #actions>
+          <Button
+            v-if="placeType === 'favorite' && placeDetails.canEdit"
+            :label="t('place.detailsPage.edit')"
+            icon="pi pi-pencil"
+            outlined
+            @click="handleOpenEditDialog"
+          />
+          <Button
+            v-if="placeType === 'geocoding'"
+            :label="t('place.detailsPage.editDetails')"
+            icon="pi pi-cog"
+            outlined
+            @click="handleOpenEditDialog"
+          />
+          <Button
+            v-if="placeType === 'geocoding'"
+            :label="t('place.detailsPage.createFavorite')"
+            icon="pi pi-heart"
+            @click="handleCreateFavorite"
+          />
+        </template>
+      </LocationDetailsHeader>
 
       <!-- Related Favorite Notice (for geocoding with no visits) - Show FIRST -->
       <BaseCard v-if="placeDetails.relatedFavorite" class="related-favorite-notice">
@@ -68,16 +86,16 @@
                 <i class="pi pi-map-marker favorite-icon"></i>
                 <span class="favorite-name">{{ placeDetails.relatedFavorite.name }}</span>
                 <span class="favorite-distance" v-if="placeDetails.relatedFavorite.distanceMeters > 0">
-                  ({{ formatDistance(placeDetails.relatedFavorite.distanceMeters) }} away)
+                  {{ t('place.detailsPage.relatedFavorite.distanceAway', { distance: formatDistance(placeDetails.relatedFavorite.distanceMeters) }) }}
                 </span>
               </div>
               <div class="favorite-stats" v-if="placeDetails.relatedFavorite.totalVisits">
                 <i class="pi pi-clock"></i>
-                <span>{{ placeDetails.relatedFavorite.totalVisits }} visits tracked</span>
+                <span>{{ t('place.detailsPage.relatedFavorite.visitsTracked', { count: placeDetails.relatedFavorite.totalVisits }) }}</span>
               </div>
             </div>
             <Button
-              :label="`View ${placeDetails.relatedFavorite.name} Details`"
+              :label="t('place.detailsPage.relatedFavorite.viewDetails', { name: placeDetails.relatedFavorite.name })"
               icon="pi pi-arrow-right"
               @click="navigateToRelatedFavorite"
               class="view-favorite-button"
@@ -108,11 +126,11 @@
       <ImmichLatestPhotosSection
         v-if="placeImmichSearchParams"
         ref="placePhotosSectionRef"
-        :title="`Latest photos near ${placeDetails.locationName}`"
+        :title="t('place.detailsPage.latestPhotosTitle', { name: placeDetails.locationName })"
         :search-params="placeImmichSearchParams"
         :in-memory-filter="placePhotoInMemoryFilter"
         :in-memory-filter-cache-key="placePhotoFilterCacheKey"
-        empty-message="No nearby Immich photos found for this place."
+        :empty-message="t('place.detailsPage.noPhotosMessage')"
         @latest-photos-change="handlePlacePhotosChange"
         @map-markers-change="handlePlaceMarkerGroupsChange"
         @show-on-map="handlePlacePhotoShowOnMap"
@@ -120,11 +138,11 @@
 
       <PlaceNotesSection
         v-if="placeNotesSearchParams"
-        :title="`Notes near ${placeDetails.locationName}`"
+        :title="t('place.detailsPage.notesTitle', { name: placeDetails.locationName })"
         :search-params="placeNotesSearchParams"
         :in-memory-filter="placeNoteInMemoryFilter"
         :in-memory-filter-cache-key="placePhotoFilterCacheKey"
-        empty-message="No nearby notes found for this place."
+        :empty-message="t('place.detailsPage.noNotesMessage')"
         @notes-change="handlePlaceNotesChange"
       />
 
@@ -145,7 +163,7 @@
     <EditFavoriteDialog
       v-if="placeType === 'favorite' && selectedFavorite"
       :visible="showFavoriteDialog"
-      :header="'Edit Favorite Location'"
+      :header="t('place.detailsPage.editFavoriteDialogHeader')"
       :favorite-location="selectedFavorite"
       @edit-favorite="(data) => handleFavoriteSave(data, { onSuccess: () => loadPlaceData() })"
       @close="closeFavoriteEditor"
@@ -163,37 +181,37 @@
     <Dialog
       v-model:visible="showCreateFavoriteDialog"
       modal
-      header="Create Favorite Location"
+      :header="t('place.detailsPage.createFavoriteDialog.header')"
       :style="{ width: '450px' }"
     >
       <div class="create-favorite-content">
         <p class="dialog-message">
-          Create a favorite location at this geocoding point. You can give it a custom name.
+          {{ t('place.detailsPage.createFavoriteDialog.message') }}
         </p>
         <div class="form-field">
-          <label for="favorite-name">Favorite Name</label>
+          <label for="favorite-name">{{ t('place.detailsPage.createFavoriteDialog.nameLabel') }}</label>
           <InputText
             id="favorite-name"
             v-model="newFavoriteName"
-            placeholder="e.g., Home, Work, Gym"
+            :placeholder="t('place.detailsPage.createFavoriteDialog.namePlaceholder')"
             autofocus
             @keyup.enter="submitCreateFavorite"
             style="width: 100%"
           />
         </div>
         <small class="coordinates-info">
-          Coordinates: {{ placeDetails?.geometry?.latitude?.toFixed(6) }}, {{ placeDetails?.geometry?.longitude?.toFixed(6) }}
+          {{ t('place.detailsPage.createFavoriteDialog.coordinatesInfo', { lat: placeDetails?.geometry?.latitude?.toFixed(6), lon: placeDetails?.geometry?.longitude?.toFixed(6) }) }}
         </small>
       </div>
       <template #footer>
         <Button
-          label="Cancel"
+          :label="t('common.cancel')"
           severity="secondary"
           @click="showCreateFavoriteDialog = false"
           outlined
         />
         <Button
-          label="Create Favorite"
+          :label="t('place.detailsPage.createFavorite')"
           icon="pi pi-heart"
           severity="success"
           @click="submitCreateFavorite"
@@ -222,11 +240,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+import Tag from 'primevue/tag'
 
 // Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -234,12 +254,12 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 
 // Place Components
-import PlaceHeader from '@/components/place/PlaceHeader.vue'
 import PlaceStatsCard from '@/components/place/PlaceStatsCard.vue'
 import PlaceMap from '@/components/place/PlaceMap.vue'
 import PlaceNotesSection from '@/components/place/PlaceNotesSection.vue'
 import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
+import LocationDetailsHeader from '@/components/location-analytics/LocationDetailsHeader.vue'
 
 // Dialogs
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
@@ -253,20 +273,23 @@ import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
 import { useGeocodingStore } from '@/stores/geocoding'
+import { useFavoritesStore } from '@/stores/favorites'
 
 // Utilities
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 
 // PrimeVue
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const placeStore = usePlaceStatisticsStore()
 const geocodingStore = useGeocodingStore()
+const favoritesStore = useFavoritesStore()
 
 // Composables
 const {
@@ -278,7 +301,7 @@ const {
 } = useTimelineRegeneration()
 
 // Store refs
-const { placeDetails, placeVisits, pagination, loading } = storeToRefs(placeStore)
+const { placeDetails, placeVisits, photoSearchWindow: placePhotoSearchWindow, pagination, loading } = storeToRefs(placeStore)
 
 // Local state
 const error = ref(null)
@@ -305,7 +328,6 @@ const {
 
 const PLACE_PHOTO_RADIUS_METERS = 100
 const PLACE_NOTES_LIMIT = 5000
-const placePhotoSearchWindow = ref(null)
 const placeNotesForMap = ref([])
 
 // Favorite editor composable (for editing favorite places)
@@ -333,7 +355,23 @@ const pageTitle = computed(() => {
   if (placeDetails.value) {
     return placeDetails.value.locationName
   }
-  return 'Place Details'
+  return t('place.detailsPage.pageTitleFallback')
+})
+
+const placeSubtitle = computed(() => (
+  [placeDetails.value?.city, placeDetails.value?.country].filter(Boolean).join(', ')
+  || t('place.detailsPage.subtitleFallback')
+))
+
+const placeTypeLabel = computed(() => placeType.value === 'favorite' ? t('place.detailsPage.typeFavorite') : t('place.detailsPage.typeGeocoded'))
+const placeIcon = computed(() => placeDetails.value?.geometry?.type === 'area' ? 'pi pi-th-large' : 'pi pi-map-marker')
+const displayCoordinates = computed(() => {
+  const geometry = placeDetails.value?.geometry
+  const latitude = Number(geometry?.latitude)
+  const longitude = Number(geometry?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return ''
+  const coordinates = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+  return geometry.type === 'area' ? t('place.detailsPage.coordinatesCenter', { coordinates }) : coordinates
 })
 
 const isLoading = computed(() => loading.value)
@@ -343,9 +381,9 @@ const relatedFavoriteTitle = computed(() => {
 
   const reason = placeDetails.value.relatedFavorite.reason
   if (reason === 'contains_point') {
-    return 'Visits Grouped with Area Favorite'
+    return t('place.detailsPage.relatedFavorite.titleArea')
   }
-  return 'Visits Grouped with Favorite'
+  return t('place.detailsPage.relatedFavorite.titlePoint')
 })
 
 const relatedFavoriteMessage = computed(() => {
@@ -353,9 +391,9 @@ const relatedFavoriteMessage = computed(() => {
 
   const reason = placeDetails.value.relatedFavorite.reason
   if (reason === 'contains_point') {
-    return 'This location is within your favorite area. Your visits here are being tracked under:'
+    return t('place.detailsPage.relatedFavorite.messageArea')
   }
-  return 'Your visits to this location are being tracked under your nearby favorite:'
+  return t('place.detailsPage.relatedFavorite.messagePoint')
 })
 
 const placeImmichSearchParams = computed(() => {
@@ -407,8 +445,8 @@ const placeNotesSearchParams = computed(() => {
   }
 
   const params = {
-    startTime: firstVisit,
-    endTime: lastVisit,
+    from: firstVisit,
+    to: lastVisit,
     includeExternal: true,
     limit: PLACE_NOTES_LIMIT
   }
@@ -576,7 +614,7 @@ const submitCreateFavorite = () => {
 
   const geometry = placeDetails.value?.geometry
   if (!geometry || !geometry.latitude || !geometry.longitude) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Invalid coordinates for favorite.', life: 5000 })
+    toast.add({ severity: 'error', summary: t('common.error'), detail: t('place.detailsPage.invalidCoordinatesDetail'), life: 5000 })
     return
   }
 
@@ -585,11 +623,7 @@ const submitCreateFavorite = () => {
   const lat = geometry.latitude
   const lon = geometry.longitude
 
-  const action = () => apiService.post('/favorites/point', {
-    name: favoriteName,
-    lat: lat,
-    lon: lon
-  }).then(response => response.data?.jobId || response.data)
+  const action = () => favoritesStore.addPointToFavorites(favoriteName, lat, lon)
 
   // Close dialog and clean up immediately
   showCreateFavoriteDialog.value = false
@@ -597,8 +631,8 @@ const submitCreateFavorite = () => {
 
   withTimelineRegeneration(action, {
     modalType: 'favorite',
-    successMessage: 'Favorite location created successfully.',
-    errorMessage: 'Failed to create favorite location.',
+    successMessage: t('place.detailsPage.favoriteCreatedSuccess'),
+    errorMessage: t('place.detailsPage.favoriteCreateFailed'),
     onSuccess: () => {
       // Optionally, reload place details to show the updated related favorite
       loadPlaceData()
@@ -616,10 +650,7 @@ const loadPlaceData = async () => {
     await placeStore.fetchPlaceDetails(placeType.value, placeId.value)
 
     try {
-      const response = await apiService.get(`/place-details/${placeType.value}/${placeId.value}/photo-search-window`, {
-        radiusMeters: PLACE_PHOTO_RADIUS_METERS
-      })
-      placePhotoSearchWindow.value = response?.data || null
+      await placeStore.fetchPhotoSearchWindow(placeType.value, placeId.value, PLACE_PHOTO_RADIUS_METERS)
     } catch (photoWindowError) {
       console.warn('Failed to load place photo search window, using place statistics fallback:', photoWindowError)
       placePhotoSearchWindow.value = null
@@ -629,11 +660,11 @@ const loadPlaceData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading place data:', err)
-    error.value = err.response?.data?.message || err.message || 'Failed to load place details'
+    error.value = formatApiErrorDetail(err, t('place.detailsPage.loadFailed'))
 
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: error.value,
       life: 5000
     })
@@ -656,8 +687,8 @@ const loadVisits = async (page, pageSize, sortBy = currentSortBy.value, sortDire
     console.error('Error loading visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load visit history',
+      summary: t('common.error'),
+      detail: t('place.detailsPage.loadVisitsFailed'),
       life: 3000
     })
   } finally {
@@ -675,36 +706,13 @@ const handleSortChange = async ({ sortBy, sortDirection }) => {
   await loadVisits(pagination.value.currentPage, pagination.value.pageSize, sortBy, sortDirection)
 }
 
-const handleUpdateName = async (newName) => {
-  try {
-    await placeStore.updatePlaceName(placeType.value, placeId.value, newName)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Place name updated successfully',
-      life: 3000
-    })
-  } catch (err) {
-    console.error('Error updating place name:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to update place name'
-
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: errorMessage,
-      life: 5000
-    })
-  }
-}
-
 const handleExportVisits = async () => {
   try {
     if (!placeDetails.value) {
       toast.add({
         severity: 'warn',
-        summary: 'No Data',
-        detail: 'No place data available',
+        summary: t('place.detailsPage.exportNoDataSummary'),
+        detail: t('place.detailsPage.exportNoDataDetail'),
         life: 3000
       })
       return
@@ -713,64 +721,33 @@ const handleExportVisits = async () => {
     // Show loading toast
     toast.add({
       severity: 'info',
-      summary: 'Exporting',
-      detail: 'Preparing CSV export...',
+      summary: t('place.detailsPage.exportingSummary'),
+      detail: t('place.detailsPage.exportingDetail'),
       life: 3000
     })
 
-    // Call backend API to get CSV file
-    const url = `/api/place-details/${placeType.value}/${placeId.value}/visits/export?sortBy=${currentSortBy.value}&sortDirection=${currentSortDirection.value}`
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}` || ''
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Export failed with status ${response.status}`)
-    }
-
-    // Get filename from Content-Disposition header or generate one
-    const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = 'visits_export.csv'
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
-      if (filenameMatch) {
-        filename = filenameMatch[1]
-      }
-    }
-
-    // Create blob from response
-    const blob = await response.blob()
-
-    // Create download link
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = filename
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(downloadUrl)
+    await placeStore.exportVisits(
+      placeType.value,
+      placeId.value,
+      currentSortBy.value,
+      currentSortDirection.value
+    )
 
     // Get total count for success message
     const totalCount = pagination.value.totalCount || 'all'
 
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: `Exported ${totalCount} visits to ${filename}`,
+      summary: t('place.detailsPage.exportSuccessSummary'),
+      detail: t('place.detailsPage.exportSuccessDetail', { count: totalCount }),
       life: 5000
     })
   } catch (err) {
     console.error('Error exporting visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: err.message || 'Failed to export visits to CSV',
+      summary: t('place.detailsPage.exportFailedSummary'),
+      detail: formatApiErrorDetail(err, t('place.detailsPage.exportFailedDetail')),
       life: 5000
     })
   }
@@ -812,7 +789,7 @@ const handleOpenEditDialog = () => {
       country: placeDetails.value?.country || '',
       latitude: placeDetails.value?.geometry?.latitude,
       longitude: placeDetails.value?.geometry?.longitude,
-      providerName: placeDetails.value?.providerName || 'Unknown'
+      providerName: placeDetails.value?.providerName || t('common.unknown')
     }
     showGeocodingEditDialog.value = true
   }
@@ -828,19 +805,19 @@ const handleSaveGeocoding = async (updatedData) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Geocoding location updated successfully',
+      summary: t('place.detailsPage.geocodingUpdatedSuccessSummary'),
+      detail: t('place.detailsPage.geocodingUpdatedSuccessDetail'),
       life: 3000
     })
 
     showGeocodingEditDialog.value = false
   } catch (err) {
     console.error('Error updating geocoding result:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to update geocoding location'
+    const errorMessage = formatApiErrorDetail(err, t('place.detailsPage.geocodingUpdateFailedDetail'))
 
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: errorMessage,
       life: 5000
     })
@@ -877,27 +854,10 @@ watch(
 </script>
 
 <style scoped>
-/* Ensure all elements respect parent width */
-* {
-  box-sizing: border-box;
-}
-
-.breadcrumb-nav {
-  margin-bottom: var(--gp-spacing-lg);
-  padding: 0 var(--gp-spacing-lg);
-  padding-top: env(safe-area-inset-top);
-  max-width: 100%;
-}
-
-:deep(.gp-page-content) {
-  padding: 0 var(--gp-spacing-lg);
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.gp-page-content > *) {
-  max-width: 100%;
-  box-sizing: border-box;
+.place-coordinates {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
 }
 
 .loading-container {
@@ -926,7 +886,7 @@ watch(
 
 .error-icon {
   font-size: 4rem;
-  color: var(--gp-error);
+  color: var(--gp-danger);
   opacity: 0.7;
 }
 
@@ -947,8 +907,8 @@ watch(
 /* Related Favorite Notice */
 .related-favorite-notice {
   margin-bottom: var(--gp-spacing-xl);
-  border-left: 4px solid var(--gp-primary);
-  background: var(--gp-primary-50);
+  border-left: 4px solid var(--gp-primary-text);
+  background: var(--gp-primary-soft);
   max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -995,9 +955,9 @@ watch(
   flex-direction: column;
   gap: var(--gp-spacing-sm);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -1076,83 +1036,12 @@ watch(
 
 .coordinates-info {
   color: var(--gp-text-muted);
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.85rem;
-}
-
-/* Dark Mode */
-.p-dark .loading-text {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .error-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .error-message {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .related-favorite-notice {
-  background: var(--gp-primary-900);
-  border-left-color: var(--gp-primary-400);
-}
-
-.p-dark .notice-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .notice-message {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .favorite-info {
-  background: var(--gp-surface-950);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .favorite-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .favorite-distance {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .favorite-stats {
-  color: var(--gp-text-secondary);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .breadcrumb-nav {
-    margin-bottom: var(--gp-spacing-sm);
-    padding: var(--gp-spacing-sm);
-    padding-top: calc(env(safe-area-inset-top) + var(--gp-spacing-sm));
-  }
-
-  :deep(.gp-page-content) {
-    padding: 0 var(--gp-spacing-sm);
-    gap: var(--gp-spacing-md);
-  }
-
-  /* Reduce padding on cards */
-  :deep(.gp-base-card) {
-    padding: var(--gp-spacing-md);
-  }
-
-  :deep(.gp-page-header) {
-    margin-bottom: var(--gp-spacing-md);
-  }
-
-  :deep(.gp-page-title) {
-    font-size: 1.25rem;
-  }
-
-  :deep(.gp-page-subtitle) {
-    font-size: 0.875rem;
-  }
-
   .loading-container,
   .error-container {
     padding: var(--gp-spacing-lg);
@@ -1198,19 +1087,6 @@ watch(
 }
 
 @media (max-width: 480px) {
-  .breadcrumb-nav {
-    padding: var(--gp-spacing-xs);
-    padding-top: calc(env(safe-area-inset-top) + var(--gp-spacing-xs));
-  }
-
-  :deep(.gp-page-content) {
-    padding: 0 var(--gp-spacing-xs);
-  }
-
-  :deep(.gp-base-card) {
-    padding: var(--gp-spacing-sm);
-  }
-
   .notice-content {
     padding: var(--gp-spacing-sm);
   }

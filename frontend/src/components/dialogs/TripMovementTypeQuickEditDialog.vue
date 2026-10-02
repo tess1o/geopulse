@@ -1,14 +1,14 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Edit Movement Type"
+    :header="t('tripDialogs.movementTypeQuickEdit.header')"
     :modal="true"
     class="gp-dialog-sm"
     @hide="$emit('close')"
   >
     <div v-if="trip" class="movement-edit-content">
       <div class="trip-meta">
-        <Tag :value="trip.movementType || 'UNKNOWN'" :severity="getTransportSeverity(trip.movementType || 'UNKNOWN')" />
+        <Tag :value="translateMovementType(trip.movementType || 'UNKNOWN')" :severity="getTransportSeverity(trip.movementType || 'UNKNOWN')" />
         <Tag
           :value="trip.movementTypeSource || 'AUTO'"
           :severity="(trip.movementTypeSource || 'AUTO') === 'MANUAL' ? 'warn' : 'success'"
@@ -17,10 +17,10 @@
       </div>
 
       <Message v-if="(trip.movementType || 'UNKNOWN') === 'UNKNOWN'" severity="warn" :closable="false">
-        Algorithm did not recognize this movement type. Set it manually.
+        {{ t('tripDialogs.movementTypeQuickEdit.unknownAlgorithmWarning') }}
       </Message>
       <Message v-if="readOnly" severity="error" :closable="false">
-        Movement type edits are read-only in demo mode.
+        {{ t('tripDialogs.movementTypeQuickEdit.readOnlyWarning') }}
       </Message>
 
       <div class="movement-edit-controls">
@@ -29,21 +29,21 @@
           :options="movementTypeOptions"
           optionLabel="label"
           optionValue="value"
-          placeholder="Select movement type"
+          :placeholder="t('tripDialogs.movementTypeQuickEdit.selectPlaceholder')"
           class="movement-select"
           :disabled="saving || readOnly"
         />
 
         <div class="movement-edit-actions">
           <Button
-            label="Save"
+            :label="t('tripDialogs.movementTypeQuickEdit.save')"
             icon="pi pi-save"
             :disabled="readOnly || !selectedMovementType || saving"
             :loading="saving"
             @click="save"
           />
           <Button
-            label="Reset"
+            :label="t('tripDialogs.movementTypeQuickEdit.reset')"
             icon="pi pi-refresh"
             severity="secondary"
             outlined
@@ -56,13 +56,14 @@
     </div>
 
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('tripDialogs.movementTypeQuickEdit.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -89,6 +90,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'movement-updated'])
 
+const { t, te } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const timelineStore = useTimelineStore()
@@ -96,17 +98,23 @@ const timelineStore = useTimelineStore()
 const selectedMovementType = ref(null)
 const saving = ref(false)
 
-const movementTypeOptions = [
-  { label: 'Walk', value: 'WALK' },
-  { label: 'Car', value: 'CAR' },
-  { label: 'Motorcycle', value: 'MOTORCYCLE' },
-  { label: 'Bicycle', value: 'BICYCLE' },
-  { label: 'Running', value: 'RUNNING' },
-  { label: 'Train', value: 'TRAIN' },
-  { label: 'Flight', value: 'FLIGHT' },
-  { label: 'Boat', value: 'BOAT' },
-  { label: 'Unknown', value: 'UNKNOWN' }
-]
+const translateMovementType = (type) => {
+  if (!type) return t('common.unknown')
+  return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
+}
+
+const movementTypeOptions = computed(() => ([
+  { label: t('movementTypes.WALK'), value: 'WALK' },
+  { label: t('movementTypes.CAR'), value: 'CAR' },
+  { label: t('movementTypes.MOTORCYCLE'), value: 'MOTORCYCLE' },
+  { label: t('movementTypes.PUBLIC_TRANSPORT'), value: 'PUBLIC_TRANSPORT' },
+  { label: t('movementTypes.BICYCLE'), value: 'BICYCLE' },
+  { label: t('movementTypes.RUNNING'), value: 'RUNNING' },
+  { label: t('movementTypes.TRAIN'), value: 'TRAIN' },
+  { label: t('movementTypes.FLIGHT'), value: 'FLIGHT' },
+  { label: t('movementTypes.BOAT'), value: 'BOAT' },
+  { label: t('movementTypes.UNKNOWN'), value: 'UNKNOWN' }
+]))
 
 const internalVisible = computed({
   get: () => props.visible,
@@ -142,8 +150,8 @@ const save = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Movement Updated',
-      detail: `Trip set to ${updated.movementType}`,
+      summary: t('tripDialogs.movementTypeQuickEdit.toasts.updatedSummary'),
+      detail: t('tripDialogs.movementTypeQuickEdit.toasts.updatedDetail', { type: translateMovementType(updated.movementType) }),
       life: 2500
     })
 
@@ -152,8 +160,8 @@ const save = async () => {
     console.error('Failed to update movement type:', error)
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
-      detail: error.message || 'Could not update movement type',
+      summary: t('tripDialogs.movementTypeQuickEdit.toasts.updateFailedSummary'),
+      detail: error.message || t('tripDialogs.movementTypeQuickEdit.toasts.updateFailedFallback'),
       life: 3000
     })
   } finally {
@@ -176,8 +184,8 @@ const reset = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Movement Reset',
-      detail: `Trip reset to ${updated.movementType}`,
+      summary: t('tripDialogs.movementTypeQuickEdit.toasts.resetSummary'),
+      detail: t('tripDialogs.movementTypeQuickEdit.toasts.resetDetail', { type: translateMovementType(updated.movementType) }),
       life: 2500
     })
 
@@ -186,8 +194,8 @@ const reset = async () => {
     console.error('Failed to reset movement type:', error)
     toast.add({
       severity: 'error',
-      summary: 'Reset Failed',
-      detail: error.message || 'Could not reset movement type',
+      summary: t('tripDialogs.movementTypeQuickEdit.toasts.resetFailedSummary'),
+      detail: error.message || t('tripDialogs.movementTypeQuickEdit.toasts.resetFailedFallback'),
       life: 3000
     })
   } finally {
@@ -199,6 +207,7 @@ const getTransportSeverity = (transportMode) => {
   const severityMap = {
     CAR: 'info',
     MOTORCYCLE: 'info',
+    PUBLIC_TRANSPORT: 'info',
     WALK: 'success',
     BICYCLE: 'info',
     RUNNING: 'success',
@@ -211,7 +220,7 @@ const getTransportSeverity = (transportMode) => {
 }
 
 const formatDateTime = (timestamp) => {
-  if (!timestamp) return 'Unknown time'
+  if (!timestamp) return t('tripDialogs.movementTypeQuickEdit.unknownTime')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp)}`
 }
 </script>

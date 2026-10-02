@@ -167,15 +167,9 @@ const gridClasses = computed(() => ({
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-large);
-  border: 1px solid var(--gp-border-light);
-}
-
-/* Dark Mode */
-.p-dark .gp-dashboard-grid > .gp-loading-placeholder {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
+  border: 1px solid var(--gp-border);
 }
 
 /* Print styles */

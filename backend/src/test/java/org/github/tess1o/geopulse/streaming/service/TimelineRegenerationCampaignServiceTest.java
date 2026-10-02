@@ -128,7 +128,7 @@ class TimelineRegenerationCampaignServiceTest {
         assertThat(campaignUsers).hasSize(1);
         assertThat(campaignUsers.get(0).getUser().getId()).isEqualTo(eligibleUser.getId());
 
-        var notifications = notificationRepository.findByOwner(eligibleUser.getId(), 20).stream()
+        var notifications = notificationRepository.findPageByOwner(eligibleUser.getId(), 0, 20, null, null, null).items().stream()
                 .filter(notification -> notification.getSource() == NotificationSource.TIMELINE)
                 .filter(notification -> notification.getType() == NotificationType.TIMELINE_REGENERATION_REQUIRED)
                 .filter(notification -> campaign.getId().toString().equals(notification.getObjectRef()))

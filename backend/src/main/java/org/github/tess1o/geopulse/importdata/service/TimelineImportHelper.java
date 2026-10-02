@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -49,6 +50,7 @@ public class TimelineImportHelper {
         // CRITICAL: Set timeline job ID on import job IMMEDIATELY before triggering generation
         // This ensures frontend can see the timeline job ID even during the retry loop
         job.setTimelineJobId(timelineJobId);
+        job.setPhase(ImportPhase.TIMELINE_GENERATION);
 
         // Update import progress immediately so frontend sees the change
         job.updateProgress(75, "Timeline generation in progress...");
@@ -76,7 +78,7 @@ public class TimelineImportHelper {
                         Thread.currentThread().interrupt();
                         log.warn("Timeline generation retry interrupted for user {}", job.getUserId(), ie);
                         jobProgressService.failJob(timelineJobId, "Timeline generation retry interrupted");
-                        throw new RuntimeException("Timeline generation retry interrupted", ie);
+                        throw new RuntimeException("Timeline generation retry interrupted", ie); // NOPMD - preserves the nested InterruptedException
                     }
                 } else {
                     log.error("Failed to trigger timeline generation for bulk import for user {} after {} attempts: {}",
@@ -104,7 +106,7 @@ public class TimelineImportHelper {
         UUID userId = job.getUserId();
         try {
             // Badge recalculation (99%)
-            jobProgressService.updateProgress(timelineJobId, "Recalculating achievement badges", 9, 99, null);
+            jobProgressService.updateProgress(timelineJobId, TimelineJobProgressService.step("recalculatingBadges", "Recalculating achievement badges", null), 9, 99, null);
 
             // Note: BadgeRecalculationService has its own @Transactional
             badgeRecalculationService.recalculateAllBadgesForUser(userId);
@@ -116,7 +118,7 @@ public class TimelineImportHelper {
         }
 
         // Mark as completed (100%)
-        jobProgressService.updateProgress(timelineJobId, "Timeline generation completed", 9, 100, null);
+        jobProgressService.updateProgress(timelineJobId, TimelineJobProgressService.step("completed", "Timeline generation completed", null), 9, 100, null);
         jobProgressService.completeJob(timelineJobId);
     }
 

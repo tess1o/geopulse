@@ -60,7 +60,7 @@ public enum TripGroupBy {
         }
         
         String normalizedValue = value.toLowerCase().trim();
-        for (TripGroupBy groupBy : TripGroupBy.values()) {
+        for (TripGroupBy groupBy : values()) {
             if (groupBy.getValue().toLowerCase().equals(normalizedValue)) {
                 return groupBy;
             }

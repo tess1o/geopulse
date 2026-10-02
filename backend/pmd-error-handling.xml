@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ruleset name="GeoPulse error handling"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Blocking rules for exception translation and cause preservation.</description>
+
+    <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+
+    <rule name="NoTransportExceptionsOutsideHttpBoundaries"
+          language="java"
+          message="Application code must throw GeoPulseException, not HttpProblem or JAX-RS transport exceptions."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+//ThrowStatement[
+    *[pmd-java:typeIs('io.quarkiverse.httpproblem.HttpProblem')
+        or pmd-java:typeIs('jakarta.ws.rs.WebApplicationException')]
+    and not(ancestor::ClassDeclaration[
+        @SimpleName = ('DemoModeWriteGuardFilter', 'BackupRestoreGuardFilter')
+    ])
+]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="NoBroadGeoPulseTranslationCatch"
+          language="java"
+          message="A broad catch can swallow an already classified GeoPulseException; narrow the try or catch type."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <priority>2</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+//CatchClause[
+    CatchParameter[@Multicatch = false()]
+    and
+    CatchParameter/VariableId[
+        pmd-java:typeIsExactly('java.lang.Exception')
+        or pmd-java:typeIsExactly('java.lang.RuntimeException')
+        or pmd-java:typeIsExactly('java.lang.Throwable')
+    ]
+    and
+    descendant::ConstructorCall[
+        pmd-java:typeIs('org.github.tess1o.geopulse.shared.api.GeoPulseException')
+    ]
+]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

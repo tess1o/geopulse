@@ -1,9 +1,12 @@
 package org.github.tess1o.geopulse.ai.service;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.ai.client.exception.AuthenticationException;
 import org.github.tess1o.geopulse.ai.client.exception.ContextLengthExceededException;
 import org.github.tess1o.geopulse.ai.client.exception.RateLimitException;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
@@ -11,6 +14,13 @@ import org.github.tess1o.geopulse.ai.orchestration.AIChatOrchestrator;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_API_KEY_REQUIRED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_CONTEXT_TOO_LARGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_DISABLED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_PROVIDER_AUTHENTICATION_FAILED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_RATE_LIMITED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_AI_REQUEST;
 
 @ApplicationScoped
 @Slf4j
@@ -103,14 +113,14 @@ public class AIChatService {
             // Check if AI is enabled
             if (!settings.isEnabled()) {
                 log.info("AI Assistant is disabled for user {}", userId);
-                return "AI Assistant is currently disabled. Please enable it in your profile settings.";
+                throw new GeoPulseException(AI_DISABLED, "AI Assistant is disabled");
             }
 
             // Check if configuration is valid
             if (isApiKeyInvalid(settings)) {
                 log.info("OpenAI API key is required for user {}. ApiKey required = {}, ApiKey is empty = {}", userId,
                         settings.isApiKeyRequired(), settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().isEmpty());
-                return "API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.";
+                throw new GeoPulseException(AI_API_KEY_REQUIRED, "An AI provider API key is required");
             }
 
             // Determine which system message to use (priority: user custom > global default > built-in default)
@@ -131,17 +141,15 @@ public class AIChatService {
             log.info("AI chat response generated for user {}", userId);
             return response;
         } catch (ContextLengthExceededException e) {
-            log.warn("Context length exceeded for user {}: {}", userId, e.getMessage());
-            return "The conversation or data results are too large. Please try:\n" +
-                   "1. Ask a more specific question with a narrower date range\n" +
-                   "2. Clear your chat history and start a new conversation\n" +
-                   "3. Break your question into smaller parts";
+            throw new GeoPulseException(AI_CONTEXT_TOO_LARGE,
+                    "The conversation or data results are too large", e);
         } catch (RateLimitException e) {
-            log.warn("Rate limit exceeded for user {}: {}", userId, e.getMessage());
-            return "I'm currently experiencing high demand and have reached my rate limit. Please wait a moment and try again, or consider upgrading your plan for higher limits.";
-        } catch (Exception e) {
-            log.error("Error processing AI chat for user {}: {}", userId, e.getMessage(), e);
-            return "I apologize, but I encountered an error while processing your request. Please check your AI settings and try again.";
+            throw new GeoPulseException(AI_RATE_LIMITED, "The AI provider rate limit was exceeded", e);
+        } catch (AuthenticationException e) {
+            throw new GeoPulseException(AI_PROVIDER_AUTHENTICATION_FAILED,
+                    "The AI provider rejected the configured credentials", e);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_AI_REQUEST, "The AI provider rejected the request", e);
         }
     }
 

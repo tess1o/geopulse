@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserSearchDTO;
+import org.github.tess1o.geopulse.admin.model.Role;
 
 import java.util.List;
 import java.util.Locale;
@@ -51,6 +52,14 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
         return findById(userId) != null;
     }
 
+    public List<UserEntity> findActiveUsers() {
+        return list("isActive = true");
+    }
+
+    public List<UserEntity> findActiveAdmins() {
+        return list("isActive = true and role = ?1", Role.ADMIN);
+    }
+
     /**
      * Search users to invite by excluding current user, existing friends, and users with pending invitations.
      * This is an optimized single SQL query version.
@@ -84,6 +93,7 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
                 .setParameter("searchQuery", likeQuery)
                 .setParameter("currentUserId", currentUserId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
 
         return results.stream()

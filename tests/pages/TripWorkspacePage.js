@@ -8,7 +8,7 @@ export class TripWorkspacePage {
       pageTitle: '.workspace-page-title',
       map: '.leaflet-container',
       contextMenu: '.p-contextmenu:visible',
-      tableRows: '.p-datatable-tbody tr',
+      stopRows: '.trip-rail .trip-stop',
       confirmAccept: '.p-confirmdialog-accept-button',
     };
   }
@@ -22,39 +22,38 @@ export class TripWorkspacePage {
     await this.page.waitForSelector(this.selectors.map, { timeout: 10000 });
   }
 
-  tabButton(name) {
-    return this.page.locator('.workspace-tabs button', { hasText: name });
+  // The workspace no longer has Overview/Plan tabs: every trip state shows the same
+  // summary bar + map + stops rail. Only the rail's contents change.
+
+  async getStopsHeading() {
+    return (await this.page.locator('.trip-rail .trip-rail-title').first().textContent()).trim();
   }
 
-  async openPlanTab() {
-    const tab = this.tabButton('Plan');
-    if (await tab.isVisible()) {
-      await tab.click();
-    }
+  async getStopCount() {
+    return this.page.locator(this.selectors.stopRows).count();
   }
 
-  async isOverviewTabVisible() {
-    return this.tabButton('Overview').isVisible().catch(() => false);
+  async isSummaryBarVisible() {
+    return this.page.locator('.trip-summary-bar').isVisible().catch(() => false);
   }
 
-  async isPlanTabVisible() {
-    return this.tabButton('Plan').isVisible().catch(() => false);
+  async getSummaryMetric(label) {
+    const metric = this.page.locator('.trip-summary-metric').filter({ hasText: label }).first();
+    await expect(metric).toBeVisible({ timeout: 10000 });
+    return (await metric.locator('.trip-summary-value').innerText()).trim();
   }
 
-  async getComparisonCardTitle() {
-    return (await this.page.locator('.plan-card .workspace-title').first().innerText()).trim();
+  /** The Plan/Actual switch only renders once the trip has timeline or path data. */
+  lensSwitch() {
+    return this.page.locator('.trip-rail-lens');
   }
 
-  async isPlanningCalloutVisible(expectedText) {
-    const callout = this.page.locator('.planning-callout');
-    await expect(callout).toBeVisible({ timeout: 10000 });
-    if (expectedText) {
-      await expect(callout).toContainText(expectedText);
-    }
+  async isLensSwitchVisible() {
+    return this.lensSwitch().isVisible().catch(() => false);
   }
 
-  async isMatchedStayColumnVisible() {
-    return this.page.locator('th:has-text("Matched Stay")').isVisible().catch(() => false);
+  async openLens(name) {
+    await this.lensSwitch().getByText(name, { exact: true }).click();
   }
 
   async rightClickMapAtCenter() {
@@ -135,7 +134,7 @@ export class TripWorkspacePage {
   }
 
   rowByTitle(title) {
-    return this.page.locator(this.selectors.tableRows).filter({ hasText: title }).first();
+    return this.page.locator(this.selectors.stopRows).filter({ hasText: title }).first();
   }
 
   async editPlannedItem(currentTitle, nextTitle) {
@@ -160,39 +159,28 @@ export class TripWorkspacePage {
     await expect(this.rowByTitle(title)).toHaveCount(0, { timeout: 10000 });
   }
 
-  async applyVisitAction(title, action) {
+  /** Stops can only be confirmed as visited from the rail; there is no reject/reset action in the UI. */
+  async markVisited(title) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
+    await row.getByRole('button', { name: 'Mark visited' }).click();
+  }
 
-    const iconByAction = {
-      markVisited: '.pi-check',
-      markNotVisited: '.pi-times',
-      reset: '.pi-undo',
-    };
-
-    await row.locator(`button:has(${iconByAction[action]})`).click();
+  async hasMarkVisitedAction(title) {
+    return this.rowByTitle(title).getByRole('button', { name: 'Mark visited' }).isVisible().catch(() => false);
   }
 
   async getStatusText(title) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
 
-    const statusCellText = await row.locator('td').nth(await this._statusCellIndex()).innerText();
-    return statusCellText.replace(/\s+/g, ' ').trim();
+    return (await row.locator('.trip-stop-status').innerText()).replace(/\s+/g, ' ').trim();
   }
 
-  async _statusCellIndex() {
-    const hasMatchedStay = await this.isMatchedStayColumnVisible();
-    return hasMatchedStay ? 3 : 2;
-  }
-
-  async expectMatchedStayEvidence(title, matchedStayName, confidenceBadge = null) {
+  /** Status tag plus its subtext (e.g. "Visited" / "Confidence 96%"). */
+  async getStopSummaryText(title) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
-    await expect(row).toContainText(matchedStayName);
-
-    if (confidenceBadge) {
-      await expect(row).toContainText(confidenceBadge);
-    }
+    return (await row.locator('.trip-stop-main').innerText()).replace(/\s+/g, ' ').trim();
   }
 }

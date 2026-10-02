@@ -1,7 +1,7 @@
 <template>
-  <PageContainer 
-    title="Timeline Reports"
-    subtitle="Explore your location data with detailed tables and export options"
+  <PageContainer
+    :title="t('timeline.reports.page.title')"
+    :subtitle="t('timeline.reports.page.subtitle')"
     :loading="isAnyLoading"
   >
     <!-- Loading States -->
@@ -16,7 +16,7 @@
     <!-- Data Tables Content -->
     <template v-else>
       <Message v-if="demoReadOnly" severity="warn" :closable="false" class="demo-export-disabled-message">
-        Demo mode: timeline report exports are disabled. You can view report data, but CSV downloads are unavailable.
+        {{ t('timeline.reports.demoNotice') }}
       </Message>
 
       <!-- Header with Date Range and Quick Stats -->
@@ -26,32 +26,32 @@
           <span>{{ formattedDateRange }}</span>
         </div>
         <Button
-          label="Export All Data"
+          :label="t('timeline.reports.exportAll')"
           icon="pi pi-download"
           @click="exportAllData"
           outlined
           :disabled="demoReadOnly"
-          v-tooltip.bottom="demoReadOnly ? 'Timeline report exports are disabled in demo mode' : 'Export all report data'"
+          v-tooltip.bottom="demoReadOnly ? t('timeline.reports.demoExportDisabled') : t('timeline.reports.exportAllTooltip')"
           class="export-all-button"
         />
         <div class="quick-stats">
-          <MetricItem 
-            :value="totalStays" 
-            label="Stays" 
+          <MetricItem
+            :value="totalStays"
+            :label="t('timeline.reports.sections.stays')"
             icon="pi pi-map-marker"
             size="small"
             class="stat-item"
           />
-          <MetricItem 
-            :value="totalTrips" 
-            label="Trips" 
+          <MetricItem
+            :value="totalTrips"
+            :label="t('timeline.reports.sections.trips')"
             icon="pi pi-car"
             size="small"
             class="stat-item"
           />
-          <MetricItem 
-            :value="totalDataGaps" 
-            label="Data Gaps" 
+          <MetricItem
+            :value="totalDataGaps"
+            :label="t('timeline.reports.sections.dataGaps')"
             icon="pi pi-exclamation-triangle"
             size="small"
             class="stat-item"
@@ -111,12 +111,12 @@
         <BaseCard class="no-data-card">
           <div class="no-data-content">
             <i class="pi pi-database no-data-icon"></i>
-            <h3 class="no-data-title">No Data Available</h3>
+            <h3 class="no-data-title">{{ t('timeline.reports.noData.title') }}</h3>
             <p class="no-data-message">
-              No location data found for the selected date range.
+              {{ t('timeline.reports.noData.message') }}
             </p>
             <p class="no-data-suggestion">
-              Try selecting a different date range or visit the Timeline page to generate data.
+              {{ t('timeline.reports.noData.suggestion') }}
             </p>
           </div>
         </BaseCard>
@@ -127,6 +127,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -152,6 +153,7 @@ import { DataExporter } from '@/utils/dataExporter'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 const timezone = useTimezone()
+const { t } = useI18n()
 const timelineStore = useTimelineStore()
 const dateRangeStore = useDateRangeStore()
 const authStore = useAuthStore()
@@ -179,9 +181,9 @@ const tabsVisited = ref({
 
 // Computed
 const tableTabs = computed(() => [
-  { label: 'Stays', icon: 'pi pi-map-marker', key: 'stays' },
-  { label: 'Trips', icon: 'pi pi-car', key: 'trips' },
-  { label: 'Data Gaps', icon: 'pi pi-exclamation-triangle', key: 'data-gaps' },
+  { label: t('timeline.reports.sections.stays'), icon: 'pi pi-map-marker', key: 'stays' },
+  { label: t('timeline.reports.sections.trips'), icon: 'pi pi-car', key: 'trips' },
+  { label: t('timeline.reports.sections.dataGaps'), icon: 'pi pi-exclamation-triangle', key: 'data-gaps' },
 ])
 
 const activeTabIndex = computed(() => {
@@ -193,7 +195,7 @@ const isAnyLoading = computed(() => {
 })
 
 const formattedDateRange = computed(() => {
-  if (!dateRange.value || !dateRange.value[0] || !dateRange.value[1]) return 'No date range selected'
+  if (!dateRange.value || !dateRange.value[0] || !dateRange.value[1]) return t('timeline.reports.noDateRange')
   return `${timezone.formatDateDisplay(dateRange.value[0])} - ${timezone.formatDateDisplay(dateRange.value[1])}`
 })
 
@@ -216,7 +218,7 @@ const filteredDataGaps = computed(() => {
 
 // Methods
 const showDemoExportDisabledToast = () => {
-  showDemoModeToast(toast, 'Timeline report exports are disabled in demo mode.')
+  showDemoModeToast(toast, t('timeline.reports.demoExportDisabledToast'))
 }
 
 const handleTabChange = async (event) => {
@@ -251,7 +253,7 @@ const fetchTimelineData = async () => {
     const errorMessage = error.response?.data?.message || error.message || error.toString()
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch data',
+      summary: t('timeline.reports.fetchFailed'),
       detail: errorMessage,
       life: 5000
     })
@@ -271,16 +273,16 @@ const exportStays = async () => {
     await DataExporter.exportStays(filteredStays.value, dateRange.value)
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: 'Stays data exported to CSV',
+      summary: t('timeline.reports.export.successSummary'),
+      detail: t('timeline.reports.export.staysDone'),
       life: 3000
     })
   } catch (error) {
     console.error('Export error:', error)
     toast.add({
-      severity: 'error', 
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export stays data',
+      severity: 'error',
+      summary: t('timeline.reports.export.failedSummary'),
+      detail: error.message || t('timeline.reports.export.staysFailed'),
       life: 5000
     })
   }
@@ -296,16 +298,16 @@ const exportTrips = async () => {
     await DataExporter.exportTrips(filteredStays.value, filteredTrips.value, dateRange.value)
     toast.add({
       severity: 'success',
-      summary: 'Export Successful', 
-      detail: 'Trips data exported to CSV',
+      summary: t('timeline.reports.export.successSummary'),
+      detail: t('timeline.reports.export.tripsDone'),
       life: 3000
     })
   } catch (error) {
     console.error('Export error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export trips data',
+      summary: t('timeline.reports.export.failedSummary'),
+      detail: error.message || t('timeline.reports.export.tripsFailed'),
       life: 5000
     })
   }
@@ -321,16 +323,16 @@ const exportDataGaps = async () => {
     await DataExporter.exportDataGaps(filteredDataGaps.value, dateRange.value)
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: 'Data gaps exported to CSV', 
+      summary: t('timeline.reports.export.successSummary'),
+      detail: t('timeline.reports.export.dataGapsDone'),
       life: 3000
     })
   } catch (error) {
     console.error('Export error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export data gaps',
+      summary: t('timeline.reports.export.failedSummary'),
+      detail: error.message || t('timeline.reports.export.dataGapsFailed'),
       life: 5000
     })
   }
@@ -350,16 +352,16 @@ const exportAllData = async () => {
     ])
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: 'All data exported to CSV files',
+      summary: t('timeline.reports.export.successSummary'),
+      detail: t('timeline.reports.export.allDone'),
       life: 3000
     })
   } catch (error) {
     console.error('Export error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export data',
+      summary: t('timeline.reports.export.failedSummary'),
+      detail: error.message || t('timeline.reports.export.failedGeneric'),
       life: 5000
     })
   }
@@ -382,22 +384,12 @@ watch(dateRange, async (newValue) => {
 <style scoped>
 .demo-export-disabled-message {
   margin-bottom: var(--gp-spacing-lg);
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--gp-warning);
   font-weight: 600;
 }
 
 .demo-export-disabled-message :deep(.p-message-content) {
-  color: #92400e;
-}
-
-.p-dark .demo-export-disabled-message {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: rgba(251, 191, 36, 0.45);
-  border-left-color: #f59e0b;
-}
-
-.p-dark .demo-export-disabled-message :deep(.p-message-content) {
-  color: #fde68a;
+  color: var(--gp-warning-text);
 }
 
 /* Header Styles */
@@ -406,8 +398,8 @@ watch(dateRange, async (newValue) => {
   align-items: center;
   margin-bottom: var(--gp-spacing-xl);
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   gap: var(--gp-spacing-lg);
 }
@@ -445,16 +437,17 @@ watch(dateRange, async (newValue) => {
   flex: 1;
   min-width: 120px;
   max-width: 160px;
+  /* Beats MetricItem's own `:not(:last-child)` divider, which is more specific than this rule. */
   border: none !important;
 }
 
 .quick-stats :deep(.gp-metric-item) {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: 0.55rem 0.65rem;
   align-items: center;
   gap: 0.45rem;
-  background: color-mix(in srgb, var(--gp-surface-light) 90%, var(--gp-primary) 10%);
+  background: color-mix(in srgb, var(--gp-surface-muted) 90%, var(--gp-primary) 10%);
 }
 
 .quick-stats :deep(.gp-metric-icon) {
@@ -473,11 +466,6 @@ watch(dateRange, async (newValue) => {
   margin-bottom: 0;
 }
 
-.p-dark .quick-stats :deep(.gp-metric-item) {
-  background: color-mix(in srgb, var(--gp-surface-dark) 85%, var(--gp-primary) 15%);
-  border-color: var(--gp-border-dark);
-}
-
 /* Data Tables Tabs */
 .data-tables-tabs {
   margin-bottom: var(--gp-spacing-lg);
@@ -493,20 +481,9 @@ watch(dateRange, async (newValue) => {
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-}
-
-/* Dark Mode */
-.p-dark .tables-header {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-loading-placeholder {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Responsive Design */
@@ -631,18 +608,5 @@ watch(dateRange, async (newValue) => {
   color: var(--gp-text-muted);
   line-height: 1.5;
   font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .no-data-message {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .no-data-suggestion {
-  color: var(--gp-text-muted);
 }
 </style>

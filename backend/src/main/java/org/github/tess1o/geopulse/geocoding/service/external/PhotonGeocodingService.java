@@ -97,25 +97,23 @@ public class PhotonGeocodingService {
         String language = sanitizePhotonLanguage(configuredLanguage, "reverse geocoding");
 
         if (language != null) {
-            log.debug("Calling {} for coordinates: lon={}, lat={}, language={}",
-                      getProviderName(), longitude, latitude, language);
+            log.debug("Calling {} reverse geocoding with language={}", getProviderName(), language);
         } else {
-            log.debug("Calling {} for coordinates: lon={}, lat={} (no language header)",
-                      getProviderName(), longitude, latitude);
+            log.debug("Calling {} reverse geocoding without a language header", getProviderName());
         }
 
         PhotonRestClient client = getClient();
         return client.getAddress(longitude, latitude, language, getApiKeyHeader())
                 .map(response -> {
-                    log.debug("{} response received: {}", getProviderName(), response);
+                    log.debug("{} response received", getProviderName());
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
                 .onItem().ifNull().failWith(() -> {
-                    log.error("{} adapter returned null for coordinates: lon={}, lat={}", getProviderName(), longitude, latitude);
+                    log.error("{} adapter returned a null result", getProviderName());
                     return new GeocodingException(getProviderName() + " adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
-                    log.error("{} API call failed for coordinates: lon={}, lat={}", getProviderName(), longitude, latitude, failure);
+                    log.error("{} API call failed", getProviderName(), failure);
                     return new GeocodingException(getProviderName() + " geocoding failed", failure);
                 });
     }

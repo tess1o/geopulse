@@ -27,6 +27,7 @@ public class SequenceResetService {
     public void resetSequenceAfterImport(String tableName, String sequenceName) {
         try {
             // First, check if the sequence exists
+            @SuppressWarnings("unchecked")
             Object sequenceExists = entityManager
                 .createNativeQuery("SELECT 1 FROM pg_sequences WHERE sequencename = ?")
                 .setParameter(1, sequenceName)

@@ -242,7 +242,8 @@ public class AITimelineTargetResolver {
             throw new AIToolException(
                     "INVALID_TARGET_SCOPE",
                     "Invalid targetScope. Allowed values: SELF or FRIEND.",
-                    Map.of("targetScope", targetScopeValue)
+                    Map.of("targetScope", targetScopeValue),
+                    e
             );
         }
     }

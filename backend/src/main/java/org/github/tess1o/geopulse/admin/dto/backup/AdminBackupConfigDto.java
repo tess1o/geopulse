@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 
 @Data
 @Builder
@@ -19,4 +20,10 @@ public class AdminBackupConfigDto {
     private String localPath;
     private int retentionCount;
     private int operationTimeoutMinutes;
+    private int healthMaxAgeDays;
+    private boolean healthAppriseEnabled;
+    private AppriseExternalRoutingMode healthAppriseRoutingMode;
+    private String healthAppriseDestination;
+    private String healthAppriseConfigKey;
+    private String healthAppriseTag;
 }

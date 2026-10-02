@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between p-4 border-b border-surface-200 dark:border-surface-700">
       <div class="flex items-center gap-2">
         <i class="pi pi-send text-blue-500"></i>
-        <span class="font-bold text-lg text-surface-900 dark:text-surface-100">Sent Invites</span>
+        <span class="font-bold text-lg text-surface-900 dark:text-surface-100">{{ t('friends.sentInvites.header') }}</span>
         <Badge v-if="sentInvites?.length > 0" :value="sentInvites.length" severity="info" />
       </div>
     </div>
@@ -16,7 +16,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="p-6 text-center">
       <ProgressSpinner size="small" />
-      <p class="text-surface-500 mt-2">Loading sent invites...</p>
+      <p class="text-muted-color mt-2">{{ t('friends.sentInvites.loading') }}</p>
     </div>
 
     <!-- Has Invites -->
@@ -39,9 +39,9 @@
                 {{ invite.receiverName }}
               </p>
               <div class="flex items-center gap-1 mt-1">
-                <i class="pi pi-clock text-xs text-surface-500"></i>
-                <p class="text-xs text-surface-500">
-                  Sent {{ timezone.timeAgo(invite.sentAt) }}
+                <i class="pi pi-clock text-xs text-muted-color"></i>
+                <p class="text-xs text-muted-color">
+                  {{ t('friends.sentInvites.sentAgo', { time: timezone.timeAgo(invite.sentAt) }) }}
                 </p>
               </div>
             </div>
@@ -52,7 +52,7 @@
             <!-- Status indicator -->
             <div class="flex items-center gap-1">
               <div class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span class="text-xs text-surface-500">Pending</span>
+              <span class="text-xs text-muted-color">{{ t('friends.sentInvites.pending') }}</span>
             </div>
 
             <!-- Cancel button -->
@@ -62,7 +62,7 @@
                 outlined
                 severity="secondary"
                 class="w-8 h-8"
-                v-tooltip.top="'Cancel invitation'"
+                v-tooltip.top="t('friends.sentInvites.cancelTooltip')"
                 :loading="cancellingId === invite.id"
                 @click="handleCancelInvite(invite)"
             />
@@ -73,7 +73,7 @@
       <!-- Bulk actions (if multiple invites) -->
       <div v-if="sentInvites.length > 1" class="mt-4 pt-3 border-t border-surface-200 dark:border-surface-700">
         <Button
-            label="Cancel All Pending"
+            :label="t('friends.sentInvites.cancelAllPending')"
             icon="pi pi-times-circle"
             size="small"
             outlined
@@ -89,13 +89,13 @@
     <div v-else class="p-6 text-center">
       <div class="mb-4">
         <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mx-auto mb-3">
-          <i class="pi pi-send text-2xl text-surface-400"></i>
+          <i class="pi pi-send text-2xl text-muted-color"></i>
         </div>
         <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
-          No pending invites
+          {{ t('friends.sentInvites.emptyTitle') }}
         </h3>
-        <p class="text-sm text-surface-500 max-w-sm mx-auto">
-          When you send friend requests, they'll appear here until accepted or declined.
+        <p class="text-sm text-muted-color max-w-sm mx-auto">
+          {{ t('friends.sentInvites.emptyMessage') }}
         </p>
       </div>
     </div>
@@ -104,28 +104,30 @@
     <Dialog
         v-model:visible="showCancelDialog"
         modal
-        header="Cancel Invitation"
+        :header="t('friends.sentInvites.cancelDialog.header')"
         :style="{ width: '25rem' }"
     >
       <div class="flex items-start gap-3 mb-4">
         <i class="pi pi-exclamation-triangle text-yellow-500 text-xl mt-1"></i>
         <div>
           <p class="text-surface-900 dark:text-surface-100 mb-2">
-            Cancel invitation to <strong>{{ selectedInvite?.receiverName }}</strong>?
+            <i18n-t keypath="friends.sentInvites.cancelDialog.message" tag="span">
+              <template #name><strong>{{ selectedInvite?.receiverName }}</strong></template>
+            </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
-            This action cannot be undone. You can send a new invitation later.
+          <p class="text-sm text-muted-color">
+            {{ t('friends.sentInvites.cancelDialog.note') }}
           </p>
         </div>
       </div>
       <div class="flex justify-end gap-2">
         <Button
-            label="Keep Invitation"
+            :label="t('friends.sentInvites.cancelDialog.keep')"
             severity="secondary"
             @click="showCancelDialog = false"
         />
         <Button
-            label="Cancel Invitation"
+            :label="t('friends.sentInvites.cancelDialog.confirm')"
             severity="danger"
             :loading="cancellingId !== null"
             @click="confirmCancelInvite"
@@ -137,8 +139,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 defineProps(['sentInvites', 'isLoading'])

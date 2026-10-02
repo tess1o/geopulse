@@ -13,7 +13,7 @@ For advanced configuration and a full list of tunable parameters, please refer t
 
 ## Installation from helm repository
 ```bash
-helm repo add geopulse https://tess1o.github.io/geopulse/charts
+helm repo add geopulse https://geopulse.cc/charts
 helm repo update
 helm install my-geopulse geopulse/geopulse
 ```

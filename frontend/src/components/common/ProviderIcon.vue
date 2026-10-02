@@ -14,6 +14,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { t } from '@/locales';
 import { useProviderIcon } from '@/composables/useProviderIcon';
 
 const props = defineProps({
@@ -28,7 +29,7 @@ const props = defineProps({
   },
   alt: {
     type: String,
-    default: 'Provider icon'
+    default: () => t('ui.providerIcon.defaultAlt')
   },
   customClass: {
     type: String,

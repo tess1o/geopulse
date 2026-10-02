@@ -4,7 +4,7 @@
       class="help-toggle"
       @click.stop="toggleHelp"
       :aria-expanded="showHelp"
-      aria-label="Toggle help information"
+      :aria-label="t('timeline.dataGapHelp.toggleAriaLabel')"
     >
       {{ showHelp ? '▲' : '▼' }} {{ helpToggleText }}
     </button>
@@ -13,14 +13,13 @@
       <div v-if="showHelp" class="help-content">
         <p class="help-text">
           <span class="help-icon">ℹ️</span>
-          Data gaps occur when GPS tracking was interrupted. You can adjust how
-          GeoPulse handles gaps in Timeline Settings.
+          {{ t('timeline.dataGapHelp.explanation') }}
         </p>
 
         <div v-if="shouldShowRecommendations" class="recommendations">
           <p class="recommendation-header">
             <span class="help-icon">💡</span>
-            Based on this {{ formatDuration(durationSeconds) }} gap:
+            {{ t('timeline.dataGapHelp.recommendationsHeader', { duration: formatDuration(durationSeconds) }) }}
           </p>
           <ul class="recommendation-list">
             <li v-for="tip in gapRecommendations" :key="tip">
@@ -30,7 +29,7 @@
         </div>
 
         <Button
-          label="Open Timeline Settings"
+          :label="t('timeline.dataGapHelp.openSettings')"
           icon="pi pi-cog"
           size="small"
           text
@@ -44,9 +43,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import Button from 'primevue/button'
+
+const { t } = useI18n()
 
 const props = defineProps({
   durationSeconds: {
@@ -62,8 +64,8 @@ const showHelp = ref(false)
 const helpToggleText = computed(() => {
   // Mobile-friendly shorter text
   return window.innerWidth < 768
-    ? 'Need help with gaps?'
-    : 'Why is this happening?'
+    ? t('timeline.dataGapHelp.toggleShort')
+    : t('timeline.dataGapHelp.toggleLong')
 })
 
 const toggleHelp = () => {
@@ -87,15 +89,15 @@ const gapRecommendations = computed(() => {
   const tips = []
 
   if (durationMinutes >= 30 && durationMinutes < 180) {
-    tips.push('Lower the Gap Detection Threshold to catch shorter gaps')
+    tips.push(t('timeline.dataGapHelp.tips.lowerThreshold'))
   }
 
   if (durationMinutes >= 45 && durationMinutes < 180) {
-    tips.push('Enable Gap Stay Inference if you were at the same location')
+    tips.push(t('timeline.dataGapHelp.tips.enableStayInference'))
   }
 
   if (durationMinutes >= 180) {
-    tips.push('Enable Gap Trip Inference if you traveled a long distance')
+    tips.push(t('timeline.dataGapHelp.tips.enableTripInference'))
   }
 
   return tips
@@ -105,7 +107,7 @@ const gapRecommendations = computed(() => {
 <style scoped>
 .gap-help-section {
   margin-top: var(--gp-spacing-sm);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border-medium);
   padding-top: var(--gp-spacing-sm);
 }
 
@@ -125,7 +127,7 @@ const gapRecommendations = computed(() => {
 }
 
 .help-toggle:hover {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 
 .help-toggle:focus {
@@ -136,7 +138,7 @@ const gapRecommendations = computed(() => {
 .help-content {
   margin-top: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background-color: var(--gp-surface-50);
+  background-color: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   font-size: 0.875rem;
   line-height: 1.5;
@@ -157,7 +159,7 @@ const gapRecommendations = computed(() => {
 .recommendations {
   margin-top: var(--gp-spacing-sm);
   padding: var(--gp-spacing-sm);
-  background-color: var(--gp-primary-50);
+  background-color: var(--gp-primary-soft);
   border-radius: var(--gp-radius-small);
   border-left: 3px solid var(--gp-primary);
 }
@@ -232,26 +234,5 @@ const gapRecommendations = computed(() => {
   .settings-button {
     font-size: 0.8rem;
   }
-}
-
-/* Dark mode */
-.p-dark .gap-help-section {
-  border-top-color: var(--gp-border-medium);
-}
-
-.p-dark .help-content {
-  background-color: var(--gp-surface-800);
-}
-
-.p-dark .recommendations {
-  background-color: rgba(var(--gp-primary-rgb), 0.1);
-}
-
-.p-dark .help-toggle {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .help-toggle:hover {
-  color: var(--gp-primary);
 }
 </style>

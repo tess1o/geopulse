@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import {ref, watch, onUnmounted} from 'vue'
+import {watch, onUnmounted} from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
@@ -53,6 +53,7 @@ let marker = null
 let popupMount = null
 
 const createMarker = () => {
+  const shouldOpenPopup = props.openPopup && (marker ? marker.isPopupOpen() : true)
   popupMount?.unmount?.()
   popupMount = null
   if (marker) {
@@ -100,7 +101,7 @@ const createMarker = () => {
     className: getMapPopupVariantClassName('compact', 'gp-shared-location-popup-container')
   })
 
-  if (props.openPopup) {
+  if (shouldOpenPopup) {
     marker.openPopup()
   }
 }

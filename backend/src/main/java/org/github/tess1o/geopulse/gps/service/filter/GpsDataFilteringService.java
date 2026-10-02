@@ -37,8 +37,6 @@ public class GpsDataFilteringService {
     public GpsFilterResult filter(GpsPointEntity entity, GpsSourceConfigEntity config) {
         Double accuracy = entity.getAccuracy();
         if (negativeAccuracyFilterEnabled && accuracy != null && accuracy < 0) {
-            log.info("Rejected GPS point for user {} source {} - negative accuracy {}m is not allowed",
-                    entity.getUser().getId(), entity.getSourceType(), accuracy);
             return GpsFilterResult.rejectedByNegativeAccuracy(accuracy);
         }
 
@@ -53,13 +51,9 @@ public class GpsDataFilteringService {
         // Check accuracy threshold
         if (config.getMaxAllowedAccuracy() != null) {
             if (accuracy == null && entity.getSourceType() == GpsSourceType.OVERLAND) {
-                log.info("Rejected GPS point for user {} source {} - no accuracy value (maxAllowedAccuracy is {}m)",
-                        entity.getUser().getId(), entity.getSourceType(), config.getMaxAllowedAccuracy());
                 return GpsFilterResult.rejectedByMissingAccuracy(config.getMaxAllowedAccuracy());
             }
             if (accuracy != null && accuracy > config.getMaxAllowedAccuracy()) {
-                log.info("Rejected GPS point for user {} source {} - accuracy {}m exceeds limit {}m",
-                        entity.getUser().getId(), entity.getSourceType(), accuracy, config.getMaxAllowedAccuracy());
                 return GpsFilterResult.rejectedByAccuracy(accuracy, config.getMaxAllowedAccuracy());
             }
         }
@@ -67,8 +61,6 @@ public class GpsDataFilteringService {
         // Check speed threshold
         if (config.getMaxAllowedSpeed() != null && speedKmh != null) {
             if (speedKmh > config.getMaxAllowedSpeed()) {
-                log.info("Rejected GPS point for user {} source {} - speed {} km/h exceeds limit {} km/h",
-                        entity.getUser().getId(), entity.getSourceType(), speedKmh, config.getMaxAllowedSpeed());
                 return GpsFilterResult.rejectedBySpeed(speedKmh, config.getMaxAllowedSpeed());
             }
         }

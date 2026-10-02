@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.weather.repository;
 import org.github.tess1o.geopulse.weather.dto.WeatherSampleDTO;
 import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
 import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
+import org.github.tess1o.geopulse.weather.service.WeatherMapper;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ class WeatherSampleRepositoryTest {
                 .fetchedAt(Instant.parse("2026-07-23T21:10:45Z"))
                 .build();
 
-        WeatherSampleDTO dto = new WeatherSampleRepository().toDto(sample);
+        WeatherSampleDTO dto = new WeatherMapper().toDto(sample);
 
         assertThat(dto.getLatitude()).isEqualTo(49.54821);
         assertThat(dto.getLongitude()).isEqualTo(25.59631);

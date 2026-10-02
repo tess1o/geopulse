@@ -1,7 +1,7 @@
 <template>
   <div class="invites-content">
     <p v-if="readOnly" class="demo-disabled-text">
-      Invitation actions are disabled in demo mode.
+      {{ t('friends.invitationsTab.demoDisabled') }}
     </p>
 
     <!-- Received Invites -->
@@ -10,18 +10,18 @@
         <div class="section-header">
           <div class="section-title">
             <i class="pi pi-inbox mr-2"></i>
-            Received Invitations
+            {{ t('friends.invitationsTab.received.header') }}
           </div>
           <div class="section-actions">
             <Button
-                label="Accept All"
+                :label="t('friends.invitationsTab.received.acceptAll')"
                 size="small"
                 @click="$emit('accept-all')"
                 :loading="bulkActionsLoading.acceptAll"
                 :disabled="readOnly"
             />
             <Button
-                label="Reject All"
+                :label="t('friends.invitationsTab.received.rejectAll')"
                 size="small"
                 severity="danger"
                 outlined
@@ -49,7 +49,7 @@
 
             <div class="invite-actions">
               <Button
-                  label="Accept"
+                  :label="t('friends.invitationsTab.actions.accept')"
                   icon="pi pi-check"
                   size="small"
                   @click="$emit('accept-invite', invite.id)"
@@ -57,7 +57,7 @@
                   :disabled="readOnly"
               />
               <Button
-                  label="Reject"
+                  :label="t('friends.invitationsTab.actions.reject')"
                   icon="pi pi-times"
                   size="small"
                   severity="danger"
@@ -78,11 +78,11 @@
         <div class="section-header">
           <div class="section-title">
             <i class="pi pi-send mr-2"></i>
-            Sent Invitations
+            {{ t('friends.invitationsTab.sent.header') }}
           </div>
           <div class="section-actions">
             <Button
-                label="Cancel All"
+                :label="t('friends.invitationsTab.sent.cancelAll')"
                 size="small"
                 severity="danger"
                 outlined
@@ -109,9 +109,9 @@
             </div>
 
             <div class="invite-actions">
-              <Badge value="Pending" severity="warning"/>
+              <Badge :value="t('friends.invitationsTab.sent.pending')" severity="warning"/>
               <Button
-                  label="Cancel"
+                  :label="t('friends.invitationsTab.actions.cancel')"
                   icon="pi pi-times"
                   size="small"
                   severity="danger"
@@ -127,21 +127,23 @@
     </Card>
 
     <!-- Empty State for Invites -->
-    <div v-if="!receivedInvites?.length && !sentInvites?.length" class="empty-state">
-      <div class="empty-icon">
+    <div v-if="!receivedInvites?.length && !sentInvites?.length" class="gp-empty-state gp-empty-state--panel">
+      <div class="gp-empty-state-icon">
         <i class="pi pi-envelope"></i>
       </div>
-      <h3 class="empty-title">No Pending Invitations</h3>
-      <p class="empty-description">
-        All your invitations have been processed
+      <h3 class="gp-empty-state-title">{{ t('friends.invitationsTab.empty.title') }}</h3>
+      <p class="gp-empty-state-message">
+        {{ t('friends.invitationsTab.empty.description') }}
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 defineProps({
@@ -198,8 +200,8 @@ const formatDate = (dateString) => {
 }
 
 .invites-section {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-light);
 }
 
@@ -235,9 +237,9 @@ const formatDate = (dateString) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .invite-info {
@@ -274,47 +276,6 @@ const formatDate = (dateString) => {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 3rem 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-large);
-  margin: 2rem 0;
-}
-
-.empty-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 4rem;
-  height: 4rem;
-  background: var(--gp-primary-light);
-  color: var(--gp-primary);
-  border-radius: 50%;
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-description {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 1.5rem 0;
-  max-width: 400px;
-  line-height: 1.5;
 }
 
 /* Responsive Design */

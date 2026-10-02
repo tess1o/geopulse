@@ -25,8 +25,6 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
         UpdateGeofenceRuleRequest.class,
         GeofenceEventDto.class,
         GeofenceEventDto.GeofenceEventDtoBuilder.class,
-        GeofenceEventPageDto.class,
-        GeofenceEventPageDto.GeofenceEventPageDtoBuilder.class,
         GeofenceEventQueryDto.class,
         GeofenceEventQueryDto.GeofenceEventQueryDtoBuilder.class,
         NotificationTemplateDto.class,
@@ -34,6 +32,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
         CreateNotificationTemplateRequest.class,
         UpdateNotificationTemplateRequest.class,
         AppriseTestRequest.class,
+        AppriseTestResponse.class,
         AppriseClientResult.class,
         TemplateDeliveryCapabilitiesDto.class
 })

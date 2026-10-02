@@ -1,8 +1,5 @@
 import { ref } from 'vue'
 import L from 'leaflet'
-import 'leaflet.markercluster'
-import 'leaflet.markercluster/dist/MarkerCluster.css'
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import {
   buildPhotoGroupsFromPhotos,
   buildPhotoMarkerClickPayload,
@@ -10,6 +7,7 @@ import {
   getSinglePhotoForThumbnail,
   normalizePhotoMarkerGroups
 } from '@/maps/shared/photoMarkerGroups'
+import { createMarkerClusterGroup } from '@/maps/raster/utils/createMarkerClusterGroup'
 import { getPhotoThumbnailBlobUrl } from '@/utils/immichPhotoThumbnails'
 
 const PHOTO_CLUSTER_MAX_RADIUS = 48
@@ -68,7 +66,7 @@ const createFocusedPhotoMarkerIcon = () => {
   })
 }
 
-export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500 } = {}) => {
+export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500, getThumbnailHeaders = () => ({}) } = {}) => {
   const photoMarkers = ref([])
   const markerClusterGroup = ref(null)
   const focusMarker = ref(null)
@@ -102,30 +100,17 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
   }
 
-  const createClusterGroup = () => {
-    if (typeof L.markerClusterGroup !== 'function') {
-      return null
+  const createClusterGroup = () => createMarkerClusterGroup({
+    maxClusterRadius: PHOTO_CLUSTER_MAX_RADIUS,
+    disableClusteringAtZoom: PHOTO_CLUSTER_DISABLE_ZOOM,
+    spiderfyOnMaxZoom: true,
+    iconCreateFunction: (cluster) => {
+      const totalPhotos = cluster.getAllChildMarkers()
+        .reduce((sum, marker) => sum + Number(marker.options?.photoCount || 1), 0)
+
+      return createPhotoClusterIcon(totalPhotos)
     }
-
-    return L.markerClusterGroup({
-      maxClusterRadius: PHOTO_CLUSTER_MAX_RADIUS,
-      disableClusteringAtZoom: PHOTO_CLUSTER_DISABLE_ZOOM,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      chunkedLoading: true,
-      chunkInterval: 200,
-      chunkDelay: 50,
-      animate: false,
-      removeOutsideVisibleBounds: true,
-      iconCreateFunction: (cluster) => {
-        const totalPhotos = cluster.getAllChildMarkers()
-          .reduce((sum, marker) => sum + Number(marker.options?.photoCount || 1), 0)
-
-        return createPhotoClusterIcon(totalPhotos)
-      }
-    })
-  }
+  })
 
   const applyThumbnailToMarker = async (marker, group, currentRenderCycle) => {
     const photo = getSinglePhotoForThumbnail(group)
@@ -134,7 +119,7 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
 
     try {
-      const thumbnailBlobUrl = await getPhotoThumbnailBlobUrl(photo)
+      const thumbnailBlobUrl = await getPhotoThumbnailBlobUrl(photo, getThumbnailHeaders())
       if (!thumbnailBlobUrl || currentRenderCycle !== renderCycle || !photoMarkers.value.includes(marker)) {
         return
       }

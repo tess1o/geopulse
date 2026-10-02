@@ -2,6 +2,9 @@
  * Error handling utilities for GeoPulse frontend
  */
 
+import { formatApiErrorDetail, getErrorReferenceId, hasErrorReference, normalizeApiError, withErrorReference, AUTH_EXPIRED_CODE } from './apiErrorDetail'
+import { t } from '@/locales'
+
 function getErrorText(value) {
   if (!value) return ''
   if (typeof value === 'string') return value
@@ -17,127 +20,116 @@ function getErrorText(value) {
   return String(value)
 }
 
-function getConstraintViolationMessage(data) {
-  if (!data || !Array.isArray(data.violations)) {
-    return null
-  }
-
-  const violationMessages = data.violations
-    .map((violation) => violation?.message)
-    .filter((message) => typeof message === 'string' && message.trim().length > 0)
-
-  if (violationMessages.length === 0) {
-    return null
-  }
-
-  return [...new Set(violationMessages)].join(' ')
-}
-
 /**
  * Convert API/Network errors into user-friendly messages
  * @param {Error} error - The original error object
  * @returns {Object} - Formatted error object with user-friendly message
  */
 export function formatError(error) {
+  const problem = normalizeApiError(error)
   // Default error object
   const formattedError = {
-    title: 'Something went wrong',
-    message: 'An unexpected error occurred. Please try again.',
+    title: t('errors.generic.title'),
+    message: t('errors.generic.message'),
     severity: 'error',
-    technical: error.message || 'Unknown error',
+    // Diagnostic only -- surfaced in logs and technical views, never as user-facing copy, so it stays
+    // untranslated.
+    technical: error?.message || problem.detail || 'Unknown error',
     canRetry: true,
-    isConnectionError: false
+    isConnectionError: false,
+    status: problem.status,
+    code: problem.code,
+    parameters: problem.parameters,
+    violations: problem.violations
   }
 
   // Handle network/connection errors
-  if (error.code === 'NETWORK_ERROR' || 
-      error.message === 'Network Error' || 
-      error.message?.includes('ERR_NETWORK') ||
-      error.message?.includes('Failed to fetch') ||
+  if (error?.code === 'NETWORK_ERROR' ||
+      error?.message === 'Network Error' ||
+      error?.message?.includes('ERR_NETWORK') ||
+      error?.message?.includes('Failed to fetch') ||
       !navigator.onLine) {
-    
-    formattedError.title = 'Connection Problem'
-    formattedError.message = 'Unable to connect to GeoPulse servers. Please check your internet connection and try again.'
+
+    formattedError.title = t('errors.network.title')
+    formattedError.message = t('errors.network.message')
     formattedError.isConnectionError = true
     formattedError.canRetry = true
     return formattedError
   }
 
   // Handle timeout errors
-  if (error.code === 'ECONNABORTED' || 
-      error.message?.includes('timeout')) {
-    
-    formattedError.title = 'Request Timeout'
-    formattedError.message = 'The request is taking longer than expected. Please try again.'
+  if (error?.code === 'ECONNABORTED' ||
+      error?.message?.includes('timeout')) {
+
+    formattedError.title = t('errors.timeout.title')
+    formattedError.message = t('errors.timeout.message')
     formattedError.canRetry = true
     return formattedError
   }
 
   // Handle HTTP response errors
-  if (error.response) {
-    const status = error.response.status
-    const data = error.response.data
+  if (problem.status) {
+    const status = problem.status
+    const data = error?.response?.data || problem
+    const problemDetail = formatApiErrorDetail(problem, null)
 
     switch (status) {
       case 400:
         {
-          const constraintViolationMessage = getConstraintViolationMessage(data)
-          formattedError.title = 'Invalid Request'
-          formattedError.message = constraintViolationMessage ||
-            data?.message ||
-            'The request could not be processed. Please check your input and try again.'
+          formattedError.title = t('errors.http.400.title')
+          formattedError.message = problemDetail || t('errors.http.400.message')
           formattedError.canRetry = true
           break
         }
 
       case 401:
-        formattedError.title = 'Authentication Required'
-        formattedError.message = 'Your session has expired. Please sign in again.'
+        formattedError.title = t('errors.http.401.title')
+        formattedError.message = t('errors.http.401.message')
         formattedError.canRetry = false
         break
 
       case 403:
-        formattedError.title = 'Access Denied'
-        formattedError.message = data?.message || 'You don\'t have permission to perform this action.'
+        formattedError.title = t('errors.http.403.title')
+        formattedError.message = problemDetail || t('errors.http.403.message')
         formattedError.canRetry = false
         break
 
       case 404:
-        formattedError.title = 'Not Found'
-        formattedError.message = data?.message || 'The requested resource could not be found.'
+        formattedError.title = t('errors.http.404.title')
+        formattedError.message = problemDetail || t('errors.http.404.message')
         formattedError.canRetry = false
         break
 
       case 409:
-        formattedError.title = 'Conflict'
-        formattedError.message = data?.message || 'This action conflicts with the current state. Please refresh and try again.'
+        formattedError.title = t('errors.http.409.title')
+        formattedError.message = problemDetail || t('errors.http.409.message')
         formattedError.canRetry = true
         break
 
       case 429:
-        formattedError.title = 'Too Many Requests'
-        formattedError.message = 'You\'re making requests too quickly. Please wait a moment and try again.'
+        formattedError.title = t('errors.http.429.title')
+        formattedError.message = t('errors.http.429.message')
         formattedError.canRetry = true
         break
 
       case 500:
-        formattedError.title = 'Server Error'
-        formattedError.message = 'GeoPulse servers are experiencing issues. Please try again in a few minutes.'
+        formattedError.title = t('errors.http.500.title')
+        formattedError.message = t('errors.http.500.message')
         formattedError.canRetry = true
         break
 
       case 502:
       case 503:
       case 504:
-        formattedError.title = 'Service Unavailable'
-        formattedError.message = 'GeoPulse is temporarily unavailable. Please try again in a few minutes.'
+        formattedError.title = t(`errors.http.${status}.title`)
+        formattedError.message = t(`errors.http.${status}.message`)
         formattedError.isConnectionError = true
         formattedError.canRetry = true
         break
 
       default:
-        formattedError.title = `Error ${status}`
-        formattedError.message = data?.message || `An error occurred (${status}). Please try again.`
+        formattedError.title = t('errors.http.unknown.title', { status })
+        formattedError.message = problemDetail || t('errors.http.unknown.message', { status })
         formattedError.canRetry = true
     }
 
@@ -147,21 +139,23 @@ export function formatError(error) {
     }
   }
 
-  // Handle specific authentication errors
-  if (error.message?.includes('Authentication expired') || 
-      error.message?.includes('Please login again')) {
-    
-    formattedError.title = 'Session Expired'
-    formattedError.message = 'Your session has expired. Please sign in again.'
+  // Handle the refresh-token path, which signals an ended session with a code rather than a status.
+  // Matched on the code, never the message: this copy is translatable, so matching on text would break
+  // silently the moment either side was reworded or translated.
+  if (error?.code === AUTH_EXPIRED_CODE) {
+    formattedError.title = t('errors.session.title')
+    formattedError.message = t('errors.session.message')
     formattedError.canRetry = false
+    formattedError.isAuthExpired = true
   }
 
   return formattedError
 }
 
-export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected error occurred. Please try again.') {
+export function getFriendlyErrorMessage(error, fallbackMessage) {
+  const fallback = fallbackMessage ?? t('errors.generic.message')
   if (!error) {
-    return fallbackMessage
+    return fallback
   }
 
   const userMessage = getErrorText(error.userMessage)
@@ -169,16 +163,44 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
     return userMessage
   }
 
-  const data = error.response?.data
-  const apiMessage = getErrorText(data?.message)
-    || getErrorText(data?.error)
-    || getErrorText(data?.userMessage)
-    || getErrorText(data)
+  const apiMessage = getErrorText(formatApiErrorDetail(error, null))
   if (apiMessage) {
     return apiMessage
   }
 
-  return getErrorText(formatError(error).message) || fallbackMessage
+  return getErrorText(formatError(error).message) || fallback
+}
+
+/**
+ * A server error stays up longer than an ordinary toast, so the reference id can be read and
+ * copied, but it still closes on its own -- a toast that has to be dismissed is an interruption.
+ */
+const REFERENCE_TOAST_LIFE = 8000
+
+/**
+ * How long a toast should stay up.
+ */
+function defaultToastLife(formattedError, error) {
+  if (hasErrorReference(error)) {
+    return REFERENCE_TOAST_LIFE
+  }
+  if (formattedError.isConnectionError) {
+    return 6000
+  }
+  return 4000
+}
+
+/**
+ * Toast fields for a hand-built error toast.
+ *
+ * A server error carrying a reference belongs in the gp-error group, which renders the id with a
+ * copy button, and gets longer on screen so the id can be taken to the backend logs.
+ */
+export function errorToastOptions(error, life = 4000) {
+  if (!hasErrorReference(error)) {
+    return { life }
+  }
+  return { life: REFERENCE_TOAST_LIFE, group: 'gp-error', data: { errorId: getErrorReferenceId(error) } }
 }
 
 /**
@@ -190,18 +212,42 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
  */
 export function showErrorToast(toastAdd, error, options = {}) {
   const formattedError = formatError(error)
-  
+  const hasReference = hasErrorReference(error)
+
   const toastConfig = {
     severity: formattedError.severity,
     summary: formattedError.title,
-    detail: formattedError.message,
-    life: options.life || (formattedError.isConnectionError ? 6000 : 4000),
+    detail: withErrorReference(formattedError.message, error),
+    life: options.life ?? defaultToastLife(formattedError, error),
+    // The gp-error group renders the reference as its own row with a copy button; other groups
+    // fall back to the plain detail text, which already carries the hint and the id.
+    ...(hasReference ? { group: 'gp-error', data: { errorId: getErrorReferenceId(error) } } : {}),
     ...options
   }
 
   toastAdd(toastConfig)
   
   return formattedError
+}
+
+/**
+ * Detect a GeoPulse problem document (RFC 7807): the backend answered the request itself.
+ *
+ * GeoPulseProblemPostProcessor stamps every problem the application emits -- 4xx and 5xx alike --
+ * with type "urn:geopulse:error:<CODE>", code and errorId, so their presence proves the backend
+ * produced the response, not a proxy. A 500 carrying one is a failure of a live backend, never an
+ * outage, and must not send the user to the error page.
+ */
+function isGeoPulseProblemResponse(error) {
+  const data = error.response?.data
+  if (!data || typeof data !== 'object') {
+    return false
+  }
+  if (typeof data.type === 'string' && data.type.startsWith('urn:geopulse:error:')) {
+    return true
+  }
+  // A problem that reached us without type was still only ever produced by the backend.
+  return typeof data.code === 'string' && typeof data.errorId === 'string'
 }
 
 /**
@@ -234,12 +280,12 @@ export function isBackendDown(error) {
   const upstreamConnectionFailurePattern = /(ECONNREFUSED|ECONNRESET|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|socket hang up|upstream|proxy error|connect ECONNREFUSED|connection refused)/i
   const isHealthOrPublicAuthProbe =
     requestUrl.includes('/health') ||
-    requestUrl.includes('/auth/refresh-cookie') ||
-    requestUrl.includes('/auth/status') ||
-    requestUrl.includes('/auth/login') ||
+    requestUrl.includes('/auth/sessions/current/refresh') ||
+    requestUrl.includes('/auth/sessions/current') ||
+    requestUrl.includes('/auth/sessions') ||
     requestUrl.includes('/auth/oidc/providers')
   const isLocalProxy500ForBackendDown =
-    responseStatus === 500 && (
+    responseStatus === 500 && !isGeoPulseProblemResponse(error) && (
       upstreamConnectionFailurePattern.test(combinedText) ||
       isHealthOrPublicAuthProbe
     )
@@ -269,8 +315,8 @@ export function createRetryableErrorHandler(toastAdd, retryFunction) {
       setTimeout(() => {
         toastAdd({
           severity: 'info',
-          summary: 'Retry Available',
-          detail: 'Click here to try again',
+          summary: t('errors.retry.available'),
+          detail: t('errors.retry.hint'),
           life: 5000,
           onClick: retryFunction
         })

@@ -152,7 +152,7 @@ public class AppriseNotificationService {
             return new AppriseClientResult(false, 0, "Apprise config key is not configured");
         }
 
-        log.info("Sending Apprise notification to Apprise API URL: {}, key = {}, tag = {}", apiUrl, configKey, tag);
+        log.info("Sending Apprise notification through configured config key (tagConfigured={})", tag != null && !tag.isBlank());
 
         return appriseHttpClient.notifyByConfigKey(
                 apiUrl,

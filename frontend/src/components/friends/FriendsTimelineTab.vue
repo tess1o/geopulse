@@ -6,11 +6,11 @@
       <div class="left-pane">
         <div v-if="isLoading" class="loading-overlay">
           <ProgressSpinner />
-          <p>Loading timelines...</p>
+          <p>{{ t('friends.timelineTab.loading') }}</p>
         </div>
         <div v-else-if="!hasSelectedUsers" class="empty-message">
           <i class="pi pi-info-circle"></i>
-          <p>Select friends to view their timelines</p>
+          <p>{{ t('friends.timelineTab.selectFriends') }}</p>
         </div>
         <FriendsTimelineMap
             v-else
@@ -30,9 +30,9 @@
           <div class="empty-icon">
             <i class="pi pi-calendar"></i>
           </div>
-          <h3 class="empty-title">No Shared Timelines</h3>
+          <h3 class="empty-title">{{ t('friends.timelineTab.noSharedTitle') }}</h3>
           <p class="empty-description">
-            None of your friends have enabled timeline sharing yet. Ask them to enable it in Friends settings!
+            {{ t('friends.timelineTab.noSharedMessage') }}
           </p>
         </div>
 
@@ -59,6 +59,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useFriendsTimelineStore } from '@/stores/friendsTimeline'
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -69,6 +70,7 @@ import FriendsTimelineDatePicker from './FriendsTimelineDatePicker.vue'
 import UserSelectionPanel from './UserSelectionPanel.vue'
 import MergedTimelineList from './MergedTimelineList.vue'
 
+const { t } = useI18n()
 const toast = useToast()
 const friendsTimelineStore = useFriendsTimelineStore()
 const dateRangeStore = useDateRangeStore()
@@ -113,8 +115,8 @@ async function loadTimelineData() {
     console.error('Failed to load multi-user timeline:', error)
     toast.add({
       severity: 'error',
-      summary: 'Failed to Load Timelines',
-      detail: error.message || 'Could not load friend timelines',
+      summary: t('friends.timelineTab.loadFailedTitle'),
+      detail: error.message || t('friends.timelineTab.loadFailedDetail'),
       life: 5000
     })
   }
@@ -164,8 +166,8 @@ function handleTimelineItemClick(item) {
   justify-content: center;
   text-align: center;
   padding: 2rem 1rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -234,7 +236,7 @@ function handleTimelineItemClick(item) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   z-index: 1000;
   gap: 1rem;
 }

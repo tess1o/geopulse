@@ -296,6 +296,7 @@ public class TripClassificationDetailsService {
                 // Motor vehicle
                 isCarEnabled(config),
                 isMotorcycleEnabled(config),
+                isPublicTransportationEnabled(config),
                 normalizePreferredMotorizedType(config),
                 isMotorVehicleEnabled(config) ? config.getCarMinAvgSpeed() : null,
                 isMotorVehicleEnabled(config) ? config.getCarMinMaxSpeed() : null,
@@ -877,25 +878,36 @@ public class TripClassificationDetailsService {
         return Boolean.TRUE.equals(config.getMotorcycleEnabled());
     }
 
+    private boolean isPublicTransportationEnabled(TimelineConfig config) {
+        return Boolean.TRUE.equals(config.getPublicTransportationEnabled());
+    }
+
     private boolean isMotorVehicleEnabled(TimelineConfig config) {
-        return isCarEnabled(config) || isMotorcycleEnabled(config);
+        return isCarEnabled(config) || isMotorcycleEnabled(config) || isPublicTransportationEnabled(config);
     }
 
     private String normalizePreferredMotorizedType(TimelineConfig config) {
-        return "MOTORCYCLE".equalsIgnoreCase(config.getPreferredMotorizedType()) ? "MOTORCYCLE" : "CAR";
+        if ("MOTORCYCLE".equalsIgnoreCase(config.getPreferredMotorizedType())) {
+            return "MOTORCYCLE";
+        }
+        return "PUBLIC_TRANSPORT".equalsIgnoreCase(config.getPreferredMotorizedType()) ? "PUBLIC_TRANSPORT" : "CAR";
     }
 
     private String resolveMotorizedTripType(TimelineConfig config) {
-        boolean carEnabled = isCarEnabled(config);
-        boolean motorcycleEnabled = isMotorcycleEnabled(config);
-
-        if (carEnabled && motorcycleEnabled) {
-            return normalizePreferredMotorizedType(config);
-        }
-        if (motorcycleEnabled) {
+        String preferredType = normalizePreferredMotorizedType(config);
+        if ("MOTORCYCLE".equals(preferredType) && isMotorcycleEnabled(config)) {
             return "MOTORCYCLE";
         }
-        return carEnabled ? "CAR" : "CAR";
+        if ("PUBLIC_TRANSPORT".equals(preferredType) && isPublicTransportationEnabled(config)) {
+            return "PUBLIC_TRANSPORT";
+        }
+        if (isCarEnabled(config)) {
+            return "CAR";
+        }
+        if (isMotorcycleEnabled(config)) {
+            return "MOTORCYCLE";
+        }
+        return isPublicTransportationEnabled(config) ? "PUBLIC_TRANSPORT" : "CAR";
     }
 
     private ClassificationStep checkWalk(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
@@ -943,6 +955,7 @@ public class TripClassificationDetailsService {
             case "RUNNING" -> String.format("Automatic classification was RUNNING based on speeds (%.1f km/h) consistent with running.", avgSpeed);
             case "CAR" -> String.format("Automatic classification was CAR due to motor-vehicle speed profile (avg %.1f km/h).", avgSpeed);
             case "MOTORCYCLE" -> String.format("Automatic classification was MOTORCYCLE due to motor-vehicle speed profile (avg %.1f km/h).", avgSpeed);
+            case "PUBLIC_TRANSPORT" -> String.format("Automatic classification was PUBLIC_TRANSPORT due to motor-vehicle speed profile (avg %.1f km/h).", avgSpeed);
             case "WALK" -> String.format("Automatic classification was WALK based on low speeds (%.1f km/h).", avgSpeed);
             default -> "Automatic classification resulted in UNKNOWN.";
         };

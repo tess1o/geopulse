@@ -2,18 +2,18 @@
   <div>
     <div v-if="hasUnsavedChanges" class="save-actions">
       <Message severity="warn" :closable="false" class="unsaved-message">
-        You have unsaved changes
+        {{ t('adminProviderSettings.shared.unsavedChanges') }}
       </Message>
       <div class="buttons">
         <Button
-          label="Discard Changes"
+          :label="t('adminProviderSettings.shared.discardChanges')"
           severity="secondary"
           outlined
           @click="discardChanges"
           :disabled="isSaving"
         />
         <Button
-          label="Save Changes"
+          :label="t('adminProviderSettings.shared.saveChanges')"
           icon="pi pi-save"
           @click="saveAllChanges"
           :loading="isSaving"
@@ -22,7 +22,7 @@
       </div>
     </div>
 
-    <SettingSection title="Routing">
+    <SettingSection :title="t('adminProviderSettings.geocodingSettingsTab.routingSectionTitle')">
       <SettingItem
         v-for="setting in routingSettings"
         :key="setting.key"
@@ -37,7 +37,7 @@
             optionLabel="label"
             optionValue="value"
             @change="markDirty"
-            placeholder="Select primary provider"
+            :placeholder="t('adminProviderSettings.geocodingSettingsTab.selectPrimaryProviderPlaceholder')"
             class="routing-select"
           />
           <Select
@@ -47,7 +47,7 @@
             optionLabel="label"
             optionValue="value"
             @change="markDirty"
-            placeholder="Select fallback provider"
+            :placeholder="t('adminProviderSettings.geocodingSettingsTab.selectFallbackProviderPlaceholder')"
             class="routing-select"
           />
           <InputNumber
@@ -63,12 +63,12 @@
     </SettingSection>
 
     <Message severity="info" :closable="false" class="provider-switch-note">
-      Changing primary/fallback provider affects new lookups only. Existing cached geocoding records remain unchanged until reconciled.
+      {{ t('adminProviderSettings.geocodingSettingsTab.providerSwitchNote') }}
     </Message>
 
     <details class="advanced-settings">
-      <summary>Advanced Operations</summary>
-      <SettingSection title="Cache and Reconciliation">
+      <summary>{{ t('adminProviderSettings.shared.advancedOperations') }}</summary>
+      <SettingSection :title="t('adminProviderSettings.geocodingSettingsTab.cacheReconciliationSectionTitle')">
         <SettingItem
           v-for="setting in advancedOperationSettings"
           :key="setting.key"
@@ -88,11 +88,11 @@
       </SettingSection>
     </details>
 
-    <SettingSection title="Providers">
+    <SettingSection :title="t('adminProviderSettings.geocodingSettingsTab.providersSectionTitle')">
       <div class="providers-workspace">
         <div class="providers-workspace-header">
-          <div class="workspace-panel-heading">Provider list</div>
-          <div class="workspace-panel-heading">Configure provider</div>
+          <div class="workspace-panel-heading">{{ t('adminProviderSettings.geocodingSettingsTab.providerListHeading') }}</div>
+          <div class="workspace-panel-heading">{{ t('adminProviderSettings.geocodingSettingsTab.configureProviderHeading') }}</div>
         </div>
 
         <div class="providers-workspace-body">
@@ -109,11 +109,11 @@
                 <div class="provider-row-main">
                   <span class="provider-name">{{ provider.label }}</span>
                   <span class="provider-chips">
-                    <Tag v-if="isPrimaryProvider(provider)" value="Primary" severity="info" />
-                    <Tag v-if="isFallbackProvider(provider)" value="Fallback" severity="warning" />
+                    <Tag v-if="isPrimaryProvider(provider)" :value="t('adminProviderSettings.geocodingSettingsTab.primaryTag')" severity="info" />
+                    <Tag v-if="isFallbackProvider(provider)" :value="t('adminProviderSettings.geocodingSettingsTab.fallbackTag')" severity="warning" />
                     <Tag
                       v-if="provider.requiresCredential"
-                      :value="providerCredentialAvailable(provider) ? 'Saved' : 'Credential missing'"
+                      :value="providerCredentialAvailable(provider) ? t('adminProviderSettings.geocodingSettingsTab.credentialSavedTag') : t('adminProviderSettings.geocodingSettingsTab.credentialMissingTag')"
                       :severity="providerCredentialAvailable(provider) ? 'success' : 'danger'"
                     />
                   </span>
@@ -127,12 +127,12 @@
                   />
                   <Tag
                     v-if="selectedProviderId === provider.id"
-                    value="Selected"
+                    :value="t('adminProviderSettings.geocodingSettingsTab.selected')"
                     severity="info"
                   />
                   <Button
                     v-else
-                    label="Configure"
+                    :label="t('adminProviderSettings.geocodingSettingsTab.configure')"
                     size="small"
                     severity="secondary"
                     text
@@ -146,10 +146,10 @@
           <div v-if="selectedProvider" class="provider-details">
             <div class="provider-details-header">
               <div>
-                <h4>{{ selectedProvider.label }} settings</h4>
+                <h4>{{ t('adminProviderSettings.geocodingSettingsTab.providerSettingsTitle', { name: selectedProvider.label }) }}</h4>
                 <div class="provider-details-chips">
-                  <Tag v-if="isPrimaryProvider(selectedProvider)" value="Primary" severity="info" />
-                  <Tag v-if="isFallbackProvider(selectedProvider)" value="Fallback" severity="warning" />
+                  <Tag v-if="isPrimaryProvider(selectedProvider)" :value="t('adminProviderSettings.geocodingSettingsTab.primaryTag')" severity="info" />
+                  <Tag v-if="isFallbackProvider(selectedProvider)" :value="t('adminProviderSettings.geocodingSettingsTab.fallbackTag')" severity="warning" />
                 </div>
               </div>
               <InputSwitch
@@ -165,13 +165,13 @@
               :closable="false"
               class="provider-warning"
             >
-              {{ selectedProvider.label }} requires {{ selectedProvider.credentialLabel.toLowerCase() }} before it can be saved as enabled.
+              {{ t('adminProviderSettings.geocodingSettingsTab.credentialRequiredWarning', { name: selectedProvider.label, credential: getCredentialLabelLower(selectedProvider) }) }}
             </Message>
 
             <div v-if="selectedProvider.requiresCredential && selectedProviderCredentialSetting" class="detail-row credential-detail-row">
               <div class="detail-label">
-                <label>{{ selectedProvider.credentialLabel }}</label>
-                <small class="text-muted">Encrypted credential used by {{ selectedProvider.label }}.</small>
+                <label>{{ getCredentialLabel(selectedProvider) }}</label>
+                <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.credentialHint', { name: selectedProvider.label }) }}</small>
               </div>
               <div class="detail-control">
                 <div class="credential-control">
@@ -183,7 +183,7 @@
                       {{ credentialStateText(selectedProviderCredentialSetting) }}
                     </span>
                     <Button
-                      :label="credentialStored(selectedProviderCredentialSetting) ? 'Replace' : 'Set'"
+                      :label="credentialStored(selectedProviderCredentialSetting) ? t('adminProviderSettings.shared.replace') : t('adminProviderSettings.shared.set')"
                       icon="pi pi-key"
                       size="small"
                       severity="secondary"
@@ -192,7 +192,7 @@
                     />
                     <Button
                       v-if="credentialStored(selectedProviderCredentialSetting) || credentialDraftPresent(selectedProviderCredentialSetting.key)"
-                      label="Clear"
+                      :label="t('adminProviderSettings.shared.clear')"
                       icon="pi pi-times"
                       size="small"
                       severity="danger"
@@ -207,13 +207,13 @@
                       :feedback="false"
                       toggleMask
                       autocomplete="new-password"
-                      :placeholder="`Enter ${selectedProvider.credentialLabel.toLowerCase()}`"
+                      :placeholder="t('adminProviderSettings.geocodingSettingsTab.enterCredentialPlaceholder', { credential: getCredentialLabelLower(selectedProvider) })"
                       :inputProps="credentialInputProps(selectedProviderCredentialSetting)"
                       @input="markDirty"
                       class="credential-input"
                     />
                     <Button
-                      label="Cancel"
+                      :label="t('common.cancel')"
                       severity="secondary"
                       text
                       size="small"
@@ -261,11 +261,11 @@
                   />
 
                   <div class="detail-status">
-                    <Tag v-if="setting.readOnly" severity="info" value="Read-only" />
-                    <Tag v-else-if="setting.isDefault" severity="secondary" value="Default" />
+                    <Tag v-if="setting.readOnly" severity="info" :value="t('adminProviderSettings.geocodingSettingsTab.readOnlyTag')" />
+                    <Tag v-else-if="setting.isDefault" severity="secondary" :value="t('adminProviderSettings.geocodingSettingsTab.defaultTag')" />
                     <Button
                       v-else
-                      label="Reset"
+                      :label="t('adminProviderSettings.geocodingSettingsTab.reset')"
                       icon="pi pi-refresh"
                       text
                       size="small"
@@ -276,7 +276,7 @@
               </div>
 
               <div v-if="selectedProviderSettings.length === 0" class="empty-provider-settings">
-                No additional settings for this provider.
+                {{ t('adminProviderSettings.geocodingSettingsTab.emptyProviderSettings') }}
               </div>
             </div>
           </div>
@@ -284,7 +284,7 @@
       </div>
     </SettingSection>
 
-    <SettingSection title="Custom Providers">
+    <SettingSection :title="t('adminProviderSettings.geocodingSettingsTab.customProvidersSectionTitle')">
       <div class="custom-providers-layout">
         <div class="custom-provider-list">
           <div
@@ -296,39 +296,39 @@
               <div class="provider-name">{{ provider.displayName }}</div>
               <small class="text-muted">{{ provider.name }} &middot; {{ provider.type }} &middot; {{ provider.url }}</small>
               <div class="provider-chips">
-                <Tag v-if="provider.enabled" value="Enabled" severity="success" />
-                <Tag v-else value="Disabled" severity="secondary" />
-                <Tag v-if="isPrimaryProviderName(provider.name)" value="Primary" severity="info" />
-                <Tag v-if="isFallbackProviderName(provider.name)" value="Fallback" severity="warning" />
+                <Tag v-if="provider.enabled" :value="t('adminProviderSettings.geocodingSettingsTab.customProviderEnabledTag')" severity="success" />
+                <Tag v-else :value="t('adminProviderSettings.geocodingSettingsTab.customProviderDisabledTag')" severity="secondary" />
+                <Tag v-if="isPrimaryProviderName(provider.name)" :value="t('adminProviderSettings.geocodingSettingsTab.primaryTag')" severity="info" />
+                <Tag v-if="isFallbackProviderName(provider.name)" :value="t('adminProviderSettings.geocodingSettingsTab.fallbackTag')" severity="warning" />
               </div>
             </div>
             <div class="custom-provider-actions">
-              <Button label="Edit" size="small" severity="secondary" text @click="editCustomProvider(provider)" />
+              <Button :label="t('adminProviderSettings.geocodingSettingsTab.edit')" size="small" severity="secondary" text @click="editCustomProvider(provider)" />
               <Button
-                label="Delete"
+                :label="t('adminProviderSettings.geocodingSettingsTab.delete')"
                 size="small"
                 severity="danger"
                 text
                 :disabled="adminReadOnly || isCustomProviderDeleteBlocked(provider)"
-                v-tooltip.bottom="customProviderDeleteBlockReason(provider) || 'Delete custom provider'"
+                v-tooltip.bottom="customProviderDeleteBlockReason(provider) || t('adminProviderSettings.geocodingSettingsTab.deleteCustomProviderTooltip')"
                 @click="deleteCustomProvider(provider)"
               />
             </div>
           </div>
 
           <div v-if="customProviders.length === 0" class="empty-provider-settings">
-            No custom geocoding providers configured.
+            {{ t('adminProviderSettings.geocodingSettingsTab.emptyCustomProviders') }}
           </div>
         </div>
 
         <div class="custom-provider-form">
           <div class="provider-details-header">
             <div>
-              <h4>{{ editingCustomProviderName ? 'Edit custom provider' : 'Add custom provider' }}</h4>
+              <h4>{{ editingCustomProviderName ? t('adminProviderSettings.geocodingSettingsTab.editCustomProviderTitle') : t('adminProviderSettings.geocodingSettingsTab.addCustomProviderTitle') }}</h4>
             </div>
             <Button
               v-if="editingCustomProviderName"
-              label="New"
+              :label="t('adminProviderSettings.geocodingSettingsTab.newCustomProvider')"
               icon="pi pi-plus"
               size="small"
               text
@@ -339,8 +339,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Name</label>
-              <small class="text-muted">Stable routing key, lowercase with hyphens.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.nameLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.nameHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <InputText
@@ -356,8 +356,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Display Name</label>
-              <small class="text-muted">Shown in provider lists and cached records.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.displayNameLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.displayNameHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <InputText
@@ -372,8 +372,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Type</label>
-              <small class="text-muted">Response format to use for this endpoint.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.typeLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.typeHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <Select
@@ -391,8 +391,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>URL</label>
-              <small class="text-muted">Base URL, for example https://photon.komoot.io.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.urlLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.urlHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <InputText
@@ -407,16 +407,16 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Enabled</label>
-              <small class="text-muted">Enabled providers can be selected for routing.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.enabledLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.enabledHint') }}</small>
             </div>
             <InputSwitch v-model="customProviderForm.enabled" />
           </div>
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Language</label>
-              <small class="text-muted">Optional language header/query value.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.languageLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.languageHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <InputText
@@ -431,8 +431,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Delay</label>
-              <small class="text-muted">Optional request delay in milliseconds.</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.delayLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.delayHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <InputNumber
@@ -449,8 +449,8 @@
 
           <div class="detail-row">
             <div class="detail-label">
-              <label>Headers JSON</label>
-              <small class="text-muted">Optional headers, encrypted at rest. Example: {"X-Api-Key":"secret"}</small>
+              <label>{{ t('adminProviderSettings.geocodingSettingsTab.form.headersLabel') }}</label>
+              <small class="text-muted">{{ t('adminProviderSettings.geocodingSettingsTab.form.headersHint') }}</small>
             </div>
             <div class="custom-provider-control">
               <Textarea
@@ -466,7 +466,7 @@
 
           <div class="custom-provider-save-row">
             <Button
-              :label="editingCustomProviderName ? 'Update Provider' : 'Create Provider'"
+              :label="editingCustomProviderName ? t('adminProviderSettings.geocodingSettingsTab.form.updateProvider') : t('adminProviderSettings.geocodingSettingsTab.form.createProvider')"
               icon="pi pi-save"
               :loading="isSavingCustomProvider"
               :disabled="adminReadOnly"
@@ -481,6 +481,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
@@ -498,11 +499,12 @@ import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
 import { GEOCODING_PROVIDER_OPTIONS } from '@/constants/adminSettingsMetadata'
 import { getPlaceholder as getPlaceholderHelper, parseSettingValue } from '@/utils/settingHelpers'
-import apiService from '@/utils/apiService'
-import adminService from '@/utils/adminService'
-import { extractApiErrorDetail } from '@/utils/apiErrorDetail'
+import { useAdminStore } from '@/stores/admin'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
+const { t } = useI18n()
+const adminService = useAdminStore()
 const { loadSettings } = useAdminSettings()
 const toast = useToast()
 const authStore = useAuthStore()
@@ -536,10 +538,10 @@ const customProviderForm = ref({
   delayMs: null
 })
 
-const customProviderTypeOptions = [
-  { label: 'Photon compatible', value: 'photon' },
-  { label: 'Nominatim compatible', value: 'nominatim' }
-]
+const customProviderTypeOptions = computed(() => [
+  { label: t('adminProviderSettings.geocodingSettingsTab.form.photonCompatible'), value: 'photon' },
+  { label: t('adminProviderSettings.geocodingSettingsTab.form.nominatimCompatible'), value: 'nominatim' }
+])
 
 const providerDefinitions = [
   {
@@ -568,7 +570,7 @@ const providerDefinitions = [
     label: 'Google Maps',
     enabledKey: 'geocoding.googlemaps.enabled',
     credentialKey: 'geocoding.googlemaps.api-key',
-    credentialLabel: 'API Key',
+    credentialLabelKey: 'apiKey',
     requiresCredential: true,
     settingsKeys: [
       'geocoding.googlemaps.language'
@@ -579,7 +581,7 @@ const providerDefinitions = [
     label: 'Mapbox',
     enabledKey: 'geocoding.mapbox.enabled',
     credentialKey: 'geocoding.mapbox.access-token',
-    credentialLabel: 'Access Token',
+    credentialLabelKey: 'accessToken',
     requiresCredential: true,
     settingsKeys: []
   },
@@ -588,7 +590,7 @@ const providerDefinitions = [
     label: 'Geoapify',
     enabledKey: 'geocoding.geoapify.enabled',
     credentialKey: 'geocoding.geoapify.api-key',
-    credentialLabel: 'API Key',
+    credentialLabelKey: 'apiKey',
     requiresCredential: true,
     settingsKeys: [
       'geocoding.geoapify.language',
@@ -600,7 +602,7 @@ const providerDefinitions = [
     label: 'ChibiGeo',
     enabledKey: 'geocoding.chibigeo.enabled',
     credentialKey: 'geocoding.chibigeo.api-key',
-    credentialLabel: 'API Key',
+    credentialLabelKey: 'apiKey',
     requiresCredential: true,
     settingsKeys: [
       'geocoding.chibigeo.url',
@@ -644,7 +646,7 @@ const providerOptions = computed(() =>
 )
 
 const fallbackProviderOptions = computed(() => [
-  { label: 'None', value: '' },
+  { label: t('adminProviderSettings.shared.none'), value: '' },
   ...providerOptions.value
 ])
 
@@ -695,10 +697,10 @@ const customProviderDeleteBlockReason = (provider) => {
     return null
   }
   if (isPrimaryProviderName(provider.name)) {
-    return 'Cannot delete a provider while it is selected as primary'
+    return t('adminProviderSettings.geocodingSettingsTab.deleteBlockedPrimary')
   }
   if (isFallbackProviderName(provider.name)) {
-    return 'Cannot delete a provider while it is selected as fallback'
+    return t('adminProviderSettings.geocodingSettingsTab.deleteBlockedFallback')
   }
   return null
 }
@@ -706,6 +708,14 @@ const customProviderDeleteBlockReason = (provider) => {
 const isCustomProviderDeleteBlocked = (provider) => !!customProviderDeleteBlockReason(provider)
 
 const getPlaceholder = (setting) => getPlaceholderHelper(setting)
+
+const getCredentialLabel = (provider) => provider?.credentialLabelKey
+  ? t(`adminProviderSettings.geocodingSettingsTab.credentialLabels.${provider.credentialLabelKey}`)
+  : ''
+
+const getCredentialLabelLower = (provider) => provider?.credentialLabelKey
+  ? t(`adminProviderSettings.geocodingSettingsTab.credentialLabelsLower.${provider.credentialLabelKey}`)
+  : ''
 
 const credentialStored = (setting) =>
   !credentialCleared.value[setting.key] &&
@@ -726,15 +736,15 @@ const providerCredentialAvailable = (provider) => {
 
 const credentialStateText = (setting) => {
   if (credentialDraftPresent(setting.key)) {
-    return 'New value ready to save'
+    return t('adminProviderSettings.shared.credentialState.newValueReady')
   }
   if (credentialCleared.value[setting.key]) {
-    return 'Will be cleared on save'
+    return t('adminProviderSettings.shared.credentialState.willBeCleared')
   }
   if (credentialStored(setting)) {
-    return 'Saved'
+    return t('adminProviderSettings.shared.credentialState.saved')
   }
-  return 'Not set'
+  return t('adminProviderSettings.shared.credentialState.notSet')
 }
 
 const credentialInputProps = (setting) => ({
@@ -814,7 +824,7 @@ const clearCredential = (setting) => {
   markDirty()
 }
 
-const validatePhotonLanguage = (value) => {
+const validatePhotonLanguage = (value, providerName = 'Photon') => {
   const raw = value == null ? '' : String(value)
   const trimmed = raw.trim()
   if (!trimmed) {
@@ -828,9 +838,15 @@ const validatePhotonLanguage = (value) => {
 
   const prefixMatch = normalized.match(/^([a-z]{2,3})[-_].*$/)
   const suggestion = prefixMatch && ALLOWED_PHOTON_LANGUAGE_SET.has(prefixMatch[1]) ? prefixMatch[1] : null
-  const suggestionPart = suggestion ? ` Try "${suggestion}".` : ''
+  const suggestionPart = suggestion
+    ? t('adminProviderSettings.geocodingSettingsTab.validation.invalidLanguageTrySuffix', { code: suggestion })
+    : ''
 
-  return `Invalid Photon language "${trimmed}". Use a simple language code (for example: ${PHOTON_LANGUAGE_EXAMPLES}) or leave empty for provider default.${suggestionPart}`
+  return t('adminProviderSettings.geocodingSettingsTab.validation.invalidLanguageBase', {
+    provider: providerName,
+    value: trimmed,
+    examples: PHOTON_LANGUAGE_EXAMPLES
+  }) + suggestionPart
 }
 
 const normalizeCustomProviderName = (value) =>
@@ -872,12 +888,15 @@ onMounted(async () => {
 
 const validateAllSettings = () => {
   if (enabledProviders.value.length === 0) {
-    return 'At least one geocoding provider must be enabled'
+    return t('adminProviderSettings.geocodingSettingsTab.validation.atLeastOneProviderEnabled')
   }
 
   for (const provider of providerDefinitions) {
     if (isProviderEnabled(provider) && provider.requiresCredential && !providerCredentialAvailable(provider)) {
-      return `Cannot enable ${provider.label} without providing ${provider.credentialLabel.toLowerCase()}`
+      return t('adminProviderSettings.geocodingSettingsTab.validation.cannotEnableWithoutCredential', {
+        provider: provider.label,
+        credential: getCredentialLabelLower(provider)
+      })
     }
   }
 
@@ -889,15 +908,15 @@ const validateAllSettings = () => {
   const allEnabledProviderNames = [...enabledProviders.value, ...enabledCustomProviderNames]
 
   if (primaryProvider && !allEnabledProviderNames.includes(primaryProvider)) {
-    return `Primary provider "${primaryProvider}" is not enabled. Please enable it first or choose a different provider.`
+    return t('adminProviderSettings.geocodingSettingsTab.validation.primaryProviderNotEnabled', { provider: primaryProvider })
   }
 
   if (fallbackProvider && fallbackProvider !== '') {
     if (!allEnabledProviderNames.includes(fallbackProvider)) {
-      return `Fallback provider "${fallbackProvider}" is not enabled. Please enable it first or choose a different provider.`
+      return t('adminProviderSettings.geocodingSettingsTab.validation.fallbackProviderNotEnabled', { provider: fallbackProvider })
     }
     if (fallbackProvider === primaryProvider) {
-      return 'Fallback provider cannot be the same as primary provider'
+      return t('adminProviderSettings.geocodingSettingsTab.validation.fallbackSameAsPrimary')
     }
   }
 
@@ -906,9 +925,9 @@ const validateAllSettings = () => {
     return photonLanguageError
   }
 
-  const chibiGeoLanguageError = validatePhotonLanguage(getSettingValue('geocoding.chibigeo.language'))
+  const chibiGeoLanguageError = validatePhotonLanguage(getSettingValue('geocoding.chibigeo.language'), 'ChibiGeo')
   if (chibiGeoLanguageError) {
-    return chibiGeoLanguageError.replace('Photon', 'ChibiGeo')
+    return chibiGeoLanguageError
   }
 
   return null
@@ -969,7 +988,7 @@ const saveAllChanges = async () => {
   if (validationError) {
     toast.add({
       severity: 'error',
-      summary: 'Validation Error',
+      summary: t('adminProviderSettings.shared.validationError'),
       detail: validationError,
       life: 5000
     })
@@ -985,9 +1004,7 @@ const saveAllChanges = async () => {
       return
     }
 
-    const response = await apiService.post('/admin/settings/bulk', {
-      settings: changedSettings
-    })
+    await adminService.bulkUpdateSettings(changedSettings)
 
     await reloadGeocodingSettings()
     originalSettings.value = JSON.parse(JSON.stringify(geocodingSettings.value))
@@ -997,19 +1014,17 @@ const saveAllChanges = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Settings Saved',
-      detail: `Successfully saved ${response.updated} settings`,
+      summary: t('adminProviderSettings.shared.settingsSaved'),
+      detail: t('adminProviderSettings.geocodingSettingsTab.toasts.settingsSavedDetail', { count: changedSettings.length }),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to save settings:', error)
-    const errorDetail = extractApiErrorDetail(error, 'Failed to save settings')
-    const errorKey = error.response?.data?.key
-
+    const errorDetail = formatApiErrorDetail(error, t('adminProviderSettings.geocodingSettingsTab.toasts.saveFailedDetail'))
     toast.add({
       severity: 'error',
-      summary: 'Save Failed',
-      detail: errorKey ? `${errorKey}: ${errorDetail}` : errorDetail,
+      summary: t('adminProviderSettings.shared.saveFailed'),
+      detail: errorDetail,
       life: 5000
     })
 
@@ -1031,8 +1046,8 @@ const discardChanges = () => {
 
   toast.add({
     severity: 'info',
-    summary: 'Changes Discarded',
-    detail: 'All unsaved changes have been discarded',
+    summary: t('adminProviderSettings.geocodingSettingsTab.toasts.changesDiscarded'),
+    detail: t('adminProviderSettings.geocodingSettingsTab.toasts.changesDiscardedDetail'),
     life: 3000
   })
 }
@@ -1086,14 +1101,14 @@ const parseHeaders = () => {
   }
   const parsed = JSON.parse(text)
   if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
-    throw new Error('Headers JSON must be an object')
+    throw new Error(t('adminProviderSettings.geocodingSettingsTab.validation.headersNotObject'))
   }
   for (const [key, value] of Object.entries(parsed)) {
     if (!String(key).trim()) {
-      throw new Error('Header names cannot be empty')
+      throw new Error(t('adminProviderSettings.geocodingSettingsTab.validation.headerNameEmpty'))
     }
     if (typeof value !== 'string') {
-      throw new Error(`Header "${key}" value must be a string`)
+      throw new Error(t('adminProviderSettings.geocodingSettingsTab.validation.headerValueNotString', { key }))
     }
   }
   return parsed
@@ -1111,37 +1126,37 @@ const validateCustomProviderForm = () => {
   customProviderForm.value.name = name
 
   if (!name) {
-    errors.name = 'Provider name is required'
+    errors.name = t('adminProviderSettings.geocodingSettingsTab.validation.nameRequired')
   } else if (!CUSTOM_PROVIDER_NAME_PATTERN.test(name)) {
-    errors.name = 'Use lowercase letters, numbers, and hyphens. Start with a letter or number.'
+    errors.name = t('adminProviderSettings.geocodingSettingsTab.validation.namePattern')
   } else if (name.length > 50) {
-    errors.name = 'Provider name must be 50 characters or fewer'
+    errors.name = t('adminProviderSettings.geocodingSettingsTab.validation.nameTooLong')
   } else if (!editingCustomProviderName.value && providerDefinitions.some(provider => provider.id === name)) {
-    errors.name = 'Provider name is reserved for a built-in provider'
+    errors.name = t('adminProviderSettings.geocodingSettingsTab.validation.nameReserved')
   } else if (!editingCustomProviderName.value && customProviders.value.some(provider => provider.name === name)) {
-    errors.name = 'A custom provider with this name already exists'
+    errors.name = t('adminProviderSettings.geocodingSettingsTab.validation.nameTaken')
   }
 
   if (!displayName) {
-    errors.displayName = 'Display name is required'
+    errors.displayName = t('adminProviderSettings.geocodingSettingsTab.validation.displayNameRequired')
   } else if (displayName.length > 50) {
-    errors.displayName = 'Display name must be 50 characters or fewer'
+    errors.displayName = t('adminProviderSettings.geocodingSettingsTab.validation.displayNameTooLong')
   }
 
   if (!CUSTOM_PROVIDER_TYPES.has(type)) {
-    errors.type = 'Choose Photon compatible or Nominatim compatible'
+    errors.type = t('adminProviderSettings.geocodingSettingsTab.validation.typeInvalid')
   }
 
   if (!url) {
-    errors.url = 'Base URL is required'
+    errors.url = t('adminProviderSettings.geocodingSettingsTab.validation.urlRequired')
   } else {
     try {
       const parsedUrl = new URL(url)
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        errors.url = 'Base URL must start with http:// or https://'
+        errors.url = t('adminProviderSettings.geocodingSettingsTab.validation.urlProtocol')
       }
     } catch {
-      errors.url = 'Enter a valid base URL'
+      errors.url = t('adminProviderSettings.geocodingSettingsTab.validation.urlInvalid')
     }
   }
 
@@ -1153,7 +1168,7 @@ const validateCustomProviderForm = () => {
   }
 
   if (delayMs != null && delayMs !== '' && (!Number.isInteger(delayMs) || delayMs < 0)) {
-    errors.delayMs = 'Delay must be a whole number greater than or equal to 0'
+    errors.delayMs = t('adminProviderSettings.geocodingSettingsTab.validation.delayInvalid')
   }
 
   try {
@@ -1193,7 +1208,7 @@ const saveCustomProvider = async () => {
 
   const validationError = validateCustomProviderForm()
   if (validationError) {
-    toast.add({ severity: 'error', summary: 'Validation Error', detail: validationError, life: 5000 })
+    toast.add({ severity: 'error', summary: t('adminProviderSettings.shared.validationError'), detail: validationError, life: 5000 })
     return
   }
 
@@ -1207,10 +1222,15 @@ const saveCustomProvider = async () => {
     }
     await reloadCustomProviders()
     resetCustomProviderForm()
-    toast.add({ severity: 'success', summary: 'Provider Saved', detail: 'Custom geocoding provider saved', life: 3000 })
+    toast.add({
+      severity: 'success',
+      summary: t('adminProviderSettings.geocodingSettingsTab.toasts.providerSaved'),
+      detail: t('adminProviderSettings.geocodingSettingsTab.toasts.providerSavedDetail'),
+      life: 3000
+    })
   } catch (error) {
-    const detail = extractApiErrorDetail(error, 'Failed to save custom provider')
-    toast.add({ severity: 'error', summary: 'Save Failed', detail, life: 5000 })
+    const detail = formatApiErrorDetail(error, t('adminProviderSettings.geocodingSettingsTab.toasts.providerSaveFailedDetail'))
+    toast.add({ severity: 'error', summary: t('adminProviderSettings.shared.saveFailed'), detail, life: 5000 })
   } finally {
     isSavingCustomProvider.value = false
   }
@@ -1227,10 +1247,15 @@ const deleteCustomProvider = async (provider) => {
     if (editingCustomProviderName.value === provider.name) {
       resetCustomProviderForm()
     }
-    toast.add({ severity: 'success', summary: 'Provider Deleted', detail: 'Custom geocoding provider deleted', life: 3000 })
+    toast.add({
+      severity: 'success',
+      summary: t('adminProviderSettings.geocodingSettingsTab.toasts.providerDeleted'),
+      detail: t('adminProviderSettings.geocodingSettingsTab.toasts.providerDeletedDetail'),
+      life: 3000
+    })
   } catch (error) {
-    const detail = extractApiErrorDetail(error, 'Failed to delete custom provider')
-    toast.add({ severity: 'error', summary: 'Delete Failed', detail, life: 5000 })
+    const detail = formatApiErrorDetail(error, t('adminProviderSettings.geocodingSettingsTab.toasts.providerDeleteFailedDetail'))
+    toast.add({ severity: 'error', summary: t('adminProviderSettings.geocodingSettingsTab.toasts.deleteFailed'), detail, life: 5000 })
   }
 }
 </script>
@@ -1240,10 +1265,10 @@ const deleteCustomProvider = async (provider) => {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--surface-section);
+  background: var(--gp-surface-muted);
   padding: 1rem;
   margin: -1rem -1rem 1rem -1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1284,7 +1309,7 @@ const deleteCustomProvider = async (provider) => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 
@@ -1297,9 +1322,9 @@ const deleteCustomProvider = async (provider) => {
 .providers-workspace {
   width: 100%;
   max-width: 1240px;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   overflow: hidden;
 }
 
@@ -1310,21 +1335,21 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .providers-workspace-header {
-  border-bottom: 1px solid var(--surface-border);
-  background: var(--surface-section);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .provider-list-panel {
   width: 100%;
   min-width: 0;
   padding: 0.75rem 0;
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--gp-border);
 }
 
 .workspace-panel-heading {
   margin: 0;
   padding: 0.75rem 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1345,9 +1370,9 @@ const deleteCustomProvider = async (provider) => {
   gap: 0.75rem;
   padding: 0.7rem 1rem;
   border: 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
   background: transparent;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   text-align: left;
   cursor: pointer;
 }
@@ -1358,11 +1383,11 @@ const deleteCustomProvider = async (provider) => {
 
 .provider-row:hover,
 .provider-row.selected {
-  background: var(--surface-hover);
+  background: var(--gp-surface-hover);
 }
 
 .provider-row.selected {
-  background: var(--surface-hover);
+  background: var(--gp-surface-hover);
   box-shadow: inset 3px 0 0 var(--gp-primary);
 }
 
@@ -1395,7 +1420,7 @@ const deleteCustomProvider = async (provider) => {
 .provider-details {
   width: 100%;
   max-width: none;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   padding: 1rem 1.25rem;
 }
 
@@ -1405,7 +1430,7 @@ const deleteCustomProvider = async (provider) => {
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .provider-details-header h4 {
@@ -1425,7 +1450,7 @@ const deleteCustomProvider = async (provider) => {
   gap: 1rem;
   align-items: start;
   padding: 0.9rem 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .detail-row:last-child {
@@ -1465,7 +1490,7 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .empty-provider-settings {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.9rem;
   padding: 0.8rem 0 0 0;
 }
@@ -1487,13 +1512,13 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .credential-state {
-  color: var(--green-600);
+  color: var(--p-green-600);
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .credential-state.missing {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .credential-input {
@@ -1505,9 +1530,9 @@ const deleteCustomProvider = async (provider) => {
   max-width: 1240px;
   display: grid;
   grid-template-columns: minmax(360px, 480px) minmax(420px, 760px);
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
   overflow: hidden;
 }
 
@@ -1517,7 +1542,7 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .custom-provider-list {
-  border-right: 1px solid var(--surface-border);
+  border-right: 1px solid var(--gp-border);
 }
 
 .custom-provider-row {
@@ -1526,7 +1551,7 @@ const deleteCustomProvider = async (provider) => {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem 0;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .custom-provider-row:last-child {
@@ -1552,13 +1577,13 @@ const deleteCustomProvider = async (provider) => {
 }
 
 .field-error {
-  color: var(--red-500);
+  color: var(--p-red-500);
   line-height: 1.35;
 }
 
 .headers-input {
   width: min(100%, 520px);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .custom-provider-save-row {
@@ -1592,19 +1617,19 @@ const deleteCustomProvider = async (provider) => {
 
   .custom-provider-list {
     border-right: none;
-    border-bottom: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--gp-border);
   }
 
   .provider-list-panel {
     border-right: none;
-    border-bottom: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--gp-border);
   }
 
   .provider-list-panel::before,
   .provider-details::before {
     display: block;
     padding: 0 1rem 0.65rem 1rem;
-    color: var(--text-color-secondary);
+    color: var(--gp-text-secondary);
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.04em;

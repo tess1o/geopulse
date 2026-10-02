@@ -1,9 +1,8 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    :header="title || 'Place Location'"
+    :header="title || t('maps.popups.placesMap.defaultTitle')"
     :modal="true"
-    :style="dialogStyle"
     class="places-map-dialog"
     @hide="$emit('close')"
   >
@@ -33,8 +32,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Dialog } from 'primevue'
 import { MapContainer, FavoritesLayer } from '@/components/maps'
+
+const { t } = useI18n()
 
 const props = defineProps({
   coordinates: {
@@ -48,7 +50,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Place Location'
+    default: ''
   },
   markerType: {
     type: String,
@@ -62,10 +64,6 @@ const emit = defineEmits(['close'])
 const internalVisible = ref(props.showMap)
 const mapId = ref(Math.random().toString(36).substr(2, 9))
 const mapContainerRef = ref(null)
-const dialogStyle = {
-  width: 'min(92vw, 760px)',
-  maxWidth: '760px'
-}
 const mapHeight = 'min(60vh, 420px)'
 
 // Computed
@@ -74,7 +72,7 @@ const favoriteData = computed(() => {
   
   return [{
     id: 'place-marker',
-    name: props.title || 'Selected Place',
+    name: props.title || t('maps.popups.placesMap.defaultMarkerName'),
     latitude: props.coordinates[0],
     longitude: props.coordinates[1],
     type: 'point',
@@ -119,11 +117,16 @@ export default {
   overflow: hidden;
 }
 
+:global(.places-map-dialog.p-dialog) {
+  width: min(92vw, 760px);
+  max-width: 760px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   :global(.places-map-dialog.p-dialog) {
-    width: calc(100vw - 1rem) !important;
-    max-width: calc(100vw - 1rem) !important;
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
     margin: 0.5rem;
   }
 

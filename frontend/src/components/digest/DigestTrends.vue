@@ -2,7 +2,7 @@
   <div class="digest-trends">
     <h3 class="trends-title">
       <i class="pi pi-chart-line"></i>
-      Activity Trends
+      {{ t('analytics.digest.trends.title') }}
     </h3>
 
     <div v-if="hasChartData" class="chart-container">
@@ -16,13 +16,14 @@
 
     <div class="no-trends-placeholder" v-else>
       <i class="pi pi-chart-line"></i>
-      <p>No activity trends for this period.</p>
+      <p>{{ t('analytics.digest.trends.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BarChart from '@/components/charts/BarChart.vue'
 import {
   convertKilometersToDisplayUnit,
@@ -31,24 +32,29 @@ import {
 } from '@/utils/calculationsHelpers'
 import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
 
-// Trip type display configuration with distinct colors
-const tripTypeConfig = {
-  WALK: { label: 'Walk', color: 'success' },      // Green
-  RUNNING: { label: 'Running', color: 'contrast' }, // Purple/Contrast
-  BICYCLE: { label: 'Bicycle', color: 'warning' }, // Orange/Yellow
-  CAR: { label: 'Car', color: 'primary' },        // Blue
-  MOTORCYCLE: { label: 'Motorcycle', color: 'info' },
-  TRAIN: { label: 'Train', color: 'secondary' },  // Gray
-  FLIGHT: { label: 'Flight', color: 'danger' },   // Red
-  BOAT: { label: 'Boat', color: 'info' }          // Cyan
-}
+const { t } = useI18n()
+
+// Trip type display configuration with distinct colors -- labels resolve through the shared
+// `movementTypes.*` catalog (same enum values used by trip reconstruction/profile) rather than
+// duplicating English text here.
+const tripTypeConfig = computed(() => ({
+  WALK: { label: t('movementTypes.WALK'), color: 'success' },
+  RUNNING: { label: t('movementTypes.RUNNING'), color: 'contrast' },
+  BICYCLE: { label: t('movementTypes.BICYCLE'), color: 'warning' },
+  CAR: { label: t('movementTypes.CAR'), color: 'primary' },
+  MOTORCYCLE: { label: t('movementTypes.MOTORCYCLE'), color: 'info' },
+  PUBLIC_TRANSPORT: { label: t('movementTypes.PUBLIC_TRANSPORT'), color: 'secondary' },
+  TRAIN: { label: t('movementTypes.TRAIN'), color: 'secondary' },
+  FLIGHT: { label: t('movementTypes.FLIGHT'), color: 'danger' },
+  BOAT: { label: t('movementTypes.BOAT'), color: 'info' }
+}))
 
 // Y-axis title based on unit system and view mode
 const yAxisTitle = computed(() => {
   const unitLabel = getDistanceUnitLabel()
   return props.viewMode === 'monthly'
-    ? `Weekly Distance (${unitLabel})`
-    : `Monthly Distance (${unitLabel})`
+    ? t('analytics.digest.trends.weeklyDistance', { unit: unitLabel })
+    : t('analytics.digest.trends.monthlyDistance', { unit: unitLabel })
 })
 
 const props = defineProps({
@@ -105,7 +111,7 @@ const chartDatasets = computed(() => {
     const alignedData = alignDataWithKeys(chartData, chartData.data)
 
     // Get configuration for this trip type
-    const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
+    const config = tripTypeConfig.value[tripType] || { label: tripType, color: 'secondary' }
 
     datasets.push({
       label: `${config.label}`,
@@ -119,13 +125,7 @@ const chartDatasets = computed(() => {
 </script>
 
 <style scoped>
-.digest-trends {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-}
+.digest-trends { background: var(--gp-surface-card); border: 1px solid var(--gp-border); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .trends-title {
   display: flex;
@@ -141,13 +141,7 @@ const chartDatasets = computed(() => {
   color: var(--gp-secondary);
 }
 
-.chart-container {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  padding: var(--gp-spacing-lg);
-  height: 420px;
-}
+.chart-container { background: var(--gp-surface-muted); border: 0; border-radius: 12px; padding: var(--gp-spacing-lg); height: 380px; }
 
 .no-trends-placeholder {
   display: flex;
@@ -157,8 +151,8 @@ const chartDatasets = computed(() => {
   padding: var(--gp-spacing-xxl) var(--gp-spacing-xl);
   text-align: center;
   color: var(--gp-text-muted);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   min-height: 200px;
 }
@@ -175,22 +169,6 @@ const chartDatasets = computed(() => {
   font-size: 0.9375rem;
   font-style: italic;
   opacity: 0.8;
-}
-
-/* Dark Mode */
-.p-dark .digest-trends {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .chart-container,
-.p-dark .no-trends-placeholder {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .trends-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

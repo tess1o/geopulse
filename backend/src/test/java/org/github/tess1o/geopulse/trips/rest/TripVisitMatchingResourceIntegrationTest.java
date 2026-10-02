@@ -107,14 +107,13 @@ class TripVisitMatchingResourceIntegrationTest {
                 .header("Authorization", "Bearer " + accessToken)
                 .queryParam("applyAuto", true)
                 .when()
-                .get("/api/trips/{tripId}/visit-suggestions", tripId)
+                .get("/api/v1/trips/{tripId}/visit-suggestions", tripId)
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data[0].planItemId", equalTo(planItemId.intValue()))
-                .body("data[0].matchedStayId", equalTo(stayId.intValue()))
-                .body("data[0].decision", equalTo("AUTO_MATCHED"))
-                .body("data[0].applied", equalTo(true));
+                .body("[0].planItemId", equalTo(planItemId.intValue()))
+                .body("[0].matchedStayId", equalTo(stayId.intValue()))
+                .body("[0].decision", equalTo("AUTO_MATCHED"))
+                .body("[0].applied", equalTo(true));
     }
     @Test
     void getVisitSuggestions_shouldReturnNotFoundForUnknownTrip() {
@@ -122,10 +121,10 @@ class TripVisitMatchingResourceIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + accessToken)
                 .when()
-                .get("/api/trips/{tripId}/visit-suggestions", 999999L)
+                .get("/api/v1/trips/{tripId}/visit-suggestions", 999999L)
                 .then()
                 .statusCode(404)
-                .body("status", equalTo("error"))
-                .body("message", equalTo("Trip not found"));
+                .body("code", equalTo("TRIP_NOT_FOUND"))
+                .body("detail", equalTo("Trip not found"));
     }
 }

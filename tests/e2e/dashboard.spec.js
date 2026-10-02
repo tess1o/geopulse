@@ -343,7 +343,7 @@ test.describe('Dashboard', () => {
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
       const user = await dbManager.getUserByEmail(testUser.email);
-      await dbManager.client.query('UPDATE users SET date_format = $1 WHERE id = $2', [DateFormatValues.DMY, user.id]);
+      await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2", [DateFormatValues.DMY, user.id]);
 
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);

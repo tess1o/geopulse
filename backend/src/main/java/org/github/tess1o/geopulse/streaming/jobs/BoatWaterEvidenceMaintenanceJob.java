@@ -44,6 +44,7 @@ public class BoatWaterEvidenceMaintenanceJob {
             return;
         }
 
+        @SuppressWarnings("unchecked")
         List<UUID> userIds = entityManager.createNativeQuery("""
                         SELECT gp.user_id
                         FROM gps_points gp
@@ -74,7 +75,7 @@ public class BoatWaterEvidenceMaintenanceJob {
             } catch (Exception e) {
                 result = "error";
                 countUsers("error", 1);
-                log.warn("Failed to repair Boat water evidence for user {}: {}", userId, e.getMessage());
+                log.warn("Failed to repair Boat water evidence for user {}: {}", userId, e.getMessage(), e);
             }
         }
         recordMaintenance(startedAtNanos, result);

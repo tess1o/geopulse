@@ -26,6 +26,7 @@
     :initial-photo-index="photoViewerIndex"
     :allow-show-on-map="allowShowOnMap"
     :preloaded-blob-url-resolver="resolvePreloadedBlobUrl"
+    :auth-token="authToken"
     @show-on-map="handlePhotoShowOnMap"
     @close="closePhotoViewer"
   />
@@ -33,8 +34,11 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import { getPhotoThumbnailBlobUrl, hasPhotoThumbnail } from '@/utils/immichPhotoThumbnails'
+
+const { t } = useI18n()
 
 const props = defineProps({
   photos: {
@@ -47,11 +51,15 @@ const props = defineProps({
   },
   accentColor: {
     type: String,
-    default: 'var(--gp-primary)'
+    default: 'var(--gp-primary-text)'
   },
   hoverBgColor: {
     type: String,
-    default: 'var(--gp-primary-light)'
+    default: 'var(--gp-primary-soft)'
+  },
+  authToken: {
+    type: String,
+    default: null
   }
 })
 
@@ -69,12 +77,12 @@ const singlePhoto = computed(() => {
 const showSinglePhotoThumbnail = computed(() => Boolean(singlePhoto.value && singlePhotoThumbnailBlobUrl.value))
 const triggerLabel = computed(() => {
   if (props.photos.length === 1) {
-    return 'Open photo'
+    return t('timeline.photos.openSingle')
   }
 
-  return `Open ${props.photos.length} photos`
+  return t('timeline.photos.openMultiple', { count: props.photos.length })
 })
-const singlePhotoAlt = computed(() => singlePhoto.value?.originalFileName || 'Photo')
+const singlePhotoAlt = computed(() => singlePhoto.value?.originalFileName || t('timeline.photos.fallbackAlt'))
 const triggerStyle = computed(() => ({
   '--photo-trigger-color': props.accentColor,
   '--photo-trigger-hover-bg': props.hoverBgColor
@@ -91,7 +99,8 @@ watch(
     }
 
     try {
-      const blobUrl = await getPhotoThumbnailBlobUrl(photo)
+      const extraHeaders = props.authToken ? { 'Authorization': `Bearer ${props.authToken}` } : {}
+      const blobUrl = await getPhotoThumbnailBlobUrl(photo, extraHeaders)
       if (loadToken === thumbnailLoadToken && blobUrl) {
         singlePhotoThumbnailBlobUrl.value = blobUrl
       }
@@ -133,7 +142,7 @@ const resolvePreloadedBlobUrl = (photoId) => {
 .photo-trigger {
   border: 1px solid var(--gp-primary-light);
   border-radius: 999px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--photo-trigger-color);
   display: inline-flex;
   align-items: center;
@@ -159,7 +168,7 @@ const resolvePreloadedBlobUrl = (photoId) => {
 }
 
 .photo-trigger--thumbnail:hover {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .photo-trigger-thumbnail {

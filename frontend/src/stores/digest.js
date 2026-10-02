@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useDigestStore = defineStore('digest', {
     state: () => ({
@@ -66,13 +67,10 @@ export const useDigestStore = defineStore('digest', {
                 this.setLoading(true)
                 this.clearError()
 
-                const response = await apiService.get('/digest/monthly', {
+                const digestData = await apiService.get('/digests/monthly', {
                     year,
                     month
                 })
-
-                // Extract data from ApiResponse wrapper
-                const digestData = response.data || response
 
                 // Cache the result
                 this.monthlyDigests[key] = digestData
@@ -81,8 +79,8 @@ export const useDigestStore = defineStore('digest', {
                 return digestData
             } catch (error) {
                 console.error('Error fetching monthly digest:', error)
-                this.setError(error.message || 'Failed to fetch monthly digest')
-                throw error
+                this.setError(normalizeApiError(error, 'Failed to fetch monthly digest'))
+                throw this.error
             } finally {
                 this.setLoading(false)
             }
@@ -100,12 +98,9 @@ export const useDigestStore = defineStore('digest', {
                 this.setLoading(true)
                 this.clearError()
 
-                const response = await apiService.get('/digest/yearly', {
+                const digestData = await apiService.get('/digests/yearly', {
                     year
                 })
-
-                // Extract data from ApiResponse wrapper
-                const digestData = response.data || response
 
                 // Cache the result
                 this.yearlyDigests[year] = digestData
@@ -114,8 +109,8 @@ export const useDigestStore = defineStore('digest', {
                 return digestData
             } catch (error) {
                 console.error('Error fetching yearly digest:', error)
-                this.setError(error.message || 'Failed to fetch yearly digest')
-                throw error
+                this.setError(normalizeApiError(error, 'Failed to fetch yearly digest'))
+                throw this.error
             } finally {
                 this.setLoading(false)
             }
@@ -166,17 +161,16 @@ export const useDigestStore = defineStore('digest', {
                     : { year, layer }
 
                 const endpoint = viewMode === 'monthly'
-                    ? '/digest/heatmap/monthly'
-                    : '/digest/heatmap/yearly'
+                    ? '/digest-heatmaps/monthly'
+                    : '/digest-heatmaps/yearly'
 
-                const response = await apiService.get(endpoint, params)
-                const data = response.data || response
+                const data = await apiService.get(endpoint, params)
                 this.heatmapData[key] = data
                 return data
             } catch (error) {
                 console.error('Error fetching heatmap data:', error)
                 if (!silent) {
-                    this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                    this.heatmapError = normalizeApiError(error, 'Failed to fetch heatmap data')
                 }
                 return []
             } finally {
@@ -211,24 +205,33 @@ export const useDigestStore = defineStore('digest', {
                     this.heatmapError = null
                 }
 
-                const response = await apiService.get('/digest/heatmap/range', {
-                    startTime,
-                    endTime,
+                const data = await apiService.get('/digest-heatmaps/range', {
+                    from: startTime,
+                    to: endTime,
                     layer
                 })
-                const data = response.data || response
                 this.heatmapData[key] = data
                 return data
             } catch (error) {
                 console.error('Error fetching heatmap range data:', error)
                 if (!silent) {
-                    this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                    this.heatmapError = normalizeApiError(error, 'Failed to fetch heatmap data')
                 }
                 return []
             } finally {
                 if (!silent) {
                     this.heatmapLoading = false
                 }
+            }
+        },
+
+        async downloadPdf(params) {
+            this.error = null
+            try {
+                return await apiService.download('/digests/pdf', params)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to export digest PDF')
+                throw this.error
             }
         }
     }

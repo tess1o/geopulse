@@ -1,5 +1,9 @@
 <template>
   <div class="login-page">
+    <div class="locale-switcher-corner">
+      <LocaleSwitcher />
+    </div>
+
     <div class="login-layout">
       <!-- Main Content -->
       <div class="login-content">
@@ -14,10 +18,10 @@
              class="login-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
           <div class="message-content">
-            <span>Login is currently disabled. Please contact your administrator.</span>
+            <span>{{ t('auth.login.disabledMessage') }}</span>
             <Button
               v-if="loginStatus.adminLoginBypassEnabled"
-              label="Administrator Access"
+              :label="t('auth.login.adminAccess')"
               icon="pi pi-shield"
               severity="warning"
               size="small"
@@ -33,10 +37,10 @@
              class="login-disabled-message">
           <i class="pi pi-info-circle"></i>
           <div class="message-content">
-            <span>Email/password login is disabled. Please use OIDC providers below.</span>
+            <span>{{ t('auth.login.emailDisabledMessage') }}</span>
             <Button
               v-if="loginStatus.adminLoginBypassEnabled"
-              label="Administrator Access"
+              :label="t('auth.login.adminAccess')"
               icon="pi pi-shield"
               severity="warning"
               size="small"
@@ -78,7 +82,7 @@
                 <Button
                   v-if="loginStatus.adminLoginBypassEnabled"
                   type="button"
-                  label="Administrator Access"
+                  :label="t('auth.login.adminAccess')"
                   icon="pi pi-shield"
                   severity="warning"
                   size="small"
@@ -92,7 +96,20 @@
               <!-- Error Display -->
               <div v-if="loginError && !shouldShowPasswordForm" class="login-error">
                 <i class="pi pi-exclamation-triangle"></i>
-                <span>{{ loginError }}</span>
+                <span>
+                  {{ loginError }}
+                  <small v-if="loginErrorReference" class="error-reference">
+                    {{ t('errors.reference.hint', { id: loginErrorReference }) }}
+                    <Button
+                      icon="pi pi-copy"
+                      text
+                      size="small"
+                      class="error-reference-copy"
+                      :aria-label="t('auth.login.copyReferenceAria')"
+                      @click="copyErrorReference"
+                    />
+                  </small>
+                </span>
               </div>
 
               <!-- Login Form (show if password login enabled OR admin override) -->
@@ -100,17 +117,17 @@
                 <!-- Admin Override Notice -->
                 <div v-if="showAdminLogin" class="admin-override-notice">
                   <i class="pi pi-shield"></i>
-                  <span>Administrator access - login restrictions bypassed</span>
+                  <span>{{ t('auth.login.adminBypassNotice') }}</span>
                 </div>
 
                 <!-- Email Field -->
                 <div class="form-field">
-                  <label for="email" class="field-label">Email Address</label>
+                  <label for="email" class="field-label">{{ t('auth.login.emailLabel') }}</label>
                   <InputText
                     id="email"
                     v-model="formData.email"
                     type="email"
-                    placeholder="Enter your email"
+                    :placeholder="t('auth.login.emailPlaceholder')"
                     :invalid="!!formErrors.email"
                     class="form-input"
                     autocomplete="email"
@@ -124,11 +141,11 @@
 
                 <!-- Password Field -->
                 <div class="form-field">
-                  <label for="password" class="field-label">Password</label>
+                  <label for="password" class="field-label">{{ t('auth.login.passwordLabel') }}</label>
                   <Password
                     id="password"
                     v-model="formData.password"
-                    placeholder="Enter your password"
+                    :placeholder="t('auth.login.passwordPlaceholder')"
                     :feedback="false"
                     toggleMask
                     :invalid="!!formErrors.password"
@@ -145,7 +162,7 @@
                 <!-- Submit Button -->
                 <Button
                   type="submit"
-                  label="Sign In"
+                  :label="t('auth.login.signIn')"
                   icon="pi pi-sign-in"
                   :loading="isLoading"
                   :disabled="isLoading || !isFormValid"
@@ -155,7 +172,20 @@
                 <!-- Error Display -->
                 <div v-if="loginError" class="login-error">
                   <i class="pi pi-exclamation-triangle"></i>
-                  <span>{{ loginError }}</span>
+                  <span>
+                    {{ loginError }}
+                    <small v-if="loginErrorReference" class="error-reference">
+                      {{ t('errors.reference.hint', { id: loginErrorReference }) }}
+                      <Button
+                        icon="pi pi-copy"
+                        text
+                        size="small"
+                        class="error-reference-copy"
+                        :aria-label="t('auth.login.copyReferenceAria')"
+                        @click="copyErrorReference"
+                      />
+                    </small>
+                  </span>
                 </div>
               </form>
 
@@ -170,9 +200,9 @@
 
               <!-- Register Link -->
               <div v-if="shouldShowRegisterLink" class="register-section">
-                <span class="register-text">Don't have an account?</span>
+                <span class="register-text">{{ t('auth.login.noAccount') }}</span>
                 <router-link to="/register" class="register-link">
-                  Create account
+                  {{ t('auth.login.createAccount') }}
                 </router-link>
               </div>
             </div>
@@ -183,18 +213,25 @@
     </div>
 
     <Toast />
+    <ErrorReferenceToast />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { formatError } from '@/utils/errorHandler'
+import { getErrorReferenceId, hasErrorReference } from '@/utils/apiErrorDetail'
+import { copyToClipboard } from '@/utils/clipboardUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 
 // Composables
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -203,6 +240,7 @@ const authStore = useAuthStore()
 // State
 const isLoading = ref(false)
 const loginError = ref('')
+const loginErrorReference = ref('')
 const demoLoginPersonaId = ref(null)
 
 const oidcProviders = ref([])
@@ -243,11 +281,11 @@ const shouldShowDemoChooser = computed(() => {
 })
 
 const formTitle = computed(() => {
-  return shouldShowDemoChooser.value ? 'Try GeoPulse' : 'Welcome Back'
+  return shouldShowDemoChooser.value ? t('auth.login.demoTitle') : t('auth.login.title')
 })
 
 const formSubtitle = computed(() => {
-  return shouldShowDemoChooser.value ? 'Choose a demo profile' : 'Sign in to continue your journey'
+  return shouldShowDemoChooser.value ? t('auth.login.demoSubtitle') : t('auth.login.subtitle')
 })
 
 // Check if OIDC is actually available (enabled AND has providers configured)
@@ -279,14 +317,14 @@ const validateForm = () => {
   
   // Email validation
   if (!formData.value.email?.trim()) {
-    formErrors.value.email = 'Email is required'
+    formErrors.value.email = t('auth.validation.emailRequired')
   } else if (!isValidEmail(formData.value.email)) {
-    formErrors.value.email = 'Please enter a valid email address'
+    formErrors.value.email = t('auth.validation.emailInvalid')
   }
-  
+
   // Password validation
   if (!formData.value.password) {
-    formErrors.value.password = 'Password is required'
+    formErrors.value.password = t('auth.validation.passwordRequired')
   }
   
   return Object.keys(formErrors.value).length === 0
@@ -304,6 +342,24 @@ const clearFieldError = (field) => {
   if (loginError.value) {
     loginError.value = ''
   }
+  loginErrorReference.value = ''
+}
+
+// Only a server-side failure carries a reference worth quoting back to support. A rejected
+// credential is the user's to fix, so it must not read like an internal error.
+const setLoginErrorReference = (error) => {
+  loginErrorReference.value = hasErrorReference(error) ? getErrorReferenceId(error) : ''
+}
+
+const copyErrorReference = async () => {
+  const copied = await copyToClipboard(loginErrorReference.value)
+
+  toast.add({
+    severity: copied ? 'success' : 'warn',
+    summary: copied ? t('common.clipboard.copied') : t('common.clipboard.copyFailed'),
+    detail: copied ? t('common.clipboard.referenceIdCopied') : t('common.clipboard.copyManually'),
+    life: 2500
+  })
 }
 
 const handleSubmit = async () => {
@@ -311,14 +367,15 @@ const handleSubmit = async () => {
   
   isLoading.value = true
   loginError.value = ''
-  
+  loginErrorReference.value = ''
+
   try {
     await authStore.login(formData.value.email.trim(), formData.value.password)
     
     toast.add({
       severity: 'success',
-      summary: 'Welcome Back!',
-      detail: 'You have successfully signed in',
+      summary: t('auth.login.toasts.signedIn.title'),
+      detail: t('auth.login.toasts.signedIn.detail'),
       life: 3000
     })
 
@@ -334,6 +391,7 @@ const handleSubmit = async () => {
     
     // Always show custom error message in the form
     loginError.value = getLoginErrorMessage(error, formattedError)
+    setLoginErrorReference(error)
   } finally {
     isLoading.value = false
   }
@@ -345,14 +403,15 @@ const handleDemoLogin = async (persona) => {
   isLoading.value = true
   demoLoginPersonaId.value = persona.id
   loginError.value = ''
+  loginErrorReference.value = ''
 
   try {
     await authStore.demoLogin(persona.id)
 
     toast.add({
       severity: 'success',
-      summary: 'Welcome Back!',
-      detail: 'You have successfully signed in',
+      summary: t('auth.login.toasts.signedIn.title'),
+      detail: t('auth.login.toasts.signedIn.detail'),
       life: 3000
     })
 
@@ -362,10 +421,11 @@ const handleDemoLogin = async (persona) => {
     console.error('Demo login error:', error)
     const formattedError = formatError(error)
     loginError.value = getDemoLoginErrorMessage(error, formattedError)
+    setLoginErrorReference(error)
 
     toast.add({
       severity: 'error',
-      summary: 'Demo Login Failed',
+      summary: t('auth.login.toasts.demoFailed'),
       detail: loginError.value,
       life: 5000
     })
@@ -385,13 +445,13 @@ const getLoginErrorMessage = (error, formattedError) => {
   // Login-specific error messages
   switch (error.response?.status) {
     case 401:
-      return 'Invalid email or password. Please check your credentials and try again.'
+      return t('auth.login.errors.invalidCredentials')
     case 403:
-      return 'Your account is locked or suspended. Please contact support.'
+      return t('auth.login.errors.lockedOut')
     case 429:
-      return 'Too many login attempts. Please wait a few minutes before trying again.'
+      return t('auth.login.errors.tooManyAttempts')
     case 422:
-      return 'Please check your email and password format.'
+      return t('auth.login.errors.badFormat')
     default:
       // Fall back to the formatted error message from our error handler
       return formattedError.message
@@ -405,13 +465,13 @@ const getDemoLoginErrorMessage = (error, formattedError) => {
 
   switch (error.response?.status) {
     case 400:
-      return 'Please choose a demo profile and try again.'
+      return t('auth.login.errors.chooseProfile')
     case 403:
-      return 'Demo login is currently disabled.'
+      return t('auth.login.errors.demoDisabled')
     case 404:
-      return 'This demo profile is not available right now.'
+      return t('auth.login.errors.profileUnavailable')
     default:
-      return formattedError.message || 'Demo login failed. Please try again.'
+      return formattedError.message || t('auth.login.errors.demoGeneric')
   }
 }
 
@@ -423,8 +483,8 @@ const handleOidcLogin = async (providerName) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Login Failed',
-      detail: `Failed to initialize login with ${providerName}. Please try again.`,
+      summary: t('auth.login.toasts.loginFailed'),
+      detail: t('auth.login.toasts.oidcInitFailed', { provider: providerName }),
       life: 5000
     });
     isLoading.value = false;
@@ -437,8 +497,8 @@ onMounted(() => {
   if (route.query.reason === 'registration_disabled') {
     toast.add({
       severity: 'warn',
-      summary: 'Registration Disabled',
-      detail: 'New user registration is currently disabled. Please log in if you already have an account.',
+      summary: t('auth.toasts.registrationDisabled'),
+      detail: t('auth.toasts.registrationDisabledDetail'),
       life: 7000
     });
   }
@@ -471,8 +531,8 @@ onMounted(() => {
       console.error("Failed to load OIDC providers", err);
       toast.add({
           severity: 'error',
-          summary: 'Could not load login options',
-          detail: 'Failed to retrieve external login providers. You can still log in with email and password.',
+          summary: t('auth.login.toasts.optionsLoadFailed'),
+          detail: t('auth.login.toasts.optionsLoadFailedDetail'),
           life: 5000
       });
   });
@@ -496,7 +556,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
   z-index: 0;
 }
 
@@ -509,6 +569,13 @@ onMounted(() => {
   bottom: 0;
   background: radial-gradient(ellipse at center, rgba(26, 86, 219, 0.1) 0%, transparent 70%);
   z-index: 1;
+}
+
+.locale-switcher-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 3;
 }
 
 /* Layout */
@@ -555,7 +622,7 @@ onMounted(() => {
   background: var(--gp-warning);
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: var(--gp-radius-medium);
-  color: var(--gp-text-on-surface-emphasis);
+  color: var(--gp-text-primary);
   font-size: 0.95rem;
   margin-bottom: 1.5rem;
   max-width: 420px;
@@ -594,7 +661,7 @@ onMounted(() => {
   background: rgba(26, 86, 219, 0.1);
   border: 1px solid rgba(26, 86, 219, 0.3);
   border-radius: var(--gp-radius-medium);
-  color: var(--gp-text-on-surface-emphasis);
+  color: var(--gp-text-primary);
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -604,22 +671,11 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-/* Dark Mode Gradient Background */
-.p-dark .login-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .login-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-}
-
-
-
 /* Login Card */
 .login-card {
   width: 100%;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-card);
 }
 
@@ -657,7 +713,7 @@ onMounted(() => {
   width: 100%;
   justify-content: center;
   padding: 0.75rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-color: var(--gp-border-medium);
   color: var(--gp-text-primary);
 }
@@ -720,7 +776,6 @@ onMounted(() => {
   margin-top: 0.25rem;
 }
 
-
 /* Submit Button */
 .submit-button {
   width: 100%;
@@ -753,12 +808,26 @@ onMounted(() => {
   margin-top: -0.5rem;
 }
 
+.login-error .error-reference {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.login-error .error-reference-copy {
+  flex: 0 0 auto;
+  opacity: 1;
+}
 
 /* Register Section */
 .register-section {
   text-align: center;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .register-text {
@@ -779,7 +848,6 @@ onMounted(() => {
   color: var(--gp-primary-hover);
   text-decoration: underline;
 }
-
 
 /* Input Styling */
 :deep(.p-inputtext) {
@@ -855,5 +923,4 @@ onMounted(() => {
     padding: 0.5rem;
   }
 }
-
 </style>

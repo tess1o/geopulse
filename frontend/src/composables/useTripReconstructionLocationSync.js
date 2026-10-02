@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { hasValidCoordinates } from '@/maps/tripReconstruction/shared/tripReconstructionMapData'
+import { t } from '@/locales'
 
 const normalizePositiveId = (value) => {
   const parsed = Number(value)
@@ -13,10 +14,13 @@ const normalizeLocationName = (value) => {
   return value.trim()
 }
 
-const registerRenameOperation = (operationMap, sourceId, nextName, sourceLabel) => {
+const registerRenameOperation = (operationMap, sourceId, nextName, sourceLabelKey) => {
   const existingName = operationMap.get(sourceId)
   if (existingName && existingName !== nextName) {
-    throw new Error(`Conflicting names for ${sourceLabel} ${sourceId}. Use one name per source.`)
+    throw new Error(t('trips.reconstructionDialog.validation.conflictingSourceNames', {
+      source: t(sourceLabelKey),
+      id: sourceId
+    }))
   }
   operationMap.set(sourceId, nextName)
 }
@@ -37,20 +41,20 @@ export function useTripReconstructionLocationSync({ segments, tripsStore, favori
 
   const locationSourceLabel = (segment) => {
     if (!segment?.locationSourceType) {
-      return 'Unknown'
+      return t('trips.locationSource.unknown')
     }
 
     switch (segment.locationSourceType) {
       case 'favorite-point':
-        return 'Favorite point'
+        return t('trips.locationSource.favoritePoint')
       case 'favorite-area':
-        return 'Favorite area'
+        return t('trips.locationSource.favoriteArea')
       case 'geocoding':
-        return 'Reverse geocoding'
+        return t('trips.locationSource.reverseGeocoding')
       case 'external-search':
-        return 'Search result'
+        return t('trips.locationSource.searchResult')
       case 'coordinates':
-        return 'Coordinates'
+        return t('trips.locationSource.coordinates')
       default:
         return segment.locationSourceType
     }
@@ -160,13 +164,13 @@ export function useTripReconstructionLocationSync({ segments, tripsStore, favori
 
       const favoriteId = normalizePositiveId(segment.locationFavoriteId)
       if (favoriteId !== null) {
-        registerRenameOperation(favoriteRenames, favoriteId, nextName, 'favorite')
+        registerRenameOperation(favoriteRenames, favoriteId, nextName, 'trips.reconstructionDialog.validation.favoriteSource')
         return
       }
 
       const geocodingId = normalizePositiveId(segment.locationGeocodingId)
       if (geocodingId !== null) {
-        registerRenameOperation(geocodingRenames, geocodingId, nextName, 'geocoding')
+        registerRenameOperation(geocodingRenames, geocodingId, nextName, 'trips.reconstructionDialog.validation.geocodingSource')
       }
     })
 
@@ -190,7 +194,7 @@ export function useTripReconstructionLocationSync({ segments, tripsStore, favori
       }
 
       if (!favorite) {
-        throw new Error(`Favorite ${favoriteId} not found for rename.`)
+        throw new Error(t('trips.reconstructionDialog.validation.favoriteNotFound', { id: favoriteId }))
       }
 
       const bounds = favorite.type === 'AREA'
@@ -216,7 +220,7 @@ export function useTripReconstructionLocationSync({ segments, tripsStore, favori
     for (const [geocodingId, nextName] of geocodingRenames.entries()) {
       const geocoding = await geocodingStore.getGeocodingResult(geocodingId)
       if (!geocoding?.id) {
-        throw new Error(`Geocoding ${geocodingId} not found for rename.`)
+        throw new Error(t('trips.reconstructionDialog.validation.geocodingNotFound', { id: geocodingId }))
       }
 
       const updated = await geocodingStore.updateGeocodingResult(geocodingId, {

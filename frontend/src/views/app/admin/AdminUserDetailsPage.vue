@@ -1,10 +1,14 @@
 <template>
   <AppLayout :padding="'none'">
-    <div class="admin-user-details">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <h1>User Details</h1>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('adminCampaignsAndUsers.userDetailsPage.title') }}</h1>
+          </div>
+        </div>
       </div>
 
       <DemoReadOnlyBanner />
@@ -25,11 +29,11 @@
             class="user-avatar"
           />
           <div class="user-header-info">
-            <h2>{{ user.fullName || 'No name' }}</h2>
+            <h2>{{ user.fullName || t('adminCampaignsAndUsers.userDetailsPage.noName') }}</h2>
             <p class="user-email">{{ user.email }}</p>
             <div class="user-badges">
               <Tag :severity="user.role === 'ADMIN' ? 'warning' : 'info'" :value="user.role" />
-              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? 'Active' : 'Disabled'" />
+              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
             </div>
           </div>
         </div>
@@ -44,20 +48,20 @@
             <div class="card">
               <div class="card-title">
                 <i class="pi pi-user"></i>
-                <h3>User Information</h3>
+                <h3>{{ t('adminCampaignsAndUsers.userDetailsPage.infoCard.title') }}</h3>
               </div>
               <div class="card-content">
                 <div class="info-group">
                   <div class="info-item">
-                    <label><i class="pi pi-key"></i> Authentication</label>
-                    <span class="info-value">{{ user.hasPassword ? 'Password' : 'OIDC only' }}</span>
+                    <label><i class="pi pi-key"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.infoCard.authentication') }}</label>
+                    <span class="info-value">{{ user.hasPassword ? t('adminCampaignsAndUsers.userDetailsPage.infoCard.password') : t('adminCampaignsAndUsers.userDetailsPage.infoCard.oidcOnly') }}</span>
                   </div>
                   <div class="info-item">
-                    <label><i class="pi pi-globe"></i> Timezone</label>
+                    <label><i class="pi pi-globe"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.infoCard.timezone') }}</label>
                     <span class="info-value">{{ user.timezone }}</span>
                   </div>
                   <div class="info-item" v-if="user.linkedOidcProviders?.length">
-                    <label><i class="pi pi-link"></i> Linked OIDC Providers</label>
+                    <label><i class="pi pi-link"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.infoCard.linkedOidcProviders') }}</label>
                     <span class="info-value">{{ user.linkedOidcProviders.join(', ') }}</span>
                   </div>
                 </div>
@@ -68,24 +72,24 @@
             <div class="card">
               <div class="card-title">
                 <i class="pi pi-chart-line"></i>
-                <h3>Activity & Statistics</h3>
+                <h3>{{ t('adminCampaignsAndUsers.userDetailsPage.statsCard.title') }}</h3>
               </div>
               <div class="card-content">
                 <div class="info-group">
                   <div class="info-item">
-                    <label><i class="pi pi-map-marker"></i> GPS Points</label>
+                    <label><i class="pi pi-map-marker"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.statsCard.gpsPoints') }}</label>
                     <span class="info-value stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
                   </div>
                   <div class="info-item">
-                    <label><i class="pi pi-clock"></i> Last GPS Point</label>
+                    <label><i class="pi pi-clock"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.statsCard.lastGpsPoint') }}</label>
                     <span class="info-value">{{ formatTimeAgo(user.lastGpsPointAt) }}</span>
                   </div>
                   <div class="info-item">
-                    <label><i class="pi pi-calendar-plus"></i> Account Created</label>
+                    <label><i class="pi pi-calendar-plus"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.statsCard.accountCreated') }}</label>
                     <span class="info-value">{{ formatDateTime(user.createdAt) }}</span>
                   </div>
                   <div class="info-item">
-                    <label><i class="pi pi-calendar"></i> Last Updated</label>
+                    <label><i class="pi pi-calendar"></i> {{ t('adminCampaignsAndUsers.userDetailsPage.statsCard.lastUpdated') }}</label>
                     <span class="info-value">{{ formatDateTime(user.updatedAt) }}</span>
                   </div>
                 </div>
@@ -99,12 +103,12 @@
           <div class="card actions-card">
             <div class="card-title">
               <i class="pi pi-cog"></i>
-              <h3>Administrative Actions</h3>
+              <h3>{{ t('adminCampaignsAndUsers.userDetailsPage.actionsCard.title') }}</h3>
             </div>
             <div class="card-content">
               <div class="actions-buttons">
                 <Button
-                  :label="user.active ? 'Disable User' : 'Enable User'"
+                  :label="user.active ? t('admin.usersPage.disableUser') : t('admin.usersPage.enableUser')"
                   :icon="user.active ? 'pi pi-ban' : 'pi pi-check'"
                   :severity="user.active ? 'warning' : 'success'"
                   @click="toggleStatus"
@@ -113,7 +117,7 @@
                 />
 
                 <Button
-                  :label="user.role === 'ADMIN' ? 'Demote to User' : 'Promote to Admin'"
+                  :label="user.role === 'ADMIN' ? t('adminCampaignsAndUsers.userDetailsPage.actionsCard.demoteToUser') : t('adminCampaignsAndUsers.userDetailsPage.actionsCard.promoteToAdmin')"
                   :icon="user.role === 'ADMIN' ? 'pi pi-user' : 'pi pi-shield'"
                   severity="secondary"
                   outlined
@@ -123,7 +127,7 @@
                 />
 
                 <Button
-                  label="Reset Password"
+                  :label="t('adminCampaignsAndUsers.userDetailsPage.actionsCard.resetPassword')"
                   icon="pi pi-key"
                   severity="info"
                   outlined
@@ -135,7 +139,7 @@
                 <Divider />
 
                 <Button
-                  label="Delete User"
+                  :label="t('admin.usersPage.deleteUser')"
                   icon="pi pi-trash"
                   severity="danger"
                   @click="confirmDelete"
@@ -146,7 +150,7 @@
 
               <div v-if="isCurrentUser" class="warning-message">
                 <i class="pi pi-info-circle"></i>
-                <span>You cannot disable or delete your own account.</span>
+                <span>{{ t('adminCampaignsAndUsers.userDetailsPage.actionsCard.warningMessage') }}</span>
               </div>
             </div>
           </div>
@@ -156,7 +160,7 @@
       <div class="card api-tokens-card">
         <div class="card-title">
           <i class="pi pi-key"></i>
-          <h3>API Tokens</h3>
+          <h3>{{ t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.title') }}</h3>
         </div>
         <DataTable
           :value="apiTokens"
@@ -164,29 +168,29 @@
           dataKey="id"
           responsiveLayout="scroll"
         >
-          <Column field="name" header="Name">
+          <Column field="name" :header="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.columnName')">
             <template #body="{ data }">
               <div class="token-name">{{ data.name }}</div>
               <div class="token-preview">{{ data.preview }}</div>
             </template>
           </Column>
-          <Column field="status" header="Status">
+          <Column field="status" :header="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.columnStatus')">
             <template #body="{ data }">
               <Tag :value="formatTokenStatus(data.status)" :severity="tokenStatusSeverity(data.status)" />
             </template>
           </Column>
-          <Column field="expiresAt" header="Expires">
+          <Column field="expiresAt" :header="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.columnExpires')">
             <template #body="{ data }">
-              {{ formatDateTime(data.expiresAt) || 'Never' }}
+              {{ formatDateTime(data.expiresAt) || t('adminCampaignsAndUsers.userDetailsPage.never') }}
             </template>
           </Column>
-          <Column field="lastUsedAt" header="Last Used">
+          <Column field="lastUsedAt" :header="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.columnLastUsed')">
             <template #body="{ data }">
-              <div>{{ formatDateTime(data.lastUsedAt) || 'Never' }}</div>
+              <div>{{ formatDateTime(data.lastUsedAt) || t('adminCampaignsAndUsers.userDetailsPage.never') }}</div>
               <small v-if="data.lastUsedIp" class="text-muted">{{ data.lastUsedIp }}</small>
             </template>
           </Column>
-          <Column header="Actions" :exportable="false">
+          <Column :header="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.columnActions')" :exportable="false">
             <template #body="{ data }">
               <Button
                 icon="pi pi-ban"
@@ -195,79 +199,87 @@
                 severity="danger"
                 :disabled="adminReadOnly || data.status === 'REVOKED'"
                 @click="confirmRevokeApiToken(data)"
-                v-tooltip="'Revoke token'"
+                v-tooltip="t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.revokeTooltip')"
               />
             </template>
           </Column>
           <template #empty>
-            <div class="text-center p-4">No API tokens found.</div>
+            <div class="text-center p-4">{{ t('adminCampaignsAndUsers.userDetailsPage.apiTokensCard.empty') }}</div>
           </template>
         </DataTable>
       </div>
     </div>
 
     <div v-else class="card p-4 text-center">
-      <p>User not found</p>
+      <p>{{ t('adminCampaignsAndUsers.userDetailsPage.notFound.message') }}</p>
       <router-link to="/app/admin/users">
-        <Button label="Back to Users" icon="pi pi-arrow-left" />
+        <Button :label="t('adminCampaignsAndUsers.userDetailsPage.notFound.backButton')" icon="pi pi-arrow-left" />
       </router-link>
     </div>
 
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="deleteDialogVisible"
-      header="Confirm Delete"
+      :header="t('admin.usersPage.confirmDeleteHeader')"
       :modal="true"
       :style="{ width: '450px' }"
     >
       <div class="flex align-items-center gap-3 mb-3">
         <i class="pi pi-exclamation-triangle text-4xl text-red-500"></i>
         <span>
-          Are you sure you want to delete user <strong>{{ user?.email }}</strong>?
+          <i18n-t keypath="adminCampaignsAndUsers.userDetailsPage.deleteDialog.message" tag="span">
+            <template #email><strong>{{ user?.email }}</strong></template>
+          </i18n-t>
           <br><br>
-          This will permanently delete all their data.
+          {{ t('adminCampaignsAndUsers.userDetailsPage.deleteDialog.detail') }}
         </span>
       </div>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" :disabled="adminReadOnly" />
+        <Button :label="t('common.cancel')" icon="pi pi-times" text @click="deleteDialogVisible = false" />
+        <Button :label="t('admin.usersPage.delete')" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" :disabled="adminReadOnly" />
       </template>
     </Dialog>
 
     <!-- Password Reset Dialog -->
     <Dialog
       v-model:visible="passwordDialogVisible"
-      header="Password Reset"
+      :header="t('adminCampaignsAndUsers.userDetailsPage.passwordDialog.header')"
       :modal="true"
       :style="{ width: '450px' }"
     >
       <div class="mb-3">
-        <p>Temporary password for <strong>{{ user?.email }}</strong>:</p>
+        <p>
+          <i18n-t keypath="adminCampaignsAndUsers.userDetailsPage.passwordDialog.message" tag="span">
+            <template #email><strong>{{ user?.email }}</strong></template>
+          </i18n-t>
+        </p>
         <div class="p-inputgroup">
           <InputText v-model="tempPassword" readonly class="w-full" />
           <Button icon="pi pi-copy" @click="copyPassword" />
         </div>
-        <small class="text-muted">Share this password with the user securely.</small>
+        <small class="text-muted">{{ t('adminCampaignsAndUsers.userDetailsPage.passwordDialog.copyHint') }}</small>
       </div>
       <template #footer>
-        <Button label="Close" @click="passwordDialogVisible = false" />
+        <Button :label="t('adminCampaignsAndUsers.userDetailsPage.passwordDialog.close')" @click="passwordDialogVisible = false" />
       </template>
     </Dialog>
 
     <Dialog
       v-model:visible="apiTokenRevokeDialogVisible"
-      header="Revoke API Token"
+      :header="t('adminCampaignsAndUsers.userDetailsPage.revokeDialog.header')"
       :modal="true"
       :style="{ width: '420px' }"
     >
       <p>
-        Revoke <strong>{{ apiTokenToRevoke?.name }}</strong> for <strong>{{ user?.email }}</strong>?
-        Automation using this token will stop immediately.
+        <i18n-t keypath="adminCampaignsAndUsers.userDetailsPage.revokeDialog.message" tag="span">
+          <template #tokenName><strong>{{ apiTokenToRevoke?.name }}</strong></template>
+          <template #email><strong>{{ user?.email }}</strong></template>
+        </i18n-t>
       </p>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text @click="apiTokenRevokeDialogVisible = false" />
+        <Button :label="t('common.cancel')" icon="pi pi-times" text @click="apiTokenRevokeDialogVisible = false" />
         <Button
-          label="Revoke"
+          :label="t('adminCampaignsAndUsers.userDetailsPage.revokeDialog.revokeButton')"
           icon="pi pi-ban"
           severity="danger"
           :loading="apiTokenRevoking"
@@ -284,6 +296,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
@@ -301,31 +314,35 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { copyToClipboard } from '@/utils/clipboardUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 const { timeAgo } = timezone
+const { t } = useI18n()
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbLastLabel = ref(t('adminCampaignsAndUsers.userDetailsPage.breadcrumb.loading'))
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
   {
-    label: 'Users',
+    label: t('adminCampaignsAndUsers.userDetailsPage.breadcrumb.users'),
     command: () => router.push('/app/admin/users')
   },
-  { label: 'Loading...' }
+  { label: breadcrumbLastLabel.value }
 ])
 
 const user = ref(null)
@@ -345,20 +362,20 @@ const isCurrentUser = computed(() => user.value?.id === authStore.userId)
 const loadUser = async () => {
   loading.value = true
   try {
-    const response = await apiService.get(`/admin/users/${route.params.id}`)
+    const response = await adminStore.getUserDetails(route.params.id)
     user.value = response
     // Update breadcrumb with user name
-    breadcrumbItems.value[2].label = user.value.fullName || user.value.email
+    breadcrumbLastLabel.value = user.value.fullName || user.value.email
     await loadApiTokens()
   } catch (error) {
     console.error('Failed to load user:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load user details',
+      summary: t('common.error'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.loadUserFailed'),
       life: 3000
     })
-    breadcrumbItems.value[2].label = 'User Not Found'
+    breadcrumbLastLabel.value = t('adminCampaignsAndUsers.userDetailsPage.breadcrumb.notFound')
   } finally {
     loading.value = false
   }
@@ -368,18 +385,14 @@ const loadApiTokens = async () => {
   if (!route.params.id) return
   apiTokensLoading.value = true
   try {
-    const response = await apiService.get('/admin/api-tokens', {
-      userId: route.params.id,
-      page: 0,
-      size: 100
-    })
-    apiTokens.value = response?.content || []
+    const response = await adminStore.getUserApiTokens(route.params.id, 0, 100)
+    apiTokens.value = response?.items || []
   } catch (error) {
     console.error('Failed to load API tokens:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load API tokens',
+      summary: t('common.error'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.loadTokensFailed'),
       life: 3000
     })
   } finally {
@@ -389,24 +402,22 @@ const loadApiTokens = async () => {
 
 const toggleStatus = async () => {
   try {
-    await apiService.put(`/admin/users/${user.value.id}/status`, {
-      active: !user.value.active
-    })
+    await adminStore.updateUserStatus(user.value.id, !user.value.active)
 
     user.value.active = !user.value.active
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: `User ${user.value.active ? 'enabled' : 'disabled'}`,
+      summary: t('common.success'),
+      detail: user.value.active ? t('admin.usersPage.toasts.userEnabled') : t('admin.usersPage.toasts.userDisabled'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to update user status:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update user status',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.updateStatusFailedFallback')),
       life: 3000
     })
   }
@@ -416,24 +427,22 @@ const toggleRole = async () => {
   const newRole = user.value.role === 'ADMIN' ? 'USER' : 'ADMIN'
 
   try {
-    await apiService.put(`/admin/users/${user.value.id}/role`, {
-      role: newRole
-    })
+    await adminStore.updateUserRole(user.value.id, newRole)
 
     user.value.role = newRole
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: `User role changed to ${newRole}`,
+      summary: t('common.success'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.roleChanged', { role: newRole }),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to change user role:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to change user role',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminCampaignsAndUsers.userDetailsPage.toasts.roleChangeFailed')),
       life: 3000
     })
   }
@@ -441,22 +450,22 @@ const toggleRole = async () => {
 
 const resetPassword = async () => {
   try {
-    const response = await apiService.post(`/admin/users/${user.value.id}/reset-password`)
+    const response = await adminStore.resetUserPassword(user.value.id)
     tempPassword.value = response.temporaryPassword
     passwordDialogVisible.value = true
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Password reset successfully',
+      summary: t('common.success'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.passwordResetSuccess'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to reset password:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to reset password',
+      summary: t('common.error'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.passwordResetFailed'),
       life: 3000
     })
   }
@@ -468,16 +477,16 @@ const copyPassword = async () => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied',
-      detail: 'Password copied to clipboard',
+      summary: t('common.clipboard.copied'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.passwordCopied'),
       life: 2000
     })
   } else {
     console.error('Failed to copy password')
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to copy password to clipboard',
+      summary: t('common.error'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.passwordCopyFailed'),
       life: 3000
     })
   }
@@ -493,11 +502,11 @@ const revokeApiToken = async () => {
 
   apiTokenRevoking.value = true
   try {
-    await apiService.delete(`/admin/api-tokens/${apiTokenToRevoke.value.id}`)
+    await adminStore.revokeUserApiToken(apiTokenToRevoke.value.id)
     toast.add({
       severity: 'success',
-      summary: 'Revoked',
-      detail: 'API token revoked',
+      summary: t('adminCampaignsAndUsers.userDetailsPage.toasts.tokenRevokedSummary'),
+      detail: t('adminCampaignsAndUsers.userDetailsPage.toasts.tokenRevokedDetail'),
       life: 3000
     })
     apiTokenRevokeDialogVisible.value = false
@@ -507,8 +516,8 @@ const revokeApiToken = async () => {
     console.error('Failed to revoke API token:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to revoke API token',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminCampaignsAndUsers.userDetailsPage.toasts.tokenRevokeFailed')),
       life: 3000
     })
   } finally {
@@ -522,9 +531,16 @@ const tokenStatusSeverity = (status) => {
   return 'danger'
 }
 
+const tokenStatusLabels = {
+  ACTIVE: 'adminCampaignsAndUsers.userDetailsPage.apiTokensCard.status.active',
+  EXPIRED: 'adminCampaignsAndUsers.userDetailsPage.apiTokensCard.status.expired',
+  REVOKED: 'adminCampaignsAndUsers.userDetailsPage.apiTokensCard.status.revoked'
+}
+
 const formatTokenStatus = (status) => {
   if (!status) return ''
-  return status.charAt(0) + status.slice(1).toLowerCase()
+  const key = tokenStatusLabels[status]
+  return key ? t(key) : status
 }
 
 const confirmDelete = () => {
@@ -534,12 +550,12 @@ const confirmDelete = () => {
 const deleteUser = async () => {
   deleting.value = true
   try {
-    await apiService.delete(`/admin/users/${user.value.id}`)
+    await adminStore.deleteUser(user.value.id)
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'User deleted successfully',
+      summary: t('common.success'),
+      detail: t('admin.usersPage.toasts.deletedDetail'),
       life: 3000
     })
 
@@ -548,8 +564,8 @@ const deleteUser = async () => {
     console.error('Failed to delete user:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete user',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.deleteFailedFallback')),
       life: 3000
     })
   } finally {
@@ -569,7 +585,7 @@ const formatNumber = (num) => {
 }
 
 const formatTimeAgo = (dateStr) => {
-  if (!dateStr) return 'Never'
+  if (!dateStr) return t('adminCampaignsAndUsers.userDetailsPage.never')
   return timeAgo(dateStr)
 }
 
@@ -579,27 +595,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-user-details {
-  width: 100%;
-  padding: 1.5rem 2rem;
-  box-sizing: border-box;
-}
-
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
-}
-
-.page-header {
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
 /* Container */
 .user-details-container {
   display: flex;
@@ -692,8 +687,8 @@ onMounted(() => {
 
 /* Card Styles */
 .card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   box-shadow: var(--gp-shadow-card);
   transition: all 0.3s ease;
@@ -708,8 +703,8 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-bottom: 2px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
+  border-bottom: 2px solid var(--gp-border);
+  background: var(--gp-surface-muted);
 }
 
 .card-title i {
@@ -804,14 +799,14 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--gp-warning-light);
+  background: var(--gp-warning-soft);
   border: 1px solid var(--gp-warning);
   border-radius: var(--gp-radius-medium);
   margin-top: 1rem;
 }
 
 .warning-message i {
-  color: var(--gp-warning-dark);
+  color: var(--gp-warning-text);
   font-size: 1.25rem;
   flex-shrink: 0;
 }
@@ -822,20 +817,6 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-/* Dark Mode Warning Message */
-.p-dark .warning-message {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: var(--gp-warning);
-}
-
-.p-dark .warning-message i {
-  color: var(--gp-warning);
-}
-
-.p-dark .warning-message span {
-  color: var(--gp-text-primary);
-}
-
 /* Text Utilities */
 .text-muted {
   color: var(--gp-text-secondary);
@@ -843,10 +824,6 @@ onMounted(() => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .admin-user-details {
-    padding: 1rem;
-  }
-
   .user-header {
     padding: 1.5rem;
     flex-direction: column;
@@ -865,8 +842,5 @@ onMounted(() => {
     justify-content: center;
   }
 
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
 }
 </style>

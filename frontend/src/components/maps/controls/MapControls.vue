@@ -5,7 +5,7 @@
       <button
         @click="handleToggleFavorites"
         :class="{ active: showFavorites }"
-        :title="showFavorites ? 'Hide Favorites' : 'Show Favorites'"
+        :title="showFavorites ? t('maps.controls.hideFavorites') : t('maps.controls.showFavorites')"
         class="control-button"
         :disabled="!map"
       >
@@ -15,7 +15,7 @@
       <button
         @click="handleToggleTimeline"
         :class="{ active: showTimeline }"
-        :title="showTimeline ? 'Hide Timeline' : 'Show Timeline'"
+        :title="showTimeline ? t('maps.controls.hideTimeline') : t('maps.controls.showTimeline')"
         class="control-button"
         :disabled="!map"
       >
@@ -25,7 +25,7 @@
       <button
         @click="handleTogglePath"
         :class="{ active: showPath }"
-        :title="showPath ? 'Hide Path' : 'Show Path'"
+        :title="showPath ? t('maps.controls.hidePath') : t('maps.controls.showPath')"
         class="control-button"
         :disabled="!map"
       >
@@ -76,14 +76,14 @@
           class="heatmap-popover"
           @click.stop
         >
-          <div class="heatmap-popover-title">Heatmap</div>
+          <div class="heatmap-popover-title">{{ t('maps.controls.heatmapTitle') }}</div>
           <button
             class="heatmap-popover-option"
             :class="{ active: heatmapEnabled && heatmapLayer === 'stays' }"
             @click="selectHeatmapLayer('stays')"
           >
             <i class="pi pi-home"></i>
-            Stays
+            {{ t('maps.controls.stays') }}
           </button>
           <button
             class="heatmap-popover-option"
@@ -91,7 +91,7 @@
             @click="selectHeatmapLayer('trips')"
           >
             <i class="pi pi-directions"></i>
-            Trips
+            {{ t('maps.controls.trips') }}
           </button>
           <button
             v-if="heatmapEnabled"
@@ -99,7 +99,7 @@
             @click="disableHeatmap"
           >
             <i class="pi pi-times"></i>
-            Turn off
+            {{ t('maps.controls.turnOff') }}
           </button>
         </div>
       </div>
@@ -108,7 +108,7 @@
         v-if="showImmichButton"
         @click="handleToggleImmich"
         :class="{ active: showImmich, 'immich-loading': immichLoading }"
-        :title="showImmich ? 'Hide Photos' : 'Show Photos'"
+        :title="showImmich ? t('maps.controls.hidePhotos') : t('maps.controls.showPhotos')"
         class="control-button"
         :disabled="!map || immichLoading"
       >
@@ -124,7 +124,7 @@
         v-if="showNotesButton"
         @click="handleToggleNotes"
         :class="{ active: showNotes, 'notes-loading': notesLoading }"
-        :title="showNotes ? 'Hide Notes' : 'Show Notes'"
+        :title="showNotes ? t('maps.controls.hideNotes') : t('maps.controls.showNotes')"
         class="control-button mobile-secondary-control"
         :disabled="!map || notesLoading"
       >
@@ -136,7 +136,7 @@
         v-if="showWeatherButton"
         @click="handleToggleWeather"
         :class="{ active: showWeather, 'weather-loading': weatherLoading }"
-        :title="showWeather ? 'Hide Weather' : 'Show Weather'"
+        :title="showWeather ? t('maps.controls.hideWeather') : t('maps.controls.showWeather')"
         class="control-button mobile-secondary-control"
         :disabled="!map || weatherLoading"
       >
@@ -156,12 +156,24 @@
       </button>
 
       <button
+        v-if="show3dBuildingsControl"
+        @click="handleToggle3dBuildings"
+        :class="{ active: buildings3dEnabled }"
+        :title="buildings3dEnabled ? t('maps.controls.hide3dBuildings') : t('maps.controls.show3dBuildings')"
+        :aria-label="buildings3dEnabled ? t('maps.controls.hide3dBuildings') : t('maps.controls.show3dBuildings')"
+        class="control-button mobile-secondary-control"
+        :disabled="!map"
+      >
+        <i class="pi pi-building"></i>
+      </button>
+
+      <button
         v-if="hasMoreControls"
         type="button"
         class="control-button more-controls-trigger"
         :class="{ active: moreControlsActive }"
-        title="More map controls"
-        aria-label="More map controls"
+        :title="t('maps.controls.moreControls')"
+        :aria-label="t('maps.controls.moreControls')"
         aria-haspopup="menu"
         aria-controls="map-controls-more-menu"
         :disabled="!map"
@@ -181,7 +193,7 @@
     <div v-if="showZoomControls" class="control-group">
       <button
         @click="handleZoomToData"
-        :title="zoomControlTitle"
+        :title="zoomControlTitle || t('maps.controls.zoomToData')"
         class="control-button"
         :disabled="!map"
       >
@@ -193,11 +205,14 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Menu from 'primevue/menu'
 import {
   ROUTE_DISPLAY_MODES,
   normalizeRouteDisplayMode
 } from '@/constants/routeDisplayModes'
+
+const { t } = useI18n()
 
 const props = defineProps({
   map: {
@@ -262,7 +277,7 @@ const props = defineProps({
   },
   zoomControlTitle: {
     type: String,
-    default: 'Zoom to Data'
+    default: ''
   },
   zoomControlIcon: {
     type: String,
@@ -311,6 +326,14 @@ const props = defineProps({
   panoramaxSupported: {
     type: Boolean,
     default: true
+  },
+  show3dBuildingsControl: {
+    type: Boolean,
+    default: false
+  },
+  buildings3dEnabled: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -324,6 +347,7 @@ const emit = defineEmits([
   'toggle-notes',
   'toggle-weather',
   'toggle-panoramax',
+  'toggle-3d-buildings',
   'toggle-heatmap',
   'heatmap-layer-change',
   'zoom-to-data'
@@ -365,6 +389,10 @@ const handleTogglePanoramax = () => {
   if (props.panoramaxSupported) emit('toggle-panoramax', !props.panoramaxEnabled)
 }
 
+const handleToggle3dBuildings = () => {
+  emit('toggle-3d-buildings', !props.buildings3dEnabled)
+}
+
 const handleZoomToData = () => {
   emit('zoom-to-data')
 }
@@ -403,9 +431,9 @@ const showImmichButton = computed(() => {
 })
 
 const heatmapButtonTitle = computed(() => {
-  if (!props.heatmapAvailable) return 'Select a date range to enable heatmap'
-  if (props.heatmapEnabled) return 'Heatmap enabled'
-  return 'Show heatmap'
+  if (!props.heatmapAvailable) return t('maps.controls.heatmapSelectDateRange')
+  if (props.heatmapEnabled) return t('maps.controls.heatmapEnabledTitle')
+  return t('maps.controls.heatmapShow')
 })
 
 const normalizedRouteDisplayMode = computed(() => normalizeRouteDisplayMode(props.routeDisplayMode))
@@ -420,14 +448,14 @@ const routeDisplayModeButtonClass = computed(() => (
 
 const routeDisplayModeButtonTitle = computed(() => {
   if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.RAW) {
-    return 'Showing raw GPS route. Click to compare matched and raw GPS routes'
+    return t('maps.controls.routeDisplayRaw')
   }
 
   if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.COMPARISON) {
-    return 'Comparing matched route with raw GPS. Click to show matched route'
+    return t('maps.controls.routeDisplayComparison')
   }
 
-  return 'Showing matched route. Click to show raw GPS route'
+  return t('maps.controls.routeDisplayMatched')
 })
 
 const routeDisplayModeIcon = computed(() => {
@@ -443,13 +471,13 @@ const routeDisplayModeIcon = computed(() => {
 })
 
 const rawGpsPointsButtonTitle = computed(() => {
-  if (props.rawGpsPointsLoading) return 'Loading raw GPS points'
-  return props.rawGpsPointsEnabled ? 'Hide raw GPS points' : 'Show raw GPS points'
+  if (props.rawGpsPointsLoading) return t('maps.controls.rawGpsLoading')
+  return props.rawGpsPointsEnabled ? t('maps.controls.rawGpsHide') : t('maps.controls.rawGpsShow')
 })
 
 const panoramaxButtonTitle = computed(() => {
-  if (!props.panoramaxSupported) return 'Panoramax coverage requires MapLibre vector maps'
-  return props.panoramaxEnabled ? 'Hide Panoramax coverage' : 'Show Panoramax coverage'
+  if (!props.panoramaxSupported) return t('maps.controls.panoramaxUnsupported')
+  return props.panoramaxEnabled ? t('maps.controls.panoramaxHide') : t('maps.controls.panoramaxShow')
 })
 
 const hasMoreControls = computed(() => (
@@ -457,6 +485,7 @@ const hasMoreControls = computed(() => (
   || props.showHeatmap
   || props.showNotesButton
   || props.showWeatherButton
+  || props.show3dBuildingsControl
 ))
 
 const moreControlsActive = computed(() => (
@@ -464,6 +493,7 @@ const moreControlsActive = computed(() => (
   || (props.showHeatmap && props.heatmapEnabled)
   || (props.showNotesButton && props.showNotes)
   || (props.showWeatherButton && props.showWeather)
+  || (props.show3dBuildingsControl && props.buildings3dEnabled)
 ))
 
 const moreMenuItems = computed(() => {
@@ -482,13 +512,13 @@ const moreMenuItems = computed(() => {
     if (items.length) items.push({ separator: true })
     items.push(
       {
-        label: 'Heatmap: Stays',
+        label: t('maps.controls.heatmapStaysMenu'),
         icon: 'pi pi-home',
         disabled: !props.map || !props.heatmapAvailable,
         command: () => selectHeatmapLayer('stays')
       },
       {
-        label: 'Heatmap: Trips',
+        label: t('maps.controls.heatmapTripsMenu'),
         icon: 'pi pi-directions',
         disabled: !props.map || !props.heatmapAvailable,
         command: () => selectHeatmapLayer('trips')
@@ -497,7 +527,7 @@ const moreMenuItems = computed(() => {
 
     if (props.heatmapEnabled) {
       items.push({
-        label: 'Turn off Heatmap',
+        label: t('maps.controls.heatmapTurnOffMenu'),
         icon: 'pi pi-times',
         command: disableHeatmap
       })
@@ -507,7 +537,7 @@ const moreMenuItems = computed(() => {
   if (props.showNotesButton) {
     if (items.length) items.push({ separator: true })
     items.push({
-      label: props.showNotes ? 'Hide Notes' : 'Show Notes',
+      label: props.showNotes ? t('maps.controls.hideNotes') : t('maps.controls.showNotes'),
       icon: 'pi pi-file-edit',
       disabled: !props.map || props.notesLoading,
       command: handleToggleNotes
@@ -517,10 +547,20 @@ const moreMenuItems = computed(() => {
   if (props.showWeatherButton) {
     if (items.length) items.push({ separator: true })
     items.push({
-      label: props.showWeather ? 'Hide Weather' : 'Show Weather',
+      label: props.showWeather ? t('maps.controls.hideWeather') : t('maps.controls.showWeather'),
       icon: 'pi pi-cloud',
       disabled: !props.map || props.weatherLoading,
       command: handleToggleWeather
+    })
+  }
+
+  if (props.show3dBuildingsControl) {
+    if (items.length) items.push({ separator: true })
+    items.push({
+      label: props.buildings3dEnabled ? t('maps.controls.hide3dBuildings') : t('maps.controls.show3dBuildings'),
+      icon: 'pi pi-building',
+      disabled: !props.map,
+      command: handleToggle3dBuildings
     })
   }
 
@@ -548,19 +588,19 @@ onBeforeUnmount(() => {
 <style scoped>
 .map-controls {
   display: flex;
-  gap: var(--gp-spacing-sm, 0.5rem);
+  gap: var(--gp-spacing-sm);
   flex-direction: column;
 }
 
 .control-group {
   display: flex;
-  gap: var(--gp-spacing-xs, 0.25rem);
+  gap: var(--gp-spacing-xs);
   flex-direction: column;
-  background: var(--gp-surface-white, white);
-  border-radius: var(--gp-radius-medium, 8px);
-  padding: var(--gp-spacing-xs, 0.25rem);
-  box-shadow: var(--gp-shadow-medium, 0 4px 8px rgba(0, 0, 0, 0.1));
-  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  background: var(--gp-surface-card);
+  border-radius: var(--gp-radius-medium);
+  padding: var(--gp-spacing-xs);
+  box-shadow: var(--gp-shadow-medium);
+  border: 1px solid var(--gp-border);
 }
 
 .control-button {
@@ -573,14 +613,14 @@ onBeforeUnmount(() => {
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  border-radius: var(--gp-radius-small, 4px);
+  border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary);
 }
 
 .control-button:hover:not(:disabled) {
-  background-color: var(--gp-surface-light, #f8fafc);
-  color: var(--gp-primary, #1a56db);
+  background-color: var(--gp-surface-ground);
+  color: var(--gp-primary-text);
   transform: translateY(-1px);
 }
 
@@ -595,12 +635,12 @@ onBeforeUnmount(() => {
 }
 
 .control-button.active {
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   color: white;
 }
 
 .control-button.active:hover {
-  background: var(--gp-primary-dark, #1e40af);
+  background: var(--gp-primary-dark);
   transform: translateY(-1px);
 }
 
@@ -622,7 +662,7 @@ onBeforeUnmount(() => {
 
 .control-button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--gp-primary, #1a56db);
+  box-shadow: 0 0 0 2px var(--gp-primary);
 }
 
 .heatmap-control {
@@ -634,10 +674,10 @@ onBeforeUnmount(() => {
   top: 0;
   right: calc(100% + 8px);
   min-width: 140px;
-  background: var(--gp-surface-white, #fff);
-  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
-  border-radius: var(--gp-radius-medium, 8px);
-  box-shadow: var(--gp-shadow-medium, 0 8px 20px rgba(0, 0, 0, 0.12));
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+  box-shadow: var(--gp-shadow-medium);
   padding: 8px;
   z-index: 1100;
 }
@@ -645,7 +685,7 @@ onBeforeUnmount(() => {
 .heatmap-popover-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-text-secondary);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -660,7 +700,7 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: var(--gp-text-primary, #0f172a);
+  color: var(--gp-text-primary);
   font-size: 0.8125rem;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -671,47 +711,17 @@ onBeforeUnmount(() => {
 }
 
 .heatmap-popover-option:hover {
-  background: var(--gp-surface-light, #f8fafc);
+  background: var(--gp-surface-muted);
 }
 
 .heatmap-popover-option.active {
-  background: rgba(26, 86, 219, 0.12);
-  border-color: rgba(26, 86, 219, 0.2);
-  color: var(--gp-primary, #1a56db);
+  background: var(--gp-primary-soft);
+  border-color: var(--gp-primary-soft-border);
+  color: var(--gp-primary-text);
 }
 
 .heatmap-popover-off {
-  color: var(--gp-text-secondary, #64748b);
-}
-
-/* Dark mode */
-.p-dark .control-group {
-  background: var(--gp-surface-dark, #1e293b);
-  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
-}
-
-.p-dark .control-button {
-  color: var(--gp-text-secondary, #cbd5e1);
-}
-
-.p-dark .control-button:hover:not(:disabled) {
-  background-color: var(--gp-surface-darker, #0f172a);
-  color: var(--gp-primary-light, #3b82f6);
-}
-
-.p-dark .heatmap-popover {
-  background: var(--gp-surface-dark, #1e293b);
-  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
-}
-
-.p-dark .heatmap-popover-option {
-  color: var(--gp-text-secondary, #cbd5e1);
-}
-
-.p-dark .heatmap-popover-option.active {
-  color: var(--gp-primary-light, #3b82f6);
-  background: rgba(59, 130, 246, 0.16);
-  border-color: rgba(59, 130, 246, 0.35);
+  color: var(--gp-text-secondary);
 }
 
 /* Immich button specific styles */
@@ -733,12 +743,8 @@ onBeforeUnmount(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--gp-primary, #1a56db);
+  background: var(--gp-primary);
   animation: immich-pulse 1.5s infinite;
-}
-
-.p-dark .loading-indicator {
-  background: var(--gp-primary-light, #3b82f6);
 }
 
 @keyframes immich-pulse {

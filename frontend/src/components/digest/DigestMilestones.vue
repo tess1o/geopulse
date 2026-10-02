@@ -2,7 +2,7 @@
   <div class="digest-milestones">
     <h3 class="milestones-title">
       <i class="pi pi-trophy"></i>
-      Milestones
+      {{ t('analytics.digest.milestones.title') }}
     </h3>
 
     <div class="milestones-grid" v-if="milestones && milestones.length > 0">
@@ -19,20 +19,25 @@
           </div>
         </div>
         <div class="milestone-content">
-          <div class="milestone-title">{{ milestone.title }}</div>
-          <div class="milestone-description">{{ milestone.description }}</div>
+          <div class="milestone-title">{{ formatMessageDescriptor(milestone.title) }}</div>
+          <div class="milestone-description">{{ formatMessageDescriptor(milestone.description) }}</div>
         </div>
       </div>
     </div>
 
     <div class="no-milestones-placeholder" v-else>
       <i class="pi pi-trophy"></i>
-      <p>Keep exploring to unlock milestones!</p>
+      <p>{{ t('analytics.digest.milestones.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
+
+const { t } = useI18n()
+
 defineProps({
   milestones: {
     type: Array,
@@ -42,24 +47,17 @@ defineProps({
 
 const getTierLabel = (tier) => {
   const labels = {
-    bronze: 'Bronze',
-    silver: 'Silver',
-    gold: 'Gold',
-    diamond: 'Diamond'
+    bronze: t('analytics.digest.milestones.tierBronze'),
+    silver: t('analytics.digest.milestones.tierSilver'),
+    gold: t('analytics.digest.milestones.tierGold'),
+    diamond: t('analytics.digest.milestones.tierDiamond')
   }
   return labels[tier] || tier
 }
 </script>
 
 <style scoped>
-.digest-milestones {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-milestones { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .milestones-title {
   display: flex;
@@ -75,18 +73,14 @@ const getTierLabel = (tier) => {
   color: var(--gp-warning);
 }
 
-.milestones-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--gp-spacing-md);
-}
+.milestones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--gp-spacing-md); }
 
 .milestone-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
+  border-radius: 14px;
   padding: var(--gp-spacing-lg);
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
   position: relative;
   overflow: hidden;
 }
@@ -101,10 +95,7 @@ const getTierLabel = (tier) => {
   transition: all 0.3s ease;
 }
 
-.milestone-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-card-hover);
-}
+.milestone-card:hover { border-color: var(--gp-primary); }
 
 /* Tier-specific styling */
 .tier-bronze::before {
@@ -211,21 +202,6 @@ const getTierLabel = (tier) => {
   font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .digest-milestones {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .milestone-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .milestones-title {
-  color: var(--gp-text-primary);
 }
 
 /* Responsive */

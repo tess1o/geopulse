@@ -92,7 +92,8 @@ class MobileDeepLinkServiceTest {
 
 
         when(mobileAuthCodeRepository.findByCode("generated-code"))
-                .thenReturn(Optional.of(storedCode), Optional.empty());
+                .thenReturn(Optional.of(storedCode))
+                .thenReturn(Optional.empty());
 
         try (MockedStatic<Instant> instantMock = mockStatic(Instant.class)) {
             instantMock.when(Instant::now).thenReturn(now);

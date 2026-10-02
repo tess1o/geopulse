@@ -74,7 +74,7 @@ describe('api transport during restore activation', () => {
     state.applyMaintenanceStatus({ state: 'COMPLETED', blocked: false, completedAt: '2026-09-01T10:00:00Z' })
 
     const requestInterceptor = axiosMock.requestInterceptor.mock.calls[0][0]
-    const config = requestInterceptor({ url: '/api/auth/logout' })
+    const config = requestInterceptor({ url: '/api/v1/auth/sessions/current' })
     expect(config.signal).toBeUndefined()
   })
 })

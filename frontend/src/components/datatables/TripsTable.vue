@@ -1,17 +1,17 @@
 <template>
-  <BaseCard title="Trips" class="trips-table-card">
+  <BaseCard :title="t('data.tables.trips.title')" class="trips-table-card">
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
         <div v-if="!isMobile" class="table-title-section">
-          <h3 class="table-title">Trips</h3>
-          <span class="table-count">{{ filteredTripsData.length }} trips</span>
+          <h3 class="table-title">{{ t('data.tables.trips.title') }}</h3>
+          <span class="table-count">{{ t('data.tables.trips.count', { count: filteredTripsData.length }) }}</span>
         </div>
         <div class="table-actions">
           <div class="filter-controls">
-            <InputText 
+            <InputText
               v-model="searchTerm"
-              placeholder="Search origins/destinations..."
+              :placeholder="t('data.tables.searchOriginsDestinations')"
               class="search-input"
             />
             <Select
@@ -19,7 +19,7 @@
               :options="transportModeOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Trip Type"
+              :placeholder="t('data.tables.transportPlaceholder')"
               showClear
               class="transport-filter"
             />
@@ -28,19 +28,19 @@
               :options="distanceFilterOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Distance"
+              :placeholder="t('data.tables.distancePlaceholder')"
               showClear
               class="distance-filter"
             />
           </div>
           <Button
-            :label="isMobile ? null : 'Export CSV'"
-            :aria-label="'Export CSV'"
+            :label="isMobile ? null : t('data.tables.exportCsv')"
+            :aria-label="t('data.tables.exportCsv')"
             icon="pi pi-download"
             @click="$emit('export')"
             outlined
             :disabled="exportDisabled"
-            v-tooltip.bottom="exportDisabled ? 'Export is disabled in demo mode' : 'Export trips to CSV'"
+            v-tooltip.bottom="exportDisabled ? t('data.tables.exportDisabledDemo') : t('data.tables.trips.exportTooltip')"
             class="export-button"
             :class="{ 'export-button--icon': isMobile }"
           />
@@ -66,19 +66,11 @@
       :virtualScrollerOptions="{
         itemSize: 73
       }"
-      :pt="{
-        root: 'bg-surface-0 dark:bg-surface-950',
-        header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
-        tbody: 'bg-surface-0 dark:bg-surface-950',
-        row: 'bg-surface-0 dark:bg-surface-950 hover:bg-surface-50 dark:hover:bg-surface-800',
-        cell: 'text-surface-900 dark:text-surface-100 border-surface-200 dark:border-surface-700',
-        paginator: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700'
-      }"
     >
       <!-- Start Time Column -->
-      <Column 
-        field="timestamp" 
-        header="Start Time" 
+      <Column
+        field="timestamp"
+        :header="t('data.tables.trips.startTimeHeader')"
         :sortable="true"
         :style="{ 'min-width': '150px' }"
       >
@@ -91,9 +83,9 @@
       </Column>
 
       <!-- End Time Column -->
-      <Column 
-        field="endTime" 
-        header="End Time"
+      <Column
+        field="endTime"
+        :header="t('data.tables.trips.endTimeHeader')"
         :sortable="true" 
         :style="{ 'min-width': '150px' }"
       >
@@ -106,9 +98,9 @@
       </Column>
 
       <!-- Duration Column -->
-      <Column 
-        field="duration" 
-        header="Duration" 
+      <Column
+        field="duration"
+        :header="t('data.tables.trips.durationHeader')"
         :sortable="true"
         :style="{ 'min-width': '100px' }"
       >
@@ -120,32 +112,32 @@
       </Column>
 
       <!-- Origin Column -->
-      <Column 
-        field="origin" 
-        header="Origin" 
+      <Column
+        field="origin"
+        :header="t('data.tables.trips.originHeader')"
         :sortable="true"
         :style="{ 'min-width': '180px' }"
       >
         <template #body="slotProps">
           <div class="location-info">
             <div class="location-name">
-              {{ slotProps.data.origin?.locationName || 'Unknown Origin' }}
+              {{ slotProps.data.origin?.locationName || t('data.tables.unknownOrigin') }}
             </div>
           </div>
         </template>
       </Column>
 
       <!-- Destination Column -->
-      <Column 
-        field="destination" 
-        header="Destination" 
+      <Column
+        field="destination"
+        :header="t('data.tables.trips.destinationHeader')"
         :sortable="true"
         :style="{ 'min-width': '180px' }"
       >
         <template #body="slotProps">
           <div class="location-info">
             <div class="location-name">
-              {{ slotProps.data.destination?.locationName || 'Unknown Destination' }}
+              {{ slotProps.data.destination?.locationName || t('data.tables.unknownDestination') }}
             </div>
             <div v-if="slotProps.data.destination?.address" class="location-address">
               {{ slotProps.data.destination.address }}
@@ -155,9 +147,9 @@
       </Column>
 
       <!-- Distance Column -->
-      <Column 
-        field="distance" 
-        header="Distance" 
+      <Column
+        field="distance"
+        :header="t('data.tables.trips.distanceHeader')"
         :sortable="true"
         :style="{ 'min-width': '100px' }"
       >
@@ -169,24 +161,24 @@
       </Column>
 
       <!-- Transport Mode Column -->
-      <Column 
-        field="movementType" 
-        header="Transport"
+      <Column
+        field="movementType"
+        :header="t('data.tables.trips.transportHeader')"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
       >
         <template #body="slotProps">
           <div class="transport-tags">
-            <Tag 
+            <Tag
               v-if="slotProps.data.movementType"
-              :value="slotProps.data.movementType"
+              :value="getTransportLabel(slotProps.data.movementType)"
               :severity="getTransportSeverity(slotProps.data.movementType)"
               :icon="getTransportIcon(slotProps.data.movementType)"
               class="transport-tag"
             />
             <Tag
               v-if="slotProps.data.movementTypeSource === 'MANUAL'"
-              value="Manual"
+              :value="t('data.tables.manual')"
               severity="warn"
               class="transport-tag transport-tag--manual"
             />
@@ -195,7 +187,7 @@
               class="transport-set-btn"
               @click.stop="openQuickEditDialog(slotProps.data)"
             >
-              Set manually
+              {{ t('data.tables.setManually') }}
             </button>
           </div>
         </template>
@@ -203,7 +195,7 @@
 
       <!-- Actions Column -->
       <Column
-        header="Actions"
+        :header="t('data.tables.trips.actionsHeader')"
         :exportable="false"
         :style="{ 'min-width': '150px' }"
       >
@@ -211,7 +203,7 @@
           <div class="row-actions">
             <Button
               icon="pi pi-info-circle"
-              v-tooltip.top="'View details'"
+              v-tooltip.top="t('data.tables.viewDetails')"
               outlined
               rounded
               size="small"
@@ -220,7 +212,7 @@
             />
             <Button
               icon="pi pi-pencil"
-              v-tooltip.top="'Edit movement type'"
+              v-tooltip.top="t('data.tables.editMovementType')"
               outlined
               rounded
               size="small"
@@ -230,7 +222,7 @@
             />
             <Button
               icon="pi pi-question-circle"
-              v-tooltip.top="'Why this classification?'"
+              v-tooltip.top="t('data.tables.whyClassification')"
               outlined
               rounded
               size="small"
@@ -255,7 +247,7 @@
         <header class="mobile-trip-header">
           <div class="mobile-route">
             <h4 class="mobile-route-title">
-              {{ trip.origin?.locationName || 'Unknown Origin' }} to {{ trip.destination?.locationName || 'Unknown Destination' }}
+              {{ t('data.tables.routeTo', { origin: trip.origin?.locationName || t('data.tables.unknownOrigin'), destination: trip.destination?.locationName || t('data.tables.unknownDestination') }) }}
             </h4>
             <p v-if="trip.destination?.address" class="mobile-route-address">{{ trip.destination.address }}</p>
           </div>
@@ -265,14 +257,14 @@
         <div class="mobile-trip-tags">
           <Tag
             v-if="trip.movementType"
-            :value="trip.movementType"
+            :value="getTransportLabel(trip.movementType)"
             :severity="getTransportSeverity(trip.movementType)"
             :icon="getTransportIcon(trip.movementType)"
             class="transport-tag"
           />
           <Tag
             v-if="trip.movementTypeSource === 'MANUAL'"
-            value="Manual"
+            :value="t('data.tables.manual')"
             severity="warn"
             class="transport-tag transport-tag--manual"
           />
@@ -281,11 +273,11 @@
 
         <div class="mobile-trip-meta">
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
             <span class="mobile-meta-value">{{ formatDate(trip.timestamp) }} {{ formatTime(trip.timestamp) }}</span>
           </div>
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
             <span class="mobile-meta-value">{{ getEndDate(trip) }} {{ getEndTime(trip) }}</span>
           </div>
         </div>
@@ -295,20 +287,20 @@
           class="transport-set-btn mobile-transport-set-btn"
           @click.stop="openQuickEditDialog(trip)"
         >
-          Set transport manually
+          {{ t('data.tables.setTransportManually') }}
         </button>
 
         <div class="mobile-trip-actions">
           <Button
             icon="pi pi-info-circle"
-            label="Details"
+            :label="t('data.tables.details')"
             outlined
             size="small"
             @click="showDetails(trip)"
           />
           <Button
             icon="pi pi-pencil"
-            label="Edit"
+            :label="t('data.tables.edit')"
             outlined
             size="small"
             severity="warning"
@@ -316,7 +308,7 @@
           />
           <Button
             icon="pi pi-question-circle"
-            label="Why"
+            :label="t('data.tables.why')"
             outlined
             size="small"
             severity="help"
@@ -327,11 +319,11 @@
     </div>
 
     <!-- No Data State -->
-    <div v-if="!loading && filteredTripsData.length === 0" class="no-data-state">
-      <i class="pi pi-car no-data-icon"></i>
-      <h4 class="no-data-title">No Trips Found</h4>
-      <p class="no-data-message">
-        No trips found for the selected date range and filters.
+    <div v-if="!loading && filteredTripsData.length === 0" class="gp-empty-state">
+      <i class="pi pi-car gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('data.tables.trips.noDataTitle') }}</h4>
+      <p class="gp-empty-state-message">
+        {{ t('data.tables.trips.noDataMessage') }}
       </p>
     </div>
 
@@ -361,6 +353,7 @@
 
 <script setup>
 import { ref, computed, watch, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -387,6 +380,7 @@ const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
 )
 
+const { t, te } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -424,17 +418,17 @@ const {
 watch(distanceUnit, (unit) => {
   if (unit === 'MILES') {
     distanceFilterOptions.value = [
-      { label: 'Less than 1 mile', value: 'short', maxDistance: 1609.34 },
-      { label: '1-10 miles', value: 'medium', minDistance: 1609.34, maxDistance: 16093.4 },
-      { label: '10-50 miles', value: 'long', minDistance: 16093.4, maxDistance: 80467.2 },
-      { label: 'More than 50 miles', value: 'very-long', minDistance: 80467.2 }
+      { label: t('data.tables.trips.distanceOptionsMiles.lessThan1'), value: 'short', maxDistance: 1609.34 },
+      { label: t('data.tables.trips.distanceOptionsMiles.oneToTen'), value: 'medium', minDistance: 1609.34, maxDistance: 16093.4 },
+      { label: t('data.tables.trips.distanceOptionsMiles.tenToFifty'), value: 'long', minDistance: 16093.4, maxDistance: 80467.2 },
+      { label: t('data.tables.trips.distanceOptionsMiles.moreThanFifty'), value: 'very-long', minDistance: 80467.2 }
     ]
   } else {
     distanceFilterOptions.value = [
-      { label: 'Less than 1 km', value: 'short', maxDistance: 1000 },
-      { label: '1-10 km', value: 'medium', minDistance: 1000, maxDistance: 10000 },
-      { label: '10-50 km', value: 'long', minDistance: 10000, maxDistance: 50000 },
-      { label: 'More than 50 km', value: 'very-long', minDistance: 50000 }
+      { label: t('data.tables.trips.distanceOptionsKm.lessThan1'), value: 'short', maxDistance: 1000 },
+      { label: t('data.tables.trips.distanceOptionsKm.oneToTen'), value: 'medium', minDistance: 1000, maxDistance: 10000 },
+      { label: t('data.tables.trips.distanceOptionsKm.tenToFifty'), value: 'long', minDistance: 10000, maxDistance: 50000 },
+      { label: t('data.tables.trips.distanceOptionsKm.moreThanFifty'), value: 'very-long', minDistance: 50000 }
     ]
   }
 }, { immediate: true })
@@ -468,7 +462,7 @@ const formatTime = (timestamp) => {
 }
 
 const getEndDate = (trip) => {
-  if (!trip?.timestamp || !trip?.tripDuration) return 'N/A'
+  if (!trip?.timestamp || !trip?.tripDuration) return t('data.tables.notAvailable')
 
   return memoizedEndTimeFormat(
     trip.timestamp,
@@ -483,7 +477,7 @@ const getEndDate = (trip) => {
 }
 
 const getEndTime = (trip) => {
-  if (!trip?.timestamp || !trip?.tripDuration) return 'N/A'
+  if (!trip?.timestamp || !trip?.tripDuration) return t('data.tables.notAvailable')
 
   return memoizedEndTimeFormat(
     trip.timestamp,
@@ -505,6 +499,7 @@ const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
     'MOTORCYCLE': 'info',
+    'PUBLIC_TRANSPORT': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
     'RUNNING': 'success',
@@ -516,10 +511,16 @@ const getTransportSeverity = (transportMode) => {
   return severityMap[transportMode?.toUpperCase()] || 'secondary'
 }
 
+const getTransportLabel = (transportMode) => {
+  const key = `movementTypes.${transportMode}`
+  return te(key) ? t(key) : transportMode
+}
+
 const getTransportIcon = (transportMode) => {
   const iconMap = {
     'CAR': 'pi pi-car',
     'MOTORCYCLE': 'fas fa-motorcycle',
+    'PUBLIC_TRANSPORT': 'pi pi-directions',
     'WALK': 'fas fa-walking',
     'BICYCLE': 'fas fa-bicycle',
     'RUNNING': 'fas fa-running',
@@ -675,27 +676,27 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
   border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .distance-badge {
-  background: var(--gp-info-50);
-  color: var(--gp-info-700);
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -763,10 +764,10 @@ onUnmounted(() => {
 }
 
 .mobile-trip-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
@@ -842,51 +843,6 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--gp-spacing-xs);
-}
-
-.no-data-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl);
-  color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  opacity: 0.5;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-}
-
-/* Dark Mode */
-.p-dark .duration-badge {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
-}
-
-.p-dark .distance-badge {
-  background: var(--gp-info-900);
-  color: var(--gp-info-300);
-}
-
-.p-dark .mobile-trip-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
 }
 
 /* Mobile Responsive */
@@ -976,82 +932,4 @@ onUnmounted(() => {
   }
 }
 
-/* PrimeVue DataTable Dark Mode Styling */
-.p-dark .trips-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-paginator-bottom),
-.p-dark .trips-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-top: 1px solid var(--gp-border-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-datatable-wrapper) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-page),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-next),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-prev),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-first),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-last) {
-  color: var(--gp-text-primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  margin: 0 2px !important;
-}
-
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-page:hover),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-next:hover),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-prev:hover),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-first:hover),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .trips-data-table :deep(.p-paginator .p-paginator-current) {
-  color: var(--gp-text-secondary) !important;
-}
 </style>

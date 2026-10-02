@@ -1,0 +1,5 @@
+/* Imported by the raster (Leaflet) map code (lazy chunks). In the vendor layer so map CSS overrides it without
+   !important; see layers.css. Leaflet's own stylesheet is global (index.css). */
+@import 'leaflet.fullscreen/dist/Control.FullScreen.css' layer(vendor);
+@import 'leaflet.markercluster/dist/MarkerCluster.css' layer(vendor);
+@import 'leaflet.markercluster/dist/MarkerCluster.Default.css' layer(vendor);

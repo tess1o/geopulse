@@ -25,14 +25,15 @@ describe('online restore maintenance lifecycle', () => {
     state: 'SWAPPED_PENDING_RESTART', blocked: true, warning: false,
     message: 'Restored data was activated. GeoPulse is stopping the backend to complete restoration.'
   }
-  const respond = data => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data }) }))
+  // /api/v1/system/maintenance returns the status payload directly; there is no {data: ...} envelope.
+  const respond = data => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => data }))
   const failStatus = (status = 500) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }))
 
   it('checks public status without authentication cookies', async () => {
     respond(preparing)
     const module = await import('./maintenance')
     await module.refreshMaintenance()
-    expect(fetch).toHaveBeenCalledWith('/api/maintenance/status', expect.objectContaining({ credentials: 'omit', cache: 'no-store' }))
+    expect(fetch).toHaveBeenCalledWith('/api/v1/system/maintenance', expect.objectContaining({ credentials: 'omit', cache: 'no-store' }))
     expect(module.maintenance.warning).toBe(true)
     expect(module.maintenance.blocked).toBe(false)
   })

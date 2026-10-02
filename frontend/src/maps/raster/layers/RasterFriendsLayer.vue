@@ -16,6 +16,7 @@ import {useTimezone} from '@/composables/useTimezone'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import { buildFriendLocationPopupModel } from '@/maps/shared/popups/friendPopupModel'
+import { getFriendTrailColor } from '@/maps/shared/friendTrailColors'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH_PX
@@ -55,35 +56,7 @@ const baseLayerRef = ref(null)
 const friendMarkers = ref([])
 const trailLayers = ref([])
 
-const trailColorPalette = [
-  '#E53935',
-  '#43A047',
-  '#1E88E5',
-  '#FDD835',
-  '#8E24AA',
-  '#F57C00',
-  '#00ACC1',
-  '#3949AB',
-  '#6D4C41',
-  '#546E7A',
-  '#00897B',
-  '#6A1B9A'
-]
-
-const friendColorLookup = {}
-
-const getColorByFriend = (friend, index) => {
-  const key = String(friend?.friendId || friend?.userId || friend?.id || friend?.email || `friend-${index}`)
-  if (!friendColorLookup[key]) {
-    const hash = key
-        .split('')
-        .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % trailColorPalette.length, 0)
-
-    friendColorLookup[key] = trailColorPalette[hash]
-  }
-
-  return friendColorLookup[key]
-}
+const getColorByFriend = getFriendTrailColor
 
 const getFriendLookupKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id || friend?.email
@@ -354,18 +327,18 @@ defineExpose({
 
 <style>
 .leaflet-tooltip.friend-trail-tooltip {
-  background: rgba(17, 24, 39, 0.98) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: #f8fafc !important;
-  min-width: 220px !important;
-  max-width: 420px !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
-  line-height: 1.35 !important;
+  background: rgba(17, 24, 39, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  min-width: 220px;
+  max-width: 420px;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  line-height: 1.35;
 }
 
 .leaflet-tooltip.friend-trail-tooltip::before {
-  border-top-color: rgba(17, 24, 39, 0.98) !important;
+  border-top-color: rgba(17, 24, 39, 0.98);
 }
 </style>

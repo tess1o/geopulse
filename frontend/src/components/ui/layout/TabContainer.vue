@@ -100,8 +100,8 @@ const handleTabClick = (index) => {
   min-width: 0;
   padding: var(--gp-spacing-xl) 0;
   overflow: visible;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-top: none;
   border-radius: 0 0 var(--gp-radius-large) var(--gp-radius-large);
 }
@@ -174,9 +174,9 @@ const handleTabClick = (index) => {
 <style>
 /* Global Tab Menu Styling */
 .gp-tab-menu {
-  border: 1px solid var(--gp-border-light);
-  border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
   flex-shrink: 0;
   width: 100%;
   max-width: 100%;
@@ -203,11 +203,11 @@ const handleTabClick = (index) => {
 }
 
 .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium) var(--gp-radius-medium) 0 0;
   padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-bottom: none;
   color: var(--gp-text-secondary);
   font-weight: 500;
@@ -245,7 +245,7 @@ const handleTabClick = (index) => {
 }
 
 .gp-tab-menu .p-tabmenu-item:not(.p-tabmenu-item-active) .p-tabmenu-item-link:hover {
-  background-color: var(--gp-surface-white);
+  background-color: var(--gp-surface-card);
   border-color: var(--gp-border-medium);
   color: var(--gp-primary);
 }
@@ -274,10 +274,10 @@ const handleTabClick = (index) => {
 
 .gp-tab-menu .p-tabmenu-item[data-p-disabled="true"] .p-tabmenu-item-link {
   opacity: 0.6;
-  background-color: var(--gp-surface-gray);
+  background-color: var(--gp-surface-emphasis);
   color: var(--gp-text-muted);
   cursor: not-allowed;
-  border-color: var(--gp-border-light);
+  border-color: var(--gp-border);
 }
 
 .gp-tab-menu .p-tabmenu-item-icon {
@@ -325,7 +325,7 @@ const handleTabClick = (index) => {
 }
 
 .gp-tab-menu--minimal .p-tabmenu-item:not(.p-tabmenu-item-active) .p-tabmenu-item-link:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-bottom-color: var(--gp-primary-light);
 }
 
@@ -336,8 +336,6 @@ const handleTabClick = (index) => {
   font-weight: 600;
   box-shadow: none;
 }
-
-/* Dark Mode styles are handled globally in style.css */
 
 /* Responsive */
 /* Tablet and mobile */

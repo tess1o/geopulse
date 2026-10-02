@@ -17,7 +17,7 @@
       <span
         v-else
         class="preset-selected-value"
-        :class="{ 'preset-selected-value--period-tag': isPeriodPresetOption(selectedPresetOption) }"
+        :class="{ 'preset-selected-value--timeline-label': isPeriodPresetOption(selectedPresetOption) }"
         :style="getPresetOptionStyle(selectedPresetOption)"
       >
         <span class="preset-selected-value-label">{{ selectedPresetOption.label }}</span>
@@ -34,13 +34,13 @@
     <template #option="slotProps">
       <div
         class="preset-option-row"
-        :class="{ 'preset-option-row--period-tag': isPeriodPresetOption(slotProps.option) }"
+        :class="{ 'preset-option-row--timeline-label': isPeriodPresetOption(slotProps.option) }"
         :style="getPresetOptionStyle(slotProps.option)"
       >
         <div class="preset-option-main">
           <span class="preset-option-label">{{ slotProps.option.nameLabel || slotProps.option.label }}</span>
           <span
-            v-if="slotProps.option.kind === 'period-tag' && slotProps.option.dateLabel"
+            v-if="slotProps.option.kind === 'timeline-label' && slotProps.option.dateLabel"
             class="preset-option-meta"
           >
             {{ slotProps.option.dateLabel }}
@@ -53,6 +53,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { t } from '@/locales'
 import Select from 'primevue/select'
 
 const props = defineProps({
@@ -66,7 +67,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Select Preset'
+    default: () => t('ui.dateRangePicker.presetPlaceholderDefault')
   },
   groupProps: {
     type: Object,
@@ -76,7 +77,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
-const periodTagTintStrength = 12
+const timelineLabelTintStrength = 12
 const presetSelectOverlayStyle = {
   width: 'min(16rem, calc(100vw - 1rem))',
   maxWidth: 'calc(100vw - 1rem)'
@@ -108,7 +109,7 @@ const selectedPresetOption = computed(() => {
 })
 
 function isPeriodPresetOption(option) {
-  return option?.kind === 'period-tag'
+  return option?.kind === 'timeline-label'
 }
 
 function getPresetOptionStyle(option) {
@@ -116,8 +117,8 @@ function getPresetOptionStyle(option) {
 
   const color = option?.color || '#3b82f6'
   return {
-    '--period-preset-color': color,
-    '--period-preset-tint-strength': `${periodTagTintStrength}%`
+    '--timeline-label-preset-color': color,
+    '--timeline-label-preset-tint-strength': `${timelineLabelTintStrength}%`
   }
 }
 </script>
@@ -140,9 +141,9 @@ function getPresetOptionStyle(option) {
   padding: 0.25rem 0.5rem;
 }
 
-.preset-selected-value--period-tag {
-  border-left: 3px solid var(--period-preset-color);
-  background: color-mix(in srgb, var(--period-preset-color) var(--period-preset-tint-strength), white);
+.preset-selected-value--timeline-label {
+  border-left: 3px solid var(--timeline-label-preset-color);
+  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), var(--gp-surface-card));
   padding-left: calc(0.5rem - 3px);
 }
 
@@ -175,7 +176,7 @@ function getPresetOptionStyle(option) {
 .preset-option-group-divider {
   flex: 1;
   height: 1px;
-  background: var(--gp-border-light);
+  background: var(--gp-border);
 }
 
 .preset-option-row {
@@ -187,9 +188,9 @@ function getPresetOptionStyle(option) {
   padding: 0.35rem 0.5rem;
 }
 
-.preset-option-row--period-tag {
-  border-left: 3px solid var(--period-preset-color);
-  background: color-mix(in srgb, var(--period-preset-color) var(--period-preset-tint-strength), white);
+.preset-option-row--timeline-label {
+  border-left: 3px solid var(--timeline-label-preset-color);
+  background: color-mix(in srgb, var(--timeline-label-preset-color) var(--timeline-label-preset-tint-strength), var(--gp-surface-card));
   padding-left: calc(0.5rem - 3px);
 }
 
@@ -216,21 +217,5 @@ function getPresetOptionStyle(option) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.p-dark .preset-option-group-label {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .preset-option-group-divider {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .preset-option-row--period-tag {
-  background: color-mix(in srgb, var(--period-preset-color) 16%, var(--gp-surface-dark));
-}
-
-.p-dark .preset-selected-value--period-tag {
-  background: color-mix(in srgb, var(--period-preset-color) 16%, var(--gp-surface-dark));
 }
 </style>

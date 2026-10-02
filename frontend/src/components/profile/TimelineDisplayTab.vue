@@ -1,277 +1,286 @@
 <template>
-  <Card class="timeline-display-card">
+  <Card class="timeline-display-card profile-settings-card">
     <template #content>
-      <form @submit.prevent="handleSubmit" class="timeline-display-form">
+      <form @submit.prevent="handleSubmit" class="timeline-display-form settings-tab">
         <!-- Section Header -->
-        <div class="display-header">
-          <div class="display-icon">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon">
             <i class="pi pi-eye"></i>
           </div>
-          <div class="display-info">
-            <h3 class="display-title">Display Settings</h3>
-            <p class="display-description">
-              These settings affect only how your timeline is displayed in the UI.
-              Changes take effect immediately and do not require timeline regeneration.
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">{{ t('profile.timeline.title') }}</h3>
+            <p class="settings-tab-description">
+              {{ t('profile.timeline.description') }}
             </p>
           </div>
         </div>
 
-        <!-- Map Tile Provider Section -->
-        <div class="section">
-          <h3 class="section-title">Map Tile Provider</h3>
-          <p class="section-description">
-            Choose rendering mode and configure both raster and vector map sources
-          </p>
-
-          <div class="form-field" data-setting-id="mapRenderMode">
-            <label for="mapRenderMode" class="form-label">
-              Map Render Mode
-            </label>
-            <Dropdown
-              id="mapRenderMode"
-              v-model="form.mapRenderMode"
-              :options="mapRenderModeOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="w-full"
-            />
-            <small class="help-text">
-              Switching modes keeps both custom URLs so you can toggle anytime.
-            </small>
+        <section class="settings-group" aria-labelledby="timeline-behavior-heading">
+          <div class="settings-group-header">
+            <h3 id="timeline-behavior-heading">{{ t('profile.timeline.behavior.heading') }}</h3>
+            <p>{{ t('profile.timeline.behavior.description') }}</p>
           </div>
 
-          <div class="form-field" data-setting-id="customMapTileUrl">
-            <label for="customMapTileUrl" class="form-label">
-              Custom Raster Tile URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Raster tile template. Must include {z}, {x}, and {y} placeholders.'"></i>
-            </label>
-            <InputText
-              id="customMapTileUrl"
-              v-model="form.customMapTileUrl"
-              placeholder="https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=YOUR_KEY"
-              :invalid="!!errors.customMapTileUrl"
-              class="w-full"
-            />
-            <small v-if="errors.customMapTileUrl" class="error-message">
-              {{ errors.customMapTileUrl }}
-            </small>
-            <small v-else class="help-text">
-              Used when render mode is Raster. Leave empty to use default OSM raster tiles.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.timeline.behavior.defaultDateRange.title')"
+              :description="t('profile.timeline.behavior.defaultDateRange.description')"
+              :details="t('profile.timeline.behavior.defaultDateRange.details')"
+              setting-id="defaultDateRangePreset"
+            >
+              <template #control>
+                <Dropdown
+                  id="defaultDateRangePreset"
+                  v-model="form.defaultDateRangePreset"
+                  :options="defaultDateRangePresetOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :placeholder="t('profile.timeline.behavior.defaultDateRange.placeholder')"
+                  class="w-full"
+                  showClear
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.behavior.telemetry.title')"
+              :description="t('profile.timeline.behavior.telemetry.description')"
+              :details="t('profile.timeline.behavior.telemetry.details')"
+              setting-id="showCurrentLocationTelemetry"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.showCurrentLocationTelemetry"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.behavior.replayControls.title')"
+              :description="t('profile.timeline.behavior.replayControls.description')"
+              :details="t('profile.timeline.behavior.replayControls.details')"
+              setting-id="autoShowTripReplayControls"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.autoShowTripReplayControls"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-labelledby="map-display-heading">
+          <div class="settings-group-header">
+            <h3 id="map-display-heading">{{ t('profile.timeline.sources.heading') }}</h3>
+            <p>{{ t('profile.timeline.sources.description') }}</p>
           </div>
 
-          <div class="form-field" data-setting-id="customMapStyleUrl">
-            <label for="customMapStyleUrl" class="form-label">
-              Custom Vector Style URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Vector style URL (style.json). Must use HTTP or HTTPS.'"></i>
-            </label>
-            <InputText
-              id="customMapStyleUrl"
-              v-model="form.customMapStyleUrl"
-              placeholder="https://tiles.openfreemap.org/styles/liberty"
-              :invalid="!!errors.customMapStyleUrl"
-              class="w-full"
-            />
-            <small v-if="errors.customMapStyleUrl" class="error-message">
-              {{ errors.customMapStyleUrl }}
-            </small>
-            <small v-else class="help-text">
-              Used when render mode is Vector. Leave empty to use default OpenFreeMap style.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.timeline.sources.renderMode.title')"
+              :description="t('profile.timeline.sources.renderMode.description')"
+              :details="t('profile.timeline.sources.renderMode.details')"
+              setting-id="mapRenderMode"
+            >
+              <template #control>
+                <Dropdown
+                  id="mapRenderMode"
+                  v-model="form.mapRenderMode"
+                  :options="mapRenderModeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="w-full"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.sources.buildings3d.title')"
+              :description="t('profile.timeline.sources.buildings3d.description')"
+              :details="t('profile.timeline.sources.buildings3d.details')"
+              setting-id="enable3dBuildingsByDefault"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.enable3dBuildingsByDefault"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.sources.rasterTiles.title')"
+              :description="t('profile.timeline.sources.rasterTiles.description')"
+              :details="t('profile.timeline.sources.rasterTiles.details')"
+              setting-id="customMapTileUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="customMapTileUrl"
+                    v-model="form.customMapTileUrl"
+                    placeholder="https://tiles.example.com/{z}/{x}/{y}.png"
+                    :invalid="!!errors.customMapTileUrl"
+                    class="w-full"
+                    :aria-label="t('profile.timeline.sources.rasterTiles.ariaLabel')"
+                  />
+                  <small v-if="errors.customMapTileUrl" class="error-message">{{ errors.customMapTileUrl }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.sources.vectorStyle.title')"
+              :description="t('profile.timeline.sources.vectorStyle.description')"
+              :details="t('profile.timeline.sources.vectorStyle.details')"
+              setting-id="customMapStyleUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="customMapStyleUrl"
+                    v-model="form.customMapStyleUrl"
+                    placeholder="https://tiles.openfreemap.org/styles/liberty"
+                    :invalid="!!errors.customMapStyleUrl"
+                    class="w-full"
+                    :aria-label="t('profile.timeline.sources.vectorStyle.ariaLabel')"
+                  />
+                  <small v-if="errors.customMapStyleUrl" class="error-message">{{ errors.customMapStyleUrl }}</small>
+                </div>
+              </template>
+            </SettingCard>
           </div>
-        </div>
+        </section>
 
-        <!-- Default Date Range Section -->
-        <div class="section">
-          <h3 class="section-title">Default Date Range</h3>
-          <p class="section-description">
-            Choose the preset used by default on Timeline, Dashboard, and Timeline Reports
-          </p>
-
-          <div class="form-field" data-setting-id="defaultDateRangePreset">
-            <label for="defaultDateRangePreset" class="form-label">
-              Default Date Range Preset
-              <i class="pi pi-info-circle" v-tooltip.right="'If not set, GeoPulse keeps the current default behavior (Today).'"></i>
-            </label>
-            <Dropdown
-              id="defaultDateRangePreset"
-              v-model="form.defaultDateRangePreset"
-              :options="defaultDateRangePresetOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Use app default (Today)"
-              class="w-full"
-              showClear
-            />
+        <section class="settings-group" aria-labelledby="map-processing-heading">
+          <div class="settings-group-header">
+            <h3 id="map-processing-heading">{{ t('profile.timeline.processing.heading') }}</h3>
+            <p>{{ t('profile.timeline.processing.description') }}</p>
           </div>
-        </div>
 
-        <div class="section">
-          <h3 class="section-title">Current Location Popup</h3>
-          <p class="section-description">
-            Control whether telemetry from the latest point is shown in the current-location popup
-          </p>
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.timeline.processing.mapMatching.title')"
+              :description="mapMatchingDescription"
+              :details="mapMatchingDetails"
+              setting-id="mapMatchingEnabled"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.mapMatchingEnabled"
+                  class="toggle-control"
+                  :aria-label="t('profile.timeline.toggleAria.mapMatching')"
+                  :disabled="readOnly || !mapMatchingAvailable"
+                />
+              </template>
+            </SettingCard>
 
-          <SettingCard
-            title="Show Telemetry In Current Location Popup"
-            description="Display mapped telemetry values in the map popup for your current location"
-            details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
-            setting-id="showCurrentLocationTelemetry"
-          >
-            <template #control>
-              <div class="control-value">{{ form.showCurrentLocationTelemetry ? 'Enabled' : 'Hidden' }}</div>
-              <ToggleSwitch
-                v-model="form.showCurrentLocationTelemetry"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
+            <SettingCard
+              v-if="mapMatchingAvailable && form.mapMatchingEnabled"
+              :title="t('profile.timeline.processing.rawGps.title')"
+              :description="t('profile.timeline.processing.rawGps.description')"
+              :details="t('profile.timeline.processing.rawGps.details')"
+              setting-id="mapMatchingExcludedMovementTypes"
+            >
+              <template #control>
+                <MultiSelect
+                  id="mapMatchingExcludedMovementTypes"
+                  v-model="form.mapMatchingExcludedMovementTypes"
+                  :options="mapMatchingMovementTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :placeholder="t('profile.timeline.processing.rawGps.placeholder')"
+                  display="chip"
+                  class="w-full"
+                  :aria-label="t('profile.timeline.processing.rawGps.ariaLabel')"
+                  :disabled="readOnly"
+                />
+              </template>
+            </SettingCard>
 
-        </div>
+            <SettingCard
+              :title="t('profile.timeline.processing.simplification.title')"
+              :description="t('profile.timeline.processing.simplification.description')"
+              :details="t('profile.timeline.processing.simplification.details')"
+              setting-id="pathSimplificationEnabled"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.pathSimplificationEnabled"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
 
-        <div class="section">
-          <h3 class="section-title">Trip Selection</h3>
-          <p class="section-description">
-            Control what appears when a trip is selected on the map
-          </p>
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              :title="t('profile.timeline.processing.tolerance.title')"
+              :description="t('profile.timeline.processing.tolerance.description')"
+              :details="toleranceDetails"
+              setting-id="pathSimplificationTolerance"
+            >
+              <template #control>
+                <SliderControl
+                  v-model="form.pathSimplificationTolerance"
+                  :min="1"
+                  :max="50"
+                  :step="1"
+                  :labels="toleranceLabels"
+                  suffix=" m"
+                  :input-min="1"
+                  :input-max="100"
+                  :decimal-places="0"
+                />
+              </template>
+            </SettingCard>
 
-          <SettingCard
-            title="Auto-show Replay Controls"
-            description="Show the replay control bar automatically when a trip is selected"
-            details="When disabled, trip replay remains available from a compact Replay button."
-            setting-id="autoShowTripReplayControls"
-          >
-            <template #control>
-              <div class="control-value">{{ form.autoShowTripReplayControls ? 'Enabled' : 'Collapsed' }}</div>
-              <ToggleSwitch
-                v-model="form.autoShowTripReplayControls"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-        </div>
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              :title="t('profile.timeline.processing.maxPoints.title')"
+              :description="t('profile.timeline.processing.maxPoints.description')"
+              :details="t('profile.timeline.processing.maxPoints.details')"
+              setting-id="pathMaxPoints"
+            >
+              <template #control>
+                <SliderControl
+                  v-model="form.pathMaxPoints"
+                  :min="0"
+                  :max="500"
+                  :step="10"
+                  :labels="maxPointsLabels"
+                  :suffix="form.pathMaxPoints === 0 ? '' : t('profile.timeline.pointsSuffix')"
+                  :input-min="0"
+                  :input-max="1000"
+                  :decimal-places="0"
+                />
+              </template>
+            </SettingCard>
 
-        <div class="section">
-          <h3 class="section-title">Map Matching</h3>
-          <p class="section-description">
-            Use a configured Valhalla service to fit displayed trip paths to roads and paths
-          </p>
-
-          <SettingCard
-            title="Enable Map Matching"
-            description="Display cached matched trip geometry when available"
-            :details="mapMatchingDetails"
-            setting-id="mapMatchingEnabled"
-          >
-            <template #control>
-              <div class="control-value">{{ mapMatchingStatusLabel }}</div>
-              <ToggleSwitch
-                v-model="form.mapMatchingEnabled"
-                class="toggle-control"
-                aria-label="Enable map matching"
-                :disabled="readOnly || !mapMatchingAvailable"
-              />
-            </template>
-          </SettingCard>
-        </div>
-
-        <!-- GPS Path Simplification Section -->
-        <div class="section">
-          <h3 class="section-title">GPS Path Simplification</h3>
-          <p class="section-description">
-            Configure how GPS paths are simplified when displayed on the map
-          </p>
-
-          <!-- Enable Path Simplification -->
-          <SettingCard
-            title="Enable Path Simplification"
-            description="Reduce the number of GPS points displayed while preserving route accuracy"
-            details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data"
-            setting-id="pathSimplificationEnabled"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathSimplificationEnabled ? 'Enabled' : 'Disabled' }}</div>
-              <ToggleSwitch
-                v-model="form.pathSimplificationEnabled"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-
-          <!-- Simplification Tolerance -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Simplification Tolerance"
-            description="Distance threshold in meters for simplifying paths"
-            :details="{
-              'Lower values (1-10m)': 'Preserve more detail, show more points',
-                'Higher values (20-100m)': 'More compression, show fewer points'
-            }"
-            setting-id="pathSimplificationTolerance"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathSimplificationTolerance }}m</div>
-              <SliderControl
-                v-model="form.pathSimplificationTolerance"
-                :min="1"
-                :max="50"
-                :step="1"
-                :labels="['1m (High detail)', '15m (Balanced)', '50m (High compression)']"
-                suffix=" m"
-                :input-min="1"
-                :input-max="100"
-                :decimal-places="0"
-              />
-            </template>
-          </SettingCard>
-
-          <!-- Maximum Points -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Maximum Points"
-            description="Maximum number of GPS points to display in a path"
-            details="If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit"
-            setting-id="pathMaxPoints"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathMaxPoints === 0 ? 'No limit' : form.pathMaxPoints + ' points' }}</div>
-              <SliderControl
-                v-model="form.pathMaxPoints"
-                :min="0"
-                :max="500"
-                :step="10"
-                :labels="['0 (No limit)', '100 (Balanced)', '500 (High limit)']"
-                :suffix="form.pathMaxPoints === 0 ? '' : ' points'"
-                :input-min="0"
-                :input-max="1000"
-                :decimal-places="0"
-              />
-            </template>
-          </SettingCard>
-
-          <!-- Adaptive Simplification -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Adaptive Simplification"
-            description="Automatically adjust simplification based on trip length"
-            details="Longer trips use higher tolerance for better performance, shorter trips maintain higher detail"
-            setting-id="pathAdaptiveSimplification"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathAdaptiveSimplification ? 'Enabled' : 'Disabled' }}</div>
-              <ToggleSwitch
-                v-model="form.pathAdaptiveSimplification"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-        </div>
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              :title="t('profile.timeline.processing.adaptive.title')"
+              :description="t('profile.timeline.processing.adaptive.description')"
+              :details="t('profile.timeline.processing.adaptive.details')"
+              setting-id="pathAdaptiveSimplification"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.pathAdaptiveSimplification"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
 
         <!-- Action Buttons -->
-        <div class="form-actions">
+        <div class="settings-actions is-sticky">
           <Button
             type="button"
-            label="Reset to Defaults"
+            :label="t('profile.timeline.resetToDefaults')"
             severity="secondary"
             outlined
             @click="handleReset"
@@ -279,7 +288,7 @@
           />
           <Button
             type="submit"
-            label="Save Changes"
+            :label="t('profile.timeline.saveChanges')"
             :loading="loading"
             icon="pi pi-check"
             :disabled="readOnly"
@@ -292,13 +301,18 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
+import MultiSelect from 'primevue/multiselect'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
+import { movementTypeOptions } from '@/composables/useTripReconstructionSegments'
+
+const { t } = useI18n()
 
 const props = defineProps({
   readOnly: {
@@ -325,7 +339,9 @@ const form = ref({
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
   autoShowTripReplayControls: true,
+  enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
+  mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: false
 })
 
@@ -335,16 +351,58 @@ const errors = ref({
 })
 
 const loading = ref(false)
-const defaultDateRangePresetOptions = [
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'Last 7 days', value: 'lastWeek' },
-  { label: 'Last 30 days', value: 'lastMonth' }
-]
-const mapRenderModeOptions = [
-  { label: 'Vector (MapLibre)', value: 'VECTOR' },
-  { label: 'Raster (Leaflet)', value: 'RASTER' }
-]
+// Option tables carry keys, not text; PrimeVue's `optionLabel` reads a field, so the labels are
+// resolved here -- inside a computed, which keeps them reactive to a language change.
+const defaultDateRangePresetOptions = computed(() => [
+  { label: t('profile.timeline.dateRangeOptions.today'), value: 'today' },
+  { label: t('profile.timeline.dateRangeOptions.yesterday'), value: 'yesterday' },
+  { label: t('profile.timeline.dateRangeOptions.lastWeek'), value: 'lastWeek' },
+  { label: t('profile.timeline.dateRangeOptions.lastMonth'), value: 'lastMonth' }
+])
+const mapRenderModeOptions = computed(() => [
+  { label: t('profile.timeline.renderModeOptions.vector'), value: 'VECTOR' },
+  { label: t('profile.timeline.renderModeOptions.raster'), value: 'RASTER' }
+])
+const toleranceLabels = computed(() => [
+  t('profile.timeline.toleranceLabels.low'),
+  t('profile.timeline.toleranceLabels.mid'),
+  t('profile.timeline.toleranceLabels.high')
+])
+const maxPointsLabels = computed(() => [
+  t('profile.timeline.maxPointsLabels.none'),
+  t('profile.timeline.maxPointsLabels.balanced'),
+  t('profile.timeline.maxPointsLabels.high')
+])
+// SettingCard renders an object `details` as `label: value` rows, so both halves are translated.
+const toleranceDetails = computed(() => ({
+  [t('profile.timeline.processing.tolerance.detailLowerLabel')]: t('profile.timeline.processing.tolerance.detailLowerValue'),
+  [t('profile.timeline.processing.tolerance.detailHigherLabel')]: t('profile.timeline.processing.tolerance.detailHigherValue')
+}))
+const mapMatchingMovementTypeValues = new Set([
+  'WALK',
+  'RUNNING',
+  'BICYCLE',
+  'CAR',
+  'MOTORCYCLE',
+  'PUBLIC_TRANSPORT'
+])
+const mapMatchingMovementTypeOptions = computed(() => movementTypeOptions
+  .filter(option => mapMatchingMovementTypeValues.has(option.value))
+  .map(option => ({ label: t(option.labelKey), value: option.value })))
+// The order the backend-normalisation helpers expect, kept independent of the display labels.
+const mapMatchingMovementTypeOrder = movementTypeOptions
+  .filter(option => mapMatchingMovementTypeValues.has(option.value))
+  .map(option => option.value)
+const normalizeMovementTypeList = (values) => {
+  const selected = new Set((Array.isArray(values) ? values : []).map(value => String(value).trim().toUpperCase()))
+  return mapMatchingMovementTypeOrder.filter(value => selected.has(value))
+}
+const movementTypeListsEqual = (left, right) => {
+  const normalizedLeft = normalizeMovementTypeList(left)
+  const normalizedRight = normalizeMovementTypeList(right)
+  return normalizedLeft.length === normalizedRight.length
+    && normalizedLeft.every((value, index) => value === normalizedRight[index])
+}
 const editablePreferenceKeys = [
   'customMapTileUrl',
   'customMapStyleUrl',
@@ -356,7 +414,9 @@ const editablePreferenceKeys = [
   'pathAdaptiveSimplification',
   'showCurrentLocationTelemetry',
   'autoShowTripReplayControls',
-  'mapMatchingEnabled'
+  'enable3dBuildingsByDefault',
+  'mapMatchingEnabled',
+  'mapMatchingExcludedMovementTypes'
 ]
 
 const normalizePreferences = (preferences = {}) => ({
@@ -370,36 +430,42 @@ const normalizePreferences = (preferences = {}) => ({
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
   autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
+  enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
+  mapMatchingExcludedMovementTypes: normalizeMovementTypeList(preferences.mapMatchingExcludedMovementTypes),
   mapMatchingAvailable: preferences.mapMatchingAvailable ?? false
 })
 
 const mapMatchingAvailable = computed(() => form.value.mapMatchingAvailable === true)
-const mapMatchingStatusLabel = computed(() => {
-  if (!mapMatchingAvailable.value) {
-    return 'Unavailable'
-  }
-  return form.value.mapMatchingEnabled ? 'Enabled' : 'Disabled'
-})
+const mapMatchingDescription = computed(() => (
+  mapMatchingAvailable.value
+    ? t('profile.timeline.processing.mapMatching.descriptionAvailable')
+    : t('profile.timeline.processing.mapMatching.descriptionUnavailable')
+))
 const mapMatchingDetails = computed(() => (
   mapMatchingAvailable.value
-    ? 'Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged.'
-    : 'An administrator must enable Map Matching and configure Valhalla before you can turn this on.'
+    ? t('profile.timeline.processing.mapMatching.detailsAvailable')
+    : t('profile.timeline.processing.mapMatching.detailsUnavailable')
 ))
 
 const hasChanges = computed(() => {
   const current = normalizePreferences(form.value)
   const initial = normalizePreferences(props.initialPreferences)
 
-  return editablePreferenceKeys.some((key) => current[key] !== initial[key])
+  return editablePreferenceKeys.some((key) => (
+    key === 'mapMatchingExcludedMovementTypes'
+      ? !movementTypeListsEqual(current[key], initial[key])
+      : current[key] !== initial[key]
+  ))
 })
 
-// Initialize form from props
+// Initialize form from props. The Appearance tab saves into the same preferences object, so only a change
+// to this tab's own fields re-initializes the form; otherwise saving there would discard unsaved edits here.
 watch(
-  () => props.initialPreferences,
-  (newPrefs) => {
-    if (newPrefs) {
-      form.value = normalizePreferences(newPrefs)
+  () => (props.initialPreferences ? JSON.stringify(normalizePreferences(props.initialPreferences)) : null),
+  (serialized) => {
+    if (serialized) {
+      form.value = normalizePreferences(props.initialPreferences)
     }
   },
   { immediate: true }
@@ -419,12 +485,12 @@ const validateCustomMapTileUrl = (url) => {
 
   // Check for required placeholders
   if (!url.includes('{z}') || !url.includes('{x}') || !url.includes('{y}')) {
-    return 'URL must contain {z}, {x}, and {y} placeholders'
+    return t('profile.timeline.validation.tilePlaceholders')
   }
 
   // Check for valid protocol
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-    return 'URL must use HTTP or HTTPS protocol'
+    return t('profile.timeline.validation.protocol')
   }
 
   // Check for dangerous patterns
@@ -433,12 +499,12 @@ const validateCustomMapTileUrl = (url) => {
     normalizedUrl.includes('data:') ||
     normalizedUrl.includes('file:')
   ) {
-    return 'Invalid URL protocol'
+    return t('profile.timeline.validation.invalidProtocol')
   }
 
   // Check for path traversal
   if (url.includes('..')) {
-    return 'Invalid URL format'
+    return t('profile.timeline.validation.invalidFormat')
   }
 
   return null
@@ -452,7 +518,7 @@ const validateCustomMapStyleUrl = (url) => {
   const normalizedUrl = url.trim().toLowerCase()
 
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-    return 'URL must use HTTP or HTTPS protocol'
+    return t('profile.timeline.validation.protocol')
   }
 
   if (
@@ -460,16 +526,16 @@ const validateCustomMapStyleUrl = (url) => {
     normalizedUrl.includes('data:') ||
     normalizedUrl.includes('file:')
   ) {
-    return 'Invalid URL protocol'
+    return t('profile.timeline.validation.invalidProtocol')
   }
 
   if (url.includes('..')) {
-    return 'Invalid URL format'
+    return t('profile.timeline.validation.invalidFormat')
   }
 
   const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
   if (!looksLikeStyleUrl) {
-    return 'URL should point to a style JSON endpoint'
+    return t('profile.timeline.validation.styleEndpoint')
   }
 
   return null
@@ -493,7 +559,7 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    // Save all display preferences including custom map tile URL
+    // Only this tab's fields: the endpoint merges, so the Appearance tab's fields are left untouched.
     emit('save', {
       customMapTileUrl: form.value.customMapTileUrl,
       customMapStyleUrl: form.value.customMapStyleUrl,
@@ -505,7 +571,9 @@ const handleSubmit = async () => {
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
       autoShowTripReplayControls: form.value.autoShowTripReplayControls,
-      mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false
+      enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
+      mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false,
+      mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes)
     })
   } finally {
     loading.value = false
@@ -525,7 +593,9 @@ const handleReset = () => {
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
     autoShowTripReplayControls: true,
+    enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
+    mapMatchingExcludedMovementTypes: [],
     mapMatchingAvailable: mapMatchingAvailable.value
   }
   errors.value = {
@@ -535,150 +605,3 @@ const handleReset = () => {
 }
 
 </script>
-
-<style scoped>
-.timeline-display-card {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.timeline-display-form {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* Section Header — matches Security / Immich / AI tab header pattern */
-.display-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.display-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.display-info {
-  flex: 1;
-}
-
-.display-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.display-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* Section */
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.section-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 0.5rem 0;
-}
-
-/* Form Field */
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.form-label .pi-info-circle {
-  color: var(--gp-text-secondary);
-  cursor: help;
-}
-
-.help-text {
-  color: var(--gp-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.875rem;
-}
-
-/* Control Styles */
-.control-value {
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  min-width: 80px;
-  text-align: right;
-}
-
-.toggle-control {
-  margin-left: auto;
-}
-
-
-/* Form Actions */
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .display-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .form-actions button {
-    width: 100%;
-  }
-
-}
-</style>

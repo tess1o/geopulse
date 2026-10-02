@@ -97,7 +97,7 @@ class GeofenceEventsResourceIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/geofences/events")
+                .get("/api/v1/geofences/events")
                 .then()
                 .statusCode(401);
     }
@@ -113,106 +113,105 @@ class GeofenceEventsResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?page=0&pageSize=2&sortBy=occurredAt&sortDir=desc")
+                .get("/api/v1/geofences/events?page=0&size=2&sortBy=occurredAt&sortDirection=desc")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.items.size()", equalTo(2))
-                .body("data.totalCount", equalTo(3))
-                .body("data.page", equalTo(0))
-                .body("data.pageSize", equalTo(2))
-                .body("data.items[0].title", equalTo("Newest seen"));
+                .body("items.size()", equalTo(2))
+                .body("totalElements", equalTo(3))
+                .body("page", equalTo(0))
+                .body("size", equalTo(2))
+                .body("items[0].title", equalTo("Newest seen"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?sortBy=subjectDisplayName&sortDir=asc")
+                .get("/api/v1/geofences/events?sortBy=subjectDisplayName&sortDirection=asc")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(3))
-                .body("data.items[0].subjectDisplayName", equalTo("Alice Subject"));
+                .body("items.size()", equalTo(3))
+                .body("items[0].subjectDisplayName", equalTo("Alice Subject"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?sortBy=eventType&sortDir=asc")
+                .get("/api/v1/geofences/events?sortBy=eventType&sortDirection=asc")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(3))
-                .body("data.items[0].eventType", equalTo("ENTER"));
+                .body("items.size()", equalTo(3))
+                .body("items[0].eventType", equalTo("ENTER"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?subjectUserIds=" + subjectA.getId())
+                .get("/api/v1/geofences/events?subjectUserIds=" + subjectA.getId())
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(2))
-                .body("data.items.subjectUserId", everyItem(equalTo(subjectA.getId().toString())));
+                .body("items.size()", equalTo(2))
+                .body("items.subjectUserId", everyItem(equalTo(subjectA.getId().toString())));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?eventTypes=LEAVE")
+                .get("/api/v1/geofences/events?eventTypes=LEAVE")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(1))
-                .body("data.items[0].eventType", equalTo("LEAVE"));
+                .body("items.size()", equalTo(1))
+                .body("items[0].eventType", equalTo("LEAVE"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?unreadOnly=true")
+                .get("/api/v1/geofences/events?unreadOnly=true")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(2))
-                .body("data.items.seen", everyItem(equalTo(false)));
+                .body("items.size()", equalTo(2))
+                .body("items.seen", everyItem(equalTo(false)));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?dateFrom=2026-03-20T08:30:00Z&dateTo=2026-03-20T09:30:00Z")
+                .get("/api/v1/geofences/events?from=2026-03-20T08:30:00Z&to=2026-03-20T09:30:00Z")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(1))
-                .body("data.items[0].title", equalTo("Middle leave"));
+                .body("items.size()", equalTo(1))
+                .body("items[0].title", equalTo("Middle leave"));
     }
     @Test
     void shouldRejectInvalidFilters() {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?subjectUserIds=not-a-uuid")
+                .get("/api/v1/geofences/events?subjectUserIds=not-a-uuid")
                 .then()
                 .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Invalid UUID"));
+                .body("code", equalTo("INVALID_GEOFENCE_QUERY"))
+                .body("detail", containsString("Invalid UUID"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?eventTypes=INVALID")
+                .get("/api/v1/geofences/events?eventTypes=INVALID")
                 .then()
                 .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Invalid eventTypes"));
+                .body("code", equalTo("INVALID_GEOFENCE_QUERY"))
+                .body("detail", containsString("Invalid eventTypes"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?dateFrom=bad-date")
+                .get("/api/v1/geofences/events?from=bad-date")
                 .then()
                 .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Invalid dateFrom"));
+                .body("code", equalTo("INVALID_GEOFENCE_QUERY"))
+                .body("detail", containsString("Invalid dateFrom"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?dateFrom=2026-03-20T10:00:00Z&dateTo=2026-03-20T09:00:00Z")
+                .get("/api/v1/geofences/events?from=2026-03-20T10:00:00Z&to=2026-03-20T09:00:00Z")
                 .then()
                 .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("dateFrom must be before or equal to dateTo"));
+                .body("code", equalTo("INVALID_GEOFENCE_QUERY"))
+                .body("detail", containsString("dateFrom must be before or equal to dateTo"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?sortBy=deliveryStatus")
+                .get("/api/v1/geofences/events?sortBy=deliveryStatus")
                 .then()
                 .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Unsupported sortBy value"));
+                .body("code", equalTo("INVALID_GEOFENCE_QUERY"))
+                .body("detail", containsString("Unsupported sortBy value"));
     }
     @Test
     void shouldMarkSeenAndMarkAllSeenWithUnreadCount() {
@@ -235,54 +234,54 @@ class GeofenceEventsResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events/unread-count")
+                .get("/api/v1/geofences/events/unread-count")
                 .then()
                 .statusCode(200)
-                .body("data.count", equalTo(2));
+                .body("count", equalTo(2));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/geofences/events/" + first.getId() + "/seen")
+                .patch("/api/v1/geofences/events/" + first.getId() + "/read-status")
                 .then()
                 .statusCode(200)
-                .body("data.id", equalTo(first.getId().intValue()))
-                .body("data.seen", equalTo(true));
+                .body("id", equalTo(first.getId().intValue()))
+                .body("seen", equalTo(true));
         assertNotificationSeen(firstNotification.getId(), true);
         assertNotificationSeen(secondNotification.getId(), false);
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/geofences/events/" + foreign.getId() + "/seen")
+                .patch("/api/v1/geofences/events/" + foreign.getId() + "/read-status")
                 .then()
-                .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("not found"));
+                .statusCode(404)
+                .body("code", equalTo("GEOFENCE_EVENT_NOT_FOUND"))
+                .body("detail", containsString("not found"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/geofences/events/seen-all")
+                .patch("/api/v1/geofences/events/read-status")
                 .then()
                 .statusCode(200)
-                .body("data.updatedCount", equalTo(1));
+                .body("updatedCount", equalTo(1));
         assertNotificationSeen(secondNotification.getId(), true);
         assertNotificationSeen(importNotification.getId(), false);
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events/unread-count")
+                .get("/api/v1/geofences/events/unread-count")
                 .then()
                 .statusCode(200)
-                .body("data.count", equalTo(0));
+                .body("count", equalTo(0));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events?unreadOnly=true")
+                .get("/api/v1/geofences/events?unreadOnly=true")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(0));
+                .body("items.size()", equalTo(0));
     }
     @Test
     void shouldKeepEventsAfterTemplateDeletion() {
@@ -294,25 +293,24 @@ class GeofenceEventsResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .delete("/api/geofences/templates/" + template.getId())
+                .delete("/api/v1/geofences/templates/" + template.getId())
                 .then()
-                .statusCode(200)
-                .body("status", equalTo("success"));
+                .statusCode(204);
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events")
+                .get("/api/v1/geofences/events")
                 .then()
                 .statusCode(200)
-                .body("data.items.size()", equalTo(1))
-                .body("data.items[0].title", equalTo("Template-backed event"));
+                .body("items.size()", equalTo(1))
+                .body("items[0].title", equalTo("Template-backed event"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/geofences/events/unread-count")
+                .get("/api/v1/geofences/events/unread-count")
                 .then()
                 .statusCode(200)
-                .body("data.count", equalTo(1));
+                .body("count", equalTo(1));
         assertTemplateReferencesDetached(event.getId(), rule.getId());
     }
     private GeofenceRuleEntity createRule(UserEntity owner, String name) {

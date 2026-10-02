@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useGeocodingStore } from '@/stores/geocoding'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const findFavoriteById = (favoritePlaces, favoriteId) => {
   const points = favoritePlaces?.points || []
@@ -64,11 +65,10 @@ export function useTimelineLocationEditing(options = {}) {
       closeGeocodingDialog()
     } catch (error) {
       console.error('Failed to update geocoding result from timeline:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update stay location'
       toast.add({
         severity: 'error',
         summary: 'Update Failed',
-        detail: errorMessage,
+        detail: formatApiErrorDetail(error, 'Failed to update stay location'),
         life: 5000
       })
     }
@@ -110,11 +110,10 @@ export function useTimelineLocationEditing(options = {}) {
       showGeocodingEditDialog.value = true
     } catch (error) {
       console.error('Failed to load geocoding details for stay rename:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Could not load geocoding details'
       toast.add({
         severity: 'error',
         summary: 'Unable to Rename',
-        detail: errorMessage,
+        detail: formatApiErrorDetail(error, 'Could not load geocoding details'),
         life: 5000
       })
     }

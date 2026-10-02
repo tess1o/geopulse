@@ -1,15 +1,15 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Reverse Geocoding Management"
-      subtitle="Manage and update your geocoding results"
+      :title="t('geocoding.page.title')"
+      :subtitle="t('geocoding.page.subtitle')"
       :loading="isLoading"
       variant="fullwidth"
     >
     <template #actions>
       <div class="header-actions">
         <Button
-          :label="`Reconcile All (${formatNumber(totalRecords)})`"
+          :label="t('geocoding.page.reconcileAllButton', { count: formatNumber(totalRecords) })"
           icon="pi pi-refresh"
           severity="secondary"
           size="small"
@@ -18,7 +18,7 @@
         />
         <Button
           v-if="selectedRows.length > 0"
-          :label="`Bulk Edit (${selectedRows.length})`"
+          :label="t('geocoding.page.bulkEditButton', { count: selectedRows.length })"
           icon="pi pi-pencil"
           severity="secondary"
           size="small"
@@ -27,7 +27,7 @@
         />
         <Button
           v-if="selectedRows.length > 0"
-          :label="`Reconcile Selected (${selectedRows.length})`"
+          :label="t('geocoding.page.reconcileSelectedButton', { count: selectedRows.length })"
           icon="pi pi-refresh"
           severity="info"
           size="small"
@@ -39,18 +39,18 @@
 
     <BaseCard class="provider-switch-info">
       <i class="pi pi-info-circle"></i>
-      <span>Provider changes affect new lookups only. Use Reconcile Selected/Reconcile All to refresh existing cached records.</span>
+      <span>{{ t('geocoding.page.providerSwitchInfo') }}</span>
     </BaseCard>
 
     <BaseCard class="normalization-rules-section">
       <div class="normalization-header">
         <div>
-          <h3 class="normalization-title">Normalization Rules</h3>
-          <p class="normalization-subtitle">Per-user mapping rules for country and city names. New geocoding results use these rules automatically; use Apply Rules Now to update existing saved geocoding and favorites.</p>
+          <h3 class="normalization-title">{{ t('geocoding.page.normalization.title') }}</h3>
+          <p class="normalization-subtitle">{{ t('geocoding.page.normalization.subtitle') }}</p>
         </div>
         <div class="normalization-actions">
           <Button
-            :label="rulesExpanded ? 'Collapse' : 'Expand'"
+            :label="rulesExpanded ? t('geocoding.page.normalization.collapse') : t('geocoding.page.normalization.expand')"
             :icon="rulesExpanded ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
             severity="secondary"
             size="small"
@@ -58,7 +58,7 @@
             @click="rulesExpanded = !rulesExpanded"
           />
           <Button
-            label="Add Rule"
+            :label="t('geocoding.page.normalization.addRule')"
             icon="pi pi-plus"
             severity="secondary"
             size="small"
@@ -66,7 +66,7 @@
             :disabled="!rulesExpanded"
           />
           <Button
-            label="Apply Rules Now"
+            :label="t('geocoding.page.normalization.applyRulesNow')"
             icon="pi pi-play"
             severity="primary"
             size="small"
@@ -77,11 +77,11 @@
       </div>
 
       <div v-if="!rulesExpanded" class="normalization-collapsed-hint">
-        Section collapsed. Expand to manage rules.
+        {{ t('geocoding.page.normalization.collapsedHint') }}
       </div>
       <template v-else>
         <div v-if="normalizationRules.length === 0" class="normalization-empty">
-          No normalization rules yet.
+          {{ t('geocoding.page.normalization.empty') }}
         </div>
         <DataTable
           v-else
@@ -90,25 +90,25 @@
           responsive-layout="scroll"
           class="normalization-table"
         >
-          <Column field="ruleType" header="Type">
+          <Column field="ruleType" :header="t('geocoding.page.normalization.typeColumn')">
             <template #body="slotProps">
               <Tag
-                :value="slotProps.data.ruleType === 'COUNTRY' ? 'Country' : 'City'"
+                :value="slotProps.data.ruleType === 'COUNTRY' ? t('geocoding.page.normalization.typeCountry') : t('geocoding.page.normalization.typeCity')"
                 :severity="slotProps.data.ruleType === 'COUNTRY' ? 'info' : 'contrast'"
               />
             </template>
           </Column>
-          <Column header="From">
+          <Column :header="t('geocoding.page.normalization.fromColumn')">
             <template #body="slotProps">
               {{ formatRuleSource(slotProps.data) }}
             </template>
           </Column>
-          <Column header="To">
+          <Column :header="t('geocoding.page.normalization.toColumn')">
             <template #body="slotProps">
               {{ formatRuleTarget(slotProps.data) }}
             </template>
           </Column>
-          <Column header="Actions">
+          <Column :header="t('geocoding.page.normalization.actionsColumn')">
             <template #body="slotProps">
               <div class="actions-buttons">
                 <Button
@@ -143,28 +143,28 @@
     <BaseCard class="filter-section">
       <div class="filter-controls">
         <div class="filter-group">
-          <label class="filter-label">Provider:</label>
+          <label class="filter-label">{{ t('geocoding.page.filters.providerLabel') }}</label>
           <Select
             v-model="selectedProvider"
             :options="providerOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="All Providers"
+            :placeholder="t('geocoding.page.filters.allProviders')"
             class="provider-select"
             @change="handleFilterChange"
           />
         </div>
         <div class="filter-group">
-          <label class="filter-label">Search:</label>
+          <label class="filter-label">{{ t('geocoding.page.filters.searchLabel') }}</label>
           <InputText
             v-model="searchText"
-            placeholder="Search by location, city, or country"
+            :placeholder="t('geocoding.page.filters.searchPlaceholder')"
             class="search-input"
             @input="handleSearchChange"
           />
         </div>
         <Button
-          label="Clear Filters"
+          :label="t('geocoding.page.filters.clearFilters')"
           severity="secondary"
           size="small"
           @click="clearFilters"
@@ -195,42 +195,42 @@
       >
         <template #header>
           <div class="table-header">
-            <span class="table-title">Geocoding Results</span>
+            <span class="table-title">{{ t('geocoding.page.table.title') }}</span>
           </div>
         </template>
 
         <template #empty>
-          <div class="empty-state">
-            <i class="pi pi-map-marker empty-icon"></i>
-            <h3>No Geocoding Results Found</h3>
-            <p>No geocoding data available for the selected criteria.</p>
+          <div class="gp-empty-state">
+            <i class="pi pi-map-marker gp-empty-state-icon"></i>
+            <h3 class="gp-empty-state-title">{{ t('geocoding.page.table.emptyTitle') }}</h3>
+            <p class="gp-empty-state-message">{{ t('geocoding.page.table.emptyDescription') }}</p>
           </div>
         </template>
 
         <!-- Selection Column -->
         <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
 
-        <Column field="displayName" header="Display Name" sortable class="name-col">
+        <Column field="displayName" :header="t('geocoding.page.table.displayNameColumn')" sortable class="name-col">
           <template #body="slotProps">
             <div class="name-cell">{{ slotProps.data.displayName }}</div>
           </template>
         </Column>
 
-        <Column field="city" header="City" sortable class="city-col" v-if="!isMobile">
+        <Column field="city" :header="t('geocoding.page.table.cityColumn')" sortable class="city-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.city">{{ slotProps.data.city }}</span>
-            <span v-else class="null-value">-</span>
+            <span v-else class="null-value">{{ t('geocoding.page.table.nullValue') }}</span>
           </template>
         </Column>
 
-        <Column field="country" header="Country" sortable class="country-col" v-if="!isMobile && !isTablet">
+        <Column field="country" :header="t('geocoding.page.table.countryColumn')" sortable class="country-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.country">{{ slotProps.data.country }}</span>
-            <span v-else class="null-value">-</span>
+            <span v-else class="null-value">{{ t('geocoding.page.table.nullValue') }}</span>
           </template>
         </Column>
 
-        <Column field="providerName" header="Provider" sortable class="provider-col" v-if="!isMobile">
+        <Column field="providerName" :header="t('geocoding.page.table.providerColumn')" sortable class="provider-col" v-if="!isMobile">
           <template #body="slotProps">
             <Tag
               :value="slotProps.data.providerName"
@@ -240,7 +240,7 @@
           </template>
         </Column>
 
-        <Column header="Coordinates" class="coordinates-col" v-if="!isMobile">
+        <Column :header="t('geocoding.page.table.coordinatesColumn')" class="coordinates-col" v-if="!isMobile">
           <template #body="slotProps">
             <div class="coordinates-cell">
               <div class="coordinate-line">{{ slotProps.data.latitude?.toFixed(6) }}</div>
@@ -249,13 +249,13 @@
           </template>
         </Column>
 
-        <Column field="lastAccessedAt" header="Last Used" sortable class="date-col" v-if="!isMobile && !isTablet">
+        <Column field="lastAccessedAt" :header="t('geocoding.page.table.lastUsedColumn')" sortable class="date-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span>{{ timezone.timeAgo(slotProps.data.lastAccessedAt) }}</span>
           </template>
         </Column>
 
-        <Column header="Actions" class="actions-col">
+        <Column :header="t('geocoding.page.table.actionsColumn')" class="actions-col">
           <template #body="slotProps">
             <div class="actions-buttons">
               <Button
@@ -264,7 +264,7 @@
                 size="small"
                 text
                 @click="viewDetails(slotProps.data)"
-                v-tooltip.top="'View Details'"
+                v-tooltip.top="t('geocoding.page.table.viewDetailsTooltip')"
                 class="action-button view-button"
               />
               <Button
@@ -273,7 +273,7 @@
                 size="small"
                 text
                 @click="editResult(slotProps.data)"
-                v-tooltip.top="'Edit'"
+                v-tooltip.top="t('geocoding.page.table.editTooltip')"
                 class="action-button edit-button"
               />
               <Button
@@ -282,7 +282,7 @@
                 size="small"
                 text
                 @click="reconcileResult(slotProps.data)"
-                v-tooltip.top="'Reconcile'"
+                v-tooltip.top="t('geocoding.page.table.reconcileTooltip')"
                 class="action-button reconcile-button"
               />
             </div>
@@ -303,7 +303,7 @@
     <BulkEditDialog
       :visible="showBulkEditDialog"
       :selected-items="selectedRows"
-      item-type-name="Geocoding Results"
+      :item-type-name="t('geocoding.page.bulkEdit.itemTypeName')"
       :store="geocodingStore"
       bulk-update-method="bulkUpdateGeocoding"
       distinct-values-method="fetchDistinctValues"
@@ -327,13 +327,13 @@
 
     <Dialog
       v-model:visible="showRuleDialog"
-      :header="editingRule ? 'Edit Normalization Rule' : 'Add Normalization Rule'"
+      :header="editingRule ? t('geocoding.page.ruleDialog.editHeader') : t('geocoding.page.ruleDialog.addHeader')"
       modal
       class="gp-dialog-md"
     >
       <div class="rule-dialog-content">
         <div class="field-row">
-          <label class="filter-label">Rule Type</label>
+          <label class="filter-label">{{ t('geocoding.page.ruleDialog.ruleTypeLabel') }}</label>
           <Select
             v-model="ruleForm.ruleType"
             :options="ruleTypeOptions"
@@ -345,79 +345,79 @@
 
         <template v-if="ruleForm.ruleType === 'COUNTRY'">
           <div class="field-row">
-            <label class="filter-label">From Country</label>
+            <label class="filter-label">{{ t('geocoding.page.ruleDialog.fromCountryLabel') }}</label>
             <AutoComplete
               v-model="ruleForm.sourceCountry"
               :suggestions="countrySuggestions"
               @complete="searchCountries"
               class="rule-input"
-              placeholder="e.g. Болгарія"
+              :placeholder="t('geocoding.page.ruleDialog.countryPlaceholderFrom')"
             />
           </div>
           <div class="field-row">
-            <label class="filter-label">To Country</label>
+            <label class="filter-label">{{ t('geocoding.page.ruleDialog.toCountryLabel') }}</label>
             <AutoComplete
               v-model="ruleForm.targetCountry"
               :suggestions="countrySuggestions"
               @complete="searchCountries"
               class="rule-input"
-              placeholder="e.g. Bulgaria"
+              :placeholder="t('geocoding.page.ruleDialog.countryPlaceholderTo')"
             />
           </div>
         </template>
 
         <template v-else>
           <div class="field-row">
-            <label class="filter-label">From City</label>
+            <label class="filter-label">{{ t('geocoding.page.ruleDialog.fromCityLabel') }}</label>
             <AutoComplete
               v-model="ruleForm.sourceCity"
               :suggestions="citySuggestions"
               @complete="searchCities"
               class="rule-input"
-              placeholder="e.g. Sofia"
+              :placeholder="t('geocoding.page.ruleDialog.cityPlaceholderFrom')"
             />
           </div>
           <div class="field-row">
-            <label class="filter-label">To City</label>
+            <label class="filter-label">{{ t('geocoding.page.ruleDialog.toCityLabel') }}</label>
             <AutoComplete
               v-model="ruleForm.targetCity"
               :suggestions="citySuggestions"
               @complete="searchCities"
               class="rule-input"
-              placeholder="e.g. Софія"
+              :placeholder="t('geocoding.page.ruleDialog.cityPlaceholderTo')"
             />
           </div>
         </template>
       </div>
       <template #footer>
-        <Button label="Cancel" severity="secondary" text @click="closeRuleDialog" />
-        <Button label="Save" severity="primary" :disabled="!isRuleFormValid" @click="saveRule" />
+        <Button :label="t('geocoding.page.ruleDialog.cancel')" severity="secondary" text @click="closeRuleDialog" />
+        <Button :label="t('geocoding.page.ruleDialog.save')" severity="primary" :disabled="!isRuleFormValid" @click="saveRule" />
       </template>
     </Dialog>
 
     <Dialog
       v-model:visible="showApplyRulesDialog"
-      :header="selectedApplyRule ? 'Apply Selected Rule' : 'Apply Normalization Rules'"
+      :header="selectedApplyRule ? t('geocoding.page.applyRulesDialog.applySelectedHeader') : t('geocoding.page.applyRulesDialog.applyAllHeader')"
       modal
       class="gp-dialog-sm"
     >
       <div class="rule-dialog-content">
         <div v-if="selectedApplyRule" class="normalization-subtitle">
-          Applying: {{ formatRuleSource(selectedApplyRule) }} → {{ formatRuleTarget(selectedApplyRule) }}
+          {{ t('geocoding.page.applyRulesDialog.applying', { source: formatRuleSource(selectedApplyRule), target: formatRuleTarget(selectedApplyRule) }) }}
         </div>
         <div class="field-row checkbox-row">
           <Checkbox v-model="applyRulesForm.applyToGeocoding" :binary="true" inputId="applyGeo" />
-          <label for="applyGeo">Apply to reverse geocoding entities</label>
+          <label for="applyGeo">{{ t('geocoding.page.applyRulesDialog.applyToGeocoding') }}</label>
         </div>
         <div class="field-row checkbox-row">
           <Checkbox v-model="applyRulesForm.applyToFavorites" :binary="true" inputId="applyFav" />
-          <label for="applyFav">Apply to favorites</label>
+          <label for="applyFav">{{ t('geocoding.page.applyRulesDialog.applyToFavorites') }}</label>
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel" severity="secondary" text @click="closeApplyRulesDialog" />
+        <Button :label="t('geocoding.page.applyRulesDialog.cancel')" severity="secondary" text @click="closeApplyRulesDialog" />
         <Button
-          label="Apply"
+          :label="t('geocoding.page.applyRulesDialog.apply')"
           severity="primary"
           :disabled="!canApplyRules"
           @click="applyRulesNow"
@@ -431,13 +431,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useGeocodingStore } from '@/stores/geocoding'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useTimezone } from '@/composables/useTimezone'
 import { useReconciliationJobProgress } from '@/composables/useReconciliationJobProgress'
-import { getFriendlyErrorMessage } from '@/utils/errorHandler'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 // Components
@@ -519,7 +521,7 @@ const availableProviders = computed(() => geocodingStore.availableProviders)
 const normalizationRules = computed(() => geocodingStore.normalizationRules)
 
 const providerOptions = computed(() => {
-  const options = [{ label: 'All Providers', value: null }]
+  const options = [{ label: t('geocoding.page.filters.allProviders'), value: null }]
   // Use available providers (from database) for filter dropdown
   availableProviders.value.forEach(providerName => {
     options.push({
@@ -538,10 +540,10 @@ const selectedReconcileResults = computed(() => {
   return selectedRows.value.length > 0 ? selectedRows.value : (selectedResult.value ? [selectedResult.value] : [])
 })
 
-const ruleTypeOptions = [
-  { label: 'Country', value: 'COUNTRY' },
-  { label: 'City', value: 'CITY' }
-]
+const ruleTypeOptions = computed(() => [
+  { label: t('geocoding.page.ruleTypeOptions.country'), value: 'COUNTRY' },
+  { label: t('geocoding.page.ruleTypeOptions.city'), value: 'CITY' }
+])
 
 const isRuleFormValid = computed(() => {
   if (ruleForm.value.ruleType === 'COUNTRY') {
@@ -562,16 +564,16 @@ const formatNumber = (value) => {
 
 const formatRuleSource = (rule) => {
   if (rule.ruleType === 'COUNTRY') {
-    return rule.sourceCountry || '-'
+    return rule.sourceCountry || t('geocoding.page.normalization.valueDash')
   }
-  return rule.sourceCity || '-'
+  return rule.sourceCity || t('geocoding.page.normalization.valueDash')
 }
 
 const formatRuleTarget = (rule) => {
   if (rule.ruleType === 'COUNTRY') {
-    return rule.targetCountry || '-'
+    return rule.targetCountry || t('geocoding.page.normalization.valueDash')
   }
-  return rule.targetCity || '-'
+  return rule.targetCity || t('geocoding.page.normalization.valueDash')
 }
 
 const getProviderSeverity = (providerName) => {
@@ -641,7 +643,7 @@ const loadGeocodingResults = async () => {
 
     if (sortField.value) {
       params.sortField = sortField.value
-      params.sortOrder = sortOrder.value === 1 ? 'asc' : 'desc'
+      params.sortDirection = sortOrder.value === 1 ? 'asc' : 'desc'
     }
 
     await geocodingStore.fetchGeocodingResults(params)
@@ -649,8 +651,8 @@ const loadGeocodingResults = async () => {
     console.error('Error loading geocoding results:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load geocoding results',
+      summary: t('common.error'),
+      detail: t('geocoding.page.toasts.loadResultsFailed'),
       life: 3000
     })
   } finally {
@@ -681,8 +683,8 @@ const loadNormalizationRules = async () => {
     console.error('Error loading normalization rules:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load normalization rules',
+      summary: t('common.error'),
+      detail: t('geocoding.page.toasts.loadRulesFailed'),
       life: 3000
     })
   }
@@ -699,9 +701,6 @@ const mergeDistinctStrings = (...arrays) => {
 
 const normalizeDistinctResponse = (response) => {
   if (!response) return { cities: [], countries: [] }
-  if (response.data && (Array.isArray(response.data.cities) || Array.isArray(response.data.countries))) {
-    return response.data
-  }
   return response
 }
 
@@ -796,16 +795,16 @@ const saveRule = async () => {
       await geocodingStore.updateNormalizationRule(editingRule.value.id, payload)
       toast.add({
         severity: 'success',
-        summary: 'Rule Updated',
-        detail: 'Normalization rule updated successfully',
+        summary: t('geocoding.page.toasts.ruleUpdatedSummary'),
+        detail: t('geocoding.page.toasts.ruleUpdatedDetail'),
         life: 3000
       })
     } else {
       await geocodingStore.createNormalizationRule(payload)
       toast.add({
         severity: 'success',
-        summary: 'Rule Added',
-        detail: 'Normalization rule created successfully',
+        summary: t('geocoding.page.toasts.ruleAddedSummary'),
+        detail: t('geocoding.page.toasts.ruleAddedDetail'),
         life: 3000
       })
     }
@@ -815,15 +814,15 @@ const saveRule = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Save Failed',
-      detail: error.message || 'Failed to save normalization rule',
+      summary: t('geocoding.page.toasts.saveFailedSummary'),
+      detail: formatApiErrorDetail(error, t('geocoding.page.toasts.saveRuleFailedFallback')),
       life: 5000
     })
   }
 }
 
 const deleteRule = async (rule) => {
-  if (!window.confirm(`Delete mapping "${formatRuleSource(rule)} → ${formatRuleTarget(rule)}"?`)) {
+  if (!window.confirm(t('geocoding.page.deleteRuleConfirm', { source: formatRuleSource(rule), target: formatRuleTarget(rule) }))) {
     return
   }
 
@@ -831,16 +830,16 @@ const deleteRule = async (rule) => {
     await geocodingStore.deleteNormalizationRule(rule.id)
     toast.add({
       severity: 'success',
-      summary: 'Rule Deleted',
-      detail: 'Normalization rule deleted successfully',
+      summary: t('geocoding.page.toasts.ruleDeletedSummary'),
+      detail: t('geocoding.page.toasts.ruleDeletedDetail'),
       life: 3000
     })
     await loadNormalizationRules()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Delete Failed',
-      detail: error.message || 'Failed to delete normalization rule',
+      summary: t('geocoding.page.toasts.deleteFailedSummary'),
+      detail: formatApiErrorDetail(error, t('geocoding.page.toasts.deleteRuleFailedFallback')),
       life: 5000
     })
   }
@@ -862,10 +861,10 @@ const applyRulesNow = async () => {
     closeApplyRulesDialog()
     toast.add({
       severity: 'info',
-      summary: 'Normalization Started',
+      summary: t('geocoding.page.toasts.normalizationStartedSummary'),
       detail: isSingleRuleApply
-        ? 'Applying selected rule in background...'
-        : 'Applying rules in background...',
+        ? t('geocoding.page.toasts.normalizationStartedSingleDetail')
+        : t('geocoding.page.toasts.normalizationStartedAllDetail'),
       life: 2500
     })
     await startPolling(result.jobId)
@@ -873,8 +872,8 @@ const applyRulesNow = async () => {
     activeJobMode.value = null
     toast.add({
       severity: 'error',
-      summary: 'Apply Failed',
-      detail: error.message || 'Failed to start normalization apply job',
+      summary: t('geocoding.page.toasts.applyFailedSummary'),
+      detail: formatApiErrorDetail(error, t('geocoding.page.toasts.applyFailedFallback')),
       life: 5000
     })
   }
@@ -937,8 +936,8 @@ const handleEditSave = async (updatedData) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Geocoding result updated successfully',
+      summary: t('common.success'),
+      detail: t('geocoding.page.toasts.updateSuccessDetail'),
       life: 3000
     })
 
@@ -948,8 +947,8 @@ const handleEditSave = async (updatedData) => {
     console.error('Error updating geocoding result:', error)
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
-      detail: error.message || 'Failed to update geocoding result',
+      summary: t('geocoding.page.toasts.updateFailedSummary'),
+      detail: formatApiErrorDetail(error, t('geocoding.page.toasts.updateFailedFallback')),
       life: 5000
     })
   } finally {
@@ -977,8 +976,8 @@ const handleReconcile = async (reconcileData) => {
     console.error('Error starting reconciliation:', error)
     toast.add({
       severity: 'error',
-      summary: 'Reconciliation Failed',
-      detail: getFriendlyErrorMessage(error, 'Failed to start reconciliation'),
+      summary: t('geocoding.page.toasts.reconciliationFailedSummary'),
+      detail: formatApiErrorDetail(error, t('geocoding.page.toasts.reconciliationFailedFallback')),
       life: 5000
     })
     showReconcileDialog.value = false
@@ -997,12 +996,12 @@ const handleReconcileComplete = async () => {
   // Called when reconciliation completes successfully
   const progress = jobProgress.value
 
-  const successMsg = `Successfully reconciled ${progress.successCount} of ${progress.totalItems} results`
+  const successMsg = t('geocoding.page.toasts.reconciliationCompleteDetail', { success: progress.successCount, total: progress.totalItems })
   const severity = progress.failedCount > 0 ? 'warn' : 'success'
 
   toast.add({
     severity: severity,
-    summary: 'Reconciliation Complete',
+    summary: t('geocoding.page.toasts.reconciliationCompleteSummary'),
     detail: successMsg,
     life: 5000
   })
@@ -1028,12 +1027,12 @@ const handleNormalizationJobComplete = async () => {
   const geocodingFailed = metadata.geocodingFailed || 0
   const favoritesFailed = metadata.favoritesFailed || 0
 
-  const detail = `Updated ${geocodingUpdated} geocoding and ${favoritesUpdated} favorites` +
-      (geocodingFailed + favoritesFailed > 0 ? ` (${geocodingFailed + favoritesFailed} failed)` : '')
+  const detail = t('geocoding.page.toasts.normalizationCompleteDetail', { geocodingUpdated, favoritesUpdated }) +
+      (geocodingFailed + favoritesFailed > 0 ? t('geocoding.page.toasts.normalizationCompleteFailedSuffix', { count: geocodingFailed + favoritesFailed }) : '')
 
   toast.add({
     severity: geocodingFailed + favoritesFailed > 0 ? 'warn' : 'success',
-    summary: 'Normalization Apply Complete',
+    summary: t('geocoding.page.toasts.normalizationCompleteSummary'),
     detail,
     life: 6000
   })
@@ -1245,17 +1244,6 @@ watch(() => jobProgress.value?.status, async (status) => {
   width: 100%;
 }
 
-.geocoding-table :deep(.p-datatable-wrapper) {
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-}
-
-.geocoding-table :deep(.p-datatable) {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
 /* Table Columns - Fixed Widths */
 .geocoding-table :deep(.selection-col) {
   width: 3rem;
@@ -1306,7 +1294,7 @@ watch(() => jobProgress.value?.status, async (status) => {
 }
 
 .coordinate-line {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   color: var(--gp-text-primary);
 }
@@ -1320,31 +1308,6 @@ watch(() => jobProgress.value?.status, async (status) => {
   font-size: 0.75rem;
 }
 
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-lg);
-  display: block;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-state p {
-  color: var(--gp-text-muted);
-  margin: 0;
-}
-
 /* Actions Column */
 .actions-buttons {
   display: flex;
@@ -1353,28 +1316,15 @@ watch(() => jobProgress.value?.status, async (status) => {
   align-items: center;
 }
 
-.action-button {
-  min-width: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). The hover tint
+   is PrimeVue's text-button hover for each button's severity. */
+.p-button.action-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.reconcile-button:hover {
-  background-color: var(--p-cyan-50) !important;
-  color: var(--p-cyan-600) !important;
-}
-
-.view-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
 }
 
 /* Header Actions */
@@ -1495,10 +1445,10 @@ watch(() => jobProgress.value?.status, async (status) => {
     font-size: 0.7rem;
   }
 
-  .action-button {
-    min-width: 28px !important;
-    width: 28px !important;
-    height: 28px !important;
+  .p-button.action-button {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
   }
 
   .actions-buttons {
@@ -1541,10 +1491,10 @@ watch(() => jobProgress.value?.status, async (status) => {
     font-size: 0.8rem;
   }
 
-  .action-button {
-    min-width: 24px !important;
-    width: 24px !important;
-    height: 24px !important;
+  .p-button.action-button {
+    min-width: 24px;
+    width: 24px;
+    height: 24px;
   }
 
   .actions-buttons {
@@ -1552,46 +1502,4 @@ watch(() => jobProgress.value?.status, async (status) => {
   }
 }
 
-/* Dark Mode */
-.p-dark .geocoding-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .geocoding-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
 </style>

@@ -1,7 +1,7 @@
 /**
  * GeoPulse k6 Load Test - Dashboard/Statistics Endpoint
  *
- * Tests the /api/statistics endpoint with various date ranges.
+ * Tests the /api/v1/statistics endpoint with various date ranges.
  * This endpoint returns comprehensive statistics including distance, places, routes, etc.
  */
 
@@ -70,7 +70,7 @@ export default function (data) {
   const dateRange = generateDateRange(rangeType);
 
   // Build statistics API URL
-  const statsUrl = buildUrl(`${config.baseUrl}/api/statistics`, {
+  const statsUrl = buildUrl(`${config.baseUrl}/api/v1/statistics`, {
     startTime: dateRange.start,
     endTime: dateRange.end,
   });

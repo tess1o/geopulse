@@ -9,22 +9,34 @@ import {
   waypointLabel,
   waypointTagSeverity
 } from '@/maps/tripReconstruction/shared/tripReconstructionMapData'
+import { t } from '@/locales'
 
+/**
+ * Segment-type options, keyed the same way as `movementTypeOptions`: `labelKey` resolves through the
+ * catalog, and consumers render `t(option.labelKey)` rather than using a static English label.
+ */
 const segmentTypeOptions = [
-  { label: 'Stay', value: 'STAY' },
-  { label: 'Trip', value: 'TRIP' }
+  { labelKey: 'trips.reconstruction.segmentsPanel.stayOption', value: 'STAY' },
+  { labelKey: 'trips.reconstruction.segmentsPanel.tripOption', value: 'TRIP' }
 ]
 
-const movementTypeOptions = [
-  { label: 'Walk', value: 'WALK' },
-  { label: 'Running', value: 'RUNNING' },
-  { label: 'Bicycle', value: 'BICYCLE' },
-  { label: 'Car', value: 'CAR' },
-  { label: 'Motorcycle', value: 'MOTORCYCLE' },
-  { label: 'Train', value: 'TRAIN' },
-  { label: 'Flight', value: 'FLIGHT' },
-  { label: 'Boat', value: 'BOAT' },
-  { label: 'Unknown', value: 'UNKNOWN' }
+/**
+ * Movement-type options, keyed by the backend's locale-neutral `TripType` value.
+ *
+ * `labelKey` resolves through the `movementTypes.*` catalog; the value is the enum member and must
+ * never be translated. Consumers render `t(option.labelKey)`.
+ */
+export const movementTypeOptions = [
+  { labelKey: 'movementTypes.WALK', value: 'WALK' },
+  { labelKey: 'movementTypes.RUNNING', value: 'RUNNING' },
+  { labelKey: 'movementTypes.BICYCLE', value: 'BICYCLE' },
+  { labelKey: 'movementTypes.CAR', value: 'CAR' },
+  { labelKey: 'movementTypes.MOTORCYCLE', value: 'MOTORCYCLE' },
+  { labelKey: 'movementTypes.PUBLIC_TRANSPORT', value: 'PUBLIC_TRANSPORT' },
+  { labelKey: 'movementTypes.TRAIN', value: 'TRAIN' },
+  { labelKey: 'movementTypes.FLIGHT', value: 'FLIGHT' },
+  { labelKey: 'movementTypes.BOAT', value: 'BOAT' },
+  { labelKey: 'movementTypes.UNKNOWN', value: 'UNKNOWN' }
 ]
 
 const toUtcIso = (timezone, dateValue) => {
@@ -352,7 +364,7 @@ export function useTripReconstructionSegments({
 
   const validateSegments = () => {
     if (!Array.isArray(segments.value) || segments.value.length === 0) {
-      return 'Add at least one segment.'
+      return t('trips.reconstructionDialog.validation.addAtLeastOneSegment')
     }
 
     for (let index = 0; index < segments.value.length; index += 1) {
@@ -360,27 +372,27 @@ export function useTripReconstructionSegments({
       const position = index + 1
 
       if (!(segment.startTime instanceof Date) || Number.isNaN(segment.startTime.getTime())) {
-        return `Segment ${position}: start time is required.`
+        return t('trips.reconstructionDialog.validation.startTimeRequired', { position })
       }
 
       if (!(segment.endTime instanceof Date) || Number.isNaN(segment.endTime.getTime())) {
-        return `Segment ${position}: end time is required.`
+        return t('trips.reconstructionDialog.validation.endTimeRequired', { position })
       }
 
       if (segment.endTime <= segment.startTime) {
-        return `Segment ${position}: end time must be after start time.`
+        return t('trips.reconstructionDialog.validation.endTimeAfterStart', { position })
       }
 
       if (segment.segmentType === 'STAY') {
         if (!hasValidCoordinates(segment.latitude, segment.longitude)) {
-          return `Segment ${position}: stay requires valid coordinates.`
+          return t('trips.reconstructionDialog.validation.stayRequiresCoordinates', { position })
         }
       } else if (segment.segmentType === 'TRIP') {
         if (!Array.isArray(segment.waypoints) || segment.waypoints.length < 2) {
-          return `Segment ${position}: trip requires at least 2 waypoints.`
+          return t('trips.reconstructionDialog.validation.tripRequiresWaypoints', { position })
         }
       } else {
-        return `Segment ${position}: unsupported segment type.`
+        return t('trips.reconstructionDialog.validation.unsupportedSegmentType', { position })
       }
     }
 
@@ -423,7 +435,7 @@ export function useTripReconstructionSegments({
 
     const payload = toApiPayload(tripId)
     if (payload.segments.some((segment) => !segment.startTime || !segment.endTime)) {
-      return { payload: null, error: 'All segment dates must be valid.' }
+      return { payload: null, error: t('trips.reconstructionDialog.validation.allDatesMustBeValid') }
     }
 
     return { payload, error: null }

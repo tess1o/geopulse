@@ -15,6 +15,7 @@
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
+            :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
         </div>
@@ -23,16 +24,16 @@
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🏠 Stayed at
+        🏠 {{ t('timeline.stay.stayedAt') }}
         <span class="location-name">
           {{ stayItem.locationName }}
         </span>
-        <span v-if="isManualStay" class="manual-gap-indicator">(Manual)</span>
+        <span v-if="isManualStay" class="manual-gap-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
         <button
           v-if="canRenameStay"
           class="location-edit-icon-btn"
-          aria-label="Rename stay place"
-          :title="readOnly ? 'Rename is disabled in demo mode' : 'Rename stay place'"
+          :aria-label="t('timeline.card.renameStayAria')"
+          :title="readOnly ? t('timeline.card.renameDisabledDemo') : t('timeline.card.renameStayAria')"
           :disabled="readOnly"
           @click.stop="handleRenameStay"
         >
@@ -42,7 +43,7 @@
           v-if="isManualStay"
           class="location-reset-icon-btn"
           :aria-label="resetManualStayLabel"
-          :title="readOnly ? 'Reset is disabled in demo mode' : resetManualStayLabel"
+          :title="readOnly ? t('timeline.card.resetDisabledDemo') : resetManualStayLabel"
           :disabled="readOnly"
           @click.stop="handleResetManualStay"
         >
@@ -53,18 +54,18 @@
 
     <template #content>
       <div class="stay-content" v-if="!isOvernight">
-        <span>For </span>
+        <span>{{ t('timeline.stay.forDuration') }} </span>
         <span class="duration-text">
           {{ formatDuration(stayItem.stayDuration) }}
         </span>
       </div>
       <div class="overnight-stay-content" v-else>
         <p class="duration-detail">
-          📈 Total duration:
+          📈 {{ t('timeline.dataGap.totalDuration') }}
           <span class="duration-value">{{ formatDuration(stayItem.stayDuration) }}</span>
         </p>
         <p class="duration-detail">
-          ⏱️ On this day:
+          ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="duration-value">{{ formatOnThisDayDuration(stayItem) }}</span>
         </p>
       </div>
@@ -88,6 +89,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
@@ -103,6 +105,7 @@ import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const notesStore = useNotesStore()
 
@@ -114,6 +117,10 @@ const props = defineProps({
   immichPhotos: {
     type: Array,
     default: () => []
+  },
+  immichPhotoAuthToken: {
+    type: String,
+    default: null
   },
   notes: {
     type: Array,
@@ -163,7 +170,7 @@ const contextMenuItems = computed(() => {
 
   if (canViewPlaceDetails.value) {
     items.push({
-      label: 'View all visits to this place',
+      label: t('timeline.card.viewAllVisits'),
       icon: 'pi pi-map-marker',
       command: () => {
         navigateToPlaceDetails()
@@ -173,7 +180,7 @@ const contextMenuItems = computed(() => {
 
   if (canRenameStay.value) {
     items.push({
-      label: 'Rename place...',
+      label: t('timeline.card.renamePlace'),
       icon: 'pi pi-pencil',
       disabled: props.readOnly,
       command: () => {
@@ -184,7 +191,7 @@ const contextMenuItems = computed(() => {
 
   if (canResetDataGapOverride.value) {
     items.push({
-      label: 'Reset to automatic data gap',
+      label: t('timeline.card.resetDataGap'),
       icon: 'pi pi-refresh',
       disabled: props.readOnly,
       command: () => {
@@ -195,7 +202,7 @@ const contextMenuItems = computed(() => {
 
   if (canResetTripSplitOverride.value) {
     items.push({
-      label: 'Undo manual trip split',
+      label: t('timeline.card.undoTripSplit'),
       icon: 'pi pi-refresh',
       disabled: props.readOnly,
       command: () => {
@@ -216,7 +223,7 @@ const contextMenuItems = computed(() => {
 
   if (props.allowNoteCreation) {
     items.push({
-      label: 'Add note...',
+      label: t('timeline.card.addNote'),
       icon: 'pi pi-file-edit',
       command: () => {
         noteEditorVisible.value = true
@@ -227,7 +234,7 @@ const contextMenuItems = computed(() => {
   // Add city details option if available
   if (hasCity.value) {
     items.push({
-      label: `View ${props.stayItem.city} Details`,
+      label: t('timeline.card.viewCityDetails', { city: props.stayItem.city }),
       icon: 'pi pi-building',
       command: () => {
         navigateToCityDetails()
@@ -238,7 +245,7 @@ const contextMenuItems = computed(() => {
   // Add country details option if available
   if (hasCountry.value) {
     items.push({
-      label: `View ${props.stayItem.country} Details`,
+      label: t('timeline.card.viewCountryDetails', { country: props.stayItem.country }),
       icon: 'pi pi-globe',
       command: () => {
         navigateToCountryDetails()
@@ -253,7 +260,7 @@ const contextMenuItems = computed(() => {
       separator: true
     },
     {
-      label: 'Export as GPX',
+      label: t('timeline.card.exportGpx'),
       icon: 'pi pi-download',
       command: () => {
         emit('export-gpx', props.stayItem)
@@ -297,7 +304,7 @@ const canResetTripSplitOverride = computed(() => {
 const isManualStay = computed(() => canResetDataGapOverride.value || canResetTripSplitOverride.value)
 
 const resetManualStayLabel = computed(() => (
-  canResetTripSplitOverride.value ? 'Undo manual trip split' : 'Reset to automatic data gap'
+  canResetTripSplitOverride.value ? t('timeline.card.undoTripSplit') : t('timeline.card.resetDataGap')
 ))
 
 const canManageMatchingNotes = computed(() => {
@@ -325,9 +332,13 @@ const openNotesViewer = () => {
 
 const getViewNotesLabel = () => {
   if (canManageMatchingNotes.value) {
-    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+    return matchingNotes.value.length === 1
+      ? t('timeline.card.manageNoteSingle')
+      : t('timeline.card.manageNotesMultiple', { count: matchingNotes.value.length })
   }
-  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
+  return matchingNotes.value.length === 1
+    ? t('timeline.card.viewNoteSingle')
+    : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
 }
 
 const handleRenameStay = () => {
@@ -391,103 +402,33 @@ const formattedTimestamp = computed(() => {
 })
 </script>
 
-<style scoped>
-.timeline-card {
-  margin-top: var(--gp-spacing-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  overflow: hidden;
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
+<style scoped src="./timeline-card.css"></style>
 
+<style scoped>
 /* Mobile optimizations */
 @media (max-width: 768px) {
-  .timeline-card {
-    margin-top: var(--gp-spacing-sm);
-    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-  }
-  
-  .timeline-timestamp {
-    font-size: 0.875rem;
-  }
-  
-  .timeline-subtitle {
-    margin: var(--gp-spacing-xs) 0 0 0;
-    font-size: 0.875rem;
-  }
-  
   .stay-content {
     margin-top: var(--gp-spacing-xs);
     font-size: 0.875rem;
   }
-  
+
   .overnight-stay-content {
     margin-top: var(--gp-spacing-xs);
   }
-  
+
   .duration-detail {
     margin: 2px 0;
     font-size: 0.8rem;
   }
 }
 
-@media (hover: none) and (pointer: coarse) {
-  .timeline-card {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: pan-y;
-  }
-}
-
-.timeline-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
 .timeline-card--stay {
-  background-color: var(--gp-timeline-blue-light);
+  background-color: var(--gp-timeline-card-stay);
   border-left: 4px solid var(--gp-primary);
 }
 
-.timeline-timestamp {
-  color: var(--gp-primary);
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin: 0;
-  line-height: 1.2;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.timeline-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-  flex-wrap: wrap;
-}
-
-.timeline-title-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.timeline-subtitle {
-  margin: var(--gp-spacing-xs) 0 0 0;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
 .location-name {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
 }
 
@@ -495,7 +436,7 @@ const formattedTimestamp = computed(() => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -543,7 +484,7 @@ const formattedTimestamp = computed(() => {
 }
 
 .duration-text {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
 }
 
@@ -561,43 +502,6 @@ const formattedTimestamp = computed(() => {
 
 .duration-detail .duration-value {
   font-weight: 700;
-  color: var(--gp-primary);
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--stay {
-  background-color: var(--gp-timeline-blue);
-  border-left: 4px solid var(--gp-primary);
-}
-
-.p-dark .timeline-timestamp {
-  color: var(--gp-primary);
-}
-
-.p-dark .location-name,
-.p-dark .duration-text {
-  color: var(--gp-primary);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .stay-content {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
-}
-
-.p-dark .overnight-stay-content,
-.p-dark .duration-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .duration-detail .duration-value {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 </style>

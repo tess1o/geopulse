@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -21,6 +20,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.testsupport.ImportSchedulerEnabledTestProfile;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.github.tess1o.geopulse.testsupport.TestIds;
@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
-@TestProfile(ImportTimelineJobTransactionBoundaryTest.SchedulerEnabledProfile.class)
+@TestProfile(ImportSchedulerEnabledTestProfile.class)
 @SerializedDatabaseTest
 class ImportTimelineJobTransactionBoundaryTest {
 
@@ -251,15 +251,5 @@ class ImportTimelineJobTransactionBoundaryTest {
     private long countGpsRows(String deviceId) {
         return QuarkusTransaction.requiringNew().call(() ->
                 gpsPointRepository.count("user.id = ?1 and deviceId = ?2", testUserId, deviceId));
-    }
-
-    public static class SchedulerEnabledProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "geopulse.import.scheduler.enabled", "true",
-                    "quarkus.scheduler.enabled", "false"
-            );
-        }
     }
 }

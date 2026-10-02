@@ -72,12 +72,11 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", apiToken)
                 .when()
-                .get("/api/users/me")
+                .get("/api/v1/users/me")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.userId", equalTo(userId.toString()))
-                .body("data.email", containsString("api-token-user"));
+                .body("userId", equalTo(userId.toString()))
+                .body("email", containsString("api-token-user"));
     }
 
     @Test
@@ -86,10 +85,10 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + apiToken)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"));
+                .body("$", notNullValue());
     }
 
     @Test
@@ -100,13 +99,18 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", apiToken)
                 .when()
-                .get("/api/users/me")
+                .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("type", equalTo("urn:geopulse:error:AUTHENTICATION_REQUIRED"))
+                .body("status", equalTo(401))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -117,13 +121,16 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", tokenResponse.getToken())
                 .when()
-                .get("/api/users/me")
+                .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -132,13 +139,16 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", ApiTokenSecretService.TOKEN_PREFIX + "invalid")
                 .when()
-                .get("/api/users/me")
+                .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -147,13 +157,16 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", "1" + ApiTokenSecretService.TOKEN_PREFIX + "invalid")
                 .when()
-                .get("/api/users/me")
+                .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -162,7 +175,7 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", apiToken)
                 .when()
-                .get("/api/admin/users")
+                .get("/api/v1/admin/users")
                 .then()
                 .statusCode(403);
     }
@@ -175,10 +188,10 @@ class ApiTokenAuthenticationTest {
                 .contentType(ContentType.JSON)
                 .header("X-API-Key", adminToken)
                 .when()
-                .get("/api/admin/users")
+                .get("/api/v1/admin/users")
                 .then()
                 .statusCode(200)
-                .body("content", notNullValue());
+                .body("items", notNullValue());
     }
 
     @Test
@@ -193,24 +206,24 @@ class ApiTokenAuthenticationTest {
                         }
                         """.formatted(Instant.now().plusSeconds(7200)))
                 .when()
-                .post("/api/api-tokens")
+                .post("/api/v1/api-tokens")
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.token", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
-                .body("data.apiToken.name", equalTo("Created through API"))
-                .body("data.apiToken.preview", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
+                .log().body(true)
+                .body("token", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
+                .body("apiToken.name", equalTo("Created through API"))
+                .body("apiToken.preview", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
                 .extract()
-                .path("data.apiToken.id");
+                .path("apiToken.id");
 
         given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + accessToken)
                 .when()
-                .get("/api/api-tokens")
+                .get("/api/v1/api-tokens")
                 .then()
                 .statusCode(200)
-                .body("data.id", hasItem(tokenId));
+                .body("id", hasItem(tokenId));
     }
 
     @Transactional

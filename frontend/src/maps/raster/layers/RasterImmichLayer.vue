@@ -13,6 +13,7 @@ import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
 import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import '@/styles/photo-map-markers.css'
 
 const props = defineProps({
@@ -27,6 +28,17 @@ const props = defineProps({
   markerOptions: {
     type: Object,
     default: () => ({})
+  },
+  // When provided (e.g. a public shared-link view), photos are rendered from this prop
+  // instead of being fetched from the authenticated immichStore.
+  photos: {
+    type: Array,
+    default: null
+  },
+  // Bearer token used to load thumbnails for externally-provided photos (shared-link access token)
+  authToken: {
+    type: String,
+    default: null
   }
 })
 
@@ -38,7 +50,8 @@ const dateRangeStore = useDateRangeStore()
 const baseLayerRef = ref(null)
 const loading = ref(false)
 
-const isConfigured = computed(() => immichStore.isConfigured)
+const isExternallyProvided = computed(() => Array.isArray(props.photos))
+const isConfigured = computed(() => isExternallyProvided.value || immichStore.isConfigured)
 
 const {
   clearPhotoMarkers: clearConsistentPhotoMarkers,
@@ -48,10 +61,15 @@ const {
     if (eventName === 'photo-click') {
       emit('photo-click', payload)
     }
-  }
+  },
+  getThumbnailHeaders: () => (props.authToken ? { 'Authorization': `Bearer ${props.authToken}` } : {})
 })
 
 const handleLayerReady = async () => {
+  if (isExternallyProvided.value) {
+    renderPhotoMarkers()
+    return
+  }
   if (isConfigured.value && props.visible) {
     await fetchAndRenderPhotos()
   }
@@ -63,10 +81,15 @@ const renderPhotoMarkers = () => {
   }
 
   clearConsistentPhotoMarkers()
-  renderConsistentPhotoMarkers(props.map, immichStore.photos || [])
+  renderConsistentPhotoMarkers(props.map, (isExternallyProvided.value ? props.photos : immichStore.photos) || [])
 }
 
 const fetchAndRenderPhotos = async () => {
+  if (isExternallyProvided.value) {
+    renderPhotoMarkers()
+    return
+  }
+
   if (!isConfigured.value) {
     emit('error', {
       type: 'config',
@@ -79,22 +102,12 @@ const fetchAndRenderPhotos = async () => {
   try {
     loading.value = true
     await immichStore.fetchPhotos()
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'fetch',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
     renderPhotoMarkers()
   } catch (error) {
     console.error('Failed to fetch Immich photos:', error)
     emit('error', {
       type: 'fetch',
-      message: error.userMessage || 'Failed to load photos from Immich',
+      message: formatApiErrorDetail(error, 'Failed to load photos from Immich'),
       error
     })
   } finally {
@@ -103,28 +116,23 @@ const fetchAndRenderPhotos = async () => {
 }
 
 const refreshPhotos = async () => {
+  if (isExternallyProvided.value) {
+    renderPhotoMarkers()
+    return
+  }
+
   if (!isConfigured.value || !props.visible) {
     return
   }
 
   try {
     await immichStore.fetchPhotos(null, null, true)
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'refresh',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
     renderPhotoMarkers()
   } catch (error) {
     console.error('Failed to refresh Immich photos:', error)
     emit('error', {
       type: 'refresh',
-      message: error.userMessage || 'Failed to refresh photos from Immich',
+      message: formatApiErrorDetail(error, 'Failed to refresh photos from Immich'),
       error
     })
   }
@@ -135,9 +143,19 @@ const clearPhotoMarkers = () => {
 }
 
 watch(
+  () => props.photos,
+  () => {
+    if (isExternallyProvided.value && props.visible) {
+      renderPhotoMarkers()
+    }
+  },
+  { deep: false }
+)
+
+watch(
   () => immichStore.photos,
   () => {
-    if (props.visible) {
+    if (!isExternallyProvided.value && props.visible) {
       renderPhotoMarkers()
     }
   },
@@ -147,7 +165,7 @@ watch(
 watch(
   () => dateRangeStore.getCurrentDateRange,
   async (newRange) => {
-    if (newRange && props.visible && isConfigured.value) {
+    if (!isExternallyProvided.value && newRange && props.visible && isConfigured.value) {
       await fetchAndRenderPhotos()
     }
   },
@@ -159,6 +177,11 @@ watch(
   async (newVisible) => {
     if (!newVisible) {
       clearPhotoMarkers()
+      return
+    }
+
+    if (isExternallyProvided.value) {
+      renderPhotoMarkers()
       return
     }
 
@@ -178,6 +201,10 @@ watch(
 watch(
   () => immichStore.isConfigured,
   async (newConfigured) => {
+    if (isExternallyProvided.value) {
+      return
+    }
+
     if (newConfigured && props.visible) {
       await fetchAndRenderPhotos()
       return
@@ -190,6 +217,9 @@ watch(
 )
 
 onMounted(async () => {
+  if (isExternallyProvided.value) {
+    return
+  }
   try {
     await immichStore.fetchConfig()
   } catch (error) {

@@ -28,15 +28,15 @@ test.describe('Health Check', () => {
 
   test('should access backend health endpoint', async ({ page }) => {
     // Make a request to the backend health endpoint
-    const response = await page.request.get(TestConfig.API_BASE_URL + '/api/health');
+    const response = await page.request.get(TestConfig.API_BASE_URL + '/api/v1/system/health');
     
     // Should return 200 OK
     expect(response.status()).toBe(200);
     
     // Should contain health status
     const body = await response.json();
-    expect(body.status).toBe('success');
-    expect(body.data.status).toBe('UP');
+    expect(body.status).toBe('UP');
+    expect(body.database).toBe('UP');
   });
 
   test('should show login form', async ({ page }) => {

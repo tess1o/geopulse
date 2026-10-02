@@ -1,22 +1,29 @@
 <template>
   <div class="gp-app-layout" :class="layoutClasses">
     <Toast />
+    <ErrorReferenceToast />
     <Toast group="gps-delete" position="top-right">
       <template #message="slotProps">
-        <div class="gp-action-toast">
-          <div class="gp-action-toast-summary">{{ slotProps.message.summary }}</div>
-          <div v-if="slotProps.message.detail" class="gp-action-toast-detail">{{ slotProps.message.detail }}</div>
+        <ToastMessageContent :message="slotProps.message">
           <a
             v-if="slotProps.message.data?.timelineJobUrl"
-            class="gp-action-toast-link"
+            class="gp-toast-action"
             :href="slotProps.message.data.timelineJobUrl"
             @click.stop
           >
-            View timeline job
+            {{ t('ui.appLayout.viewTimelineJob') }}
           </a>
-        </div>
+        </ToastMessageContent>
       </template>
     </Toast>
+    <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" :header="t('ui.appLayout.whatsNew')">
+      <div v-if="releaseAnnouncement" class="gp-release-announcement">
+        <h3>{{ releaseAnnouncement.title }}</h3>
+        <ul class="gp-release-announcement-list"><li v-for="highlight in releaseAnnouncement.highlights" :key="highlight">{{ highlight }}</li></ul>
+        <a v-if="releaseAnnouncement.releaseUrl" class="gp-release-announcement-link" :href="releaseAnnouncement.releaseUrl" target="_blank" rel="noopener">{{ t('ui.appLayout.readFullReleaseNotes') }} <i class="pi pi-external-link" aria-hidden="true" /></a>
+      </div>
+      <template #footer><Button :label="t('ui.appLayout.gotIt')" @click="dismissReleaseAnnouncement" /></template>
+    </Dialog>
     <Toast group="gp-notifications" position="top-right">
       <template #message="slotProps">
         <button
@@ -24,9 +31,9 @@
           class="gp-notification-toast"
           @click="handleNotificationToastClick(slotProps.message)"
         >
-          <div class="gp-notification-toast-summary">{{ slotProps.message.summary }}</div>
-          <div v-if="slotProps.message.detail" class="gp-notification-toast-detail">{{ slotProps.message.detail }}</div>
-          <div class="gp-notification-toast-hint">{{ notificationToastHint(slotProps.message) }}</div>
+          <ToastMessageContent :message="slotProps.message">
+            <span class="gp-toast-action">{{ notificationToastHint(slotProps.message) }}</span>
+          </ToastMessageContent>
         </button>
       </template>
     </Toast>
@@ -57,10 +64,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Toast from 'primevue/toast'
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
+import ErrorReferenceToast from './ErrorReferenceToast.vue'
+import ToastMessageContent from './ToastMessageContent.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 
@@ -94,9 +106,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['invite-friend', 'toggle-location-sharing'])
+const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const releaseDialogVisible = ref(false)
+const releaseAnnouncement = ref(null)
+const releaseNotificationId = ref(null)
 
 const layoutClasses = computed(() => ({
   [`gp-app-layout--${props.variant}`]: props.variant !== 'default',
@@ -107,7 +123,7 @@ const layoutClasses = computed(() => ({
 const emitNotificationToast = (payload = {}) => {
   toast.add({
     severity: payload.severity || 'info',
-    summary: payload.summary || 'Notification',
+    summary: payload.summary || t('ui.appLayout.notificationDefaultSummary'),
     detail: payload.detail || '',
     life: payload.life ?? 7000,
     group: 'gp-notifications',
@@ -128,12 +144,32 @@ const notificationToastHint = (message) => {
     return notificationsStore.notificationActionLabel(data.notification)
   }
   if (data?.action === 'open-events') {
-    return 'View all notifications'
+    return t('ui.appLayout.viewAllNotifications')
   }
   if (data?.action === 'open-notification-center') {
-    return 'View all notifications'
+    return t('ui.appLayout.viewAllNotifications')
   }
-  return 'Open Notification'
+  return t('ui.appLayout.openNotification')
+}
+
+const loadReleaseAnnouncement = async () => {
+  try {
+    const data = await notificationsStore.fetchCurrentReleaseAnnouncement()
+    if (data?.show && data?.release && data?.notification?.id) {
+      releaseAnnouncement.value = data.release
+      releaseNotificationId.value = data.notification.id
+      releaseDialogVisible.value = true
+    }
+  } catch (_) {
+    // A missing release entry must never block the app shell.
+  }
+}
+
+const dismissReleaseAnnouncement = async () => {
+  releaseDialogVisible.value = false
+  if (releaseNotificationId.value) {
+    try { await notificationsStore.markSeen(releaseNotificationId.value) } catch (_) {}
+  }
 }
 
 onMounted(() => {
@@ -141,6 +177,7 @@ onMounted(() => {
 
   if (authStore.isAuthenticated) {
     notificationsStore.startPolling()
+    void loadReleaseAnnouncement()
   }
 })
 
@@ -149,6 +186,7 @@ watch(
   (isAuthenticated) => {
     if (isAuthenticated) {
       notificationsStore.startPolling()
+      void loadReleaseAnnouncement()
       return
     }
     notificationsStore.resetSessionState({ clearBacklogWatermark: true })
@@ -183,9 +221,15 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+.gp-release-announcement { display: grid; gap: .75rem; max-width: 38rem; }
+.gp-release-announcement h3, .gp-release-announcement ul { margin: 0; }
+.gp-release-announcement-list { padding-left: 1.4rem; list-style: disc; display: grid; gap: .45rem; }
+.gp-release-announcement-link { color: var(--gp-primary); font-weight: 600; text-decoration: underline; text-underline-offset: .18em; width: fit-content; }
+.gp-release-announcement-link:hover { color: var(--gp-primary-dark, var(--gp-primary)); }
 
 .gp-app-layout--full-height {
   min-height: 100vh;
@@ -196,8 +240,8 @@ onUnmounted(() => {
   flex-shrink: 0;
   z-index: 1000;
   height: 60px;
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-light);
   padding-top: env(safe-area-inset-top);
   height: calc(60px + env(safe-area-inset-top));
@@ -241,14 +285,14 @@ onUnmounted(() => {
 /* Footer */
 .gp-app-footer {
   flex-shrink: 0;
-  background: var(--gp-surface-white);
-  border-top: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border-top: 1px solid var(--gp-border);
   padding: var(--gp-spacing-md) var(--gp-spacing-lg);
 }
 
 /* Layout Variants */
 .gp-app-layout--app .gp-app-main {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .gp-app-layout--minimal .gp-app-navbar {
@@ -260,72 +304,21 @@ onUnmounted(() => {
   background: transparent;
 }
 
+/* The whole notification toast is clickable: the button takes the place of the toast's content row, so it lays
+   out the icon and text the way .p-toast-message-content does. */
 .gp-notification-toast {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--p-toast-content-gap);
+  padding: 0;
   border: none;
   background: transparent;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.gp-action-toast {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.gp-action-toast-summary {
-  font-weight: 700;
-  color: var(--gp-text-primary);
-}
-
-.gp-action-toast-detail {
-  color: var(--gp-text-secondary);
-  line-height: 1.35;
-}
-
-.gp-action-toast-link {
-  color: var(--gp-primary);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.gp-notification-toast-summary {
-  font-weight: 700;
-}
-
-.gp-notification-toast-detail {
-  color: var(--gp-text-secondary);
-}
-
-.gp-notification-toast-hint {
-  font-size: 0.75rem;
-  color: var(--gp-primary);
-}
-
-/* Dark Mode */
-.p-dark .gp-app-navbar {
-  background: var(--gp-surface-dark);
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-app-layout {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .gp-app-layout--app .gp-app-main {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .gp-app-footer {
-  background: var(--gp-surface-dark);
-  border-top-color: var(--gp-border-dark);
 }
 
 /* Responsive */

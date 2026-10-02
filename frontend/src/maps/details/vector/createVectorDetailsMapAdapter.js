@@ -15,6 +15,7 @@ import {
   MAP_POPUP_COMPACT_MAX_WIDTH
 } from '@/maps/shared/popups/mapPopupOptions'
 import { formatDuration } from '@/utils/durationFormatter'
+import { t } from '@/locales'
 
 const toTripPathCoordinates = (tripPoints) => {
   if (!Array.isArray(tripPoints)) {
@@ -34,12 +35,12 @@ const toTripPathCoordinates = (tripPoints) => {
 }
 
 const buildDetailsStayPopupModel = (stay) => ({
-  title: stay?.locationName || 'Unknown location',
+  title: stay?.locationName || t('maps.popups.common.unknownLocation'),
   subtitle: stay?.address || '',
   iconClass: 'pi pi-map-marker',
   rows: [
     {
-      label: 'Duration',
+      label: t('maps.popups.common.duration'),
       value: formatDuration(stay?.stayDuration)
     }
   ],

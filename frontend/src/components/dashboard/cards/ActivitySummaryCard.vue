@@ -10,68 +10,68 @@
         icon="pi pi-map-marker"
         iconColor="primary"
         :value="stats.totalDistanceMeters || 0"
-        label="Total Distance"
+        :label="t('ui.dashboard.metrics.totalDistance')"
         :formatter="formatDistance"
         variant="minimal"
       />
-      
+
       <!-- Time Moving -->
       <MetricItem
         icon="pi pi-clock"
         iconColor="secondary"
         :value="stats.timeMoving || 0"
-        label="Time Moving"
+        :label="t('ui.dashboard.metrics.timeMoving')"
         :formatter="formatDuration"
         variant="minimal"
       />
-      
+
       <!-- Daily Average -->
       <MetricItem
         icon="pi pi-chart-line"
         iconColor="info"
         :value="stats.dailyAverageDistanceMeters || 0"
-        label="Daily Average"
+        :label="t('ui.dashboard.metrics.dailyAverage')"
         :formatter="formatDistance"
         variant="minimal"
       />
-      
+
       <!-- Average Speed -->
       <MetricItem
         icon="pi pi-send"
         iconColor="warning"
         :value="stats.averageSpeed || 0"
-        label="Average Speed"
+        :label="t('ui.dashboard.metrics.averageSpeed')"
         :formatter="formatSpeed"
         variant="minimal"
       />
-      
+
       <!-- Most Active Day -->
-      <div 
-        v-tooltip="{value: mostActiveDayTooltip, escape: false, pt: {text: 'tooltip-content'}}"
+      <div
+        v-tooltip="{value: mostActiveDayTooltip, escape: false, pt: {text: 'most-active-day-tooltip-text'}}"
         class="tooltip-wrapper"
       >
         <MetricItem
           icon="pi pi-star"
           iconColor="success"
-          :value="stats.mostActiveDay?.day || 'N/A'"
-          label="Most Active Day"
+          :value="stats.mostActiveDay?.day || t('ui.dashboard.metrics.notAvailable')"
+          :label="t('ui.dashboard.metrics.mostActiveDay')"
           variant="minimal"
         />
       </div>
-      
+
       <!-- Unique Locations -->
       <MetricItem
         icon="pi pi-map"
         iconColor="muted"
         :value="stats.uniqueLocationsCount || 0"
-        label="Unique Locations"
+        :label="t('ui.dashboard.metrics.uniqueLocations')"
         variant="minimal"
       />
     </div>
-    
+
     <!-- Chart Section -->
     <div v-if="showChart && hasChartData" class="chart-section">
-      <h4 class="chart-title">Distance Activity</h4>
+      <h4 class="chart-title">{{ t('ui.dashboard.distanceActivityChart') }}</h4>
       <BarChart
         :labels="chartLabels"
         :datasets="chartDatasets"
@@ -85,6 +85,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
 import BarChart from '@/components/charts/BarChart.vue'
@@ -97,6 +98,8 @@ import {
   getDistanceUnitLabel
 } from '@/utils/calculationsHelpers'
 import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
+
+const { t, te } = useI18n()
 
 const props = defineProps({
   title: {
@@ -131,20 +134,21 @@ const props = defineProps({
   }
 })
 
-// Trip type display configuration
-const tripTypeConfig = {
-  WALK: { label: 'Walk', color: 'success' },
-  BICYCLE: { label: 'Bicycle', color: 'warning' },
-  RUNNING: { label: 'Running', color: 'contrast' },
-  CAR: { label: 'Car', color: 'primary' },
-  MOTORCYCLE: { label: 'Motorcycle', color: 'info' },
-  TRAIN: { label: 'Train', color: 'secondary' },
-  FLIGHT: { label: 'Flight', color: 'danger' },
-  BOAT: { label: 'Boat', color: 'info' }
+// Trip type colors; labels come from the shared movementTypes.* catalog.
+const tripTypeColors = {
+  WALK: 'success',
+  BICYCLE: 'warning',
+  RUNNING: 'contrast',
+  CAR: 'primary',
+  MOTORCYCLE: 'info',
+  PUBLIC_TRANSPORT: 'secondary',
+  TRAIN: 'secondary',
+  FLIGHT: 'danger',
+  BOAT: 'info'
 }
 
 // Y-axis title based on unit system
-const yAxisTitle = computed(() => `Distance (${getDistanceUnitLabel()})`)
+const yAxisTitle = computed(() => t('ui.dashboard.distanceAxisTitle', { unit: getDistanceUnitLabel() }))
 
 const hasChartData = computed(() => {
   const chartsByType = props.stats?.distanceChartsByTripType || {}
@@ -178,12 +182,13 @@ const chartDatasets = computed(() => {
     ]))
 
     // Get configuration for this trip type
-    const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
+    const label = te(`movementTypes.${tripType}`) ? t(`movementTypes.${tripType}`) : tripType
+    const color = tripTypeColors[tripType] || 'secondary'
 
     datasets.push({
-      label: `${config.label}`,
+      label,
       data: mergedKeys.map(key => dataMap.get(key) || 0),
-      color: config.color
+      color
     })
   })
 
@@ -203,15 +208,15 @@ const mostActiveDayTooltip = computed(() => {
       <div class="tooltip-content">
         <div class="tooltip-item">
           <i class="pi pi-map-marker"></i>
-          <span>Distance: ${formatDistance(data.distanceTraveled)}</span>
+          <span>${t('ui.dashboard.tooltip.distance', { value: formatDistance(data.distanceTraveled) })}</span>
         </div>
         <div class="tooltip-item">
           <i class="pi pi-clock"></i>
-          <span>Travel Time: ${formatDuration(data.travelTime)}</span>
+          <span>${t('ui.dashboard.tooltip.travelTime', { value: formatDuration(data.travelTime) })}</span>
         </div>
         <div class="tooltip-item">
           <i class="pi pi-map"></i>
-          <span>Locations: ${data.locationsVisited}</span>
+          <span>${t('ui.dashboard.tooltip.locations', { value: data.locationsVisited })}</span>
         </div>
       </div>
     </div>
@@ -232,7 +237,7 @@ const mostActiveDayTooltip = computed(() => {
 .chart-section {
   margin-top: var(--gp-spacing-lg);
   padding-top: var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .chart-title {
@@ -247,31 +252,22 @@ const mostActiveDayTooltip = computed(() => {
   width: 100%;
 }
 
-/* Dark Mode */
-.p-dark .chart-section {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .chart-title {
-  color: var(--gp-text-primary);
-}
-
 /* Tooltip Wrapper */
 .tooltip-wrapper {
   cursor: help;
 }
 
-/* Global Tooltip Styles */
-:global(.p-tooltip .p-tooltip-text) {
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+/* The tooltip body is the card below; strip the default tooltip chrome from this tooltip only. */
+:global(.p-tooltip-text.most-active-day-tooltip-text) {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 :global(.most-active-day-tooltip) {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
   box-shadow: var(--gp-shadow-medium);
@@ -285,7 +281,7 @@ const mostActiveDayTooltip = computed(() => {
   justify-content: space-between;
   margin-bottom: var(--gp-spacing-sm);
   padding-bottom: var(--gp-spacing-xs);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 :global(.most-active-day-tooltip .tooltip-header strong) {
@@ -322,33 +318,6 @@ const mostActiveDayTooltip = computed(() => {
 
 :global(.most-active-day-tooltip .tooltip-item span) {
   font-weight: 500;
-}
-
-/* Dark Mode Tooltip Styles */
-:global(.p-dark .most-active-day-tooltip) {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-  box-shadow: var(--gp-shadow-dark);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-header) {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-header strong) {
-  color: var(--gp-text-primary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-date) {
-  color: var(--gp-text-secondary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-item) {
-  color: var(--gp-text-secondary);
-}
-
-:global(.p-dark .most-active-day-tooltip .tooltip-item i) {
-  color: var(--gp-text-muted);
 }
 
 /* Responsive adjustments */

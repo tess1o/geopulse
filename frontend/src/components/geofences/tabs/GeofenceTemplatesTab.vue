@@ -1,22 +1,22 @@
 <template>
   <div class="tab-panel">
     <BaseCard class="panel-card">
-      <h3>{{ editingTemplateId ? 'Edit Template' : 'Create Template' }}</h3>
+      <h3>{{ editingTemplateId ? t('geofences.templatesTab.headerEdit') : t('geofences.templatesTab.headerCreate') }}</h3>
       <p v-if="readOnly" class="demo-disabled-text">
-        Demo mode: geofence notification templates are read-only. Create, update, test, and delete actions are disabled.
+        {{ t('geofences.templatesTab.demoDisabled') }}
       </p>
 
       <div class="editor-layout">
         <div class="editor-column editor-form">
           <section class="editor-section">
-            <h4>Basics</h4>
+            <h4>{{ t('geofences.templatesTab.basicsHeader') }}</h4>
 
             <div class="field">
-              <label>Name</label>
+              <label>{{ t('geofences.templatesTab.nameLabel') }}</label>
               <InputText
                 :ref="templateNameInput"
                 v-model="templateNameModel"
-                placeholder="Telegram Enter Alert"
+                :placeholder="t('geofences.templatesTab.namePlaceholder')"
                 :disabled="readOnly"
                 :class="{ 'p-invalid': !!templateFormErrors.name }"
               />
@@ -24,11 +24,11 @@
             </div>
 
             <div class="field">
-              <label>Title Template</label>
+              <label>{{ t('geofences.templatesTab.titleTemplateLabel') }}</label>
               <InputText
                 :ref="templateTitleInput"
                 v-model="templateTitleModel"
-                placeholder="{{subjectName}} {{eventVerb}} {{geofenceName}}"
+                :placeholder="t('geofences.templatesTab.titleTemplatePlaceholder')"
                 :disabled="readOnly"
                 :class="{ 'p-invalid': !!templateFormErrors.titleTemplate }"
                 @focus="$emit('focus-template-field', 'titleTemplate')"
@@ -37,7 +37,7 @@
             </div>
 
             <div class="field">
-              <label>Body Template</label>
+              <label>{{ t('geofences.templatesTab.bodyTemplateLabel') }}</label>
               <Textarea
                 :ref="templateBodyInput"
                 v-model="templateBodyModel"
@@ -52,7 +52,7 @@
           </section>
 
           <section class="editor-section">
-            <h4>Delivery</h4>
+            <h4>{{ t('geofences.templatesTab.deliveryHeader') }}</h4>
 
             <div class="external-toggle">
               <Checkbox
@@ -62,7 +62,7 @@
                 :disabled="readOnly"
               />
               <label for="template-send-in-app" class="checkbox-label">
-                Send in-app
+                {{ t('geofences.templatesTab.sendInApp') }}
               </label>
             </div>
 
@@ -74,35 +74,35 @@
                 :disabled="readOnly || !appriseConfigured"
               />
               <label for="template-send-external" class="checkbox-label">
-                Send via Apprise
+                {{ t('geofences.templatesTab.sendViaApprise') }}
               </label>
             </div>
             <small v-if="appriseEnabled" class="muted-text">
-              Telegram, Discord, email, and other Apprise-supported providers.
+              {{ t('geofences.templatesTab.appriseProvidersHint') }}
             </small>
             <small v-if="appriseEnabled && !appriseConfigured" class="muted-text">
-              Apprise is enabled but not fully configured by admin yet.
+              {{ t('geofences.templatesTab.appriseNotConfigured') }}
             </small>
 
             <div v-if="appriseEnabled && templateSendExternalModel" class="field">
               <div class="field-inline-header">
-                <label>External Routing</label>
+                <label>{{ t('geofences.templatesTab.externalRoutingLabel') }}</label>
                 <Button
-                  label="Test Connection"
+                  :label="t('geofences.templatesTab.testConnection')"
                   icon="pi pi-send"
                   severity="secondary"
                   outlined
                   size="small"
                   :loading="testingTemplateConnection"
                   :disabled="readOnly || !appriseConfigured"
-                  v-tooltip.bottom="readOnly ? 'Testing geofence notification templates is disabled in demo mode' : 'Test notification delivery'"
+                  v-tooltip.bottom="readOnly ? t('geofences.templatesTab.testConnectionTooltipDemo') : t('geofences.templatesTab.testConnectionTooltip')"
                   @click="$emit('test-template-connection')"
                 />
               </div>
 
               <div class="field routing-mode-field">
-                <label>Routing Mode</label>
-                <div class="routing-mode-options" role="radiogroup" aria-label="Routing Mode">
+                <label>{{ t('geofences.templatesTab.routingModeLabel') }}</label>
+                <div class="routing-mode-options" role="radiogroup" :aria-label="t('geofences.templatesTab.routingModeLabel')">
                   <label
                     v-for="option in appriseRoutingModeOptions"
                     :key="option.value"
@@ -124,24 +124,24 @@
                     </span>
                   </label>
                 </div>
-                <small class="muted-text">Choose how GeoPulse should route this template through Apprise.</small>
+                <small class="muted-text">{{ t('geofences.templatesTab.routingModeHint') }}</small>
               </div>
 
               <div v-if="templateExternalRoutingModeModel === 'KEY_TAG'" class="field">
-                <label>Config Key</label>
+                <label>{{ t('geofences.templatesTab.configKeyLabel') }}</label>
                 <InputText
                   :ref="templateConfigKeyInput"
                   v-model="templateAppriseConfigKeyModel"
-                  placeholder="my-apprise-config"
+                  :placeholder="t('geofences.templatesTab.configKeyPlaceholder')"
                   :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.appriseConfigKey }"
                 />
                 <small v-if="templateFormErrors.appriseConfigKey" class="error-text">{{ templateFormErrors.appriseConfigKey }}</small>
 
-                <label>Tag (optional)</label>
+                <label>{{ t('geofences.templatesTab.tagLabel') }}</label>
                 <InputText
                   v-model="templateAppriseTagModel"
-                  placeholder="critical"
+                  :placeholder="t('geofences.templatesTab.tagPlaceholder')"
                   :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.appriseTag }"
                 />
@@ -149,13 +149,13 @@
               </div>
 
               <div v-else class="field">
-                <label>Destination URL(s)</label>
+                <label>{{ t('geofences.templatesTab.destinationLabel') }}</label>
                 <Textarea
                   :ref="templateDestinationInput"
                   v-model="templateDestinationModel"
                   rows="3"
                   autoResize
-                  placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
+                  :placeholder="t('geofences.templatesTab.destinationPlaceholder')"
                   :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.destination }"
                 />
@@ -171,7 +171,7 @@
                 <span>
                   {{ templateConnectionTestResult.detail }}
                   <template v-if="templateConnectionTestResult.statusCode">
-                    (HTTP {{ templateConnectionTestResult.statusCode }})
+                    {{ t('geofences.templatesTab.httpStatusCode', { code: templateConnectionTestResult.statusCode }) }}
                   </template>
                 </span>
               </Message>
@@ -179,29 +179,29 @@
           </section>
 
           <section class="editor-section">
-            <h4>Template Logic</h4>
+            <h4>{{ t('geofences.templatesTab.logicHeader') }}</h4>
 
             <div class="logic-grid">
               <div class="logic-item">
                 <div class="logic-label">
-                  <span>Default for Enter</span>
-                  <small class="muted-text">Current: {{ currentDefaultEnterName }}</small>
+                  <span>{{ t('geofences.templatesTab.defaultForEnter') }}</span>
+                  <small class="muted-text">{{ t('geofences.templatesTab.currentDefault', { name: currentDefaultEnterName }) }}</small>
                 </div>
                 <InputSwitch v-model="templateDefaultForEnterModel" :disabled="readOnly" />
               </div>
 
               <div class="logic-item">
                 <div class="logic-label">
-                  <span>Default for Leave</span>
-                  <small class="muted-text">Current: {{ currentDefaultLeaveName }}</small>
+                  <span>{{ t('geofences.templatesTab.defaultForLeave') }}</span>
+                  <small class="muted-text">{{ t('geofences.templatesTab.currentDefault', { name: currentDefaultLeaveName }) }}</small>
                 </div>
                 <InputSwitch v-model="templateDefaultForLeaveModel" :disabled="readOnly" />
               </div>
 
               <div class="logic-item">
                 <div class="logic-label">
-                  <span>Enabled</span>
-                  <small class="muted-text">Disabled templates are not used for delivery.</small>
+                  <span>{{ t('geofences.templatesTab.enabledLabel') }}</span>
+                  <small class="muted-text">{{ t('geofences.templatesTab.enabledHint') }}</small>
                 </div>
                 <InputSwitch v-model="templateEnabledModel" :disabled="readOnly" />
               </div>
@@ -217,8 +217,8 @@
           <div class="sticky-stack">
             <section class="preview-panel">
               <div class="preview-header">
-                <h4>Live Preview</h4>
-                <small class="muted-text">Sample enter and leave notifications.</small>
+                <h4>{{ t('geofences.templatesTab.livePreviewHeader') }}</h4>
+                <small class="muted-text">{{ t('geofences.templatesTab.livePreviewHint') }}</small>
               </div>
 
               <div class="preview-toast-list">
@@ -230,17 +230,17 @@
                   <div class="p-toast-message-content">
                     <i
                       :class="[
-                        'p-toast-icon',
+                        'p-toast-message-icon',
                         'pi',
                         toast.eventLabel === 'ENTER' ? 'pi-sign-in' : 'pi-sign-out'
                       ]"
                     />
-                    <div class="preview-toast-copy">
+                    <div class="p-toast-message-text">
                       <div class="p-toast-summary" :class="{ 'preview-empty': !toast.title }">
-                        {{ toast.title || 'No title template' }}
+                        {{ toast.title || t('geofences.templatesTab.noTitleTemplate') }}
                       </div>
                       <div class="p-toast-detail" :class="{ 'preview-empty': !toast.body }">
-                        {{ toast.body || 'No body template' }}
+                        {{ toast.body || t('geofences.templatesTab.noBodyTemplate') }}
                       </div>
                     </div>
                   </div>
@@ -250,8 +250,8 @@
 
             <section class="macro-help">
               <div class="macro-help-header">
-                <h4>Available Macros</h4>
-                <small class="muted-text">Click to insert into focused title/body.</small>
+                <h4>{{ t('geofences.templatesTab.availableMacrosHeader') }}</h4>
+                <small class="muted-text">{{ t('geofences.templatesTab.availableMacrosHint') }}</small>
               </div>
               <div class="macro-grid">
                 <div v-for="macro in templateMacros" :key="macro.key" class="macro-item">
@@ -259,13 +259,13 @@
                     type="button"
                     class="macro-chip"
                     :disabled="readOnly"
-                    v-tooltip.top="readOnly ? 'Editing templates is disabled in demo mode' : `Insert ${macro.key}`"
+                    v-tooltip.top="readOnly ? t('geofences.templatesTab.insertMacroTooltipDemo') : t('geofences.templatesTab.insertMacroTooltip', { key: macro.key })"
                     @click="$emit('insert-macro', macro.key)"
                   >
                     <code>{{ macro.key }}</code>
                   </button>
                   <span class="macro-description">{{ macro.description }}</span>
-                  <i class="pi pi-info-circle macro-example-icon" v-tooltip.top="`Example: ${macro.example}`" />
+                  <i class="pi pi-info-circle macro-example-icon" v-tooltip.top="t('geofences.templatesTab.macroExampleTooltip', { example: macro.example })" />
                 </div>
               </div>
             </section>
@@ -275,16 +275,16 @@
 
       <div class="actions-row">
         <Button
-          :label="editingTemplateId ? 'Update Template' : 'Create Template'"
+          :label="editingTemplateId ? t('geofences.templatesTab.updateTemplate') : t('geofences.templatesTab.headerCreate')"
           icon="pi pi-save"
           @click="$emit('save-template')"
           :loading="savingTemplate"
           :disabled="readOnly || savingTemplate"
-          v-tooltip.bottom="readOnly ? 'Creating and updating geofence templates is disabled in demo mode' : 'Save geofence template'"
+          v-tooltip.bottom="readOnly ? t('geofences.templatesTab.saveTooltipDemo') : t('geofences.templatesTab.saveTooltip')"
         />
         <Button
           v-if="editingTemplateId"
-          label="Cancel"
+          :label="t('geofences.templatesTab.cancel')"
           severity="secondary"
           outlined
           @click="$emit('reset-template-form')"
@@ -294,34 +294,34 @@
 
     <BaseCard class="panel-card">
       <div class="table-header">
-        <h3>Templates</h3>
-        <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="$emit('load-templates')" />
+        <h3>{{ t('geofences.templatesTab.templatesHeader') }}</h3>
+        <Button icon="pi pi-refresh" :label="t('geofences.templatesTab.refresh')" severity="secondary" outlined @click="$emit('load-templates')" />
       </div>
       <DataTable :value="templates" dataKey="id" responsiveLayout="scroll">
-        <Column field="name" header="Name" />
-        <Column header="External Route">
+        <Column field="name" :header="t('geofences.templatesTab.columns.name')" />
+        <Column :header="t('geofences.templatesTab.columns.externalRoute')">
           <template #body="slotProps">
             <span>{{ formatExternalRoute(slotProps.data) }}</span>
           </template>
         </Column>
-        <Column header="Defaults">
+        <Column :header="t('geofences.templatesTab.columns.defaults')">
           <template #body="slotProps">
             <span>{{ defaultSummary(slotProps.data) }}</span>
           </template>
         </Column>
-        <Column field="enabled" header="Enabled">
+        <Column field="enabled" :header="t('geofences.templatesTab.columns.enabled')">
           <template #body="slotProps">
-            <Tag :value="slotProps.data.enabled ? 'Yes' : 'No'" :severity="slotProps.data.enabled ? 'success' : 'warning'" />
+            <Tag :value="slotProps.data.enabled ? t('geofences.templatesTab.enabledYes') : t('geofences.templatesTab.enabledNo')" :severity="slotProps.data.enabled ? 'success' : 'warning'" />
           </template>
         </Column>
-        <Column header="Actions">
+        <Column :header="t('geofences.templatesTab.columns.actions')">
           <template #body="slotProps">
             <div class="row-actions">
               <Button
                 icon="pi pi-pencil"
                 text
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Editing geofence templates is disabled in demo mode' : 'Edit template'"
+                v-tooltip.bottom="readOnly ? t('geofences.templatesTab.editTooltipDemo') : t('geofences.templatesTab.editTooltip')"
                 @click="$emit('edit-template', slotProps.data)"
               />
               <Button
@@ -329,7 +329,7 @@
                 text
                 severity="danger"
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Deleting geofence templates is disabled in demo mode' : 'Delete template'"
+                v-tooltip.bottom="readOnly ? t('geofences.templatesTab.deleteTooltipDemo') : t('geofences.templatesTab.deleteTooltip')"
                 @click="$emit('delete-template', slotProps.data)"
               />
             </div>
@@ -342,6 +342,7 @@
 
 <script setup>
 import { computed, toRefs } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -352,6 +353,8 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
+
+const { t } = useI18n()
 
 const props = defineProps({
   editingTemplateId: {
@@ -538,12 +541,12 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .editor-section {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
   display: grid;
   gap: 0.75rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
 }
 
 .editor-section h4 {
@@ -562,10 +565,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-field {
-  border: 2px solid color-mix(in srgb, var(--primary-color, #3b82f6) 45%, var(--surface-border));
+  border: 2px solid color-mix(in srgb, var(--gp-primary, #3b82f6) 45%, var(--gp-border));
   border-radius: 12px;
   padding: 0.8rem;
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 8%, var(--surface-card));
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 8%, var(--gp-surface-card));
 }
 
 .routing-mode-options {
@@ -590,10 +593,10 @@ const templateEnabledModel = createFieldModel('enabled')
   align-items: center;
   gap: 0.6rem;
   text-align: left;
-  border: 2px solid color-mix(in srgb, var(--surface-border) 85%, #000);
+  border: 2px solid color-mix(in srgb, var(--gp-border) 85%, #000);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
-  color: var(--text-color);
+  background: color-mix(in srgb, var(--gp-surface-card) 70%, #fff);
+  color: var(--gp-text-primary);
   font-weight: 600;
   padding: 0.66rem 0.8rem;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
@@ -603,7 +606,7 @@ const templateEnabledModel = createFieldModel('enabled')
   width: 0.95rem;
   height: 0.95rem;
   border-radius: 999px;
-  border: 2px solid color-mix(in srgb, var(--text-color-secondary) 75%, transparent);
+  border: 2px solid color-mix(in srgb, var(--gp-text-secondary) 75%, transparent);
   background: transparent;
   flex: 0 0 auto;
 }
@@ -613,8 +616,8 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-option:hover .routing-mode-card {
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 60%, var(--surface-border));
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, var(--surface-card));
+  border-color: color-mix(in srgb, var(--gp-primary, #3b82f6) 60%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 12%, var(--gp-surface-card));
 }
 
 .routing-mode-option.is-disabled {
@@ -623,24 +626,24 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .routing-mode-option.is-disabled:hover .routing-mode-card {
-  border-color: color-mix(in srgb, var(--surface-border) 85%, #000);
-  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
+  border-color: color-mix(in srgb, var(--gp-border) 85%, #000);
+  background: color-mix(in srgb, var(--gp-surface-card) 70%, #fff);
 }
 
 .routing-mode-input:focus-visible + .routing-mode-card {
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 0.14rem color-mix(in srgb, var(--primary-color, #3b82f6) 32%, transparent);
+  border-color: var(--gp-primary, #3b82f6);
+  box-shadow: 0 0 0 0.14rem color-mix(in srgb, var(--gp-primary, #3b82f6) 32%, transparent);
 }
 
 .routing-mode-option.is-active .routing-mode-card {
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 88%, #1d4ed8);
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 24%, var(--surface-card));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color, #3b82f6) 45%, transparent);
+  border-color: color-mix(in srgb, var(--gp-primary, #3b82f6) 88%, #1d4ed8);
+  background: color-mix(in srgb, var(--gp-primary, #3b82f6) 24%, var(--gp-surface-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gp-primary, #3b82f6) 45%, transparent);
 }
 
 .routing-mode-option.is-active .routing-mode-dot {
-  border-color: var(--primary-color, #3b82f6);
-  background: radial-gradient(circle, var(--primary-color, #3b82f6) 45%, transparent 48%);
+  border-color: var(--gp-primary, #3b82f6);
+  background: radial-gradient(circle, var(--gp-primary, #3b82f6) 45%, transparent 48%);
 }
 
 .field-inline-header {
@@ -674,10 +677,10 @@ const templateEnabledModel = createFieldModel('enabled')
   justify-content: space-between;
   align-items: center;
   gap: 0.6rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.6rem 0.7rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .logic-label {
@@ -686,7 +689,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .muted-text {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.8rem;
 }
 
@@ -697,13 +700,8 @@ const templateEnabledModel = createFieldModel('enabled')
 
 :deep(.p-inputtext.p-invalid),
 :deep(.p-textarea.p-invalid) {
-  border-color: var(--p-red-500, #ef4444) !important;
-  box-shadow: 0 0 0 0.06rem color-mix(in srgb, var(--p-red-500, #ef4444) 35%, transparent) !important;
-}
-
-:deep(.p-dark .p-inputtext.p-invalid),
-:deep(.p-dark .p-textarea.p-invalid) {
-  background: color-mix(in srgb, var(--p-red-500, #ef4444) 10%, var(--surface-card)) !important;
+  border-color: var(--p-red-500, #ef4444);
+  box-shadow: 0 0 0 0.06rem color-mix(in srgb, var(--p-red-500, #ef4444) 35%, transparent);
 }
 
 .sticky-stack {
@@ -714,10 +712,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .preview-panel {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   display: grid;
   gap: 0.75rem;
 }
@@ -737,13 +735,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .preview-toast {
-  margin-bottom: 0 !important;
-}
-
-.preview-toast-copy {
-  min-width: 0;
-  display: grid;
-  gap: 0.15rem;
+  margin-bottom: 0;
 }
 
 .preview-empty {
@@ -752,10 +744,10 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-help {
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 12px;
   padding: 0.9rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
 }
 
 .macro-help-header {
@@ -778,23 +770,23 @@ const templateEnabledModel = createFieldModel('enabled')
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 10px;
   padding: 0.5rem 0.6rem;
-  background: var(--surface-card);
+  background: var(--gp-surface-card);
 }
 
 .macro-chip {
-  border: 1px solid var(--primary-300);
-  background: var(--surface-50);
-  color: var(--text-color);
+  border: 1px solid var(--p-primary-300);
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
   border-radius: 999px;
   padding: 0.22rem 0.6rem;
   cursor: pointer;
 }
 
 .macro-chip:hover {
-  border-color: var(--primary-500);
+  border-color: var(--p-primary-500);
 }
 
 .macro-chip:disabled {
@@ -803,7 +795,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-chip:disabled:hover {
-  border-color: var(--primary-300);
+  border-color: var(--p-primary-300);
 }
 
 .macro-description {
@@ -811,7 +803,7 @@ const templateEnabledModel = createFieldModel('enabled')
 }
 
 .macro-example-icon {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .actions-row {

@@ -1,3 +1,6 @@
+/* Timeline stack popup content (inside MapPopupCard), the trip hover card and the trip replay marker.
+   Popup colours are the --gp-map-popup-* / --gp-map-hover-card-* tokens; imported once from styles/index.css. */
+
 /* Timeline stack popup content */
 .timeline-stack-popup {
   box-sizing: border-box;
@@ -9,7 +12,7 @@
 .stack-popup-header {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--gp-text-primary, #1e293b);
+  color: var(--gp-map-popup-text);
   margin-bottom: 0.45rem;
 }
 
@@ -19,72 +22,106 @@
   gap: 0.35rem;
   max-height: 220px;
   overflow: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 
+/* Each row type sets --row-accent (left stripe, hover border) and
+   --row-accent-text (meta line, readable on the row's tint). */
 .timeline-stack-select {
+  --row-accent: var(--gp-border-medium);
+  --row-accent-text: var(--gp-map-popup-text-secondary);
   width: 100%;
   text-align: left;
-  border: 1px solid var(--gp-border-light, #cbd5e1);
-  background: var(--gp-surface-white, #ffffff);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--row-accent);
+  background: var(--gp-map-popup-row);
   border-radius: 8px;
-  padding: 0.5rem 0.55rem;
+  padding: 0.5rem 0.6rem;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-  border-left-width: 4px;
-  border-left-style: solid;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .timeline-stack-select:hover {
-  border-color: var(--gp-primary-light, #60a5fa);
+  border-color: var(--row-accent);
   transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium, 0 8px 24px rgba(15, 23, 42, 0.12));
+  box-shadow: var(--gp-map-popup-row-shadow);
 }
 
 .timeline-stack-select.stack-item--stay {
-  background: var(--gp-timeline-blue-light, rgba(219, 234, 254, 0.5));
-  border-left-color: var(--gp-primary, #1a56db);
+  --row-accent: var(--gp-primary);
+  --row-accent-text: var(--gp-primary-text);
+  background: var(--gp-timeline-blue-light);
 }
 
 .timeline-stack-select.stack-item--trip {
-  background: var(--gp-timeline-green-light, rgba(209, 250, 229, 0.5));
-  border-left-color: var(--gp-success, #10b981);
+  --row-accent: var(--gp-success);
+  --row-accent-text: var(--gp-success-text);
+  background: var(--gp-timeline-green-light);
 }
 
 .timeline-stack-select.stack-item--datagap {
-  background: var(--gp-danger-light, #fef2f2);
-  border-left-color: var(--gp-danger, #ef4444);
+  /* Amber, as data gaps are everywhere else (markers, timeline cards). */
+  --row-accent: var(--gp-warning);
+  --row-accent-text: var(--gp-warning-text);
+  background: var(--gp-warning-soft);
 }
 
-.timeline-stack-select.stack-item--default {
-  border-left-color: var(--gp-border-medium, #94a3b8);
+.timeline-stack-select .stack-item-time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stack-item-weather {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  color: var(--gp-map-popup-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.stack-item-weather--clear {
+  color: var(--gp-map-marker-weather-clear);
+}
+
+.stack-item-weather--rain,
+.stack-item-weather--storm,
+.stack-item-weather--snow {
+  color: var(--gp-map-marker-weather-wet);
 }
 
 .stack-item-title {
   font-weight: 600;
-  color: var(--gp-text-primary, #0f172a);
+  color: var(--gp-map-popup-text);
   font-size: 0.84rem;
   margin-bottom: 0.12rem;
 }
 
 .stack-item-time {
-  color: var(--gp-primary, #1a56db);
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: var(--gp-map-popup-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   line-height: 1.25;
-  margin-bottom: 0.12rem;
+  margin-bottom: 0.15rem;
 }
 
 .stack-item-subtitle {
-  color: var(--gp-text-primary, #1e293b);
+  color: var(--gp-map-popup-text);
   font-size: 0.78rem;
   margin-bottom: 0.12rem;
   line-height: 1.25;
 }
 
 .stack-item-meta {
-  color: var(--gp-primary, #1a56db);
+  color: var(--row-accent-text);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -97,7 +134,7 @@
 
 .trip-hover-time {
   font-weight: 600;
-  color: var(--gp-text-primary, #1e293b);
+  color: var(--gp-map-hover-card-text);
 }
 
 .trip-hover-confidence {
@@ -107,44 +144,40 @@
 
 .trip-hover-speed {
   margin-top: 0.2rem;
-  color: var(--gp-primary, #1a56db);
+  color: var(--gp-primary-text);
   font-weight: 600;
 }
 
 .trip-hover-confidence.exact {
-  color: var(--gp-success, #22c55e);
+  color: var(--gp-success);
 }
 
 .trip-hover-confidence.estimated {
-  color: #d97706;
+  color: var(--gp-warning-strong);
 }
 
 .trip-hover-offset {
   margin-top: 0.2rem;
-  color: var(--gp-text-secondary, #64748b);
+  color: var(--gp-map-hover-card-text-muted);
 }
 
-.leaflet-tooltip.trip-hover-tooltip-container {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border: 1px solid rgba(148, 163, 184, 0.65) !important;
-  color: #0f172a !important;
-}
-
-.leaflet-tooltip.trip-hover-tooltip-container::before {
-  border-top-color: rgba(255, 255, 255, 0.96) !important;
+.leaflet-tooltip.trip-hover-tooltip-container,
+.trip-hover-tooltip-container .maplibregl-popup-content {
+  background: var(--gp-map-hover-card-background);
+  border: 1px solid var(--gp-map-hover-card-border);
+  color: var(--gp-map-hover-card-text);
 }
 
 .trip-hover-tooltip-container .maplibregl-popup-content {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border: 1px solid rgba(148, 163, 184, 0.65) !important;
-  color: #0f172a !important;
-  padding: 0.45rem 0.55rem !important;
+  padding: 0.45rem 0.55rem;
 }
 
+.leaflet-tooltip.trip-hover-tooltip-container::before,
 .trip-hover-tooltip-container .maplibregl-popup-tip {
-  border-top-color: rgba(255, 255, 255, 0.96) !important;
+  border-top-color: var(--gp-map-hover-card-tip);
 }
 
+/* A marker, so it keeps its light-map colours in dark mode (see the marker tokens in tokens.css). */
 .gp-trip-replay-marker {
   width: 38px;
   height: 38px;
@@ -176,93 +209,21 @@
   line-height: 1;
 }
 
-.p-dark .timeline-stack-select {
-  border-color: var(--gp-border-medium, rgba(148, 163, 184, 0.45));
-  background: rgba(15, 23, 42, 0.75);
-}
-
-.p-dark .timeline-stack-select:hover {
-  border-color: var(--gp-primary-light, #60a5fa);
-  background: rgba(30, 64, 175, 0.3);
-}
-
-.p-dark .timeline-stack-select.stack-item--stay {
-  background: var(--gp-timeline-blue, rgba(30, 64, 175, 0.15));
-  border-left-color: var(--gp-primary, #3b82f6);
-}
-
-.p-dark .timeline-stack-select.stack-item--trip {
-  background: var(--gp-timeline-green, rgba(5, 150, 105, 0.15));
-  border-left-color: var(--gp-success, #10b981);
-}
-
-.p-dark .timeline-stack-select.stack-item--datagap {
-  background: rgba(127, 29, 29, 0.35);
-  border-left-color: var(--gp-danger, #ef4444);
-}
-
-.p-dark .stack-popup-header {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.p-dark .stack-item-title {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.p-dark .stack-item-time {
-  color: var(--gp-primary-light, #93c5fd);
-}
-
-.p-dark .stack-item-subtitle {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.p-dark .stack-item-meta {
-  color: var(--gp-primary-light, #93c5fd);
-}
-
-.p-dark .leaflet-tooltip.trip-hover-tooltip-container .trip-hover-time,
-.p-dark .trip-hover-tooltip-container .trip-hover-time {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.p-dark .leaflet-tooltip.trip-hover-tooltip-container .trip-hover-offset,
-.p-dark .trip-hover-tooltip-container .trip-hover-offset {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.p-dark .leaflet-tooltip.trip-hover-tooltip-container {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
-  border: 1px solid rgba(71, 85, 105, 0.3) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.p-dark .leaflet-tooltip.trip-hover-tooltip-container::before {
-  border-top-color: rgba(15, 23, 42, 0.95) !important;
-}
-
-.p-dark .trip-hover-tooltip-container .maplibregl-popup-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
-  border: 1px solid rgba(71, 85, 105, 0.3) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.p-dark .trip-hover-tooltip-container .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.95) !important;
-}
-
-.p-dark .gp-trip-replay-marker-inner {
-  border-color: rgba(241, 245, 249, 0.92);
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.58), 0 0 0 2px rgba(59, 130, 246, 0.35);
-}
-
 /* Keep all tooltips/popups above markers for both engines */
-.maplibregl-popup {
-  z-index: 1200 !important;
-}
-
+.maplibregl-popup,
 .leaflet-popup-pane,
 .leaflet-tooltip-pane {
-  z-index: 1200 !important;
+  z-index: 1200;
+}
+
+.timeline-stack-select.stack-item--note {
+  --row-accent: var(--gp-map-marker-note);
+  --row-accent-text: var(--gp-timeline-purple-text);
+  background: var(--gp-timeline-purple-light);
+}
+
+/* Neutral row: photos share the stays' blue family, so only the stripe and meta line are blue. */
+.timeline-stack-select.stack-item--photo {
+  --row-accent: var(--gp-map-marker-photo);
+  --row-accent-text: var(--gp-map-popup-accent);
 }

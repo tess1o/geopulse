@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection v-if="appriseSettings.length" title="Apprise Notifications">
+    <SettingSection v-if="appriseSettings.length" :title="t('adminProviderSettings.notificationsSettingsTab.appriseSectionTitle')">
       <SettingItem
         v-for="setting in appriseSettings"
         :key="setting.key"
@@ -26,7 +26,7 @@
             :feedback="false"
             toggleMask
             autocomplete="new-password"
-            placeholder="Enter new token to update"
+            :placeholder="t('adminProviderSettings.notificationsSettingsTab.enterNewTokenPlaceholder')"
             :inputProps="{
               autocomplete: 'new-password',
               name: 'apprise_api_token',
@@ -48,13 +48,11 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection v-if="cleanupSettings.length" title="Notification Cleanup">
-      <p class="text-muted cleanup-note">
-        Cleanup scheduler cadences are configured via
-        <code>geopulse.notifications.geofence-events.cleanup.scheduler-cadence</code>
-        and <code>geopulse.notifications.user-notifications.cleanup.scheduler-cadence</code>
-        and requires backend restart.
-      </p>
+    <SettingSection v-if="cleanupSettings.length" :title="t('adminProviderSettings.notificationsSettingsTab.cleanupSectionTitle')">
+      <i18n-t keypath="adminProviderSettings.notificationsSettingsTab.cleanupNote" tag="p" class="text-muted cleanup-note">
+        <template #code1><code>geopulse.notifications.geofence-events.cleanup.scheduler-cadence</code></template>
+        <template #code2><code>geopulse.notifications.user-notifications.cleanup.scheduler-cadence</code></template>
+      </i18n-t>
       <SettingItem
         v-for="setting in cleanupSettings"
         :key="setting.key"
@@ -87,13 +85,13 @@
     <BaseCard class="test-card">
       <div class="test-card-header">
         <div>
-          <h4>Connection Test</h4>
+          <h4>{{ t('adminProviderSettings.notificationsSettingsTab.connectionTestTitle') }}</h4>
           <p class="text-muted">
-            Validate API connectivity and optionally send a real test notification.
+            {{ t('adminProviderSettings.notificationsSettingsTab.connectionTestDescription') }}
           </p>
         </div>
         <Button
-          label="Run Test"
+          :label="t('adminProviderSettings.notificationsSettingsTab.runTest')"
           icon="pi pi-send"
           @click="openTestDialog"
           :disabled="adminReadOnly"
@@ -105,35 +103,35 @@
       v-model:visible="showTestDialog"
       modal
       :draggable="false"
-      header="Apprise Connection Test"
+      :header="t('adminProviderSettings.notificationsSettingsTab.dialogHeader')"
       class="apprise-test-dialog"
     >
       <div class="dialog-content">
         <p class="text-muted">
-          Leave destination empty to run connectivity-only test. Provide a destination URL to send a real notification.
+          {{ t('adminProviderSettings.notificationsSettingsTab.dialogDescription') }}
         </p>
         <div class="field-grid">
-          <label for="apprise-test-destination">Destination URL(s) (optional)</label>
+          <label for="apprise-test-destination">{{ t('adminProviderSettings.notificationsSettingsTab.destinationLabel') }}</label>
           <Textarea
             id="apprise-test-destination"
             v-model="testDestination"
             rows="3"
             autoResize
-            placeholder="tgram://TOKEN/CHAT_ID"
+            :placeholder="t('adminProviderSettings.notificationsSettingsTab.destinationPlaceholder')"
           />
 
-          <label for="apprise-test-title">Test title</label>
+          <label for="apprise-test-title">{{ t('adminProviderSettings.notificationsSettingsTab.testTitleLabel') }}</label>
           <InputText
             id="apprise-test-title"
             v-model="testTitle"
-            placeholder="GeoPulse Apprise Test"
+            :placeholder="t('adminProviderSettings.notificationsSettingsTab.testTitleDefault')"
           />
 
-          <label for="apprise-test-body">Test message</label>
+          <label for="apprise-test-body">{{ t('adminProviderSettings.notificationsSettingsTab.testBodyLabel') }}</label>
           <InputText
             id="apprise-test-body"
             v-model="testBody"
-            placeholder="Test notification from GeoPulse admin settings."
+            :placeholder="t('adminProviderSettings.notificationsSettingsTab.testBodyDefault')"
           />
         </div>
 
@@ -145,9 +143,9 @@
       </div>
 
       <template #footer>
-        <Button label="Close" severity="secondary" text @click="showTestDialog = false" />
+        <Button :label="t('adminProviderSettings.notificationsSettingsTab.close')" severity="secondary" text @click="showTestDialog = false" />
         <Button
-          label="Test Connection"
+          :label="t('adminProviderSettings.shared.testConnection')"
           icon="pi pi-send"
           :loading="testingConnection"
           :disabled="adminReadOnly"
@@ -160,6 +158,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
@@ -175,12 +174,15 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const toast = useToast()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 
 const systemSettings = ref([])
@@ -189,8 +191,8 @@ const testingConnection = ref(false)
 const lastTestResult = ref(null)
 
 const testDestination = ref('')
-const testTitle = ref('GeoPulse Apprise Test')
-const testBody = ref('Test notification from GeoPulse admin settings.')
+const testTitle = ref(t('adminProviderSettings.notificationsSettingsTab.testTitleDefault'))
+const testBody = ref(t('adminProviderSettings.notificationsSettingsTab.testBodyDefault'))
 
 const appriseSettings = computed(() =>
   systemSettings.value.filter(setting => setting.key.startsWith('system.notifications.apprise.'))
@@ -244,33 +246,41 @@ const testAppriseConnection = async () => {
       body: testBody.value?.trim() || null
     }
 
-    const response = await apiService.post('/admin/settings/system/notifications/apprise/test', payload)
+    const response = await adminStore.testAppriseConnection(payload)
     lastTestResult.value = {
-      severity: 'success',
-      summary: 'Apprise test succeeded',
-      detail: response?.message || 'Connection test succeeded',
+      severity: response.success ? 'success' : 'error',
+      summary: response.success
+        ? t('adminProviderSettings.notificationsSettingsTab.toasts.testSucceededMessage')
+        : t('adminProviderSettings.notificationsSettingsTab.toasts.testFailedMessage'),
+      detail: response?.detail || (response.success
+        ? t('adminProviderSettings.notificationsSettingsTab.toasts.connectionTestSucceeded')
+        : t('adminProviderSettings.notificationsSettingsTab.toasts.connectionTestFailed')),
       statusCode: response?.statusCode || null
     }
 
     toast.add({
-      severity: 'success',
-      summary: 'Apprise Test Succeeded',
-      detail: response?.message || 'Connection test succeeded',
+      severity: response.success ? 'success' : 'error',
+      summary: response.success
+        ? t('adminProviderSettings.notificationsSettingsTab.toasts.testSucceeded')
+        : t('adminProviderSettings.notificationsSettingsTab.toasts.testFailed'),
+      detail: response?.detail || (response.success
+        ? t('adminProviderSettings.notificationsSettingsTab.toasts.connectionTestSucceeded')
+        : t('adminProviderSettings.notificationsSettingsTab.toasts.connectionTestFailed')),
       life: 4000
     })
   } catch (error) {
-    const statusCode = error?.response?.data?.statusCode || null
-    const detail = error?.response?.data?.message || error?.message || 'Apprise test failed'
+    const statusCode = error?.status || null
+    const detail = formatApiErrorDetail(error, t('adminProviderSettings.notificationsSettingsTab.toasts.testFailedMessage'))
     lastTestResult.value = {
       severity: 'error',
-      summary: 'Apprise test failed',
+      summary: t('adminProviderSettings.notificationsSettingsTab.toasts.testFailedMessage'),
       detail,
       statusCode
     }
 
     toast.add({
       severity: 'error',
-      summary: 'Apprise Test Failed',
+      summary: t('adminProviderSettings.notificationsSettingsTab.toasts.testFailed'),
       detail,
       life: 5000
     })

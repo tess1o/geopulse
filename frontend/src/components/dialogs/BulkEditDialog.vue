@@ -1,7 +1,7 @@
 <template>
   <Dialog
       :visible="visible"
-      :header="`Bulk Edit ${selectedItems.length} ${itemTypeName}`"
+      :header="t('miscDialogs.bulkEdit.header', { count: selectedItems.length, itemType: itemTypeName })"
       :modal="true"
       :closable="!saving"
       @update:visible="handleClose"
@@ -11,12 +11,12 @@
       <!-- Selected Items Summary -->
       <div class="summary-section">
         <i class="pi pi-info-circle"></i>
-        <span>You are editing <strong>{{selectedItems.length}}</strong> {{itemTypeName.toLowerCase()}}{{selectedItems.length !== 1 ? 's' : ''}}</span>
+        <span>{{ t('miscDialogs.bulkEdit.editingPrefix') }} <strong>{{selectedItems.length}}</strong> {{itemTypeName.toLowerCase()}}{{selectedItems.length !== 1 ? 's' : ''}}</span>
       </div>
 
       <!-- Field Selections -->
       <div class="field-section">
-        <h4>Select Fields to Update</h4>
+        <h4>{{ t('miscDialogs.bulkEdit.fieldsHeading') }}</h4>
 
         <!-- City Field -->
         <div class="field-group">
@@ -26,18 +26,18 @@
                 :binary="true"
                 inputId="updateCity"
             />
-            <label for="updateCity" class="field-label">Update City</label>
+            <label for="updateCity" class="field-label">{{ t('miscDialogs.bulkEdit.updateCity') }}</label>
           </div>
           <AutoComplete
               v-model="cityValue"
               :suggestions="citySuggestions"
               @complete="searchCities"
               :disabled="!updateCity"
-              placeholder="Enter city name"
+              :placeholder="t('miscDialogs.bulkEdit.cityPlaceholder')"
               class="field-input"
               :class="{ 'p-invalid': updateCity && !cityValue }"
           />
-          <small v-if="updateCity && !cityValue" class="p-error">City value is required</small>
+          <small v-if="updateCity && !cityValue" class="p-error">{{ t('miscDialogs.bulkEdit.cityRequired') }}</small>
         </div>
 
         <!-- Country Field -->
@@ -48,41 +48,41 @@
                 :binary="true"
                 inputId="updateCountry"
             />
-            <label for="updateCountry" class="field-label">Update Country</label>
+            <label for="updateCountry" class="field-label">{{ t('miscDialogs.bulkEdit.updateCountry') }}</label>
           </div>
           <AutoComplete
               v-model="countryValue"
               :suggestions="countrySuggestions"
               @complete="searchCountries"
               :disabled="!updateCountry"
-              placeholder="Enter country name"
+              :placeholder="t('miscDialogs.bulkEdit.countryPlaceholder')"
               class="field-input"
               :class="{ 'p-invalid': updateCountry && !countryValue }"
           />
-          <small v-if="updateCountry && !countryValue" class="p-error">Country value is required</small>
+          <small v-if="updateCountry && !countryValue" class="p-error">{{ t('miscDialogs.bulkEdit.countryRequired') }}</small>
         </div>
       </div>
 
       <!-- Validation Message -->
       <Message v-if="!updateCity && !updateCountry" severity="warn" :closable="false">
-        Please select at least one field to update
+        {{ t('miscDialogs.bulkEdit.selectAtLeastOneField') }}
       </Message>
 
       <!-- Typo Warning Dialog -->
       <Dialog
           v-model:visible="showTypoWarning"
-          header="Possible Typo Detected"
+          :header="t('miscDialogs.bulkEdit.typoWarning.header')"
           :modal="true"
           class="typo-warning-dialog gp-dialog-sm"
       >
         <div class="typo-content">
           <i class="pi pi-exclamation-triangle warning-icon"></i>
-          <p>The following value(s) are not found in your existing data:</p>
+          <p>{{ t('miscDialogs.bulkEdit.typoWarning.notFoundMessage') }}</p>
           <ul class="typo-list">
             <li v-for="warning in typoWarnings" :key="warning.field">
-              <strong>{{warning.field}}:</strong> "{{warning.value}}"
+              <strong>{{ t(`miscDialogs.bulkEdit.fields.${warning.field}`) }}:</strong> "{{warning.value}}"
               <div v-if="warning.suggestions.length > 0" class="suggestions">
-                Did you mean:
+                {{ t('miscDialogs.bulkEdit.typoWarning.didYouMean') }}
                 <a v-for="(suggestion, index) in warning.suggestions"
                    :key="index"
                    @click="applySuggestion(warning.field, suggestion)"
@@ -92,19 +92,19 @@
               </div>
             </li>
           </ul>
-          <p>Do you want to continue with these values?</p>
+          <p>{{ t('miscDialogs.bulkEdit.typoWarning.continuePrompt') }}</p>
         </div>
         <template #footer>
-          <Button label="Cancel" severity="secondary" @click="showTypoWarning = false" text />
-          <Button label="Continue Anyway" severity="warning" @click="proceedWithUpdate" />
+          <Button :label="t('common.cancel')" severity="secondary" @click="showTypoWarning = false" text />
+          <Button :label="t('miscDialogs.bulkEdit.typoWarning.continueAnyway')" severity="warning" @click="proceedWithUpdate" />
         </template>
       </Dialog>
     </div>
 
     <template #footer>
-      <Button label="Cancel" severity="secondary" @click="handleClose" :disabled="saving" text />
+      <Button :label="t('common.cancel')" severity="secondary" @click="handleClose" :disabled="saving" text />
       <Button
-          :label="saving ? 'Updating...' : `Update ${selectedItems.length} Items`"
+          :label="saving ? t('miscDialogs.bulkEdit.updating') : t('miscDialogs.bulkEdit.updateButton', { count: selectedItems.length })"
           severity="primary"
           @click="handleSave"
           :disabled="!isFormValid || saving"
@@ -116,12 +116,15 @@
 
 <script setup>
 import {ref, computed, watch, onMounted} from 'vue'
+import { useI18n } from 'vue-i18n'
 import {useToast} from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import AutoComplete from 'primevue/autocomplete'
 import Message from 'primevue/message'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -217,7 +220,7 @@ const checkForTypos = () => {
     const normalizedCity = cityValue.value.trim()
     if (!existingCities.value.includes(normalizedCity)) {
       warnings.push({
-        field: 'City',
+        field: 'city',
         value: normalizedCity,
         suggestions: findSimilar(normalizedCity, existingCities.value)
       })
@@ -228,7 +231,7 @@ const checkForTypos = () => {
     const normalizedCountry = countryValue.value.trim()
     if (!existingCountries.value.includes(normalizedCountry)) {
       warnings.push({
-        field: 'Country',
+        field: 'country',
         value: normalizedCountry,
         suggestions: findSimilar(normalizedCountry, existingCountries.value)
       })
@@ -274,9 +277,9 @@ const levenshteinDistance = (str1, str2) => {
 }
 
 const applySuggestion = (field, suggestion) => {
-  if (field === 'City') {
+  if (field === 'city') {
     cityValue.value = suggestion
-  } else if (field === 'Country') {
+  } else if (field === 'country') {
     countryValue.value = suggestion
   }
   showTypoWarning.value = false
@@ -316,12 +319,12 @@ const proceedWithUpdate = async () => {
     )
 
     const successMsg = result.failedCount > 0
-        ? `Updated ${result.successCount} of ${result.totalRequested} items (${result.failedCount} failed)`
-        : `Successfully updated ${result.successCount} ${props.itemTypeName.toLowerCase()}`
+        ? t('miscDialogs.bulkEdit.toasts.partialDetail', { success: result.successCount, total: result.totalRequested, failed: result.failedCount })
+        : t('miscDialogs.bulkEdit.toasts.successDetail', { count: result.successCount, itemType: props.itemTypeName.toLowerCase() })
 
     toast.add({
       severity: result.failedCount > 0 ? 'warn' : 'success',
-      summary: 'Bulk Update Complete',
+      summary: t('miscDialogs.bulkEdit.toasts.completeSummary'),
       detail: successMsg,
       life: 5000
     })
@@ -332,8 +335,8 @@ const proceedWithUpdate = async () => {
     console.error(`Error bulk updating ${props.itemTypeName}:`, error)
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
-      detail: error.message || `Failed to update ${props.itemTypeName.toLowerCase()}`,
+      summary: t('miscDialogs.bulkEdit.toasts.failedSummary'),
+      detail: error.message || t('miscDialogs.bulkEdit.toasts.failedFallback', { itemType: props.itemTypeName.toLowerCase() }),
       life: 5000
     })
   } finally {
@@ -385,9 +388,9 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
   border-radius: var(--gp-radius-medium);
-  color: var(--p-primary-700);
+  color: var(--gp-primary-text);
 }
 
 .summary-section i {
@@ -444,7 +447,7 @@ onMounted(() => {
 
 .typo-list li {
   padding: 0.75rem;
-  background: var(--p-yellow-50);
+  background: var(--gp-warning-soft);
   border-radius: var(--gp-radius-small);
   margin-bottom: 0.5rem;
 }
@@ -464,14 +467,5 @@ onMounted(() => {
 
 .suggestion-link:hover {
   color: var(--p-primary-700);
-}
-
-.p-dark .summary-section {
-  background: var(--p-primary-900);
-  color: var(--p-primary-100);
-}
-
-.p-dark .typo-list li {
-  background: var(--p-yellow-900);
 }
 </style>

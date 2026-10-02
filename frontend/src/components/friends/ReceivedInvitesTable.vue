@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between p-4 border-b border-surface-200 dark:border-surface-700">
       <div class="flex items-center gap-2">
         <i class="pi pi-inbox text-green-500"></i>
-        <span class="font-bold text-lg text-surface-900 dark:text-surface-100">Received Invites</span>
+        <span class="font-bold text-lg text-surface-900 dark:text-surface-100">{{ t('friends.receivedInvites.header') }}</span>
         <Badge v-if="receivedInvites?.length > 0" :value="receivedInvites.length" severity="success" />
       </div>
     </div>
@@ -16,7 +16,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="p-6 text-center">
       <ProgressSpinner size="small" />
-      <p class="text-surface-500 mt-2">Loading received invites...</p>
+      <p class="text-muted-color mt-2">{{ t('friends.receivedInvites.loading') }}</p>
     </div>
 
     <!-- Has Invites -->
@@ -38,12 +38,12 @@
               <p class="text-base font-medium text-surface-900 dark:text-surface-100 truncate">
                 {{ invite.senderName }}
               </p>
-              <p class="text-sm text-surface-500 mt-1">
-                Wants to connect with you
+              <p class="text-sm text-muted-color mt-1">
+                {{ t('friends.receivedInvites.wantsToConnect') }}
               </p>
               <div class="flex items-center gap-1 mt-1">
-                <i class="pi pi-clock text-xs text-surface-500"></i>
-                <p class="text-xs text-surface-500">
+                <i class="pi pi-clock text-xs text-muted-color"></i>
+                <p class="text-xs text-muted-color">
                   {{ formatInviteDate(invite.receivedAt) }}
                 </p>
               </div>
@@ -58,7 +58,7 @@
                 size="small"
                 severity="success"
                 class="w-9 h-9"
-                v-tooltip.top="'Accept invitation'"
+                v-tooltip.top="t('friends.receivedInvites.acceptTooltip')"
                 :loading="acceptingId === invite.id"
                 @click="handleAcceptInvite(invite)"
             />
@@ -70,7 +70,7 @@
                 outlined
                 severity="secondary"
                 class="w-9 h-9"
-                v-tooltip.top="'Decline invitation'"
+                v-tooltip.top="t('friends.receivedInvites.declineTooltip')"
                 :loading="rejectingId === invite.id"
                 @click="handleRejectInvite(invite)"
             />
@@ -82,7 +82,7 @@
       <div v-if="receivedInvites.length > 1" class="mt-4 pt-3 border-t border-surface-200 dark:border-surface-700">
         <div class="flex gap-2">
           <Button
-              label="Accept All"
+              :label="t('friends.receivedInvites.acceptAll')"
               icon="pi pi-check-circle"
               size="small"
               severity="success"
@@ -91,7 +91,7 @@
               @click="handleAcceptAllInvites"
           />
           <Button
-              label="Decline All"
+              :label="t('friends.receivedInvites.declineAll')"
               icon="pi pi-times-circle"
               size="small"
               outlined
@@ -108,13 +108,13 @@
     <div v-else class="p-6 text-center">
       <div class="mb-4">
         <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mx-auto mb-3">
-          <i class="pi pi-inbox text-2xl text-surface-400"></i>
+          <i class="pi pi-inbox text-2xl text-muted-color"></i>
         </div>
         <h3 class="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
-          No pending invites
+          {{ t('friends.receivedInvites.emptyTitle') }}
         </h3>
-        <p class="text-sm text-surface-500 max-w-sm mx-auto">
-          Friend requests from other users will appear here. Share your username to receive invitations!
+        <p class="text-sm text-muted-color max-w-sm mx-auto">
+          {{ t('friends.receivedInvites.emptyMessage') }}
         </p>
       </div>
     </div>
@@ -123,28 +123,30 @@
     <Dialog
         v-model:visible="showAcceptDialog"
         modal
-        header="Accept Friend Request"
+        :header="t('friends.receivedInvites.acceptDialog.header')"
         :style="{ width: '25rem' }"
     >
       <div class="flex items-start gap-3 mb-4">
         <i class="pi pi-user-plus text-green-500 text-xl mt-1"></i>
         <div>
           <p class="text-surface-900 dark:text-surface-100 mb-2">
-            Add <strong>{{ selectedInvite?.senderName }}</strong> as a friend?
+            <i18n-t keypath="friends.receivedInvites.acceptDialog.message" tag="span">
+              <template #name><strong>{{ selectedInvite?.senderName }}</strong></template>
+            </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
-            You'll be able to see each other's locations on the map.
+          <p class="text-sm text-muted-color">
+            {{ t('friends.receivedInvites.acceptDialog.note') }}
           </p>
         </div>
       </div>
       <div class="flex justify-end gap-2">
         <Button
-            label="Cancel"
+            :label="t('common.cancel')"
             severity="secondary"
             @click="showAcceptDialog = false"
         />
         <Button
-            label="Add Friend"
+            :label="t('friends.receivedInvites.acceptDialog.confirm')"
             severity="success"
             :loading="acceptingId !== null"
             @click="confirmAcceptInvite"
@@ -156,28 +158,30 @@
     <Dialog
         v-model:visible="showRejectDialog"
         modal
-        header="Decline Friend Request"
+        :header="t('friends.receivedInvites.rejectDialog.header')"
         :style="{ width: '25rem' }"
     >
       <div class="flex items-start gap-3 mb-4">
         <i class="pi pi-exclamation-triangle text-yellow-500 text-xl mt-1"></i>
         <div>
           <p class="text-surface-900 dark:text-surface-100 mb-2">
-            Decline friend request from <strong>{{ selectedInvite?.senderName }}</strong>?
+            <i18n-t keypath="friends.receivedInvites.rejectDialog.message" tag="span">
+              <template #name><strong>{{ selectedInvite?.senderName }}</strong></template>
+            </i18n-t>
           </p>
-          <p class="text-sm text-surface-500">
-            This person won't be notified, but they can send another request later.
+          <p class="text-sm text-muted-color">
+            {{ t('friends.receivedInvites.rejectDialog.note') }}
           </p>
         </div>
       </div>
       <div class="flex justify-end gap-2">
         <Button
-            label="Keep Request"
+            :label="t('friends.receivedInvites.rejectDialog.keep')"
             severity="secondary"
             @click="showRejectDialog = false"
         />
         <Button
-            label="Decline"
+            :label="t('friends.receivedInvites.rejectDialog.confirm')"
             severity="danger"
             :loading="rejectingId !== null"
             @click="confirmRejectInvite"
@@ -189,31 +193,34 @@
     <Dialog
         v-model:visible="showBulkDialog"
         modal
-        :header="bulkAction === 'accept' ? 'Accept All Requests' : 'Decline All Requests'"
+        :header="bulkAction === 'accept' ? t('friends.receivedInvites.bulkDialog.acceptHeader') : t('friends.receivedInvites.bulkDialog.declineHeader')"
         :style="{ width: '25rem' }"
     >
       <div class="flex items-start gap-3 mb-4">
         <i :class="bulkAction === 'accept' ? 'pi pi-users text-green-500' : 'pi pi-exclamation-triangle text-yellow-500'" class="text-xl mt-1"></i>
         <div>
           <p class="text-surface-900 dark:text-surface-100 mb-2">
-            {{ bulkAction === 'accept' ? 'Accept' : 'Decline' }} all {{ receivedInvites?.length }} pending friend requests?
+            {{ t('friends.receivedInvites.bulkDialog.message', {
+              action: bulkAction === 'accept' ? t('friends.receivedInvites.bulkDialog.acceptAction') : t('friends.receivedInvites.bulkDialog.declineAction'),
+              count: receivedInvites?.length
+            }) }}
           </p>
-          <p class="text-sm text-surface-500">
+          <p class="text-sm text-muted-color">
             {{ bulkAction === 'accept'
-              ? 'All these users will become your friends and see your location.'
-              : 'All pending requests will be declined. Users can send new requests later.'
+              ? t('friends.receivedInvites.bulkDialog.acceptNote')
+              : t('friends.receivedInvites.bulkDialog.declineNote')
             }}
           </p>
         </div>
       </div>
       <div class="flex justify-end gap-2">
         <Button
-            label="Cancel"
+            :label="t('common.cancel')"
             severity="secondary"
             @click="showBulkDialog = false"
         />
         <Button
-            :label="bulkAction === 'accept' ? 'Accept All' : 'Decline All'"
+            :label="bulkAction === 'accept' ? t('friends.receivedInvites.acceptAll') : t('friends.receivedInvites.declineAll')"
             :severity="bulkAction === 'accept' ? 'success' : 'danger'"
             :loading="acceptingAll || rejectingAll"
             @click="confirmBulkAction"
@@ -225,7 +232,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
+
+const { t } = useI18n()
 
 defineProps(['receivedInvites', 'isLoading'])
 const emit = defineEmits(['accept-invite', 'reject-invite', 'accept-all-invites', 'reject-all-invites'])
@@ -303,7 +313,7 @@ const confirmBulkAction = async () => {
 
 const timezone = useTimezone()
 const formatInviteDate = (date) => {
-  if (!date) return 'recently'
+  if (!date) return t('friends.receivedInvites.relativeTime.recently')
 
   const now = timezone.now()
   const inviteDate = timezone.fromUtc(date)
@@ -311,10 +321,10 @@ const formatInviteDate = (date) => {
   const diffHours = now.diff(inviteDate, 'hour')
   const diffMinutes = now.diff(inviteDate, 'minute')
 
-  if (diffDays > 0) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
-  if (diffHours > 0) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
-  if (diffMinutes > 0) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`
-  return 'just now'
+  if (diffDays > 0) return t('friends.receivedInvites.relativeTime.daysAgo', { count: diffDays }, diffDays)
+  if (diffHours > 0) return t('friends.receivedInvites.relativeTime.hoursAgo', { count: diffHours }, diffHours)
+  if (diffMinutes > 0) return t('friends.receivedInvites.relativeTime.minutesAgo', { count: diffMinutes }, diffMinutes)
+  return t('friends.receivedInvites.relativeTime.justNow')
 }
 </script>
 

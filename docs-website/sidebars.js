@@ -359,6 +359,7 @@ const sidebars = {
                     items: [
                         'system-administration/monitoring/prometheus',
                         'system-administration/monitoring/grafana',
+                        'system-administration/monitoring/logging',
                     ],
                 },
                 {

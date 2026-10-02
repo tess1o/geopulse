@@ -3,7 +3,10 @@ package org.github.tess1o.geopulse.mapmatching.service;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
 import org.github.tess1o.geopulse.mapmatching.event.MapMatchingSettingsChangedEvent;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingBackfillProgress;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildResult;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingTargetReset;
 import org.github.tess1o.geopulse.mapmatching.repository.MapMatchingReconciliationRepository;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,6 +29,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -133,16 +138,75 @@ class MapMatchingWorkerStatusTest {
     }
 
     @Test
-    void rebuildHistoricalQueueRestartsHistoricalReconciliationAndWakesWorker() {
+    void cacheAffectingSettingsChangeDoesNotRestartHistoricalScan() {
+        worker.executor = executor;
+        worker.workerExecution = new MapMatchingWorkerExecution();
+
+        worker.onSettingsChanged(new MapMatchingSettingsChangedEvent("map-matching.valhalla.base-url"));
+        worker.onSettingsChanged(new MapMatchingSettingsChangedEvent("map-matching.max-input-points"));
+
+        // The current config hash ensures stored results from the old configuration are never reused, so
+        // re-matching is left to on-demand resolution or an explicit admin re-run.
+        verify(reconciliationRepository, times(0)).restartAllTripOwners(
+                any(MapMatchingSource.class), any(Instant.class));
+        verifyNoInteractions(targetRepository);
+    }
+
+    @Test
+    void rebuildMapMatchingRequeuesUnsuccessfulTargetsBeforeRestartingCursorsAndWakesWorker() {
+        when(targetRepository.resetTerminalTargets()).thenReturn(new MapMatchingTargetReset(5L, 3L));
         when(reconciliationRepository.restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class)))
                 .thenReturn(2L);
         when(executor.submit(any(Runnable.class))).thenReturn(CompletableFuture.completedFuture(null));
 
         worker.executor = executor;
 
-        long queuedUsers = worker.rebuildHistoricalQueue();
+        MapMatchingRebuildResult result = worker.rebuildMapMatching(MapMatchingRebuildMode.UNSUCCESSFUL);
 
-        assertThat(queuedUsers).isEqualTo(2L);
+        assertThat(result.mode()).isEqualTo(MapMatchingRebuildMode.UNSUCCESSFUL);
+        assertThat(result.queuedUsers()).isEqualTo(2L);
+        assertThat(result.affectedTargets()).isEqualTo(5L);
+        assertThat(result.purgedDetachedTargets()).isEqualTo(3L);
+        verify(targetRepository, times(0)).deleteAllTargets();
+
+        // Re-queuing the failed/skipped targets must happen before the cursor rewinds, otherwise the
+        // rebuild walks the history and re-finds the same terminal rows it just failed to clear.
+        InOrder inOrder = inOrder(targetRepository, reconciliationRepository);
+        inOrder.verify(targetRepository).resetTerminalTargets();
+        inOrder.verify(reconciliationRepository)
+                .restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class));
+        verify(executor).submit(any(Runnable.class));
+    }
+
+    @Test
+    void rebuildMapMatchingDefaultsToRequeuingUnsuccessfulTargets() {
+        when(targetRepository.resetTerminalTargets()).thenReturn(new MapMatchingTargetReset(0L, 0L));
+        when(reconciliationRepository.restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class)))
+                .thenReturn(0L);
+
+        worker.executor = executor;
+
+        MapMatchingRebuildResult result = worker.rebuildMapMatching(null);
+
+        assertThat(result.mode()).isEqualTo(MapMatchingRebuildMode.UNSUCCESSFUL);
+        verifyNoInteractions(executor);
+    }
+
+    @Test
+    void rebuildMapMatchingWithAllModeDeletesEveryTargetAndRestartsHistory() {
+        when(targetRepository.deleteAllTargets()).thenReturn(466L);
+        when(reconciliationRepository.restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class)))
+                .thenReturn(3L);
+        when(executor.submit(any(Runnable.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        worker.executor = executor;
+
+        MapMatchingRebuildResult result = worker.rebuildMapMatching(MapMatchingRebuildMode.ALL);
+
+        assertThat(result.mode()).isEqualTo(MapMatchingRebuildMode.ALL);
+        assertThat(result.affectedTargets()).isEqualTo(466L);
+        assertThat(result.queuedUsers()).isEqualTo(3L);
+        verify(targetRepository, times(0)).resetTerminalTargets();
         verify(reconciliationRepository).restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class));
         verify(executor).submit(any(Runnable.class));
     }

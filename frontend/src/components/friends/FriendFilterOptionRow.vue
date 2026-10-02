@@ -9,21 +9,33 @@
       <span class="friend-name">{{ option.label }}</span>
       <span class="friend-email">{{ option.email }}</span>
     </div>
+    <!-- Online is a filled dot, recently seen a hollow ring, so the state does not depend on color. -->
     <span
         class="friend-status-dot"
         :class="{ 'friend-status-dot--online': option.isOnline }"
-        :title="option.isOnline ? 'Online now' : 'Last seen recently'"
+        role="img"
+        :aria-label="statusLabel"
+        :title="statusLabel"
     ></span>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
+const props = defineProps({
   option: {
     type: Object,
     required: true
   }
 })
+
+const statusLabel = computed(() => (
+  props.option.isOnline ? t('friends.filters.onlineNow') : t('friends.filters.lastSeenRecently')
+))
 </script>
 
 <style scoped>
@@ -56,14 +68,17 @@ defineProps({
 }
 
 .friend-status-dot {
-  width: 0.55rem;
-  height: 0.55rem;
+  width: 0.6rem;
+  height: 0.6rem;
   border-radius: 50%;
-  background: var(--gp-warning);
+  background: transparent;
+  border: 2px solid var(--gp-warning);
+  box-sizing: border-box;
   flex-shrink: 0;
 }
 
 .friend-status-dot--online {
   background: var(--gp-success);
+  border-color: var(--gp-success);
 }
 </style>

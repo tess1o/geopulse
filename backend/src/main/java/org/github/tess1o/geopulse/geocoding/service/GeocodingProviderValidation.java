@@ -68,6 +68,20 @@ public class GeocodingProviderValidation {
             }
         }
 
+        // Forward search is a capability separate from geocoding. A provider can be
+        // enabled and serving reverse geocoding while being unable to answer place-name
+        // searches (Nominatim on the public host). Such a configuration is otherwise
+        // silent: place search simply returns no external results, which is
+        // indistinguishable from "nothing matched".
+        if (!providerFactory.isForwardSearchAvailable()) {
+            log.warn("FORWARD SEARCH UNAVAILABLE: no enabled provider can answer place-name searches.");
+            log.warn("Trip plan place search and any POI discovery will return no external results.");
+            log.warn("To fix, either enable a provider that supports it (for example ");
+            log.warn("geocoding.provider.photon.enabled=true), or point Nominatim at a self-hosted ");
+            log.warn("instance and set geocoding.nominatim.public-host-forward-search-enabled=true.");
+            log.warn("Note: the public Nominatim host does not permit forward search at scale.");
+        }
+
         // Log configuration status
         log.info("Geocoding provider configuration:");
         log.info("Primary provider: {} (ENABLED)", primaryProvider);

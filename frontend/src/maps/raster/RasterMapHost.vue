@@ -5,9 +5,8 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { FullScreen } from 'leaflet.fullscreen'
-import 'leaflet.fullscreen/dist/Control.FullScreen.css'
+import '@/styles/vendor/leaflet-plugins.css'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { fixLeafletMarkerAnimation, fixLeafletMarkerImages, fixLeafLetTooltip } from '@/utils/mapHelpers'
@@ -502,6 +501,7 @@ onUnmounted(() => {
   height: v-bind(height);
   min-width: 300px;
   min-height: 300px;
-  background-color: #f0f0f0;
+  /* Neutral backdrop for the tiles to fade in over; the card colour in dark mode, so it isn't a bright flash. */
+  background-color: var(--gp-map-backdrop);
 }
 </style>

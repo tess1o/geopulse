@@ -37,6 +37,7 @@ public class SingleTripDistanceBadgeCalculator {
         Query query = entityManager.createNativeQuery(MAX_DISTANCE_QUERY);
         query.setParameter("userId", userId);
 
+        @SuppressWarnings("unchecked")
         List<Object[]> result = (List<Object[]>) query.getResultList();
         if (result == null || result.isEmpty()) {
             return Badge.builder()

@@ -29,12 +29,10 @@ public class MapboxResponseAdapter implements GeocodingResponseAdapter<MapboxRes
 
     @Override
     public FormattableGeocodingResult adapt(MapboxResponse mapboxResponse, Point requestCoordinates, String providerName) {
-        log.debug("Adapting Mapbox response for coordinates: lon={}, lat={}",
-                requestCoordinates.getX(), requestCoordinates.getY());
+        log.debug("Adapting Mapbox response");
 
         if (mapboxResponse == null || mapboxResponse.getFeatures() == null || mapboxResponse.getFeatures().isEmpty()) {
-            log.warn("Empty or null Mapbox response for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
+            log.warn("Empty or null Mapbox response");
             throw new GeocodingException("Mapbox returned empty or null response");
         }
 

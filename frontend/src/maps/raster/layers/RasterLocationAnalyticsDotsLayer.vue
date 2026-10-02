@@ -11,8 +11,7 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import 'leaflet.markercluster'
-import 'leaflet.markercluster/dist/MarkerCluster.css'
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import '@/styles/vendor/leaflet-plugins.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
@@ -378,6 +377,7 @@ const handleLayerReady = () => {
     removeOutsideVisibleBounds: true,
     iconCreateFunction: (cluster) => {
       const count = cluster.getChildCount()
+      const itemLabel = props.places.some((place) => place.type === 'city') ? 'cities' : 'places'
       const zoom = props.map?.getZoom?.() ?? 0
       const showLabel = zoom >= CLUSTER_LABEL_MIN_ZOOM && count <= CLUSTER_LABEL_MAX_COUNT
       const size =
@@ -391,8 +391,8 @@ const handleLayerReady = () => {
           <div
             class="location-analytics-cluster ${showLabel ? 'is-labeled' : 'is-compact'}"
             style="--cluster-size:${size}px"
-            title="${count} places"
-            aria-label="${count} places"
+            title="${count} ${itemLabel}"
+            aria-label="${count} ${itemLabel}"
           >
             ${showLabel ? `<span>${count}</span>` : ''}
           </div>

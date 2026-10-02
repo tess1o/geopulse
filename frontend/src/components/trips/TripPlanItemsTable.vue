@@ -7,7 +7,7 @@
     :rowsPerPageOptions="[10, 25, 50]"
     stripedRows
   >
-    <Column field="title" header="Title" sortable>
+    <Column field="title" :header="t('trips.planItemsTable.titleHeader')" sortable>
       <template #body="{ data }">
         <div class="plan-item-title">
           <button
@@ -24,7 +24,7 @@
       </template>
     </Column>
 
-    <Column field="priority" header="Priority" sortable style="width: 8rem">
+    <Column field="priority" :header="t('trips.planItemsTable.priorityHeader')" sortable style="width: 8rem">
       <template #body="{ data }">
         <Tag
           :value="data.priority || 'OPTIONAL'"
@@ -33,7 +33,7 @@
       </template>
     </Column>
 
-    <Column v-if="!isPlanningMode" header="Matched Stay">
+    <Column v-if="!isPlanningMode" :header="t('trips.planItemsTable.matchedStayHeader')">
       <template #body="{ data }">
         <div class="actual-visit-cell">
           <template v-if="hasMatchedStay(data)">
@@ -51,7 +51,7 @@
       </template>
     </Column>
 
-    <Column field="isVisited" header="Status" sortable style="width: 11rem">
+    <Column field="isVisited" :header="t('trips.planItemsTable.statusHeader')" sortable style="width: 11rem">
       <template #body="{ data }">
         <Tag
           :severity="getVisitStatusMeta(data).severity"
@@ -63,40 +63,40 @@
       </template>
     </Column>
 
-    <Column header="Actions" style="width: 16rem">
+    <Column :header="t('trips.planItemsTable.actionsHeader')" style="width: 16rem">
       <template #body="{ data }">
         <Button
           v-if="canEdit"
           icon="pi pi-check"
           class="p-button-text p-button-sm"
-          v-tooltip.top="'Mark visited'"
+          v-tooltip.top="t('trips.planItemsTable.markVisited')"
           @click="emitOverride(data, 'CONFIRM_VISITED')"
         />
         <Button
           v-if="canEdit"
           icon="pi pi-times"
           class="p-button-text p-button-sm"
-          v-tooltip.top="'Mark not visited'"
+          v-tooltip.top="t('trips.planItemsTable.markNotVisited')"
           @click="emitOverride(data, 'REJECT_VISIT')"
         />
         <Button
           v-if="canEdit"
           icon="pi pi-undo"
           class="p-button-text p-button-sm"
-          v-tooltip.top="'Reset visit state'"
+          v-tooltip.top="t('trips.planItemsTable.resetVisitState')"
           @click="emitOverride(data, 'RESET_TO_AUTO')"
         />
         <Button
           v-if="canEdit"
           icon="pi pi-pencil"
           class="p-button-text p-button-sm"
-          v-tooltip.top="'Edit item'"
+          v-tooltip.top="t('trips.planItemsTable.editItem')"
           @click="emitEditItem(data)"
         />
         <Button
           icon="pi pi-map-marker"
           class="p-button-text p-button-sm"
-          v-tooltip.top="'Open in Google Maps'"
+          v-tooltip.top="t('trips.planItemsTable.openInGoogleMaps')"
           :disabled="!hasCoordinates(data)"
           @click="openGoogleMaps(data)"
         />
@@ -105,7 +105,7 @@
           icon="pi pi-trash"
           class="p-button-text p-button-sm"
           severity="danger"
-          v-tooltip.top="'Delete item'"
+          v-tooltip.top="t('trips.planItemsTable.deleteItem')"
           @click="emitDeleteItem(data)"
         />
       </template>
@@ -115,12 +115,12 @@
 
   <div v-else class="empty-state">
     <i class="pi pi-list-check empty-state-icon"></i>
-    <h4 class="empty-state-title">No plan items yet</h4>
-    <p class="empty-state-text">Start with Add Place, then search by name or click on the map in the dialog.</p>
+    <h4 class="empty-state-title">{{ t('trips.planItemsTable.emptyTitle') }}</h4>
+    <p class="empty-state-text">{{ t('trips.planItemsTable.emptyText') }}</p>
     <Button
       v-if="canEdit"
       icon="pi pi-plus"
-      label="Add Place"
+      :label="t('trips.planItemsTable.addPlace')"
       class="empty-state-add-btn"
       @click="emitAddItem"
     />
@@ -129,6 +129,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -160,6 +161,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['focus-item', 'override', 'edit-item', 'delete-item', 'add-item'])
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const visitSuggestionsByPlanItem = computed(() => {
@@ -200,10 +202,10 @@ const getSuggestionForItem = (item) => {
 const getActualConfidenceLabel = (item) => {
   const suggestion = getSuggestionForItem(item)
   if (suggestion?.confidence !== null && suggestion?.confidence !== undefined) {
-    return `Confidence ${formatVisitConfidence(suggestion.confidence)}`
+    return t('trips.status.confidence', { value: formatVisitConfidence(suggestion.confidence) })
   }
   if (item?.visitConfidence !== null && item?.visitConfidence !== undefined) {
-    return `Confidence ${formatVisitConfidence(item.visitConfidence)}`
+    return t('trips.status.confidence', { value: formatVisitConfidence(item.visitConfidence) })
   }
   return null
 }
@@ -220,7 +222,7 @@ const hasMatchedStay = (item) => {
 
 const getMatchedStayTitle = (item) => {
   const suggestion = getSuggestionForItem(item)
-  return suggestion?.matchedLocationName || 'Unknown place'
+  return suggestion?.matchedLocationName || t('trips.planItemsTable.unknownPlace')
 }
 
 const getMatchedStayTimeLabel = (item) => {
@@ -238,12 +240,12 @@ const getMatchedConfidenceBadge = (item) => {
     return null
   }
   if (confidence >= 0.9) {
-    return { label: 'High', severity: 'success' }
+    return { label: t('trips.status.confidenceHigh'), severity: 'success' }
   }
   if (confidence >= 0.75) {
-    return { label: 'Medium', severity: 'warn' }
+    return { label: t('trips.status.confidenceMedium'), severity: 'warn' }
   }
-  return { label: 'Low', severity: 'danger' }
+  return { label: t('trips.status.confidenceLow'), severity: 'danger' }
 }
 
 const getVisitStatusMeta = (item) => {
@@ -253,28 +255,28 @@ const getVisitStatusMeta = (item) => {
   const isVisited = item?.isVisited || decision === 'AUTO_MATCHED' || decision === 'MANUAL_OVERRIDE'
 
   if (props.isPlanningMode && !isVisited) {
-    return { label: 'Planned', severity: 'info', subtext: 'No actual data yet' }
+    return { label: t('trips.status.planned'), severity: 'info', subtext: t('trips.status.noActualDataYet') }
   }
   if (manualState === 'REJECTED') {
-    return { label: 'Missed', severity: 'danger', subtext: 'Manual override' }
+    return { label: t('trips.status.missed'), severity: 'danger', subtext: t('trips.status.manualOverride') }
   }
   if (isVisited) {
-    return { label: 'Visited', severity: 'success', subtext: getActualConfidenceLabel(item) }
+    return { label: t('trips.status.visited'), severity: 'success', subtext: getActualConfidenceLabel(item) }
   }
   if (decision === 'NO_COORDINATES') {
     return {
-      label: 'Planned',
+      label: t('trips.status.planned'),
       severity: 'info',
-      subtext: props.isActiveTrip ? 'Not visited yet' : 'Add map point for auto-matching'
+      subtext: props.isActiveTrip ? t('trips.status.notVisitedYet') : t('trips.planItemsTable.addMapPointToAutoMatch')
     }
   }
   if (decision === 'SUGGESTED') {
-    return { label: 'Needs review', severity: 'warn', subtext: getActualConfidenceLabel(item) }
+    return { label: t('trips.status.needsReview'), severity: 'warn', subtext: getActualConfidenceLabel(item) }
   }
   if (props.isActiveTrip) {
-    return { label: 'Planned', severity: 'info', subtext: 'Not visited yet' }
+    return { label: t('trips.status.planned'), severity: 'info', subtext: t('trips.status.notVisitedYet') }
   }
-  return { label: 'Missed', severity: 'secondary', subtext: suggestion?.reason || null }
+  return { label: t('trips.status.missed'), severity: 'secondary', subtext: suggestion?.reason || null }
 }
 
 const emitFocusItem = (item) => emit('focus-item', item)

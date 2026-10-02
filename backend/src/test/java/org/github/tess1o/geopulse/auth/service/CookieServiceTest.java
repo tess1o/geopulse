@@ -31,7 +31,6 @@ class CookieServiceTest {
         CookieService service = new CookieService();
         service.cookieDomain = cookieDomain;
         service.secureCookies = true;
-        service.csrfCookieName = "csrf-token";
 
         return service.createAccessTokenCookie("token", 1800);
     }

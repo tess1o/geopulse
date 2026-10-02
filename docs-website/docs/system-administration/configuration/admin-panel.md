@@ -333,6 +333,12 @@ Navigate to **Admin Dashboard > System Settings** or `/app/admin/settings`.
 
 The System Settings page provides UI-based configuration for various system options, organized into tabs.
 
+### Application Logging
+
+The **System > Observability** section controls the backend application log level at runtime. Choose `ERROR`, `WARN`, `INFO`, or `DEBUG`; the page shows the configured value, effective value, and whether it came from the Admin setting, environment, or application default. Admin values take precedence over `GEOPULSE_LOG_LEVEL` and are applied immediately on the current replica and within 30 seconds on other replicas.
+
+Use **Use environment/default** to remove the persisted override. DEBUG is intentionally accompanied by a verbosity warning and should be temporary. Log-level changes are audited by actor, action, and key without recording the old or new level.
+
 ### Authentication Tab
 
 Configure user registration behavior:

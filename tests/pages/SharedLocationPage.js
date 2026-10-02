@@ -53,6 +53,8 @@ export class SharedLocationPage {
       // Map
       sharedHeader: '.shared-header',
       refreshButton: 'button:has(.pi-refresh)',
+      autoRefreshSelect: '[aria-label="Auto-refresh interval"]',
+      autoFollowButton: 'button[aria-label$="auto-follow"]',
       leafletMap: '.leaflet-container',
       mapCanvas: '.leaflet-container, .maplibregl-map',
       mapCard: '.map-card',
@@ -178,6 +180,19 @@ export class SharedLocationPage {
 
   async isRefreshButtonVisible() {
     return await this.page.locator(this.selectors.refreshButton).isVisible();
+  }
+
+  async selectAutoRefresh(label) {
+    await this.page.locator(this.selectors.autoRefreshSelect).click();
+    await this.page.getByRole('option', {name: label}).click();
+  }
+
+  async getAutoRefreshLabel() {
+    return (await this.page.locator(this.selectors.autoRefreshSelect).textContent()).trim();
+  }
+
+  async isAutoFollowEnabled() {
+    return await this.page.locator(this.selectors.autoFollowButton).getAttribute('aria-pressed') === 'true';
   }
 
   async getMapContainerBox() {

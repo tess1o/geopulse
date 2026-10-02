@@ -68,15 +68,19 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import { storeToRefs } from 'pinia'
 import { useDateRangeStore } from '@/stores/dateRange'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTimezone } from '@/composables/useTimezone'
-import { normalizePeriodTagColor } from '@/utils/periodTagHelpers'
+import { normalizeTimelineLabelColor } from '@/utils/timelineLabelHelpers'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import DateRangePresetSelect from '@/components/ui/DateRangePresetSelect.vue'
-import { shouldShowPeriodTagAsPreset } from '@/utils/dateRangePresetOptions'
+import { shouldShowTimelineLabelAsPreset } from '@/utils/dateRangePresetOptions'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -103,23 +107,23 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'Select Dates'
+    default: () => translate('ui.dateRangePicker.labelDefault')
   },
   placeholder: {
     type: String,
-    default: 'Select date range'
+    default: () => translate('ui.dateRangePicker.placeholderDefault')
   },
   presetPlaceholder: {
     type: String,
-    default: 'Select Preset'
+    default: () => translate('ui.dateRangePicker.presetPlaceholderDefault')
   },
   presets: {
     type: Array,
     default: () => [
-      { label: 'Today', value: 'today' },
-      { label: 'Yesterday', value: 'yesterday' },
-      { label: 'Last 7 days', value: 'lastWeek' },
-      { label: 'Last 30 days', value: 'lastMonth' }
+      { label: translate('ui.dateRangePicker.presets.today'), value: 'today' },
+      { label: translate('ui.dateRangePicker.presets.yesterday'), value: 'yesterday' },
+      { label: translate('ui.dateRangePicker.presets.last7Days'), value: 'lastWeek' },
+      { label: translate('ui.dateRangePicker.presets.last30Days'), value: 'lastMonth' }
     ]
   },
   maxRangeDays: {
@@ -144,7 +148,7 @@ const emit = defineEmits(['date-change', 'validation-error'])
 
 const timezone = useTimezone()
 const dateRangeStore = useDateRangeStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const { dateRange: storeDateRange } = storeToRefs(dateRangeStore)
 
 const selectedPreset = ref()
@@ -157,9 +161,9 @@ const maxDate = computed(() => new Date())
 const periodPresetPrefix = 'period:'
 const maxPresetNameLength = 32
 
-const periodTagById = computed(() => {
+const timelineLabelById = computed(() => {
   const map = new Map()
-  for (const tag of periodTagsStore.periodTags || []) {
+  for (const tag of timelineLabelsStore.timelineLabels || []) {
     if (tag && tag.id !== null && tag.id !== undefined) {
       map.set(String(tag.id), tag)
     }
@@ -168,20 +172,20 @@ const periodTagById = computed(() => {
 })
 
 const periodPresets = computed(() => {
-  const tags = periodTagsStore.periodTags || []
+  const tags = timelineLabelsStore.timelineLabels || []
   if (!tags.length) return []
 
   const sorted = [...tags]
       .filter((tag) => tag && tag.startTime)
-      .filter(shouldShowPeriodTagAsPreset)
+      .filter(shouldShowTimelineLabelAsPreset)
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
 
   return sorted.map((tag) => ({
     label: formatPeriodPresetLabel(tag),
-    nameLabel: truncatePresetName(tag.tagName || 'Period'),
+    nameLabel: truncatePresetName(tag.name || t('ui.dateRangePicker.periodFallbackName')),
     value: `${periodPresetPrefix}${tag.id}`,
-    kind: 'period-tag',
-    color: normalizePeriodTagColor(tag.color),
+    kind: 'timeline-label',
+    color: normalizeTimelineLabelColor(tag.color),
     dateLabel: formatPeriodPresetDateLabel(tag)
   }))
 })
@@ -197,8 +201,8 @@ const useGroupedPresets = computed(() => periodPresets.value.length > 0)
 const presetOptions = computed(() => {
   if (!useGroupedPresets.value) return defaultPresetOptions.value
   return [
-    { label: 'Timeline Labels', items: periodPresets.value },
-    { label: 'Presets', items: defaultPresetOptions.value }
+    { label: t('ui.dateRangePicker.timelineLabelsGroup'), items: periodPresets.value },
+    { label: t('ui.dateRangePicker.presetsGroup'), items: defaultPresetOptions.value }
   ]
 })
 
@@ -227,7 +231,7 @@ const dateRange = computed({
       if (props.maxRangeDays) {
         const days = timezone.diffInDays(end, start) + 1
         if (days > props.maxRangeDays) {
-          validationMessage.value = `Maximum range is ${props.maxRangeDays} days`
+          validationMessage.value = t('ui.dateRangePicker.maxRangeError', { days: props.maxRangeDays })
           emit('validation-error', validationMessage.value)
 
           // Reset to last 7 days after showing error
@@ -261,7 +265,7 @@ function setPresetByValue(presetValue) {
 
   if (typeof presetValue === 'string' && presetValue.startsWith(periodPresetPrefix)) {
     const periodId = presetValue.slice(periodPresetPrefix.length)
-    const tag = periodTagById.value.get(periodId)
+    const tag = timelineLabelById.value.get(periodId)
     if (tag) {
       const { start, end } = getPeriodDateRange(tag)
       dateRangeStore.setDateRange([start, end])
@@ -302,9 +306,9 @@ function getPeriodDateRange(tag) {
 }
 
 function formatPeriodPresetLabel(tag) {
-  const tagName = truncatePresetName(tag.tagName || 'Label')
+  const name = truncatePresetName(tag.name || t('ui.dateRangePicker.labelFallbackName'))
   const dateRangeLabel = formatPeriodPresetDateLabel(tag)
-  return `${tagName} (${dateRangeLabel})`
+  return `${name} (${dateRangeLabel})`
 }
 
 function formatPeriodPresetDateLabel(tag) {
@@ -315,10 +319,10 @@ function formatPeriodPresetDateLabel(tag) {
   const includeYear = start.year() !== endBase.year() || start.year() !== nowYear
   const format = includeYear ? 'MMM D, YYYY' : 'MMM D'
   const startText = start.format(format)
-  const endText = isActive ? 'Today' : endBase.format(format)
+  const endText = isActive ? t('ui.dateRangePicker.presets.today') : endBase.format(format)
 
   if (start.isSame(endBase, 'day')) {
-    return isActive ? 'Today' : startText
+    return isActive ? t('ui.dateRangePicker.presets.today') : startText
   }
 
   return `${startText} - ${endText}`
@@ -331,7 +335,7 @@ function truncatePresetName(name) {
 
 onMounted(async () => {
   try {
-    await periodTagsStore.fetchPeriodTags()
+    await timelineLabelsStore.fetchTimelineLabels()
   } catch (error) {
     console.warn('Failed to load timeline labels for presets:', error)
   }
@@ -353,8 +357,8 @@ onMounted(async () => {
   gap: 0.5rem;
   margin-top: 0.5rem;
   padding: 0.5rem;
-  background: var(--gp-warning-light);
-  color: var(--gp-warning-dark);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
   border-radius: var(--gp-radius-small);
   font-size: 0.85rem;
 }
@@ -371,12 +375,6 @@ onMounted(async () => {
 /* Compact variant */
 .date-range-picker--compact .date-picker-input {
   font-size: 0.85rem;
-}
-
-/* Dark mode */
-.p-dark .validation-message {
-  background: rgba(255, 193, 7, 0.2);
-  color: var(--gp-warning);
 }
 
 /* Mobile responsiveness */

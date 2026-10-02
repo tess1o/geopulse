@@ -230,8 +230,15 @@ public class TimelineConfig {
     private Boolean motorcycleEnabled;
 
     /**
-     * Preferred label when both car and motorcycle are enabled for detected
-     * motor-vehicle trips. Allowed values: CAR, MOTORCYCLE.
+     * Enable or disable public transportation as a label for motor-vehicle trip detection.
+     * It labels car-like trips; it does not detect a specific transit vehicle.
+     * Default: false (disabled)
+     */
+    private Boolean publicTransportationEnabled;
+
+    /**
+     * Preferred enabled label for detected motor-vehicle trips. Allowed values:
+     * CAR, MOTORCYCLE, PUBLIC_TRANSPORT.
      */
     private String preferredMotorizedType;
     

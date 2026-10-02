@@ -3,12 +3,12 @@
     <PageContainer>
       <div class="help-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Help & Support</h1>
-              <p class="page-description">
-                Get help, access documentation, and report issues
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('help.page.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('help.page.description') }}
               </p>
             </div>
           </div>
@@ -23,10 +23,9 @@
                   <i class="pi pi-exclamation-circle"></i>
                 </div>
                 <div class="section-text">
-                  <h2 class="section-title">Having Issues?</h2>
+                  <h2 class="section-title">{{ t('help.page.issues.title') }}</h2>
                   <p class="section-description">
-                    If you're experiencing problems with timeline generation, trip classification, or other features,
-                    you can export anonymized debug data to help us troubleshoot.
+                    {{ t('help.page.issues.description') }}
                   </p>
                 </div>
               </div>
@@ -37,26 +36,22 @@
                     <i class="pi pi-download"></i>
                   </div>
                   <div class="action-content">
-                    <h3 class="action-title">Export Debug Data</h3>
+                    <h3 class="action-title">{{ t('help.page.issues.debugExport.title') }}</h3>
                     <p class="action-description">
-                      Export your GPS data with privacy-preserving coordinate shifts.
-                      All coordinates are anonymized by shifting them by a random offset,
-                      making it safe to share for troubleshooting.
+                      {{ t('help.page.issues.debugExport.description') }}
                     </p>
                     <ul class="action-list">
-                      <li>Coordinates are shifted to protect your privacy</li>
-                      <li>Location names are anonymized</li>
-                      <li>Includes timeline configuration for analysis</li>
+                      <li v-for="bullet in tm('help.page.issues.debugExport.bullets')" :key="bullet">{{ bullet }}</li>
                     </ul>
                     <p v-if="demoModeEnabled" class="demo-disabled-text">
-                      Debug data export is disabled in demo mode to protect the shared demo dataset.
+                      {{ t('help.page.issues.debugExport.demoDisabledText') }}
                     </p>
                     <Button
-                      label="Export Debug Data"
+                      :label="t('help.page.issues.debugExport.button')"
                       icon="pi pi-download"
                       severity="info"
                       :disabled="demoModeEnabled"
-                      v-tooltip.bottom="demoModeEnabled ? 'Debug data export is disabled in demo mode' : 'Export Debug Data'"
+                      v-tooltip.bottom="demoModeEnabled ? t('help.page.issues.debugExport.demoDisabledTooltip') : t('help.page.issues.debugExport.button')"
                       @click="goToDebugExport"
                       class="action-button"
                     />
@@ -68,21 +63,18 @@
                     <i class="pi pi-github"></i>
                   </div>
                   <div class="action-content">
-                    <h3 class="action-title">Report an Issue</h3>
+                    <h3 class="action-title">{{ t('help.page.issues.reportIssue.title') }}</h3>
                     <p class="action-description">
-                      Found a bug or have a feature request? Report it on GitHub.
+                      {{ t('help.page.issues.reportIssue.description') }}
                     </p>
                     <div class="report-steps">
-                      <p class="step-title">How to report effectively:</p>
+                      <p class="step-title">{{ t('help.page.issues.reportIssue.stepsTitle') }}</p>
                       <ol class="steps-list">
-                        <li>Export debug data using the button above</li>
-                        <li>Create a new issue on GitHub</li>
-                        <li>Attach the debug export ZIP file</li>
-                        <li>Describe the problem and expected behavior</li>
+                        <li v-for="step in tm('help.page.issues.reportIssue.steps')" :key="step">{{ step }}</li>
                       </ol>
                     </div>
                     <Button
-                      label="Create GitHub Issue"
+                      :label="t('help.page.issues.reportIssue.button')"
                       icon="pi pi-external-link"
                       severity="secondary"
                       outlined
@@ -105,9 +97,9 @@
                   <i class="pi pi-book"></i>
                 </div>
                 <div class="section-text">
-                  <h2 class="section-title">Documentation</h2>
+                  <h2 class="section-title">{{ t('help.page.docs.title') }}</h2>
                   <p class="section-description">
-                    Comprehensive guides and documentation for all GeoPulse features
+                    {{ t('help.page.docs.description') }}
                   </p>
                 </div>
               </div>
@@ -144,9 +136,9 @@
                   <i class="pi pi-info-circle"></i>
                 </div>
                 <div class="section-text">
-                  <h2 class="section-title">About GeoPulse</h2>
+                  <h2 class="section-title">{{ t('help.page.about.title') }}</h2>
                   <p class="section-description">
-                    Application information and credits
+                    {{ t('help.page.about.description') }}
                   </p>
                 </div>
               </div>
@@ -154,11 +146,11 @@
               <div class="about-content">
                 <div class="about-grid">
                   <div class="about-item">
-                    <div class="about-label">Version</div>
-                    <div class="about-value">{{ appVersion || 'Loading...' }}</div>
+                    <div class="about-label">{{ t('help.page.about.version') }}</div>
+                    <div class="about-value">{{ appVersion || t('help.page.about.loading') }}</div>
                   </div>
                   <div class="about-item">
-                    <div class="about-label">License</div>
+                    <div class="about-label">{{ t('help.page.about.license') }}</div>
                     <div class="about-value">
                       <a
                         href="https://github.com/tess1o/geopulse/blob/main/LICENSE"
@@ -166,12 +158,12 @@
                         rel="noopener noreferrer"
                         class="about-link"
                       >
-                        BSL 1.1 License <i class="pi pi-external-link"></i>
+                        {{ t('help.page.about.licenseLinkText') }} <i class="pi pi-external-link"></i>
                       </a>
                     </div>
                   </div>
                   <div class="about-item">
-                    <div class="about-label">Repository</div>
+                    <div class="about-label">{{ t('help.page.about.repository') }}</div>
                     <div class="about-value">
                       <a
                         href="https://github.com/tess1o/geopulse"
@@ -179,12 +171,12 @@
                         rel="noopener noreferrer"
                         class="about-link"
                       >
-                        GitHub <i class="pi pi-external-link"></i>
+                        {{ t('help.page.about.repositoryLinkText') }} <i class="pi pi-external-link"></i>
                       </a>
                     </div>
                   </div>
                   <div class="about-item">
-                    <div class="about-label">Author</div>
+                    <div class="about-label">{{ t('help.page.about.author') }}</div>
                     <div class="about-value">
                       <a
                         href="https://github.com/tess1o"
@@ -192,14 +184,14 @@
                         rel="noopener noreferrer"
                         class="about-link"
                       >
-                        tess1o <i class="pi pi-external-link"></i>
+                        {{ t('help.page.about.authorLinkText') }} <i class="pi pi-external-link"></i>
                       </a>
                     </div>
                   </div>
                 </div>
 
                 <div class="tech-stack">
-                  <h3 class="tech-title">Built With</h3>
+                  <h3 class="tech-title">{{ t('help.page.about.builtWith') }}</h3>
                   <div class="tech-tags">
                     <Tag value="Vue 3" severity="success" />
                     <Tag value="PrimeVue" severity="info" />
@@ -219,8 +211,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -229,57 +222,35 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useVersionStore } from '@/stores/version'
 import { showDemoModeToast } from '@/utils/demoMode'
 
+const { t, tm } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const versionStore = useVersionStore()
 const { demoModeEnabled } = storeToRefs(authStore)
 const appVersion = ref(null)
 
-const docLinks = ref([
-  {
-    title: 'Getting Started',
-    description: 'Quick start guide and initial setup',
-    icon: 'pi pi-play',
-    url: 'https://tess1o.github.io/geopulse/docs/getting-started/quick-start'
-  },
-  {
-    title: 'Timeline Features',
-    description: 'How timeline generation and processing works',
-    icon: 'pi pi-calendar',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline'
-  },
-  {
-    title: 'Trip Classification',
-    description: 'Understanding how trips are classified',
-    icon: 'pi pi-car',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification'
-  },
-  {
-    title: 'Location Sources',
-    description: 'Supported GPS tracking sources and setup',
-    icon: 'pi pi-map-marker',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview'
-  },
-  {
-    title: 'FAQ',
-    description: 'Frequently asked questions',
-    icon: 'pi pi-question-circle',
-    url: 'https://tess1o.github.io/geopulse/docs/faq'
-  },
-  {
-    title: 'Full Documentation',
-    description: 'Complete documentation with search',
-    icon: 'pi pi-book',
-    url: 'https://tess1o.github.io/geopulse/'
-  }
-])
+const docLinkMeta = [
+  { key: 'gettingStarted', icon: 'pi pi-play', url: 'https://geopulse.cc/docs/getting-started/quick-start' },
+  { key: 'timelineFeatures', icon: 'pi pi-calendar', url: 'https://geopulse.cc/docs/user-guide/core-features/timeline' },
+  { key: 'tripClassification', icon: 'pi pi-car', url: 'https://geopulse.cc/docs/user-guide/timeline/travel_classification' },
+  { key: 'locationSources', icon: 'pi pi-map-marker', url: 'https://geopulse.cc/docs/user-guide/gps-sources/overview' },
+  { key: 'faq', icon: 'pi pi-question-circle', url: 'https://geopulse.cc/docs/faq' },
+  { key: 'fullDocumentation', icon: 'pi pi-book', url: 'https://tess1o.github.io/geopulse/' }
+]
+
+const docLinks = computed(() => docLinkMeta.map((doc) => ({
+  ...doc,
+  title: t(`help.page.docs.${doc.key}.title`),
+  description: t(`help.page.docs.${doc.key}.description`)
+})))
 
 const goToDebugExport = () => {
   if (demoModeEnabled.value) {
-    showDemoModeToast(toast, 'Debug data export is disabled in demo mode.')
+    showDemoModeToast(toast, t('help.page.issues.demoModeToast'))
     return
   }
 
@@ -292,13 +263,13 @@ const openGitHubIssues = () => {
 
 const fetchVersion = async () => {
   try {
-    const response = await apiService.get('/version')
+    const response = await versionStore.fetchVersion()
     if (response?.version) {
       appVersion.value = response.version
     }
   } catch (error) {
     console.error('Failed to fetch version:', error)
-    appVersion.value = 'Unknown'
+    appVersion.value = t('common.unknown')
   }
 }
 
@@ -316,47 +287,12 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
 /* Help Sections */
 .help-section {
   margin-bottom: 2rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-large);
-}
-
-.p-dark .help-section {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
 }
 
 .section-content {
@@ -423,15 +359,10 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   padding: 1.5rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   transition: all 0.2s ease;
-}
-
-.p-dark .action-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
 }
 
 .debug-export-card {
@@ -539,8 +470,8 @@ onMounted(() => {
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   text-decoration: none;
   transition: all 0.2s ease;
@@ -551,11 +482,6 @@ onMounted(() => {
   transform: translateY(-2px);
   box-shadow: var(--gp-shadow-medium);
   border-color: var(--gp-primary);
-}
-
-.p-dark .doc-link-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
 }
 
 .doc-icon {
@@ -646,11 +572,7 @@ onMounted(() => {
 
 .tech-stack {
   padding-top: 2rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-.p-dark .tech-stack {
-  border-color: var(--gp-border-dark);
+  border-top: 1px solid var(--gp-border);
 }
 
 .tech-title {
@@ -670,14 +592,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .help-page {
     padding: 0 1rem;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-description {
-    font-size: 1rem;
   }
 
   .section-header {
@@ -714,14 +628,6 @@ onMounted(() => {
 @media (max-width: 480px) {
   .help-page {
     padding: 0 0.75rem;
-  }
-
-  .page-header {
-    margin-bottom: 1.5rem;
-  }
-
-  .page-title {
-    font-size: 1.3rem;
   }
 
   .section-title {

@@ -1,27 +1,31 @@
 <template>
   <AppLayout>
     <PageContainer>
-    <div class="admin-oidc-providers">
-      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+    <div class="gp-admin-page">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="gp-admin-breadcrumb" />
 
-      <div class="page-header">
-        <div>
-          <h1>OIDC Providers</h1>
-          <p class="text-muted">Manage OAuth/OIDC authentication providers</p>
+      <div class="gp-page-header">
+        <div class="gp-page-header-content">
+          <div class="gp-page-header-text">
+            <h1 class="gp-page-title">{{ t('admin.dashboardPage.oidcProviders') }}</h1>
+            <p class="gp-page-subtitle">{{ t('adminAuditInvitations.oidcProvidersPage.subtitle') }}</p>
+          </div>
+          <div class="gp-page-actions">
+            <Button
+              :label="t('adminAuditInvitations.oidcProvidersPage.addProvider')"
+              icon="pi pi-plus"
+              @click="openCreateDialog"
+              class="add-provider-button"
+              :disabled="adminReadOnly"
+            />
+          </div>
         </div>
-        <Button
-          label="Add Provider"
-          icon="pi pi-plus"
-          @click="openCreateDialog"
-          class="add-provider-button"
-          :disabled="adminReadOnly"
-        />
       </div>
 
       <DemoReadOnlyBanner />
 
       <!-- Desktop Table View -->
-      <div class="card desktop-only">
+      <div class="gp-admin-card desktop-only">
         <DataTable
           :value="providers"
           :loading="loading"
@@ -30,11 +34,11 @@
         >
           <template #header>
             <div class="table-header">
-              <span class="text-xl font-semibold">Configured Providers</span>
+              <span class="text-xl font-semibold">{{ t('adminAuditInvitations.oidcProvidersPage.table.headerTitle') }}</span>
             </div>
           </template>
 
-          <Column field="name" header="Name" sortable style="min-width: 150px">
+          <Column field="name" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.name')" sortable style="min-width: 150px">
             <template #body="{ data }">
               <div class="flex align-items-center gap-2">
                 <ProviderIcon :provider="data" size="medium" :alt="`${data.displayName} icon`" />
@@ -43,39 +47,39 @@
             </template>
           </Column>
 
-          <Column field="displayName" header="Display Name" sortable />
+          <Column field="displayName" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.displayName')" sortable />
 
-          <Column field="enabled" header="Enabled" sortable style="min-width: 100px">
+          <Column field="enabled" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.enabled')" sortable style="min-width: 100px">
             <template #body="{ data }">
-              <Tag :severity="data.enabled ? 'success' : 'danger'" :value="data.enabled ? 'Yes' : 'No'" />
+              <Tag :severity="data.enabled ? 'success' : 'danger'" :value="data.enabled ? t('adminAuditInvitations.oidcProvidersPage.table.enabledYes') : t('adminAuditInvitations.oidcProvidersPage.table.enabledNo')" />
             </template>
           </Column>
 
-          <Column field="source" header="Source" sortable style="min-width: 120px">
+          <Column field="source" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.source')" sortable style="min-width: 120px">
             <template #body="{ data }">
               <Tag
                 :severity="data.source === 'ENVIRONMENT' ? 'info' : 'success'"
-                :value="data.source === 'ENVIRONMENT' ? 'Environment' : 'Custom'"
+                :value="data.source === 'ENVIRONMENT' ? t('adminAuditInvitations.oidcProvidersPage.table.sourceEnvironment') : t('adminAuditInvitations.oidcProvidersPage.table.sourceCustom')"
               />
             </template>
           </Column>
 
-          <Column field="metadataValid" header="Metadata" style="min-width: 120px">
+          <Column field="metadataValid" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.metadata')" style="min-width: 120px">
             <template #body="{ data }">
               <Tag
                 :severity="data.metadataValid ? 'success' : 'warning'"
-                :value="data.metadataValid ? 'Cached' : 'Not Cached'"
+                :value="data.metadataValid ? t('adminAuditInvitations.oidcProvidersPage.table.metadataCached') : t('adminAuditInvitations.oidcProvidersPage.table.metadataNotCached')"
               />
             </template>
           </Column>
 
-          <Column field="clientId" header="Client ID" style="min-width: 200px">
+          <Column field="clientId" :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.clientId')" style="min-width: 200px">
             <template #body="{ data }">
               <code class="text-sm">{{ data.clientId }}</code>
             </template>
           </Column>
 
-          <Column header="Actions" :exportable="false" style="min-width: 250px">
+          <Column :header="t('adminAuditInvitations.oidcProvidersPage.table.columns.actions')" :exportable="false" style="min-width: 250px">
             <template #body="{ data }">
               <div class="flex gap-2">
                 <Button
@@ -84,7 +88,7 @@
                   text
                   severity="info"
                   @click="openEditDialog(data)"
-                  v-tooltip="'Edit Provider'"
+                  v-tooltip="t('adminAuditInvitations.oidcProvidersPage.table.editTooltip')"
                   :disabled="adminReadOnly"
                 />
                 <Button
@@ -93,7 +97,7 @@
                   text
                   :severity="data.enabled ? 'warning' : 'success'"
                   @click="toggleProviderStatus(data)"
-                  v-tooltip="data.enabled ? 'Disable Provider' : 'Enable Provider'"
+                  v-tooltip="data.enabled ? t('adminAuditInvitations.oidcProvidersPage.table.disableTooltip') : t('adminAuditInvitations.oidcProvidersPage.table.enableTooltip')"
                   :disabled="adminReadOnly"
                 />
                 <Button
@@ -102,7 +106,7 @@
                   text
                   severity="success"
                   @click="testProvider(data)"
-                  v-tooltip="'Test Connection'"
+                  v-tooltip="t('adminAuditInvitations.oidcProvidersPage.table.testTooltip')"
                   :loading="testingProvider === data.name"
                   :disabled="adminReadOnly"
                 />
@@ -121,7 +125,7 @@
 
           <template #empty>
             <div class="text-center p-4">
-              No OIDC providers configured.
+              {{ t('adminAuditInvitations.oidcProvidersPage.table.empty') }}
             </div>
           </template>
         </DataTable>
@@ -133,13 +137,13 @@
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
 
-        <div v-else-if="providers.length === 0" class="text-center p-4 card">
-          No OIDC providers configured.
+        <div v-else-if="providers.length === 0" class="text-center p-4 gp-admin-card">
+          {{ t('adminAuditInvitations.oidcProvidersPage.table.empty') }}
         </div>
 
-        <div v-else class="provider-cards">
-          <div v-for="provider in providers" :key="provider.name" class="provider-card">
-            <div class="provider-card-header">
+        <div v-else class="gp-admin-list">
+          <div v-for="provider in providers" :key="provider.name" class="gp-admin-list-card">
+            <div class="gp-admin-list-card-header">
               <div class="provider-info">
                 <div class="provider-name">
                   <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" custom-class="provider-icon" />
@@ -148,36 +152,36 @@
                 <div class="provider-display-name">{{ provider.displayName }}</div>
               </div>
               <div class="provider-badges">
-                <Tag :severity="provider.enabled ? 'success' : 'danger'" :value="provider.enabled ? 'Enabled' : 'Disabled'" />
+                <Tag :severity="provider.enabled ? 'success' : 'danger'" :value="provider.enabled ? t('adminAuditInvitations.oidcProvidersPage.mobile.enabledBadge') : t('adminAuditInvitations.oidcProvidersPage.mobile.disabledBadge')" />
               </div>
             </div>
 
-            <div class="provider-card-body">
+            <div class="gp-admin-list-card-body">
               <div class="provider-stat">
-                <span class="stat-label">Source</span>
+                <span class="stat-label">{{ t('adminAuditInvitations.oidcProvidersPage.table.columns.source') }}</span>
                 <Tag
                   :severity="provider.source === 'ENVIRONMENT' ? 'info' : 'success'"
-                  :value="provider.source === 'ENVIRONMENT' ? 'Environment' : 'Custom'"
+                  :value="provider.source === 'ENVIRONMENT' ? t('adminAuditInvitations.oidcProvidersPage.table.sourceEnvironment') : t('adminAuditInvitations.oidcProvidersPage.table.sourceCustom')"
                 />
               </div>
               <div class="provider-stat">
-                <span class="stat-label">Metadata</span>
+                <span class="stat-label">{{ t('adminAuditInvitations.oidcProvidersPage.table.columns.metadata') }}</span>
                 <Tag
                   :severity="provider.metadataValid ? 'success' : 'warning'"
-                  :value="provider.metadataValid ? 'Cached' : 'Not Cached'"
+                  :value="provider.metadataValid ? t('adminAuditInvitations.oidcProvidersPage.table.metadataCached') : t('adminAuditInvitations.oidcProvidersPage.table.metadataNotCached')"
                 />
               </div>
             </div>
 
             <div class="provider-client-id">
-              <span class="stat-label">Client ID</span>
+              <span class="stat-label">{{ t('adminAuditInvitations.oidcProvidersPage.table.columns.clientId') }}</span>
               <code class="client-id-value">{{ provider.clientId }}</code>
             </div>
 
-            <div class="provider-card-actions">
+            <div class="gp-admin-list-card-actions provider-card-actions">
               <Button
                 icon="pi pi-pencil"
-                label="Edit"
+                :label="t('adminAuditInvitations.oidcProvidersPage.mobile.edit')"
                 rounded
                 text
                 severity="info"
@@ -187,7 +191,7 @@
               />
               <Button
                 :icon="provider.enabled ? 'pi pi-ban' : 'pi pi-check'"
-                :label="provider.enabled ? 'Disable' : 'Enable'"
+                :label="provider.enabled ? t('adminAuditInvitations.oidcProvidersPage.mobile.disable') : t('adminAuditInvitations.oidcProvidersPage.mobile.enable')"
                 rounded
                 text
                 :severity="provider.enabled ? 'warning' : 'success'"
@@ -197,7 +201,7 @@
               />
               <Button
                 icon="pi pi-wifi"
-                label="Test"
+                :label="t('adminAuditInvitations.oidcProvidersPage.mobile.test')"
                 rounded
                 text
                 severity="success"
@@ -208,7 +212,7 @@
               />
               <Button
                 icon="pi pi-trash"
-                label="Delete"
+                :label="t('adminAuditInvitations.oidcProvidersPage.mobile.delete')"
                 rounded
                 text
                 severity="danger"
@@ -232,30 +236,32 @@
       <!-- Delete Confirmation Dialog -->
       <Dialog
         v-model:visible="deleteDialogVisible"
-        header="Confirm Delete"
+        :header="t('adminAuditInvitations.oidcProvidersPage.deleteDialog.header')"
         :modal="true"
         :style="{ width: '500px' }"
       >
         <div class="flex align-items-center gap-3 mb-3">
           <i class="pi pi-exclamation-triangle text-4xl text-red-500"></i>
           <div>
-            <p class="mb-2">Are you sure you want to delete provider <strong>{{ providerToDelete?.name }}</strong>?</p>
+            <i18n-t keypath="adminAuditInvitations.oidcProvidersPage.deleteDialog.confirmMessage" tag="p" class="mb-2">
+              <template #name><strong>{{ providerToDelete?.name }}</strong></template>
+            </i18n-t>
 
-            <div v-if="isEnvironmentProvider(providerToDelete)" class="p-3 bg-blue-50 border-round mt-3">
-              <strong>ℹ️ Note:</strong> This provider is also defined in environment variables.
+            <div v-if="isEnvironmentProvider(providerToDelete)" class="delete-note delete-note--info mt-3">
+              <strong>{{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteLabel') }}</strong> {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteText') }}
               <br>
-              Deleting will remove the custom database configuration and revert to environment defaults.
+              {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.envNoteDetail') }}
             </div>
 
-            <div v-else class="p-3 bg-red-50 border-round mt-3">
-              <strong>⚠️ Warning:</strong> This is a custom provider. Deletion is permanent.
+            <div v-else class="delete-note delete-note--danger mt-3">
+              <strong>{{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.customWarningLabel') }}</strong> {{ t('adminAuditInvitations.oidcProvidersPage.deleteDialog.customWarningText') }}
             </div>
           </div>
         </div>
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
+          <Button :label="t('common.cancel')" icon="pi pi-times" text @click="deleteDialogVisible = false" />
           <Button
-            :label="isEnvironmentProvider(providerToDelete) ? 'Revert to Environment' : 'Delete'"
+            :label="isEnvironmentProvider(providerToDelete) ? t('adminAuditInvitations.oidcProvidersPage.deleteDialog.revertButton') : t('admin.usersPage.delete')"
             icon="pi pi-trash"
             severity="danger"
             @click="deleteProvider"
@@ -267,7 +273,7 @@
       <!-- Test Result Dialog -->
       <Dialog
         v-model:visible="testResultDialogVisible"
-        header="Provider Test Result"
+        :header="t('adminAuditInvitations.oidcProvidersPage.testResultDialog.header')"
         :modal="true"
         :style="{ width: '600px' }"
       >
@@ -277,52 +283,52 @@
               :class="testResult.success ? 'pi pi-check-circle text-3xl text-green-500' : 'pi pi-times-circle text-3xl text-red-500'"
             ></i>
             <span class="test-result-message">
-              {{ testResult.message }}
+              {{ testResult.success ? t('adminAuditInvitations.oidcProvidersPage.testResultDialog.successMessage') : testResult.detail }}
             </span>
           </div>
 
           <div v-if="testResult.success">
-            <h4 class="endpoints-title">Discovered Endpoints:</h4>
+            <h4 class="endpoints-title">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.endpointsTitle') }}</h4>
             <div class="endpoint-list">
               <div class="endpoint-item">
-                <span class="endpoint-label">Authorization:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.authorization') }}</span>
                 <code class="endpoint-value">{{ testResult.authorizationEndpoint }}</code>
               </div>
               <div class="endpoint-item">
-                <span class="endpoint-label">Token:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.token') }}</span>
                 <code class="endpoint-value">{{ testResult.tokenEndpoint }}</code>
               </div>
               <div class="endpoint-item">
-                <span class="endpoint-label">UserInfo:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.userinfo') }}</span>
                 <code class="endpoint-value">{{ testResult.userinfoEndpoint }}</code>
               </div>
               <div class="endpoint-item">
-                <span class="endpoint-label">JWKS:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.jwks') }}</span>
                 <code class="endpoint-value">{{ testResult.jwksUri }}</code>
               </div>
               <div class="endpoint-item">
-                <span class="endpoint-label">Issuer:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.issuer') }}</span>
                 <code class="endpoint-value">{{ testResult.issuer }}</code>
               </div>
             </div>
           </div>
 
           <div v-else>
-            <h4 class="endpoints-title">Error Details:</h4>
+            <h4 class="endpoints-title">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.errorDetailsTitle') }}</h4>
             <div class="error-details">
               <div class="endpoint-item">
-                <span class="endpoint-label">Type:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.errorType') }}</span>
                 <code class="endpoint-value">{{ testResult.errorType }}</code>
               </div>
               <div class="endpoint-item">
-                <span class="endpoint-label">Details:</span>
+                <span class="endpoint-label">{{ t('adminAuditInvitations.oidcProvidersPage.testResultDialog.errorDetailsLabel') }}</span>
                 <code class="endpoint-value error-value">{{ testResult.errorDetails }}</code>
               </div>
             </div>
           </div>
         </div>
         <template #footer>
-          <Button label="Close" icon="pi pi-times" @click="testResultDialogVisible = false" />
+          <Button :label="t('adminAuditInvitations.oidcProvidersPage.testResultDialog.close')" icon="pi pi-times" @click="testResultDialogVisible = false" />
         </template>
       </Dialog>
 
@@ -333,8 +339,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -348,10 +355,13 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 import PageContainer from "@/components/ui/layout/PageContainer.vue";
 import { useAuthStore } from '@/stores/auth'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
+const adminService = useAdminStore()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
@@ -361,12 +371,12 @@ const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'OIDC Providers' }
+  { label: t('admin.dashboardPage.oidcProviders') }
 ])
 
 // State
@@ -391,8 +401,8 @@ const loadProviders = async () => {
     console.error('Failed to load providers:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load OIDC providers',
+      summary: t('common.error'),
+      detail: t('adminAuditInvitations.oidcProvidersPage.toasts.loadFailedDetail'),
       life: 5000
     })
   } finally {
@@ -418,16 +428,16 @@ const handleSaveProvider = async (providerData) => {
       await adminService.updateOidcProvider(providerData.name, providerData)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Provider updated successfully',
+        summary: t('common.success'),
+        detail: t('adminAuditInvitations.oidcProvidersPage.toasts.updatedDetail'),
         life: 3000
       })
     } else {
       await adminService.createOidcProvider(providerData)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Provider created successfully',
+        summary: t('common.success'),
+        detail: t('adminAuditInvitations.oidcProvidersPage.toasts.createdDetail'),
         life: 3000
       })
     }
@@ -437,8 +447,8 @@ const handleSaveProvider = async (providerData) => {
     console.error('Failed to save provider:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to save provider',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminAuditInvitations.oidcProvidersPage.toasts.saveFailedFallback')),
       life: 5000
     })
   }
@@ -452,17 +462,17 @@ const confirmDelete = (provider) => {
 const deleteProvider = async () => {
   deleting.value = true
   try {
-    const result = await adminService.deleteOidcProvider(providerToDelete.value.name)
+    await adminService.deleteOidcProvider(providerToDelete.value.name)
 
     // Show appropriate message based on whether it reverted to env or was deleted
     const message = isEnvironmentProvider(providerToDelete.value)
-      ? 'Custom configuration removed. Provider reverted to environment defaults.'
-      : 'Provider deleted successfully'
+      ? t('adminAuditInvitations.oidcProvidersPage.toasts.revertedDetail')
+      : t('adminAuditInvitations.oidcProvidersPage.toasts.deletedDetail')
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: result.message || message,
+      summary: t('common.success'),
+      detail: message,
       life: 3000
     })
     deleteDialogVisible.value = false
@@ -471,8 +481,8 @@ const deleteProvider = async () => {
     console.error('Failed to delete provider:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete provider',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminAuditInvitations.oidcProvidersPage.toasts.deleteFailedFallback')),
       life: 5000
     })
   } finally {
@@ -490,15 +500,15 @@ const testProvider = async (provider) => {
     if (result.success) {
       toast.add({
         severity: 'success',
-        summary: 'Connection Successful',
-        detail: 'Provider connection tested successfully',
+        summary: t('adminAuditInvitations.oidcProvidersPage.toasts.connectionSuccessSummary'),
+        detail: t('adminAuditInvitations.oidcProvidersPage.toasts.connectionSuccessDetail'),
         life: 3000
       })
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Connection Failed',
-        detail: 'Failed to connect to provider',
+        summary: t('adminAuditInvitations.oidcProvidersPage.toasts.connectionFailedSummary'),
+        detail: t('adminAuditInvitations.oidcProvidersPage.toasts.connectionFailedDetail'),
         life: 5000
       })
     }
@@ -506,8 +516,8 @@ const testProvider = async (provider) => {
     console.error('Failed to test provider:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to test provider connection',
+      summary: t('common.error'),
+      detail: t('adminAuditInvitations.oidcProvidersPage.toasts.testErrorDetail'),
       life: 5000
     })
   } finally {
@@ -529,8 +539,10 @@ const toggleProviderStatus = async (provider) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: `Provider ${newStatus ? 'enabled' : 'disabled'} successfully`,
+      summary: t('common.success'),
+      detail: newStatus
+        ? t('adminAuditInvitations.oidcProvidersPage.toasts.statusEnabledDetail')
+        : t('adminAuditInvitations.oidcProvidersPage.toasts.statusDisabledDetail'),
       life: 3000
     })
     await loadProviders()
@@ -538,8 +550,8 @@ const toggleProviderStatus = async (provider) => {
     console.error('Failed to toggle provider status:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update provider status',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminAuditInvitations.oidcProvidersPage.toasts.updateStatusFailedFallback')),
       life: 5000
     })
   }
@@ -559,12 +571,12 @@ const isEnvironmentProvider = (provider) => {
 
 const getDeleteTooltip = (provider) => {
   if (!canDeleteProvider(provider)) {
-    return 'Environment-only providers cannot be deleted. Remove from env vars to delete.'
+    return t('adminAuditInvitations.oidcProvidersPage.table.cannotDeleteTooltip')
   }
   if (isEnvironmentProvider(provider)) {
-    return 'Delete custom config and revert to environment defaults'
+    return t('adminAuditInvitations.oidcProvidersPage.table.revertTooltip')
   }
-  return 'Permanently delete this custom provider'
+  return t('adminAuditInvitations.oidcProvidersPage.table.deleteTooltip')
 }
 
 onMounted(() => {
@@ -573,44 +585,26 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-oidc-providers {
-  padding: 1.5rem;
+.delete-note {
+  padding: var(--gp-spacing-md);
+  border-radius: var(--gp-radius-small);
 }
 
-.admin-breadcrumb {
-  margin-bottom: 1.5rem;
+.delete-note--info {
+  background: var(--gp-info-soft);
+  color: var(--gp-info-text);
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  gap: 1rem;
-}
-
-.page-header h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  color: var(--text-color);
-}
-
-.text-muted {
-  color: var(--text-color-secondary);
-}
-
-.card {
-  background: var(--surface-card);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.delete-note--danger {
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 code {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .table-header {
@@ -637,20 +631,20 @@ code {
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .test-result-message {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .endpoints-title {
   margin: 0 0 0.75rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .endpoint-list,
@@ -668,23 +662,23 @@ code {
 
 .endpoint-label {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-size: 0.875rem;
 }
 
 .endpoint-value {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.5rem 0.75rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   word-break: break-all;
   display: block;
 }
 
 .endpoint-value.error-value {
-  background-color: var(--red-50);
-  color: var(--red-700);
+  background-color: var(--p-red-50);
+  color: var(--p-red-700);
 }
 
 /* Desktop/Mobile Toggle */
@@ -694,44 +688,6 @@ code {
 
 .mobile-only {
   display: none;
-}
-
-/* Mobile Provider Cards */
-.provider-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-}
-
-.provider-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.2s ease;
-}
-
-/* Dark theme specific */
-:global(.p-dark) .provider-card,
-:global([data-theme="dark"]) .provider-card,
-:global(html.dark) .provider-card {
-  background: var(--gp-surface-dark);
-}
-
-.provider-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.provider-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-  gap: 0.5rem;
 }
 
 .provider-info {
@@ -745,18 +701,18 @@ code {
   gap: 0.5rem;
   font-weight: 600;
   font-size: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin-bottom: 0.25rem;
 }
 
 .provider-icon {
   font-size: 1.25rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .provider-display-name {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .provider-badges {
@@ -764,14 +720,6 @@ code {
   flex-direction: column;
   gap: 0.25rem;
   align-items: flex-end;
-}
-
-.provider-card-body {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
 }
 
 .provider-stat {
@@ -783,7 +731,7 @@ code {
 
 .stat-label {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   text-transform: uppercase;
   font-weight: 600;
 }
@@ -796,10 +744,10 @@ code {
 }
 
 .client-id-value {
-  background-color: var(--surface-100);
+  background-color: var(--gp-surface-muted);
   padding: 0.5rem;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.75rem;
   word-break: break-all;
   display: block;
@@ -810,34 +758,11 @@ code {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--surface-border);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
-  .admin-oidc-providers {
-    padding: 0.75rem;
-  }
-
-  .admin-breadcrumb {
-    margin-bottom: 0.75rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .page-header p {
-    margin: 0.25rem 0 0 0;
-  }
-
   .add-provider-button {
     width: 100%;
   }
@@ -850,27 +775,6 @@ code {
     display: block;
   }
 
-  .card {
-    padding: 0.75rem;
-  }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .admin-oidc-providers {
-    padding: 0.5rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .provider-card {
-    padding: 0.75rem;
-  }
-
-  .provider-card-body {
-    gap: 1rem;
-  }
-}
 </style>

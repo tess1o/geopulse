@@ -78,6 +78,7 @@ import AutoComplete from 'primevue/autocomplete'
 import { useAuthStore } from '@/stores/auth'
 import { buildSettingsIndexForPage } from '@/constants/globalSearchRegistry'
 import { searchAndRankItems } from '@/utils/globalSearchScoring'
+import { t as translate } from '@/locales'
 
 const props = defineProps({
   pageKey: {
@@ -87,7 +88,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Search settings...'
+    default: () => translate('ui.globalSearch.settingsTrigger.defaultPlaceholder')
   },
   triggerMode: {
     type: String,
@@ -96,7 +97,7 @@ const props = defineProps({
   },
   buttonLabel: {
     type: String,
-    default: 'Find Setting'
+    default: () => translate('ui.globalSearch.settingsTrigger.defaultButtonLabel')
   },
   buttonSize: {
     type: String,
@@ -257,10 +258,6 @@ const handleSelect = (event) => {
   text-overflow: ellipsis;
 }
 
-:deep(.settings-search-popover .p-popover-content) {
-  padding: 0.625rem;
-}
-
 @media (max-width: 768px) {
   .settings-search-popover-content {
     width: min(520px, calc(100vw - 1.25rem));
@@ -278,36 +275,8 @@ const handleSelect = (event) => {
 </style>
 
 <style>
-/* Global overrides for teleported settings search popover in dark mode */
-.p-dark .settings-search-popover.p-popover {
-  background: #0f172a !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.55) !important;
-}
-
-.p-dark .settings-search-popover.p-popover .p-popover-content {
-  background: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover::after {
-  border-bottom-color: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover::before {
-  border-bottom-color: rgba(148, 163, 184, 0.35) !important;
-}
-
-.p-dark .settings-search-popover.p-popover.p-popover-flipped::after {
-  border-top-color: #0f172a !important;
-}
-
-.p-dark .settings-search-popover.p-popover.p-popover-flipped::before {
-  border-top-color: rgba(148, 163, 184, 0.35) !important;
-}
-
-.p-dark .settings-search-popover .p-autocomplete-input {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
+/* The popover is teleported to <body>, so it's styled from this unscoped block through its class. */
+.settings-search-popover .p-popover-content {
+  padding: 0.625rem;
 }
 </style>

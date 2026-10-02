@@ -60,7 +60,7 @@ const findTelemetryRowByKey = async (page, keyToFind) => {
 };
 
 const isGpsDateRangeRequest = (request) => {
-    if (!request.url().includes('/api/gps')) {
+    if (!request.url().includes('/api/v1/gps/points')) {
         return false;
     }
 
@@ -69,7 +69,7 @@ const isGpsDateRangeRequest = (request) => {
     }
 
     const requestUrl = new URL(request.url());
-    return requestUrl.searchParams.has('startTime') && requestUrl.searchParams.has('endTime');
+    return requestUrl.searchParams.has('from') && requestUrl.searchParams.has('to');
 };
 
 test.describe('GPS Data Page', () => {
@@ -297,7 +297,7 @@ test.describe('GPS Data Page', () => {
             const testUser = await isolatedUsers.create(page, { dateFormat: DateFormatValues.DMY, timezone: 'UTC' });
             const user = await dbManager.getUserByEmail(testUser.email);
             await dbManager.client.query(
-                'UPDATE users SET date_format = $1 WHERE id = $2',
+                "UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2",
                 [DateFormatValues.DMY, user.id]
             );
 
@@ -988,7 +988,7 @@ test.describe('GPS Data Page', () => {
 
             // Track export API call for this filtered export
             const exportResponsePromise = page.waitForResponse(response => {
-                if (!response.url().includes('/api/gps/export')) {
+                if (!response.url().includes('/api/v1/gps/points/exports')) {
                     return false;
                 }
 
@@ -999,8 +999,8 @@ test.describe('GPS Data Page', () => {
                 const responseUrl = new URL(response.url());
                 return (
                     response.status() === 200
-                    && responseUrl.searchParams.has('startTime')
-                    && responseUrl.searchParams.has('endTime')
+                    && responseUrl.searchParams.has('from')
+                    && responseUrl.searchParams.has('to')
                 );
             });
 
@@ -1132,8 +1132,8 @@ test.describe('GPS Data Page', () => {
                 }
 
                 const requestUrl = new URL(request.url());
-                const startTime = requestUrl.searchParams.get('startTime') || '';
-                const endTime = requestUrl.searchParams.get('endTime') || '';
+                const startTime = requestUrl.searchParams.get('from') || '';
+                const endTime = requestUrl.searchParams.get('to') || '';
                 return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
 
@@ -1147,8 +1147,8 @@ test.describe('GPS Data Page', () => {
             // Verify the API request parameters
             expect(apiRequest).not.toBeNull();
             const url = new URL(apiRequest.url());
-            const startTime = url.searchParams.get('startTime');
-            const endTime = url.searchParams.get('endTime');
+            const startTime = url.searchParams.get('from');
+            const endTime = url.searchParams.get('to');
 
             // Expected for America/New_York (EDT = UTC-4 in September):
             // 09/22/2025 00:00 EDT => 2025-09-22T04:00:xx.xxxZ
@@ -1196,8 +1196,8 @@ test.describe('GPS Data Page', () => {
                 }
 
                 const requestUrl = new URL(request.url());
-                const startTime = requestUrl.searchParams.get('startTime') || '';
-                const endTime = requestUrl.searchParams.get('endTime') || '';
+                const startTime = requestUrl.searchParams.get('from') || '';
+                const endTime = requestUrl.searchParams.get('to') || '';
                 return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
 
@@ -1211,8 +1211,8 @@ test.describe('GPS Data Page', () => {
             // Verify the API request parameters
             expect(apiRequest).not.toBeNull();
             const url = new URL(apiRequest.url());
-            const startTime = url.searchParams.get('startTime');
-            const endTime = url.searchParams.get('endTime');
+            const startTime = url.searchParams.get('from');
+            const endTime = url.searchParams.get('to');
 
             // Expected for Europe/London (BST = UTC+1 in September):
             // 09/22/2025 00:00 BST => 2025-09-21T23:00:xx.xxxZ
@@ -1275,8 +1275,8 @@ test.describe('GPS Data Page', () => {
             const utcRequest = new URL(utcRequestRaw.url());
             const nyRequest = new URL(nyRequestRaw.url());
 
-            const utcStartTime = utcRequest.searchParams.get('startTime');
-            const nyStartTime = nyRequest.searchParams.get('startTime');
+            const utcStartTime = utcRequest.searchParams.get('from');
+            const nyStartTime = nyRequest.searchParams.get('from');
 
             // Times should be different due to timezone offset
             expect(utcStartTime).not.toBe(nyStartTime);

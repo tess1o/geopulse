@@ -1,13 +1,14 @@
 package org.github.tess1o.geopulse.geofencing.service;
 
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventDto;
-import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -19,11 +20,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_QUERY;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -54,7 +57,7 @@ class GeofenceEventServiceTest {
         when(eventRepository.findPageByOwner(eq(ownerId), any(GeofenceEventQueryDto.class)))
                 .thenReturn(new GeofenceEventRepository.GeofenceEventPageResult(List.of(entity), 12L));
 
-        GeofenceEventPageDto result = service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
+        PageResponse<GeofenceEventDto> result = service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
                 .page(-4)
                 .pageSize(999)
                 .sortBy("subject")
@@ -70,10 +73,10 @@ class GeofenceEventServiceTest {
         assertThat(normalized.getSortBy()).isEqualTo("subjectDisplayName");
         assertThat(normalized.getSortDir()).isEqualTo("asc");
 
-        assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getTotalCount()).isEqualTo(12L);
-        assertThat(result.getPage()).isEqualTo(0);
-        assertThat(result.getPageSize()).isEqualTo(200);
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(12L);
+        assertThat(result.page()).isEqualTo(0);
+        assertThat(result.size()).isEqualTo(200);
     }
 
     @Test
@@ -84,8 +87,10 @@ class GeofenceEventServiceTest {
                 .dateFrom(Instant.parse("2026-03-24T12:00:00Z"))
                 .dateTo(Instant.parse("2026-03-24T11:00:00Z"))
                 .build()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("dateFrom must be before or equal to dateTo");
+                .isInstanceOfSatisfying(GeoPulseException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(INVALID_GEOFENCE_QUERY);
+                    assertThat(exception.detail()).contains("dateFrom must be before or equal to dateTo");
+                });
     }
 
     @Test
@@ -95,8 +100,10 @@ class GeofenceEventServiceTest {
         assertThatThrownBy(() -> service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
                 .sortBy("deliveryStatus")
                 .build()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported sortBy value");
+                .isInstanceOfSatisfying(GeoPulseException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(INVALID_GEOFENCE_QUERY);
+                    assertThat(exception.detail()).contains("Unsupported sortBy value");
+                });
     }
 
     @Test
@@ -118,7 +125,7 @@ class GeofenceEventServiceTest {
         when(eventRepository.findByIdAndOwner(10L, ownerId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.markSeen(ownerId, 10L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("not found");
     }
 

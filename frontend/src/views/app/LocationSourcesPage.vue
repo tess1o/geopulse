@@ -6,17 +6,16 @@
       
       <div class="location-sources-page">
         <!-- Page Header -->
-        <div class="page-header location-sources-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Location Data Sources</h1>
-              <p class="page-description">
-                Configure how GeoPulse receives your location data from different tracking apps.
-                Set up OwnTracks, GPSLogger, Overland, Traccar, Dawarich, Home Assistant, or Colota to automatically sync your location history.
+        <div class="gp-page-header location-sources-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('locationSources.page.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('locationSources.page.description') }}
               </p>
             </div>
-            <Button 
-              label="Add New Source" 
+            <Button
+              :label="t('locationSources.page.addNewSource')"
               icon="pi pi-plus"
               @click="openAddDialog()"
               class="add-source-btn"
@@ -74,6 +73,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -91,8 +91,10 @@ import { getLocationSourceDisplayName } from '@/components/location-sources/loca
 // Store
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Store setup
+const { t } = useI18n()
 const gpsStore = useGpsSourcesStore()
 const { gpsSourceConfigs, defaultFilteringValues, ownTracksMqttConfig } = storeToRefs(gpsStore)
 
@@ -170,67 +172,67 @@ const tabItems = computed(() => {
   // Add separate tabs for HTTP and MQTT OwnTracks if both exist
   if (hasOwnTracksHttp.value && hasOwnTracksMqtt.value) {
     tabs.push({
-      label: isMobile.value ? 'OT-HTTP' : 'OwnTracks (HTTP)',
+      label: isMobile.value ? t('locationSources.page.tabOwnTracksHttpShort') : t('locationSources.page.tabOwnTracksHttp'),
       icon: 'pi pi-globe',
       key: 'owntracks-http'
     })
     tabs.push({
-      label: isMobile.value ? 'OT-MQTT' : 'OwnTracks (MQTT)',
+      label: isMobile.value ? t('locationSources.page.tabOwnTracksMqttShort') : t('locationSources.page.tabOwnTracksMqtt'),
       icon: 'pi pi-send',
       key: 'owntracks-mqtt'
     })
   } else if (hasOwnTracksHttp.value) {
     tabs.push({
-      label: 'OwnTracks',
+      label: t('locationSources.page.tabOwnTracks'),
       icon: 'pi pi-mobile',
       key: 'owntracks-http'
     })
   } else if (hasOwnTracksMqtt.value) {
     tabs.push({
-      label: 'OwnTracks',
+      label: t('locationSources.page.tabOwnTracks'),
       icon: 'pi pi-mobile',
       key: 'owntracks-mqtt'
     })
   }
-  
+
   if (hasOverlandSource.value) {
     tabs.push({
-      label: 'Overland', 
+      label: t('locationSources.page.tabOverland'),
       icon: 'pi pi-map',
       key: 'overland'
     })
   }
   if (hasTraccarSource.value) {
     tabs.push({
-      label: 'Traccar',
+      label: t('locationSources.page.tabTraccar'),
       icon: 'pi pi-car',
       key: 'traccar'
     })
   }
   if (hasGpsLoggerSource.value) {
     tabs.push({
-      label: 'GPSLogger',
+      label: t('locationSources.page.tabGpsLogger'),
       icon: 'pi pi-compass',
       key: 'gpslogger'
     })
   }
   if (hasDawarichSource.value) {
     tabs.push({
-      label: 'Dawarich', 
+      label: t('locationSources.page.tabDawarich'),
       icon: 'pi pi-key',
       key: 'dawarich'
     })
   }
-  if (hasHomeAssistantSource.value) { 
+  if (hasHomeAssistantSource.value) {
     tabs.push({
-      label: isMobile.value ? 'HA' : 'Home Assistant',
+      label: isMobile.value ? t('locationSources.page.tabHomeAssistantShort') : t('locationSources.page.tabHomeAssistant'),
       icon: 'pi pi-home',
       key: 'home_assistant'
     })
   }
   if (hasColotaSource.value) {
     tabs.push({
-      label: 'Colota',
+      label: t('locationSources.page.tabColota'),
       icon: 'pi pi-map-marker',
       key: 'colota'
     })
@@ -307,8 +309,8 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
       })
       toast.add({
         severity: 'success',
-        summary: 'Source Updated',
-        detail: 'Location source has been updated successfully',
+        summary: t('locationSources.page.toasts.sourceUpdatedSummary'),
+        detail: t('locationSources.page.toasts.sourceUpdatedDetail'),
         life: 3000
       })
     } else {
@@ -355,18 +357,17 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
       
       toast.add({
         severity: 'success',
-        summary: 'Source Added',
-        detail: 'Location source has been added successfully',
+        summary: t('locationSources.page.toasts.sourceAddedSummary'),
+        detail: t('locationSources.page.toasts.sourceAddedDetail'),
         life: 3000
       })
     }
     locationSourceDialogRef.value?.close()
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
-      summary: isEditMode ? 'Update Failed' : 'Add Failed',
-      detail: errorMessage,
+      summary: isEditMode ? t('locationSources.page.toasts.updateFailedSummary') : t('locationSources.page.toasts.addFailedSummary'),
+      detail: formatApiErrorDetail(error, t('locationSources.page.toasts.saveFailedFallback')),
       life: 5000
     })
   } finally {
@@ -379,16 +380,15 @@ const handleStatusChange = async ({ id, status }) => {
     await gpsStore.updateGpsSourceStatus(id, status)
     toast.add({
       severity: 'success',
-      summary: 'Status Updated',
-      detail: `Source ${status ? 'enabled' : 'disabled'} successfully`,
+      summary: t('locationSources.page.toasts.statusUpdatedSummary'),
+      detail: status ? t('locationSources.page.toasts.statusUpdatedDetailEnabled') : t('locationSources.page.toasts.statusUpdatedDetailDisabled'),
       life: 3000
     })
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
-      summary: 'Status Update Failed',
-      detail: errorMessage,
+      summary: t('locationSources.page.toasts.statusUpdateFailedSummary'),
+      detail: formatApiErrorDetail(error, t('locationSources.page.toasts.statusUpdateFailedFallback')),
       life: 5000
     })
   }
@@ -396,16 +396,16 @@ const handleStatusChange = async ({ id, status }) => {
 
 const confirmDelete = (source) => {
   confirm.require({
-    message: `Are you sure you want to delete this ${getSourceDisplayName(source.type)} source?`,
-    header: 'Confirm Delete',
+    message: t('locationSources.page.confirmDeleteMessage', { name: getSourceDisplayName(source.type) }),
+    header: t('locationSources.page.confirmDeleteHeader'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('locationSources.page.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Delete',
+      label: t('locationSources.page.delete'),
       severity: 'danger'
     },
     accept: () => deleteSource(source.id)
@@ -417,16 +417,15 @@ const deleteSource = async (id) => {
     await gpsStore.deleteGpsSource(id)
     toast.add({
       severity: 'success',
-      summary: 'Source Deleted',
-      detail: 'Location source has been deleted successfully',
+      summary: t('locationSources.page.toasts.sourceDeletedSummary'),
+      detail: t('locationSources.page.toasts.sourceDeletedDetail'),
       life: 3000
     })
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
-      summary: 'Delete Failed',
-      detail: errorMessage,
+      summary: t('locationSources.page.toasts.deleteFailedSummary'),
+      detail: formatApiErrorDetail(error, t('locationSources.page.toasts.deleteFailedFallback')),
       life: 5000
     })
   }
@@ -438,15 +437,15 @@ const copyToClipboard = async (text) => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied',
-      detail: 'Text copied to clipboard',
+      summary: t('locationSources.page.toasts.copiedSummary'),
+      detail: t('locationSources.page.toasts.copiedDetail'),
       life: 2000
     })
   } else {
     toast.add({
       severity: 'error',
-      summary: 'Copy Failed',
-      detail: 'Failed to copy to clipboard',
+      summary: t('locationSources.page.toasts.copyFailedSummary'),
+      detail: t('locationSources.page.toasts.copyFailedDetail'),
       life: 3000
     })
   }
@@ -469,8 +468,8 @@ onMounted(async () => {
     console.error('Error loading GPS source data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Loading Failed',
-      detail: 'Failed to load location sources',
+      summary: t('locationSources.page.toasts.loadingFailedSummary'),
+      detail: t('locationSources.page.toasts.loadingFailedDetail'),
       life: 5000
     })
   }
@@ -484,55 +483,7 @@ onMounted(async () => {
   padding: 0 1rem;
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary) !important;
-  margin: 0 0 0.5rem 0;
-}
-
-.page-description {
-  font-size: 1.1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
 .add-source-btn {
   flex-shrink: 0;
-}
-
-/* Dark Mode */
-.p-dark .page-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .page-description {
-  color: var(--gp-text-secondary);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
 }
 </style>

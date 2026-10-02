@@ -1,7 +1,7 @@
 <template>
   <PageContainer
-      title="Dashboard"
-      subtitle="Overview of your location data and analytics"
+      :title="t('ui.dashboard.page.title')"
+      :subtitle="t('ui.dashboard.page.subtitle')"
       :loading="isAnyLoading"
   >
     <!-- Loading States -->
@@ -18,7 +18,7 @@
       <!-- Selected Period Row (3 cards) -->
       <DashboardGrid v-if="hasSelectedRangeStats" class="dashboard-section" :columns="3">
         <ActivitySummaryCard
-            title="Selected Period Summary"
+            :title="t('ui.dashboard.page.selectedPeriodSummary')"
             :period="formattedSelectedPeriodRange"
             :stats="statsUserRange"
             variant="default"
@@ -26,7 +26,7 @@
         />
 
         <ActivitySummaryCard
-            title="7 Days Overview"
+            :title="t('ui.dashboard.page.sevenDaysOverview')"
             :period="formattedLastWeekRange"
             :stats="statsSevenDays"
             variant="default"
@@ -34,7 +34,7 @@
         />
 
         <ActivitySummaryCard
-            title="30 Days Overview"
+            :title="t('ui.dashboard.page.thirtyDaysOverview')"
             :period="formattedLastMonthRange"
             :stats="statsThirtyDays"
             variant="default"
@@ -45,15 +45,15 @@
       <!-- 7 Days Overview Row (3 cards) -->
       <DashboardGrid v-if="hasSevenDaysStats" class="dashboard-section" :columns="3">
 
-        <BaseCard title="Top Places for selected period" :period="formattedSelectedPeriodRange">
+        <BaseCard :title="t('ui.dashboard.page.topPlacesSelected')" :period="formattedSelectedPeriodRange">
           <TopPlacesContent :places="statsUserRange.places" />
         </BaseCard>
 
-        <BaseCard title="Top Places for last 7 days" :period="formattedLastWeekRange">
+        <BaseCard :title="t('ui.dashboard.page.topPlacesLast7')" :period="formattedLastWeekRange">
           <TopPlacesContent :places="statsSevenDays.places" />
         </BaseCard>
 
-        <BaseCard title="Top Places for last 30 days" :period="formattedLastMonthRange">
+        <BaseCard :title="t('ui.dashboard.page.topPlacesLast30')" :period="formattedLastMonthRange">
           <TopPlacesContent :places="statsThirtyDays.places" />
         </BaseCard>
       </DashboardGrid>
@@ -61,15 +61,15 @@
       <!-- 30 Days Overview Row (3 cards) -->
       <DashboardGrid v-if="hasThirtyDaysStats" class="dashboard-section" :columns="3">
 
-        <BaseCard title="Route Stats for selected period" :period="formattedSelectedPeriodRange">
+        <BaseCard :title="t('ui.dashboard.page.routeStatsSelected')" :period="formattedSelectedPeriodRange">
           <RouteAnalysisContent :stats="statsUserRange.routes" />
         </BaseCard>
 
-        <BaseCard title="Route Stats or last 7 days" :period="formattedLastWeekRange">
+        <BaseCard :title="t('ui.dashboard.page.routeStatsLast7')" :period="formattedLastWeekRange">
           <RouteAnalysisContent :stats="statsSevenDays.routes" />
         </BaseCard>
 
-        <BaseCard title="Route Stats for last 30 days" :period="formattedLastMonthRange">
+        <BaseCard :title="t('ui.dashboard.page.routeStatsLast30')" :period="formattedLastMonthRange">
           <RouteAnalysisContent :stats="statsThirtyDays.routes" />
         </BaseCard>
       </DashboardGrid>
@@ -78,10 +78,9 @@
       <BaseCard v-if="!hasAnyStats" variant="subtle">
         <div class="empty-dashboard">
           <i class="pi pi-chart-line empty-icon"></i>
-          <h3 class="empty-title">No Data Available</h3>
+          <h3 class="empty-title">{{ t('ui.dashboard.page.noDataTitle') }}</h3>
           <p class="empty-message">
-            No location data found for the selected time periods.
-            Check your GPS sources or select a different date range.
+            {{ t('ui.dashboard.page.noDataMessage') }}
           </p>
         </div>
       </BaseCard>
@@ -91,6 +90,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from "primevue/usetoast"
 import ProgressSpinner from 'primevue/progressspinner'
@@ -114,6 +114,7 @@ const timezone = useTimezone()
 import { useStatisticsStore } from '@/stores/statistics'
 import { useDateRangeStore } from '@/stores/dateRange'
 
+const { t } = useI18n()
 const statisticsStore = useStatisticsStore()
 const dateRangeStore = useDateRangeStore()
 
@@ -199,7 +200,7 @@ const getStatsUserRange = async () => {
     console.error('Error fetching selected range stats:', error)
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch selected range stats',
+      summary: t('ui.dashboard.page.toasts.selectedRangeFailed'),
       detail: error.message,
       life: 3000
     })
@@ -216,7 +217,7 @@ const getStatsSevenDays = async () => {
     console.error('Error fetching weekly stats:', error)
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch weekly stats',
+      summary: t('ui.dashboard.page.toasts.weeklyFailed'),
       detail: error.message,
       life: 3000
     })
@@ -233,7 +234,7 @@ const getStatsThirtyDays = async () => {
     console.error('Error fetching monthly stats:', error)
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch monthly stats',
+      summary: t('ui.dashboard.page.toasts.monthlyFailed'),
       detail: error.message,
       life: 3000
     })
@@ -277,7 +278,6 @@ onMounted(() => {
   margin-bottom: 0;
 }
 
-
 /* Empty Dashboard */
 .empty-dashboard {
   text-align: center;
@@ -307,20 +307,6 @@ onMounted(() => {
   margin-right: auto;
   line-height: 1.5;
 }
-
-/* Dark Mode */
-.p-dark .empty-icon {
-  color: var(--gp-text-muted);
-}
-
-.p-dark .empty-title {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .empty-message {
-  color: var(--gp-text-muted);
-}
-
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

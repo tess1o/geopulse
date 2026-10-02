@@ -1,0 +1,211 @@
+export default {
+    page: {
+        title: 'Timeline Preferences',
+        description: 'Fine-tune how your location timeline is generated from GPS data',
+        searchPlaceholder: 'Search timeline settings...',
+        regenerateButton: 'Regenerate Timeline',
+        saveButton: 'Save Changes',
+        moreButton: 'More',
+        mobileSectionLabel: 'Settings section',
+        navAriaLabel: 'Timeline preference sections',
+        groups: {
+            timeline: 'Timeline',
+            dataQuality: 'Data Quality'
+        },
+        tabs: {
+            staypoints: 'Stay Point Detection',
+            trips: 'Trip Classification',
+            gpsgaps: 'GPS Gaps Detection',
+            merging: 'Stay Point Merging'
+        },
+        infoBanner: {
+            title: 'How Timeline Processing Works',
+            description: 'Your GPS data is processed to identify meaningful stays and trips. These settings control the sensitivity of this detection and apply only to your account. Some changes (like speed thresholds) quickly update trip classifications, while others require full timeline re-generation depending on your GPS data volume.',
+            learnMore: 'Learn more in the documentation'
+        },
+        demoReadOnlyMessage: 'Demo mode: all timeline preference settings are read-only. Saving changes, importing config, resetting defaults, and regenerating the timeline are disabled.',
+        unsavedWarning: {
+            message: 'You have unsaved changes',
+            discard: 'Discard',
+            saveNow: 'Save Now'
+        },
+        menu: {
+            exportConfig: 'Export Config',
+            importConfig: 'Import Config',
+            resetToDefaults: 'Reset to Defaults',
+            viewActiveJob: 'View Active Job'
+        },
+        importDialog: {
+            header: 'Import Timeline Configuration',
+            description: 'Review all detected changes before applying this configuration.',
+            detectedChanges: 'Detected changes:',
+            settingColumn: 'Setting',
+            currentColumn: 'Current',
+            importedColumn: 'Imported',
+            cancel: 'Cancel',
+            apply: 'Apply Import',
+            impactClassification: 'This import will update classification parameters only and recalculate trip movement types.',
+            impactStructural: 'This import includes structural settings and will trigger full timeline regeneration after save.'
+        },
+        boatSetupDialog: {
+            header: 'Boat Setup',
+            introReady: 'Boat detection needs a one-time GPS water evidence pre-calculation for your account.',
+            introDefault: 'Boat detection needs a global water dataset of about 800-900 MB and a one-time GPS pre-calculation for your account.',
+            downloaded: 'Downloaded {downloaded}',
+            gpsPointsProcessed: 'GPS points processed:',
+            defaultErrorCode: 'Boat setup failed',
+            useOfflineDataset: 'Use an offline dataset file',
+            close: 'Close'
+        },
+        formatValue: {
+            notSet: 'Not set',
+            enabled: 'Enabled',
+            disabled: 'Disabled',
+            singleTrip: 'Single trip',
+            multipleTrips: 'Multiple trips'
+        },
+        confirm: {
+            cancel: 'Cancel',
+            boatEnablement: {
+                header: 'Enable Boat Detection',
+                readyStructuralMessage: 'Boat setup is already ready. Saving these preferences will regenerate your timeline with Boat detection enabled.',
+                readyClassificationMessage: 'Boat setup is already ready. Saving this preference will update existing trip classifications with Boat detection enabled.',
+                datasetReadyMessage: 'Boat detection requires a one-time GPS water evidence pre-calculation for your account. The global water dataset is already installed, so no large download is needed. Timeline generation will wait until setup is complete.',
+                datasetMissingMessage: 'Boat detection requires downloading a global water dataset of about 800-900 MB and running a one-time GPS pre-calculation for your account. Timeline generation will wait until this setup is complete.',
+                enableAndRegenerate: 'Enable & Regenerate',
+                enableBoat: 'Enable Boat',
+                enableAndStartSetup: 'Enable & Start Setup'
+            },
+            classificationOnly: {
+                message: 'These changes will recalculate movement types for your existing trips. Do you want to proceed?',
+                header: 'Update Trip Classifications',
+                accept: 'Update Classifications'
+            },
+            fullRegeneration: {
+                message: 'Changing these timeline preferences will trigger a complete re-generation of all your timeline data according to the new settings. This process may take some time depending on the volume of your GPS data. Do you want to proceed?',
+                header: 'Save Timeline Preferences',
+                accept: 'Save & Regenerate'
+            },
+            resetDefaults: {
+                message: 'This will reset all settings to their default values. Are you sure?',
+                header: 'Reset to Defaults',
+                accept: 'Reset'
+            },
+            regenerateTimeline: {
+                message: 'This will completely delete your current timeline data and regenerate it from scratch.\n\nThis operation may take several minutes depending on your GPS data volume.\n\nDo you want to proceed?',
+                header: 'Regenerate Complete Timeline',
+                accept: 'Regenerate Timeline'
+            },
+            boatSetup: {
+                readyMessage: 'Boat setup is already ready. Cached water evidence is available for timeline generation.',
+                datasetReadyMessage: 'Boat setup will pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.',
+                datasetMissingMessage: 'Boat setup will download or read the water dataset and pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.',
+                startHeader: 'Start Boat Setup',
+                retryHeader: 'Retry Boat Setup',
+                startAccept: 'Start Setup',
+                retryAccept: 'Retry Setup'
+            },
+            unsavedChanges: {
+                message: 'You have unsaved timeline preference changes. If you leave this page, those changes will be lost.',
+                header: 'Unsaved Changes',
+                accept: 'Leave without saving',
+                reject: 'Stay'
+            }
+        },
+        demoToast: 'Timeline preference changes are disabled in demo mode.',
+        toasts: {
+            nothingToExportSummary: 'Nothing to Export',
+            nothingToExportDetail: 'No timeline preferences are currently available.',
+            exportCompleteSummary: 'Export Complete',
+            exportCompleteDetail: 'Timeline configuration exported successfully.',
+            noChangesSummary: 'No Changes',
+            noChangesDetail: 'No preferences were modified',
+            importNoChangesDetail: 'Imported configuration matches your current effective settings.',
+            importFailedSummary: 'Import Failed',
+            importFailedFallback: 'Failed to parse imported configuration file.',
+            invalidFileFormat: 'Invalid import file format.',
+            unsupportedSchemaVersion: 'Unsupported schema version. Expected {version}.',
+            noPreferencesObject: 'Import file does not contain a valid preferences object.',
+            noCompatibleFields: 'Import file contains no compatible timeline preference fields.',
+            loadingFailedSummary: 'Loading Failed',
+            loadingFailedDetail: 'Failed to load timeline preferences',
+            boatSetupReadySummary: 'Boat Setup Ready',
+            boatSetupReadyDetail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+            boatSetupFailedSummary: 'Boat Setup Failed',
+            boatSetupStatusFailedSummary: 'Boat Setup Status Failed',
+            boatSetupStatusFailedFallback: 'Could not refresh Boat setup status.',
+            boatSetupStartedSummary: 'Boat Setup Started',
+            boatSetupStartedDetail: 'Water dataset setup and GPS pre-calculation are running.',
+            boatSetupStartFailedFallback: 'Failed to start Boat setup.',
+            boatDetectionEnabledSummary: 'Boat Detection Enabled',
+            boatDetectionEnabledDetail: 'Boat setup is ready and the preference has been saved.',
+            boatSetupEnableFailedFallback: 'Failed to enable Boat setup.',
+            classificationUpdatedSummary: 'Success',
+            classificationUpdatedDetail: 'Trip classifications updated successfully.',
+            saveFailedFallback: 'Failed to save preferences.',
+            regenerationSuccessDetail: 'Preferences saved and timeline regeneration started.',
+            resetSuccessDetail: 'Preferences reset and timeline regeneration started.',
+            resetFailedFallback: 'Failed to reset preferences.',
+            changesDiscardedSummary: 'Changes Discarded',
+            changesDiscardedDetail: 'All unsaved changes have been discarded',
+            regenerationStartedDetail: 'Timeline regeneration started.',
+            regenerationFailedFallback: 'Failed to start timeline regeneration.',
+            settingNotVisibleSummary: 'Setting not visible',
+            settingNotVisibleFallback: 'This setting is not currently visible. Enable related options to edit it.'
+        },
+        settings: {
+            staypointRadiusMeters: 'Stay Detection Radius',
+            staypointMinDurationMinutes: 'Minimum Stay Duration',
+            useVelocityAccuracy: 'Enhanced Filtering',
+            staypointVelocityThreshold: 'Velocity Threshold',
+            staypointMaxAccuracyThreshold: 'GPS Accuracy Threshold',
+            staypointMinAccuracyRatio: 'Minimum Accuracy Ratio',
+            tripDetectionAlgorithm: 'Trip Detection Algorithm',
+            walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
+            walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
+            carEnabled: 'Car Label Enabled',
+            motorcycleEnabled: 'Motorcycle Label Enabled',
+            publicTransportationEnabled: 'Public Transportation Label Enabled',
+            preferredMotorizedType: 'Preferred Motor Vehicle Label',
+            carMinAvgSpeed: 'Motor Vehicle Minimum Average Speed',
+            carMinMaxSpeed: 'Motor Vehicle Minimum Peak Speed',
+            shortDistanceKm: 'Short Trip Distance Threshold',
+            bicycleEnabled: 'Bicycle Detection Enabled',
+            bicycleMinAvgSpeed: 'Bicycle Minimum Average Speed',
+            bicycleMaxAvgSpeed: 'Bicycle Maximum Average Speed',
+            bicycleMaxMaxSpeed: 'Bicycle Maximum Peak Speed',
+            runningEnabled: 'Running Detection Enabled',
+            runningMinAvgSpeed: 'Running Minimum Average Speed',
+            runningMaxAvgSpeed: 'Running Maximum Average Speed',
+            runningMaxMaxSpeed: 'Running Maximum Peak Speed',
+            trainEnabled: 'Train Detection Enabled',
+            trainMinAvgSpeed: 'Train Minimum Average Speed',
+            trainMaxAvgSpeed: 'Train Maximum Average Speed',
+            trainMinMaxSpeed: 'Train Minimum Peak Speed',
+            trainMaxMaxSpeed: 'Train Maximum Peak Speed',
+            trainMaxSpeedVariance: 'Train Maximum Speed Variance',
+            flightEnabled: 'Flight Detection Enabled',
+            flightMinAvgSpeed: 'Flight Minimum Average Speed',
+            flightMinMaxSpeed: 'Flight Minimum Peak Speed',
+            boatEnabled: 'Boat Detection Enabled',
+            boatMinWaterRatio: 'Boat Minimum Water Ratio',
+            boatMinWaterDistanceMeters: 'Boat Minimum Water Distance',
+            boatMinContinuousWaterDistanceMeters: 'Boat Minimum Continuous Water Distance',
+            boatMaxPlausibleSpeed: 'Boat Maximum Plausible Speed',
+            tripArrivalDetectionMinDurationSeconds: 'Arrival Detection Duration',
+            tripSustainedStopMinDurationSeconds: 'Sustained Stop Duration',
+            tripArrivalMinPoints: 'Minimum Stop Points for Arrival Detection',
+            isMergeEnabled: 'Stay Point Merging Enabled',
+            mergeMaxDistanceMeters: 'Maximum Merge Distance',
+            mergeMaxTimeGapMinutes: 'Maximum Merge Time Gap',
+            dataGapThresholdSeconds: 'Data Gap Threshold',
+            dataGapMinDurationSeconds: 'Minimum Gap Duration',
+            gapStayInferenceEnabled: 'Gap Stay Inference',
+            gapStayInferenceMaxGapHours: 'Gap Stay Inference Max Gap Duration',
+            gapTripInferenceEnabled: 'Gap Trip Inference',
+            gapTripInferenceMinDistanceMeters: 'Gap Trip Inference Minimum Distance',
+            gapTripInferenceMinGapHours: 'Gap Trip Inference Minimum Gap Duration',
+            gapTripInferenceMaxGapHours: 'Gap Trip Inference Maximum Gap Duration'
+        }
+    }
+}

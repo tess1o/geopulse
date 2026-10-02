@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -18,10 +20,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
+import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
 import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
-@Path("/api/admin/geocoding/providers")
+import java.util.List;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+
+@Path("/admin/geocoding/providers")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -37,56 +44,45 @@ public class AdminCustomGeocodingProviderResource {
 
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response list() {
-        return Response.ok(ApiResponse.success(providerService.list())).build();
+    public List<CustomGeocodingProviderResponse> list() {
+        return providerService.list();
     }
 
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response create(@Valid CustomGeocodingProviderRequest request) {
+    public RestResponse<CustomGeocodingProviderResponse> create(@Valid CustomGeocodingProviderRequest request) {
         try {
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(providerService.create(request)))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED, providerService.create(request));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 
     @PUT
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response update(@PathParam("name") String name, @Valid CustomGeocodingProviderRequest request) {
+    public CustomGeocodingProviderResponse update(
+            @PathParam("name") String name,
+            @Valid CustomGeocodingProviderRequest request) {
         try {
-            return Response.ok(ApiResponse.success(providerService.update(name, request))).build();
+            return providerService.update(name, request);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(NOT_FOUND, NOT_FOUND.title(), e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 
     @DELETE
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response delete(@PathParam("name") String name) {
+    public void delete(@PathParam("name") String name) {
         try {
             providerService.delete(name);
-            return Response.ok(ApiResponse.success("Custom geocoding provider deleted")).build();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(NOT_FOUND, NOT_FOUND.title(), e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 }

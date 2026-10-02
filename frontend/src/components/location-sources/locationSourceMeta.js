@@ -1,44 +1,52 @@
+import { t } from '@/locales'
+
+/**
+ * Brand names (label) are never translated. `descriptionKey` resolves through the `locationSources.meta.*`
+ * catalog; consumers render `t(option.descriptionKey)` (mirrors the `labelKey` pattern used by
+ * `movementTypeOptions`/`segmentTypeOptions` elsewhere in the app) rather than a static English string,
+ * so descriptions stay reactive to a locale change.
+ */
 export const LOCATION_SOURCE_OPTIONS = Object.freeze([
   {
     value: 'OWNTRACKS',
     label: 'OwnTracks',
-    description: 'Open-source location tracking with HTTP or MQTT connections',
+    descriptionKey: 'locationSources.meta.descriptionOwntracks',
     icon: 'pi pi-mobile'
   },
   {
     value: 'GPSLOGGER',
     label: 'GPSLogger',
-    description: 'Android GPSLogger app via HTTP + Basic Auth (OwnTracks-compatible payload)',
+    descriptionKey: 'locationSources.meta.descriptionGpslogger',
     icon: 'pi pi-compass'
   },
   {
     value: 'OVERLAND',
     label: 'Overland',
-    description: 'Simple HTTP endpoint with token-based authentication',
+    descriptionKey: 'locationSources.meta.descriptionOverland',
     icon: 'pi pi-map'
   },
   {
     value: 'TRACCAR',
     label: 'Traccar',
-    description: 'Traccar Position Forwarding (JSON) with Bearer token authentication',
+    descriptionKey: 'locationSources.meta.descriptionTraccar',
     icon: 'pi pi-car'
   },
   {
     value: 'DAWARICH',
     label: 'Dawarich',
-    description: 'Privacy-focused location tracking with API key authentication',
+    descriptionKey: 'locationSources.meta.descriptionDawarich',
     icon: 'pi pi-key'
   },
   {
     value: 'HOME_ASSISTANT',
     label: 'Home Assistant',
-    description: 'Integrate with Home Assistant automation for automatic location tracking',
+    descriptionKey: 'locationSources.meta.descriptionHomeAssistant',
     icon: 'pi pi-home'
   },
   {
     value: 'COLOTA',
     label: 'Colota',
-    description: 'Privacy-focused GPS tracker with batch sync and smart tracking',
+    descriptionKey: 'locationSources.meta.descriptionColota',
     icon: 'pi pi-map-marker'
   }
 ])
@@ -54,7 +62,7 @@ export const getLocationSourceMeta = (type) => {
   return LOCATION_SOURCE_META_BY_TYPE[type] || {
     value: type,
     label: type,
-    description: '',
+    descriptionKey: null,
     icon: 'pi pi-question'
   }
 }
@@ -63,26 +71,32 @@ export const getLocationSourceIcon = (type) => getLocationSourceMeta(type).icon
 
 export const getLocationSourceDisplayName = (type) => getLocationSourceMeta(type).label
 
+/** Resolves `descriptionKey` through the plain (non-composable) `t`, for non-component callers. */
+export const getLocationSourceDescription = (type) => {
+  const meta = getLocationSourceMeta(type)
+  return meta.descriptionKey ? t(meta.descriptionKey) : ''
+}
+
 export const getLocationSourceIdentifier = (source) => {
   if (!source) return ''
 
   if (source.type === 'OWNTRACKS' || source.type === 'GPSLOGGER' || source.type === 'COLOTA') {
-    return source.username || 'No username'
+    return source.username || t('locationSources.meta.noUsername')
   }
   if (source.type === 'OVERLAND') {
-    return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+    return source.token ? t('locationSources.meta.tokenPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noToken')
   }
   if (source.type === 'TRACCAR') {
-    const deviceLabel = source.deviceId ? `Device: ${source.deviceId}` : 'All devices'
-    const tokenLabel = source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+    const deviceLabel = source.deviceId ? t('locationSources.meta.devicePrefix', { deviceId: source.deviceId }) : t('locationSources.meta.allDevices')
+    const tokenLabel = source.token ? t('locationSources.meta.tokenPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noToken')
     return `${deviceLabel} • ${tokenLabel}`
   }
   if (source.type === 'DAWARICH') {
-    return source.token ? `API Key: ${source.token.substring(0, 8)}...` : 'No API key'
+    return source.token ? t('locationSources.meta.apiKeyPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noApiKey')
   }
   if (source.type === 'HOME_ASSISTANT') {
-    return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+    return source.token ? t('locationSources.meta.tokenPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noToken')
   }
 
-  return `Unknown type: ${source.type}`
+  return t('locationSources.meta.unknownType', { type: source.type })
 }

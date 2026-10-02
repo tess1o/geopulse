@@ -1,18 +1,18 @@
 <template>
-  <BaseCard title="Visit History">
+  <BaseCard :title="t('place.visitsTable.title')">
     <!-- Table Header -->
     <template #header>
       <div class="table-header">
         <div class="table-title-section">
           <div>
             <div class="table-title-row">
-              <h3 class="table-title">All Visits</h3>
-              <span class="table-count">{{ pagination.totalCount }} visits</span>
+              <h3 class="table-title">{{ t('place.visitsTable.allVisits') }}</h3>
+              <span class="table-count">{{ t('place.visitsTable.countLabel', { count: pagination.totalCount }) }}</span>
             </div>
           </div>
         </div>
         <Button
-          label="Export CSV"
+          :label="t('place.visitsTable.exportCsv')"
           icon="pi pi-download"
           @click="$emit('export')"
           outlined
@@ -40,6 +40,7 @@
       :sortOrder="sortOrder"
       :class="['visits-data-table', { 'visits-data-table--navigable': enableTimelineNavigation }]"
       :rowClass="getRowClass"
+      rowHover
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
@@ -48,7 +49,7 @@
       <!-- Start Time Column -->
       <Column
         field="timestamp"
-        header="Visit Date"
+        :header="t('place.visitsTable.columns.visitDate')"
         :sortable="true"
         :style="{ 'min-width': '180px' }"
       >
@@ -64,7 +65,7 @@
       <Column
         v-if="showCity"
         field="city"
-        header="City"
+        :header="t('place.visitsTable.columns.city')"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
         :class="{ 'hide-on-mobile-city': showCity && showLocationName }"
@@ -79,7 +80,7 @@
           >
             {{ slotProps.data.city }}
           </span>
-          <span v-else>{{ slotProps.data.city || 'N/A' }}</span>
+          <span v-else>{{ slotProps.data.city || t('place.visitsTable.notAvailable') }}</span>
         </template>
       </Column>
 
@@ -87,21 +88,21 @@
       <Column
         v-if="showLocationName"
         field="locationName"
-        header="Place Name"
+        :header="t('place.visitsTable.columns.placeName')"
         :sortable="true"
         :style="{ 'min-width': '150px' }"
         headerClass="place-name-column-header"
         bodyClass="place-name-column-body"
       >
         <template #body="slotProps">
-          <span class="place-name">{{ slotProps.data.locationName || 'Unknown' }}</span>
+          <span class="place-name">{{ slotProps.data.locationName || t('place.visitsTable.unknownPlace') }}</span>
         </template>
       </Column>
 
       <!-- Duration Column -->
       <Column
         v-if="hasAnyVisitTripTag"
-        header="Trip"
+        :header="t('place.visitsTable.columns.trip')"
         :style="{ 'min-width': '170px' }"
         class="trip-column"
         headerClass="trip-column"
@@ -112,10 +113,10 @@
             v-if="getVisitTripTag(slotProps.data)"
             class="trip-tag-chip"
             :style="{ '--trip-tag-color': getVisitTripColor(slotProps.data) }"
-            :title="`Visit is linked to trip planner: ${getVisitTripLabel(slotProps.data)}`"
+            :title="t('place.visitsTable.tripTagTitle', { label: getVisitTripLabel(slotProps.data) })"
             role="button"
             tabindex="0"
-            :aria-label="`Open trip planner ${getVisitTripLabel(slotProps.data)}`"
+            :aria-label="t('place.visitsTable.tripTagAriaLabel', { label: getVisitTripLabel(slotProps.data) })"
             @click.stop="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.enter="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.space.prevent="handleTripTagClick(getVisitTripTag(slotProps.data))"
@@ -130,7 +131,7 @@
       <!-- Duration Column -->
       <Column
         field="stayDuration"
-        header="Duration"
+        :header="t('place.visitsTable.columns.duration')"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
         :class="{ 'duration-column-country': showCity && showLocationName }"
@@ -147,7 +148,7 @@
       <!-- End Time Column -->
       <Column
         v-if="showEndTime"
-        header="End Time"
+        :header="t('place.visitsTable.columns.endTime')"
         :style="{ 'min-width': '150px' }"
         class="end-time-column"
         headerClass="end-time-column"
@@ -163,7 +164,7 @@
 
       <!-- Day of Week Column -->
       <Column
-        header="Day of Week"
+        :header="t('place.visitsTable.columns.dayOfWeek')"
         :style="{ 'min-width': '120px' }"
         class="day-of-week-column"
         headerClass="day-of-week-column"
@@ -190,9 +191,9 @@
             icon="pi pi-external-link"
             text
             size="small"
-            aria-label="Open visit day in timeline"
-            title="Open visit day in timeline"
-            v-tooltip.top="'Open visit day in timeline'"
+            :aria-label="t('place.visitsTable.openInTimelineAriaLabel')"
+            :title="t('place.visitsTable.openInTimelineTooltip')"
+            v-tooltip.top="t('place.visitsTable.openInTimelineTooltip')"
             @click.stop="openVisitInTimeline(slotProps.data)"
           />
         </template>
@@ -200,11 +201,11 @@
     </DataTable>
 
     <!-- No Data State -->
-    <div v-if="!loading && visits.length === 0" class="no-data-state">
-      <i class="pi pi-map-marker no-data-icon"></i>
-      <h4 class="no-data-title">No Visits Found</h4>
-      <p class="no-data-message">
-        No visits recorded for this location.
+    <div v-if="!loading && visits.length === 0" class="gp-empty-state">
+      <i class="pi pi-map-marker gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('place.visitsTable.empty.title') }}</h4>
+      <p class="gp-empty-state-message">
+        {{ t('place.visitsTable.empty.message') }}
       </p>
     </div>
 
@@ -217,6 +218,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -228,6 +230,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useTripsStore } from '@/stores/trips'
 import { findMatchingTripForVisit, normalizeTripColor } from '@/utils/tripHelpers'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const router = useRouter()
 const tripsStore = useTripsStore()
@@ -323,11 +326,11 @@ const getVisitTripColor = (visit) => {
 const getVisitTripLabel = (visit) => {
   const trip = getVisitTripTag(visit)
   if (!trip) return ''
-  return trip.name || `Trip #${trip.id}`
+  return trip.name || t('place.visitsTable.tripFallbackLabel', { id: trip.id })
 }
 
 const getEndDate = (visit) => {
-  if (!visit.timestamp || !visit.stayDuration) return 'N/A'
+  if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
   const startTime = timezone.fromUtc(visit.timestamp)
   const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
@@ -336,7 +339,7 @@ const getEndDate = (visit) => {
 }
 
 const getEndTime = (visit) => {
-  if (!visit.timestamp || !visit.stayDuration) return 'N/A'
+  if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
   const startTime = timezone.fromUtc(visit.timestamp)
   const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
@@ -345,7 +348,7 @@ const getEndTime = (visit) => {
 }
 
 const getDayOfWeek = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('place.visitsTable.notAvailable')
   return timezone.format(timestamp, 'dddd') // Full day name (Monday, Tuesday, etc.)
 }
 
@@ -489,19 +492,19 @@ watch(
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
-  background: var(--gp-primary-50);
-  color: var(--gp-primary-700);
+  background: var(--gp-primary-soft);
+  color: var(--gp-primary-text);
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.9rem;
@@ -515,7 +518,7 @@ watch(
 }
 
 .city-link {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   text-decoration: underline;
   font-weight: 500;
@@ -523,7 +526,7 @@ watch(
 }
 
 .city-link:hover {
-  color: var(--gp-primary-hover);
+  color: var(--gp-primary-text);
 }
 
 .place-name {
@@ -539,9 +542,9 @@ watch(
   max-width: 100%;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, white);
-  background: color-mix(in srgb, var(--trip-tag-color) 10%, white);
-  color: color-mix(in srgb, var(--trip-tag-color) 75%, black);
+  border: 1px solid color-mix(in srgb, var(--trip-tag-color) 55%, var(--gp-surface-card));
+  background: color-mix(in srgb, var(--trip-tag-color) 10%, var(--gp-surface-card));
+  color: color-mix(in srgb, var(--trip-tag-color) 75%, var(--gp-text-primary));
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
@@ -573,113 +576,10 @@ watch(
   text-align: center;
 }
 
-.no-data-state,
 .loading-state {
   text-align: center;
   padding: var(--gp-spacing-xxl);
   color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  opacity: 0.5;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-}
-
-/* Dark Mode */
-.p-dark .duration-badge {
-  background: var(--gp-primary-900);
-  color: var(--gp-primary-300);
-}
-
-.p-dark .city-link {
-  color: var(--gp-primary-light);
-}
-
-.p-dark .city-link:hover {
-  color: var(--gp-primary);
-}
-
-.p-dark .place-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .trip-tag-chip {
-  border-color: color-mix(in srgb, var(--trip-tag-color) 45%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--trip-tag-color) 18%, var(--gp-surface-dark));
-  color: color-mix(in srgb, var(--trip-tag-color) 70%, white);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-text-primary);
-}
-
-/* Dark Mode - DataTable */
-.p-dark .visits-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .visits-data-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-/* Ensure DataTable wrapper respects parent width */
-.visits-data-table :deep(.p-datatable-wrapper) {
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-}
-
-.visits-data-table :deep(.p-datatable) {
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
 .visits-data-table--navigable :deep(.visit-row--navigable) {
@@ -712,17 +612,17 @@ watch(
 
   /* Always hide Day of Week on mobile */
   :deep(.day-of-week-column) {
-    display: none !important;
+    display: none;
   }
 
   /* Hide End Time on mobile when location columns are shown */
   :deep(.end-time-column) {
-    display: none !important;
+    display: none;
   }
 
   /* Hide Duration on mobile for Country pages (when both city and place name shown) */
   :deep(.duration-column-country) {
-    display: none !important;
+    display: none;
   }
 
   /* Reduce column widths on mobile */

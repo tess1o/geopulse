@@ -33,6 +33,7 @@ public class SharedLinkMapper {
                 createShareLinkRequest.getShowCurrentLocation() : true);
         sharedLinkEntity.setShowPhotos(createShareLinkRequest.getShowPhotos() != null ?
                 createShareLinkRequest.getShowPhotos() : false);
+        sharedLinkEntity.setImmichAlbumId(createShareLinkRequest.getImmichAlbumId());
         sharedLinkEntity.setShowNotes(createShareLinkRequest.getShowNotes() != null ?
                 createShareLinkRequest.getShowNotes() : false);
         sharedLinkEntity.setCustomMapTileUrl(createShareLinkRequest.getCustomMapTileUrl());
@@ -71,6 +72,7 @@ public class SharedLinkMapper {
                 .endDate(entity.getEndDate())
                 .showCurrentLocation(entity.getShowCurrentLocation())
                 .showPhotos(entity.getShowPhotos())
+                .immichAlbumId(entity.getImmichAlbumId())
                 .showNotes(entity.getShowNotes())
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
@@ -102,6 +104,7 @@ public class SharedLinkMapper {
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
                 .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.RASTER)
+                .mapAppearance(SharedMapAppearance.from(entity.getUser().getTimelineDisplayPreferences()))
                 .build();
     }
 
@@ -174,6 +177,7 @@ public class SharedLinkMapper {
         if (dto.getShowPhotos() != null) {
             entity.setShowPhotos(dto.getShowPhotos());
         }
+        entity.setImmichAlbumId(dto.getImmichAlbumId());
         if (dto.getShowNotes() != null) {
             entity.setShowNotes(dto.getShowNotes());
         }

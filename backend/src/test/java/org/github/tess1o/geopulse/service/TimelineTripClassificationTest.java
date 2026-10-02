@@ -100,7 +100,7 @@ public class TimelineTripClassificationTest {
 
     @Test
     void testMotorVehicleClassification_WhenOnlyMotorcycleEnabled() {
-        TimelineConfig motorcycleConfig = motorVehicleConfig(false, true, "CAR");
+        TimelineConfig motorcycleConfig = motorVehicleConfig(false, true, false, "CAR");
         TripType result = classification.classifyTravelType(
                 motorVehicleStats(),
                 Duration.ofMinutes(25),
@@ -112,7 +112,7 @@ public class TimelineTripClassificationTest {
 
     @Test
     void testMotorVehicleClassification_WhenBothEnabledPrefersMotorcycle() {
-        TimelineConfig motorcyclePreferredConfig = motorVehicleConfig(true, true, "MOTORCYCLE");
+        TimelineConfig motorcyclePreferredConfig = motorVehicleConfig(true, true, true, "MOTORCYCLE");
         TripType result = classification.classifyTravelType(
                 motorVehicleStats(),
                 Duration.ofMinutes(25),
@@ -124,7 +124,7 @@ public class TimelineTripClassificationTest {
 
     @Test
     void testMotorVehicleClassification_WhenBothEnabledPrefersCarByDefault() {
-        TimelineConfig carPreferredConfig = motorVehicleConfig(true, true, "CAR");
+        TimelineConfig carPreferredConfig = motorVehicleConfig(true, true, true, "CAR");
         TripType result = classification.classifyTravelType(
                 motorVehicleStats(),
                 Duration.ofMinutes(25),
@@ -134,10 +134,48 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.CAR, result);
     }
 
-    private TimelineConfig motorVehicleConfig(boolean carEnabled, boolean motorcycleEnabled, String preferredMotorizedType) {
+    @Test
+    void testMotorVehicleClassification_WhenOnlyPublicTransportEnabled() {
+        TimelineConfig publicTransportConfig = motorVehicleConfig(false, false, true, "CAR");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                publicTransportConfig
+        );
+        assertEquals(TripType.PUBLIC_TRANSPORT, result);
+    }
+
+    @Test
+    void testMotorVehicleClassification_WhenAllLabelsEnabledPrefersPublicTransport() {
+        TimelineConfig publicTransportPreferredConfig = motorVehicleConfig(true, true, true, "PUBLIC_TRANSPORT");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                publicTransportPreferredConfig
+        );
+        assertEquals(TripType.PUBLIC_TRANSPORT, result);
+    }
+
+    @Test
+    void testMotorVehicleClassification_WhenPreferredLabelDisabledFallsBackToEnabledLabel() {
+        TimelineConfig fallbackConfig = motorVehicleConfig(false, true, false, "PUBLIC_TRANSPORT");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                fallbackConfig
+        );
+        assertEquals(TripType.MOTORCYCLE, result);
+    }
+
+    private TimelineConfig motorVehicleConfig(boolean carEnabled, boolean motorcycleEnabled,
+                                              boolean publicTransportationEnabled, String preferredMotorizedType) {
         return TimelineConfig.builder()
                 .carEnabled(carEnabled)
                 .motorcycleEnabled(motorcycleEnabled)
+                .publicTransportationEnabled(publicTransportationEnabled)
                 .preferredMotorizedType(preferredMotorizedType)
                 .carMinAvgSpeed(10.0)
                 .carMinMaxSpeed(15.0)

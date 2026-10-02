@@ -28,13 +28,13 @@ export class AuthManager {
   /**
    * Login and obtain JWT tokens
    *
-   * Uses /api/auth/api-login endpoint which returns tokens in response body
+   * Uses /api/v1/auth/api-login endpoint which returns tokens in response body
    * (not cookies), making it suitable for API testing.
    *
    * @returns {boolean} true if login successful, false otherwise
    */
   login() {
-    const loginUrl = `${config.baseUrl}/api/auth/api-login`;
+    const loginUrl = `${config.baseUrl}/api/v1/auth/api-login`;
 
     const payload = JSON.stringify({
       email: this.email,
@@ -121,7 +121,7 @@ export class AuthManager {
    * Updates internal state with new tokens and expiry time.
    */
   refreshAccessToken() {
-    const refreshUrl = `${config.baseUrl}/api/auth/refresh`;
+    const refreshUrl = `${config.baseUrl}/api/v1/auth/refresh`;
 
     const payload = JSON.stringify({
       refreshToken: this.refreshToken,

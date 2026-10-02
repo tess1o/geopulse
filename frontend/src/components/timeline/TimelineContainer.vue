@@ -1,17 +1,17 @@
 <template>
   <div ref="timelineContainerRef" class="timeline-container">
     <div class="timeline-header">
-      <div class="timeline-title">Movement Timeline</div>
+      <div class="timeline-title">{{ t('timeline.splitLayout.defaultExpandedLabel') }}</div>
       <div
         v-if="isSingleDaySelected && selectedDateLabel"
         class="timeline-header-date-nav"
-        aria-label="Timeline day navigation"
+        :aria-label="t('timeline.splitLayout.dayNavigationAriaLabel')"
       >
         <button
           type="button"
           class="date-nav-button"
-          title="Previous day"
-          aria-label="Previous day"
+          :title="t('timeline.splitLayout.previousDay')"
+          :aria-label="t('timeline.splitLayout.previousDay')"
           @click="navigateDay(-1)"
         >
           <i class="pi pi-chevron-left"></i>
@@ -20,8 +20,8 @@
         <button
           type="button"
           class="date-nav-button"
-          title="Next day"
-          aria-label="Next day"
+          :title="t('timeline.splitLayout.nextDay')"
+          :aria-label="t('timeline.splitLayout.nextDay')"
           @click="navigateDay(1)"
         >
           <i class="pi pi-chevron-right"></i>
@@ -34,21 +34,21 @@
     </div>
 
     <div v-show="timelineNoData" class="loading-messages timeline-no-data">
-      <div>No timeline for the given date range.</div>
+      <div>{{ t('timeline.container.noData') }}</div>
     </div>
 
     <!-- Warning for large datasets -->
     <div v-if="!timelineNoData && !timelineDataLoading && timelineData && timelineData.length > displayLimit && displayLimit < timelineData.length" class="timeline-warning">
       <i class="pi pi-info-circle"></i>
-      <span>Showing {{ displayLimit }} of {{ timelineData.length }} items.</span>
+      <span>{{ t('timeline.container.showingItems', { shown: displayLimit, total: timelineData.length }) }}</span>
       <Button
-        label="Load More"
+        :label="t('timeline.container.loadMore')"
         icon="pi pi-plus"
         @click="loadMore"
         size="small"
         class="load-more-button"
       />
-      <router-link to="/app/timeline-reports" class="reports-link">Or view all in Timeline Reports</router-link>
+      <router-link to="/app/timeline-reports" class="reports-link">{{ t('timeline.container.viewAllInReports') }}</router-link>
     </div>
 
     <div v-show="!timelineNoData && !timelineDataLoading" class="timeline-content">
@@ -59,18 +59,18 @@
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
           <template v-if="showTimelineLabels">
             <span
-              v-for="tag in getPeriodsForDate(dateGroup.date)"
+              v-for="tag in getTimelineLabelsForDate(dateGroup.date)"
               :key="tag.id"
               class="gp-period-badge gp-period-badge--clickable"
               :style="{ backgroundColor: tag.color }"
               @click.stop="handleTagClick(tag)"
               role="button"
-              :aria-label="`View ${tag.tagName} period`"
+              :aria-label="t('timeline.container.viewPeriodAria', { name: tag.name })"
               tabindex="0"
               @keydown.enter="handleTagClick(tag)"
               @keydown.space.prevent="handleTagClick(tag)"
             >
-              {{ tag.tagName }}
+              {{ tag.name }}
             </span>
           </template>
           <div class="date-separator-line"></div>
@@ -100,6 +100,7 @@
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -117,6 +118,7 @@
               v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -136,10 +138,12 @@
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               :read-only="readOnly"
+              :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -147,6 +151,7 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
             <TripCard
@@ -154,10 +159,12 @@
               :trip-item="slotProps.item"
               :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               :read-only="readOnly"
+              :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -165,6 +172,7 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
             <!-- Data Gap Cards -->
@@ -172,15 +180,27 @@
               v-if="slotProps.item.type === 'dataGap' && isOvernightItem(slotProps.item)"
               :data-gap-item="slotProps.item"
               :current-date="dateGroup.date"
+              :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
+              @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <DataGapCard
               v-else-if="slotProps.item.type === 'dataGap'"
               :data-gap-item="slotProps.item"
+              :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
+              @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
             </div>
           </template>
@@ -219,17 +239,25 @@
       @split="handleTripSplitSaved"
       @close="handleCloseTripSplitDialog"
     />
+
+    <TripMapMatchingDetailsDialog
+      :visible="mapMatchingDetailsVisible"
+      :trip="selectedTripForMapMatchingDetails"
+      :info="selectedMapMatchingInfo"
+      @close="handleCloseMapMatchingDetails"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, defineAsyncComponent, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Timeline from 'primevue/timeline'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useImmichStore } from '@/stores/immich'
 import { useNotesStore } from '@/stores/notes'
 import StayCard from './StayCard.vue'
@@ -242,6 +270,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
 import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -256,10 +285,14 @@ const DataGapToStayDialog = defineAsyncComponent(() =>
 const TripStaySplitDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripStaySplitDialog.vue')
 )
+const TripMapMatchingDetailsDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripMapMatchingDetailsDialog.vue')
+)
 
+const { t } = useI18n()
 const toast = useToast()
 const exportImportStore = useExportImportStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
@@ -275,6 +308,9 @@ const dataGapConversionDialogVisible = ref(false)
 const selectedDataGapForConversion = ref(null)
 const tripSplitDialogVisible = ref(false)
 const selectedTripForSplit = ref(null)
+const mapMatchingDetailsVisible = ref(false)
+const selectedTripForMapMatchingDetails = ref(null)
+const selectedMapMatchingInfo = ref(null)
 const timelineContainerRef = ref(null)
 
 // Props
@@ -307,6 +343,14 @@ const props = defineProps({
     type: Array,
     default: null
   },
+  photos: {
+    type: Array,
+    default: null
+  },
+  photoAuthToken: {
+    type: String,
+    default: null
+  },
   weatherSamples: {
     type: Array,
     default: () => []
@@ -322,6 +366,10 @@ const props = defineProps({
   showTimelineLabels: {
     type: Boolean,
     default: true
+  },
+  mapMatchingByTripId: {
+    type: Object,
+    default: () => new Map()
   }
 })
 
@@ -367,12 +415,12 @@ const showReadOnlyToast = () => {
   showDemoModeToast(toast)
 }
 
-// Get period tags for a specific date
-const getPeriodsForDate = (dateString) => {
+// Get timeline labels for a specific date
+const getTimelineLabelsForDate = (dateString) => {
   if (!props.showTimelineLabels) {
     return []
   }
-  return periodTagsStore.getPeriodsForDate(dateString)
+  return timelineLabelsStore.getTimelineLabelsForDate(dateString)
 }
 
 const selectedSingleDayDate = computed(() => {
@@ -450,6 +498,10 @@ const groupedTimelineData = computed(() => {
 })
 
 const immichPhotosForCards = computed(() => {
+  if (Array.isArray(props.photos)) {
+    return props.photos
+  }
+
   if (!immichStore.isConfigured) {
     return []
   }
@@ -570,16 +622,16 @@ const handleExportTripAsGpx = async (tripItem) => {
     await exportImportStore.exportTripAsGpx(tripItem.id)
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: 'Trip is being exported as GPX',
+      summary: t('timeline.container.exportStartedTitle'),
+      detail: t('timeline.container.tripExportingDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to export trip as GPX:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export trip',
+      summary: t('timeline.container.exportFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.container.tripExportFailedDetail')),
       life: 5000
     })
   }
@@ -590,16 +642,16 @@ const handleExportStayAsGpx = async (stayItem) => {
     await exportImportStore.exportStayAsGpx(stayItem.id)
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: 'Stay is being exported as GPX',
+      summary: t('timeline.container.exportStartedTitle'),
+      detail: t('timeline.container.stayExportingDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to export stay as GPX:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export stay',
+      summary: t('timeline.container.exportFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.container.stayExportFailedDetail')),
       life: 5000
     })
   }
@@ -613,6 +665,18 @@ const handleShowClassification = (tripItem) => {
 const handleCloseClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
+}
+
+const handleShowMapMatchingDetails = (tripItem) => {
+  selectedTripForMapMatchingDetails.value = tripItem
+  selectedMapMatchingInfo.value = props.mapMatchingByTripId.get(Number(tripItem?.id)) || null
+  mapMatchingDetailsVisible.value = true
+}
+
+const handleCloseMapMatchingDetails = () => {
+  mapMatchingDetailsVisible.value = false
+  selectedTripForMapMatchingDetails.value = null
+  selectedMapMatchingInfo.value = null
 }
 
 const handleQuickEditMovementType = (tripItem) => {
@@ -673,14 +737,14 @@ const handleMovementTypeUpdated = (updated) => {
   }
 }
 
-// Load period tags when dateRange changes
-const loadPeriodTags = async () => {
+// Load timeline labels when dateRange changes
+const loadTimelineLabels = async () => {
   if (!props.showTimelineLabels) {
     return
   }
   if (props.dateRange && props.dateRange.length === 2) {
     try {
-      await periodTagsStore.fetchPeriodTagsForTimeRange(
+      await timelineLabelsStore.fetchTimelineLabelsForTimeRange(
         props.dateRange[0],
         props.dateRange[1]
       )
@@ -691,7 +755,7 @@ const loadPeriodTags = async () => {
 }
 
 const loadImmichPhotosForCards = async () => {
-  if (!props.loadImmichPhotos) {
+  if (!props.loadImmichPhotos || props.isPublicView) {
     return
   }
 
@@ -748,7 +812,7 @@ const loadNotesForCards = async (forceRefresh = false) => {
 
 // Watch for date range changes
 watch(() => props.dateRange, () => {
-  loadPeriodTags()
+  loadTimelineLabels()
   loadImmichPhotosForCards()
   loadNotesForCards()
 }, { deep: true, immediate: true })
@@ -785,13 +849,13 @@ defineExpose({
   width: 100%;
   justify-content: center;
   text-align: center;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: var(--gp-spacing-lg);
   padding: 0 0 var(--gp-spacing-xs);
   border-bottom: 2px solid var(--gp-primary-light);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .timeline-title {
@@ -839,22 +903,31 @@ defineExpose({
 }
 
 .loading-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
   text-align: center;
   padding: var(--gp-spacing-lg);
   margin: var(--gp-spacing-lg);
   color: var(--gp-text-secondary);
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
 }
 
+.loading-messages .p-progressspinner {
+  margin-bottom: 1rem;
+}
+
 .timeline-warning {
   padding: var(--gp-spacing-md);
   margin: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
-  color: var(--gp-warning-dark);
-  background: var(--gp-warning-light);
+  color: var(--gp-warning-text);
+  background: var(--gp-warning-soft);
   border: 1px solid var(--gp-warning);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
@@ -875,7 +948,7 @@ defineExpose({
 }
 
 .reports-link {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 500;
   text-decoration: none;
   font-size: 0.8125rem;
@@ -905,17 +978,6 @@ defineExpose({
 }
 
 /* Dark mode adjustments */
-.p-dark .timeline-header {
-  color: var(--gp-primary);
-  border-bottom-color: var(--gp-border-medium);
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .loading-messages {
-  color: var(--gp-text-primary);
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
 
 .timeline-no-data {
   flex-direction: column;
@@ -937,7 +999,7 @@ defineExpose({
 .date-separator-line {
   flex: 1;
   height: 1px;
-  background: var(--gp-border-medium);
+  background: var(--gp-border);
 }
 
 .date-separator-text {
@@ -945,7 +1007,7 @@ defineExpose({
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0 var(--gp-spacing-sm);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   white-space: nowrap;
 }
 
@@ -956,9 +1018,9 @@ defineExpose({
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -1003,22 +1065,6 @@ defineExpose({
   }
 }
 
-/* Dark mode adjustments for date separators */
-.p-dark .date-separator-line {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .date-separator-text {
-  color: var(--gp-text-secondary);
-  background: var(--gp-surface-white);
-}
-
-.p-dark .date-nav-button {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
 /* Clickable period badge styles */
 .gp-period-badge--clickable {
   cursor: pointer;
@@ -1040,9 +1086,5 @@ defineExpose({
 .gp-period-badge--clickable:focus {
   outline: 2px solid var(--gp-primary);
   outline-offset: 2px;
-}
-
-.p-dark .gp-period-badge--clickable:hover {
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
 }
 </style>

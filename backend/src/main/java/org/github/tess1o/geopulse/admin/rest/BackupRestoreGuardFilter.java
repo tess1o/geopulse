@@ -5,11 +5,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import io.quarkiverse.httpproblem.HttpProblem;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RESTORE_IN_PROGRESS;
 
 import java.util.Locale;
 import java.util.Set;
@@ -21,10 +21,12 @@ public class BackupRestoreGuardFilter implements ContainerRequestFilter {
     private static final String RESTORE_BLOCK_MESSAGE =
             "GeoPulse is unavailable while full restore activation requires administrator attention.";
     private static final Set<String> PUBLIC_GET_PATHS = Set.of(
-            "api/maintenance/status", "api/health", "api/version", "api/version/status");
-    private static final String ADMIN_STATUS_PATH = "api/admin/backups/status";
+            "api/v1/system/maintenance", "api/v1/system/health",
+            "api/v1/system/version", "api/v1/system/version/status");
+    private static final String ADMIN_STATUS_PATH = "api/v1/admin/backups/status";
     private static final Set<String> RECOVERY_POST_PATHS = Set.of(
-            "api/admin/backups/restore/retry", "api/admin/backups/restore/discard", "api/auth/logout");
+            "api/v1/admin/backups/restore/retry", "api/v1/admin/backups/restore/discard");
+    private static final String LOGOUT_PATH = "api/v1/auth/sessions/current";
 
     @Inject BackupMaintenanceService maintenanceService;
 
@@ -32,19 +34,22 @@ public class BackupRestoreGuardFilter implements ContainerRequestFilter {
     public void filter(ContainerRequestContext requestContext) {
         if (!maintenanceService.isRestoreBlocked()) return;
         String method = requestContext.getMethod().toUpperCase(Locale.ROOT);
-        String path = normalizePath(requestContext.getUriInfo().getPath());
+        String path = normalizePath(requestContext.getUriInfo().getRequestUri().getPath());
         if (!path.startsWith("api/") || "OPTIONS".equals(method)
                 || ("GET".equals(method) && PUBLIC_GET_PATHS.contains(path))
                 || ("GET".equals(method) && ADMIN_STATUS_PATH.equals(path))
-                || ("POST".equals(method) && RECOVERY_POST_PATHS.contains(path))) {
+                || ("POST".equals(method) && RECOVERY_POST_PATHS.contains(path))
+                || ("DELETE".equals(method) && LOGOUT_PATH.equals(path))) {
             return;
         }
-        requestContext.abortWith(Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                .type(MediaType.APPLICATION_JSON)
-                .header(RESTORE_BLOCK_HEADER, "true")
-                .header("Cache-Control", "no-store")
-                .entity(ApiResponse.error(RESTORE_BLOCK_MESSAGE))
-                .build());
+        throw HttpProblem.builder()
+                .withStatus(RESTORE_IN_PROGRESS.statusCode())
+                .withTitle(RESTORE_IN_PROGRESS.title())
+                .withDetail(RESTORE_BLOCK_MESSAGE)
+                .with("code", RESTORE_IN_PROGRESS)
+                .withHeader(RESTORE_BLOCK_HEADER, "true")
+                .withHeader("Cache-Control", "no-store")
+                .build();
     }
 
     private String normalizePath(String path) {

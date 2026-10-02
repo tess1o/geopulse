@@ -100,9 +100,9 @@ const contentClasses = computed(() => ({
 
 /* Container Variants */
 .gp-page-container--card {
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-large);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   box-shadow: var(--gp-shadow-card);
   margin: var(--gp-spacing-lg);
 }
@@ -163,56 +163,10 @@ const contentClasses = computed(() => ({
   padding: var(--gp-spacing-xl);
 }
 
-/* Page Header */
-.gp-page-header {
-  flex-shrink: 0;
-  margin-bottom: var(--gp-spacing-lg);
-}
-
-.gp-page-header-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gp-spacing-lg);
-}
-
-.gp-page-header-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.gp-page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
-  margin: 0 0 var(--gp-spacing-sm);
-  line-height: 1.2;
-  word-wrap: break-word;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  hyphens: auto;
-  white-space: normal;
-  max-width: 100%;
-}
-
-.gp-page-subtitle {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.gp-page-actions {
-  display: flex;
-  gap: var(--gp-spacing-md);
-  align-items: flex-start;
-  flex-shrink: 0;
-}
-
+/* Page header: the .gp-page-header* classes are shared and live in styles/components.css. */
 .gp-page-tabs {
   margin-top: var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
   padding-top: var(--gp-spacing-lg);
 }
 
@@ -223,7 +177,7 @@ const contentClasses = computed(() => ({
   flex-direction: column;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .gp-page-content > * {
@@ -241,7 +195,7 @@ const contentClasses = computed(() => ({
   flex-shrink: 0;
   margin-top: var(--gp-spacing-lg);
   padding-top: var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Scrollable Container */
@@ -269,34 +223,8 @@ const contentClasses = computed(() => ({
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--gp-surface-ground) 80%, transparent);
   z-index: 9999;
-}
-
-/* Dark Mode */
-.p-dark .gp-page-container--card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-page-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .gp-page-subtitle {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .gp-page-tabs {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-page-footer {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .gp-page-container--loading::after {
-  background: rgba(0, 0, 0, 0.6);
 }
 
 /* Responsive Design */
@@ -309,10 +237,6 @@ const contentClasses = computed(() => ({
   .gp-page-container--card {
     margin: var(--gp-spacing-md);
   }
-
-  .gp-page-title {
-    font-size: 1.5rem;
-  }
 }
 
 @media (max-width: 768px) {
@@ -323,24 +247,6 @@ const contentClasses = computed(() => ({
   .gp-page-container--card {
     margin: var(--gp-spacing-sm);
     border-radius: var(--gp-radius-medium);
-  }
-
-  .gp-page-header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--gp-spacing-md);
-  }
-
-  .gp-page-actions {
-    justify-content: flex-start;
-  }
-
-  .gp-page-title {
-    font-size: 1.375rem;
-  }
-
-  .gp-page-subtitle {
-    font-size: 0.875rem;
   }
 
   .gp-page-tabs {
@@ -356,19 +262,6 @@ const contentClasses = computed(() => ({
 
   .gp-page-container--card {
     margin: var(--gp-spacing-xs);
-  }
-
-  .gp-page-title {
-    font-size: 1.25rem;
-  }
-
-  .gp-page-header {
-    margin-bottom: var(--gp-spacing-md);
-  }
-
-  .gp-page-actions {
-    flex-direction: column;
-    gap: var(--gp-spacing-sm);
   }
 }
 
@@ -388,10 +281,6 @@ const contentClasses = computed(() => ({
     margin: 0;
   }
 
-  .gp-page-actions {
-    display: none;
-  }
-
   .gp-page-tabs {
     display: none;
   }
@@ -400,8 +289,7 @@ const contentClasses = computed(() => ({
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .gp-page-container,
-  .gp-page-content,
-  .gp-page-header {
+  .gp-page-content {
     transition: none;
   }
 }

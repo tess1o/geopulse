@@ -25,7 +25,10 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import NotesViewerDialog from './NotesViewerDialog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   notes: {
@@ -41,7 +44,9 @@ const props = defineProps({
 const emit = defineEmits(['note-changed'])
 const viewerVisible = ref(false)
 const hasNotes = computed(() => Array.isArray(props.notes) && props.notes.length > 0)
-const triggerLabel = computed(() => props.notes.length === 1 ? 'Open note' : `Open ${props.notes.length} notes`)
+const triggerLabel = computed(() => props.notes.length === 1
+  ? t('timeline.notes.openSingle')
+  : t('timeline.notes.openMultiple', { count: props.notes.length }))
 
 const openNotes = () => {
   viewerVisible.value = true
@@ -64,7 +69,7 @@ defineExpose({
 .note-trigger {
   border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   display: inline-flex;
   align-items: center;
@@ -76,6 +81,6 @@ defineExpose({
 }
 
 .note-trigger:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 </style>

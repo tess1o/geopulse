@@ -38,10 +38,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SelectButton from 'primevue/selectbutton'
 import FriendsMapTab from './FriendsMapTab.vue'
 import FriendsTimelineTab from './FriendsTimelineTab.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   friends: {
@@ -72,18 +75,18 @@ defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all'])
 const viewMode = ref('live')
 
 // Mode options
-const modeOptions = [
+const modeOptions = computed(() => [
   {
-    label: 'Live Location',
+    label: t('friends.locationTab.liveLocation'),
     value: 'live',
     icon: 'pi pi-map-marker'
   },
   {
-    label: 'Timeline History',
+    label: t('friends.locationTab.timelineHistory'),
     value: 'timeline',
     icon: 'pi pi-history'
   }
-]
+])
 </script>
 
 <style scoped>
@@ -110,11 +113,11 @@ const modeOptions = [
   top: 1rem;
   left: 4rem;
   z-index: 1000;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
   padding: 0.25rem;
   box-shadow: var(--gp-shadow-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 /* Compact Toggle Buttons */
@@ -123,74 +126,12 @@ const modeOptions = [
   gap: 0.25rem;
 }
 
-:deep(.mode-toggle-compact .p-selectbutton) {
-  background: transparent;
-}
-
-:deep(.mode-toggle-compact .p-button) {
-  padding: 0.5rem 0.875rem !important;
-  font-weight: 500 !important;
-  font-size: 0.875rem !important;
-  border: none !important;
-  background: transparent !important;
-  color: var(--gp-text-secondary) !important;
-  border-radius: var(--gp-radius-small) !important;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-:deep(.mode-toggle-compact .p-button:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-:deep(.mode-toggle-compact .p-button.p-highlight) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  font-weight: 600 !important;
-}
-
-:deep(.mode-toggle-compact .p-button i) {
-  margin-right: 0.375rem;
-  font-size: 0.875rem;
-}
-
-/* Dark mode */
-.p-dark .mode-toggle-segmented {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button) {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark :deep(.mode-toggle-compact .p-button.p-highlight) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .mode-toggle-segmented {
     top: 0.75rem;
     left: 3.5rem;
     padding: 0.2rem;
-  }
-
-  :deep(.mode-toggle-compact .p-button) {
-    padding: 0.375rem 0.625rem !important;
-    font-size: 0.8rem !important;
-  }
-
-  :deep(.mode-toggle-compact .p-button i) {
-    margin-right: 0.25rem;
-    font-size: 0.8rem;
   }
 }
 
@@ -201,17 +142,8 @@ const modeOptions = [
   }
 
   /* Hide text labels on very small screens */
-  :deep(.mode-toggle-compact .p-button .toggle-label) {
+  .toggle-label {
     display: none;
-  }
-
-  :deep(.mode-toggle-compact .p-button i) {
-    margin-right: 0;
-    font-size: 1rem;
-  }
-
-  :deep(.mode-toggle-compact .p-button) {
-    padding: 0.5rem !important;
   }
 }
 </style>

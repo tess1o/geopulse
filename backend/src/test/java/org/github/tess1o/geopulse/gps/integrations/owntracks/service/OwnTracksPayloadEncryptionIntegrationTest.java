@@ -116,21 +116,19 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                         "timezone", "UTC"
                 ))
                 .when()
-                .post("/api/users/register")
+                .post("/api/v1/registrations")
                 .then()
-                .statusCode(201)
-                .body("status", equalTo("success"));
+                .statusCode(201);
 
         return given()
                 .contentType(ContentType.JSON)
                 .body(Map.of("email", email, "password", PASSWORD))
                 .when()
-                .post("/api/auth/api-login")
+                .post("/api/v1/auth/api-sessions")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
                 .extract()
-                .path("data.accessToken");
+                .path("accessToken");
     }
 
     private void createOwnTracksSource(String accessToken, String ownTracksUsername, String payloadSecret) {
@@ -150,9 +148,9 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
-                .post("/api/gps/source/")
+                .post("/api/v1/gps/sources/")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("hasPayloadEncryptionSecret", equalTo(payloadSecret != null))
                 .body("active", equalTo(true));
     }
@@ -163,7 +161,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
-                .post("/api/owntracks")
+                .post("/api/v1/gps/ingest/owntracks")
                 .then()
                 .statusCode(200)
                 .body(equalTo("[]"));
@@ -176,12 +174,11 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .queryParam("endTime", "2026-08-10T16:43:00Z")
                 .queryParam("limit", 10)
                 .when()
-                .get("/api/gps/map-points")
+                .get("/api/v1/gps/points/map")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.totalCount", equalTo(count))
-                .body("data.returnedCount", equalTo(count));
+                .body("totalCount", equalTo(count))
+                .body("returnedCount", equalTo(count));
     }
 
     private void assertMapPoint(String accessToken, int index, double lat, double lon, String timestamp) {
@@ -191,13 +188,13 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .queryParam("endTime", "2026-08-10T16:43:00Z")
                 .queryParam("limit", 10)
                 .when()
-                .get("/api/gps/map-points")
+                .get("/api/v1/gps/points/map")
                 .then()
                 .statusCode(200)
-                .body("data.points[%d].latitude".formatted(index), equalTo((float) lat))
-                .body("data.points[%d].longitude".formatted(index), equalTo((float) lon))
-                .body("data.points[%d].timestamp".formatted(index), equalTo(timestamp))
-                .body("data.points[%d].sourceType".formatted(index), equalTo("OWNTRACKS"));
+                .body("points[%d].latitude".formatted(index), equalTo((float) lat))
+                .body("points[%d].longitude".formatted(index), equalTo((float) lon))
+                .body("points[%d].timestamp".formatted(index), equalTo(timestamp))
+                .body("points[%d].sourceType".formatted(index), equalTo("OWNTRACKS"));
     }
 
     private String encryptSecretBox(String plaintext, String secret, byte[] nonce) {

@@ -9,7 +9,7 @@
         @click="onNext?.()"
       >
         <i class="pi pi-refresh"></i>
-        <span>Next tip</span>
+        <span>{{ t('ui.tipOfDayCard.nextTip') }}</span>
       </button>
     </div>
 
@@ -37,6 +37,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 const props = defineProps({
   tip: {
@@ -45,7 +49,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Tip of the day',
+    default: () => translate('ui.home.panel.tipOfDayTitle'),
   },
   onNext: {
     type: Function,
@@ -57,8 +61,8 @@ const props = defineProps({
   },
 })
 
-const tipTitle = computed(() => props.tip?.title || 'No tip available yet')
-const tipDescription = computed(() => props.tip?.description || 'Tips will appear here when home content is available.')
+const tipTitle = computed(() => props.tip?.title || t('ui.tipOfDayCard.noTipTitle'))
+const tipDescription = computed(() => props.tip?.description || t('ui.tipOfDayCard.noTipDescription'))
 const tipIcon = computed(() => props.tip?.icon || 'pi pi-lightbulb')
 const tipLinks = computed(() => {
   if (!Array.isArray(props.tip?.links)) {
@@ -92,7 +96,7 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--home-text-secondary);
+  color: var(--gp-landing-text-secondary);
 }
 
 .tip-head {
@@ -102,7 +106,7 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
 }
 
 .tip-head i {
-  color: #0f766e;
+  color: var(--gp-landing-accent);
   font-size: 0.98rem;
 }
 
@@ -111,14 +115,14 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
   font-size: 0.99rem;
   line-height: 1.35;
   font-weight: 700;
-  color: var(--home-text-primary);
+  color: var(--gp-landing-text-primary);
 }
 
 .tip-description {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.55;
-  color: var(--home-text-secondary);
+  color: var(--gp-landing-text-secondary);
 }
 
 .tip-links {
@@ -134,14 +138,14 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  color: #2563eb;
+  color: var(--gp-primary-text);
   text-decoration: none;
   font-size: 0.84rem;
   font-weight: 600;
 }
 
 .tip-links a:hover {
-  color: #1d4ed8;
+  color: var(--gp-primary-hover);
 }
 
 .tip-links i {
@@ -153,9 +157,9 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  background: rgba(248, 250, 252, 0.82);
-  color: #334155;
+  border: 1px solid var(--gp-landing-glass-border);
+  background: var(--gp-landing-glass);
+  color: var(--gp-text-secondary);
   border-radius: 999px;
   padding: 0.35rem 0.72rem;
   font-size: 0.79rem;
@@ -166,39 +170,11 @@ const isExternal = (url) => /^https?:\/\//i.test(url || '')
 
 .tip-next:hover {
   border-color: rgba(96, 165, 250, 0.6);
-  background: rgba(255, 255, 255, 0.95);
-  color: #1e40af;
+  background: var(--gp-landing-glass-hover);
+  color: var(--gp-primary-text);
 }
 
 .tip-next i {
   font-size: 0.75rem;
-}
-
-.p-dark .tip-head i {
-  color: #34d399;
-}
-
-.p-dark .tip-description {
-  color: #94a3b8;
-}
-
-.p-dark .tip-links a {
-  color: #60a5fa;
-}
-
-.p-dark .tip-links a:hover {
-  color: #93c5fd;
-}
-
-.p-dark .tip-next {
-  background: rgba(30, 41, 59, 0.62);
-  border-color: rgba(148, 163, 184, 0.3);
-  color: #cbd5e1;
-}
-
-.p-dark .tip-next:hover {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(96, 165, 250, 0.5);
-  color: #e2e8f0;
 }
 </style>

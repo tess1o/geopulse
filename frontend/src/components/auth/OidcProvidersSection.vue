@@ -1,20 +1,20 @@
 <template>
   <div v-if="providers.length > 0" class="oidc-section">
     <div class="divider" v-if="showDivider">
-      <span>{{ dividerText }}</span>
+      <span>{{ displayDividerText }}</span>
     </div>
     <div class="oidc-providers">
       <Button
         v-for="provider in providers"
         :key="provider.name"
-        :label="`Continue with ${provider.displayName}`"
+        :label="t('auth.oidc.continueWith', { provider: provider.displayName })"
         :class="['oidc-button', `oidc-${provider.name}`]"
         @click="$emit('provider-selected', provider.name)"
         :disabled="disabled"
         outlined
       >
         <template #icon>
-          <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" />
+          <ProviderIcon :provider="provider" size="medium" :alt="t('auth.oidc.providerIconAlt', { provider: provider.displayName })" />
         </template>
       </Button>
     </div>
@@ -22,7 +22,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProviderIcon from '@/components/common/ProviderIcon.vue';
+
+const { t } = useI18n()
 
 const props = defineProps({
   providers: {
@@ -39,9 +43,11 @@ const props = defineProps({
   },
   dividerText: {
     type: String,
-    default: 'Or continue with'
+    default: null
   }
 })
+
+const displayDividerText = computed(() => props.dividerText || t('auth.oidc.dividerDefault'))
 
 const emit = defineEmits(['provider-selected'])
 </script>
@@ -67,12 +73,12 @@ const emit = defineEmits(['provider-selected'])
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--gp-border-light);
+  background: var(--gp-border);
 }
 
 .divider span {
   padding: 0 1rem;
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .oidc-providers {
@@ -97,43 +103,33 @@ const emit = defineEmits(['provider-selected'])
 
 /* Provider-specific styling */
 .oidc-google:hover {
-  background: rgba(219, 68, 55, 0.05) !important;
-  border-color: rgba(219, 68, 55, 0.3) !important;
+  background: rgba(219, 68, 55, 0.05);
+  border-color: rgba(219, 68, 55, 0.3);
 }
 
 .oidc-microsoft:hover {
-  background: rgba(0, 161, 241, 0.05) !important;
-  border-color: rgba(0, 161, 241, 0.3) !important;
+  background: rgba(0, 161, 241, 0.05);
+  border-color: rgba(0, 161, 241, 0.3);
 }
 
 .oidc-okta:hover {
-  background: rgba(0, 97, 179, 0.05) !important;
-  border-color: rgba(0, 97, 179, 0.3) !important;
+  background: rgba(0, 97, 179, 0.05);
+  border-color: rgba(0, 97, 179, 0.3);
 }
 
 .oidc-authentik:hover {
-  background: rgba(253, 93, 147, 0.05) !important;
-  border-color: rgba(253, 93, 147, 0.3) !important;
+  background: rgba(253, 93, 147, 0.05);
+  border-color: rgba(253, 93, 147, 0.3);
 }
 
 .oidc-keycloak:hover {
-  background: rgba(79, 172, 254, 0.05) !important;
-  border-color: rgba(79, 172, 254, 0.3) !important;
+  background: rgba(79, 172, 254, 0.05);
+  border-color: rgba(79, 172, 254, 0.3);
 }
 
 .oidc-pocketid:hover {
-  background: rgba(76, 175, 80, 0.05) !important;
-  border-color: rgba(76, 175, 80, 0.3) !important;
-}
-
-/* Dark mode support */
-.p-dark .divider::before, 
-.p-dark .divider::after {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .divider span {
-  background: var(--gp-surface-dark);
+  background: rgba(76, 175, 80, 0.05);
+  border-color: rgba(76, 175, 80, 0.3);
 }
 
 /* Button styling for dark mode */

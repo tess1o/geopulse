@@ -22,7 +22,7 @@
           <span class="meta-separator">•</span>
           <span class="meta-compact">
             <i class="pi pi-clock"></i>
-            Expires {{ formatExpiration() }}
+            {{ t('sharing.sharedTimelinePage.expiresPrefix', { date: formatExpiration() }) }}
           </span>
           <span v-if="linkedTripWorkspace" class="meta-separator">•</span>
           <Button
@@ -47,22 +47,39 @@
               showIcon
               :showOnFocus="true"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              placeholder="Filter date range"
+              :placeholder="t('sharing.sharedTimelinePage.dateRangePlaceholder')"
               :minDate="shareStartDate"
               :maxDate="shareEndDate"
           />
           <Button icon="pi pi-times" text rounded @click="resetDateFilter"
                  v-if="filterStartDate || filterEndDate"
-                 v-tooltip.bottom="'Clear filter'"
-                 aria-label="Clear date filter" />
+                 v-tooltip.bottom="t('sharing.sharedTimelinePage.clearFilterTooltip')"
+                 :aria-label="t('sharing.sharedTimelinePage.clearFilterAriaLabel')" />
+          <Select v-if="shareInfo.timeline_status === 'active'"
+                  v-model="autoRefreshIntervalMs"
+                  :options="autoRefreshOptions"
+                  option-label="label"
+                  option-value="value"
+                  size="small"
+                  :aria-label="t('sharing.sharedTimelinePage.autoRefreshAriaLabel')"
+                  class="auto-refresh-select" />
+          <Button v-if="shareInfo.timeline_status === 'active' && shareInfo.show_current_location"
+                 icon="pi pi-compass" text rounded @click="toggleAutoFollow"
+                 :severity="autoFollow ? 'primary' : 'secondary'"
+                 :aria-label="autoFollow ? t('sharing.sharedTimelinePage.disableAutoFollowAriaLabel') : t('sharing.sharedTimelinePage.enableAutoFollowAriaLabel')"
+                 :aria-pressed="autoFollow"
+                 v-tooltip.bottom="autoFollow ? t('sharing.sharedTimelinePage.autoFollowOnTooltip') : t('sharing.sharedTimelinePage.autoFollowOffTooltip')" />
           <Button v-if="shareInfo.timeline_status === 'active'"
                  icon="pi pi-refresh" text rounded @click="refreshData"
-                 v-tooltip.bottom="'Refresh'"
-                 aria-label="Refresh data" />
+                 :loading="refreshing"
+                 v-tooltip.bottom="t('sharing.sharedTimelinePage.refreshTooltip')"
+                 :aria-label="t('sharing.sharedTimelinePage.refreshAriaLabel')" />
         </div>
 
         <!-- Theme Switcher (positioned via CSS order) -->
         <div class="header-theme-switcher">
+          <!-- Viewer preferences: map colors, then light/dark theme. -->
+          <MapAppearanceControl v-if="shareInfo && shareInfo.timeline_status !== 'upcoming'" />
           <DarkModeSwitcher />
         </div>
       </div>
@@ -79,27 +96,27 @@
       <!-- Loading State -->
       <div v-if="loading" class="state-container">
         <ProgressSpinner />
-        <p>Loading shared timeline...</p>
+        <p>{{ t('sharing.sharedTimelinePage.loading') }}</p>
       </div>
 
       <!-- Password Required State -->
       <Card v-else-if="needsPassword && !authenticated" class="password-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-lock" style="font-size: 2rem; color: var(--primary-color)"></i>
-            <h2>Password Required</h2>
+            <i class="pi pi-lock" style="font-size: 2rem; color: var(--gp-primary)"></i>
+            <h2>{{ t('sharing.sharedTimelinePage.passwordRequiredTitle') }}</h2>
           </div>
         </template>
         <template #content>
           <form @submit.prevent="handlePasswordSubmit" class="password-form">
             <div class="field">
-              <label for="password">Enter password to view this timeline</label>
+              <label for="password">{{ t('sharing.sharedTimelinePage.passwordFieldLabel') }}</label>
               <Password id="password" v-model="password" :feedback="false"
-                       placeholder="Password" toggleMask class="w-full"
+                       :placeholder="t('sharing.sharedTimelinePage.passwordPlaceholder')" toggleMask class="w-full"
                        :class="{'p-invalid': passwordError}" />
               <small v-if="passwordError" class="p-error">{{ passwordError }}</small>
             </div>
-            <Button type="submit" label="Access Timeline" icon="pi pi-unlock"
+            <Button type="submit" :label="t('sharing.sharedTimelinePage.accessTimeline')" icon="pi pi-unlock"
                    :loading="verifying" class="w-full" />
           </form>
         </template>
@@ -109,24 +126,24 @@
       <Card v-else-if="shareInfo && shareInfo.timeline_status === 'upcoming'" class="info-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-calendar" style="font-size: 2rem; color: var(--blue-500)"></i>
+            <i class="pi pi-calendar" style="font-size: 2rem; color: var(--p-blue-500)"></i>
             <h2>{{ shareInfo.name }}</h2>
           </div>
         </template>
         <template #content>
           <div class="info-content">
-            <p class="info-message">This trip hasn't started yet.</p>
+            <p class="info-message">{{ t('sharing.sharedTimelinePage.upcomingMessage') }}</p>
             <div class="info-details">
               <div class="detail-item">
                 <i class="pi pi-calendar-plus"></i>
-                <span>Trip begins: {{ formatDate(shareInfo.start_date) }}</span>
+                <span>{{ t('sharing.sharedTimelinePage.tripBeginsPrefix', { date: formatDate(shareInfo.start_date) }) }}</span>
               </div>
               <div class="detail-item">
                 <i class="pi pi-user"></i>
-                <span>Shared by: {{ shareInfo.shared_by }}</span>
+                <span>{{ t('sharing.sharedTimelinePage.sharedByPrefix', { name: shareInfo.shared_by }) }}</span>
               </div>
             </div>
-            <p class="info-hint">Check back after the trip starts to see the timeline.</p>
+            <p class="info-hint">{{ t('sharing.sharedTimelinePage.upcomingHint') }}</p>
           </div>
         </template>
       </Card>
@@ -135,8 +152,8 @@
       <Card v-else-if="error" class="error-card">
         <template #header>
           <div class="card-header">
-            <i class="pi pi-exclamation-circle" style="font-size: 2rem; color: var(--red-500)"></i>
-            <h2>Unable to Load Timeline</h2>
+            <i class="pi pi-exclamation-circle" style="font-size: 2rem; color: var(--p-red-500)"></i>
+            <h2>{{ t('sharing.sharedTimelinePage.loadErrorTitle') }}</h2>
           </div>
         </template>
         <template #content>
@@ -154,26 +171,26 @@
         <Card v-if="!hasTimelineData && !hasPathData" class="info-card">
           <template #header>
             <div class="card-header">
-              <i class="pi pi-map-marker" style="font-size: 2rem; color: var(--blue-500)"></i>
-              <h2>No Location Data</h2>
+              <i class="pi pi-map-marker" style="font-size: 2rem; color: var(--p-blue-500)"></i>
+              <h2>{{ t('sharing.sharedTimelinePage.noLocationDataTitle') }}</h2>
             </div>
           </template>
           <template #content>
             <div class="info-content">
-              <p class="info-message">No location data is available for this timeline yet.</p>
+              <p class="info-message">{{ t('sharing.sharedTimelinePage.noLocationDataMessage') }}</p>
               <div class="info-details" v-if="shareInfo.timeline_status === 'active'">
                 <div class="detail-item">
                   <i class="pi pi-info-circle"></i>
-                  <span>This trip is currently active, but no location data has been recorded yet.</span>
+                  <span>{{ t('sharing.sharedTimelinePage.activeNoDataHint') }}</span>
                 </div>
               </div>
               <div class="info-details" v-else-if="filterStartDate && filterEndDate">
                 <div class="detail-item">
                   <i class="pi pi-calendar"></i>
-                  <span>No location data found for the selected date range. Try adjusting the filter.</span>
+                  <span>{{ t('sharing.sharedTimelinePage.filteredNoDataHint') }}</span>
                 </div>
               </div>
-              <p class="info-hint" v-if="shareInfo.timeline_status === 'active'">Check back later to see location updates.</p>
+              <p class="info-hint" v-if="shareInfo.timeline_status === 'active'">{{ t('sharing.sharedTimelinePage.activeCheckBackHint') }}</p>
             </div>
           </template>
         </Card>
@@ -191,9 +208,9 @@
           <div class="timeline-map">
             <!-- Empty state for map when no path data -->
             <div v-if="!hasPathData" class="empty-map-state">
-              <i class="pi pi-map" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
-              <p>No route data available</p>
-              <small v-if="filterStartDate && filterEndDate">Try adjusting the date filter</small>
+              <i class="pi pi-map" style="font-size: 3rem; color: var(--gp-text-secondary); opacity: 0.5"></i>
+              <p>{{ t('sharing.sharedTimelinePage.noRouteData') }}</p>
+              <small v-if="filterStartDate && filterEndDate">{{ t('sharing.sharedTimelinePage.tryAdjustingFilter') }}</small>
             </div>
             <TimelineMap
                 v-else
@@ -209,12 +226,16 @@
                 :show-viewer-location-control="true"
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
+                :show-immich-by-default="shareInfo.show_photos || false"
+                :photos="sharedPhotos"
+                :photo-auth-token="shareLinksStore.sharedAccessToken"
                 :show-notes="shareInfo.show_notes || false"
                 :notes="sharedNotes"
                 :custom-tile-url="shareInfo.custom_map_tile_url"
                 :custom-style-url="shareInfo.custom_map_style_url"
                 :map-render-mode="shareInfo.map_render_mode"
                 :is-shared-view="true"
+                :preserve-viewport-on-data-refresh="true"
                 @timeline-marker-click="handleTimelineItemClick"
                 @viewer-location-request="handleViewerLocationRequest"
                 @viewer-location-stop="viewerLocation.disable"
@@ -223,10 +244,10 @@
           <div v-if="!isMapOnlyEmbed" class="timeline-sidebar">
             <!-- Empty state for timeline when no timeline data -->
             <div v-if="!hasTimelineData" class="empty-timeline-state">
-              <i class="pi pi-list" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
-              <p>No stays or trips recorded</p>
-              <small v-if="filterStartDate && filterEndDate">Try adjusting the date filter</small>
-              <small v-else-if="shareInfo.timeline_status === 'active'">Check back later for updates</small>
+              <i class="pi pi-list" style="font-size: 3rem; color: var(--gp-text-secondary); opacity: 0.5"></i>
+              <p>{{ t('sharing.sharedTimelinePage.noStaysOrTrips') }}</p>
+              <small v-if="filterStartDate && filterEndDate">{{ t('sharing.sharedTimelinePage.tryAdjustingFilter') }}</small>
+              <small v-else-if="shareInfo.timeline_status === 'active'">{{ t('sharing.sharedTimelinePage.checkBackForUpdates') }}</small>
             </div>
             <TimelineContainer
                 v-else
@@ -234,6 +255,9 @@
                 :is-public-view="true"
                 :load-notes="false"
                 :notes="sharedNotes"
+                :load-immich-photos="false"
+                :photos="sharedPhotos"
+                :photo-auth-token="shareLinksStore.sharedAccessToken"
                 @timeline-item-click="handleTimelineItemClick"
             />
           </div>
@@ -244,15 +268,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useNotesStore } from '@/stores/notes'
+import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
+import { useSharedMapAppearance } from '@/composables/useMapAppearance'
+import MapAppearanceControl from '@/components/maps/MapAppearanceControl.vue'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -260,14 +288,18 @@ import Password from 'primevue/password'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
+import Select from 'primevue/select'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
+import { productionErrorContext } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const shareLinksStore = useShareLinksStore()
 const notesStore = useNotesStore()
+const immichStore = useImmichStore()
 const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
 const tripsStore = useTripsStore()
@@ -282,12 +314,32 @@ const authenticated = ref(false)
 const password = ref('')
 const passwordError = ref(null)
 const verifying = ref(false)
+const refreshing = ref(false)
+const autoFollow = ref(false)
+const autoRefreshIntervalMs = ref(15_000)
+const autoRefreshOptions = computed(() => [
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.off'), value: 0},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec5'), value: 5_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec15'), value: 15_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec30'), value: 30_000}
+])
+let autoRefreshTimer = null
 
 const shareInfo = ref(null)
+// The map shows the owner's colors unless the viewer picks otherwise (MapAppearanceControl).
+const { setSharedOwner, clearSharedOwner } = useSharedMapAppearance()
+watch(shareInfo, (info) => {
+  if (info) {
+    setSharedOwner(info.map_appearance, info.shared_by)
+  } else {
+    clearSharedOwner()
+  }
+})
 const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
 const sharedNotes = ref([])
+const sharedPhotos = ref([])
 const timelineMapRef = ref(null)
 const shouldCenterViewerLocation = ref(false)
 const isMapOnlyEmbed = computed(() => route.query.embed === 'map')
@@ -419,7 +471,9 @@ watch([shareInfo, timelineData], ([info, data]) => {
 })
 
 onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   await loadShareInfo()
+  ensureAutoRefresh()
 })
 
 async function loadShareInfo() {
@@ -470,8 +524,8 @@ async function loadShareInfo() {
       await handlePasswordSubmit()
     }
   } catch (err) {
-    console.error('Failed to load share info:', err)
-    error.value = err.userMessage || err.message || 'Link not found or expired'
+    console.error('Failed to load share info:', import.meta.env.DEV ? err : productionErrorContext(err))
+    error.value = err.userMessage || err.message || t('sharing.sharedTimelinePage.loadFailed')
   } finally {
     loading.value = false
   }
@@ -498,21 +552,25 @@ async function handlePasswordSubmit() {
 
     authenticated.value = true
     await loadTimelineData()
+    ensureAutoRefresh()
   } catch (err) {
-    console.error('Password verification failed:', err)
-    passwordError.value = err.userMessage || 'Invalid password'
+    console.error('Password verification failed:', import.meta.env.DEV ? err : productionErrorContext(err))
+    passwordError.value = err.userMessage || t('sharing.sharedLocationPage.invalidPassword')
   } finally {
     verifying.value = false
   }
 }
 
-async function loadTimelineData() {
+async function loadTimelineData({silent = false} = {}) {
   if (shareInfo.value.timeline_status === 'upcoming') {
     // Don't load timeline for upcoming trips
     return
   }
+  if (refreshing.value) return
 
+  let retryAfterRenewal = false
   try {
+    refreshing.value = true
     // Determine date range to fetch
     let startTime = null
     let endTime = null
@@ -532,30 +590,110 @@ async function loadTimelineData() {
     const notesPromise = shareInfo.value.show_notes
       ? notesStore.fetchSharedNotes(linkId, shareLinksStore.sharedAccessToken, startTime, endTime)
       : Promise.resolve([])
+    const photosPromise = shareInfo.value.show_photos
+      ? immichStore.fetchSharedPhotos(linkId, shareLinksStore.sharedAccessToken, startTime, endTime)
+      : Promise.resolve([])
 
-    const [timeline, path, notes] = await Promise.all([
+    const [timeline, path, notes, photos] = await Promise.all([
       shareLinksStore.fetchSharedTimeline(linkId, startTime, endTime),
       shareLinksStore.fetchSharedPath(linkId, startTime, endTime),
-      notesPromise
+      notesPromise,
+      photosPromise
     ])
 
     timelineData.value = timeline
     pathData.value = path
     sharedNotes.value = notes
+    sharedPhotos.value = photos
 
     // Load current location if available
     if (shareInfo.value.show_current_location &&
         shareInfo.value.timeline_status === 'active') {
       currentLocation.value = await shareLinksStore.fetchSharedCurrentLocation(linkId)
+      followCurrentLocation()
     }
+    error.value = null
   } catch (err) {
-    console.error('Failed to load timeline data:', err)
-    error.value = 'Failed to load timeline data'
+    console.error('Failed to load timeline data:', import.meta.env.DEV ? err : productionErrorContext(err))
+    if (isAccessError(err)) {
+      localStorage.removeItem(`shareLink_${linkId}`)
+      if (shareInfo.value.has_password) {
+        authenticated.value = false
+        needsPassword.value = true
+        error.value = null
+        stopAutoRefresh()
+      } else {
+        try {
+          const response = await shareLinksStore.verifySharedLink(linkId)
+          storeToken(response)
+          retryAfterRenewal = true
+        } catch (renewalError) {
+          console.error('Failed to renew shared timeline access:', renewalError)
+          if (!silent) error.value = t('sharing.sharedTimelinePage.loadTimelineDataFailed')
+        }
+      }
+    } else if (!silent) {
+      error.value = t('sharing.sharedTimelinePage.loadTimelineDataFailed')
+    }
+  } finally {
+    refreshing.value = false
   }
+
+  if (retryAfterRenewal) await loadTimelineData({silent})
 }
 
 async function refreshData() {
   await loadTimelineData()
+}
+
+function followCurrentLocation() {
+  if (!autoFollow.value || !currentLocation.value ||
+      !hasValidCoordinate(currentLocation.value.latitude) || !hasValidCoordinate(currentLocation.value.longitude)) return
+
+  timelineMapRef.value?.setView?.(
+      [Number(currentLocation.value.latitude), Number(currentLocation.value.longitude)],
+      undefined,
+      {animate: true}
+  )
+}
+
+function toggleAutoFollow() {
+  autoFollow.value = !autoFollow.value
+  followCurrentLocation()
+}
+
+function isAccessError(err) {
+  return err?.status === 401 || err?.status === 403 ||
+      err?.message?.includes('No access token') || err?.message?.includes('Access denied')
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    window.clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+function canAutoRefresh() {
+  return autoRefreshIntervalMs.value > 0 && authenticated.value && timelineData.value &&
+      shareInfo.value?.timeline_status === 'active' && !loading.value && !needsPassword.value && !error.value &&
+      (typeof document === 'undefined' || document.visibilityState === 'visible')
+}
+
+function ensureAutoRefresh() {
+  stopAutoRefresh()
+  if (!canAutoRefresh()) return
+
+  autoRefreshTimer = window.setInterval(() => loadTimelineData({silent: true}), autoRefreshIntervalMs.value)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    ensureAutoRefresh()
+    loadTimelineData({silent: true})
+  } else {
+    stopAutoRefresh()
+  }
 }
 
 function getStoredToken() {
@@ -582,22 +720,30 @@ function storeToken(response) {
   localStorage.setItem(`shareLink_${linkId}`, JSON.stringify(tokenData))
 }
 
+watch(autoRefreshIntervalMs, ensureAutoRefresh)
+
+onUnmounted(() => {
+  clearSharedOwner()
+  stopAutoRefresh()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
 function formatDate(dateStr) {
-  if (!dateStr) return 'N/A'
+  if (!dateStr) return t('place.visitsTable.notAvailable')
   return timezone.formatDateDisplay(dateStr)
 }
 
 function formatExpiration() {
-  if (!shareInfo.value?.expires_at) return 'Never'
+  if (!shareInfo.value?.expires_at) return t('sharing.sharedLocationPage.timeUntil.never')
   return formatDate(shareInfo.value.expires_at)
 }
 
 function getStatusLabel() {
   const status = shareInfo.value?.timeline_status
-  if (status === 'upcoming') return 'Upcoming'
-  if (status === 'active') return 'Active'
-  if (status === 'completed') return 'Completed'
-  return 'Unknown'
+  if (status === 'upcoming') return t('sharing.sharedTimelinePage.statusUpcoming')
+  if (status === 'active') return t('sharing.sharedTimelinePage.statusActive')
+  if (status === 'completed') return t('sharing.sharedTimelinePage.statusCompleted')
+  return t('common.unknown')
 }
 
 function getStatusSeverity() {
@@ -610,7 +756,7 @@ function getStatusSeverity() {
 
 function getLinkedTripLabel() {
   if (!linkedTripWorkspace.value) return ''
-  return linkedTripWorkspace.value.name || `Trip #${linkedTripWorkspace.value.id}`
+  return linkedTripWorkspace.value.name || t('place.visitsTable.tripFallbackLabel', { id: linkedTripWorkspace.value.id })
 }
 
 function openLinkedTripWorkspace() {
@@ -647,22 +793,14 @@ function handleTimelineItemClick(item) {
 }
 
 /* Dark mode background */
-.p-dark .shared-timeline-page {
-  background-color: var(--gp-surface-dark);
-}
 
 .shared-header {
-  background-color: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
+  background-color: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   padding: 1rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.p-dark .shared-header {
-  background-color: var(--gp-surface-card);
-  border-bottom: 1px solid var(--gp-border-dark);
 }
 
 /* Authenticated Header - Desktop: Single line, Mobile: 3 rows */
@@ -754,26 +892,21 @@ function handleTimelineItemClick(item) {
 
 .meta-trip-link {
   border-radius: 999px;
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
   color: var(--gp-primary);
   white-space: nowrap;
 }
 
 .meta-trip-link:hover {
-  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-card));
   color: var(--gp-primary-hover);
 }
 
 .meta-trip-link:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
   outline-offset: 2px;
-}
-
-.p-dark .meta-trip-link {
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark));
 }
 
 /* Row 3: Date Filter and Actions (before theme switcher on desktop) */
@@ -791,10 +924,16 @@ function handleTimelineItemClick(item) {
   flex-shrink: 0;
 }
 
+.auto-refresh-select {
+  width: 9rem;
+  flex-shrink: 0;
+}
+
 /* Theme Switcher - At the end on desktop */
 .header-theme-switcher {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   flex-shrink: 0;
   order: 4;
 }
@@ -855,7 +994,7 @@ function handleTimelineItemClick(item) {
 }
 
 .field .p-error {
-  color: var(--red-500);
+  color: var(--gp-danger-text);
   font-size: 0.875rem;
   font-weight: 500;
   margin-top: 0.25rem;
@@ -889,17 +1028,17 @@ function handleTimelineItemClick(item) {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background-color: var(--surface-100);
-  border-radius: var(--border-radius);
+  background-color: var(--gp-surface-muted);
+  border-radius: var(--gp-radius-medium);
 }
 
 .detail-item i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .info-hint {
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -914,36 +1053,13 @@ function handleTimelineItemClick(item) {
 
 .timeline-map,
 .timeline-sidebar {
-  background-color: var(--gp-surface-white);
+  background-color: var(--gp-surface-card);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
   height: 100%;
 }
 
-.p-dark .timeline-map,
-.p-dark .timeline-sidebar {
-  background-color: var(--gp-surface-card);
-}
-
 /* Dark mode for password and info cards */
-.p-dark .card-header h2 {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .field label {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .field .p-error {
-  color: var(--red-400);
-  font-weight: 600;
-}
-
-.p-dark .password-card,
-.p-dark .info-card,
-.p-dark .error-card {
-  background-color: var(--gp-surface-card);
-}
 
 .timeline-map {
   position: relative;
@@ -953,7 +1069,7 @@ function handleTimelineItemClick(item) {
 .timeline-sidebar {
   /* Match the right-pane from TimelinePage.vue */
   flex: 1;
-  overflow-y: auto !important;
+  overflow-y: auto;
   overflow-x: hidden;
   height: 100%;
   min-height: 350px;
@@ -1016,7 +1132,7 @@ function handleTimelineItemClick(item) {
 
   /* Hide GeoPulse brand and status tag on mobile */
   .desktop-only {
-    display: none !important;
+    display: none;
   }
 
   /* Row 1: Timeline name - stays on first line */
@@ -1155,10 +1271,6 @@ function handleTimelineItemClick(item) {
   height: 100dvh;
   overflow: hidden;
   background-color: var(--gp-surface-ground);
-}
-
-.p-dark .shared-timeline-page--embed {
-  background-color: var(--gp-surface-dark);
 }
 
 .shared-content--embed {

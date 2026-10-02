@@ -8,21 +8,24 @@
     @click="$emit('click', $event)"
   >
     <template #subtitle>
-      🏠 Stayed at
-      <span class="location-name">{{ item.locationName || 'Unknown Location' }}</span>
+      🏠 {{ t('timeline.stay.stayedAt') }}
+      <span class="location-name">{{ item.locationName || t('data.tables.unknownLocation') }}</span>
     </template>
 
     <template #content>
       <p class="stay-detail">
-        For <span class="font-bold">{{ formatDuration(item.stayDuration) }}</span>
+        {{ t('timeline.stay.forDuration') }} <span class="font-bold">{{ formatDuration(item.stayDuration) }}</span>
       </p>
     </template>
   </BaseFriendTimelineCard>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import BaseFriendTimelineCard from './BaseFriendTimelineCard.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   item: {
@@ -61,11 +64,6 @@ defineEmits(['click'])
 
 .font-bold {
   font-weight: 600;
-}
-
-.p-dark .location-name,
-.p-dark .stay-detail {
-  color: var(--gp-text-primary);
 }
 
 @media (max-width: 768px) {

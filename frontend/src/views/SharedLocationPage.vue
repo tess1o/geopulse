@@ -8,6 +8,8 @@
           <h1 class="app-title">GeoPulse</h1>
         </div>
         <div class="header-right">
+          <!-- Colors only apply to the history path, so the menu appears with it. -->
+          <MapAppearanceControl v-if="hasHistoryData" class="large-theme-toggle" />
           <DarkModeSwitcher class="large-theme-toggle"/>
         </div>
       </div>
@@ -18,7 +20,7 @@
       <!-- Loading State -->
       <div v-if="loading" class="loading-state">
         <ProgressSpinner/>
-        <p>Loading shared location...</p>
+        <p>{{ t('sharing.sharedLocationPage.loading') }}</p>
       </div>
 
       <!-- Error State -->
@@ -28,10 +30,10 @@
             <div class="error-content">
               <i class="pi pi-exclamation-triangle error-icon"></i>
               <div class="error-message">
-                <h3>Error Loading Location</h3>
+                <h3>{{ t('sharing.sharedLocationPage.errorTitle') }}</h3>
                 <p>{{ error }}</p>
                 <Button
-                    label="Try Again"
+                    :label="t('common.tryAgain')"
                     @click="initializeSharedView"
                     class="retry-btn"
                 />
@@ -48,20 +50,20 @@
             <div class="password-content">
               <i class="pi pi-lock password-icon"></i>
               <div class="password-form">
-                <h3>Password Required</h3>
-                <p>This shared location is password protected.</p>
+                <h3>{{ t('sharing.sharedLocationPage.passwordRequiredTitle') }}</h3>
+                <p>{{ t('sharing.sharedLocationPage.passwordRequiredMessage') }}</p>
                 <form @submit.prevent="verifyPassword" class="password-input-form">
                   <div class="input-group">
                     <Password
                         v-model="password"
-                        placeholder="Enter password"
+                        :placeholder="t('sharing.sharedLocationPage.passwordPlaceholder')"
                         :feedback="false"
                         class="password-input"
                         autofocus
                     />
                     <Button
                         type="submit"
-                        label="Access"
+                        :label="t('sharing.sharedLocationPage.access')"
                         :loading="loading"
                         class="access-btn"
                     />
@@ -79,24 +81,24 @@
         <Card v-if="!isMapEmbed" class="location-info-card">
           <template #content>
             <div class="location-info">
-              <h2 class="share-title">{{ shareData.shareName || 'Shared Location' }}</h2>
+              <h2 class="share-title">{{ shareData.shareName || t('sharing.sharedLocationPage.defaultShareName') }}</h2>
               <p v-if="shareData.description" class="share-description">{{ shareData.description }}</p>
 
               <div class="info-grid">
                 <div class="info-item">
-                  <span class="info-label">Shared by:</span>
-                  <span class="info-value">{{ shareLinksStore.getSharedLocationInfo?.shared_by || 'Unknown' }}</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.sharedByLabel') }}</span>
+                  <span class="info-value">{{ shareLinksStore.getSharedLocationInfo?.shared_by || t('sharing.sharedLocationPage.unknown') }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Last seen:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.lastSeenLabel') }}</span>
                   <span class="info-value">{{ timezone.timeAgo(shareData.sharedAt) }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Expires:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.expiresLabel') }}</span>
                   <span class="info-value" :class="getExpirationClass()">{{ formatExpiration() }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Scope:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.scopeLabel') }}</span>
                   <span class="info-value">{{ scopeLabel }}</span>
                 </div>
               </div>
@@ -109,17 +111,40 @@
           <Card class="map-card" :class="{ 'map-card--embed': isMapEmbed }">
             <template v-if="!isMapEmbed" #header>
               <div class="map-header">
-                <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
-                <Button
-                    icon="pi pi-refresh"
-                    @click="refreshLocationData"
-                    :loading="refreshing"
-                    severity="secondary"
-                    outlined
-                    size="small"
-                    class="refresh-btn"
-                    v-tooltip.bottom="'Refresh location data'"
-                />
+                <h3 class="map-title">{{ hasHistoryData ? t('sharing.sharedLocationPage.locationAndHistory') : t('sharing.sharedLocationPage.currentLocation') }}</h3>
+                <div class="map-actions">
+                  <Select
+                      v-model="autoRefreshIntervalMs"
+                      :options="autoRefreshOptions"
+                      option-label="label"
+                      option-value="value"
+                      size="small"
+                      :aria-label="t('sharing.sharedLocationPage.autoRefreshAriaLabel')"
+                      class="auto-refresh-select"
+                  />
+                  <Button
+                      icon="pi pi-compass"
+                      @click="toggleAutoFollow"
+                      :severity="autoFollow ? 'primary' : 'secondary'"
+                      :outlined="!autoFollow"
+                      size="small"
+                      class="refresh-btn"
+                      :aria-label="autoFollow ? t('sharing.sharedLocationPage.disableAutoFollowAriaLabel') : t('sharing.sharedLocationPage.enableAutoFollowAriaLabel')"
+                      :aria-pressed="autoFollow"
+                      v-tooltip.bottom="autoFollow ? t('sharing.sharedLocationPage.autoFollowOnTooltip') : t('sharing.sharedLocationPage.autoFollowOffTooltip')"
+                  />
+                  <Button
+                      icon="pi pi-refresh"
+                      @click="refreshLocationData"
+                      :loading="refreshing"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      class="refresh-btn"
+                      :aria-label="t('sharing.sharedLocationPage.refreshAriaLabel')"
+                      v-tooltip.bottom="t('sharing.sharedLocationPage.refreshTooltip')"
+                  />
+                </div>
               </div>
             </template>
             <template #content>
@@ -127,7 +152,7 @@
                 <MapContainer
                     ref="mapContainerRef"
                     map-id="shared-location-map"
-                    :center="[shareData.latitude, shareData.longitude]"
+                    :center="initialMapCenter"
                     :zoom="15"
                     height="100%"
                     width="100%"
@@ -155,12 +180,6 @@
                         :map="map"
                         :path-data="pathData"
                         :visible="true"
-                        :path-options="{
-                      color: '#007bff',
-                      weight: 3,
-                      opacity: 0.7,
-                      smoothFactor: 1
-                    }"
                     />
 
                     <!-- Current location marker -->
@@ -191,8 +210,8 @@
               <div class="no-data-content">
                 <i class="pi pi-info-circle no-data-icon"></i>
                 <div class="no-data-message">
-                  <h3>No Location Data Available</h3>
-                  <p>The user hasn't recorded any GPS location data yet.</p>
+                  <h3>{{ t('sharing.sharedLocationPage.noDataTitle') }}</h3>
+                  <p>{{ t('sharing.sharedLocationPage.noDataMessage') }}</p>
                 </div>
               </div>
             </template>
@@ -205,10 +224,12 @@
     <div v-if="!isMapEmbed" class="shared-footer">
       <div class="footer-content">
         <p class="footer-text">
-          Powered by <strong>GeoPulse</strong> - Location Analytics Platform
+          <i18n-t keypath="sharing.sharedLocationPage.footerText" tag="span">
+            <template #brand><strong>GeoPulse</strong></template>
+          </i18n-t>
         </p>
         <Button
-            label="Get GeoPulse"
+            :label="t('sharing.sharedLocationPage.getApp')"
             severity="secondary"
             @click="visitGeoPulse"
             class="get-app-btn"
@@ -219,9 +240,11 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute} from 'vue-router'
 import {Button, Card, Password, ProgressSpinner} from 'primevue'
+import Select from 'primevue/select'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import {MapContainer} from '@/components/maps'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
@@ -231,7 +254,11 @@ import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
+import { useSharedMapAppearance } from '@/composables/useMapAppearance'
+import MapAppearanceControl from '@/components/maps/MapAppearanceControl.vue'
+import { productionErrorContext } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 
@@ -239,6 +266,15 @@ const route = useRoute()
 const linkId = route.params.linkId
 const shareLinksStore = useShareLinksStore()
 const viewerLocation = useViewerLocation()
+// The map shows the owner's colors unless the viewer picks otherwise (MapAppearanceControl).
+const { setSharedOwner, clearSharedOwner } = useSharedMapAppearance()
+watch(() => shareLinksStore.getSharedLocationInfo, (info) => {
+  if (info) {
+    setSharedOwner(info.map_appearance, info.shared_by)
+  } else {
+    clearSharedOwner()
+  }
+}, { immediate: true })
 const isMapEmbed = computed(() => route.query.embed === 'map')
 
 // State
@@ -250,6 +286,16 @@ const password = ref('')
 const refreshing = ref(false)
 const pathData = ref([])
 const shouldFitViewerLocation = ref(false)
+const initialMapCenter = ref(null)
+const autoFollow = ref(true)
+const autoRefreshIntervalMs = ref(15_000)
+const autoRefreshOptions = computed(() => [
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.off'), value: 0},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec5'), value: 5_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec15'), value: 15_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec30'), value: 30_000}
+])
+let autoRefreshTimer = null
 
 // Template refs
 const mapContainerRef = ref(null)
@@ -264,14 +310,14 @@ const hasHistoryData = computed(() => {
 const scopeLabel = computed(() => {
   const info = shareLinksStore.getSharedLocationInfo;
   if (!info || !info.show_history) {
-    return 'Current Location Only';
+    return t('sharing.sharedLocationPage.scope.currentOnly');
   }
 
   if (info.history_hours && info.history_hours > 0) {
-    return `Location History (${info.history_hours}h)`;
+    return t('sharing.sharedLocationPage.scope.historyWithHours', { hours: info.history_hours });
   }
 
-  return 'Location History';
+  return t('sharing.sharedLocationPage.scope.history');
 });
 
 const viewerLocationPoint = computed(() => viewerLocation.location.value)
@@ -380,7 +426,7 @@ const initializeSharedView = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.userMessage || err.message || 'Failed to load shared location'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.loadFailed')
     loading.value = false
   }
 }
@@ -396,6 +442,30 @@ const storeAccessToken = (tokenResponse) => {
   } catch (error) {
     // Silent fail
   }
+}
+
+const applyLocationData = (locationData, preserveMeta = false) => {
+  if (!locationData) return
+
+  const currentLocation = locationData.current || locationData
+  if (!initialMapCenter.value && hasValidCoordinate(currentLocation.latitude) && hasValidCoordinate(currentLocation.longitude)) {
+    initialMapCenter.value = [Number(currentLocation.latitude), Number(currentLocation.longitude)]
+  }
+
+  shareData.value = {
+    ...(preserveMeta ? shareData.value : {
+      sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
+      shareName: shareLinksStore.getSharedLocationInfo?.name || t('sharing.sharedLocationPage.defaultShareName'),
+      description: shareLinksStore.getSharedLocationInfo?.description || ''
+    }),
+    latitude: currentLocation.latitude,
+    longitude: currentLocation.longitude,
+    sharedAt: currentLocation.timestamp || timezone.now().toISOString()
+  }
+
+  pathData.value = shareLinksStore.getSharedLocationInfo?.show_history && locationData.history?.length
+      ? [locationData.history.map(({latitude, longitude, timestamp}) => ({latitude, longitude, timestamp}))]
+      : []
 }
 
 // Verify password for protected links
@@ -417,7 +487,7 @@ const verifyPassword = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.userMessage || err.message || 'Invalid password'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.invalidPassword')
     loading.value = false
   }
 }
@@ -428,35 +498,10 @@ const loadLocationData = async () => {
     loading.value = true
 
     await shareLinksStore.fetchSharedLocation(linkId)
-    const locationData = shareLinksStore.getSharedLocationData
-
-    // Convert to expected format
-    if (locationData) {
-      // Handle both current-only and current+history response formats
-      const currentLocation = locationData.current || locationData
-
-      shareData.value = {
-        sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
-        shareName: shareLinksStore.getSharedLocationInfo?.name || 'Shared Location',
-        description: shareLinksStore.getSharedLocationInfo?.description || '',
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp
-      }
-
-      // Process history data if available
-      if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
-        pathData.value = [locationData.history.map(point => ({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          timestamp: point.timestamp
-        }))]
-      } else {
-        pathData.value = []
-      }
-    }
+    applyLocationData(shareLinksStore.getSharedLocationData)
 
     loading.value = false
+    ensureAutoRefresh()
   } catch (err) {
     // Clean up stored token if it's no longer valid for location access
     if (err.message?.includes('No access token') ||
@@ -474,42 +519,21 @@ const loadLocationData = async () => {
       }
     }
 
-    error.value = err.userMessage || err.message || 'Failed to load location data'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.loadLocationDataFailed')
     loading.value = false
   }
 }
 
 // Refresh location data without re-authentication
 const refreshLocationData = async () => {
+  if (refreshing.value) return
+
   try {
     refreshing.value = true
 
     await shareLinksStore.fetchSharedLocation(linkId)
-    const locationData = shareLinksStore.getSharedLocationData
-
-    // Update shareData with new location info
-    if (locationData) {
-      // Handle both current-only and current+history response formats
-      const currentLocation = locationData.current || locationData
-
-      shareData.value = {
-        ...shareData.value, // Keep existing name, description
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp || timezone.now().toISOString()
-      }
-
-      // Update history data if available
-      if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
-        pathData.value = [locationData.history.map(point => ({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          timestamp: point.timestamp
-        }))]
-      } else {
-        pathData.value = []
-      }
-    }
+    applyLocationData(shareLinksStore.getSharedLocationData, true)
+    followLiveLocation()
   } catch (err) {
     // Clean up stored token if refresh fails due to invalid token
     if (err.message?.includes('No access token') ||
@@ -518,15 +542,77 @@ const refreshLocationData = async () => {
         err.status === 403) {
       localStorage.removeItem(`shareLink_${linkId}`)
 
-      // If token was invalid, redirect back to password entry for protected links
       if (shareLinksStore.getSharedLocationInfo?.has_password) {
         needsPassword.value = true
-        error.value = 'Session expired. Please enter password again.'
+        error.value = null
         loading.value = false
+        stopAutoRefresh()
+      } else {
+        try {
+          const tokenResponse = await shareLinksStore.verifySharedLink(linkId)
+          storeAccessToken(tokenResponse)
+          await refreshLocationDataAfterRenewal()
+        } catch (renewalError) {
+          console.error('Failed to renew shared location access:', renewalError)
+        }
       }
+    } else {
+      console.error('Failed to refresh shared location:', import.meta.env.DEV ? err : productionErrorContext(err))
     }
   } finally {
     refreshing.value = false
+  }
+}
+
+const refreshLocationDataAfterRenewal = async () => {
+  await shareLinksStore.fetchSharedLocation(linkId)
+  applyLocationData(shareLinksStore.getSharedLocationData, true)
+  followLiveLocation()
+}
+
+const followLiveLocation = () => {
+  if (!autoFollow.value || !shareData.value ||
+      !hasValidCoordinate(shareData.value.latitude) || !hasValidCoordinate(shareData.value.longitude)) return
+
+  nextTick(() => {
+    const zoom = mapContainerRef.value?.getMap?.()?.getZoom?.() ?? 15
+    mapContainerRef.value?.setView?.(
+        [Number(shareData.value.latitude), Number(shareData.value.longitude)],
+        zoom,
+        {animate: true}
+    )
+  })
+}
+
+const toggleAutoFollow = () => {
+  autoFollow.value = !autoFollow.value
+  followLiveLocation()
+}
+
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer) {
+    window.clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+const canAutoRefresh = () => autoRefreshIntervalMs.value > 0 &&
+    shareData.value && !loading.value && !needsPassword.value && !error.value &&
+    (typeof document === 'undefined' || document.visibilityState === 'visible')
+
+const ensureAutoRefresh = () => {
+  stopAutoRefresh()
+  if (!canAutoRefresh()) return
+
+  autoRefreshTimer = window.setInterval(refreshLocationData, autoRefreshIntervalMs.value)
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    ensureAutoRefresh()
+    refreshLocationData()
+  } else {
+    stopAutoRefresh()
   }
 }
 
@@ -537,31 +623,31 @@ const handleMapReady = (mapInstance) => {
 
 // Format time until expiration (like timeAgo but for future dates)
 const timeUntil = (futureDate) => {
-  if (!futureDate) return 'Never'
+  if (!futureDate) return t('sharing.sharedLocationPage.timeUntil.never')
 
   const dateObj = timezone.fromUtc(futureDate);
 
   if (!dateObj.isValid()) {
-    return 'Invalid date'
+    return t('sharing.sharedLocationPage.timeUntil.invalidDate')
   }
 
   const now = timezone.now();
   const diffMs = dateObj.diff(now);
 
   if (diffMs <= 0) {
-    return 'Expired'
+    return t('sharing.sharedLocationPage.timeUntil.expired')
   }
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffMinutes < 60) return `In ${diffMinutes} min`
-  if (diffHours < 24) return `In ${diffHours} hours`
-  if (diffDays < 30) return `In ${diffDays} days`
+  if (diffMinutes < 60) return t('sharing.sharedLocationPage.timeUntil.inMinutes', { count: diffMinutes })
+  if (diffHours < 24) return t('sharing.sharedLocationPage.timeUntil.inHours', { count: diffHours })
+  if (diffDays < 30) return t('sharing.sharedLocationPage.timeUntil.inDays', { count: diffDays })
 
   // For longer periods, show actual date
-  return `On ${timezone.formatDateDisplay(dateObj.toISOString())} ${timezone.formatTime(dateObj.toISOString())}`
+  return t('sharing.sharedLocationPage.timeUntil.onDate', { date: timezone.formatDateDisplay(dateObj.toISOString()), time: timezone.formatTime(dateObj.toISOString()) })
 }
 
 // Format expiration using timeUntil
@@ -599,8 +685,18 @@ const visitGeoPulse = () => {
 
 
 // Lifecycle
-onMounted(() => {
-  initializeSharedView()
+onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  await initializeSharedView()
+  ensureAutoRefresh()
+})
+
+watch(autoRefreshIntervalMs, ensureAutoRefresh)
+
+onUnmounted(() => {
+  clearSharedOwner()
+  stopAutoRefresh()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // Note: Not clearing store data on unmount to allow page refresh persistence
@@ -612,7 +708,7 @@ onMounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, var(--gp-surface-light) 0%, var(--gp-surface-gray) 100%);
+  background: linear-gradient(135deg, var(--gp-surface-card) 0%, var(--gp-surface-ground) 100%);
 }
 
 .shared-location-page--map-embed {
@@ -620,13 +716,13 @@ onMounted(() => {
   min-height: 100dvh;
   height: 100vh;
   height: 100dvh;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 /* Header */
 .shared-header {
-  background: var(--p-surface-card);
-  border-bottom: 1px solid var(--p-surface-border);
+  background: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-border);
   padding: 0.5rem 0;
 }
 
@@ -660,11 +756,14 @@ onMounted(() => {
 .app-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--p-primary-color);
+  color: var(--gp-primary);
   margin: 0;
 }
 
 .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 
@@ -741,11 +840,11 @@ onMounted(() => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .error-message p, .password-form p {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
 }
 
@@ -788,7 +887,7 @@ onMounted(() => {
 
 .no-data-icon {
   font-size: 2rem;
-  color: var(--p-blue-500);
+  color: var(--gp-primary);
   flex-shrink: 0;
 }
 
@@ -800,11 +899,11 @@ onMounted(() => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .no-data-message p {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
 }
 
@@ -848,18 +947,18 @@ onMounted(() => {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
 }
 
 .share-description {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1rem 0;
   font-style: italic;
 }
 
 .share-meta {
   font-size: 0.9rem;
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .info-grid {
@@ -893,18 +992,18 @@ onMounted(() => {
 
 .info-label {
   font-size: 0.875rem;
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   font-weight: 500;
 }
 
 .info-value {
   font-size: 1rem;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
   font-weight: 600;
 }
 
 .info-value.expired {
-  color: var(--p-red-500);
+  color: var(--gp-danger);
 }
 
 .info-value.expiring-soon {
@@ -915,15 +1014,26 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--p-surface-border);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .map-title {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
-  color: var(--p-text-color);
+  color: var(--gp-text-primary);
+}
+
+.map-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auto-refresh-select {
+  width: 9rem;
 }
 
 .refresh-btn {
@@ -946,8 +1056,8 @@ onMounted(() => {
 
 /* Footer */
 .shared-footer {
-  background: var(--p-surface-50);
-  border-top: 1px solid var(--p-surface-border);
+  background: var(--gp-surface-ground);
+  border-top: 1px solid var(--gp-border);
   padding: 1.5rem 0;
   margin-top: auto;
 }
@@ -962,71 +1072,8 @@ onMounted(() => {
 }
 
 .footer-text {
-  color: var(--p-text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0;
-}
-
-/* Dark Mode Support */
-.p-dark .shared-location-page {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
-}
-
-.p-dark .shared-location-page--map-embed {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .shared-location-page .shared-footer {
-  background: var(--gp-surface-darker) !important;
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .shared-location-page .footer-text {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .share-title {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-value {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-label {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .shared-location-page .password-form h3,
-.p-dark .shared-location-page .error-message h3 {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .info-value.expired {
-  color: var(--gp-danger) !important;
-}
-
-.p-dark .shared-location-page .info-value.expiring-soon {
-  color: var(--gp-warning) !important;
-}
-
-.p-dark .shared-location-page .map-title {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .map-header {
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .shared-location-page .no-data-message h3 {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .shared-location-page .no-data-message p {
-  color: var(--gp-text-secondary) !important;
-}
-
-.p-dark .shared-location-page .no-data-icon {
-  color: var(--gp-primary) !important;
 }
 
 /* Responsive */
@@ -1037,6 +1084,10 @@ onMounted(() => {
 
   .shared-content--map-embed {
     padding: 0;
+  }
+
+  .map-header {
+    flex-wrap: wrap;
   }
 
   .location-display {

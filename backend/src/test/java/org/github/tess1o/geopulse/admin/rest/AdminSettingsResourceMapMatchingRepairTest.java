@@ -1,14 +1,16 @@
 package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
-import jakarta.ws.rs.core.Response;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import org.github.tess1o.geopulse.admin.dto.MapMatchingRebuildResponse;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildResult;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -53,55 +56,105 @@ class AdminSettingsResourceMapMatchingRepairTest {
         resource.httpRequest = httpRequest;
     }
 
-    @Test
-    void rebuildMapMatchingHistoricalQueueRestartsQueueAndAuditsAction() {
+    private void givenMapMatchingEnabledAndConfigured() {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(true);
         when(mapMatchingConfiguration.backfillEnabled()).thenReturn(true);
         when(mapMatchingConfiguration.provider()).thenReturn("valhalla");
         when(mapMatchingConfiguration.valhallaConfigured()).thenReturn(true);
-        when(mapMatchingWorker.rebuildHistoricalQueue()).thenReturn(2L);
+    }
+
+    private void givenAdminRequestContext() {
         when(currentUserService.getCurrentUserId()).thenReturn(adminId);
+        when(resource.httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.7");
+    }
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue("203.0.113.7", null);
+    @Test
+    void rebuildMapMatchingRequeuesUnsuccessfulTargetsByDefault() {
+        givenMapMatchingEnabledAndConfigured();
+        givenAdminRequestContext();
+        when(mapMatchingWorker.rebuildMapMatching(MapMatchingRebuildMode.UNSUCCESSFUL))
+                .thenReturn(new MapMatchingRebuildResult(MapMatchingRebuildMode.UNSUCCESSFUL, 2L, 5L, 3L));
 
-        assertThat(response.getStatus()).isEqualTo(200);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getStatus()).isEqualTo("success");
-        Map<?, ?> data = (Map<?, ?>) body.getData();
-        assertThat(data.get("queuedUsers")).isEqualTo(2L);
-        verify(mapMatchingWorker).rebuildHistoricalQueue();
+        MapMatchingRebuildResponse response = resource.rebuildMapMatching(null);
+
+        assertThat(response.mode()).isEqualTo(MapMatchingRebuildMode.UNSUCCESSFUL);
+        assertThat(response.queuedUsers()).isEqualTo(2L);
+        assertThat(response.affectedTargets()).isEqualTo(5L);
+        assertThat(response.purgedDetachedTargets()).isEqualTo(3L);
+        verify(mapMatchingWorker).rebuildMapMatching(MapMatchingRebuildMode.UNSUCCESSFUL);
         verify(auditLogService).logAction(
                 adminId,
                 ActionType.MAP_MATCHING_HISTORICAL_REBUILD,
                 TargetType.SETTING,
                 "map-matching.historical-rebuild",
-                Map.of("queuedUsers", 2L),
+                Map.of("mode", "UNSUCCESSFUL", "queuedUsers", 2L, "affectedTargets", 5L),
                 "203.0.113.7"
         );
     }
 
     @Test
-    void rebuildMapMatchingHistoricalQueueRejectsDisabledMapMatching() {
-        when(mapMatchingConfiguration.isEnabled()).thenReturn(false);
+    void rebuildMapMatchingWithAllModeClearsEveryStoredResult() {
+        givenMapMatchingEnabledAndConfigured();
+        givenAdminRequestContext();
+        when(mapMatchingWorker.rebuildMapMatching(MapMatchingRebuildMode.ALL))
+                .thenReturn(new MapMatchingRebuildResult(MapMatchingRebuildMode.ALL, 3L, 466L, 0L));
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue(null, null);
+        MapMatchingRebuildResponse response = resource.rebuildMapMatching("all");
 
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getMessage()).isEqualTo("Map matching is disabled");
+        assertThat(response.mode()).isEqualTo(MapMatchingRebuildMode.ALL);
+        assertThat(response.affectedTargets()).isEqualTo(466L);
+        verify(auditLogService).logAction(
+                adminId,
+                ActionType.MAP_MATCHING_CACHE_CLEARED,
+                TargetType.SETTING,
+                "map-matching.cache",
+                Map.of("mode", "ALL", "queuedUsers", 3L, "affectedTargets", 466L),
+                "203.0.113.7"
+        );
+    }
+
+    @Test
+    void rebuildMapMatchingRejectsUnknownMode() {
+        givenMapMatchingEnabledAndConfigured();
+
+        assertThatThrownBy(() -> resource.rebuildMapMatching("EVERYTHING"))
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
+                        .isEqualTo("Unknown map matching mode: EVERYTHING"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 
     @Test
-    void rebuildMapMatchingHistoricalQueueRejectsDisabledBackfill() {
+    void rebuildMapMatchingRejectsDisabledMapMatching() {
+        when(mapMatchingConfiguration.isEnabled()).thenReturn(false);
+
+        assertThatThrownBy(() -> resource.rebuildMapMatching(null))
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Map matching is disabled"));
+        verifyNoInteractions(mapMatchingWorker, auditLogService);
+    }
+
+    @Test
+    void rebuildMapMatchingRejectsDisabledBackfill() {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(true);
         when(mapMatchingConfiguration.backfillEnabled()).thenReturn(false);
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue(null, null);
+        assertThatThrownBy(() -> resource.rebuildMapMatching(null))
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Historical backfill is disabled"));
+        verifyNoInteractions(mapMatchingWorker, auditLogService);
+    }
 
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getMessage()).isEqualTo("Historical backfill is disabled");
+    @Test
+    void rebuildMapMatchingRejectsUnconfiguredValhalla() {
+        when(mapMatchingConfiguration.isEnabled()).thenReturn(true);
+        when(mapMatchingConfiguration.backfillEnabled()).thenReturn(true);
+        when(mapMatchingConfiguration.provider()).thenReturn("valhalla");
+        when(mapMatchingConfiguration.valhallaConfigured()).thenReturn(false);
+
+        assertThatThrownBy(() -> resource.rebuildMapMatching(null))
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Valhalla is not configured"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 }

@@ -8,10 +8,13 @@ import { ValidationHelpers } from '../utils/validation-helpers.js';
 
 test.describe('Authentication Flow', () => {
   test.describe('Session Management', () => {
-    test('should maintain session across page reloads', async ({ page, isolatedUsers }) => {
+    test('should maintain session across page reloads', async ({ page, isolatedUsers, dbManager }) => {
       const loginPage = new LoginPage(page);
       const timelinePage = new TimelinePage(page);
       const testUser = await isolatedUsers.create(page);
+      const createdUser = await dbManager.getUserByEmail(testUser.email);
+
+      expect(createdUser.notification_preferences.whatsNewEnabled).toBe(false);
 
       // Login first
       await loginPage.navigate();

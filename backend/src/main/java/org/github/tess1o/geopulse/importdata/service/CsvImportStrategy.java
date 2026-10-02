@@ -256,9 +256,9 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
             return row;
 
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Invalid timestamp format. Expected ISO-8601 (e.g., 2024-01-15T10:30:00Z)");
+            throw new IllegalArgumentException("Invalid timestamp format. Expected ISO-8601 (e.g., 2024-01-15T10:30:00Z)", e);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid numeric value in CSV row");
+            throw new IllegalArgumentException("Invalid numeric value in CSV row", e);
         }
     }
 
@@ -268,7 +268,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
     private GpsPointEntity convertRowToGpsPoint(CsvRow row, UserEntity user) {
         // Validate required fields - latitude range: -90 to 90, longitude range: -180 to 180
         if (row.latitude < -90.0 || row.latitude > 90.0 || row.longitude < -180.0 || row.longitude > 180.0) {
-            log.debug("Skipping GPS point with invalid coordinates: lat={}, lon={}", row.latitude, row.longitude);
+            log.debug("Skipping GPS point with invalid coordinates");
             return null;
         }
 

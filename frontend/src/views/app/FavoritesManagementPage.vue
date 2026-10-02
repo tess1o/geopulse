@@ -1,34 +1,34 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-        title="Favorite Locations Management"
-        subtitle="View, manage, and organize your favorite places"
+        :title="t('sharing.favorites.managementPage.title')"
+        :subtitle="t('sharing.favorites.managementPage.subtitle')"
         :loading="isLoading"
         variant="fullwidth"
     >
       <template #actions>
         <div class="header-actions">
-          <span class="header-info">Right-click on map to add favorites</span>
+          <span class="header-info">{{ t('sharing.favorites.managementPage.headerInfo') }}</span>
           <Button
-            :label="bulkAddMode ? 'Bulk Mode: ON' : 'Bulk Mode: OFF'"
+            :label="bulkAddMode ? t('sharing.favorites.managementPage.bulkModeOn') : t('sharing.favorites.managementPage.bulkModeOff')"
             :icon="bulkAddMode ? 'pi pi-check-square' : 'pi pi-square'"
             :severity="bulkAddMode ? 'success' : 'secondary'"
             size="small"
             @click="toggleBulkMode"
-            v-tooltip.bottom="'Enable bulk mode to add multiple favorites before timeline regeneration'"
+            v-tooltip.bottom="t('sharing.favorites.managementPage.bulkModeTooltip')"
           />
           <Button
             v-if="hasPendingFavorites"
-            :label="`Save ${pendingCount} Pending`"
+            :label="t('sharing.favorites.managementPage.savePending', { count: pendingCount })"
             icon="pi pi-save"
             severity="success"
             size="small"
             @click="handleBulkSaveClick"
             class="save-pending-button"
-            v-tooltip.bottom="'Save all pending favorites and regenerate timeline'"
+            v-tooltip.bottom="t('sharing.favorites.managementPage.savePendingTooltip')"
           />
           <Button
-            :label="`Reconcile All (${totalRecords})`"
+            :label="t('sharing.favorites.managementPage.reconcileAll', { count: totalRecords })"
             icon="pi pi-refresh"
             severity="secondary"
             size="small"
@@ -37,7 +37,7 @@
           />
           <Button
             v-if="selectedRows.length > 0"
-            :label="`Bulk Edit (${selectedRows.length})`"
+            :label="t('sharing.favorites.managementPage.bulkEdit', { count: selectedRows.length })"
             icon="pi pi-pencil"
             severity="secondary"
             size="small"
@@ -46,7 +46,7 @@
           />
           <Button
             v-if="selectedRows.length > 0"
-            :label="`Reconcile Selected (${selectedRows.length})`"
+            :label="t('sharing.favorites.managementPage.reconcileSelected', { count: selectedRows.length })"
             icon="pi pi-refresh"
             severity="info"
             size="small"
@@ -60,14 +60,14 @@
       <BaseCard class="map-section">
         <div class="map-header">
           <div class="map-heading">
-            <h3 class="map-title">Favorites Map</h3>
-            <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
+            <h3 class="map-title">{{ t('sharing.favorites.managementPage.mapTitle') }}</h3>
+            <span class="map-subtitle">{{ t('sharing.favorites.managementPage.mapSubtitle', { count: totalRecords }, totalRecords) }}</span>
           </div>
           <div class="place-search-control">
             <TripPlanLocationSearchInput
                 v-model="placeSearchQuery"
                 :suggestions="placeSearchSuggestions"
-                placeholder="Search place to add..."
+                :placeholder="t('sharing.favorites.managementPage.searchPlacePlaceholder')"
                 :loading="isPlaceSearchLoading"
                 :error="placeSearchError"
                 :show-loading-text="false"
@@ -92,7 +92,7 @@
           />
           <div v-else class="map-loading-state">
             <i class="pi pi-spin pi-spinner"></i>
-            <span>Preparing map...</span>
+            <span>{{ t('sharing.favorites.managementPage.preparingMap') }}</span>
           </div>
         </div>
       </BaseCard>
@@ -108,28 +108,28 @@
       <BaseCard class="filter-section">
         <div class="filter-controls">
           <div class="filter-group">
-            <label class="filter-label">Type:</label>
+            <label class="filter-label">{{ t('sharing.favorites.managementPage.typeLabel') }}</label>
             <Select
                 v-model="selectedType"
                 :options="typeOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="All Types"
+                :placeholder="t('sharing.favorites.managementPage.allTypes')"
                 class="type-select"
                 @change="handleFilterChange"
             />
           </div>
           <div class="filter-group">
-            <label class="filter-label">Search:</label>
+            <label class="filter-label">{{ t('sharing.favorites.managementPage.searchLabel') }}</label>
             <InputText
                 v-model="searchText"
-                placeholder="Search by name or location"
+                :placeholder="t('sharing.favorites.managementPage.searchPlaceholder')"
                 class="search-input"
                 @input="handleSearchChange"
             />
           </div>
           <Button
-              label="Clear Filters"
+              :label="t('sharing.favorites.managementPage.clearFilters')"
               severity="secondary"
               size="small"
               @click="clearFilters"
@@ -153,22 +153,22 @@
         >
           <template #header>
             <div class="table-header">
-              <span class="table-title">Favorite Locations</span>
+              <span class="table-title">{{ t('sharing.favorites.managementPage.tableTitle') }}</span>
             </div>
           </template>
 
           <template #empty>
-            <div class="empty-state">
-              <i class="pi pi-map-marker empty-icon"></i>
-              <h3>No Favorite Locations Found</h3>
-              <p>Add your first favorite location to get started.</p>
+            <div class="gp-empty-state">
+              <i class="pi pi-map-marker gp-empty-state-icon"></i>
+              <h3 class="gp-empty-state-title">{{ t('sharing.favorites.managementPage.empty.title') }}</h3>
+              <p class="gp-empty-state-message">{{ t('sharing.favorites.managementPage.empty.message') }}</p>
             </div>
           </template>
 
           <!-- Selection Column -->
           <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
 
-          <Column field="name" header="Name" sortable class="name-col">
+          <Column field="name" :header="t('sharing.favorites.managementPage.columns.name')" sortable class="name-col">
             <template #body="slotProps">
               <div class="name-cell">
                 <i :class="getFavoriteIcon(slotProps.data.type)" class="type-icon"></i>
@@ -177,7 +177,7 @@
             </template>
           </Column>
 
-          <Column field="type" header="Type" sortable class="type-col" v-if="!isMobile">
+          <Column field="type" :header="t('sharing.favorites.managementPage.columns.type')" sortable class="type-col" v-if="!isMobile">
             <template #body="slotProps">
               <Tag
                   :value="slotProps.data.type"
@@ -187,34 +187,34 @@
             </template>
           </Column>
 
-          <Column header="Location" class="location-col" v-if="!isMobile">
+          <Column :header="t('sharing.favorites.managementPage.columns.location')" class="location-col" v-if="!isMobile">
             <template #body="slotProps">
               <div class="location-cell">
               <span v-if="slotProps.data.type === 'POINT'">
                 {{ formatCoordinates(slotProps.data) }}
               </span>
                 <span v-else>
-                Area ({{ formatAreaBounds(slotProps.data) }})
+                {{ t('sharing.favorites.managementPage.areaLocationCell', { bounds: formatAreaBounds(slotProps.data) }) }}
               </span>
               </div>
             </template>
           </Column>
 
-          <Column field="city" header="City" sortable class="city-col" v-if="!isMobile && !isTablet">
+          <Column field="city" :header="t('sharing.favorites.managementPage.columns.city')" sortable class="city-col" v-if="!isMobile && !isTablet">
             <template #body="slotProps">
               <span v-if="slotProps.data.city">{{ slotProps.data.city }}</span>
               <span v-else class="null-value">-</span>
             </template>
           </Column>
 
-          <Column field="country" header="Country" sortable class="country-col" v-if="!isMobile && !isTablet">
+          <Column field="country" :header="t('sharing.favorites.managementPage.columns.country')" sortable class="country-col" v-if="!isMobile && !isTablet">
             <template #body="slotProps">
               <span v-if="slotProps.data.country">{{ slotProps.data.country }}</span>
               <span v-else class="null-value">-</span>
             </template>
           </Column>
 
-          <Column header="Actions" class="actions-col">
+          <Column :header="t('sharing.favorites.managementPage.columns.actions')" class="actions-col">
             <template #body="slotProps">
               <div class="actions-buttons">
                 <Button
@@ -223,7 +223,7 @@
                     size="small"
                     text
                     @click="viewDetails(slotProps.data)"
-                    v-tooltip.top="'View Details'"
+                    v-tooltip.top="t('sharing.favorites.managementPage.viewDetailsTooltip')"
                     class="action-button view-button"
                 />
                 <Button
@@ -232,7 +232,7 @@
                     size="small"
                     text
                     @click="editFavorite(slotProps.data)"
-                    v-tooltip.top="'Edit'"
+                    v-tooltip.top="t('sharing.favorites.managementPage.editTooltip')"
                     class="action-button edit-button"
                 />
                 <Button
@@ -241,7 +241,7 @@
                     size="small"
                     text
                     @click="deleteFavorite(slotProps.data)"
-                    v-tooltip.top="'Delete'"
+                    v-tooltip.top="t('sharing.favorites.managementPage.deleteTooltip')"
                     class="action-button delete-button"
                 />
                 <Button
@@ -250,7 +250,7 @@
                     size="small"
                     text
                     @click="focusOnMap(slotProps.data)"
-                    v-tooltip.top="'Show on Map'"
+                    v-tooltip.top="t('sharing.favorites.managementPage.showOnMapTooltip')"
                     class="action-button map-button"
                 />
               </div>
@@ -263,7 +263,7 @@
       <EditFavoriteDialog
           v-if="selectedFavorite"
           :visible="showEditDialog"
-          :header="'Edit Favorite Location'"
+          :header="t('place.detailsPage.editFavoriteDialogHeader')"
           :favorite-location="selectedFavorite"
           @edit-favorite="(data) => handleEditSave(data, { onSuccess: loadFavorites })"
           @close="handleCloseEditDialog"
@@ -304,7 +304,7 @@
       <BulkEditDialog
           :visible="showBulkEditDialog"
           :selected-items="selectedRows"
-          item-type-name="Favorites"
+          :item-type-name="t('sharing.favorites.managementPage.itemTypeName')"
           :store="favoritesStore"
           bulk-update-method="bulkUpdateFavorites"
           distinct-values-method="fetchDistinctValues"
@@ -357,6 +357,7 @@
 
 <script setup>
 import {ref, computed, onMounted, onUnmounted, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRouter, onBeforeRouteLeave} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
@@ -403,6 +404,7 @@ import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 import {useFavoriteEditor} from '@/composables/useFavoriteEditor'
 
 // Store and utils
+const {t} = useI18n()
 const favoritesStore = useFavoritesStore()
 const geocodingStore = useGeocodingStore()
 const toast = useToast()
@@ -457,7 +459,7 @@ const showReconcileDialog = ref(false)
 const showBulkSaveDialog = ref(false)
 const reconcileMode = ref('selected') // 'selected' | 'all'
 const enabledProviders = ref([])
-const addDialogHeader = ref('Add Point to Favorites')
+const addDialogHeader = ref(t('sharing.favorites.managementPage.addPointHeader'))
 const addDialogInitialName = ref('')
 const pendingAddCoordinates = ref(null)
 const pendingAddBounds = ref(null)
@@ -472,8 +474,8 @@ const {
 } = useTripPlanLocationSearch({
   getBias: () => getMapSearchBias(),
   excludeSavedFavorites: true,
-  fallbackLabel: 'Place',
-  geocodingGroupLabel: 'Cached place',
+  fallbackLabel: t('place.map.defaultLocationName'),
+  geocodingGroupLabel: t('sharing.favorites.managementPage.placeFallbackLabel'),
   providerGroupPrefix: ''
 })
 
@@ -524,7 +526,7 @@ const {
     addDialogInitialName.value = ''
 
     // Show add dialog for area
-    addDialogHeader.value = 'Add Area to Favorites'
+    addDialogHeader.value = t('sharing.favorites.managementPage.addAreaHeader')
     showAddDialog.value = true
   }
 })
@@ -564,11 +566,11 @@ const displayedFavorites = computed(() => {
 
 const totalRecords = computed(() => displayedFavorites.value.length)
 
-const typeOptions = [
-  {label: 'All Types', value: null},
-  {label: 'Point', value: 'POINT'},
-  {label: 'Area', value: 'AREA'}
-]
+const typeOptions = computed(() => [
+  {label: t('sharing.favorites.managementPage.allTypes'), value: null},
+  {label: t('sharing.favorites.managementPage.typePoint'), value: 'POINT'},
+  {label: t('sharing.favorites.managementPage.typeArea'), value: 'AREA'}
+])
 
 const hasActiveFilters = computed(() =>
     selectedType.value !== null || (searchText.value && searchText.value.trim() !== '')
@@ -587,16 +589,16 @@ const pendingPoints = computed(() => favoritesStore.getPendingPoints)
 const pendingAreas = computed(() => favoritesStore.getPendingAreas)
 
 // Context menu items
-const mapMenuItems = ref([
+const mapMenuItems = computed(() => [
   {
-    label: 'Add to Favorites',
+    label: t('sharing.favorites.managementPage.contextMenu.addToFavorites'),
     icon: 'pi pi-star',
     command: () => {
       handleAddPointFromContextMenu()
     }
   },
   {
-    label: 'Add an area to Favorites',
+    label: t('sharing.favorites.managementPage.contextMenu.addAreaToFavorites'),
     icon: 'pi pi-th-large',
     command: () => {
       handleAddAreaFromContextMenu()
@@ -604,9 +606,9 @@ const mapMenuItems = ref([
   }
 ])
 
-const favoriteMenuItems = ref([
+const favoriteMenuItems = computed(() => [
   {
-    label: 'View all visits',
+    label: t('sharing.favorites.managementPage.contextMenu.viewAllVisits'),
     icon: 'pi pi-chart-line',
     command: () => {
       if (selectedFavorite.value) {
@@ -618,7 +620,7 @@ const favoriteMenuItems = ref([
     separator: true
   },
   {
-    label: 'Edit',
+    label: t('sharing.favorites.managementPage.editTooltip'),
     icon: 'pi pi-pencil',
     command: () => {
       if (selectedFavorite.value) {
@@ -627,7 +629,7 @@ const favoriteMenuItems = ref([
     }
   },
   {
-    label: 'Delete',
+    label: t('sharing.favorites.managementPage.deleteTooltip'),
     icon: 'pi pi-trash',
     command: () => {
       if (selectedFavorite.value) {
@@ -637,9 +639,9 @@ const favoriteMenuItems = ref([
   }
 ])
 
-const pendingFavoriteMenuItems = ref([
+const pendingFavoriteMenuItems = computed(() => [
   {
-    label: 'Remove from Pending',
+    label: t('sharing.favorites.managementPage.contextMenu.removeFromPending'),
     icon: 'pi pi-trash',
     command: () => {
       if (selectedPendingFavorite.value) {
@@ -698,8 +700,8 @@ const handlePlaceSearchSelect = (suggestion) => {
   if (!coordinates) {
     toast.add({
       severity: 'warn',
-      summary: 'Place Unavailable',
-      detail: 'Selected place does not include usable coordinates.',
+      summary: t('sharing.favorites.managementPage.toasts.placeUnavailableSummary'),
+      detail: t('sharing.favorites.managementPage.toasts.placeUnavailableDetail'),
       life: 4000
     })
     return
@@ -708,7 +710,7 @@ const handlePlaceSearchSelect = (suggestion) => {
   const point = {lat: coordinates.latitude, lng: coordinates.longitude}
   pendingAddCoordinates.value = point
   pendingAddBounds.value = null
-  addDialogHeader.value = 'Add Point to Favorites'
+  addDialogHeader.value = t('sharing.favorites.managementPage.addPointHeader')
   addDialogInitialName.value = suggestion?.title?.trim() || suggestion?.displayName?.trim() || ''
 
   mapAdapter.value?.setTempPoint?.(point)
@@ -750,8 +752,8 @@ const editFavorite = (favorite) => {
 
 const deleteFavorite = (favorite) => {
   confirm.require({
-    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
-    header: 'Delete Favorite',
+    message: t('sharing.favorites.managementPage.toasts.deleteConfirmMessage'),
+    header: t('sharing.favorites.managementPage.toasts.deleteConfirmHeader'),
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
       // Capture values to avoid closure issues
@@ -761,8 +763,8 @@ const deleteFavorite = (favorite) => {
       const action = () => favoritesStore.deleteFavorite(favoriteId)
       withTimelineRegeneration(action, {
         modalType: 'favorite-delete',
-        successMessage: `Favorite "${favoriteName}" deleted successfully. Timeline is regenerating.`,
-        errorMessage: 'Failed to delete favorite location.',
+        successMessage: t('sharing.favorites.managementPage.toasts.deleteSuccessMessage', { name: favoriteName }),
+        errorMessage: t('sharing.favorites.managementPage.toasts.deleteFailedMessage'),
         onSuccess: () => {
           // Refresh favorites list from the store
           loadFavorites()
@@ -808,8 +810,8 @@ const handleReconcile = async (reconcileData) => {
     console.error('Error starting favorite reconciliation:', error)
     toast.add({
       severity: 'error',
-      summary: 'Reconciliation Failed',
-      detail: getErrorMessage(error, 'Failed to start reconciliation'),
+      summary: t('sharing.favorites.managementPage.toasts.reconciliationFailedSummary'),
+      detail: getErrorMessage(error, t('sharing.favorites.managementPage.toasts.reconciliationFailedDetail')),
       life: 5000
     })
     showReconcileDialog.value = false
@@ -819,12 +821,12 @@ const handleReconcile = async (reconcileData) => {
 const handleReconcileComplete = async () => {
   const progress = reconciliationJobProgress.value
 
-  const successMsg = `Successfully reconciled ${progress.successCount} of ${progress.totalItems} favorites`
+  const successMsg = t('sharing.favorites.managementPage.toasts.reconciliationCompleteDetail', { success: progress.successCount, total: progress.totalItems })
   const severity = progress.failedCount > 0 ? 'warn' : 'success'
 
   toast.add({
     severity: severity,
-    summary: 'Reconciliation Complete',
+    summary: t('sharing.favorites.managementPage.toasts.reconciliationCompleteSummary'),
     detail: successMsg,
     life: 5000
   })
@@ -914,7 +916,7 @@ const handleAddPointFromContextMenu = () => {
   mapAdapter.value?.setTempPoint?.(contextMenuLatLng.value)
 
   // Show add dialog
-  addDialogHeader.value = 'Add Point to Favorites'
+  addDialogHeader.value = t('sharing.favorites.managementPage.addPointHeader')
   showAddDialog.value = true
 }
 
@@ -926,8 +928,8 @@ const handleAddAreaFromContextMenu = () => {
 
   toast.add({
     severity: 'info',
-    summary: 'Draw Area',
-    detail: 'Click and drag on the map to draw a rectangular area',
+    summary: t('sharing.favorites.managementPage.toasts.drawAreaSummary'),
+    detail: t('sharing.favorites.managementPage.toasts.drawAreaDetail'),
     life: 5000
   })
 }
@@ -945,8 +947,8 @@ const handleAddFavorite = (name) => {
       )
       toast.add({
         severity: 'info',
-        summary: 'Added to Pending',
-        detail: `"${name}" added to pending favorites`,
+        summary: t('sharing.favorites.managementPage.toasts.addedToPendingSummary'),
+        detail: t('sharing.favorites.managementPage.toasts.addedToPendingDetail', { name }),
         life: 3000
       })
     } else if (pendingAddBounds.value) {
@@ -959,8 +961,8 @@ const handleAddFavorite = (name) => {
       )
       toast.add({
         severity: 'info',
-        summary: 'Added to Pending',
-        detail: `Area "${name}" added to pending favorites`,
+        summary: t('sharing.favorites.managementPage.toasts.addedToPendingSummary'),
+        detail: t('sharing.favorites.managementPage.toasts.areaAddedToPendingDetail', { name }),
         life: 3000
       })
     }
@@ -992,7 +994,7 @@ const handleAddFavorite = (name) => {
         lat,
         lng
     )
-    successMessage = `Favorite "${name}" added. Timeline is regenerating.`
+    successMessage = t('sharing.favorites.managementPage.toasts.favoriteAddedMessage', { name })
   } else if (pendingAddBounds.value) {
     const northEastLat = pendingAddBounds.value.northEastLat
     const northEastLon = pendingAddBounds.value.northEastLon
@@ -1005,7 +1007,7 @@ const handleAddFavorite = (name) => {
         southWestLat,
         southWestLon
     )
-    successMessage = `Area favorite "${name}" added. Timeline is regenerating.`
+    successMessage = t('sharing.favorites.managementPage.toasts.areaFavoriteAddedMessage', { name })
   } else {
     return // Should not happen
   }
@@ -1022,7 +1024,7 @@ const handleAddFavorite = (name) => {
   withTimelineRegeneration(action, {
     modalType: 'favorite',
     successMessage: successMessage,
-    errorMessage: 'Failed to add favorite location.',
+    errorMessage: t('sharing.favorites.managementPage.toasts.addFavoriteFailedMessage'),
     onSuccess: () => {
       // Refresh data after successful addition
       loadFavorites()
@@ -1053,11 +1055,16 @@ const handleCloseAddDialog = () => {
 // Bulk mode methods
 const toggleBulkMode = () => {
   bulkAddMode.value = !bulkAddMode.value
-  const modeText = bulkAddMode.value ? 'enabled' : 'disabled'
+  const modeText = bulkAddMode.value
+    ? t('sharing.favorites.managementPage.toasts.bulkModeEnabled')
+    : t('sharing.favorites.managementPage.toasts.bulkModeDisabled')
+  const followUp = bulkAddMode.value
+    ? t('sharing.favorites.managementPage.toasts.bulkModeFollowUpEnabled')
+    : t('sharing.favorites.managementPage.toasts.bulkModeFollowUpDisabled')
   toast.add({
     severity: bulkAddMode.value ? 'success' : 'info',
-    summary: 'Bulk Mode',
-    detail: `Bulk add mode ${modeText}. ${bulkAddMode.value ? 'Favorites will be added to pending list.' : 'Favorites will be saved immediately.'}`,
+    summary: t('sharing.favorites.managementPage.toasts.bulkModeSummary'),
+    detail: t('sharing.favorites.managementPage.toasts.bulkModeDetail', { state: modeText, followUp }),
     life: 4000
   })
 }
@@ -1077,8 +1084,8 @@ const handleBulkSaveConfirm = async () => {
 
     await withTimelineRegeneration(action, {
       modalType: 'favorite',
-      successMessage: `Saved ${pendingCount.value} favorites. Timeline is regenerating.`,
-      errorMessage: 'Failed to bulk save favorites.',
+      successMessage: t('sharing.favorites.managementPage.toasts.bulkSaveSuccessMessage', { count: pendingCount.value }),
+      errorMessage: t('sharing.favorites.managementPage.toasts.bulkSaveErrorMessage'),
       onSuccess: () => {
         loadFavorites()
         bulkAddMode.value = false
@@ -1090,8 +1097,8 @@ const handleBulkSaveConfirm = async () => {
     console.error('Error bulk saving favorites:', error)
     toast.add({
       severity: 'error',
-      summary: 'Bulk Save Failed',
-      detail: getErrorMessage(error, 'Failed to save pending favorites'),
+      summary: t('sharing.favorites.managementPage.toasts.bulkSaveFailedSummary'),
+      detail: getErrorMessage(error, t('sharing.favorites.managementPage.toasts.bulkSaveFailedDetail')),
       life: 5000
     })
   } finally {
@@ -1101,16 +1108,16 @@ const handleBulkSaveConfirm = async () => {
 
 const handleClearPending = () => {
   confirm.require({
-    message: `Are you sure you want to clear ${pendingCount.value} pending favorite(s)?`,
-    header: 'Clear Pending Favorites',
+    message: t('sharing.favorites.managementPage.toasts.clearPendingConfirmMessage', { count: pendingCount.value }),
+    header: t('sharing.favorites.managementPage.toasts.clearPendingConfirmHeader'),
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
       favoritesStore.clearPending()
       renderMapMarkers()
       toast.add({
         severity: 'info',
-        summary: 'Cleared',
-        detail: 'Pending favorites cleared',
+        summary: t('sharing.favorites.managementPage.toasts.clearedSummary'),
+        detail: t('sharing.favorites.managementPage.toasts.clearedDetail'),
         life: 3000
       })
     }
@@ -1122,8 +1129,8 @@ const handleRemovePending = (tempId) => {
   renderMapMarkers()
   toast.add({
     severity: 'info',
-    summary: 'Removed',
-    detail: 'Favorite removed from pending list',
+    summary: t('sharing.favorites.managementPage.toasts.removedSummary'),
+    detail: t('sharing.favorites.managementPage.toasts.removedDetail'),
     life: 3000
   })
 }
@@ -1155,8 +1162,8 @@ const loadFavorites = async () => {
     console.error('Error loading favorites:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load favorite locations',
+      summary: t('common.error'),
+      detail: t('sharing.favorites.managementPage.toasts.loadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -1258,8 +1265,8 @@ watch(
 onBeforeRouteLeave((to, from, next) => {
   if (hasPendingFavorites.value) {
     confirm.require({
-      message: `You have ${pendingCount.value} unsaved pending favorite(s). If you leave, they will be lost. Are you sure you want to leave?`,
-      header: 'Unsaved Pending Favorites',
+      message: t('sharing.favorites.managementPage.toasts.unsavedPendingMessage', { count: pendingCount.value }),
+      header: t('sharing.favorites.managementPage.toasts.unsavedPendingHeader'),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         favoritesStore.clearPending()
@@ -1337,7 +1344,7 @@ onUnmounted(() => {
   gap: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
-  border-bottom: 1px solid var(--gp-border-light);
+  border-bottom: 1px solid var(--gp-border);
 }
 
 .map-heading {
@@ -1386,7 +1393,7 @@ onUnmounted(() => {
   gap: 0.5rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1500,7 +1507,7 @@ onUnmounted(() => {
 }
 
 .location-cell {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.8rem;
   color: var(--gp-text-primary);
 }
@@ -1514,31 +1521,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl) var(--gp-spacing-lg);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  color: var(--gp-text-muted);
-  margin-bottom: var(--gp-spacing-lg);
-  display: block;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-state p {
-  color: var(--gp-text-muted);
-  margin: 0;
-}
-
 /* Actions Column */
 .actions-buttons {
   display: flex;
@@ -1547,33 +1529,15 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.action-button {
-  min-width: 32px !important;
-  width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
+/* `.p-button.` outranks the global phone padding on `.p-button.p-button-sm` (primevue-overrides.css). The hover tint
+   is PrimeVue's text-button hover for each button's severity. */
+.p-button.action-button {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: var(--gp-radius-small);
   transition: all 0.2s ease;
-}
-
-.edit-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.delete-button:hover {
-  background-color: var(--p-red-50) !important;
-  color: var(--p-red-600) !important;
-}
-
-.view-button:hover {
-  background-color: var(--gp-primary-light) !important;
-  color: var(--gp-primary) !important;
-}
-
-.map-button:hover {
-  background-color: var(--p-cyan-50) !important;
-  color: var(--p-cyan-600) !important;
 }
 
 /* Header Actions */
@@ -1660,57 +1624,6 @@ onUnmounted(() => {
   }
 }
 
-/* Dark Mode */
-.p-dark .favorites-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .favorites-table :deep(.p-datatable-wrapper) {
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .favorites-table :deep(.p-paginator) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .map-header {
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .map-loading-state {
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
-}
 </style>
 
 <style>
@@ -1720,9 +1633,9 @@ onUnmounted(() => {
 .pending-point-marker,
 .favorite-area-marker,
 .pending-area-marker {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* Favorite marker icon - teardrop shape */
@@ -1848,26 +1761,5 @@ onUnmounted(() => {
 
 .pending-area-icon i {
   font-size: 1.5rem;
-}
-
-/* Dark mode support */
-.p-dark .favorite-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .temp-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .pending-marker-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .favorite-area-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-}
-
-.p-dark .pending-area-icon {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 </style>

@@ -325,8 +325,8 @@ public class GeofenceEvaluationService {
     private String formatTimestampForOwner(Instant timestamp, UserEntity owner) {
         ZoneId zoneId = resolveZoneId(owner != null ? owner.getTimezone() : null);
         DateTimeFormatter formatter = resolveDateTimeFormatter(
-                owner != null ? owner.getDateFormat() : null,
-                owner != null ? owner.getTimeFormat() : null
+                owner != null ? owner.getUiPreferences().getDateFormat() : null,
+                owner != null ? owner.getUiPreferences().getTimeFormat() : null
         );
         return timestamp.atZone(zoneId).format(formatter);
     }

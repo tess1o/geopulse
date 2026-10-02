@@ -13,8 +13,8 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         FavoritesDataDto.class,
         LocationSourcesDataDto.class,
         LocationSourcesDataDto.SourceDto.class,
-        PeriodTagsDataDto.class,
-        PeriodTagsDataDto.PeriodTagDto.class,
+        TimelineLabelsDataDto.class,
+        TimelineLabelsDataDto.TimelineLabelDto.class,
         TimelineOverridesDataDto.class,
         TimelineOverridesDataDto.TripMovementOverrideDto.class,
         TimelineOverridesDataDto.DataGapStayOverrideDto.class,
@@ -46,7 +46,6 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         ExportMetadataDto.class,
         FavoritesDataDto.class,
         ExportDateRange.class,
-        ExportResource.ListExportJobsResponse.class
 })
     public class ExportNativeConfig {
 }

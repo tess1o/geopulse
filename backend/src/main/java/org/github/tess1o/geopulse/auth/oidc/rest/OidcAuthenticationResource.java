@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.oidc.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -8,12 +10,13 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
 import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
+import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
@@ -24,18 +27,19 @@ import org.github.tess1o.geopulse.auth.oidc.service.OidcAccountLinkingService;
 import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/auth/oidc")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+
+@Path("/auth/oidc")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
 @Tag(name = "User: Authentication", description = "Authenticate users and manage OIDC account linking.")
 public class OidcAuthenticationResource {
 
@@ -73,52 +77,32 @@ public class OidcAuthenticationResource {
      */
     @GET
     @Path("/providers")
-    public Response getEnabledProviders() {
-        try {
-            List<OidcProviderConfiguration> providers = providerService.getEnabledProviders();
-            List<OidcProviderResponse> response = providers.stream()
-                    .map(p -> OidcProviderResponse.builder()
-                            .name(p.getName())
-                            .displayName(p.getDisplayName())
-                            .icon(p.getIcon())
-                            .build())
-                    .collect(Collectors.toList());
-
-            return Response.ok(ApiResponse.success(response)).build();
-        } catch (Exception e) {
-            log.error("Failed to get OIDC providers", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get OIDC providers"))
-                    .build();
-        }
+    public List<OidcProviderResponse> getEnabledProviders() {
+        return providerService.getEnabledProviders().stream()
+                .map(p -> OidcProviderResponse.builder()
+                        .name(p.getName())
+                        .displayName(p.getDisplayName())
+                        .icon(p.getIcon())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**
      * Initiate OIDC login flow
      */
     @POST
-    @Path("/login/{provider}")
-    public Response initiateLogin(@PathParam("provider") String providerName,
-                                  @QueryParam("redirectUri") @DefaultValue("/app/timeline") String redirectUri) {
+    @Path("/login-authorizations/{provider}")
+    public OidcLoginInitResponse initiateLogin(
+            @PathParam("provider") String providerName,
+            @QueryParam("redirectUri") @DefaultValue("/app/timeline") String redirectUri) {
         try {
             // Check if OIDC login is enabled
             if (!authConfigurationService.isOidcLoginEnabled()) {
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity(ApiResponse.error("OIDC login is currently disabled"))
-                        .build();
+                throw new GeoPulseException(OIDC_LOGIN_DISABLED, "OIDC login is currently disabled");
             }
-
-            OidcLoginInitResponse response = oidcAuthService.initiateLogin(providerName, null, redirectUri, null);
-            return Response.ok(ApiResponse.success(response)).build();
+            return oidcAuthService.initiateLogin(providerName, null, redirectUri, null);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to initiate OIDC login for provider: {}", providerName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to initiate OIDC login"))
-                    .build();
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -126,7 +110,9 @@ public class OidcAuthenticationResource {
      * Handle OIDC callback after provider authentication
      */
     @POST
-    @Path("/callback")
+    @Path("/callbacks")
+    @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
+            responseDescription = "Authenticated browser session")
     public Response handleCallback(@Valid OidcCallbackRequest request) {
         try {
             OidcCallbackAuthResult callbackResult = oidcAuthService.handleCallback(request);
@@ -139,45 +125,31 @@ public class OidcAuthenticationResource {
                     authResponse.getRefreshToken(), refreshTokenLifespan);
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, callbackResult.redirectUri())))
+            return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, callbackResult.redirectUri()))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (OidcRegistrationDisabledException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(OIDC_REGISTRATION_DISABLED, OIDC_REGISTRATION_DISABLED.title(), e);
         } catch (OidcLoginDisabledException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(OIDC_LOGIN_DISABLED, OIDC_LOGIN_DISABLED.title(), e);
         } catch (OidcAccountLinkingRequiredException e) {
             // Handle account linking requirement
             OidcAccountLinkingErrorResponse errorResponse = OidcAccountLinkingErrorResponse.builder()
-                    .error("ACCOUNT_LINKING_REQUIRED")
                     .email(e.getEmail())
                     .newProvider(e.getNewProvider())
                     .linkingToken(e.getLinkingToken())
-                    .message("Account with this email already exists. Please verify your identity to link this OIDC account.")
                     .verificationMethods(OidcAccountLinkingErrorResponse.VerificationMethods.builder()
                             .password(e.isHasPassword())
                             .oidcProviders(e.getLinkedOidcProviders())
                             .build())
                     .build();
             
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(ApiResponse.error("Account linking required", errorResponse))
-                    .build();
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_REQUIRED, "Account linking required",
+                    Map.of("linking", errorResponse), e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to handle OIDC callback", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("OIDC authentication failed"))
-                    .build();
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -185,19 +157,16 @@ public class OidcAuthenticationResource {
      * Initiate OIDC account linking for authenticated user
      */
     @POST
-    @Path("/link/{provider}")
+    @Path("/connections/{provider}/authorizations")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response initiateLinking(@PathParam("provider") String providerName,
-                                    @QueryParam("redirectUri") @DefaultValue("/app/profile") String redirectUri) {
+    public OidcLoginInitResponse initiateLinking(
+            @PathParam("provider") String providerName,
+            @QueryParam("redirectUri") @DefaultValue("/app/profile") String redirectUri) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            OidcLoginInitResponse response = oidcAuthService.initiateLogin(providerName, userId, redirectUri, null);
-            return Response.ok(ApiResponse.success(response)).build();
-        } catch (Exception e) {
-            log.error("Failed to initiate OIDC linking for provider: {}", providerName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to initiate OIDC account linking"))
-                    .build();
+            return oidcAuthService.initiateLogin(providerName, userId, redirectUri, null);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -205,22 +174,14 @@ public class OidcAuthenticationResource {
      * Unlink OIDC provider from authenticated user
      */
     @DELETE
-    @Path("/unlink/{provider}")
+    @Path("/connections/{provider}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response unlinkProvider(@PathParam("provider") String providerName) {
+    public void unlinkProvider(@PathParam("provider") String providerName) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             userOidcConnectionService.unlinkProvider(userId, providerName);
-            return Response.ok(ApiResponse.success("Provider unlinked successfully")).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to unlink OIDC provider: {}", providerName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to unlink OIDC provider"))
-                    .build();
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -230,24 +191,17 @@ public class OidcAuthenticationResource {
     @GET
     @Path("/connections")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getUserConnections() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<UserOidcConnectionResponse> connections = userOidcConnectionService.getUserConnections(userId);
-            return Response.ok(ApiResponse.success(connections)).build();
-        } catch (Exception e) {
-            log.error("Failed to get user OIDC connections", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get OIDC connections"))
-                    .build();
-        }
+    public List<UserOidcConnectionResponse> getUserConnections() {
+        return userOidcConnectionService.getUserConnections(currentUserService.getCurrentUserId());
     }
 
     /**
      * Link OIDC account using password verification
      */
     @POST
-    @Path("/link-with-password")
+    @Path("/account-links/password")
+    @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
+            responseDescription = "Linked and authenticated browser session")
     public Response linkAccountWithPassword(@Valid LinkAccountWithPasswordRequest request) {
         try {
             AuthResponse authResponse = accountLinkingService.linkAccountWithPassword(request);
@@ -259,20 +213,13 @@ public class OidcAuthenticationResource {
                     authResponse.getRefreshToken(), refreshTokenLifespan);
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
+            return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to link account with password", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Account linking failed"))
-                    .build();
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
     }
 
@@ -280,20 +227,12 @@ public class OidcAuthenticationResource {
      * Initiate OIDC-to-OIDC verification for account linking
      */
     @POST
-    @Path("/link-with-oidc")
-    public Response linkAccountWithOidc(@Valid InitiateOidcLinkingRequest request) {
+    @Path("/account-links/oidc")
+    public OidcLoginInitResponse linkAccountWithOidc(@Valid InitiateOidcLinkingRequest request) {
         try {
-            OidcLoginInitResponse response = accountLinkingService.initiateOidcVerificationForLinking(request);
-            return Response.ok(ApiResponse.success(response)).build();
+            return accountLinkingService.initiateOidcVerificationForLinking(request);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to initiate OIDC verification for linking", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("OIDC verification initiation failed"))
-                    .build();
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
     }
 }

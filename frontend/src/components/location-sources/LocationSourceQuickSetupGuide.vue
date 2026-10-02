@@ -3,7 +3,7 @@
     <template #title>
       <div class="flex items-center gap-2">
         <i class="pi pi-info-circle text-blue-500"></i>
-        Quick Setup Guide
+        {{ t('locationSources.quickSetupGuide.title') }}
       </div>
     </template>
     <template #content>
@@ -17,7 +17,7 @@
             </div>
           </div>
           <Button
-            :label="`Setup ${option.label}`"
+            :label="t('locationSources.quickSetupGuide.setupButton', { name: option.label })"
             outlined
             size="small"
             @click="emit('quick-setup', option.value)"
@@ -30,12 +30,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import {
   LOCATION_SOURCE_OPTIONS,
   getLocationSourceIcon
 } from '@/components/location-sources/locationSourceMeta'
 
+const { t } = useI18n()
 const emit = defineEmits(['quick-setup'])
 
 const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
@@ -51,6 +53,7 @@ const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
 const quickSetupOptions = computed(() => (
   LOCATION_SOURCE_OPTIONS.map((option) => ({
     ...option,
+    description: t(option.descriptionKey),
     accentClass: QUICK_SETUP_ACCENT_BY_TYPE[option.value] || 'text-blue-500'
   }))
 ))
@@ -66,9 +69,9 @@ const quickSetupOptions = computed(() => (
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
 }
 
 .source-header {
@@ -89,44 +92,5 @@ const quickSetupOptions = computed(() => (
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
-}
-
-.p-dark .source-option {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .source-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .source-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .quick-guide-card {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-header),
-.p-dark .quick-guide-card :deep(.p-card-title-section) {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-title) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .quick-guide-card :deep(.p-card-content),
-.p-dark .quick-guide-card :deep(.p-card-body) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
 }
 </style>

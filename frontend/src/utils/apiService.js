@@ -11,12 +11,27 @@ import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
+import { createAuthExpiredError, getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
+import { t } from '@/locales';
 
-const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
+const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
 let maintenanceAbortController = new AbortController();
 
+async function parseBlobProblem(error) {
+    const data = error?.response?.data;
+    const contentType = data?.type || error?.response?.headers?.['content-type'] || '';
+    if (data instanceof Blob && (contentType.includes('json') || contentType.includes('problem'))) {
+        try {
+            error.response.data = JSON.parse(await data.text());
+        } catch {
+            // Keep the original transport error when the response is not valid JSON.
+        }
+    }
+    return error;
+}
+
 function isCompletionLogout(url = '') {
-    return maintenance.activated && String(url).includes('/auth/logout');
+    return maintenance.activated && String(url).includes('/auth/sessions/current');
 }
 
 function assertApplicationTransportAvailable(endpoint = '') {
@@ -73,7 +88,7 @@ const apiService = {
             );
             return value || null;
         } catch (error) {
-            console.error('Error getting CSRF token:', error);
+            console.error('Error getting CSRF token:', import.meta.env.DEV ? error : productionErrorContext(error));
             return null;
         }
     },
@@ -111,7 +126,7 @@ const apiService = {
             const timezone = useTimezone()
             return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
         } catch (error) {
-            console.error('Error checking token expiration:', error);
+            console.error('Error checking token expiration:', import.meta.env.DEV ? error : productionErrorContext(error));
             return false;
         }
     },
@@ -128,7 +143,7 @@ const apiService = {
             );
             return value ? parseInt(value) : null;
         } catch (error) {
-            console.error('Error getting token expiration from cookie:', error);
+            console.error('Error getting token expiration from cookie:', import.meta.env.DEV ? error : productionErrorContext(error));
             return null;
         }
     },
@@ -138,7 +153,7 @@ const apiService = {
      * @returns {Promise<boolean>} True if refresh was successful
      */
     async refreshToken() {
-        assertApplicationTransportAvailable('/auth/refresh-cookie');
+        assertApplicationTransportAvailable('/auth/sessions/current/refresh');
         // If a refresh is already in progress, return the existing promise
         if (this._refreshingToken) {
             return this._refreshTokenPromise;
@@ -150,7 +165,7 @@ const apiService = {
             try {
                 // Cookie-based refresh is handled server-side.
                 // Include CSRF header when csrf-token cookie exists.
-                await this._performSecureRequest('post', '/auth/refresh-cookie', {});
+                await this._performSecureRequest('post', '/auth/sessions/current/refresh', {});
                 return true;
             } catch (refreshError) {
                 if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
@@ -208,7 +223,7 @@ const apiService = {
                             if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
                                 throw new MaintenanceInterruption();
                             }
-                            console.error('Token refresh failed:', refreshError);
+                            console.error('Token refresh failed:', import.meta.env.DEV ? refreshError : productionErrorContext(refreshError));
                             await this.handleError(refreshError);
                             throw refreshError;
                         }
@@ -226,19 +241,19 @@ const apiService = {
         assertApplicationTransportAvailable(endpoint);
         // Skip auth check for public endpoints
         const publicEndpoints = [
-            '/auth/login',
-            '/auth/demo-login',
-            '/auth/status',
-            '/users/register',
-            '/auth/refresh',
-            '/auth/refresh-cookie',
-            '/auth/logout',
+            '/auth/sessions',
+            '/auth/demo-sessions',
+            '/auth/sessions/current',
+            '/registrations',
+            '/auth/api-sessions/current/refresh',
+            '/auth/sessions/current/refresh',
             '/auth/oidc/providers',
-            '/auth/oidc/callback'
+            '/auth/oidc/callbacks',
+            '/home-content'
         ];
 
         // Skip auth check for shared location endpoints (they use their own temporary tokens)
-        const isSharedEndpoint = endpoint.startsWith('/shared/');
+        const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
 
         if (publicEndpoints.includes(endpoint) || isSharedEndpoint) {
             return; // No auth check needed
@@ -249,7 +264,7 @@ const apiService = {
             const refreshed = await this.refreshToken();
             if (!refreshed) {
                 this.clearAuthData();
-                throw new Error('Authentication expired. Please login again.');
+                throw createAuthExpiredError();
             }
         }
     },
@@ -308,6 +323,7 @@ const apiService = {
             });
             return response;
         } catch (error) {
+            await parseBlobProblem(error);
             this.handleError(error);
             throw error;
         }
@@ -345,7 +361,7 @@ const apiService = {
             await this.checkAuthExpired(endpoint);
 
             // Don't send auth headers for shared endpoints (they're public or use custom tokens)
-            const isSharedEndpoint = endpoint.startsWith('/shared/');
+            const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
 
             if (isSharedEndpoint) {
                 const response = await axios.post(`${API_BASE_URL}${endpoint}`, data, {
@@ -423,6 +439,9 @@ const apiService = {
         } catch (error) {
             // Quarkus REST CSRF handles token validation automatically
             // No manual CSRF retry logic needed
+            if (options.responseType === 'blob') {
+                await parseBlobProblem(error);
+            }
             throw error;
         }
     },
@@ -477,6 +496,7 @@ const apiService = {
 
             return true;
         } catch (error) {
+            await parseBlobProblem(error);
             this.handleError(error);
             throw error;
         }
@@ -519,7 +539,7 @@ const apiService = {
             this.redirectToErrorPage(error);
         }
 
-        console.error('API request failed:', error);
+        console.error('API request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
     },
 
     /**
@@ -536,24 +556,20 @@ const apiService = {
 
         // Use setTimeout to avoid issues with Vue router during navigation
         setTimeout(() => {
-            // Collect detailed error information
+            const responseData = error.response?.data || {};
+            const responseHeaders = error.response?.headers || {};
+            const rawUrl = error.config?.url || '';
             const errorDetails = {
-                message: error.message || 'Unknown error',
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data,
-                url: error.config?.url,
-                method: error.config?.method?.toUpperCase(),
-                headers: error.config?.headers,
                 timestamp: useTimezone().now().toISOString(),
-                userAgent: navigator.userAgent,
-                stack: error.stack
+                method: error.config?.method?.toUpperCase() || null,
+                url: rawUrl.split(/[?#]/, 1)[0] || null,
+                status: error.response?.status,
+                requestId: responseData.requestId || responseHeaders['x-request-id'] || null,
+                errorId: getErrorReferenceId(error)
             };
 
-            let detailsStoredInSession = false;
             try {
                 sessionStorage.setItem('errorDetails', JSON.stringify(errorDetails));
-                detailsStoredInSession = true;
 
                 const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
                 if (returnTo && !returnTo.startsWith('/error')) {
@@ -565,13 +581,9 @@ const apiService = {
 
             const errorParams = new URLSearchParams({
                 type: 'connection',
-                title: 'Backend Unavailable',
-                message: 'GeoPulse servers are currently unavailable. Please try again later.'
+                title: t('errors.backendUnavailable.title'),
+                message: t('errors.backendUnavailable.message')
             });
-
-            if (!detailsStoredInSession) {
-                errorParams.set('details', JSON.stringify(errorDetails));
-            }
 
             window.location.replace(`/error?${errorParams.toString()}`);
         }, 100);
@@ -581,16 +593,16 @@ const apiService = {
      * Login user with credentials (cookie-based auth for browser clients)
      * @param {string} email - User ID
      * @param {string} password - User password
-     * @returns {Promise<Object>} - Standard API response envelope
+     * @returns {Promise<Object>} - Browser authentication response
      */
     async login(email, password) {
         try {
-            const response = await this._performSecureRequest('post', '/auth/login', {
+            const response = await this._performSecureRequest('post', '/auth/sessions', {
                 email,
                 password,
             });
 
-            if (response && response.data) {
+            if (response?.user || response?.id || response?.userId) {
                 return response;
             }
             throw new Error('Invalid login response');
@@ -605,10 +617,10 @@ const apiService = {
      */
     async logout() {
         try {
-            await this._performSecureRequest('post', '/auth/logout', {});
+            await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
             // Even if logout fails on server, clear local data
-            console.error('Logout request failed:', error);
+            console.error('Logout request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
         } finally {
             this.clearAuthData();
         }
@@ -620,9 +632,9 @@ const apiService = {
      */
     async logoutStrict() {
         try {
-            await this._performSecureRequest('post', '/auth/logout', {});
+            await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
-            console.error('Logout request failed:', error);
+            console.error('Logout request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
             throw error;
         } finally {
             this.clearAuthData();

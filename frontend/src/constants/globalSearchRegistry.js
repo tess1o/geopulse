@@ -1,4 +1,5 @@
 import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
+import { t } from '@/locales'
 import {
   TIMELINE_PREFERENCE_LABELS,
   TIMELINE_PREFERENCE_TAB_BY_KEY
@@ -6,16 +7,17 @@ import {
 import { SETTING_METADATA } from '@/constants/adminSettingsMetadata'
 
 const ADMIN_TAB_BY_PREFIX = [
-  { prefix: 'auth.', tab: 'authentication', tabLabel: 'Authentication' },
-  { prefix: 'geocoding.', tab: 'geocoding', tabLabel: 'Geocoding' },
-  { prefix: 'weather.', tab: 'weather', tabLabel: 'Weather' },
-  { prefix: 'map-matching.', tab: 'map-matching', tabLabel: 'Map Matching' },
-  { prefix: 'ai.', tab: 'ai', tabLabel: 'AI Assistant' },
-  { prefix: 'import.', tab: 'import', tabLabel: 'Import' },
-  { prefix: 'export.', tab: 'export', tabLabel: 'Export' },
-  { prefix: 'backup.', tab: 'backup', tabLabel: 'Backup and Restore' },
-  { prefix: 'system.notifications.', tab: 'notifications', tabLabel: 'Notifications' },
-  { prefix: 'system.', tab: 'system', tabLabel: 'System' }
+  { prefix: 'auth.', tab: 'authentication', tabLabelKey: 'ui.globalSearch.registry.tabAuthentication' },
+  { prefix: 'geocoding.', tab: 'geocoding', tabLabelKey: 'ui.globalSearch.registry.tabGeocoding' },
+  { prefix: 'weather.', tab: 'weather', tabLabelKey: 'ui.globalSearch.registry.tabWeather' },
+  { prefix: 'poi.', tab: 'poi', tabLabelKey: 'ui.globalSearch.registry.tabPlaceDiscovery' },
+  { prefix: 'map-matching.', tab: 'map-matching', tabLabelKey: 'ui.globalSearch.registry.tabMapMatching' },
+  { prefix: 'ai.', tab: 'ai', tabLabelKey: 'ui.globalSearch.registry.tabAiAssistant' },
+  { prefix: 'import.', tab: 'import', tabLabelKey: 'ui.globalSearch.registry.tabImport' },
+  { prefix: 'export.', tab: 'export', tabLabelKey: 'ui.globalSearch.registry.tabExport' },
+  { prefix: 'backup.', tab: 'backup', tabLabelKey: 'ui.globalSearch.registry.tabBackup' },
+  { prefix: 'system.notifications.', tab: 'notifications', tabLabelKey: 'ui.globalSearch.registry.tabNotifications' },
+  { prefix: 'system.', tab: 'system', tabLabelKey: 'ui.globalSearch.registry.tabSystem' }
 ]
 
 const PAGE_KEYWORDS = {
@@ -28,18 +30,18 @@ const PAGE_KEYWORDS = {
   '/app/admin/settings': ['system settings', 'admin settings', 'configuration']
 }
 
-const TIMELINE_TAB_LABELS = {
-  staypoints: 'Stay Point Detection',
-  trips: 'Trip Classification',
-  gpsgaps: 'GPS Gaps Detection',
-  merging: 'Stay Point Merging'
+const TIMELINE_TAB_LABEL_KEYS = {
+  staypoints: 'ui.globalSearch.registry.timelineTabStayPoints',
+  trips: 'ui.globalSearch.registry.timelineTabTrips',
+  gpsgaps: 'ui.globalSearch.registry.timelineTabGpsGaps',
+  merging: 'ui.globalSearch.registry.timelineTabMerging'
 }
 
 const toSearchItemId = (prefix, key) => `${prefix}:${key}`
 
 const tabMetaFromSettingKey = (key) => {
   const match = ADMIN_TAB_BY_PREFIX.find((entry) => key.startsWith(entry.prefix))
-  return match || { tab: 'system', tabLabel: 'System' }
+  return match || { tab: 'system', tabLabelKey: 'ui.globalSearch.registry.tabSystem' }
 }
 
 const SETTINGS_PAGE_BUILDERS = {
@@ -49,12 +51,14 @@ const SETTINGS_PAGE_BUILDERS = {
 }
 
 export const buildTimelineSettingsIndex = () => {
-  return Object.entries(TIMELINE_PREFERENCE_LABELS).map(([settingKey, label]) => ({
+  return Object.entries(TIMELINE_PREFERENCE_LABELS).map(([settingKey]) => ({
     tab: TIMELINE_PREFERENCE_TAB_BY_KEY[settingKey] || 'staypoints',
     id: toSearchItemId('timeline', settingKey),
     kind: 'setting',
-    title: label,
-    subtitle: `Timeline Preferences / ${TIMELINE_TAB_LABELS[TIMELINE_PREFERENCE_TAB_BY_KEY[settingKey] || 'staypoints']}`,
+    title: t(`timelinePreferences.page.settings.${settingKey}`),
+    subtitle: t('ui.globalSearch.registry.subtitleTimelinePreferences', {
+      tab: t(TIMELINE_TAB_LABEL_KEYS[TIMELINE_PREFERENCE_TAB_BY_KEY[settingKey] || 'staypoints'])
+    }),
     icon: 'pi pi-sliders-h',
     to: '/app/timeline/preferences',
     setting: settingKey,
@@ -66,8 +70,11 @@ export const buildProfileSettingsIndex = () => {
   return PROFILE_SETTINGS_SEARCH_INDEX.map((setting) => ({
     id: toSearchItemId('profile', setting.id),
     kind: 'setting',
-    title: setting.title,
-    subtitle: `Profile / ${setting.subtitle}`,
+    // `titleKey` is preferred where an entry has been migrated. Reading t() during this map is what
+    // makes the enclosing computed re-evaluate on a locale change. Entries without a key keep their
+    // literal title until they are migrated.
+    title: setting.titleKey ? t(setting.titleKey) : setting.title,
+    subtitle: t('ui.globalSearch.registry.subtitleProfile', { subtitle: setting.subtitle }),
     icon: 'pi pi-user',
     to: '/app/profile',
     tab: setting.tab,
@@ -86,7 +93,7 @@ export const buildAdminSettingsIndex = (isAdmin) => {
       id: toSearchItemId('admin', key),
       kind: 'setting',
       title: metadata.label || key,
-      subtitle: `System Settings / ${tabMeta.tabLabel}`,
+      subtitle: t('ui.globalSearch.registry.subtitleSystemSettings', { tab: t(tabMeta.tabLabelKey) }),
       icon: 'pi pi-cog',
       to: '/app/admin/settings',
       tab: tabMeta.tab,
@@ -107,7 +114,6 @@ export const buildPageIndex = (routes, isAdmin) => {
     .filter((route) => route.path?.startsWith('/app'))
     .filter((route) => !route.path.includes(':'))
     .filter((route) => route.path !== '/app')
-    .filter((route) => route.path !== '/app/period-tags')
     .filter((route) => !!(route.meta?.title || route.name))
     .filter((route) => {
       if (!route.path.startsWith('/app/admin')) return true
@@ -120,7 +126,7 @@ export const buildPageIndex = (routes, isAdmin) => {
       id: toSearchItemId('page', route.path),
       kind: 'page',
       title: route.meta?.title || route.name || route.path,
-      subtitle: route.path.startsWith('/app/admin') ? 'Administration' : 'Page',
+      subtitle: route.path.startsWith('/app/admin') ? t('ui.globalSearch.registry.subtitleAdministration') : t('ui.globalSearch.registry.subtitlePage'),
       icon: route.path.startsWith('/app/admin') ? 'pi pi-shield' : 'pi pi-compass',
       to: route.path,
       requiresAdmin: route.path.startsWith('/app/admin'),

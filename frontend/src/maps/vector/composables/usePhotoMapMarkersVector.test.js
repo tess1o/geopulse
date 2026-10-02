@@ -45,6 +45,7 @@ const createMap = () => {
       layers.delete(layerId)
     }),
     setLayoutProperty: vi.fn(),
+    setFilter: vi.fn(),
     hasImage: vi.fn((imageId) => images.has(imageId)),
     addImage: vi.fn((imageId) => {
       images.add(imageId)

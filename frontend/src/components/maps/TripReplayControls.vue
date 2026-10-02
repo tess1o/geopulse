@@ -8,11 +8,18 @@
       @touchstart.stop
       @click.stop
     >
+      <!-- The highlighted trip's summary, so the map shows one card, not a pill stacked on the bar. -->
+      <div v-if="summary" class="trip-replay-summary">
+        <span class="trip-replay-summary-icon"><i :class="summary.iconClass"></i></span>
+        <span class="trip-replay-summary-title">{{ summary.title }}</span>
+        <span class="trip-replay-summary-meta">{{ summary.metaItems.join(' · ') }}</span>
+      </div>
+
       <div class="trip-replay-bar-main">
         <button
           type="button"
           class="trip-replay-btn"
-          :title="isPlaying ? 'Pause replay' : 'Play replay'"
+          :title="isPlaying ? t('maps.tripReplay.pause') : t('maps.tripReplay.play')"
           @click="$emit('toggle-playback')"
         >
           <i :class="isPlaying ? 'pi pi-pause' : 'pi pi-play'"></i>
@@ -21,7 +28,7 @@
         <button
           type="button"
           class="trip-replay-btn"
-          title="Stop replay"
+          :title="t('maps.tripReplay.stop')"
           @click="$emit('stop')"
         >
           <i class="pi pi-stop"></i>
@@ -50,7 +57,7 @@
             type="button"
             class="trip-replay-speed-btn"
             :class="{ active: speedMultiplier === speed }"
-            :title="`Set speed ${speed}x`"
+            :title="t('maps.tripReplay.setSpeed', { speed })"
             @click="$emit('set-speed', speed)"
           >
             {{ speed }}x
@@ -61,11 +68,11 @@
           type="button"
           class="trip-replay-toggle-btn"
           :class="{ active: followCamera }"
-          title="Follow camera"
+          :title="t('maps.tripReplay.followCamera')"
           @click="$emit('toggle-follow-camera')"
         >
           <i class="pi pi-compass"></i>
-          Follow
+          {{ t('maps.tripReplay.follow') }}
         </button>
 
         <button
@@ -73,7 +80,7 @@
           type="button"
           class="trip-replay-toggle-btn"
           :class="{ active: enable3d }"
-          title="Enable 3D camera"
+          :title="t('maps.tripReplay.enable3d')"
           @click="$emit('toggle-3d')"
         >
           <i class="pi pi-box"></i>
@@ -84,8 +91,8 @@
       <button
         type="button"
         class="trip-replay-btn trip-replay-dismiss-btn"
-        title="Hide replay controls"
-        aria-label="Hide replay controls"
+        :title="t('maps.tripReplay.hideControls')"
+        :aria-label="t('maps.tripReplay.hideControls')"
         @click="$emit('dismiss')"
       >
         <i class="pi pi-times"></i>
@@ -103,18 +110,22 @@
       <button
         type="button"
         class="trip-replay-restore-btn"
-        title="Show replay controls"
-        aria-label="Show replay controls"
+        :title="t('maps.tripReplay.showControls')"
+        :aria-label="t('maps.tripReplay.showControls')"
         @click="$emit('restore')"
       >
         <i class="pi pi-play-circle"></i>
-        Replay
+        {{ t('maps.tripReplay.replay') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   showBar: {
     type: Boolean,
@@ -163,6 +174,11 @@ defineProps({
   compact: {
     type: Boolean,
     default: false
+  },
+  // { iconClass, title, metaItems: string[] } of the highlighted trip, shown as the bar's header.
+  summary: {
+    type: Object,
+    default: null
   }
 })
 
@@ -223,10 +239,51 @@ defineEmits([
   gap: var(--trip-replay-gap);
   padding: var(--trip-replay-padding);
   border-radius: var(--trip-replay-radius);
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  border: 1px solid var(--gp-border-medium);
+  background: color-mix(in srgb, var(--gp-surface-card) 95%, transparent);
+  box-shadow: var(--gp-shadow-large);
   backdrop-filter: blur(2px);
+}
+
+.trip-replay-summary {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: var(--trip-replay-btn-size);
+  color: var(--gp-text-primary);
+}
+
+.trip-replay-summary-icon {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gp-primary);
+  color: #ffffff;
+  font-size: 0.78rem;
+}
+
+.trip-replay-summary-title {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.trip-replay-summary-meta {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trip-replay-bar-main {
@@ -253,9 +310,9 @@ defineEmits([
 .trip-replay-btn,
 .trip-replay-speed-btn,
 .trip-replay-toggle-btn {
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(248, 250, 252, 0.96);
-  color: #0f172a;
+  border: 1px solid var(--gp-border-medium);
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
   cursor: pointer;
   border-radius: 0.5rem;
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
@@ -280,7 +337,7 @@ defineEmits([
 .trip-replay-btn:hover,
 .trip-replay-speed-btn:hover,
 .trip-replay-toggle-btn:hover {
-  background: rgba(226, 232, 240, 0.96);
+  background: var(--gp-surface-emphasis);
 }
 
 .trip-replay-speed-btn {
@@ -304,14 +361,14 @@ defineEmits([
 .trip-replay-slider {
   flex: 1;
   min-width: var(--trip-replay-slider-min-width);
-  accent-color: #2563eb;
+  accent-color: var(--gp-primary);
 }
 
 .trip-replay-time {
   min-width: var(--trip-replay-time-min-width);
   font-size: var(--trip-replay-time-font-size);
   font-weight: 700;
-  color: #334155;
+  color: var(--gp-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -323,9 +380,9 @@ defineEmits([
 }
 
 .trip-replay-restore-btn {
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(248, 250, 252, 0.96);
-  color: #0f172a;
+  border: 1px solid var(--gp-border-medium);
+  background: var(--gp-surface-muted);
+  color: var(--gp-text-primary);
   cursor: pointer;
   border-radius: 999px;
   height: var(--trip-replay-restore-height);
@@ -369,59 +426,11 @@ defineEmits([
   --trip-replay-restore-font-size: 0.72rem;
 }
 
-:global(.p-dark) .trip-replay-bar {
-  border-color: rgba(100, 116, 139, 0.6);
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.92));
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.58);
-}
-
-:global(.p-dark) .trip-replay-btn,
-:global(.p-dark) .trip-replay-speed-btn,
-:global(.p-dark) .trip-replay-toggle-btn {
-  border-color: rgba(100, 116, 139, 0.62);
-  background: rgba(30, 41, 59, 0.94);
-  color: rgba(226, 232, 240, 0.97);
-}
-
-:global(.p-dark) .trip-replay-btn:hover,
-:global(.p-dark) .trip-replay-speed-btn:hover,
-:global(.p-dark) .trip-replay-toggle-btn:hover {
-  background: rgba(51, 65, 85, 0.95);
-}
-
 .trip-replay-speed-btn.active,
 .trip-replay-toggle-btn.active {
-  border-color: rgba(30, 64, 175, 0.88);
-  background: rgba(37, 99, 235, 0.95);
-  color: #ffffff;
-}
-
-:global(.p-dark) .trip-replay-speed-btn.active,
-:global(.p-dark) .trip-replay-toggle-btn.active {
-  border-color: rgba(56, 189, 248, 0.98) !important;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.99), rgba(14, 165, 233, 0.97)) !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.45), 0 6px 16px rgba(14, 116, 144, 0.45);
-}
-
-:global(.p-dark) .trip-replay-speed-btn.active:hover,
-:global(.p-dark) .trip-replay-toggle-btn.active:hover,
-:global(.p-dark) .trip-replay-speed-btn.active:focus-visible,
-:global(.p-dark) .trip-replay-toggle-btn.active:focus-visible {
-  border-color: rgba(125, 211, 252, 1) !important;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(6, 182, 212, 0.98)) !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.5), 0 8px 18px rgba(14, 116, 144, 0.5);
-}
-
-:global(.p-dark) .trip-replay-time {
-  color: rgba(226, 232, 240, 0.93);
-}
-
-:global(.p-dark) .trip-replay-restore-btn {
-  border-color: rgba(100, 116, 139, 0.62);
-  background: rgba(30, 41, 59, 0.94);
-  color: rgba(226, 232, 240, 0.97);
+  border-color: var(--gp-primary-hover);
+  background: var(--gp-primary);
+  color: var(--gp-primary-contrast);
 }
 
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {

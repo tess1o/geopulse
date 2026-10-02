@@ -14,6 +14,7 @@
         <div
           v-if="collapsible"
           class="timeline-sheet-handle"
+          :class="{ 'timeline-sheet-handle--mobile-only': handleMobileOnly }"
           @pointerdown="handlePointerDown"
         >
           <span class="timeline-sheet-grip"></span>
@@ -31,14 +32,14 @@
           <div
             v-if="showDateNavigation && dateLabel && sheetState !== 'collapsed'"
             class="timeline-sheet-date-nav"
-            aria-label="Timeline day navigation"
+            :aria-label="t('timeline.splitLayout.dayNavigationAriaLabel')"
             @pointerdown.stop
           >
             <button
               type="button"
               class="timeline-sheet-date-nav-button"
-              title="Previous day"
-              aria-label="Previous day"
+              :title="t('timeline.splitLayout.previousDay')"
+              :aria-label="t('timeline.splitLayout.previousDay')"
               @click="$emit('navigate-date', -1)"
             >
               <i class="pi pi-chevron-left"></i>
@@ -47,8 +48,8 @@
             <button
               type="button"
               class="timeline-sheet-date-nav-button"
-              title="Next day"
-              aria-label="Next day"
+              :title="t('timeline.splitLayout.nextDay')"
+              :aria-label="t('timeline.splitLayout.nextDay')"
               @click="$emit('navigate-date', 1)"
             >
               <i class="pi pi-chevron-right"></i>
@@ -64,19 +65,31 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   collapsible: {
     type: Boolean,
     default: true
   },
+  /**
+   * Show the drag handle only in sheet mode (mobile / landscape phone). On desktop the
+   * handle is a visible bar above the side pane, which is redundant when the pane already
+   * renders its own heading. Off by default so the Timeline page is unaffected.
+   */
+  handleMobileOnly: {
+    type: Boolean,
+    default: false
+  },
   collapsedLabel: {
     type: String,
-    default: 'Timeline'
+    default: ''
   },
   expandedLabel: {
     type: String,
-    default: 'Movement Timeline'
+    default: ''
   },
   showDateNavigation: {
     type: Boolean,
@@ -196,14 +209,25 @@ const stopDragging = () => {
   window.removeEventListener('pointermove', handlePointerMove)
   window.removeEventListener('pointerup', handlePointerUp)
   window.removeEventListener('pointercancel', handlePointerUp)
+  // A drag leaves `didDrag` set, and `cycleSheetState` spends that flag on the click the
+  // browser fires straight after the drag - which is the intent. Letting it live any longer
+  // swallowed the *next*, unrelated tap on the toggle button instead. A task boundary is
+  // enough: the drag's own click has run by then, and cycleSheetState clears the flag itself
+  // when it consumes one.
+  setTimeout(() => {
+    didDrag.value = false
+  }, 0)
 }
 
 const handlePointerUp = () => {
   if (!isDragging.value) return
 
-  if (!didDrag.value && sheetState.value === 'collapsed') {
+  // A press that never moved is a tap, and a tap walks the sheet to its next state from
+  // wherever it is. This used to be a collapsed -> half special case, so a tap did nothing at
+  // all once the sheet was mid or fully open and half was only reachable by dragging to it.
+  if (!didDrag.value) {
     stopDragging()
-    setSheetState('half')
+    cycleSheetState()
     return
   }
 
@@ -259,16 +283,19 @@ const mainClasses = computed(() => ({
   'timeline-main--sheet-collapsed': props.collapsible && sheetState.value === 'collapsed'
 }))
 
+const effectiveCollapsedLabel = computed(() => props.collapsedLabel || t('timeline.splitLayout.defaultCollapsedLabel'))
+const effectiveExpandedLabel = computed(() => props.expandedLabel || t('timeline.splitLayout.defaultExpandedLabel'))
+
 const sheetLabel = computed(() => (
   sheetState.value === 'collapsed' && !isDragging.value
-    ? props.collapsedLabel
-    : props.expandedLabel
+    ? effectiveCollapsedLabel.value
+    : effectiveExpandedLabel.value
 ))
 
 const toggleLabel = computed(() => (
   sheetState.value === 'collapsed'
-    ? `Show ${props.expandedLabel.toLowerCase()}`
-    : `Collapse ${props.expandedLabel.toLowerCase()}`
+    ? t('timeline.splitLayout.show', { label: effectiveExpandedLabel.value.toLowerCase() })
+    : t('timeline.splitLayout.collapse', { label: effectiveExpandedLabel.value.toLowerCase() })
 ))
 
 const toggleIcon = computed(() => (
@@ -346,7 +373,7 @@ defineExpose({
 .timeline-split-side-pane {
   display: flex;
   flex-direction: column;
-  overflow: hidden !important;
+  overflow: hidden;
   height: auto;
   min-height: 0;
   min-width: 320px;
@@ -367,7 +394,7 @@ defineExpose({
   border: none;
   border-bottom: 2px solid var(--gp-primary-light);
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font: inherit;
   font-size: 1.1rem;
   font-weight: 600;
@@ -376,7 +403,19 @@ defineExpose({
 }
 
 .timeline-sheet-handle:hover {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
+}
+
+/* Opt-in: the handle is a sheet affordance, so on desktop it is hidden rather than
+   stacked above a side pane that already has its own heading. */
+.timeline-sheet-handle--mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .timeline-sheet-handle--mobile-only {
+    display: flex;
+  }
 }
 
 .timeline-sheet-toggle-button {
@@ -438,9 +477,9 @@ defineExpose({
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-secondary);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -499,8 +538,8 @@ defineExpose({
   height: 44px;
   min-width: 0;
   min-height: 0;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: 999px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
 }
@@ -519,25 +558,6 @@ defineExpose({
 
 .timeline-sheet--compact :deep(.timeline-container) {
   display: none;
-}
-
-.p-dark .timeline-sheet-handle:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .timeline-sheet-handle {
-  border-bottom-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-sheet-date-nav-button {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .timeline-main--sheet-collapsed .timeline-split-side-pane {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
@@ -574,9 +594,9 @@ defineExpose({
     max-height: calc(100% - 24px);
     min-height: 0;
     margin: 0;
-    overflow: hidden !important;
-    background: var(--gp-surface-white);
-    border: 1px solid var(--gp-border-light);
+    overflow: hidden;
+    background: var(--gp-surface-card);
+    border: 1px solid var(--gp-border);
     border-bottom: none;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
@@ -598,14 +618,20 @@ defineExpose({
     width: auto;
     height: var(--timeline-sheet-height, 168px);
     min-width: 320px;
-    background: var(--gp-surface-white);
+    background: var(--gp-surface-card);
     border-bottom: none;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
     transform: none;
   }
 
-  .timeline-sheet--compact {
+  /* The collapsed state is matched by two rules: this one, and
+     `.timeline-main--sheet-collapsed .timeline-split-side-pane` above (two classes + the scope
+     attribute) which pins the pane full-width to the bottom edge. At one class + attribute the
+     pill geometry below lost on specificity whatever the source order, so the collapsed sheet
+     rendered as a full-width bar. Matching that specificity here lets order decide - this block
+     is later - and the floating pill is what renders. */
+  .timeline-main--sheet-collapsed .timeline-sheet--compact {
     left: 50%;
     right: auto;
     bottom: calc(0.55rem + env(safe-area-inset-bottom));
@@ -613,7 +639,7 @@ defineExpose({
     height: var(--timeline-sheet-height, 44px);
     max-height: none;
     min-width: 0;
-    border: 1px solid var(--gp-border-light);
+    border: 1px solid var(--gp-border);
     border-radius: 999px;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
     transform: translateX(-50%);
@@ -637,8 +663,8 @@ defineExpose({
     gap: 0.5rem;
     padding: 0.45rem 2.25rem 0.5rem;
     border: none;
-    border-bottom: 1px solid var(--gp-border-light);
-    background: var(--gp-surface-white);
+    border-bottom: 1px solid var(--gp-border);
+    background: var(--gp-surface-card);
     color: var(--gp-text-secondary);
     font: inherit;
     font-size: 0.85rem;
@@ -705,16 +731,6 @@ defineExpose({
 
   .timeline-split-side-pane :deep(.timeline-content) {
     padding: 0 var(--gp-spacing-sm) var(--gp-spacing-md);
-  }
-
-  .p-dark .timeline-split-side-pane,
-  .p-dark .timeline-sheet-handle {
-    background: var(--gp-surface-dark);
-    border-color: var(--gp-border-dark);
-  }
-
-  .p-dark .timeline-sheet-grip {
-    background: var(--gp-border-medium);
   }
 }
 

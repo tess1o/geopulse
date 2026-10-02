@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.traccar;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.HeaderParam;
@@ -13,14 +16,16 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.Locale;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/traccar")
+@Path(ApiPaths.GPS_INGEST + "/traccar")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -40,31 +45,33 @@ public class TraccarResource {
     @POST
     @Operation(summary = "Ingest Traccar position",
             description = "Receives a Traccar position update and routes it to matching active Traccar source configurations.")
+    @APIResponse(responseCode = "200", description = "Position accepted or ignored")
     public Response handleTraccar(TraccarPositionData payload,
                                   @HeaderParam("Authorization") String authHeader) {
-        log.info("Received Traccar payload: {}", payload);
-
+        long started = System.nanoTime();
         String token;
         try {
             token = extractBearerToken(authHeader);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required", e);
         }
 
         List<GpsSourceConfigEntity> tokenConfigs = gpsSourceService.findAllActiveByTokenAndSourceType(token, GpsSourceType.TRACCAR);
         if (tokenConfigs.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         List<GpsSourceConfigEntity> matchedConfigs = resolveMatchedConfigs(payload, tokenConfigs);
         if (matchedConfigs.isEmpty()) {
-            log.info("No eligible Traccar config route for token and incoming device id");
+            log.debug("No eligible Traccar config route for incoming device id");
             return Response.ok().build();
         }
 
+        var summary = new GpsPointService.GpsIngestSummary(0, 0, 0, 0);
         for (GpsSourceConfigEntity config : matchedConfigs) {
-            gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config);
+            summary = summary.plus(gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config));
         }
+        summary.logCompletion(GpsSourceType.TRACCAR, started);
         return Response.ok().build();
     }
 

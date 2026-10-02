@@ -1,14 +1,14 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Trip Classification Details"
+    :header="t('classification.dialog.header')"
     :modal="true"
     class="gp-dialog-lg"
     @hide="$emit('close')"
   >
     <div v-if="loading" class="loading-state">
       <ProgressSpinner />
-      <p>Loading classification details...</p>
+      <p>{{ t('classification.dialog.loading') }}</p>
     </div>
 
     <div v-else-if="error" class="error-state">
@@ -20,28 +20,28 @@
     <div v-else-if="details" class="classification-content">
       <!-- Section 1: Trip Overview -->
       <div class="section">
-        <h3 class="section-title">Trip Overview</h3>
+        <h3 class="section-title">{{ t('classification.overview.title') }}</h3>
         <div class="details-grid">
-          <DetailItem label="Start Time" :value="formatDateTime(details.timestamp)" />
-          <DetailItem label="Duration" :value="formatDuration(details.tripDurationSeconds)" />
-          <DetailItem label="Distance" :value="formatDistance(details.distanceMeters)" />
-          <DetailItem label="Effective Classification">
+          <DetailItem :label="t('classification.overview.startTime')" :value="formatDateTime(details.timestamp)" />
+          <DetailItem :label="t('classification.overview.duration')" :value="formatDuration(details.tripDurationSeconds)" />
+          <DetailItem :label="t('classification.overview.distance')" :value="formatDistance(details.distanceMeters)" />
+          <DetailItem :label="t('classification.overview.effectiveClassification')">
             <template #value>
               <Tag
-                :value="details.currentClassification"
+                :value="movementTypeLabel(details.currentClassification)"
                 :severity="getTransportSeverity(details.currentClassification)"
               />
             </template>
           </DetailItem>
-          <DetailItem label="Automatic Classification">
+          <DetailItem :label="t('classification.overview.automaticClassification')">
             <template #value>
               <Tag
-                :value="details.algorithmClassification"
+                :value="movementTypeLabel(details.algorithmClassification)"
                 :severity="getTransportSeverity(details.algorithmClassification)"
               />
             </template>
           </DetailItem>
-          <DetailItem label="Classification Source">
+          <DetailItem :label="t('classification.overview.classificationSource')">
             <template #value>
               <Tag
                 :value="details.movementTypeSource"
@@ -51,21 +51,21 @@
           </DetailItem>
         </div>
         <Message v-if="details.movementTypeSource === 'MANUAL'" severity="warn" :closable="false">
-          Manual override is active for this trip.
+          {{ t('classification.overview.manualOverrideActive') }}
         </Message>
       </div>
 
       <!-- Section 2: Manual Override -->
       <div class="section">
-        <h3 class="section-title">Edit Movement Type</h3>
+        <h3 class="section-title">{{ t('classification.editSection.title') }}</h3>
         <Message v-if="details.currentClassification === 'UNKNOWN'" severity="warn" :closable="false">
-          Algorithm did not recognize this movement type. Set it manually below.
+          {{ t('classification.editSection.unrecognizedWarning') }}
         </Message>
         <Message v-else severity="info" :closable="false">
-          If this looks incorrect, override it manually.
+          {{ t('classification.editSection.overrideInfo') }}
         </Message>
         <Message v-if="readOnly" severity="error" :closable="false">
-          Movement type edits are read-only in demo mode.
+          {{ t('classification.editSection.readOnlyError') }}
         </Message>
         <div class="override-controls">
           <Select
@@ -73,20 +73,20 @@
             :options="movementTypeOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select movement type"
+            :placeholder="t('classification.editSection.selectPlaceholder')"
             class="movement-select"
             :disabled="savingMovementType || readOnly"
           />
           <div class="override-actions">
             <Button
-              label="Save Override"
+              :label="t('classification.editSection.saveButton')"
               icon="pi pi-save"
               :loading="savingMovementType"
               :disabled="readOnly || !selectedMovementType || savingMovementType"
               @click="saveManualMovementType"
             />
             <Button
-              label="Reset to Automatic"
+              :label="t('classification.editSection.resetButton')"
               icon="pi pi-refresh"
               severity="secondary"
               outlined
@@ -100,42 +100,42 @@
 
       <!-- Section 3: GPS Statistics -->
       <div class="section">
-        <h3 class="section-title">GPS Statistics</h3>
+        <h3 class="section-title">{{ t('classification.stats.title') }}</h3>
         <div class="stats-grid">
           <StatCard
             icon="pi pi-chart-line"
-            label="Average GPS Speed"
+            :label="t('classification.stats.avgSpeed')"
             :value="formatSpeed(details.statistics.avgGpsSpeedKmh)"
           />
           <StatCard
             icon="pi pi-bolt"
-            label="Max GPS Speed"
+            :label="t('classification.stats.maxSpeed')"
             :value="formatSpeed(details.statistics.maxGpsSpeedKmh)"
           />
           <StatCard
             icon="pi pi-calculator"
-            label="Calculated Avg Speed"
+            :label="t('classification.stats.calculatedAvgSpeed')"
             :value="formatSpeed(details.statistics.calculatedAvgSpeedKmh)"
-            hint="From distance/duration"
+            :hint="t('classification.stats.calculatedAvgSpeedHint')"
           />
           <StatCard
             icon="pi pi-wave-pulse"
-            label="Speed Variance"
+            :label="t('classification.stats.speedVariance')"
             :value="formatVariance(details.statistics.speedVarianceKmh)"
           />
           <StatCard
             icon="pi pi-exclamation-triangle"
-            label="Low Accuracy Points"
+            :label="t('classification.stats.lowAccuracyPoints')"
             :value="details.statistics.lowAccuracyPointsCount || 0"
           />
           <StatCard
             icon="pi pi-verified"
-            label="GPS Reliability"
-            :value="details.statistics.gpsReliable ? 'Reliable' : 'Unreliable'"
+            :label="t('classification.stats.gpsReliability')"
+            :value="details.statistics.gpsReliable ? t('classification.stats.reliable') : t('classification.stats.unreliable')"
             :severity="details.statistics.gpsReliable ? 'success' : 'warn'"
             :hint="details.statistics.gpsReliable
-              ? 'GPS speeds are within expected range and used for classification'
-              : 'GPS speeds unreliable - using calculated speed from distance/duration instead'"
+              ? t('classification.stats.reliableHint')
+              : t('classification.stats.unreliableHint')"
           />
         </div>
       </div>
@@ -147,33 +147,24 @@
             <i class="pi pi-sort-amount-down"></i>
           </div>
           <div class="priority-banner-content">
-            <h3 class="priority-banner-title">Classification Priority Order</h3>
+            <h3 class="priority-banner-title">{{ t('classification.priority.title') }}</h3>
             <div class="priority-flow">
-              <span class="priority-step">✈️ FLIGHT</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">⛵ BOAT</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🚊 TRAIN</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🚴 BICYCLE</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🏃 RUNNING</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🚗 CAR</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🚶 WALK</span>
-              <i class="pi pi-arrow-right"></i>
-              <span class="priority-step priority-unknown">❓ UNKNOWN</span>
+              <template v-for="(step, stepIndex) in priorityOrderSteps" :key="step.type">
+                <span class="priority-step" :class="{ 'priority-unknown': step.type === 'UNKNOWN' }">
+                  {{ step.icon }} {{ step.label }}
+                </span>
+                <i v-if="stepIndex < priorityOrderSteps.length - 1" class="pi pi-arrow-right"></i>
+              </template>
             </div>
             <p class="priority-banner-description">
-              Trips are classified in priority order from left to right. Once a match is found, classification stops.
+              {{ t('classification.priority.description') }}
               <a
-                href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"
+                href="https://geopulse.cc/docs/user-guide/timeline/travel_classification"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="doc-link"
               >
-                <i class="pi pi-external-link"></i> Learn more
+                <i class="pi pi-external-link"></i> {{ t('classification.priority.learnMore') }}
               </a>
             </p>
           </div>
@@ -182,9 +173,9 @@
 
       <!-- Section 5: Classification Steps -->
       <div class="section">
-        <h3 class="section-title">Classification Analysis</h3>
+        <h3 class="section-title">{{ t('classification.steps.title') }}</h3>
         <p class="section-description">
-          Detailed threshold checks for automatic classification.
+          {{ t('classification.steps.description') }}
         </p>
 
         <div class="steps-list">
@@ -201,19 +192,20 @@
       <!-- Section 6: Final Reason -->
       <div class="section">
         <Message severity="info" :closable="false">
-          <strong>Final Decision:</strong> {{ details.finalReason }}
+          <strong>{{ t('classification.finalDecisionLabel') }}</strong> {{ details.finalReason }}
         </Message>
       </div>
     </div>
 
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('classification.dialog.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -221,8 +213,8 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { useTimelineStore } from '@/stores/timeline'
 import DetailItem from './classification/DetailItem.vue'
@@ -246,6 +238,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'movement-updated'])
 
+const { t, te } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const timelineStore = useTimelineStore()
@@ -256,17 +249,37 @@ const details = ref(null)
 const savingMovementType = ref(false)
 const selectedMovementType = ref(null)
 
-const movementTypeOptions = [
-  { label: 'Walk', value: 'WALK' },
-  { label: 'Car', value: 'CAR' },
-  { label: 'Motorcycle', value: 'MOTORCYCLE' },
-  { label: 'Bicycle', value: 'BICYCLE' },
-  { label: 'Running', value: 'RUNNING' },
-  { label: 'Train', value: 'TRAIN' },
-  { label: 'Flight', value: 'FLIGHT' },
-  { label: 'Boat', value: 'BOAT' },
-  { label: 'Unknown', value: 'UNKNOWN' }
-]
+const MOVEMENT_TYPE_VALUES = ['WALK', 'CAR', 'MOTORCYCLE', 'PUBLIC_TRANSPORT', 'BICYCLE', 'RUNNING', 'TRAIN', 'FLIGHT', 'BOAT', 'UNKNOWN']
+
+// Translated at call time so a locale switch doesn't leave stale labels behind.
+const movementTypeLabel = (type) => {
+  if (!type) return type
+  const key = `movementTypes.${type}`
+  return te(key) ? t(key) : type
+}
+
+const movementTypeOptions = computed(() => MOVEMENT_TYPE_VALUES.map((value) => ({
+  label: movementTypeLabel(value),
+  value
+})))
+
+const PRIORITY_ORDER_ICONS = {
+  FLIGHT: '✈️',
+  BOAT: '⛵',
+  TRAIN: '🚊',
+  BICYCLE: '🚴',
+  RUNNING: '🏃',
+  CAR: '🚗',
+  WALK: '🚶',
+  UNKNOWN: '❓'
+}
+const PRIORITY_ORDER_VALUES = ['FLIGHT', 'BOAT', 'TRAIN', 'BICYCLE', 'RUNNING', 'CAR', 'WALK', 'UNKNOWN']
+
+const priorityOrderSteps = computed(() => PRIORITY_ORDER_VALUES.map((type) => ({
+  type,
+  icon: PRIORITY_ORDER_ICONS[type],
+  label: movementTypeLabel(type).toUpperCase()
+})))
 
 const canResetMovementType = computed(() => details.value?.movementTypeSource === 'MANUAL')
 
@@ -300,23 +313,15 @@ async function fetchClassificationDetails(tripId) {
   error.value = null
 
   try {
-    const response = await apiService.get(
-      `/streaming-timeline/trips/${tripId}/classification`
-    )
-
-    if (response.status === 'success') {
-      details.value = response.data
-      selectedMovementType.value = response.data?.currentClassification || 'UNKNOWN'
-    } else {
-      error.value = response.message || 'Failed to load classification details'
-    }
+    details.value = await timelineStore.fetchTripClassification(tripId)
+    selectedMovementType.value = details.value?.currentClassification || 'UNKNOWN'
   } catch (err) {
     console.error('Error fetching classification details:', err)
-    error.value = err.message || 'Failed to load classification details'
+    error.value = formatApiErrorDetail(err, t('classification.toasts.loadFailedFallback'))
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Could not load trip classification details',
+      summary: t('common.error'),
+      detail: t('classification.toasts.loadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -342,8 +347,8 @@ const saveManualMovementType = async () => {
       await fetchClassificationDetails(props.trip.id)
       toast.add({
         severity: 'success',
-        summary: 'Movement Type Updated',
-        detail: `Trip marked as ${updated.movementType}`,
+        summary: t('classification.toasts.movementUpdatedSummary'),
+        detail: t('classification.toasts.movementUpdatedDetail', { type: movementTypeLabel(updated.movementType) }),
         life: 2500
       })
     }
@@ -351,8 +356,8 @@ const saveManualMovementType = async () => {
     console.error('Error updating movement type:', err)
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
-      detail: err.message || 'Could not update movement type',
+      summary: t('classification.toasts.updateFailedSummary'),
+      detail: err.message || t('classification.toasts.updateFailedFallback'),
       life: 3000
     })
   } finally {
@@ -379,8 +384,8 @@ const resetToAutomaticMovementType = async () => {
       await fetchClassificationDetails(props.trip.id)
       toast.add({
         severity: 'success',
-        summary: 'Movement Type Reset',
-        detail: `Trip classification reset to ${updated.movementType}`,
+        summary: t('classification.toasts.movementResetSummary'),
+        detail: t('classification.toasts.movementResetDetail', { type: movementTypeLabel(updated.movementType) }),
         life: 2500
       })
     }
@@ -388,8 +393,8 @@ const resetToAutomaticMovementType = async () => {
     console.error('Error resetting movement type:', err)
     toast.add({
       severity: 'error',
-      summary: 'Reset Failed',
-      detail: err.message || 'Could not reset movement type',
+      summary: t('classification.toasts.resetFailedSummary'),
+      detail: err.message || t('classification.toasts.resetFailedFallback'),
       life: 3000
     })
   } finally {
@@ -399,22 +404,22 @@ const resetToAutomaticMovementType = async () => {
 
 // Formatting helpers
 const formatDateTime = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('classification.na')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
 }
 
 const formatDuration = (seconds) => {
-  if (!seconds) return 'N/A'
+  if (!seconds) return t('classification.na')
   return formatDurationSmart(seconds)
 }
 
 const formatSpeed = (speedKmh) => {
-  if (speedKmh === null || speedKmh === undefined) return 'N/A'
+  if (speedKmh === null || speedKmh === undefined) return t('classification.na')
   return `${speedKmh.toFixed(1)} km/h`
 }
 
 const formatVariance = (variance) => {
-  if (variance === null || variance === undefined) return 'N/A'
+  if (variance === null || variance === undefined) return t('classification.na')
   return variance.toFixed(1)
 }
 
@@ -469,12 +474,12 @@ const getTransportSeverity = (transportMode) => {
 }
 
 .classification-content::-webkit-scrollbar-track {
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: 4px;
 }
 
 .classification-content::-webkit-scrollbar-thumb {
-  background: var(--gp-border-medium);
+  background: var(--gp-border);
   border-radius: 4px;
 }
 
@@ -542,7 +547,7 @@ const getTransportSeverity = (transportMode) => {
   display: flex;
   gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
   border-left: 4px solid var(--gp-primary);
 }
@@ -616,72 +621,11 @@ const getTransportSeverity = (transportMode) => {
 
 .doc-link:hover {
   text-decoration: underline;
-  color: var(--gp-primary-dark);
+  color: var(--gp-primary-text);
 }
 
 .doc-link i {
   font-size: 0.75rem;
-}
-
-/* Dark Mode */
-.p-dark .priority-banner {
-  background: var(--gp-surface-darker);
-  border-left-color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-icon {
-  color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .priority-step {
-  background: var(--gp-primary);
-  color: white;
-}
-
-.p-dark .priority-step.priority-unknown {
-  background: var(--gp-text-muted);
-}
-
-.p-dark .priority-flow i {
-  color: var(--gp-primary);
-}
-
-.p-dark .priority-banner-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .doc-link:hover {
-  color: var(--gp-primary-light);
-}
-
-/* Dark Mode (continued) */
-.p-dark .classification-content::-webkit-scrollbar-track {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .classification-content::-webkit-scrollbar-thumb {
-  background: var(--gp-border-dark);
-}
-
-.p-dark .classification-content::-webkit-scrollbar-thumb:hover {
-  background: var(--gp-primary);
-}
-
-.p-dark .section-title {
-  color: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .section-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .loading-state p {
-  color: var(--gp-text-secondary);
 }
 
 /* Mobile Responsive */
@@ -763,38 +707,5 @@ const getTransportSeverity = (transportMode) => {
   .section-title {
     font-size: 0.95rem;
   }
-}
-
-/* PrimeVue Dialog overrides */
-:deep(.p-dialog) {
-  border-radius: var(--gp-radius-large);
-  box-shadow: var(--gp-shadow-large);
-}
-
-:deep(.p-dialog-header) {
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-dialog-content) {
-  background: var(--gp-surface-white);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-dialog-footer) {
-  background: var(--gp-surface-white);
-  border-top: 1px solid var(--gp-border-light);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--gp-spacing-sm);
-}
-
-.p-dark :deep(.p-dialog-header),
-.p-dark :deep(.p-dialog-content),
-.p-dark :deep(.p-dialog-footer) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
 }
 </style>

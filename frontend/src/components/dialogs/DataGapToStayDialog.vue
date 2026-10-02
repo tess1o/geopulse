@@ -1,19 +1,19 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Convert Data Gap to Stay"
+    :header="t('tripDialogs.dataGapToStay.header')"
     :modal="true"
     class="gp-dialog-md"
     @hide="$emit('close')"
   >
     <div v-if="dataGap" class="conversion-content">
       <div class="gap-meta">
-        <Tag value="Data Gap" severity="warn" />
+        <Tag :value="t('tripDialogs.dataGapToStay.gapTag')" severity="warn" />
         <span class="gap-time">{{ formatGapRange(dataGap) }}</span>
       </div>
 
       <div class="strategy-controls">
-        <label for="location-strategy" class="control-label">Stay location source</label>
+        <label for="location-strategy" class="control-label">{{ t('tripDialogs.dataGapToStay.locationSourceLabel') }}</label>
         <Select
           id="location-strategy"
           v-model="strategy"
@@ -30,16 +30,16 @@
           {{ previewError }}
         </Message>
         <Message v-else-if="previewLoading" severity="info" :closable="false">
-          Resolving latest known point location...
+          {{ t('tripDialogs.dataGapToStay.resolvingLocation') }}
         </Message>
         <Message v-else-if="preview" severity="success" :closable="false">
-          <strong>Default location:</strong> {{ preview.locationName || 'Unknown location' }}
+          <strong>{{ t('tripDialogs.dataGapToStay.defaultLocationLabel') }}</strong> {{ preview.locationName || t('tripDialogs.dataGapToStay.unknownLocation') }}
         </Message>
       </div>
 
       <div v-else class="selected-location-block">
         <div class="selected-mode-controls">
-          <label for="selected-source" class="control-label">Selected location type</label>
+          <label for="selected-source" class="control-label">{{ t('tripDialogs.dataGapToStay.selectedLocationTypeLabel') }}</label>
           <Select
             id="selected-source"
             v-model="selectedSourceType"
@@ -53,13 +53,13 @@
 
         <template v-if="selectedSourceType === 'place'">
           <div class="selected-mode-controls">
-            <label for="place-autocomplete" class="control-label">Search Favorite or Geocoding place</label>
+            <label for="place-autocomplete" class="control-label">{{ t('tripDialogs.dataGapToStay.searchPlaceLabel') }}</label>
             <AutoComplete
               id="place-autocomplete"
               v-model="selectedPlace"
               :suggestions="placeSuggestions"
               optionLabel="displayName"
-              placeholder="Type at least 2 characters..."
+              :placeholder="t('tripDialogs.dataGapToStay.searchPlaceholder')"
               forceSelection
               :minLength="2"
               :delay="250"
@@ -84,18 +84,18 @@
           <div class="custom-coordinates-row">
             <InputText
               v-model.trim="customLatitude"
-              placeholder="Latitude"
+              :placeholder="t('tripDialogs.dataGapToStay.latitudePlaceholder')"
               :disabled="saving"
             />
             <InputText
               v-model.trim="customLongitude"
-              placeholder="Longitude"
+              :placeholder="t('tripDialogs.dataGapToStay.longitudePlaceholder')"
               :disabled="saving"
             />
           </div>
           <InputText
             v-model.trim="customLocationName"
-            placeholder="Optional custom location name"
+            :placeholder="t('tripDialogs.dataGapToStay.customNamePlaceholder')"
             :disabled="saving"
           />
         </template>
@@ -103,9 +103,9 @@
     </div>
 
     <template #footer>
-      <Button label="Cancel" severity="secondary" outlined :disabled="saving" @click="internalVisible = false" />
+      <Button :label="t('common.cancel')" severity="secondary" outlined :disabled="saving" @click="internalVisible = false" />
       <Button
-        label="Convert to Stay"
+        :label="t('tripDialogs.dataGapToStay.convert')"
         icon="pi pi-check"
         :loading="saving"
         :disabled="!canConvert"
@@ -117,6 +117,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
@@ -125,9 +126,10 @@ import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
 import { useTimelineStore } from '@/stores/timeline'
+import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   visible: {
@@ -142,8 +144,10 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'converted'])
 
+const { t } = useI18n()
 const toast = useToast()
 const timelineStore = useTimelineStore()
+const locationAnalyticsStore = useLocationAnalyticsStore()
 const timezone = useTimezone()
 
 const strategy = ref('LATEST_POINT')
@@ -161,15 +165,15 @@ const searchLoading = ref(false)
 const searchError = ref('')
 const saving = ref(false)
 
-const strategyOptions = [
-  { label: 'Latest known point (default)', value: 'LATEST_POINT' },
-  { label: 'Selected location', value: 'SELECTED_LOCATION' }
-]
+const strategyOptions = computed(() => ([
+  { label: t('tripDialogs.dataGapToStay.strategyOptions.latestPoint'), value: 'LATEST_POINT' },
+  { label: t('tripDialogs.dataGapToStay.strategyOptions.selectedLocation'), value: 'SELECTED_LOCATION' }
+]))
 
-const selectedSourceOptions = [
-  { label: 'Favorite or geocoding place', value: 'place' },
-  { label: 'Custom coordinates', value: 'custom' }
-]
+const selectedSourceOptions = computed(() => ([
+  { label: t('tripDialogs.dataGapToStay.selectedSourceOptions.place'), value: 'place' },
+  { label: t('tripDialogs.dataGapToStay.selectedSourceOptions.custom'), value: 'custom' }
+]))
 
 const internalVisible = computed({
   get: () => props.visible,
@@ -230,7 +234,7 @@ const loadPreview = async () => {
   try {
     preview.value = await timelineStore.getDataGapStayConversionPreview(props.dataGap.id)
   } catch (error) {
-    previewError.value = error.response?.data?.message || error.message || 'Failed to resolve latest point preview'
+    previewError.value = formatApiErrorDetail(error, t('tripDialogs.dataGapToStay.errors.previewFailed'))
   } finally {
     previewLoading.value = false
   }
@@ -247,12 +251,7 @@ const searchPlaces = async (event) => {
 
   searchLoading.value = true
   try {
-    const response = await apiService.get('/location-analytics/search', {
-      q: query,
-      type: 'place'
-    })
-
-    const results = Array.isArray(response?.data) ? response.data : []
+    const results = await locationAnalyticsStore.searchLocations(query, 'place')
     placeSuggestions.value = results
       .filter((result) => result?.category === 'favorite' || result?.category === 'geocoding')
       .map((result) => ({
@@ -261,7 +260,7 @@ const searchPlaces = async (event) => {
         displayName: result.displayName || result.name
       }))
   } catch (error) {
-    searchError.value = error.response?.data?.message || error.message || 'Failed to search places'
+    searchError.value = formatApiErrorDetail(error, t('tripDialogs.dataGapToStay.errors.searchFailed'))
   } finally {
     searchLoading.value = false
   }
@@ -295,8 +294,8 @@ const convert = async () => {
     const result = await timelineStore.convertDataGapToStay(props.dataGap.id, payload)
     toast.add({
       severity: 'success',
-      summary: 'Converted',
-      detail: 'Data gap was converted to stay.',
+      summary: t('tripDialogs.dataGapToStay.toasts.convertedSummary'),
+      detail: t('tripDialogs.dataGapToStay.toasts.convertedDetail'),
       life: 3000
     })
     emit('converted', result)
@@ -304,8 +303,8 @@ const convert = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Conversion Failed',
-      detail: error.response?.data?.message || error.message || 'Could not convert data gap',
+      summary: t('tripDialogs.dataGapToStay.toasts.failedSummary'),
+      detail: formatApiErrorDetail(error, t('tripDialogs.dataGapToStay.toasts.failedFallback')),
       life: 5000
     })
   } finally {
@@ -315,7 +314,7 @@ const convert = async () => {
 
 const formatGapRange = (gap) => {
   if (!gap?.startTime || !gap?.endTime) {
-    return 'Unknown time range'
+    return t('tripDialogs.dataGapToStay.unknownTimeRange')
   }
   return `${timezone.formatDateDisplay(gap.startTime)} ${timezone.formatTime(gap.startTime)} - ${timezone.formatDateDisplay(gap.endTime)} ${timezone.formatTime(gap.endTime)}`
 }

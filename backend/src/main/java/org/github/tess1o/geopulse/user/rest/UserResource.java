@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.user.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -8,9 +10,13 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.*;
@@ -19,16 +25,18 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.nio.file.Files;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
 /**
  * REST resource for user management.
  */
-@Path("/api/users")
+@Path("")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -60,139 +68,111 @@ public class UserResource {
      */
 
     @POST
-    @Path("/register")
-    public Response registerUser(@Valid UserRegistrationRequest request) {
+    @Path("/registrations")
+    public RestResponse<UserResponse> registerUser(@Valid UserRegistrationRequest request) {
         try {
             UserEntity user = userService.registerUser(
                     request.getEmail(),
                     request.getPassword(),
                     request.getFullName(),
-                    request.getTimezone()
+                    request.getTimezone(),
+                    request.getLanguage()
             );
             UserResponse response = userMapper.toResponse(user);
-            return Response.status(Response.Status.CREATED).entity(ApiResponse.success(response)).build();
+            return RestResponse.status(Response.Status.CREATED, response);
         } catch (IllegalArgumentException e) {
-            log.error("Failed to register user due to duplicate", e);
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to register user", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to register user"))
-                    .build();
+            throw new GeoPulseException(USER_REGISTRATION_CONFLICT, USER_REGISTRATION_CONFLICT.title(), e);
         }
     }
 
 
-    @POST
-    @Path("/update")
+    @PATCH
+    @Path("/users/me")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response updateProfile(@Valid UpdateProfileRequest request) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("Updating profile with {}", request);
-            UserEntity updatedUser = userService.updateProfile(userId, request);
-            return Response.ok(ApiResponse.success(userMapper.toResponse(updatedUser))).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update user profile"))
-                    .build();
-        }
+    public UserResponse updateProfile(@Valid UpdateProfileRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Updating user profile");
+        return userMapper.toResponse(userService.updateProfile(userId, request));
     }
 
-    @POST
-    @Path("/avatar")
+    @PUT
+    @Path("/users/me/avatar")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response uploadAvatar(@RestForm("file") FileUpload file) {
+    public AvatarResponse uploadAvatar(@RestForm("file") FileUpload file) {
+        if (file == null || file.uploadedFile() == null || file.size() == 0) {
+            throw new GeoPulseException(INVALID_AVATAR, "No avatar file uploaded");
+        }
+        String contentType = file.contentType();
+        if (contentType == null || contentType.isBlank()) {
+            throw new GeoPulseException(INVALID_AVATAR, "Avatar content type is missing");
+        }
         try {
             UUID userId = currentUserService.getCurrentUserId();
-
-            if (file == null || file.uploadedFile() == null || file.size() == 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("No avatar file uploaded"))
-                        .build();
-            }
-
-            String contentType = file.contentType();
-            if (contentType == null || contentType.isBlank()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Avatar content type is missing"))
-                        .build();
-            }
-
             byte[] imageBytes = Files.readAllBytes(file.uploadedFile());
             String avatarPath = userService.upsertCustomAvatar(userId, imageBytes, contentType);
-            return Response.ok(ApiResponse.success(Map.of("avatar", avatarPath))).build();
+            return new AvatarResponse(avatarPath);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to upload avatar", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to upload avatar"))
-                    .build();
+            throw new GeoPulseException(INVALID_AVATAR, INVALID_AVATAR.title(), e);
+        } catch (IOException e) {
+            throw new GeoPulseException(INTERNAL_ERROR, "Failed to read uploaded avatar", e);
         }
     }
 
     @GET
-    @Path("/{userId}/avatar")
+    @Path("/users/{userId}/avatar")
     @Produces({"image/jpeg", "image/png", "image/webp"})
     @RolesAllowed({"USER", "ADMIN"})
+    @APIResponse(responseCode = "200", description = "User avatar",
+            content = {
+                    @Content(mediaType = "image/jpeg", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+                    @Content(mediaType = "image/png", schema = @Schema(type = SchemaType.STRING, format = "binary")),
+                    @Content(mediaType = "image/webp", schema = @Schema(type = SchemaType.STRING, format = "binary"))
+            })
     public Response getUserAvatar(@PathParam("userId") UUID userId, @HeaderParam("If-None-Match") String ifNoneMatch) {
-        try {
-            Optional<UserAvatarEntity> avatarOpt = userService.findUserAvatar(userId);
-            if (avatarOpt.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
+        Optional<UserAvatarEntity> avatarOpt = userService.findUserAvatar(userId);
+        if (avatarOpt.isEmpty()) {
+            throw new GeoPulseException(NOT_FOUND, "Avatar not found");
+        }
 
-            UserAvatarEntity avatar = avatarOpt.get();
-            String etag = "\"" + avatar.getUpdatedAt().toEpochMilli() + "-" + avatar.getSizeBytes() + "\"";
-            if (etag.equals(ifNoneMatch)) {
-                return Response.notModified()
-                        .header("ETag", etag)
-                        .header("Cache-Control", "private, no-cache, max-age=0")
-                        .build();
-            }
-
-            return Response.ok(avatar.getImageData(), avatar.getContentType())
+        UserAvatarEntity avatar = avatarOpt.get();
+        String etag = "\"" + avatar.getUpdatedAt().toEpochMilli() + "-" + avatar.getSizeBytes() + "\"";
+        if (etag.equals(ifNoneMatch)) {
+            return Response.notModified()
                     .header("ETag", etag)
                     .header("Cache-Control", "private, no-cache, max-age=0")
                     .build();
-        } catch (Exception e) {
-            log.error("Failed to load avatar for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
+
+        return Response.ok(avatar.getImageData(), avatar.getContentType())
+                .header("ETag", etag)
+                .header("Cache-Control", "private, no-cache, max-age=0")
+                .build();
     }
 
-    @POST
-    @Path("/changePassword")
+    @PUT
+    @Path("/users/me/password")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response changePassword(@Valid UpdateUserPasswordRequest request) {
+    public PasswordStatusResponse changePassword(@Valid UpdateUserPasswordRequest request) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             userService.changePassword(userId, request);
-            return Response.ok(ApiResponse.success(java.util.Map.of("hasPassword", true))).build();
+            return new PasswordStatusResponse(true);
         } catch (InvalidPasswordException e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Invalid password"))
-                    .build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to change the password"))
-                    .build();
+            throw new GeoPulseException(INVALID_PASSWORD, "Invalid password", e);
         }
     }
 
     @PUT
     @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline")
+    @APIResponseSchema(value = TimelinePreferencesUpdateResponse.class, responseCode = "200",
+            responseDescription = "Timeline regeneration or boat setup started")
+    @APIResponse(responseCode = "204", description = "Preferences updated without starting a job")
     public Response updateTimelinePreferences(@Valid UpdateTimelinePreferencesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline preferences for user {}", userId);
-        log.debug("Timeline preferences: {}", request);
+        log.debug("Updating timeline preferences");
 
         // Update preferences within transaction
         String changeType = userService.updateTimelinePreferences(userId, request);
@@ -201,17 +181,13 @@ public class UserResource {
         if ("structural".equals(changeType)) {
             UUID jobId = userService.createTimelineRegenerationJob(userId);
             if (jobId != null) {
-                return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
+                return Response.ok(new TimelinePreferencesUpdateResponse(jobId, null, null)).build();
             }
         }
         if ("boat-setup".equals(changeType)) {
             var setup = boatSetupService.startSetup(userId);
-            Map<String, Object> payload = new LinkedHashMap<>();
-            if (setup.jobId() != null) {
-                payload.put("boatSetupJobId", setup.jobId().toString());
-            }
-            payload.put("boatSetupStatus", setup.status());
-            return Response.ok(ApiResponse.success(payload)).build();
+            return Response.ok(new TimelinePreferencesUpdateResponse(
+                    null, setup.jobId(), setup.status())).build();
         }
 
         // No job created (classification-only or no changes)
@@ -221,6 +197,9 @@ public class UserResource {
     @DELETE
     @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline")
+    @APIResponseSchema(value = TimelinePreferencesUpdateResponse.class, responseCode = "200",
+            responseDescription = "Timeline regeneration started")
+    @APIResponse(responseCode = "204", description = "Preferences reset without starting a job")
     public Response resetPreferencesToDefaults() {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -231,7 +210,7 @@ public class UserResource {
         if (needsRegeneration) {
             UUID jobId = userService.createTimelineRegenerationJob(userId);
             if (jobId != null) {
-                return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
+                return Response.ok(new TimelinePreferencesUpdateResponse(jobId, null, null)).build();
             }
         }
 
@@ -244,43 +223,39 @@ public class UserResource {
      * These settings affect ONLY how timelines are rendered in the UI.
      * Changing these settings does NOT trigger timeline regeneration.
      *
-     * @param request the display preferences update request
-     * @return 204 No Content on success
+     * @param patch the preferences to change; null fields are left unchanged, empty strings reset to default
+     * @return the effective settings after the update
      */
     @PUT
     @RolesAllowed({"USER", "ADMIN"})
-    @Path("/preferences/timeline/display")
-    public Response updateTimelineDisplayPreferences(@Valid UpdateTimelineDisplayPreferencesRequest request) {
+    @Path("/preferences/timeline-display")
+    @APIResponseSchema(value = TimelineDisplaySettings.class, responseCode = "200",
+            responseDescription = "Updated timeline display settings")
+    public Response updateTimelineDisplayPreferences(@Valid TimelineDisplayPreferences patch) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline display preferences for user {}", userId);
-        log.debug("Timeline display preferences: {}", request);
 
         try {
-            userService.updateTimelineDisplayPreferences(userId, request);
+            userService.updateTimelineDisplayPreferences(userId, patch);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(INVALID_TIMELINE_PREFERENCES, INVALID_TIMELINE_PREFERENCES.title(), e);
         }
 
-        TimelineDisplayPreferences updatedPreferences = userService.getTimelineDisplayPreferences(userId);
-        return Response.ok(ApiResponse.success(updatedPreferences)).build();
+        return Response.ok(userService.getTimelineDisplaySettings(userId)).build();
     }
 
     /**
-     * Get timeline display preferences for the current user.
+     * Get timeline display settings for the current user.
      *
-     * @return the user's timeline display preferences
+     * @return the user's preferences with defaults applied, plus server capabilities
      */
     @GET
     @RolesAllowed({"USER", "ADMIN"})
-    @Path("/preferences/timeline/display")
-    public Response getTimelineDisplayPreferences() {
+    @Path("/preferences/timeline-display")
+    public TimelineDisplaySettings getTimelineDisplayPreferences() {
         UUID userId = currentUserService.getCurrentUserId();
         log.debug("Getting timeline display preferences for user {}", userId);
-
-        TimelineDisplayPreferences preferences = userService.getTimelineDisplayPreferences(userId);
-        return Response.ok(ApiResponse.success(preferences)).build();
+        return userService.getTimelineDisplaySettings(userId);
     }
 
     /**
@@ -289,18 +264,9 @@ public class UserResource {
      * @return The current user's profile data
      */
     @GET
-    @Path("/me")
+    @Path("/users/me")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getCurrentUserProfile() {
-        try {
-            UserEntity user = currentUserService.getCurrentUser();
-            UserResponse response = userMapper.toResponse(user);
-            return Response.ok(ApiResponse.success(response)).build();
-        } catch (Exception e) {
-            log.error("Failed to fetch current user profile", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to fetch user profile"))
-                    .build();
-        }
+    public UserResponse getCurrentUserProfile() {
+        return userMapper.toResponse(currentUserService.getCurrentUser());
     }
 }

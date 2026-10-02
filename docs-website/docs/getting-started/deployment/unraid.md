@@ -127,7 +127,7 @@ The compose files create these paths:
 | `postgres/` | PostgreSQL/PostGIS database files. |
 | `keys/` | JWT keys and AI encryption key generated on first start. |
 | `import-drop/` | Optional server-side import drop folder. |
-| `mosquitto/` | MQTT config, data, and logs when using the complete compose file. |
+| `mosquitto/` | MQTT config and data when using the complete compose file. Broker logs use Docker stdout rotation. |
 
 To use another appdata path, set `GEOPULSE_APPDATA` before starting the stack:
 

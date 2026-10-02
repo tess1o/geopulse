@@ -6,7 +6,6 @@ import { storeToRefs } from 'pinia'
 import maplibregl from 'maplibre-gl'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
-import '@/maps/shared/styles/mapPopupContent.css'
 import {
   ensureGeoJsonSource,
   ensureLayer,
@@ -19,29 +18,31 @@ import {
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
-import {
-  buildHighlightedTripPopupModel,
-  buildTripEndpointPopupModel
-} from '@/maps/shared/popups/timelinePopupModels'
+import { buildTripEndpointPopupModel } from '@/maps/shared/popups/timelinePopupModels'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH
 } from '@/maps/shared/popups/mapPopupOptions'
-import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
+import { createTripEndpointMarkerElement, TRIP_ENDPOINT_MARKER_SIZE } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildHighlightedData,
-  buildPathCollection,
-  highlightedLineColorExpression,
-  resolvePopupAnchorCoordinate
+  buildPathCollection
 } from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
 import {
   HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+  HIGHLIGHTED_TRIP_LINE_WEIGHT,
   HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
   buildReplayEmission,
   getHighlightedTripKey
 } from '@/maps/shared/highlightedTripData'
+import {
+  PATH_OUTLINE_EXTRA_WIDTH,
+  SPEED_BAND_PALETTES,
+  buildSpeedBandColorExpression,
+  getOutlineColor
+} from '@/maps/shared/mapAppearance'
 
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
@@ -92,6 +93,24 @@ const props = defineProps({
   showHighlightedTripPopup: {
     type: Boolean,
     default: true
+  },
+  highlightedPathColor: {
+    type: String,
+    default: '#ef4444'
+  },
+  // Colors for car-trip speed bands; null draws car trips solid in highlightedPathColor.
+  speedBandColors: {
+    type: Object,
+    default: () => SPEED_BAND_PALETTES.DEFAULT
+  },
+  highlightedPathWidth: {
+    type: Number,
+    default: HIGHLIGHTED_TRIP_LINE_WEIGHT
+  },
+  // Contrasting casing under the paths.
+  outline: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -107,19 +126,18 @@ const state = {
   token: nextLayerToken('gp-path'),
   sourceId: '',
   lineLayerId: '',
+  casingLayerId: '',
   highlightedSourceId: '',
   highlightedLineLayerId: '',
+  highlightedCasingLayerId: '',
   highlightedHitLayerId: '',
   highlightedStartEndpointMarker: null,
   highlightedEndEndpointMarker: null,
+  highlightedEndpoints: [],
   listeners: [],
   styleLoadHandler: null,
   boundMap: null,
-  highlightedTripPopup: null,
-  highlightedTripPopupMount: null,
-  highlightedTripPopupKey: '',
-  highlightedTripPopupTimeoutId: null,
-  highlightedTripPopupAutoHideTimeoutId: null,
+  focusedTripKey: '',
   lastReplayEmissionKey: '',
   highlightedTouchInspecting: false,
   highlightedTouchMoveHandler: null,
@@ -128,8 +146,10 @@ const state = {
 
 state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
+state.casingLayerId = `${state.token}-casing`
 state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
+state.highlightedCasingLayerId = `${state.token}-highlighted-casing`
 state.highlightedHitLayerId = `${state.token}-highlighted-hit`
 
 const formatDateTimeDisplay = (dateValue) => (
@@ -145,9 +165,6 @@ const replayController = createVectorPathReplayController({
   getMap: () => props.map
 })
 
-const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
-const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
-const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
 const HIGHLIGHTED_TRIP_NON_CAR_DASH = [0.6, 1.8]
 const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
 
@@ -167,60 +184,18 @@ const resolvePathLineDashArray = (dashArray) => {
   }
   return null
 }
+// line-dasharray is measured in line widths; rescale so a casing's dashes line up with its (narrower) line.
+const scaleDashArrayForCasing = (dashArray, lineWidth, casingWidth) => (
+  Array.isArray(dashArray) ? dashArray.map(value => value * lineWidth / casingWidth) : dashArray
+)
 const hasFocusedHighlightedTrip = () => (
   props.focusHighlightedTrip
   && isTripItem(props.highlightedTrip)
 )
 
-const resolveHighlightedTripPopupAutoHideMs = () => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
-  }
-
-  const isMobileViewport = window.matchMedia('(max-width: 768px)').matches
-  const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches
-
-  return (isMobileViewport || isTouchPrimary)
-    ? HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS
-    : HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
-}
-
-const clearHighlightedTripPopupAutoHideTimeout = () => {
-  if (state.highlightedTripPopupAutoHideTimeoutId !== null) {
-    clearTimeout(state.highlightedTripPopupAutoHideTimeoutId)
-    state.highlightedTripPopupAutoHideTimeoutId = null
-  }
-}
-
-const scheduleHighlightedTripPopupAutoHide = (tripKey) => {
-  clearHighlightedTripPopupAutoHideTimeout()
-
-  state.highlightedTripPopupAutoHideTimeoutId = setTimeout(() => {
-    state.highlightedTripPopupAutoHideTimeoutId = null
-
-    if (state.highlightedTripPopupKey !== tripKey) {
-      return
-    }
-
-    closeHighlightedTripPopup()
-  }, resolveHighlightedTripPopupAutoHideMs())
-}
-
-const closeHighlightedTripPopup = () => {
-  if (state.highlightedTripPopupTimeoutId !== null) {
-    clearTimeout(state.highlightedTripPopupTimeoutId)
-    state.highlightedTripPopupTimeoutId = null
-  }
-  clearHighlightedTripPopupAutoHideTimeout()
-
-  if (state.highlightedTripPopup) {
-    state.highlightedTripPopup.remove()
-    state.highlightedTripPopup = null
-  }
-  state.highlightedTripPopupMount?.unmount?.()
-  state.highlightedTripPopupMount = null
-
-  state.highlightedTripPopupKey = ''
+// Forget the focused trip so the next highlight fits the camera again.
+const resetHighlightedTripFocus = () => {
+  state.focusedTripKey = ''
 }
 
 const removeHighlightedEndpointMarkers = () => {
@@ -235,6 +210,7 @@ const removeHighlightedEndpointMarkers = () => {
     markerEntry.cleanup?.()
     state[markerKey] = null
   })
+  state.highlightedEndpoints = []
 }
 
 const createHighlightedEndpointMarker = ({
@@ -345,8 +321,21 @@ const syncHighlightedEndpointMarkers = (endpointMarkers) => {
     } else if (endpointMarker.markerType === 'end') {
       state.highlightedEndEndpointMarker = markerEntry
     }
+    state.highlightedEndpoints.push(endpointMarker)
   })
 }
+
+// Where the highlighted trip's start/end markers are drawn, so the cross-type
+// pass can keep other markers from hiding under them.
+const getHighlightedEndpointObstacles = () => state.highlightedEndpoints.map((endpoint) => {
+  const offsetX = Number.parseFloat(/translateX\((-?[\d.]+)px\)/.exec(endpoint.styleOverrides?.transform || '')?.[1]) || 0
+  return {
+    latitude: endpoint.latitude,
+    longitude: endpoint.longitude,
+    offsetX,
+    size: TRIP_ENDPOINT_MARKER_SIZE
+  }
+})
 
 const fitHighlightedTripBounds = (lineCoordinates) => {
   if (!isMapLibreMap(props.map) || lineCoordinates.length < 2) {
@@ -359,78 +348,42 @@ const fitHighlightedTripBounds = (lineCoordinates) => {
   })
 
   props.map.fitBounds(bounds, {
-    padding: 20,
+    // Extra room at the bottom keeps the route clear of the docked trip summary
+    // and the replay bar (this fit only runs on desktop).
+    padding: { top: 40, right: 40, bottom: 150, left: 40 },
     maxZoom: 16,
     animate: false
   })
 }
 
-const syncHighlightedTripPopup = (lineCoordinates) => {
+// The trip's details live in TimelineMap's docked trip summary, not in a popup
+// on the route (it covered the very route it asked you to hover). What remains
+// is fitting the camera once per newly highlighted trip. On vector,
+// `showHighlightedTripPopup` now only gates that fit (it is false on mobile,
+// which never fitted here); the prop keeps its name because raster shares it.
+const syncHighlightedTripFocus = (lineCoordinates) => {
   if (!props.showHighlightedTripPopup || props.replayState?.suppressTripPopup) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
   if (!isMapLibreMap(props.map) || !isTripItem(props.highlightedTrip) || !props.visible || lineCoordinates.length < 2) {
-    closeHighlightedTripPopup()
-    return
-  }
-
-  const popupCoordinate = resolvePopupAnchorCoordinate(lineCoordinates)
-  if (!popupCoordinate) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
   const tripKey = getHighlightedTripKey(props.highlightedTrip)
   if (!tripKey) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
-  if (state.highlightedTripPopup && state.highlightedTripPopupKey === tripKey) {
-    state.highlightedTripPopup.setLngLat(popupCoordinate)
-    state.highlightedTripPopupMount?.updateProps?.(
-      buildHighlightedTripPopupModel(props.highlightedTrip, {
-        formatDateTimeDisplay,
-        unit: distanceUnit.value
-      })
-    )
-    scheduleHighlightedTripPopupAutoHide(tripKey)
+  if (state.focusedTripKey === tripKey) {
     return
   }
 
-  closeHighlightedTripPopup()
-  state.highlightedTripPopupKey = tripKey
+  state.focusedTripKey = tripKey
   fitHighlightedTripBounds(lineCoordinates)
-
-  state.highlightedTripPopupTimeoutId = setTimeout(() => {
-    state.highlightedTripPopupTimeoutId = null
-
-    if (!isMapLibreMap(props.map) || state.highlightedTripPopupKey !== tripKey) {
-      return
-    }
-
-    state.highlightedTripPopupMount = mountMapPopup(
-      MapInfoPopup,
-      buildHighlightedTripPopupModel(props.highlightedTrip, {
-        formatDateTimeDisplay,
-        unit: distanceUnit.value
-      })
-    )
-    state.highlightedTripPopup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      closeOnMove: false,
-      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
-      className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
-    })
-      .setLngLat(popupCoordinate)
-      .setDOMContent(state.highlightedTripPopupMount.element)
-      .addTo(props.map)
-
-    scheduleHighlightedTripPopupAutoHide(tripKey)
-  }, 120)
 }
 
 const emitReplayPathData = (highlightedData) => {
@@ -454,7 +407,7 @@ const syncReplayMarker = () => {
     highlightedTrip: props.highlightedTrip,
     replayState: props.replayState,
     onReplayPlaying: () => {
-      closeHighlightedTripPopup()
+      resetHighlightedTripFocus()
       hoverController.hideTripHoverTooltip()
     }
   })
@@ -531,12 +484,19 @@ const registerEvents = () => {
       return
     }
 
+    // MapLibre still fires layer mousemove through DOM markers sitting on the
+    // line (trip start/end, stays, chips). Those show their own card, so the
+    // GPS-point tooltip must not open on top of it.
+    if (event?.originalEvent?.target?.closest?.('.maplibregl-marker')) {
+      hoverController.hideTripHoverTooltip()
+      return
+    }
+
     props.map.getCanvas().style.cursor = 'pointer'
 
     hoverController.handleHighlightedLineMouseMove({
       event,
       trip: isTripItem(props.highlightedTrip) ? props.highlightedTrip : null,
-      onBeforeTooltipUpdate: closeHighlightedTripPopup
     })
   }
 
@@ -559,7 +519,6 @@ const registerEvents = () => {
     hoverController.handleHighlightedLineMouseMove({
       event,
       trip: props.highlightedTrip,
-      onBeforeTooltipUpdate: closeHighlightedTripPopup
     })
 
     if (!state.highlightedTouchMoveHandler) {
@@ -574,7 +533,6 @@ const registerEvents = () => {
         hoverController.handleHighlightedLineMouseMove({
           event: moveEvent,
           trip: props.highlightedTrip,
-          onBeforeTooltipUpdate: closeHighlightedTripPopup
         })
       }
       props.map.on('touchmove', state.highlightedTouchMoveHandler)
@@ -629,7 +587,9 @@ const syncReplayFocusLayerVisibility = () => {
 
   const replayFocusMode = Boolean(props.replayState?.playing)
   setLayerVisibility(props.map, [state.lineLayerId], props.visible && !replayFocusMode)
+  setLayerVisibility(props.map, [state.casingLayerId], props.visible && !replayFocusMode && props.outline)
   setLayerVisibility(props.map, [state.highlightedLineLayerId, state.highlightedHitLayerId], props.visible)
+  setLayerVisibility(props.map, [state.highlightedCasingLayerId], props.visible && props.outline)
 }
 
 const unregisterEvents = () => {
@@ -662,18 +622,55 @@ const renderLayer = () => {
   replayController.registerReplayUserCameraHandlers()
   const highlightedTrip = isTripItem(props.highlightedTrip) ? props.highlightedTrip : null
   const hasHighlightedTrip = Boolean(highlightedTrip)
-  const highlightedTripUsesSpeedBands = isCarMovementType(highlightedTrip?.movementType)
+  const highlightedTripIsCar = isCarMovementType(highlightedTrip?.movementType)
+  const highlightedTripUsesSpeedBands = highlightedTripIsCar && Boolean(props.speedBandColors)
   const highlightedLineColor = highlightedTripUsesSpeedBands
-    ? highlightedLineColorExpression
-    : HIGHLIGHTED_TRIP_NON_CAR_COLOR
-  const highlightedLineDashArray = highlightedTripUsesSpeedBands
+    ? buildSpeedBandColorExpression(props.speedBandColors)
+    : props.highlightedPathColor
+  const highlightedCasingColor = highlightedTripUsesSpeedBands
+    ? buildSpeedBandColorExpression(props.speedBandColors, { outline: true })
+    : getOutlineColor(props.highlightedPathColor)
+  // Car trips stay solid even without speed bands; the dash is what marks non-car trips.
+  const highlightedLineDashArray = highlightedTripIsCar
     ? HIGHLIGHTED_TRIP_CAR_SOLID_DASH
     : HIGHLIGHTED_TRIP_NON_CAR_DASH
+  const highlightedLineWidth = props.highlightedPathWidth
+  const highlightedCasingWidth = highlightedLineWidth + PATH_OUTLINE_EXTRA_WIDTH
+  const highlightedCasingDashArray = scaleDashArrayForCasing(
+    highlightedLineDashArray,
+    highlightedLineWidth,
+    highlightedCasingWidth
+  )
+  const pathLineColor = props.pathOptions.color || '#007bff'
+  const pathLineWidth = props.pathOptions.weight || 4
+  const pathLineOpacity = hasFocusedHighlightedTrip()
+    ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
+    : (props.pathOptions.opacity ?? 0.8)
   const pathLineDashArray = resolvePathLineDashArray(props.pathOptions.dashArray)
+  const pathCasingWidth = pathLineWidth + PATH_OUTLINE_EXTRA_WIDTH
+  const pathCasingDashArray = scaleDashArrayForCasing(pathLineDashArray || [1, 0], pathLineWidth, pathCasingWidth)
 
   const pathCollection = buildPathCollection(props.pathData)
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
+
+  // The casing is always present (hidden when the outline is off) so layer order never changes.
+  ensureLayer(props.map, {
+    id: state.casingLayerId,
+    type: 'line',
+    source: state.sourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round',
+      visibility: props.outline ? 'visible' : 'none'
+    },
+    paint: {
+      'line-color': getOutlineColor(pathLineColor),
+      'line-width': pathCasingWidth,
+      'line-opacity': pathLineOpacity,
+      'line-dasharray': pathCasingDashArray
+    }
+  }, state.lineLayerId)
 
   ensureLayer(props.map, {
     id: state.lineLayerId,
@@ -684,41 +681,32 @@ const renderLayer = () => {
       'line-cap': 'round'
     },
     paint: {
-      'line-color': props.pathOptions.color || '#007bff',
-      'line-width': props.pathOptions.weight || 4,
-      'line-opacity': hasFocusedHighlightedTrip()
-        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8),
+      'line-color': pathLineColor,
+      'line-width': pathLineWidth,
+      'line-opacity': pathLineOpacity,
       ...(pathLineDashArray ? { 'line-dasharray': pathLineDashArray } : {})
     }
   })
 
   if (hasMapLibreLayer(props.map, state.lineLayerId)) {
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-color',
-      props.pathOptions.color || '#007bff'
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-width',
-      props.pathOptions.weight || 4
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-opacity',
-      hasFocusedHighlightedTrip()
-        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8)
-    )
+    props.map.setPaintProperty(state.lineLayerId, 'line-color', pathLineColor)
+    props.map.setPaintProperty(state.lineLayerId, 'line-width', pathLineWidth)
+    props.map.setPaintProperty(state.lineLayerId, 'line-opacity', pathLineOpacity)
     props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
+  }
+
+  if (hasMapLibreLayer(props.map, state.casingLayerId)) {
+    props.map.setPaintProperty(state.casingLayerId, 'line-color', getOutlineColor(pathLineColor))
+    props.map.setPaintProperty(state.casingLayerId, 'line-width', pathCasingWidth)
+    props.map.setPaintProperty(state.casingLayerId, 'line-opacity', pathLineOpacity)
+    props.map.setPaintProperty(state.casingLayerId, 'line-dasharray', pathCasingDashArray)
   }
 
   if (!hasHighlightedTrip) {
     unregisterEvents()
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     removeHighlightedEndpointMarkers()
-    removeLayers(props.map, [state.highlightedHitLayerId, state.highlightedLineLayerId])
+    removeLayers(props.map, [state.highlightedCasingLayerId, state.highlightedHitLayerId, state.highlightedLineLayerId])
     removeSources(props.map, [state.highlightedSourceId])
     hoverController.syncTripHoverContext(null, [])
     syncReplayFocusLayerVisibility()
@@ -737,6 +725,23 @@ const renderLayer = () => {
   ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
 
   ensureLayer(props.map, {
+    id: state.highlightedCasingLayerId,
+    type: 'line',
+    source: state.highlightedSourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round',
+      visibility: props.outline ? 'visible' : 'none'
+    },
+    paint: {
+      'line-color': highlightedCasingColor,
+      'line-dasharray': highlightedCasingDashArray,
+      'line-width': highlightedCasingWidth,
+      'line-opacity': 1
+    }
+  }, state.highlightedLineLayerId)
+
+  ensureLayer(props.map, {
     id: state.highlightedLineLayerId,
     type: 'line',
     source: state.highlightedSourceId,
@@ -747,7 +752,7 @@ const renderLayer = () => {
     paint: {
       'line-color': highlightedLineColor,
       'line-dasharray': highlightedLineDashArray,
-      'line-width': 6,
+      'line-width': highlightedLineWidth,
       'line-opacity': 1
     }
   })
@@ -762,7 +767,7 @@ const renderLayer = () => {
     },
     paint: {
       'line-color': '#000000',
-      'line-width': HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
+      'line-width': Math.max(HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT, highlightedCasingWidth + 8),
       'line-opacity': 0.01
     }
   })
@@ -774,11 +779,26 @@ const renderLayer = () => {
       highlightedLineColor
     )
     props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
+    props.map.setPaintProperty(state.highlightedLineLayerId, 'line-width', highlightedLineWidth)
+  }
+
+  if (hasMapLibreLayer(props.map, state.highlightedCasingLayerId)) {
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-color', highlightedCasingColor)
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-dasharray', highlightedCasingDashArray)
+    props.map.setPaintProperty(state.highlightedCasingLayerId, 'line-width', highlightedCasingWidth)
+  }
+
+  if (hasMapLibreLayer(props.map, state.highlightedHitLayerId)) {
+    props.map.setPaintProperty(
+      state.highlightedHitLayerId,
+      'line-width',
+      Math.max(HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT, highlightedCasingWidth + 8)
+    )
   }
 
   syncReplayFocusLayerVisibility()
 
-  syncHighlightedTripPopup(highlightedLineCoordinates)
+  syncHighlightedTripFocus(highlightedLineCoordinates)
   syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
   hoverController.syncTripHoverContext(highlightedTrip, highlighted.hoverPathPoints)
   emitReplayPathData(highlighted)
@@ -791,7 +811,7 @@ const renderLayer = () => {
 const clearLayer = () => {
   unregisterEvents()
   hoverController.clearTripHoverState()
-  closeHighlightedTripPopup()
+  resetHighlightedTripFocus()
   removeHighlightedEndpointMarkers()
   replayController.cleanupReplay()
 
@@ -811,7 +831,13 @@ const clearLayer = () => {
     return
   }
 
-  removeLayers(targetMap, [state.highlightedHitLayerId, state.highlightedLineLayerId, state.lineLayerId])
+  removeLayers(targetMap, [
+    state.highlightedHitLayerId,
+    state.highlightedLineLayerId,
+    state.highlightedCasingLayerId,
+    state.lineLayerId,
+    state.casingLayerId
+  ])
   removeSources(targetMap, [state.highlightedSourceId, state.sourceId])
   state.boundMap = null
 }
@@ -827,6 +853,10 @@ watch(
     props.inspectionEnabled,
     props.allowPathDataTripFallback,
     props.showHighlightedTripPopup,
+    props.highlightedPathColor,
+    props.speedBandColors,
+    props.highlightedPathWidth,
+    props.outline,
     distanceUnit.value
   ],
   () => {
@@ -862,5 +892,9 @@ watch(
 
 onBeforeUnmount(() => {
   clearLayer()
+})
+
+defineExpose({
+  getHighlightedEndpointObstacles
 })
 </script>

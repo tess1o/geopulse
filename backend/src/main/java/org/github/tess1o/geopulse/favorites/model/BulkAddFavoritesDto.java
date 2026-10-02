@@ -14,10 +14,8 @@ import java.util.List;
 public class BulkAddFavoritesDto {
 
     @NotNull(message = "Points list cannot be null")
-    @Valid
-    private List<AddPointToFavoritesDto> points;
+    private List<@Valid AddPointToFavoritesDto> points;
 
     @NotNull(message = "Areas list cannot be null")
-    @Valid
-    private List<AddAreaToFavoritesDto> areas;
+    private List<@Valid AddAreaToFavoritesDto> areas;
 }

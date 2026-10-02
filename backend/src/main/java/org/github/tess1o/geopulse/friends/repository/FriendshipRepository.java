@@ -113,6 +113,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                 .setParameter("userId", userId);
 
         // Execute the query and transform the results to DTOs
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
 
         // Map the results to the DTO

@@ -1,0 +1,111 @@
+export default {
+    page: {
+        title: 'Reverse Geocoding Management',
+        subtitle: 'Manage and update your geocoding results',
+        reconcileAllButton: 'Reconcile All ({count})',
+        bulkEditButton: 'Bulk Edit ({count})',
+        reconcileSelectedButton: 'Reconcile Selected ({count})',
+        providerSwitchInfo: 'Provider changes affect new lookups only. Use Reconcile Selected/Reconcile All to refresh existing cached records.',
+        normalization: {
+            title: 'Normalization Rules',
+            subtitle: 'Per-user mapping rules for country and city names. New geocoding results use these rules automatically; use Apply Rules Now to update existing saved geocoding and favorites.',
+            collapse: 'Collapse',
+            expand: 'Expand',
+            addRule: 'Add Rule',
+            applyRulesNow: 'Apply Rules Now',
+            collapsedHint: 'Section collapsed. Expand to manage rules.',
+            empty: 'No normalization rules yet.',
+            typeColumn: 'Type',
+            typeCountry: 'Country',
+            typeCity: 'City',
+            fromColumn: 'From',
+            toColumn: 'To',
+            actionsColumn: 'Actions',
+            valueDash: '-'
+        },
+        filters: {
+            providerLabel: 'Provider:',
+            allProviders: 'All Providers',
+            searchLabel: 'Search:',
+            searchPlaceholder: 'Search by location, city, or country',
+            clearFilters: 'Clear Filters'
+        },
+        table: {
+            title: 'Geocoding Results',
+            emptyTitle: 'No Geocoding Results Found',
+            emptyDescription: 'No geocoding data available for the selected criteria.',
+            displayNameColumn: 'Display Name',
+            cityColumn: 'City',
+            countryColumn: 'Country',
+            providerColumn: 'Provider',
+            coordinatesColumn: 'Coordinates',
+            lastUsedColumn: 'Last Used',
+            actionsColumn: 'Actions',
+            nullValue: '-',
+            viewDetailsTooltip: 'View Details',
+            editTooltip: 'Edit',
+            reconcileTooltip: 'Reconcile'
+        },
+        bulkEdit: {
+            itemTypeName: 'Geocoding Results'
+        },
+        ruleDialog: {
+            editHeader: 'Edit Normalization Rule',
+            addHeader: 'Add Normalization Rule',
+            ruleTypeLabel: 'Rule Type',
+            fromCountryLabel: 'From Country',
+            toCountryLabel: 'To Country',
+            fromCityLabel: 'From City',
+            toCityLabel: 'To City',
+            countryPlaceholderFrom: 'e.g. Болгарія',
+            countryPlaceholderTo: 'e.g. Bulgaria',
+            cityPlaceholderFrom: 'e.g. Sofia',
+            cityPlaceholderTo: 'e.g. Софія',
+            cancel: 'Cancel',
+            save: 'Save'
+        },
+        applyRulesDialog: {
+            applySelectedHeader: 'Apply Selected Rule',
+            applyAllHeader: 'Apply Normalization Rules',
+            applying: 'Applying: {source} → {target}',
+            applyToGeocoding: 'Apply to reverse geocoding entities',
+            applyToFavorites: 'Apply to favorites',
+            cancel: 'Cancel',
+            apply: 'Apply'
+        },
+        ruleTypeOptions: {
+            country: 'Country',
+            city: 'City'
+        },
+        deleteRuleConfirm: 'Delete mapping "{source} → {target}"?',
+        toasts: {
+            loadResultsFailed: 'Failed to load geocoding results',
+            loadRulesFailed: 'Failed to load normalization rules',
+            ruleUpdatedSummary: 'Rule Updated',
+            ruleUpdatedDetail: 'Normalization rule updated successfully',
+            ruleAddedSummary: 'Rule Added',
+            ruleAddedDetail: 'Normalization rule created successfully',
+            saveFailedSummary: 'Save Failed',
+            saveRuleFailedFallback: 'Failed to save normalization rule',
+            ruleDeletedSummary: 'Rule Deleted',
+            ruleDeletedDetail: 'Normalization rule deleted successfully',
+            deleteFailedSummary: 'Delete Failed',
+            deleteRuleFailedFallback: 'Failed to delete normalization rule',
+            normalizationStartedSummary: 'Normalization Started',
+            normalizationStartedSingleDetail: 'Applying selected rule in background...',
+            normalizationStartedAllDetail: 'Applying rules in background...',
+            applyFailedSummary: 'Apply Failed',
+            applyFailedFallback: 'Failed to start normalization apply job',
+            updateSuccessDetail: 'Geocoding result updated successfully',
+            updateFailedSummary: 'Update Failed',
+            updateFailedFallback: 'Failed to update geocoding result',
+            reconciliationFailedSummary: 'Reconciliation Failed',
+            reconciliationFailedFallback: 'Failed to start reconciliation',
+            reconciliationCompleteSummary: 'Reconciliation Complete',
+            reconciliationCompleteDetail: 'Successfully reconciled {success} of {total} results',
+            normalizationCompleteSummary: 'Normalization Apply Complete',
+            normalizationCompleteDetail: 'Updated {geocodingUpdated} geocoding and {favoritesUpdated} favorites',
+            normalizationCompleteFailedSuffix: ' ({count} failed)'
+        }
+    }
+}

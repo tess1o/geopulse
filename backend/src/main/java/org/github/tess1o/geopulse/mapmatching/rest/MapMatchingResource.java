@@ -1,21 +1,29 @@
 package org.github.tess1o.geopulse.mapmatching.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionRequest;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionResponse;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingStatusRequest;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingTripResolutionDTO;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
+import java.util.List;
 import java.util.UUID;
 
-@Path("/api/map-matching")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MAP_MATCHING_REQUEST;
+
+@Path("/map-matching-jobs")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "User: Trips and Planning", description = "Resolve map matching jobs for trips.")
 public class MapMatchingResource {
 
     private final CurrentUserService currentUserService;
@@ -28,26 +36,25 @@ public class MapMatchingResource {
     }
 
     @POST
-    @Path("/resolve")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response resolve(@Valid MapMatchingResolutionRequest request) {
+    public MapMatchingResolutionResponse resolve(@NotNull @Valid MapMatchingResolutionRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
-            return Response.ok(ApiResponse.success(mapMatchingService.resolve(userId, request.getTripIds()))).build();
+            return mapMatchingService.resolve(userId, request.getTripIds());
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+            throw new GeoPulseException(INVALID_MAP_MATCHING_REQUEST, INVALID_MAP_MATCHING_REQUEST.title(), e);
         }
     }
 
     @POST
-    @Path("/status")
+    @Path("/searches")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response status(@Valid MapMatchingStatusRequest request) {
+    public List<MapMatchingTripResolutionDTO> status(@NotNull @Valid MapMatchingStatusRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
-            return Response.ok(ApiResponse.success(mapMatchingService.status(userId, request.getTargetIds()))).build();
+            return mapMatchingService.status(userId, request.getTargetIds());
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+            throw new GeoPulseException(INVALID_MAP_MATCHING_REQUEST, INVALID_MAP_MATCHING_REQUEST.title(), e);
         }
     }
 }

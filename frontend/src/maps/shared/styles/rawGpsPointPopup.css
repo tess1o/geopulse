@@ -1,3 +1,4 @@
+/* Raw GPS point popup content, inside MapPopupCard. Colours are the --gp-map-popup-* tokens. */
 .raw-gps-popup {
   box-sizing: border-box;
   display: flex;
@@ -13,7 +14,7 @@
 }
 
 .raw-gps-popup-label {
-  color: #64748b;
+  color: var(--gp-map-popup-text-muted);
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -21,19 +22,19 @@
 .raw-gps-popup-location {
   margin-top: 0.95rem;
   padding-top: 0.9rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  border-top: 1px solid var(--gp-map-popup-divider);
 }
 
 .raw-gps-popup-location-name {
   font-weight: 650;
-  color: #0f172a;
+  color: var(--gp-map-popup-text);
   font-size: 1rem;
 }
 
 .raw-gps-popup-location-source,
 .raw-gps-popup-location-muted {
   margin-top: 0.12rem;
-  color: #64748b;
+  color: var(--gp-map-popup-text-muted);
   font-size: 0.9rem;
 }
 
@@ -43,16 +44,16 @@
   margin-top: 0.85rem;
   max-height: min(17rem, 36vh);
   overflow: auto;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--gp-map-popup-divider);
   border-radius: 10px;
 }
 
 .raw-gps-stack-row {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--gp-map-popup-divider-subtle);
   background: transparent;
-  color: #0f172a;
+  color: var(--gp-map-popup-text);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -76,7 +77,7 @@
   flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0.6rem;
-  color: #475569;
+  color: var(--gp-map-popup-text-secondary);
   font-size: 0.82rem;
   white-space: nowrap;
 }
@@ -86,7 +87,7 @@
 }
 
 .raw-gps-stack-telemetry-label {
-  color: #64748b;
+  color: var(--gp-map-popup-text-muted);
   font-weight: 600;
 }
 
@@ -99,62 +100,22 @@
 }
 
 .raw-gps-stack-row:hover {
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--gp-map-popup-accent-soft);
 }
 
 .raw-gps-stack-row.is-selected {
-  background: rgba(37, 99, 235, 0.14);
-  color: #1d4ed8;
+  background: var(--gp-map-popup-accent-soft-strong);
+  color: var(--gp-map-popup-accent);
   font-weight: 650;
 }
 
 .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry,
 .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry-label {
-  color: #1d4ed8;
+  color: var(--gp-map-popup-accent);
 }
 
 .raw-gps-stack-overflow {
   padding: 0.55rem 0.7rem;
-  color: #64748b;
+  color: var(--gp-map-popup-text-muted);
   font-size: 0.9rem;
-}
-
-.p-dark .raw-gps-popup-location-name,
-.p-dark .raw-gps-stack-row {
-  color: rgba(255, 255, 255, 0.94);
-}
-
-.p-dark .raw-gps-popup-label,
-.p-dark .raw-gps-popup-location-source,
-.p-dark .raw-gps-popup-location-muted,
-.p-dark .raw-gps-stack-overflow,
-.p-dark .raw-gps-stack-telemetry,
-.p-dark .raw-gps-stack-telemetry-label {
-  color: rgba(203, 213, 225, 0.88);
-}
-
-.p-dark .raw-gps-popup-location {
-  border-top-color: rgba(71, 85, 105, 0.65);
-}
-
-.p-dark .raw-gps-stack-list {
-  border-color: rgba(71, 85, 105, 0.65);
-}
-
-.p-dark .raw-gps-stack-row {
-  border-bottom-color: rgba(71, 85, 105, 0.45);
-}
-
-.p-dark .raw-gps-stack-row:hover {
-  background: rgba(59, 130, 246, 0.18);
-}
-
-.p-dark .raw-gps-stack-row.is-selected {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-}
-
-.p-dark .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry,
-.p-dark .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry-label {
-  color: #93c5fd;
 }

@@ -4,11 +4,8 @@ import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemOverrideState;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemPriority;
-import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 @Data
@@ -38,15 +35,8 @@ public class UpdateTripPlanItemDto {
     @Min(value = 0, message = "Order index must be non-negative")
     private Integer orderIndex;
 
-    private Boolean isVisited;
-
-    @DecimalMin(value = "0.0", message = "Visit confidence must be >= 0")
-    @DecimalMax(value = "1.0", message = "Visit confidence must be <= 1")
-    private Double visitConfidence;
-
-    private TripPlanItemVisitSource visitSource;
-
-    private Instant visitedAt;
-
-    private TripPlanItemOverrideState manualOverrideState;
+    // Visit evidence is intentionally absent. It is owned by the auto-matcher and by the
+    // visit-override endpoint; including it here let an ordinary edit (renaming a stop)
+    // wipe match confidence and clear a user's manual override. Use the override
+    // endpoint to change visit state.
 }

@@ -11,8 +11,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet.markercluster'
-import 'leaflet.markercluster/dist/MarkerCluster.css'
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import '@/styles/vendor/leaflet-plugins.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import {

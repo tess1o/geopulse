@@ -176,7 +176,7 @@ export class GeofencesPage {
     const method = label.includes('Update Rule') ? 'PATCH' : 'POST';
     const waitForSubmit = this.page.waitForResponse((response) => {
       const url = response.url();
-      return url.includes('/api/geofences/rules')
+      return url.includes('/api/v1/geofences/rules')
         && response.request().method() === method;
     }, { timeout: 5000 }).catch(() => null);
 
@@ -251,7 +251,7 @@ export class GeofencesPage {
     const method = label.includes('Update Template') ? 'PATCH' : 'POST';
     const waitForSubmit = this.page.waitForResponse((response) => {
       const url = response.url();
-      return url.includes('/api/geofences/templates')
+      return url.includes('/api/v1/geofences/templates')
         && response.request().method() === method;
     }, { timeout: 5000 }).catch(() => null);
 

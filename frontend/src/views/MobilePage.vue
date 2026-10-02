@@ -1,7 +1,7 @@
 <template>
   <div class="mobile-page">
     <div class="mobile-card">
-      <h1 class="mobile-title">Mobile</h1>
+      <h1 class="mobile-title">{{ t('ui.mobileAuth.title') }}</h1>
       <div v-if="isLoading" class="mobile-spinner" aria-hidden="true"></div>
       <p class="mobile-description">{{ message }}</p>
     </div>
@@ -10,9 +10,12 @@
 
 <script setup>
 import {onBeforeUnmount, onMounted, ref} from 'vue'
-import apiService from '@/utils/apiService'
+import {useI18n} from 'vue-i18n'
+import {useAuthStore} from '@/stores/auth'
 
-const message = ref('Preparing mobile authentication...')
+const {t} = useI18n()
+const authStore = useAuthStore()
+const message = ref(t('ui.mobileAuth.preparing'))
 const isLoading = ref(true)
 const APP_OPEN_TIMEOUT_MS = 4000
 const CLOSE_PAGE_DELAY_MS = 10000
@@ -45,24 +48,24 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
   try {
-    const response = await apiService.get('/auth/mobile')
-    const code = response?.data?.code
-    const deeplinkUrl = response?.data?.deeplinkUrl
+    const response = await authStore.generateMobileAuth()
+    const code = response?.code
+    const deeplinkUrl = response?.deeplinkUrl
 
     if (!code || !deeplinkUrl) {
       isLoading.value = false
-      message.value = 'Mobile authentication payload was not returned.'
+      message.value = t('ui.mobileAuth.payloadMissing')
       return
     }
 
-    await apiService.logoutStrict()
+    await authStore.logoutStrict()
 
-    message.value = 'Opening the app...'
+    message.value = t('ui.mobileAuth.opening')
     window.location.assign(`${deeplinkUrl}?code=${encodeURIComponent(code)}`)
 
     appOpenTimeoutId = window.setTimeout(() => {
       isLoading.value = false
-      message.value = 'Opening the app timed out. Please return to the app and try again.'
+      message.value = t('ui.mobileAuth.timedOut')
 
       closePageTimeoutId = window.setTimeout(() => {
         window.close()
@@ -70,7 +73,7 @@ onMounted(async () => {
     }, APP_OPEN_TIMEOUT_MS)
   } catch (error) {
     isLoading.value = false
-    message.value = 'Failed to complete mobile authentication handoff.'
+    message.value = t('ui.mobileAuth.failed')
   }
 })
 
@@ -88,7 +91,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: var(--gp-spacing-lg);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 .mobile-card {
@@ -96,8 +99,8 @@ onBeforeUnmount(() => {
   max-width: 420px;
   padding: var(--gp-spacing-xxl);
   border-radius: var(--gp-radius-large);
-  border: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border);
+  background: var(--gp-surface-card);
   box-shadow: var(--gp-shadow-card);
   text-align: center;
 }

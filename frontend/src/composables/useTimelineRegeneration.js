@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
 import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
 import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 export function useTimelineRegeneration() {
   const confirm = useConfirm()
@@ -187,7 +188,7 @@ export function useTimelineRegeneration() {
       }
     } catch (error) {
       console.error(`Timeline regeneration action failed: ${options.errorMessage}`, error)
-      toast.add({ severity: 'error', summary: 'Error', detail: error.message || options.errorMessage, life: 5000 })
+      toast.add({ severity: 'error', summary: 'Error', detail: formatApiErrorDetail(error, options.errorMessage), life: 5000 })
       
       // Close modal immediately on error
       closeTrackingModal({ clearJob: true })

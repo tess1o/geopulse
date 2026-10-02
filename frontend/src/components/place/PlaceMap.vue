@@ -1,5 +1,5 @@
 <template>
-  <BaseCard title="Location">
+  <BaseCard :title="t('place.map.title')">
     <div class="place-map-container">
       <MapContainer
         ref="mapContainerRef"
@@ -33,6 +33,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { FavoritesLayer, MapContainer, NotesLayer } from '@/components/maps'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
@@ -45,7 +47,7 @@ const props = defineProps({
   },
   locationName: {
     type: String,
-    default: 'Place'
+    default: () => translate('place.map.defaultLocationName')
   },
   photos: {
     type: Array,
@@ -62,6 +64,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['photo-click'])
+
+const { t } = useI18n()
 
 const mapContainerRef = ref(null)
 const map = ref(null)
@@ -105,7 +109,7 @@ const placeFavoriteData = computed(() => {
     return [
       {
         id: 'place-point',
-        name: props.locationName || 'Place',
+        name: props.locationName || t('place.map.defaultLocationName'),
         type: 'point',
         latitude,
         longitude
@@ -123,7 +127,7 @@ const placeFavoriteData = computed(() => {
       return [
         {
           id: 'place-area',
-          name: props.locationName || 'Place Area',
+          name: props.locationName || t('place.map.defaultAreaName'),
           type: 'area',
           northEastLat,
           northEastLon,

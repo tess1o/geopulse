@@ -2,13 +2,13 @@
   <section
     class="feature-panel"
     :class="[activeFeature ? activeFeature.colorClass : '', { 'feature-panel--mobile': mobile, 'feature-panel--embedded': embedded }]"
-    aria-label="Explore GeoPulse"
+    :aria-label="t('ui.exploreFeatures.ariaLabel')"
     @mouseenter="stopFeatureAutoPlay"
     @mouseleave="startFeatureAutoPlay"
   >
     <div class="feature-panel-header">
-      <p v-if="!mobile" class="feature-panel-kicker">Explore GeoPulse</p>
-      <div class="feature-tabs" role="tablist" aria-label="GeoPulse features">
+      <p v-if="!mobile" class="feature-panel-kicker">{{ t('ui.exploreFeatures.kicker') }}</p>
+      <div class="feature-tabs" role="tablist" :aria-label="t('ui.exploreFeatures.tabsAriaLabel')">
         <button
           v-for="feature in features"
           :key="feature.id"
@@ -44,7 +44,7 @@
               rel="noopener noreferrer"
               class="feature-learn-more"
             >
-              <span>Read docs</span>
+              <span>{{ t('ui.exploreFeatures.readDocs') }}</span>
               <i class="pi pi-external-link"></i>
             </a>
             <button
@@ -53,7 +53,7 @@
               class="feature-learn-more feature-learn-more-app"
               @click="openInApp"
             >
-              <span>Open in app</span>
+              <span>{{ t('ui.exploreFeatures.openInApp') }}</span>
               <i class="pi pi-arrow-right"></i>
             </button>
           </div>
@@ -65,8 +65,11 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { EXPLORE_FEATURES } from '@/content/exploreFeatures'
+import { EXPLORE_FEATURES_META } from '@/content/exploreFeatures'
+
+const { t, tm } = useI18n()
 
 const props = defineProps({
   mobile: {
@@ -88,29 +91,35 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const features = EXPLORE_FEATURES
-const activeFeatureId = ref(features[0]?.id || null)
+const features = computed(() => EXPLORE_FEATURES_META.map((meta) => ({
+  ...meta,
+  tabLabel: t(`ui.exploreFeatures.${meta.id}.tabLabel`),
+  title: t(`ui.exploreFeatures.${meta.id}.title`),
+  description: t(`ui.exploreFeatures.${meta.id}.description`),
+  highlights: tm(`ui.exploreFeatures.${meta.id}.highlights`)
+})))
+const activeFeatureId = ref(EXPLORE_FEATURES_META[0]?.id || null)
 
 let featureInterval = null
 
-const activeFeature = computed(() => features.find(feature => feature.id === activeFeatureId.value) || null)
+const activeFeature = computed(() => features.value.find(feature => feature.id === activeFeatureId.value) || null)
 
 const getNextFeatureId = () => {
-  if (features.length === 0) {
+  if (features.value.length === 0) {
     return null
   }
 
-  const currentIndex = features.findIndex(feature => feature.id === activeFeatureId.value)
+  const currentIndex = features.value.findIndex(feature => feature.id === activeFeatureId.value)
   const normalizedIndex = currentIndex >= 0 ? currentIndex : 0
-  const nextIndex = (normalizedIndex + 1) % features.length
+  const nextIndex = (normalizedIndex + 1) % features.value.length
 
-  return features[nextIndex].id
+  return features.value[nextIndex].id
 }
 
 const startFeatureAutoPlay = () => {
   stopFeatureAutoPlay()
 
-  if (!props.autoPlay || features.length <= 1) {
+  if (!props.autoPlay || features.value.length <= 1) {
     return
   }
 
@@ -162,10 +171,10 @@ onBeforeUnmount(() => {
   --feature-accent-soft: rgba(37, 99, 235, 0.11);
   --feature-accent-shadow: rgba(37, 99, 235, 0.26);
   width: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(203, 213, 225, 0.6);
+  background: var(--gp-landing-glass);
+  border: 1px solid var(--gp-landing-glass-border);
   border-radius: 1rem;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--gp-landing-shadow);
   overflow: hidden;
 }
 
@@ -219,8 +228,8 @@ onBeforeUnmount(() => {
 
 .feature-panel-header {
   padding: 0.92rem 1.1rem 0.72rem;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.55);
-  background: rgba(248, 250, 252, 0.56);
+  border-bottom: 1px solid var(--gp-landing-glass-border);
+  background: color-mix(in srgb, var(--gp-surface-muted) 56%, transparent);
 }
 
 .feature-panel-kicker {
@@ -229,7 +238,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--home-text-secondary);
+  color: var(--gp-landing-text-secondary);
 }
 
 .feature-tabs {
@@ -239,9 +248,9 @@ onBeforeUnmount(() => {
 }
 
 .feature-tab {
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  background: rgba(255, 255, 255, 0.9);
-  color: #334155;
+  border: 1px solid var(--gp-landing-glass-border);
+  background: var(--gp-landing-glass-hover);
+  color: var(--gp-text-secondary);
   border-radius: 0.75rem;
   height: 2.5rem;
   padding: 0 0.8rem;
@@ -256,12 +265,12 @@ onBeforeUnmount(() => {
 
 .feature-tab i {
   font-size: 0.92rem;
-  color: #64748b;
+  color: var(--gp-landing-text-secondary);
 }
 
 .feature-tab:hover {
   border-color: rgba(96, 165, 250, 0.7);
-  color: #1e293b;
+  color: var(--gp-landing-text-primary);
 }
 
 .feature-tab.active {
@@ -291,14 +300,14 @@ onBeforeUnmount(() => {
   margin: 0 0 0.5rem;
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--home-text-primary);
+  color: var(--gp-landing-text-primary);
 }
 
 .feature-panel-copy p {
   margin: 0;
   font-size: 0.98rem;
   line-height: 1.62;
-  color: var(--home-text-secondary);
+  color: var(--gp-landing-text-secondary);
   max-width: none;
   min-height: 0;
 }
@@ -316,12 +325,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: flex-start;
   gap: 0.45rem;
-  color: var(--home-text-secondary);
+  color: var(--gp-landing-text-secondary);
   font-size: 0.88rem;
   line-height: 1.45;
-  border: 1px solid rgba(203, 213, 225, 0.62);
+  border: 1px solid var(--gp-landing-glass-border);
   border-left: 3px solid var(--feature-accent);
-  background: linear-gradient(90deg, var(--feature-accent-soft), rgba(255, 255, 255, 0.2));
+  background: linear-gradient(90deg, var(--feature-accent-soft), color-mix(in srgb, var(--gp-surface-card) 20%, transparent));
   border-radius: 0.65rem;
   padding: 0.48rem 0.58rem;
 }
@@ -342,9 +351,9 @@ onBeforeUnmount(() => {
   gap: 0.45rem;
   padding: 0.52rem 0.85rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  background: rgba(248, 250, 252, 0.7);
-  color: var(--home-text-secondary);
+  border: 1px solid var(--gp-landing-glass-border);
+  background: var(--gp-landing-glass);
+  color: var(--gp-landing-text-secondary);
   text-decoration: none;
   font-size: 0.83rem;
   font-weight: 700;
@@ -353,9 +362,9 @@ onBeforeUnmount(() => {
 }
 
 .feature-learn-more:hover {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--gp-landing-glass-hover);
   border-color: rgba(96, 165, 250, 0.6);
-  color: #1e293b;
+  color: var(--gp-landing-text-primary);
   transform: translateX(2px);
 }
 
@@ -429,67 +438,7 @@ onBeforeUnmount(() => {
   transform: translateY(10px);
 }
 
-.p-dark .feature-panel {
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.68));
-  border-color: rgba(148, 163, 184, 0.26);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
-}
-
-.p-dark .feature-panel-header {
-  border-bottom-color: rgba(148, 163, 184, 0.2);
-  background: rgba(30, 41, 59, 0.5);
-}
-
-.p-dark .feature-tab {
-  background: rgba(15, 23, 42, 0.85);
-  border-color: rgba(148, 163, 184, 0.4);
-  color: #cbd5e1;
-}
-
-.p-dark .feature-tab i {
-  color: #94a3b8;
-}
-
-.p-dark .feature-tab:hover {
-  border-color: rgba(96, 165, 250, 0.6);
-  color: #e2e8f0;
-}
-
-.p-dark .feature-tab.active {
-  background: var(--feature-accent);
-  border-color: var(--feature-accent);
-  color: #ffffff;
-  box-shadow: 0 8px 18px var(--feature-accent-shadow);
-}
-
-.p-dark .feature-tab.active i {
-  color: #dbeafe;
-}
-
-.p-dark .feature-highlight-list li {
-  color: #94a3b8;
-  border-color: rgba(148, 163, 184, 0.32);
-  background: linear-gradient(90deg, var(--feature-accent-soft), rgba(15, 23, 42, 0.14));
-}
-
-.p-dark .feature-highlight-list i {
-  color: var(--feature-accent);
-}
-
-.p-dark .feature-learn-more {
-  background: rgba(30, 41, 59, 0.6);
-  border-color: rgba(148, 163, 184, 0.3);
-  color: #94a3b8;
-}
-
-.p-dark .feature-learn-more:hover {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(96, 165, 250, 0.5);
-  color: #e2e8f0;
-}
-
-.feature-panel--embedded,
-.p-dark .feature-panel--embedded {
+.feature-panel--embedded {
   background: transparent;
   border: 0;
   border-radius: 0;

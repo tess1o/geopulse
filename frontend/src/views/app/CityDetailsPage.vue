@@ -1,26 +1,14 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      :title="pageTitle"
-      :subtitle="`Statistics and visit history for ${cityName}`"
       :loading="isLoading"
-      variant="fullwidth"
+      max-width="xlarge"
     >
-      <!-- Breadcrumb -->
-      <div class="breadcrumb-nav">
-        <Button
-          label="Back to Location Analytics"
-          icon="pi pi-arrow-left"
-          class="p-button-text"
-          @click="goToLocationAnalytics"
-        />
-      </div>
-
       <!-- Loading State -->
       <template v-if="isLoading && !cityDetails">
         <div class="loading-container">
           <ProgressSpinner />
-          <p class="loading-text">Loading city details...</p>
+          <p class="loading-text">{{ t('locationAnalytics.cityPage.loading') }}</p>
         </div>
       </template>
 
@@ -29,34 +17,35 @@
         <BaseCard>
           <div class="error-container">
             <i class="pi pi-exclamation-triangle error-icon"></i>
-            <h3 class="error-title">Failed to Load City Details</h3>
+            <h3 class="error-title">{{ t('locationAnalytics.cityPage.errorTitle') }}</h3>
             <p class="error-message">{{ error }}</p>
-            <Button label="Try Again" icon="pi pi-refresh" @click="loadCityData" />
+            <Button :label="t('common.tryAgain')" icon="pi pi-refresh" @click="loadCityData" />
           </div>
         </BaseCard>
       </template>
 
       <!-- City Details Content -->
       <template v-else-if="cityDetails">
-        <!-- City Header -->
-        <BaseCard class="city-header-card">
-          <div class="city-header">
-            <div class="city-header-icon">
-              <i class="pi pi-building"></i>
-            </div>
-            <div class="city-header-content">
-              <h1 class="city-title">{{ cityDetails.cityName }}</h1>
-              <p class="city-country">
-                <span
-                  class="country-link"
-                  @click="navigateToCountry(cityDetails.country)"
-                >
-                  {{ cityDetails.country }}
-                </span>
-              </p>
-            </div>
-          </div>
-        </BaseCard>
+        <LocationDetailsHeader
+          :title="cityDetails.cityName"
+          :subtitle="t('locationAnalytics.cityPage.subtitle')"
+          icon="pi pi-building"
+          :back-label="t('common.back')"
+          @back="goToLocationAnalytics"
+        >
+          <template #metadata>
+            <RouterLink
+              v-if="cityDetails.country"
+              :to="`/app/location-analytics/country/${encodeURIComponent(cityDetails.country)}`"
+              class="detail-link"
+            >
+              {{ cityDetails.country }}
+            </RouterLink>
+            <span v-if="cityDetails.statistics">
+              {{ t('locationAnalytics.cityPage.visitsCount', { count: cityDetails.statistics.totalVisits || 0 }) }}
+            </span>
+          </template>
+        </LocationDetailsHeader>
 
         <!-- Statistics Card -->
         <PlaceStatsCard
@@ -64,47 +53,52 @@
           :statistics="cityDetails.statistics"
         />
 
-        <!-- Top Places in City -->
-        <BaseCard v-if="cityDetails.topPlaces && cityDetails.topPlaces.length > 0" class="top-places-card">
-          <h3 class="section-title">Top Places in {{ cityDetails.cityName }}</h3>
-          <div class="top-places-list">
-            <div
-              v-for="place in cityDetails.topPlaces"
-              :key="`${place.type}-${place.id}`"
-              class="top-place-item"
-              @click="navigateToPlace(place)"
-            >
-              <div class="place-info">
-                <i :class="place.type === 'favorite' ? 'pi pi-heart' : 'pi pi-map-marker'" class="place-icon"></i>
-                <div class="place-details">
-                  <div class="place-name">{{ place.name }}</div>
-                  <div class="place-stats">
-                    {{ place.visitCount }} visits • {{ formatDuration(place.totalDuration) }}
+        <div class="city-context-grid">
+          <!-- Top Places in City -->
+          <BaseCard
+            v-if="cityDetails.topPlaces && cityDetails.topPlaces.length > 0"
+            :title="t('locationAnalytics.cityPage.topPlacesTitle', { name: cityDetails.cityName })"
+            class="top-places-card"
+          >
+            <div class="top-places-list">
+              <RouterLink
+                v-for="place in cityDetails.topPlaces"
+                :key="`${place.type}-${place.id}`"
+                :to="`/app/place-details/${place.type}/${place.id}`"
+                class="top-place-item"
+              >
+                <div class="place-info">
+                  <i :class="place.type === 'favorite' ? 'pi pi-heart' : 'pi pi-map-marker'" class="place-icon"></i>
+                  <div class="place-details">
+                    <div class="place-name">{{ place.name }}</div>
+                    <div class="place-stats">
+                      {{ t('locationAnalytics.cityPage.placeStats', { count: place.visitCount, duration: formatDuration(place.totalDuration) }) }}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <i class="pi pi-chevron-right"></i>
+                <i class="pi pi-chevron-right"></i>
+              </RouterLink>
             </div>
-          </div>
-        </BaseCard>
+          </BaseCard>
 
-        <!-- Map with city centroid -->
-        <PlaceMap
-          v-if="cityDetails && cityDetails.geometry && !isLoading"
-          ref="placeMapRef"
-          :key="`city-map-${cityName}-${cityDetails.cityName}`"
-          :geometry="cityDetails.geometry"
-          :location-name="cityDetails.cityName"
-          :photos="cityPhotosForMap"
-          :photo-marker-groups="cityMarkerGroupsForMap"
-          @photo-click="handleMapPhotoClick"
-        />
+          <!-- Map with city centroid -->
+          <PlaceMap
+            v-if="cityDetails.geometry && !isLoading"
+            ref="placeMapRef"
+            :key="`city-map-${cityName}-${cityDetails.cityName}`"
+            :geometry="cityDetails.geometry"
+            :location-name="cityDetails.cityName"
+            :photos="cityPhotosForMap"
+            :photo-marker-groups="cityMarkerGroupsForMap"
+            @photo-click="handleMapPhotoClick"
+          />
+        </div>
 
         <ImmichLatestPhotosSection
           ref="cityPhotosSectionRef"
-          :title="`Latest photos in ${cityDetails.cityName}`"
+          :title="t('locationAnalytics.cityPage.latestPhotosTitle', { name: cityDetails.cityName })"
           :search-params="cityImmichSearchParams"
-          empty-message="No Immich photos found for this city."
+          :empty-message="t('locationAnalytics.cityPage.noPhotosMessage')"
           @latest-photos-change="handleCityPhotosChange"
           @map-markers-change="handleCityMarkerGroupsChange"
           @show-on-map="handleCityPhotoShowOnMap"
@@ -129,6 +123,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -138,6 +133,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
+import LocationDetailsHeader from '@/components/location-analytics/LocationDetailsHeader.vue'
 import PlaceStatsCard from '@/components/place/PlaceStatsCard.vue'
 import PlaceMap from '@/components/place/PlaceMap.vue'
 import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
@@ -145,7 +141,9 @@ import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLat
 import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -175,11 +173,6 @@ const {
 })
 
 const cityName = computed(() => route.params.name)
-const pageTitle = computed(() => {
-  return cityDetails.value
-    ? `${cityDetails.value.cityName}, ${cityDetails.value.country}`
-    : 'City Details'
-})
 const isLoading = computed(() => loading.value)
 const pagination = computed(() => cityPagination.value)
 
@@ -232,10 +225,10 @@ const loadCityData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading city data:', err)
-    error.value = err.response?.data?.message || err.message || 'Failed to load city details'
+    error.value = formatApiErrorDetail(err, t('locationAnalytics.cityPage.loadFailed'))
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: error.value,
       life: 5000
     })
@@ -251,8 +244,8 @@ const loadVisits = async (page, pageSize, sortBy = currentSortBy.value, sortDire
     console.error('Error loading visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load visit history',
+      summary: t('common.error'),
+      detail: t('locationAnalytics.cityPage.loadVisitsFailed'),
       life: 3000
     })
   } finally {
@@ -272,51 +265,22 @@ const handleSortChange = async ({ sortBy, sortDirection }) => {
 
 const handleExportVisits = async () => {
   try {
-    const url = `/api/location-analytics/city/${encodeURIComponent(cityName.value)}/visits/export?sortBy=${currentSortBy.value}&sortDirection=${currentSortDirection.value}`
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}` || ''
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Export failed with status ${response.status}`)
-    }
-
-    const blob = await response.blob()
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = `city_${cityName.value}_visits_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-    URL.revokeObjectURL(downloadUrl)
+    await store.exportVisits('city', cityName.value, currentSortBy.value, currentSortDirection.value)
 
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: `Exported visits to ${cityName.value}`,
+      summary: t('locationAnalytics.cityPage.exportSuccessSummary'),
+      detail: t('locationAnalytics.cityPage.exportSuccessDetail', { name: cityName.value }),
       life: 5000
     })
   } catch (err) {
     console.error('Error exporting visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: err.message || 'Failed to export visits',
+      summary: t('locationAnalytics.cityPage.exportFailedSummary'),
+      detail: formatApiErrorDetail(err, t('locationAnalytics.cityPage.exportFailedDetail')),
       life: 5000
     })
-  }
-}
-
-const navigateToPlace = (place) => {
-  router.push(`/app/place-details/${place.type}/${place.id}`)
-}
-
-const navigateToCountry = (countryName) => {
-  if (countryName) {
-    router.push(`/app/location-analytics/country/${encodeURIComponent(countryName)}`)
   }
 }
 
@@ -342,12 +306,6 @@ watch(
 </script>
 
 <style scoped>
-.breadcrumb-nav {
-  margin-bottom: var(--gp-spacing-lg);
-  padding: 0 var(--gp-spacing-lg);
-  padding-top: env(safe-area-inset-top);
-}
-
 .loading-container,
 .error-container {
   display: flex;
@@ -361,59 +319,30 @@ watch(
 
 .error-icon {
   font-size: 4rem;
-  color: var(--gp-error);
+  color: var(--gp-danger);
   opacity: 0.7;
 }
 
-.city-header-card {
-  margin-bottom: var(--gp-spacing-xl);
+.detail-link {
+  color: var(--gp-primary-text);
+  font-weight: 600;
+  text-underline-offset: .18em;
 }
 
-.city-header {
-  display: flex;
-  align-items: center;
+.detail-link:hover {
+  color: var(--gp-primary-text);
+}
+
+.city-context-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(0, 2fr);
   gap: var(--gp-spacing-lg);
-}
-
-.city-header-icon {
-  font-size: 3rem;
-  color: var(--gp-primary);
-}
-
-.city-title {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.city-country {
-  margin: var(--gp-spacing-xs) 0 0;
-  font-size: 1.125rem;
-  color: var(--gp-text-secondary);
-}
-
-.country-link {
-  color: var(--gp-primary);
-  cursor: pointer;
-  text-decoration: underline;
-  font-weight: 500;
-  transition: color 0.2s ease;
-}
-
-.country-link:hover {
-  color: var(--gp-primary-hover);
-}
-
-.top-places-card {
   margin-bottom: var(--gp-spacing-xl);
+  align-items: stretch;
 }
 
-.section-title {
-  margin: 0 0 var(--gp-spacing-lg);
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
+.city-context-grid > :only-child {
+  grid-column: 1 / -1;
 }
 
 .top-places-list {
@@ -426,34 +355,42 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
   transition: all 0.2s ease;
 }
 
 .top-place-item:hover {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-50);
+  background: var(--p-primary-50);
 }
 
 .place-info {
   display: flex;
   align-items: center;
-  gap: var(--gp-spacing-md);
+  gap: var(--gp-spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .place-icon {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   color: var(--gp-primary);
+}
+
+.place-details {
+  min-width: 0;
 }
 
 .place-name {
   font-weight: 600;
   color: var(--gp-text-primary);
   margin-bottom: var(--gp-spacing-xs);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .place-stats {
@@ -461,21 +398,19 @@ watch(
   color: var(--gp-text-secondary);
 }
 
-.p-dark .country-link {
-  color: var(--gp-primary-light);
+.top-place-item:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
 }
 
-.p-dark .country-link:hover {
-  color: var(--gp-primary);
+.top-place-item > .pi-chevron-right {
+  flex-shrink: 0;
+  margin-left: var(--gp-spacing-sm);
 }
 
-@media (max-width: 768px) {
-  .city-title {
-    font-size: 1.5rem;
-  }
-
-  .city-header-icon {
-    font-size: 2rem;
+@media (max-width: 1024px) {
+  .city-context-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

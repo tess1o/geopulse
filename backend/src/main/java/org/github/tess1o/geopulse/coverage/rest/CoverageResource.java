@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.coverage.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Min;
@@ -11,7 +13,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
@@ -21,17 +22,21 @@ import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/coverage")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+
+@Path("/coverage")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed({ "USER", "ADMIN" })
+@RolesAllowed({"USER", "ADMIN"})
 @Tag(name = "User: Coverage", description = "Read and manage coverage grid status, cells, and recalculation jobs.")
 public class CoverageResource {
 
@@ -53,19 +58,19 @@ public class CoverageResource {
 
     @GET
     @Path("/status")
-    public Response getCoverageStatus() {
+    public CoverageStatus getCoverageStatus() {
         UUID userId = currentUserService.getCurrentUserId();
-        CoverageStatus status = coverageService.getCoverageStatus(userId);
-        return Response.ok(ApiResponse.success(status)).build();
+        return coverageService.getCoverageStatus(userId);
     }
 
     @PUT
     @Path("/settings")
-    public Response updateCoverageSettings(CoverageSettingsRequest request) {
+    @APIResponse(responseCode = "200", description = "Coverage settings updated")
+    @APIResponse(responseCode = "400", description = "Invalid coverage settings")
+    public CoverageStatus updateCoverageSettings(CoverageSettingsRequest request) {
         if (request == null || request.enabled() == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("enabled is required"))
-                    .build();
+            throw new GeoPulseException(COVERAGE_ENABLED_REQUIRED, "enabled is required",
+                    Map.of("field", "enabled"));
         }
 
         UUID userId = currentUserService.getCurrentUserId();
@@ -77,72 +82,63 @@ public class CoverageResource {
             processingService.startProcessingAsync(userId);
         }
 
-        CoverageStatus status = coverageService.getCoverageStatus(userId);
-        return Response.ok(ApiResponse.success(status)).build();
+        return coverageService.getCoverageStatus(userId);
     }
 
     @POST
-    @Path("/recalculate")
-    public Response recalculateCoverage() {
+    @Path("/recalculations")
+    @APIResponse(responseCode = "200", description = "Coverage recalculation started")
+    @APIResponse(responseCode = "400", description = "Coverage is not enabled")
+    @APIResponse(responseCode = "409", description = "An import already manages recalculation")
+    public CoverageStatus recalculateCoverage() {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
-                    .build();
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         UUID userId = user.getId();
         if (importJobService.hasActiveImportJob(userId)) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(ApiResponse.error("Coverage recalculation is already managed by the active import job"))
-                    .build();
+            throw new GeoPulseException(COVERAGE_RECALCULATION_CONFLICT,
+                    "Coverage recalculation is already managed by the active import job");
         }
 
         processingService.startFullRecalculationAsync(userId);
 
-        CoverageStatus status = coverageService.getCoverageStatus(userId);
-        return Response.ok(ApiResponse.success(status)).build();
+        return coverageService.getCoverageStatus(userId);
     }
 
     @GET
     @Path("/cells")
-    public Response getCoverageCells(@QueryParam("bbox") String bbox,
-                                     @QueryParam("grid") Integer gridMeters,
-                                     @QueryParam("limit") @Min(1) Integer limit) {
+    @APIResponse(responseCode = "200", description = "Coverage cells retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid coverage query")
+    @APIResponse(responseCode = "403", description = "Coverage is not enabled")
+    public List<CoverageCell> getCoverageCells(@QueryParam("bbox") String bbox,
+                                                @QueryParam("grid") Integer gridMeters,
+                                                @QueryParam("limit") @Min(1) Integer limit) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
-                    .build();
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         if (bbox == null || bbox.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("bbox is required (minLon,minLat,maxLon,maxLat)"))
-                    .build();
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, "bbox is required (minLon,minLat,maxLon,maxLat)");
         }
 
         double[] bounds;
         try {
             bounds = parseBbox(bbox);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, INVALID_BOUNDING_BOX.title(), e);
         }
 
         int grid = gridMeters == null ? CoverageDefaults.DEFAULT_GRID_METERS : gridMeters;
         if (!coverageService.isGridSupported(grid)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Unsupported grid size"))
-                    .build();
+            throw new GeoPulseException(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
         }
         int cellLimit = CoverageDefaults.DEFAULT_CELLS_PER_VIEW;
         if (limit != null) {
             if (limit < 1) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("limit must be greater than 0"))
-                        .build();
+                throw new GeoPulseException(INVALID_LIMIT, "limit must be greater than 0", Map.of("min", 1));
             }
             cellLimit = Math.min(limit, CoverageDefaults.MAX_CELLS_PER_VIEW);
         }
@@ -164,30 +160,28 @@ public class CoverageResource {
                 cellLimit
         );
 
-        return Response.ok(ApiResponse.success(cells)).build();
+        return cells;
     }
 
     @GET
     @Path("/summary")
-    public Response getCoverageSummary(@QueryParam("grid") Integer gridMeters) {
+    @APIResponse(responseCode = "200", description = "Coverage summary retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid coverage grid")
+    @APIResponse(responseCode = "403", description = "Coverage is not enabled")
+    public CoverageSummary getCoverageSummary(@QueryParam("grid") Integer gridMeters) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
-                    .build();
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         int grid = gridMeters == null ? CoverageDefaults.DEFAULT_GRID_METERS : gridMeters;
         if (!coverageService.isGridSupported(grid)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Unsupported grid size"))
-                    .build();
+            throw new GeoPulseException(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
         }
 
         UUID userId = user.getId();
 
-        CoverageSummary summary = coverageService.getCoverageSummary(userId, grid);
-        return Response.ok(ApiResponse.success(summary)).build();
+        return coverageService.getCoverageSummary(userId, grid);
     }
 
 

@@ -2,14 +2,13 @@ package org.github.tess1o.geopulse.admin.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 
 @Data
 public class InvitationRegisterRequest {
-    @NotBlank(message = "Token is required")
-    private String token;
-
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
     @Size(max = 254)
@@ -24,4 +23,8 @@ public class InvitationRegisterRequest {
 
     @Size(max = 255)
     private String timezone;
+
+    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @Size(max = 16)
+    private String language;
 }

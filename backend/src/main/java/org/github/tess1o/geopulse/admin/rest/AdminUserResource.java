@@ -1,31 +1,37 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.service.AdminUserService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
 /**
  * REST resource for admin user management.
  */
-@Path("/api/admin/users")
+@Path("/admin/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -49,12 +55,12 @@ public class AdminUserResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getUsers(
+    public PageResponse<UserListResponse> getUsers(
             @QueryParam("search") String search,
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("10") int size,
+            @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @QueryParam("size") @DefaultValue("10") @Min(1) @Max(200) int size,
             @QueryParam("sortBy") @DefaultValue("createdAt") String sortBy,
-            @QueryParam("sortDir") @DefaultValue("desc") String sortDir) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDir) {
 
         List<UserEntity> users = adminUserService.getUsers(search, page, size, sortBy, sortDir);
         long total = adminUserService.countUsers(search);
@@ -63,15 +69,7 @@ public class AdminUserResource {
                 .map(this::toUserListResponse)
                 .collect(Collectors.toList());
 
-        PagedResponse<UserListResponse> response = PagedResponse.<UserListResponse>builder()
-                .content(userResponses)
-                .totalElements(total)
-                .totalPages((int) Math.ceil((double) total / size))
-                .page(page)
-                .size(size)
-                .build();
-
-        return Response.ok(response).build();
+        return new PageResponse<>(userResponses, page, size, total, (int) Math.ceil((double) total / size));
     }
 
     /**
@@ -80,12 +78,10 @@ public class AdminUserResource {
     @GET
     @Path("/{id}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getUserById(@PathParam("id") UUID id) {
+    public UserDetailsResponse getUserById(@PathParam("id") UUID id) {
         return adminUserService.getUserById(id)
                 .map(this::toUserDetailsResponse)
-                .map(Response::ok)
-                .orElse(Response.status(Response.Status.NOT_FOUND))
-                .build();
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
     }
 
     /**
@@ -94,28 +90,21 @@ public class AdminUserResource {
     @PUT
     @Path("/{id}/status")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response updateUserStatus(
-            @PathParam("id") UUID id,
-            UpdateUserStatusRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void updateUserStatus(@PathParam("id") UUID id, UpdateUserStatusRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
         // Prevent admin from disabling themselves
         if (id.equals(adminId) && !request.isActive()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Cannot disable your own account"))
-                    .build();
+            throw new GeoPulseException(ADMIN_SELF_DISABLE_FORBIDDEN, "Cannot disable your own account");
         }
 
         adminUserService.setUserStatus(id, request.isActive());
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserStatusChange(adminId, id, request.isActive(), ipAddress);
 
-        return Response.ok(Map.of("success", true)).build();
     }
 
     /**
@@ -124,56 +113,46 @@ public class AdminUserResource {
     @PUT
     @Path("/{id}/role")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response updateUserRole(
-            @PathParam("id") UUID id,
-            UpdateUserRoleRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void updateUserRole(@PathParam("id") UUID id, UpdateUserRoleRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
         UserEntity user = adminUserService.getUserById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
 
         String oldRole = user.getRole().name();
 
         try {
             adminUserService.changeUserRole(id, request.getRole());
         } catch (IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw new GeoPulseException(ADMIN_USER_UPDATE_INVALID, ADMIN_USER_UPDATE_INVALID.title(), e);
         }
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserRoleChange(adminId, id, oldRole, request.getRole().name(), ipAddress);
 
-        return Response.ok(Map.of("success", true)).build();
     }
 
     /**
      * Reset user password.
      */
     @POST
-    @Path("/{id}/reset-password")
+    @Path("/{id}/password-resets")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response resetPassword(
-            @PathParam("id") UUID id,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public ResetPasswordResponse resetPassword(@PathParam("id") UUID id) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
         String tempPassword = adminUserService.resetPassword(id);
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logPasswordReset(adminId, id, ipAddress);
 
-        return Response.ok(ResetPasswordResponse.builder()
+        return ResetPasswordResponse.builder()
                 .temporaryPassword(tempPassword)
-                .build()).build();
+                .build();
     }
 
     /**
@@ -182,38 +161,30 @@ public class AdminUserResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response deleteUser(
-            @PathParam("id") UUID id,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void deleteUser(@PathParam("id") UUID id) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
         // Prevent admin from deleting themselves
         if (id.equals(adminId)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Cannot delete your own account"))
-                    .build();
+            throw new GeoPulseException(ADMIN_SELF_DELETE_FORBIDDEN, "Cannot delete your own account");
         }
 
         UserEntity user = adminUserService.getUserById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
 
         String userEmail = user.getEmail();
 
         try {
             adminUserService.deleteUser(id);
         } catch (IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw new GeoPulseException(ADMIN_USER_UPDATE_INVALID, ADMIN_USER_UPDATE_INVALID.title(), e);
         }
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserDeleted(adminId, id, userEmail, ipAddress);
 
-        return Response.ok(Map.of("success", true)).build();
     }
 
     private UserListResponse toUserListResponse(UserEntity user) {

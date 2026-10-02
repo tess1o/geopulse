@@ -94,6 +94,8 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "motorcycleEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "publicTransportationEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "preferredMotorizedType",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinAvgSpeed", 
@@ -194,6 +196,7 @@ public interface TimelinePreferencesMapper {
                     .walkingMaxMaxSpeed(fromImport.getWalkingMaxMaxSpeed())
                     .carEnabled(fromImport.getCarEnabled())
                     .motorcycleEnabled(fromImport.getMotorcycleEnabled())
+                    .publicTransportationEnabled(fromImport.getPublicTransportationEnabled())
                     .preferredMotorizedType(fromImport.getPreferredMotorizedType())
                     .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
                     .carMinMaxSpeed(fromImport.getCarMinMaxSpeed())
@@ -251,6 +254,7 @@ public interface TimelinePreferencesMapper {
                 .walkingMaxMaxSpeed(existing.getWalkingMaxMaxSpeed())
                 .carEnabled(existing.getCarEnabled())
                 .motorcycleEnabled(existing.getMotorcycleEnabled())
+                .publicTransportationEnabled(existing.getPublicTransportationEnabled())
                 .preferredMotorizedType(existing.getPreferredMotorizedType())
                 .carMinAvgSpeed(existing.getCarMinAvgSpeed())
                 .carMinMaxSpeed(existing.getCarMinMaxSpeed())

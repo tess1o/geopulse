@@ -72,7 +72,7 @@ public class AdminBootstrapService {
             UserEntity user = userRepository.findAll().firstResult();
             if (user != null) {
                 user.setRole(Role.ADMIN);
-                log.info("Promoted existing only user {} to ADMIN role (first-user admin bootstrap)", user.getEmail());
+                log.info("Promoted existing only user {} to ADMIN role (first-user admin bootstrap)", user.getId());
             }
             return;
         }
@@ -87,7 +87,7 @@ public class AdminBootstrapService {
         Optional<String> configuredAdminEmail = configuredAdminEmail();
         if (configuredAdminEmail.isPresent()) {
             if (configuredAdminEmail.get().equalsIgnoreCase(email)) {
-                log.info("Promoting user {} to ADMIN role (matches admin email)", email);
+                log.info("Promoting new user to ADMIN role (matches configured admin email)");
                 return Role.ADMIN;
             }
             return Role.USER;
@@ -100,7 +100,7 @@ public class AdminBootstrapService {
         acquireBootstrapLock();
 
         if (userRepository.count("role", Role.ADMIN) == 0 && userRepository.count() == 0) {
-            log.info("Promoting user {} to ADMIN role (first-user admin bootstrap)", email);
+            log.info("Promoting first user to ADMIN role (first-user admin bootstrap)");
             return Role.ADMIN;
         }
 
@@ -125,7 +125,7 @@ public class AdminBootstrapService {
 
         managedUser.setRole(Role.ADMIN);
         user.setRole(Role.ADMIN);
-        log.info("Promoted existing user {} to ADMIN role (matches admin email)", user.getEmail());
+        log.info("Promoted existing user {} to ADMIN role (matches configured admin email)", user.getId());
     }
 
     private Optional<String> configuredAdminEmail() {
@@ -139,7 +139,7 @@ public class AdminBootstrapService {
                 .filter(user -> user.getRole() != Role.ADMIN)
                 .ifPresent(user -> {
                     user.setRole(Role.ADMIN);
-                    log.info("Promoted existing user {} to ADMIN role (matches admin email)", user.getEmail());
+                    log.info("Promoted existing user {} to ADMIN role (matches configured admin email)", user.getId());
                 });
     }
 

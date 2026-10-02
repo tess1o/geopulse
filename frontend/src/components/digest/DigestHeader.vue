@@ -2,13 +2,20 @@
   <div class="digest-header">
     <div class="digest-header-main">
       <!-- Period Type Toggle -->
-      <div class="period-toggle">
+      <div class="period-toggle" role="group" :aria-label="t('analytics.digest.heatmap.periodAriaLabel')">
         <Button
-          :label="viewMode === 'monthly' ? 'Monthly' : 'Yearly'"
-          :icon="viewMode === 'monthly' ? 'pi pi-calendar' : 'pi pi-calendar-clock'"
-          @click="toggleViewMode"
-          outlined
-          class="toggle-btn"
+          :label="t('analytics.digest.header.monthly')"
+          icon="pi pi-calendar"
+          :class="['toggle-btn', { active: viewMode === 'monthly' }]"
+          text
+          @click="setViewMode('monthly')"
+        />
+        <Button
+          :label="t('analytics.digest.header.yearly')"
+          icon="pi pi-calendar-clock"
+          :class="['toggle-btn', { active: viewMode === 'yearly' }]"
+          text
+          @click="setViewMode('yearly')"
         />
       </div>
 
@@ -74,11 +81,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import { useTimezone } from '@/composables/useTimezone'
+import { useLocale } from '@/composables/useLocale'
 
+const { t } = useI18n()
 const timezone = useTimezone()
+const { locale } = useLocale()
 
 const props = defineProps({
   viewMode: {
@@ -101,10 +112,15 @@ const emit = defineEmits(['update:viewMode', 'update:year', 'update:month', 'per
 const selectedYear = ref(props.year)
 const selectedMonth = ref(props.month || timezone.now().month() + 1)
 
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+/**
+ * Locale-aware month names via dayjs (its global locale is switched by `useLocale().setLocale()`).
+ * Depending on `locale.value` here is what forces a recompute on language switch -- dayjs's own
+ * locale mutation isn't itself a reactive dependency Vue can track.
+ */
+const monthNames = computed(() => {
+  void locale.value
+  return Array.from({ length: 12 }, (_, index) => timezone.now().date(1).month(index).format('MMMM'))
+})
 
 const availableYears = computed(() => {
   const currentYear = timezone.now().year()
@@ -122,7 +138,7 @@ const recentYears = computed(() => {
 
 const displayPeriod = computed(() => {
   if (props.viewMode === 'monthly') {
-    const monthName = monthNames[selectedMonth.value - 1]
+    const monthName = monthNames.value[selectedMonth.value - 1]
     return `${monthName} ${selectedYear.value}`
   } else {
     return `${selectedYear.value}`
@@ -138,8 +154,8 @@ const isCurrentPeriod = computed(() => {
   }
 })
 
-const toggleViewMode = () => {
-  const newMode = props.viewMode === 'monthly' ? 'yearly' : 'monthly'
+const setViewMode = (newMode) => {
+  if (newMode === props.viewMode) return
   emit('update:viewMode', newMode)
   emit('period-changed', {
     viewMode: newMode,
@@ -214,8 +230,8 @@ watch(() => props.month, (newMonth) => {
 
 <style scoped>
 .digest-header {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
+  background: color-mix(in srgb, var(--gp-surface-card) 90%, var(--gp-primary));
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-xl);
@@ -229,12 +245,21 @@ watch(() => props.month, (newMonth) => {
 }
 
 .period-toggle {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--gp-border);
+  border-radius: 10px;
+  background: var(--gp-surface-muted);
   flex-shrink: 0;
 }
 
 .toggle-btn {
   font-weight: 600;
+  color: var(--gp-text-secondary);
+  padding: .45rem .65rem;
 }
+
+.toggle-btn.active { color: white; background: var(--gp-primary); }
 
 .period-navigation {
   display: flex;
@@ -285,9 +310,9 @@ watch(() => props.month, (newMonth) => {
 .period-select {
   flex: 1;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   color: var(--gp-text-primary);
   font-size: 1rem;
   font-weight: 500;
@@ -305,26 +330,6 @@ watch(() => props.month, (newMonth) => {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Dark Mode */
-.p-dark .digest-header {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .period-display {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .period-select {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
-}
-
-.p-dark .period-select:hover {
-  border-color: var(--gp-primary);
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .digest-header-main {
@@ -336,9 +341,7 @@ watch(() => props.month, (newMonth) => {
     width: 100%;
   }
 
-  .toggle-btn {
-    width: 100%;
-  }
+  .toggle-btn { flex: 1; }
 
   .period-navigation {
     order: 2;

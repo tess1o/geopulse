@@ -26,7 +26,7 @@ export class DateFormatTestHelper {
 
   static async setUserDateFormatById(dbManager, userId, dateFormat = DateFormatValues.DMY) {
     await dbManager.client.query(
-      'UPDATE users SET date_format = $1, updated_at = NOW() WHERE id = $2',
+      "UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)), updated_at = NOW() WHERE id = $2",
       [dateFormat, userId]
     );
   }

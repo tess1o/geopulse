@@ -118,7 +118,10 @@ public final class GeoUtils {
             double latValue = Double.parseDouble(lat);
             return createPoint(lonValue, latValue);
         } catch (NumberFormatException e) {
-            throw new NumberFormatException("Invalid coordinate format - longitude: '" + lon + "', latitude: '" + lat + "'");
+            NumberFormatException invalidCoordinates = new NumberFormatException(
+                    "Invalid coordinate format - longitude: '" + lon + "', latitude: '" + lat + "'");
+            invalidCoordinates.initCause(e);
+            throw invalidCoordinates;
         }
     }
 

@@ -6,19 +6,21 @@ import apiService from './apiService'
 export const imageService = {
   /**
    * Load an authenticated image as a blob URL
-   * @param {string} endpoint - The API endpoint path (e.g., '/users/me/immich/photos/id/thumbnail')
+   * @param {string} endpoint - The API endpoint path (e.g., '/integrations/immich/photos/id/thumbnail')
+   * @param {Object} extraHeaders - Additional headers to send (e.g. a shared-link Authorization bearer token)
    * @returns {Promise<string>} - Blob URL for the image
    */
-  async loadAuthenticatedImage(endpoint) {
+  async loadAuthenticatedImage(endpoint, extraHeaders = {}) {
     try {
       console.log('imageService: Loading authenticated image from endpoint:', endpoint)
       console.log('imageService: Making request via apiService.getRawWithBlob')
-      
+
       // Endpoint should already be in the correct format from the backend
       // Add cache-busting parameter for Safari
       const cacheBustParam = { _t: Date.now() }
       const response = await apiService.getRawWithBlob(endpoint, {
-        'Accept': 'image/*'
+        'Accept': 'image/*',
+        ...extraHeaders
       }, cacheBustParam)
 
       console.log('imageService: Response:', response);
@@ -88,10 +90,11 @@ export const imageService = {
    * @param {string} endpoint - The API endpoint path for download
    * @param {string} filename - The filename for download
    */
-  async downloadImage(endpoint, filename) {
+  async downloadImage(endpoint, filename, extraHeaders = {}) {
     try {
       const response = await apiService.getRawWithBlob(endpoint, {
-        'Accept': '*/*'
+        'Accept': '*/*',
+        ...extraHeaders
       })
 
       if (response.status != 200) {

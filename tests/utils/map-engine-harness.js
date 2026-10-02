@@ -193,7 +193,9 @@ export class MapEngineHarness {
       let count = 0
       sourceIds.forEach((sourceId) => {
         const source = map.getSource(sourceId)
-        const data = source?._data || source?._options?.data || null
+        const rawData = source?._data || source?._options?.data || null
+        // Newer MapLibre wraps the GeoJSON as { geojson } inside the source.
+        const data = rawData?.geojson || rawData
         if (data?.type === 'FeatureCollection' && Array.isArray(data.features)) {
           count += data.features.length
         }
@@ -247,4 +249,141 @@ export class MapEngineHarness {
       return { count: rendered.length, layerIds, mapId: resolvedMapId }
     }, { ...options, layerIncludes })
   }
+
+  /**
+   * Locate a rendered vector feature (a point, else a cluster) on screen, in page coordinates.
+   * Native MapLibre layers have no DOM nodes to click, so tests must click where the feature is drawn.
+   */
+  async getVectorRenderedFeatureScreenPoint({ layerIncludes = [], ...options } = {}) {
+    return this.page.evaluate(({ layerIncludes, rootSelector, mapId }) => {
+      const registry = window.__GP_E2E_MAPS || {}
+
+      const host = mapId
+        ? document.getElementById(mapId)
+        : (() => {
+            if (rootSelector) {
+              const root = document.querySelector(rootSelector)
+              const scoped = root?.querySelector('[data-testid="map-host-vector"]')
+              if (scoped) return scoped
+            }
+            const hosts = [...document.querySelectorAll('[data-testid="map-host-vector"]')]
+            return hosts.find((entry) => {
+              const rect = entry.getBoundingClientRect()
+              return rect.width > 0 && rect.height > 0
+            }) || hosts[0] || null
+          })()
+
+      const map = host?.id ? registry[host.id] : null
+      if (!map || typeof map.getStyle !== 'function' || typeof map.queryRenderedFeatures !== 'function') {
+        return null
+      }
+
+      const layerIds = (map.getStyle()?.layers || [])
+        .map((layer) => layer?.id)
+        .filter((layerId) => layerId && (layerIncludes.length === 0 || layerIncludes.some((token) => layerId.includes(token))))
+      if (layerIds.length === 0) {
+        return null
+      }
+
+      const features = map.queryRenderedFeatures(undefined, { layers: layerIds }) || []
+      const isCluster = (feature) => feature?.properties?.cluster_id !== undefined && feature?.properties?.cluster_id !== null
+      const feature = features.find((entry) => !isCluster(entry)) || features[0]
+      const coordinates = feature?.geometry?.coordinates
+      if (!Array.isArray(coordinates)) {
+        return null
+      }
+
+      const projected = map.project(coordinates)
+      const canvasRect = map.getCanvas().getBoundingClientRect()
+      return {
+        x: canvasRect.left + projected.x,
+        y: canvasRect.top + projected.y,
+        isCluster: isCluster(feature)
+      }
+    }, { ...options, layerIncludes })
+  }
+
+  /** Click the first rendered vector feature of the given layers. Returns false when none is drawn yet. */
+  async clickVectorRenderedFeature(options = {}) {
+    await this.getMapHostLocator(options).scrollIntoViewIfNeeded().catch(() => {})
+
+    let point = await this.getVectorRenderedFeatureScreenPoint(options)
+    if (!point) {
+      return false
+    }
+
+    // mouse.click uses viewport coordinates, so bring the feature on screen first.
+    const viewportHeight = await this.page.evaluate(() => window.innerHeight)
+    if (point.y < 0 || point.y > viewportHeight) {
+      await this.page.evaluate((deltaY) => window.scrollBy(0, deltaY), point.y - viewportHeight / 2)
+      point = await this.getVectorRenderedFeatureScreenPoint(options)
+      if (!point) {
+        return false
+      }
+    }
+
+    await this.page.mouse.click(point.x, point.y)
+    return true
+  }
+}
+
+/**
+ * Read the colors the timeline path layers are drawn with, on either map engine.
+ * Returns { normalColor, highlightedColors } where highlightedColors lists every color used by the
+ * highlighted trip (several for a car trip drawn in speed bands), lower-cased.
+ */
+export async function readTimelinePathColors(page, { rootSelector = null } = {}) {
+  return page.evaluate(({ rootSelector, hostSelector }) => {
+    const registry = window.__GP_E2E_MAPS || {}
+    const root = rootSelector ? document.querySelector(rootSelector) : document
+    const hosts = [...(root || document).querySelectorAll(hostSelector)]
+    const host = hosts.find((entry) => {
+      const rect = entry.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+    }) || hosts[0] || null
+    const map = host?.id ? registry[host.id] : null
+    if (!map) {
+      return { normalColor: null, highlightedColors: [] }
+    }
+
+    const normalize = (color) => String(color || '').toLowerCase()
+
+    // Vector (MapLibre): read paint properties of the gp-path layers.
+    if (typeof map.getStyle === 'function') {
+      const layers = (map.getStyle()?.layers || []).filter((layer) => layer.id.startsWith('gp-path'))
+      const normalLayer = layers.find((layer) => layer.id.endsWith('-line') && !layer.id.includes('highlighted'))
+      const highlightedLayer = layers.find((layer) => layer.id.endsWith('-highlighted-line'))
+      const highlightedPaint = highlightedLayer ? map.getPaintProperty(highlightedLayer.id, 'line-color') : null
+      const highlightedColors = Array.isArray(highlightedPaint)
+        ? highlightedPaint.filter((entry) => typeof entry === 'string' && entry.startsWith('#'))
+        : (highlightedPaint ? [highlightedPaint] : [])
+
+      return {
+        normalColor: normalLayer ? normalize(map.getPaintProperty(normalLayer.id, 'line-color')) : null,
+        highlightedColors: [...new Set(highlightedColors.map(normalize))]
+      }
+    }
+
+    // Raster (Leaflet): path groups carry a pathId; highlighted visuals are non-interactive, visible polylines.
+    let normalColor = null
+    const highlightedColors = new Set()
+    const visit = (layer) => {
+      if (typeof layer.eachLayer === 'function') {
+        layer.eachLayer(visit)
+        return
+      }
+      const options = layer?.options
+      if (!options || typeof layer.getLatLngs !== 'function') {
+        return
+      }
+      if (options.pathId !== undefined) {
+        normalColor = normalColor || normalize(options.color)
+      } else if (options.interactive === false && options.opacity !== 0) {
+        highlightedColors.add(normalize(options.color))
+      }
+    }
+    map.eachLayer?.(visit)
+
+    return { normalColor, highlightedColors: [...highlightedColors] }
+  }, { rootSelector, hostSelector: MAP_HOST_SELECTOR })
 }

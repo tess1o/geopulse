@@ -52,7 +52,7 @@
         },
         {
           "label": "Managing places docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places"
+          "url": "https://geopulse.cc/docs/user-guide/core-features/managing-places"
         }
       ]
     },
@@ -69,7 +69,7 @@
         },
         {
           "label": "Journey Insights docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/journey-insights"
+          "url": "https://geopulse.cc/docs/user-guide/core-features/journey-insights"
         }
       ]
     },
@@ -86,7 +86,7 @@
         },
         {
           "label": "Rewind docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/rewind"
+          "url": "https://geopulse.cc/docs/user-guide/core-features/rewind"
         }
       ]
     },
@@ -103,7 +103,7 @@
         },
         {
           "label": "Geofences docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/geofences"
+          "url": "https://geopulse.cc/docs/user-guide/core-features/geofences"
         }
       ]
     },
@@ -176,7 +176,7 @@
         },
         {
           "label": "Timeline docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline"
+          "url": "https://geopulse.cc/docs/user-guide/core-features/timeline"
         }
       ]
     },
@@ -228,7 +228,7 @@
       "links": [
         {
           "label": "Admin setup docs",
-          "url": "https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel"
+          "url": "https://geopulse.cc/docs/system-administration/configuration/admin-panel"
         }
       ]
     },
@@ -271,7 +271,7 @@
         },
         {
           "label": "Backup & Restore docs",
-          "url": "https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore"
+          "url": "https://geopulse.cc/docs/system-administration/maintenance/backup-restore"
         }
       ]
     },
@@ -288,7 +288,7 @@
         },
         {
           "label": "Map Matching docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/timeline/map-matching"
+          "url": "https://geopulse.cc/docs/user-guide/timeline/map-matching"
         }
       ]
     },
@@ -301,7 +301,7 @@
       "links": [
         {
           "label": "MCP Server docs",
-          "url": "https://tess1o.github.io/geopulse/docs/api/mcp"
+          "url": "https://geopulse.cc/docs/api/mcp"
         },
         {
           "label": "Open API Tokens",
@@ -322,7 +322,7 @@
         },
         {
           "label": "Manual trip split docs",
-          "url": "https://tess1o.github.io/geopulse/docs/user-guide/timeline/manual-trip-split"
+          "url": "https://geopulse.cc/docs/user-guide/timeline/manual-trip-split"
         }
       ]
     },
@@ -335,7 +335,7 @@
       "links": [
         {
           "label": "Weather docs",
-          "url": "https://tess1o.github.io/geopulse/docs/system-administration/configuration/weather"
+          "url": "https://geopulse.cc/docs/system-administration/configuration/weather"
         }
       ]
     }

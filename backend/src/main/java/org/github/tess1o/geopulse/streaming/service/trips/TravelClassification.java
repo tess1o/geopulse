@@ -14,7 +14,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 /**
  * Service for classifying trip types based on GPS movement patterns.
  * <p>
- * Supports mandatory WALK type and optional types (CAR, MOTORCYCLE, BICYCLE, TRAIN, FLIGHT, BOAT).
+ * Supports mandatory WALK type and optional types (CAR, MOTORCYCLE, PUBLIC_TRANSPORT, BICYCLE, TRAIN, FLIGHT, BOAT).
  * Classification is based on speed analysis, movement characteristics, and optional water evidence.
  * <p>
  * GPS RELIABILITY VALIDATION (BIDIRECTIONAL):
@@ -31,7 +31,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * 3. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
  * 4. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
  * 5. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
- * 6. CAR/MOTORCYCLE - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
+ * 6. Motor vehicle labels - car-like transport (10+ km/h avg OR 15+ km/h peak, if enabled)
  * 7. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak, mandatory)
  * 8. UNKNOWN - fallback
  */
@@ -479,7 +479,7 @@ public class TravelClassification {
      * 3. TRAIN - before CAR (uses variance discriminator)
      * 4. BICYCLE - checked before RUNNING (higher speeds)
      * 5. RUNNING - BEFORE CAR (overlapping speeds)
-     * 6. CAR/MOTORCYCLE - optional motor-vehicle labels (car enabled by default)
+     * 6. MOTOR VEHICLE - optional labels (car enabled by default)
      * 7. WALK - mandatory type
      * 8. UNKNOWN - fallback
      *
@@ -552,7 +552,7 @@ public class TravelClassification {
             return RUNNING;
         }
 
-        // 6. MOTOR VEHICLE - car/motorcycle transport (optional, car enabled by default)
+        // 6. MOTOR VEHICLE - shared car-like transport labels (car enabled by default)
         //    CRITICAL: Checked AFTER BICYCLE and RUNNING to avoid capturing human-powered trips
         //    Uses OR logic: avg >= 10 OR max >= 15
         if (isMotorVehicleEnabled(config) &&
@@ -616,21 +616,29 @@ public class TravelClassification {
         return Boolean.TRUE.equals(config.getMotorcycleEnabled());
     }
 
+    private boolean isPublicTransportationEnabled(TimelineConfig config) {
+        return Boolean.TRUE.equals(config.getPublicTransportationEnabled());
+    }
+
     private boolean isMotorVehicleEnabled(TimelineConfig config) {
-        return isCarEnabled(config) || isMotorcycleEnabled(config);
+        return isCarEnabled(config) || isMotorcycleEnabled(config) || isPublicTransportationEnabled(config);
     }
 
     private TripType resolveMotorizedTripType(TimelineConfig config) {
-        boolean carEnabled = isCarEnabled(config);
-        boolean motorcycleEnabled = isMotorcycleEnabled(config);
-
-        if (carEnabled && motorcycleEnabled) {
-            return MOTORCYCLE.name().equalsIgnoreCase(config.getPreferredMotorizedType()) ? MOTORCYCLE : CAR;
-        }
-        if (motorcycleEnabled) {
+        String preferredType = config.getPreferredMotorizedType();
+        if (MOTORCYCLE.name().equalsIgnoreCase(preferredType) && isMotorcycleEnabled(config)) {
             return MOTORCYCLE;
         }
-        return carEnabled ? CAR : UNKNOWN;
+        if (PUBLIC_TRANSPORT.name().equalsIgnoreCase(preferredType) && isPublicTransportationEnabled(config)) {
+            return PUBLIC_TRANSPORT;
+        }
+        if (isCarEnabled(config)) {
+            return CAR;
+        }
+        if (isMotorcycleEnabled(config)) {
+            return MOTORCYCLE;
+        }
+        return isPublicTransportationEnabled(config) ? PUBLIC_TRANSPORT : UNKNOWN;
     }
 
     private boolean isBoatEnabled(TimelineConfig config) {

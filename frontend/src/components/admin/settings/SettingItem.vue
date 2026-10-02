@@ -7,11 +7,11 @@
     <div class="setting-control">
       <slot name="control" :setting="setting" />
       <div class="setting-status">
-        <Tag v-if="setting.readOnly" severity="info" value="Read-only" />
-        <Tag v-else-if="setting.isDefault" severity="secondary" value="Default" />
+        <Tag v-if="setting.readOnly" severity="info" :value="t('adminSettings.shell.readOnly')" />
+        <Tag v-else-if="setting.isDefault" severity="secondary" :value="t('adminSettings.shell.default')" />
         <Button
           v-else
-          label="Reset"
+          :label="resetLabel"
           icon="pi pi-refresh"
           text
           size="small"
@@ -25,11 +25,19 @@
 <script setup>
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 defineProps({
   setting: {
     type: Object,
     required: true
+  },
+  resetLabel: {
+    type: String,
+    default: () => translate('adminSettings.shell.reset')
   }
 })
 

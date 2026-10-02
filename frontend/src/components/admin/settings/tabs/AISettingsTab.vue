@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="AI Assistant Configuration">
+    <SettingSection :title="t('adminProviderSettings.aiSettingsTab.sectionTitle')">
       <SettingItem
         v-for="setting in configSettings"
         :key="setting.key"
@@ -26,32 +26,32 @@
     </SettingSection>
 
     <div class="settings-section">
-      <h3>System Message</h3>
+      <h3>{{ t('adminProviderSettings.aiSettingsTab.systemMessageTitle') }}</h3>
 
       <div class="ai-setting-description">
         <p class="text-muted">
-          Configure the global default system message for the AI assistant. This message defines the AI's behavior and will be used for all users unless they override it with their own custom message in their profile settings.
+          {{ t('adminProviderSettings.aiSettingsTab.systemMessageDescription') }}
         </p>
       </div>
 
       <div class="ai-message-container">
         <div class="ai-message-header">
           <label for="ai-system-message" class="ai-message-label">
-            Default System Message
+            {{ t('adminProviderSettings.aiSettingsTab.systemMessageLabel') }}
           </label>
           <div class="ai-message-actions">
             <Button
-              label="Load Built-in Default"
+              :label="t('adminProviderSettings.aiSettingsTab.loadBuiltInDefault')"
               icon="pi pi-refresh"
               size="small"
               outlined
               @click="loadBuiltInDefault"
               :loading="loadingBuiltInDefault"
               :disabled="adminReadOnly"
-              v-tooltip.left="'Reset to the built-in default system message'"
+              v-tooltip.left="t('adminProviderSettings.aiSettingsTab.loadBuiltInDefaultTooltip')"
             />
             <Button
-              label="Save"
+              :label="t('adminProviderSettings.aiSettingsTab.save')"
               icon="pi pi-save"
               size="small"
               @click="saveAISystemMessage"
@@ -65,12 +65,12 @@
           v-model="aiSystemMessage"
           rows="15"
           class="ai-system-message-input"
-          placeholder="Loading system message..."
+          :placeholder="t('adminProviderSettings.aiSettingsTab.textareaPlaceholder')"
           @input="aiSystemMessageChanged = true"
           :disabled="adminReadOnly"
         />
         <small class="text-muted">
-          This global default will be used for all users. Users can override this in their profile settings. Leave empty and save to use the built-in default.
+          {{ t('adminProviderSettings.aiSettingsTab.systemMessageHint') }}
         </small>
       </div>
     </div>
@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
@@ -89,12 +90,17 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAIStore } from '@/stores/ai'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const toast = useToast()
 const authStore = useAuthStore()
+const aiStore = useAIStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 
 const aiSettings = ref([])
@@ -111,7 +117,7 @@ const configSettings = computed(() =>
 
 const loadAISettings = async () => {
   try {
-    const response = await apiService.get('/ai/default-system-message')
+    const response = await aiStore.fetchDefaultSystemMessage()
     aiSystemMessage.value = response.message || ''
     aiSystemMessageOriginal.value = response.message || ''
     aiSystemMessageChanged.value = false
@@ -119,8 +125,8 @@ const loadAISettings = async () => {
     console.error('Failed to load AI system message:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load AI system message',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminProviderSettings.aiSettingsTab.toasts.loadFailedDetail')),
       life: 3000
     })
   }
@@ -129,15 +135,15 @@ const loadAISettings = async () => {
 const loadBuiltInDefault = async () => {
   loadingBuiltInDefault.value = true
   try {
-    const response = await apiService.get('/ai/builtin-system-message')
+    const response = await aiStore.fetchBuiltinSystemMessage()
     aiSystemMessage.value = response.message || ''
     aiSystemMessageChanged.value = aiSystemMessage.value !== aiSystemMessageOriginal.value
   } catch (error) {
     console.error('Failed to load built-in default:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load built-in default',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminProviderSettings.aiSettingsTab.toasts.loadBuiltInFailedDetail')),
       life: 3000
     })
   } finally {
@@ -154,23 +160,23 @@ const saveAISystemMessage = async () => {
   savingAIMessage.value = true
   try {
     const value = aiSystemMessage.value?.trim() || ''
-    await apiService.put('/admin/settings/ai.default-system-message', { value })
+    await adminStore.updateSetting('ai.default-system-message', value)
 
     aiSystemMessageOriginal.value = aiSystemMessage.value
     aiSystemMessageChanged.value = false
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'AI system message updated successfully',
+      summary: t('common.success'),
+      detail: t('adminProviderSettings.aiSettingsTab.toasts.saveSuccessDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to save AI system message:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to save AI system message'
+    const errorMessage = formatApiErrorDetail(error, t('adminProviderSettings.aiSettingsTab.toasts.saveFailedDetail'))
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: errorMessage,
       life: 3000
     })

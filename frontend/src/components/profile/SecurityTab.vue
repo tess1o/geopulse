@@ -1,96 +1,95 @@
 <template>
-  <div>
-    <Card class="profile-section-card security-section-card">
-      <template #title>{{ hasPassword ? 'Change Password' : 'Set Password' }}</template>
-      <template #subtitle>
-        {{ hasPassword ? 'Update your password to keep your account secure.' : 'Set a password for your account.' }}
-      </template>
-      <template #content>
-        <form @submit.prevent="handleSubmit" class="security-form">
-          <div class="form-section">
-            <div v-if="hasPassword" class="form-field" data-setting-id="currentPassword">
-              <label for="currentPassword" class="form-label">Current Password</label>
-              <Password
-                id="currentPassword"
-                v-model="form.currentPassword"
-                placeholder="Enter current password"
-                :feedback="false"
-                toggleMask
-                :invalid="!!errors.currentPassword"
-                :disabled="readOnly"
-                class="w-full"
-              />
-              <small v-if="errors.currentPassword" class="error-message">
-                {{ errors.currentPassword }}
-              </small>
-            </div>
+  <Card class="profile-settings-card">
+    <template #content>
+      <div class="security-tab settings-tab">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon"><i class="pi pi-shield"></i></div>
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">{{ t('profile.security.title') }}</h3>
+            <p class="settings-tab-description">{{ t('profile.security.description') }}</p>
+          </div>
+        </div>
 
-            <div class="form-field" data-setting-id="newPassword">
-              <label for="newPassword" class="form-label">New Password</label>
-              <Password
-                id="newPassword"
-                v-model="form.newPassword"
-                placeholder="Enter new password"
-                :feedback="true"
-                toggleMask
-                :invalid="!!errors.newPassword"
-                :disabled="readOnly"
-                class="w-full"
-              />
-              <small v-if="errors.newPassword" class="error-message">
-                {{ errors.newPassword }}
-              </small>
-            </div>
-
-            <div class="form-field" data-setting-id="confirmPassword">
-              <label for="confirmPassword" class="form-label">Confirm New Password</label>
-              <Password
-                id="confirmPassword"
-                v-model="form.confirmPassword"
-                placeholder="Confirm new password"
-                :feedback="false"
-                toggleMask
-                :invalid="!!errors.confirmPassword"
-                :disabled="readOnly"
-                class="w-full"
-              />
-              <small v-if="errors.confirmPassword" class="error-message">
-                {{ errors.confirmPassword }}
-              </small>
-            </div>
+        <form @submit.prevent="handleSubmit" class="settings-group" aria-labelledby="password-group-heading">
+          <div class="settings-group-header">
+            <h3 id="password-group-heading">{{ hasPassword ? t('profile.security.changePasswordHeading') : t('profile.security.setPasswordHeading') }}</h3>
+            <p>{{ hasPassword ? t('profile.security.changePasswordDescription') : t('profile.security.setPasswordDescription') }}</p>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="form-actions">
+          <div class="settings-panel">
+            <SettingCard
+              v-if="hasPassword"
+              :title="t('profile.security.currentPassword.title')"
+              :description="t('profile.security.currentPassword.description')"
+              setting-id="currentPassword"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Password id="currentPassword" v-model="form.currentPassword" :placeholder="t('profile.security.currentPassword.placeholder')" :feedback="false" toggleMask :invalid="!!errors.currentPassword" :disabled="readOnly" class="w-full" :aria-label="t('profile.security.currentPassword.title')" />
+                  <small v-if="errors.currentPassword" class="error-message">{{ errors.currentPassword }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.security.newPassword.title')"
+              :description="t('profile.security.newPassword.description')"
+              setting-id="newPassword"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Password id="newPassword" v-model="form.newPassword" :placeholder="t('profile.security.newPassword.placeholder')" :feedback="true" toggleMask :invalid="!!errors.newPassword" :disabled="readOnly" class="w-full" :aria-label="t('profile.security.newPassword.title')" />
+                  <small v-if="errors.newPassword" class="error-message">{{ errors.newPassword }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.security.confirmPassword.title')"
+              :description="t('profile.security.confirmPassword.description')"
+              setting-id="confirmPassword"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Password id="confirmPassword" v-model="form.confirmPassword" :placeholder="t('profile.security.confirmPassword.placeholder')" :feedback="false" toggleMask :invalid="!!errors.confirmPassword" :disabled="readOnly" class="w-full" :aria-label="t('profile.security.confirmPassword.title')" />
+                  <small v-if="errors.confirmPassword" class="error-message">{{ errors.confirmPassword }}</small>
+                </div>
+              </template>
+            </SettingCard>
+          </div>
+
+          <div class="settings-actions">
             <Button
               type="button"
-              label="Cancel"
+              :label="t('profile.security.cancel')"
               outlined
               @click="handleReset"
               :disabled="loading || readOnly"
             />
             <Button
               type="submit"
-              :label="hasPassword ? 'Change Password' : 'Set Password'"
+              :label="hasPassword ? t('profile.security.changePasswordSubmit') : t('profile.security.setPasswordSubmit')"
               :loading="loading"
               :disabled="!hasChanges || readOnly"
             />
           </div>
         </form>
-      </template>
-    </Card>
 
-    <div class="security-followup-section">
-      <OidcManagement :read-only="readOnly" />
-    </div>
-    <ApiTokensManagement class="mt-6" :read-only="readOnly" />
-  </div>
+        <OidcManagement :read-only="readOnly" />
+        <ApiTokensManagement :read-only="readOnly" />
+      </div>
+    </template>
+  </Card>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import OidcManagement from '@/components/auth/OidcManagement.vue'
 import ApiTokensManagement from '@/components/profile/ApiTokensManagement.vue'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -133,19 +132,19 @@ const validate = () => {
 
   // Only require current password if user has a password
   if (props.hasPassword && !form.value.currentPassword) {
-    errors.value.currentPassword = 'Current password is required'
+    errors.value.currentPassword = t('profile.security.validation.currentRequired')
   }
 
   if (!form.value.newPassword) {
-    errors.value.newPassword = 'New password is required'
+    errors.value.newPassword = t('profile.security.validation.newRequired')
   } else if (form.value.newPassword.length < 6) {
-    errors.value.newPassword = 'Password must be at least 6 characters'
+    errors.value.newPassword = t('profile.security.validation.newTooShort')
   }
 
   if (!form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Please confirm your new password'
+    errors.value.confirmPassword = t('profile.security.validation.confirmRequired')
   } else if (form.value.newPassword !== form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Passwords do not match'
+    errors.value.confirmPassword = t('profile.security.validation.mismatch')
   }
 
   return Object.keys(errors.value).length === 0
@@ -189,123 +188,19 @@ watch(() => [form.value.newPassword, form.value.confirmPassword], () => {
 </script>
 
 <style scoped>
-.security-section-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.security-followup-section {
-  margin-top: 1.5rem;
-}
-
-/* Form Sections */
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-}
-
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.85rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-/* Password Input Styling */
 :deep(.p-password) {
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
 }
 
 :deep(.p-password-input) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-:deep(.p-password-input:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-/* Button Styling */
-:deep(.p-button) {
-  border-radius: var(--gp-radius-medium);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-button:not(.p-button-outlined)) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-:deep(.p-button:not(.p-button-outlined):hover) {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
-:deep(.p-button-outlined) {
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-button-outlined:hover) {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-primary);
-  color: var(--gp-primary);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .form-actions {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 480px) {
-  .form-actions .p-button {
-    width: 100%;
-    min-height: 48px;
-  }
-
-  .form-label {
-    font-size: 0.9rem;
-  }
-
-  .error-message {
-    font-size: 0.8rem;
-  }
 }
 </style>

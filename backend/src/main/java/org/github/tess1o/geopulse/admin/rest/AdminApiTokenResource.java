@@ -1,25 +1,30 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import org.github.tess1o.geopulse.admin.dto.PagedResponse;
 import org.github.tess1o.geopulse.auth.dto.ApiTokenResponse;
 import org.github.tess1o.geopulse.auth.model.ApiTokenStatus;
 import org.github.tess1o.geopulse.auth.service.ApiTokenService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/admin/api-tokens")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
+
+@Path("/admin/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
@@ -36,39 +41,26 @@ public class AdminApiTokenResource {
     CurrentUserService currentUserService;
 
     @GET
-    public Response listTokens(
+    public PageResponse<ApiTokenResponse> listTokens(
             @QueryParam("userId") UUID userId,
             @QueryParam("status") ApiTokenStatus status,
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("50") int size) {
+            @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @QueryParam("size") @DefaultValue("50") @Min(1) @Max(200) int size) {
         List<ApiTokenResponse> tokens = apiTokenService.listForAdmin(userId, status, page, size);
         long total = apiTokenService.countForAdmin(userId, status);
 
-        PagedResponse<ApiTokenResponse> response = PagedResponse.<ApiTokenResponse>builder()
-                .content(tokens)
-                .totalElements(total)
-                .totalPages((int) Math.ceil((double) total / size))
-                .page(page)
-                .size(size)
-                .build();
-        return Response.ok(response).build();
+        return new PageResponse<>(tokens, page, size, total, (int) Math.ceil((double) total / size));
     }
 
     @DELETE
     @Path("/{id}")
-    public Response revokeToken(
-            @PathParam("id") UUID tokenId,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void revokeToken(@PathParam("id") UUID tokenId) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
             apiTokenService.revokeTokenAsAdmin(adminUserId, tokenId, ipAddress);
-            return Response.ok(Map.of("success", true)).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 }

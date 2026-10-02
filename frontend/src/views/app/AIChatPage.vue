@@ -3,26 +3,26 @@
     <PageContainer>
       <div class="ai-chat-page">
         <!-- Page Header -->
-        <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">AI Chat Assistant</h1>
-              <p class="page-description">
-                Ask questions about your location data and get intelligent insights
+        <div class="gp-page-header">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('aiChat.page.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('aiChat.page.description') }}
               </p>
               <div class="ai-disclaimer">
                 <i class="pi pi-info-circle"></i>
-                <span>AI responses are based on data analysis but may contain errors. Please verify important information independently.</span>
+                <span>{{ t('aiChat.page.disclaimer') }}</span>
               </div>
             </div>
-            <div class="header-actions" v-if="hasMessages">
+            <div class="gp-page-actions" v-if="hasMessages">
               <Button
                 icon="pi pi-trash"
                 class="p-button-text p-button-sm clear-history-btn"
                 @click="clearMessageHistory"
                 :disabled="isLoading"
-                v-tooltip="'Clear conversation history'"
-                aria-label="Clear conversation history"
+                v-tooltip="t('aiChat.page.clearHistoryTooltip')"
+                :aria-label="t('aiChat.page.clearHistoryAriaLabel')"
               />
             </div>
           </div>
@@ -39,7 +39,7 @@
                   <div class="empty-icon">
                     <i class="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
                   </div>
-                  <h3 class="empty-title">Checking AI status...</h3>
+                  <h3 class="empty-title">{{ t('aiChat.status.checking') }}</h3>
                 </div>
 
                 <!-- AI Disabled State -->
@@ -47,29 +47,29 @@
                   <div class="empty-icon">
                     <i class="pi pi-exclamation-triangle text-6xl text-orange-500"></i>
                   </div>
-                  <h3 class="empty-title">AI Chat Unavailable</h3>
+                  <h3 class="empty-title">{{ t('aiChat.status.unavailable.title') }}</h3>
                   <p class="empty-description">
                     <span v-if="!aiSettings.enabled">
-                      AI Assistant is currently disabled.
+                      {{ t('aiChat.status.unavailable.disabled') }}
                     </span>
                     <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">
-                      OpenAI API key is not configured.
+                      {{ t('aiChat.status.unavailable.apiKeyMissing') }}
                     </span>
                     <span v-else>
-                      AI Assistant is not properly configured.
+                      {{ t('aiChat.status.unavailable.notConfigured') }}
                     </span>
                   </p>
                   <div class="config-actions">
                     <Button
-                      label="Configure AI Settings"
+                      :label="t('aiChat.status.unavailable.configureButton')"
                       icon="pi pi-cog"
                       class="p-button-primary"
                       :disabled="configureAISettingsDisabled"
-                      v-tooltip.bottom="configureAISettingsDisabled ? 'AI settings are read-only in demo mode' : 'Configure AI Settings'"
+                      v-tooltip.bottom="configureAISettingsDisabled ? t('aiChat.status.unavailable.demoDisabledTooltip') : t('aiChat.status.unavailable.configureButton')"
                       @click="goToAISettings"
                     />
                     <p v-if="demoReadOnly" class="demo-disabled-text">
-                      AI settings are read-only in demo mode, so this configuration action is disabled.
+                      {{ t('aiChat.status.unavailable.demoDisabledText') }}
                     </p>
                   </div>
                 </div>
@@ -79,22 +79,22 @@
                   <div class="empty-icon">
                     <i class="pi pi-sparkles text-6xl text-blue-500"></i>
                   </div>
-                  <h3 class="empty-title">Start a conversation</h3>
+                  <h3 class="empty-title">{{ t('aiChat.examples.startTitle') }}</h3>
                   <p class="empty-description">
-                    Ask me about your location data. For example:
+                    {{ t('aiChat.examples.startDescription') }}
                   </p>
                   <div class="example-questions">
-                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
-                      "Do I walk more or drive more?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.walkOrDrive'))">
+                      "{{ t('aiChat.examples.walkOrDrive') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
-                      "Which day of the week do I travel most?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.busiestDay'))">
+                      "{{ t('aiChat.examples.busiestDay') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
-                      "How many different cities did I visit this month?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.citiesVisited'))">
+                      "{{ t('aiChat.examples.citiesVisited') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
-                      "What's my most common route?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.commonRoute'))">
+                      "{{ t('aiChat.examples.commonRoute') }}"
                     </div>
                   </div>
                 </div>
@@ -104,22 +104,22 @@
                   <div class="empty-icon">
                     <i class="pi pi-refresh text-6xl text-orange-500"></i>
                   </div>
-                  <h3 class="empty-title">Ready for a new conversation!</h3>
+                  <h3 class="empty-title">{{ t('aiChat.examples.expiredTitle') }}</h3>
                   <p class="empty-description">
-                    Your previous conversation has expired. Ask me about your location data:
+                    {{ t('aiChat.examples.expiredDescription') }}
                   </p>
                   <div class="example-questions">
-                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
-                      "Do I walk more or drive more?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.walkOrDrive'))">
+                      "{{ t('aiChat.examples.walkOrDrive') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
-                      "Which day of the week do I travel most?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.busiestDay'))">
+                      "{{ t('aiChat.examples.busiestDay') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
-                      "How many different cities did I visit this month?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.citiesVisited'))">
+                      "{{ t('aiChat.examples.citiesVisited') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
-                      "What's my most common route?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.commonRoute'))">
+                      "{{ t('aiChat.examples.commonRoute') }}"
                     </div>
                   </div>
                 </div>
@@ -145,7 +145,7 @@
                     <div class="message-content">
                       <div v-if="isErrorMessage(message.content)" class="error-indicator">
                         <i class="pi pi-exclamation-triangle"></i>
-                        <span>Error</span>
+                        <span>{{ t('aiChat.message.error') }}</span>
                       </div>
                       <div class="whitespace-pre-wrap" v-html="sanitizeAndFormatMessage(message.content)"></div>
                       <div class="message-timestamp ai-timestamp">
@@ -179,8 +179,8 @@
                     <i class="pi pi-sparkles spinning-icon"></i>
                   </div>
                   <div class="progress-text">
-                    <span class="progress-title">AI is thinking...</span>
-                    <span class="progress-subtitle">Analyzing your request and location data</span>
+                    <span class="progress-title">{{ t('aiChat.loading.title') }}</span>
+                    <span class="progress-subtitle">{{ t('aiChat.loading.subtitle') }}</span>
                   </div>
                 </div>
                 <ProgressBar mode="indeterminate" class="ai-progress-bar" />
@@ -191,7 +191,7 @@
                 <div class="chat-input">
                   <InputText
                     v-model="currentMessage"
-                    :placeholder="isAIAvailable ? 'Ask me about your location data...' : 'AI Assistant is not available'"
+                    :placeholder="isAIAvailable ? t('aiChat.input.placeholder') : t('aiChat.input.placeholderUnavailable')"
                     class="message-input"
                     @keyup.enter="handleSendMessage"
                     :disabled="isLoading || !isAIAvailable || checkingAIStatus"
@@ -207,9 +207,9 @@
                 <div v-if="!isAIAvailable && !checkingAIStatus" class="input-warning">
                   <i class="pi pi-exclamation-triangle"></i>
                   <span>
-                    <span v-if="!aiSettings.enabled">AI Assistant is disabled.</span>
-                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">API key not configured.</span>
-                    <span v-else>AI Assistant not available.</span>
+                    <span v-if="!aiSettings.enabled">{{ t('aiChat.input.warningDisabled') }}</span>
+                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">{{ t('aiChat.input.warningApiKeyMissing') }}</span>
+                    <span v-else>{{ t('aiChat.input.warningUnavailable') }}</span>
                   </span>
                 </div>
               </div>
@@ -224,18 +224,22 @@
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService.js'
+import { useAIStore } from '@/stores/ai'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const router = useRouter()
 const authStore = useAuthStore()
+const aiStore = useAIStore()
 const { demoReadOnly } = storeToRefs(authStore)
 
 // Constants
@@ -253,13 +257,15 @@ const hasExpiredConversation = ref(false)
 const initialScrollTimeouts = []
 let previousScrollRestoration = null
 let removeWindowLoadListener = null
-const aiSettings = ref({
+const defaultAISettings = {
   enabled: false,
   openaiApiKeyConfigured: false,
   apiKeyRequired: true,
   openaiModel: 'gpt-3.5-turbo'
-})
-const isAIAvailable = ref(false)
+}
+const aiSettings = computed(() => aiStore.settings || defaultAISettings)
+const isAIAvailable = computed(() => aiSettings.value.enabled &&
+  (!aiSettings.value.apiKeyRequired || aiSettings.value.openaiApiKeyConfigured))
 const checkingAIStatus = ref(true)
 
 // Computed properties
@@ -279,15 +285,15 @@ const formatTimestamp = (date) => {
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   
-  if (diffMs < 60000) return 'Just now'
-  if (diffMs < 3600000) return `${diffMins}m ago`
+  if (diffMs < 60000) return t('aiChat.timestamp.justNow')
+  if (diffMs < 3600000) return t('aiChat.timestamp.minutesAgo', { count: diffMins })
 
   if (messageDate.isSame(now, 'day')) {
     return timezone.formatTime(date)
   }
 
   if (messageDate.isSame(now.subtract(1, 'day'), 'day')) {
-    return `Yesterday ${timezone.formatTime(date)}`
+    return t('aiChat.timestamp.yesterday', { time: timezone.formatTime(date) })
   }
 
   return `${timezone.formatDateDisplay(date)} ${timezone.formatTime(date)}`
@@ -341,8 +347,8 @@ const clearMessageHistory = () => {
   
   toast.add({
     severity: 'info',
-    summary: 'Chat Cleared',
-    detail: 'Your conversation history has been cleared.',
+    summary: t('aiChat.toasts.chatClearedSummary'),
+    detail: t('aiChat.toasts.chatClearedDetail'),
     life: 3000
   })
 }
@@ -350,23 +356,9 @@ const clearMessageHistory = () => {
 // Methods
 const checkAIAvailability = async () => {
   try {
-    const response = await apiService.get('/ai/settings')
-    const data = response.data || response
-
-    aiSettings.value = {
-      enabled: data.enabled === true,
-      openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
-      apiKeyRequired: data.apiKeyRequired === true,
-      openaiModel: data.openaiModel || 'gpt-3.5-turbo'
-    }
-
-    // AI is available if enabled AND (no API key required OR API key is configured)
-    isAIAvailable.value = aiSettings.value.enabled &&
-      (!aiSettings.value.apiKeyRequired || aiSettings.value.openaiApiKeyConfigured)
-
+    await aiStore.fetchSettings()
   } catch (error) {
     console.warn('Failed to check AI settings:', error)
-    isAIAvailable.value = false
   } finally {
     checkingAIStatus.value = false
   }
@@ -396,9 +388,7 @@ const sendMessage = async (messageText) => {
 
   try {
     // Send to AI
-    const { data } = await apiService.post('/ai/chat', { message })
-
-    console.log('AI Response:', data)
+    const data = await aiStore.chat(message)
     
     // Add AI response with enhanced structure
     const aiMessage = {
@@ -415,13 +405,15 @@ const sendMessage = async (messageText) => {
   } catch (error) {
     console.error('Error sending message:', error)
     
-    let errorContent = 'Sorry, I encountered an error while processing your request.'
-    
-    if (error.response?.status === 400) {
-      errorContent = 'Please check your AI settings in your profile before using the chat assistant.'
-    } else if (error.response?.data?.response) {
-      errorContent = error.response.data.response
-    }
+    const problem = normalizeApiError(error, t('aiChat.toasts.genericError'))
+    const errorContent = {
+      AI_DISABLED: t('aiChat.toasts.aiDisabledError'),
+      AI_API_KEY_REQUIRED: t('aiChat.toasts.apiKeyRequiredError'),
+      AI_CONTEXT_TOO_LARGE: t('aiChat.toasts.contextTooLargeError'),
+      AI_RATE_LIMITED: t('aiChat.toasts.rateLimitedError'),
+      AI_PROVIDER_AUTHENTICATION_FAILED: t('aiChat.toasts.authFailedError'),
+      INVALID_AI_REQUEST: t('aiChat.toasts.invalidRequestError')
+    }[problem.code] || problem.detail
 
     const errorMessage = {
       id: generateMessageId(),
@@ -436,8 +428,8 @@ const sendMessage = async (messageText) => {
 
     toast.add({
       severity: 'error',
-      summary: 'Chat Error',
-      detail: 'Failed to get AI response. Please check your AI settings.'
+      summary: t('aiChat.toasts.chatErrorSummary'),
+      detail: errorContent
     })
   } finally {
     isLoading.value = false
@@ -656,19 +648,19 @@ onMounted(async () => {
   }
   
   if (!isAIAvailable.value) {
-    let detail = 'Please configure your AI settings in your profile to use the chat assistant.'
+    let detail = t('aiChat.toasts.unavailableDefaultDetail')
 
     if (demoReadOnly.value) {
-      detail = 'AI settings are read-only in demo mode, so they cannot be configured from this demo account.'
+      detail = t('aiChat.toasts.unavailableDemoDetail')
     } else if (!aiSettings.value.enabled) {
-      detail = 'AI Assistant is disabled. Please enable it in your profile settings.'
+      detail = t('aiChat.toasts.unavailableDisabledDetail')
     } else if (aiSettings.value.apiKeyRequired && !aiSettings.value.openaiApiKeyConfigured) {
-      detail = 'Please configure your OpenAI API key in your profile to use the chat assistant.'
+      detail = t('aiChat.toasts.unavailableApiKeyDetail')
     }
 
     toast.add({
       severity: 'warn',
-      summary: 'AI Chat Unavailable',
+      summary: t('aiChat.toasts.unavailableSummary'),
       detail,
       life: 6000
     })
@@ -695,23 +687,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.page-header {
-  margin-bottom: 1.5rem;
-  flex-shrink: 0;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .clear-history-btn {
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -721,34 +696,22 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.page-title {
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--text-color);
-  margin: 0;
-}
-
-.page-description {
-  color: var(--text-color-secondary);
-  margin: 0.5rem 0 0 0;
-}
-
 .ai-disclaimer {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
-  background-color: var(--surface-50);
-  border: 1px solid var(--surface-200);
+  background-color: var(--gp-surface-muted);
+  border: 1px solid var(--gp-border);
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 0.875rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .ai-disclaimer i {
   font-size: 1.125rem;
-  color: var(--primary-color);
+  color: var(--gp-primary);
 }
 
 .chat-container {
@@ -821,12 +784,12 @@ onBeforeUnmount(() => {
 .empty-title {
   font-size: 1.5rem;
   font-weight: bold;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .empty-description {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 1.5rem;
 }
 
@@ -839,19 +802,19 @@ onBeforeUnmount(() => {
 
 .example-question {
   padding: 0.75rem 1rem;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
   font-style: italic;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .example-question:hover {
-  background: var(--surface-hover);
-  border-color: var(--primary-color);
-  color: var(--text-color);
+  background: var(--gp-surface-hover);
+  border-color: var(--gp-primary);
+  color: var(--gp-text-primary);
 }
 
 .message-wrapper {
@@ -925,18 +888,18 @@ onBeforeUnmount(() => {
 }
 
 .user-message .message-content {
-  background: var(--primary-color);
-  color: var(--primary-color-text);
+  background: var(--gp-primary);
+  color: var(--gp-primary-contrast);
   border-bottom-right-radius: 0.25rem;
-  border: 2px solid var(--primary-600);
+  border: 2px solid var(--p-primary-600);
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
 }
 
 .ai-message .message-content {
-  background: var(--surface-card);
-  color: var(--text-color);
+  background: var(--gp-surface-card);
+  color: var(--gp-text-primary);
   border-bottom-left-radius: 0.25rem;
-  border: 2px solid var(--surface-border);
+  border: 2px solid var(--gp-border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   position: relative;
   /* Ensure better contrast in dark mode */
@@ -944,8 +907,8 @@ onBeforeUnmount(() => {
 }
 
 .error-message .message-content {
-  background: var(--red-50);
-  border: 2px solid var(--red-200);
+  background: var(--p-red-50);
+  border: 2px solid var(--p-red-200);
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
 }
 
@@ -959,16 +922,16 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: var(--red-100);
-  border: 1px solid var(--red-200);
+  background: var(--p-red-100);
+  border: 1px solid var(--p-red-200);
   border-radius: 0.5rem;
-  color: var(--red-700);
+  color: var(--p-red-700);
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .error-indicator i {
-  color: var(--red-500);
+  color: var(--p-red-500);
   font-size: 1rem;
 }
 
@@ -990,7 +953,7 @@ onBeforeUnmount(() => {
 .ai-message .message-content h2,
 .ai-message .message-content h3 {
   font-weight: bold;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   margin: 0.5rem 0 0.25rem 0;
   line-height: 1.3;
 }
@@ -1009,22 +972,22 @@ onBeforeUnmount(() => {
 
 .ai-message .message-content strong {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .ai-message .message-content em {
   font-style: italic;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .ai-message .message-content code {
-  background: var(--surface-100);
-  color: var(--primary-color);
+  background: var(--gp-surface-muted);
+  color: var(--gp-primary);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.875rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .ai-message .message-content ul {
@@ -1035,7 +998,7 @@ onBeforeUnmount(() => {
 .ai-message .message-content li {
   margin: 0.25rem 0;
   list-style-type: disc;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .ai-message .message-content p {
@@ -1053,7 +1016,7 @@ onBeforeUnmount(() => {
 
 .message-timestamp {
   font-size: 0.75rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-top: 0.375rem;
   opacity: 0.8;
   font-weight: 400;
@@ -1061,7 +1024,7 @@ onBeforeUnmount(() => {
 
 .user-message .message-timestamp {
   text-align: right;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   opacity: 0.8;
 }
 
@@ -1072,68 +1035,68 @@ onBeforeUnmount(() => {
 
 .message-avatar {
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px var(--surface-300));
+  filter: drop-shadow(0 2px 4px var(--p-surface-300));
 }
 
 .user-message .message-avatar {
-  background: var(--primary-color) !important;
-  color: var(--primary-color-text) !important;
-  border: 2px solid var(--primary-600) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  background: var(--gp-primary);
+  color: var(--gp-primary-contrast);
+  border: 2px solid var(--p-primary-600);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   overflow: hidden;
 }
 
 .user-message .message-avatar :deep(.p-avatar) {
-  background: var(--primary-color) !important;
-  border: none !important;
-  border-radius: 50% !important;
+  background: var(--gp-primary);
+  border: none;
+  border-radius: 50%;
 }
 
 .user-message .message-avatar :deep(.p-avatar-icon) {
-  font-size: 1rem !important;
-  line-height: 1 !important;
-  border: none !important;
+  font-size: 1rem;
+  line-height: 1;
+  border: none;
 }
 
 .ai-avatar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-  border: 2px solid rgba(102, 126, 234, 0.5) !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 2px solid rgba(102, 126, 234, 0.5);
   animation: subtle-pulse 3s ease-in-out infinite;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   overflow: hidden;
 }
 
 .error-avatar {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: white !important;
-  border: 2px solid rgba(239, 68, 68, 0.5) !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
   overflow: hidden;
 }
 
 .error-avatar :deep(.p-avatar) {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  border: none !important;
-  border-radius: 50% !important;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  border-radius: 50%;
 }
 
 .error-avatar i {
-  font-size: 1rem !important;
-  line-height: 1 !important;
-  border: none !important;
+  font-size: 1rem;
+  line-height: 1;
+  border: none;
 }
 
 .ai-avatar :deep(.p-avatar) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  border-radius: 50% !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 50%;
 }
 
 .ai-avatar i {
-  font-size: 1rem !important;
-  line-height: 1 !important;
-  border: none !important;
+  font-size: 1rem;
+  line-height: 1;
+  border: none;
 }
 
 @keyframes subtle-pulse {
@@ -1155,7 +1118,7 @@ onBeforeUnmount(() => {
   height: 8px;
   width: 8px;
   border-radius: 50%;
-  background: var(--text-color-secondary);
+  background: var(--gp-text-secondary);
   display: inline-block;
   animation: typing 1.4s infinite ease-in-out both;
 }
@@ -1178,7 +1141,7 @@ onBeforeUnmount(() => {
 }
 
 .chat-input-container {
-  border-top: 1px solid var(--surface-300);
+  border-top: 1px solid var(--gp-border);
   padding-top: 1rem;
   margin-top: auto;
   flex-shrink: 0;
@@ -1222,21 +1185,21 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--orange-50);
-  border: 1px solid var(--orange-200);
+  background: var(--p-orange-50);
+  border: 1px solid var(--p-orange-200);
   border-radius: 0.5rem;
-  color: var(--orange-700);
+  color: var(--p-orange-700);
   font-size: 0.9rem;
 }
 
 .input-warning i {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .loading-progress {
-  border-top: 1px solid var(--surface-300);
-  border-bottom: 1px solid var(--surface-300);
-  background: var(--surface-50);
+  border-top: 1px solid var(--gp-border);
+  border-bottom: 1px solid var(--gp-border);
+  background: var(--gp-surface-muted);
   padding: 1rem;
   margin: 1rem 0;
   flex-shrink: 0;
@@ -1279,12 +1242,12 @@ onBeforeUnmount(() => {
 
 .progress-title {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   font-size: 0.95rem;
 }
 
 .progress-subtitle {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   font-size: 0.85rem;
 }
 
@@ -1294,7 +1257,7 @@ onBeforeUnmount(() => {
 }
 
 .ai-progress-bar :deep(.p-progressbar) {
-  background: var(--surface-200);
+  background: var(--gp-border);
   border-radius: 0.25rem;
   overflow: hidden;
 }
@@ -1310,17 +1273,17 @@ onBeforeUnmount(() => {
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   border-radius: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: var(--surface-400);
+  background: var(--gp-text-muted);
   border-radius: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: var(--surface-500);
+  background: var(--gp-text-secondary);
 }
 
 /* Responsive */
@@ -1333,22 +1296,16 @@ onBeforeUnmount(() => {
     flex-direction: column;
     overflow: hidden;
   }
-  
-  .page-header {
+
+  /* Keep the header short so the full-height chat gets the room. */
+  .gp-page-header {
     margin-bottom: 0.5rem;
-    flex-shrink: 0;
   }
-  
-  .page-title {
-    font-size: 1.5rem;
-    margin: 0;
+
+  .gp-page-title {
+    margin-bottom: 0.25rem;
   }
-  
-  .page-description {
-    margin: 0.25rem 0 0 0;
-    font-size: 0.9rem;
-  }
-  
+
   .ai-disclaimer {
     margin-top: 0.75rem;
     padding: 0.5rem 0.75rem;
@@ -1429,7 +1386,7 @@ onBeforeUnmount(() => {
     padding-top: 0.75rem;
     margin-top: 0;
     flex-shrink: 0;
-    border-top: 1px solid var(--surface-300);
+    border-top: 1px solid var(--gp-border);
   }
 
   .message {
@@ -1438,10 +1395,6 @@ onBeforeUnmount(() => {
 
   .example-questions {
     max-width: 100%;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
   }
 
   .progress-content {

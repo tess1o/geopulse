@@ -43,6 +43,7 @@
 
 <script setup>
 import { markRaw, onUnmounted, readonly, ref, shallowRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseMap from './BaseMap.vue'
 import MapControls from './controls/MapControls.vue'
 
@@ -114,6 +115,8 @@ const emit = defineEmits([
   'map-move'
 ])
 
+const { t } = useI18n()
+
 // Reactive state
 const mapRef = ref(null)
 const map = shallowRef(null)
@@ -137,7 +140,7 @@ const handleMapContextMenu = (event) => {
 }
 
 const handleMapWarning = (warning) => {
-  const message = warning?.message || 'Map warning'
+  const message = warning?.message || t('maps.messages.genericWarning')
   mapWarningMessage.value = message
   emit('map-warning', warning)
 
@@ -200,20 +203,20 @@ defineExpose({
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: var(--gp-surface-light);
+  background-color: var(--gp-surface-muted);
 }
 
 .map-controls {
   position: absolute;
-  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
-  right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
+  top: calc(var(--gp-spacing-lg) + env(safe-area-inset-top));
+  right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
   z-index: 900;
 }
 
 .map-warning-banner {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-bottom));
+  bottom: calc(var(--gp-spacing-lg) + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 950;
   background: rgba(245, 158, 11, 0.95);
@@ -228,17 +231,12 @@ defineExpose({
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .map-controls {
-    top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
-    right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
+    top: calc(var(--gp-spacing-md) + env(safe-area-inset-top));
+    right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
   }
 
   .map-warning-banner {
     bottom: calc(64px + env(safe-area-inset-bottom));
   }
-}
-
-/* Dark mode */
-.p-dark .map-container-wrapper {
-  background-color: var(--gp-surface-dark, #1e293b);
 }
 </style>

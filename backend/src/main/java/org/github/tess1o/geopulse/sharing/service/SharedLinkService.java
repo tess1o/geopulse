@@ -2,11 +2,11 @@ package org.github.tess1o.geopulse.sharing.service;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.jwt.build.Jwt;
+import io.smallrye.jwt.auth.principal.ParseException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -14,6 +14,10 @@ import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoDto;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchRequest;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
+import org.github.tess1o.geopulse.immich.service.ImmichService;
 import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -31,12 +35,19 @@ import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_PASSWORD_INVALID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LOCATION_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
@@ -64,6 +75,9 @@ public class SharedLinkService {
 
     @Inject
     TimelineNoteService timelineNoteService;
+
+    @Inject
+    ImmichService immichService;
 
     @Inject
     PathSimplificationService pathSimplificationService;
@@ -151,7 +165,7 @@ public class SharedLinkService {
     public SharedLinkDto updateShareLink(UUID linkId, UpdateShareLinkDto updateDto, UUID userId) {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -168,6 +182,7 @@ public class SharedLinkService {
                 updateDto.getEndDate(),
                 updateDto.getShowCurrentLocation(),
                 updateDto.getShowPhotos(),
+                updateDto.getImmichAlbumId(),
                 updateDto.getShowNotes(),
                 updateDto.getCustomMapTileUrl(),
                 updateDto.getCustomMapStyleUrl(),
@@ -262,20 +277,21 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
-            log.warn("Share link not found or access denied: linkId={}, userId={}", linkId, userId);
-            throw new NotFoundException("Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found");
         }
 
         sharedLinkRepository.delete(entityOpt.get());
         log.info("Share link deleted successfully: {}", linkId);
     }
 
+    @Transactional
     public SharedLocationInfo getSharedLocationInfo(UUID linkId) {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
+        sharedLinkRepository.incrementViewCount(linkId);
         return mapper.toLocationInfo(entityOpt.get());
     }
 
@@ -284,16 +300,14 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            log.warn("Link not found or expired for verification: {}", linkId);
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
 
         if (entity.getPassword() != null) {
             if (password == null || !passwordUtils.isPasswordValid(password, entity.getPassword())) {
-                log.warn("Invalid password attempt for linkId: {}", linkId);
-                throw new ForbiddenException("Invalid password");
+                throw new GeoPulseException(SHARED_LINK_PASSWORD_INVALID, "Invalid password");
             }
         }
 
@@ -312,13 +326,11 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            log.warn("Link not found or expired for location access: {}", linkId);
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
 
-        sharedLinkRepository.incrementViewCount(linkId);
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
@@ -355,28 +367,18 @@ public class SharedLinkService {
     }
 
     private void validateTemporaryToken(String token, UUID expectedLinkId) {
+        org.eclipse.microprofile.jwt.JsonWebToken jwt;
         try {
             log.debug("Validating temporary token for linkId: {}", expectedLinkId);
+            jwt = jwtParser.parse(token);
+        } catch (ParseException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        }
 
-            org.eclipse.microprofile.jwt.JsonWebToken jwt = jwtParser.parse(token);
-
-            String tokenType = jwt.getClaim("type");
-            if (!"temp".equals(tokenType)) {
-                log.warn("Invalid token type '{}' for linkId: {}", tokenType, expectedLinkId);
-                throw new ForbiddenException("Invalid token type");
-            }
-
-            String tokenLinkId = jwt.getClaim("linkId");
-            if (!expectedLinkId.toString().equals(tokenLinkId)) {
-                log.warn("Token linkId mismatch. Expected: {}, Got: {}", expectedLinkId, tokenLinkId);
-                throw new ForbiddenException("Token not valid for this link");
-            }
-
-            log.debug("Temporary token validation successful for linkId: {}", expectedLinkId);
-
-        } catch (Exception e) {
-            log.warn("Temporary token validation failed for linkId: {}, error: {}", expectedLinkId, e.getMessage());
-            throw new ForbiddenException("Invalid or expired token");
+        String tokenType = jwt.getClaim("type");
+        String tokenLinkId = jwt.getClaim("linkId");
+        if (!"temp".equals(tokenType) || !expectedLinkId.toString().equals(tokenLinkId)) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied");
         }
     }
 
@@ -390,7 +392,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -402,14 +404,14 @@ public class SharedLinkService {
 
         // Check if share is configured to show current location
         if (entity.getShowCurrentLocation() == null || !entity.getShowCurrentLocation()) {
-            throw new NotFoundException("Current location not available for this share");
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available");
         }
 
         // Check if we're within the active timeline period
         TimelineRange shareRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
         Instant now = Instant.now();
         if (now.isBefore(shareRange.start()) || now.isAfter(shareRange.end())) {
-            throw new NotFoundException("Current location only available during the timeline period");
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available");
         }
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
@@ -431,7 +433,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -442,9 +444,6 @@ public class SharedLinkService {
         }
 
         TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
-
-        // Increment view count on first timeline access
-        sharedLinkRepository.incrementViewCount(linkId);
 
         // Get timeline data for the effective date range
         // This automatically includes overnight stays via boundary expansion
@@ -467,7 +466,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -498,6 +497,102 @@ public class SharedLinkService {
     }
 
     /**
+     * Get Immich photos for timeline share, restricted to the link's album if one is set
+     */
+    public CompletableFuture<ImmichPhotoSearchResponse> getSharedPhotos(UUID linkId, String tempToken, Instant startTime, Instant endTime, Integer limit) {
+        log.debug("Shared photos access attempt for linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        if (!Boolean.TRUE.equals(entity.getShowPhotos())) {
+            return CompletableFuture.completedFuture(ImmichPhotoSearchResponse.builder()
+                    .photos(List.of())
+                    .totalCount(0)
+                    .build());
+        }
+
+        TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
+
+        ImmichPhotoSearchRequest request = new ImmichPhotoSearchRequest();
+        request.setStartDate(effectiveRange.start().atOffset(ZoneOffset.UTC));
+        request.setEndDate(effectiveRange.end().atOffset(ZoneOffset.UTC));
+        request.setAlbumId(entity.getImmichAlbumId());
+        request.setLimit(limit);
+
+        return immichService.searchPhotos(entity.getUser().getId(), request)
+                .thenApply(response -> rewritePhotoUrlsForShare(response, linkId));
+    }
+
+    /**
+     * Get bytes for a photo referenced by a timeline share, restricted to the link's album if one is set
+     */
+    public CompletableFuture<byte[]> getSharedPhotoBytes(UUID linkId, String tempToken, String photoId, SharedPhotoVariant variant) {
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+        if (entity.getShareType() != ShareType.TIMELINE || !Boolean.TRUE.equals(entity.getShowPhotos())) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied");
+        }
+
+        UUID ownerId = entity.getUser().getId();
+        return switch (variant) {
+            case THUMBNAIL -> immichService.getPhotoThumbnail(ownerId, photoId);
+            case PREVIEW -> immichService.getPhotoPreview(ownerId, photoId);
+            case ORIGINAL -> immichService.getPhotoOriginal(ownerId, photoId);
+        };
+    }
+
+    public enum SharedPhotoVariant {
+        THUMBNAIL,
+        PREVIEW,
+        ORIGINAL
+    }
+
+    private ImmichPhotoSearchResponse rewritePhotoUrlsForShare(ImmichPhotoSearchResponse response, UUID linkId) {
+        if (response == null || response.getPhotos() == null) {
+            return response;
+        }
+
+        List<ImmichPhotoDto> rewrittenPhotos = response.getPhotos().stream()
+                .map(photo -> photo.toBuilder()
+                        .thumbnailUrl(rewritePhotoUrl(photo.getThumbnailUrl(), linkId))
+                        .previewUrl(rewritePhotoUrl(photo.getPreviewUrl(), linkId))
+                        .downloadUrl(rewritePhotoUrl(photo.getDownloadUrl(), linkId))
+                        .build())
+                .collect(Collectors.toList());
+
+        return ImmichPhotoSearchResponse.builder()
+                .photos(rewrittenPhotos)
+                .totalCount(response.getTotalCount())
+                .build();
+    }
+
+    private String rewritePhotoUrl(String originalUrl, UUID linkId) {
+        if (originalUrl == null) {
+            return null;
+        }
+        return originalUrl.replaceFirst(
+                "/api/v1/integrations/immich/photos/",
+                "/api/v1/public/share-links/" + linkId + "/photos/"
+        );
+    }
+
+    /**
      * Get GPS path data for timeline share
      */
     public GpsPointPathDTO getSharedPath(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
@@ -507,7 +602,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -550,7 +645,10 @@ public class SharedLinkService {
         log.info("Path data accessed for linkId: {}, original points: {}, simplified: {}",
                 linkId, gpsPoints.size(), simplifiedPoints.size());
 
-        return new GpsPointPathDTO(entity.getUser().getId(), (List<GpsPointPathPointDTO>) simplifiedPoints);
+        // simplify() returns a subset of the input, so every element is a GpsPointPathPointDTO
+        @SuppressWarnings("unchecked")
+        List<GpsPointPathPointDTO> pathPoints = (List<GpsPointPathPointDTO>) simplifiedPoints;
+        return new GpsPointPathDTO(entity.getUser().getId(), pathPoints);
     }
 
     private TimelineRange resolveRequestedTimelineRange(SharedLinkEntity entity, Instant startTime, Instant endTime) {

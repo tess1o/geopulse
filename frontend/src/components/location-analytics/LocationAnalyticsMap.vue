@@ -25,13 +25,13 @@
       <div v-if="showInitialLoadingOverlay" class="map-overlay">
         <div class="map-overlay-content">
           <ProgressSpinner strokeWidth="5" />
-          <span>Loading places...</span>
+          <span>{{ t('analytics.locationAnalyticsMapView.loadingPlaces') }}</span>
         </div>
       </div>
 
       <div v-if="showRefreshIndicator" class="map-refresh-badge" aria-live="polite">
         <ProgressSpinner strokeWidth="6" />
-        <span>Updating map…</span>
+        <span>{{ t('analytics.locationAnalyticsMapView.updatingMap') }}</span>
       </div>
 
     </div>
@@ -40,9 +40,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProgressSpinner from 'primevue/progressspinner'
 import { MapContainer } from '@/components/maps'
 import LocationAnalyticsDotsLayer from '@/components/maps/layers/LocationAnalyticsDotsLayer.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   places: {
@@ -447,13 +450,13 @@ onBeforeUnmount(() => {
   height: clamp(360px, 60vh, 700px);
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .map-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--gp-surface-card) 80%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -470,8 +473,8 @@ onBeforeUnmount(() => {
   gap: 0.45rem;
   padding: 0.35rem 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--gp-border-light);
+  background: color-mix(in srgb, var(--gp-surface-card) 92%, transparent);
+  border: 1px solid var(--gp-border);
   color: var(--gp-text-secondary);
   font-size: 0.78rem;
   pointer-events: none;
@@ -489,15 +492,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.75rem;
   color: var(--gp-text-secondary);
-}
-
-:global(.p-dark) .map-overlay {
-  background: rgba(15, 23, 42, 0.7);
-}
-
-:global(.p-dark) .map-refresh-badge {
-  background: rgba(15, 23, 42, 0.92);
-  border-color: rgba(148, 163, 184, 0.2);
 }
 
 @media (max-height: 940px) {

@@ -151,10 +151,10 @@ export class TimelineReportsPage {
   }
 
   /**
-   * Click Export All Data button
+   * Click Export All button
    */
   async clickExportAllData() {
-    const exportButton = this.page.locator('button:has-text("Export All Data")');
+    const exportButton = this.page.locator('button.export-all-button');
     await exportButton.click();
   }
 

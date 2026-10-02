@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .weather-map-marker {
   width: 28px;
   height: 28px;
@@ -6,22 +7,30 @@
   justify-content: center;
   border-radius: 999px;
   background: #f8fafc;
-  border: 2px solid #0f766e;
-  color: #0f766e;
+  border: 2px solid var(--gp-map-marker-weather-neutral);
+  color: var(--gp-map-marker-weather-neutral);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
   box-sizing: border-box;
 }
 
 .weather-map-marker--clear {
-  border-color: #ca8a04;
-  color: #ca8a04;
+  border-color: var(--gp-map-marker-weather-clear);
+  color: var(--gp-map-marker-weather-clear);
 }
 
 .weather-map-marker--rain,
 .weather-map-marker--storm,
 .weather-map-marker--snow {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--gp-map-marker-weather-wet);
+  color: var(--gp-map-marker-weather-wet);
+}
+
+/* Several readings share this marker: a second "card" peeks out behind it. */
+.weather-map-marker--group {
+  box-shadow:
+    3px -3px 0 -1px #f8fafc,
+    3px -3px 0 1px currentColor,
+    0 2px 8px rgba(15, 23, 42, 0.28);
 }
 
 .weather-map-marker--highlighted {
@@ -33,4 +42,36 @@
 
 .maplibregl-marker .weather-map-marker {
   cursor: pointer;
+}
+
+/* Stay weather badge: sits inside the stay marker's bottom-right corner. */
+.gp-stay-weather-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 9px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.4);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.gp-stay-weather-badge--clear {
+  color: var(--gp-map-marker-weather-clear);
+}
+
+.gp-stay-weather-badge--rain,
+.gp-stay-weather-badge--storm {
+  color: var(--gp-map-marker-weather-wet);
+}
+
+.gp-stay-weather-badge--snow {
+  color: var(--gp-map-marker-weather-snow);
 }

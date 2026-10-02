@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gpssource.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ public class CreateGpsSourceConfigDto {
     private String token;
     private String deviceId;
     private String payloadEncryptionSecret;
+    @JsonIgnore
     private UUID userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
     // Use Boolean wrapper to allow null from frontend, will be converted to false in mapper if null

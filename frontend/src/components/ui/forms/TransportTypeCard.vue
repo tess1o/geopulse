@@ -21,18 +21,17 @@
           <div class="transport-actions">
             <!-- Enable Toggle (only for optional types) -->
             <div v-if="!mandatory" class="enable-toggle-wrapper" @click.stop>
-              <span class="enable-label">{{ isEnabled ? 'Enabled' : 'Disabled' }}</span>
               <ToggleSwitch
                 :model-value="isEnabled"
                 @update:model-value="handleEnableToggle"
-                :aria-label="`Enable ${title} detection`"
+                :aria-label="t('ui.transportTypeCard.enableAriaLabel', { title })"
               />
             </div>
 
             <!-- Mandatory Badge -->
             <div v-else class="mandatory-badge">
               <i class="pi pi-lock"></i>
-              <span>Always Active</span>
+              <span>{{ t('ui.transportTypeCard.alwaysActive') }}</span>
             </div>
 
             <!-- Collapse Indicator (only for collapsible cards) -->
@@ -40,7 +39,7 @@
               v-if="collapsible && !mandatory"
               class="collapse-button"
               :aria-expanded="!isCollapsed"
-              :aria-label="isCollapsed ? `Expand ${title}` : `Collapse ${title}`"
+              :aria-label="isCollapsed ? t('ui.transportTypeCard.expandAriaLabel', { title }) : t('ui.transportTypeCard.collapseAriaLabel', { title })"
             >
               <i :class="isCollapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up'"></i>
             </button>
@@ -78,7 +77,7 @@
         <!-- Disabled State Message -->
         <div v-if="!isEnabled && !mandatory" class="disabled-message">
           <i class="pi pi-ban"></i>
-          <span>{{ title }} detection is currently disabled. Enable to configure thresholds.</span>
+          <span>{{ t('ui.transportTypeCard.disabledMessage', { title }) }}</span>
         </div>
       </div>
     </template>
@@ -87,6 +86,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   type: {
@@ -167,16 +169,27 @@ watch(() => props.enabled, (newVal) => {
 
 <style scoped>
 .transport-type-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  transition: all 0.3s ease;
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-large);
+  box-shadow: none;
+  transition: border-color 0.2s ease;
   width: 100%;
   box-sizing: border-box;
 }
 
 .transport-type-card:hover {
-  box-shadow: var(--gp-shadow-medium);
+  border-color: var(--gp-border-medium);
+}
+
+.transport-type-card :deep(.p-card-body) {
+  padding: var(--gp-spacing-lg);
+  min-width: 0;
+}
+
+.transport-type-card :deep(.p-card-content),
+.transport-card-content {
+  min-width: 0;
 }
 
 .transport-type-card.has-warnings {
@@ -185,7 +198,7 @@ watch(() => props.enabled, (newVal) => {
 
 .transport-type-card.is-disabled {
   opacity: 0.6;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
 }
 
 /* Header Section */
@@ -194,7 +207,6 @@ watch(() => props.enabled, (newVal) => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding-bottom: 0.5rem;
   cursor: pointer;
   user-select: none;
 }
@@ -210,15 +222,15 @@ watch(() => props.enabled, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--gp-primary-light);
   flex-shrink: 0;
 }
 
 .transport-icon {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--gp-primary);
 }
 
@@ -263,7 +275,7 @@ watch(() => props.enabled, (newVal) => {
 }
 
 .transport-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
   margin: 0;
@@ -286,13 +298,6 @@ watch(() => props.enabled, (newVal) => {
 .enable-toggle-wrapper {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.enable-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--gp-text-secondary);
 }
 
 .mandatory-badge {
@@ -300,7 +305,7 @@ watch(() => props.enabled, (newVal) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border: 1px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-medium);
   font-size: 0.85rem;
@@ -334,12 +339,12 @@ watch(() => props.enabled, (newVal) => {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-muted);
   border-left: 3px solid var(--gp-primary);
   border-radius: var(--gp-radius-small);
-  margin-top: 1rem;
-  font-size: 0.9rem;
+  margin-top: var(--gp-spacing-md);
+  font-size: 0.85rem;
   color: var(--gp-text-secondary);
   line-height: 1.5;
 }
@@ -377,10 +382,10 @@ watch(() => props.enabled, (newVal) => {
 .transport-parameters {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--gp-border-light);
+  gap: var(--gp-spacing-lg);
+  margin-top: var(--gp-spacing-lg);
+  padding-top: var(--gp-spacing-lg);
+  border-top: 1px solid var(--gp-border);
 }
 
 /* Disabled Message */
@@ -389,7 +394,7 @@ watch(() => props.enabled, (newVal) => {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-small);
   margin-top: 1rem;
   font-size: 0.9rem;
@@ -398,7 +403,7 @@ watch(() => props.enabled, (newVal) => {
 }
 
 .disabled-message i {
-  color: var(--gp-text-tertiary);
+  color: var(--gp-text-muted);
   flex-shrink: 0;
 }
 
@@ -466,12 +471,6 @@ watch(() => props.enabled, (newVal) => {
 
   .transport-title {
     font-size: 1rem;
-  }
-
-  .enable-toggle-wrapper {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
   }
 
   .mandatory-badge {

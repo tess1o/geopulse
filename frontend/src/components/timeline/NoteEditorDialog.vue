@@ -9,12 +9,12 @@
   >
     <form class="note-form" @submit.prevent="save">
       <div class="form-field">
-        <label for="note-title">Title</label>
-        <InputText id="note-title" v-model="form.title" placeholder="Optional title" :disabled="saving" />
+        <label for="note-title">{{ t('timeline.noteEditor.titleLabel') }}</label>
+        <InputText id="note-title" v-model="form.title" :placeholder="t('timeline.noteEditor.titlePlaceholder')" :disabled="saving" />
       </div>
 
       <div v-if="!isEditing && memosConfigured" class="form-field">
-        <label for="note-destination">Save to</label>
+        <label for="note-destination">{{ t('timeline.noteEditor.saveToLabel') }}</label>
         <Select
           id="note-destination"
           v-model="form.destination"
@@ -26,7 +26,7 @@
       </div>
 
       <div v-if="!isEditing && form.destination === 'MEMOS'" class="form-field">
-        <label for="note-visibility">Memos visibility</label>
+        <label for="note-visibility">{{ t('timeline.noteEditor.visibilityLabel') }}</label>
         <Select
           id="note-visibility"
           v-model="form.visibility"
@@ -38,22 +38,22 @@
       </div>
 
       <div class="form-field">
-        <label for="note-content">Note</label>
+        <label for="note-content">{{ t('timeline.noteEditor.noteLabel') }}</label>
         <Textarea
           id="note-content"
           v-model="form.contentMarkdown"
           rows="8"
           autoResize
-          placeholder="Write a note..."
+          :placeholder="t('timeline.noteEditor.contentPlaceholder')"
           :disabled="saving"
           :invalid="submitted && !form.contentMarkdown.trim()"
         />
-        <small v-if="submitted && !form.contentMarkdown.trim()" class="error-message">Note content is required</small>
+        <small v-if="submitted && !form.contentMarkdown.trim()" class="error-message">{{ t('timeline.noteEditor.contentRequired') }}</small>
       </div>
     </form>
 
     <template #footer>
-      <Button label="Cancel" outlined :disabled="saving" @click="internalVisible = false" />
+      <Button :label="t('timeline.noteEditor.cancel')" outlined :disabled="saving" @click="internalVisible = false" />
       <Button :label="saveLabel" icon="pi pi-save" :loading="saving" @click="save" />
     </template>
   </Dialog>
@@ -61,6 +61,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -68,6 +69,7 @@ import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { useNotesStore } from '@/stores/notes'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   visible: {
@@ -112,6 +114,7 @@ const props = defineProps({
   }
 })
 
+const { t } = useI18n()
 const emit = defineEmits(['update:visible', 'close', 'saved'])
 const toast = useToast()
 const notesStore = useNotesStore()
@@ -121,19 +124,19 @@ const dialogStyle = {
   width: 'min(760px, calc(100vw - 32px))'
 }
 const isEditing = computed(() => props.note?.source === 'GEOPULSE' && props.note?.id != null)
-const dialogHeader = computed(() => isEditing.value ? 'Edit Note' : 'Add Note')
-const saveLabel = computed(() => isEditing.value ? 'Update' : 'Save')
+const dialogHeader = computed(() => isEditing.value ? t('timeline.noteEditor.editHeader') : t('timeline.noteEditor.addHeader'))
+const saveLabel = computed(() => isEditing.value ? t('timeline.noteEditor.update') : t('timeline.noteEditor.save'))
 
-const destinationOptions = [
-  { label: 'GeoPulse', value: 'GEOPULSE' },
-  { label: 'Memos', value: 'MEMOS' }
-]
+const destinationOptions = computed(() => [
+  { label: t('timeline.noteEditor.destinations.geopulse'), value: 'GEOPULSE' },
+  { label: t('timeline.noteEditor.destinations.memos'), value: 'MEMOS' }
+])
 
-const visibilityOptions = [
-  { label: 'Private', value: 'PRIVATE' },
-  { label: 'Protected', value: 'PROTECTED' },
-  { label: 'Public', value: 'PUBLIC' }
-]
+const visibilityOptions = computed(() => [
+  { label: t('timeline.noteEditor.visibilityOptions.private'), value: 'PRIVATE' },
+  { label: t('timeline.noteEditor.visibilityOptions.protected'), value: 'PROTECTED' },
+  { label: t('timeline.noteEditor.visibilityOptions.public'), value: 'PUBLIC' }
+])
 
 const form = ref({
   title: '',
@@ -199,10 +202,10 @@ const save = async () => {
 
     toast.add({
       severity: 'success',
-      summary: isEditing.value ? 'Note updated' : 'Note saved',
+      summary: isEditing.value ? t('timeline.noteEditor.toasts.updatedTitle') : t('timeline.noteEditor.toasts.savedTitle'),
       detail: isEditing.value
-        ? 'GeoPulse note was updated'
-        : form.value.destination === 'MEMOS' ? 'Note was created in Memos' : 'Note was saved in GeoPulse',
+        ? t('timeline.noteEditor.toasts.updatedDetail')
+        : form.value.destination === 'MEMOS' ? t('timeline.noteEditor.toasts.savedInMemos') : t('timeline.noteEditor.toasts.savedInGeoPulse'),
       life: 3000
     })
     emit('saved', saved)
@@ -210,8 +213,8 @@ const save = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Save failed',
-      detail: error.userMessage || error.message || 'Failed to save note',
+      summary: t('timeline.noteEditor.toasts.saveFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.noteEditor.toasts.saveFailedDetail')),
       life: 5000
     })
   } finally {

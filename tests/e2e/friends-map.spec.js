@@ -405,10 +405,10 @@ test.describe('Friends Map Coverage', () => {
     const friendCoordinatesHistory = []
     let trackedFriendId = null
 
-    await page.route('**/api/friends**', async (route) => {
+    await page.route('**/api/v1/friends**', async (route) => {
       const request = route.request()
       const pathname = new URL(request.url()).pathname
-      const isFriendsEndpoint = /\/api\/friends\/?$/.test(pathname)
+      const isFriendsEndpoint = /\/api\/v1\/friends\/?$/.test(pathname)
 
       if (!isFriendsEndpoint || request.method() !== 'GET') {
         await route.continue()
@@ -421,7 +421,7 @@ test.describe('Friends Map Coverage', () => {
 
       try {
         const payload = JSON.parse(body)
-        const friendsData = Array.isArray(payload?.data) ? payload.data : []
+        const friendsData = Array.isArray(payload) ? payload : []
 
         if (trackedFriendId) {
           const trackedFriendIdNormalized = String(trackedFriendId).toLowerCase()

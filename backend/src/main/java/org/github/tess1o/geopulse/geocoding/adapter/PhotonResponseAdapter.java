@@ -29,11 +29,10 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
 
     @Override
     public FormattableGeocodingResult adapt(PhotonResponse response, Point requestCoordinates, String providerName) {
-        log.debug("Adapting Photon response: {}", response);
+        log.debug("Adapting Photon response");
 
         if (response == null || response.getFeatures() == null || response.getFeatures().isEmpty()) {
-            log.warn("Empty or null Photon response for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
+            log.warn("Empty or null Photon response");
             throw new GeocodingException("Photon returned empty or null response");
         }
 

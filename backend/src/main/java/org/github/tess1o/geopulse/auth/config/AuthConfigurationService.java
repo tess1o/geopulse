@@ -76,7 +76,7 @@ public class AuthConfigurationService {
     public boolean isPasswordLoginEnabledForUser(String email) {
         Optional<UserEntity> userOpt = userService.findByEmail(email);
         if (userOpt.isPresent() && userOpt.get().getRole() == Role.ADMIN && isAdminLoginBypassEnabled()) {
-            log.debug("Admin user {} bypassing password login restrictions", email);
+            log.debug("Admin user bypassing password login restrictions");
             return true; // Admin bypass
         }
         return isPasswordLoginEnabled();

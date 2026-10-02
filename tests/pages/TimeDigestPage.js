@@ -7,45 +7,45 @@ export class TimeDigestPage {
   get selectors() {
     return {
       // Page elements
-      pageContainer: '.page-container',
+      pageContainer: '.gp-page-container',
       pageTitle: 'h1:has-text("Rewind")',
-      pageSubtitle: 'text="Explore your location story through time"',
+      pageSubtitle: 'text="Your location story, one period at a time."',
 
       // Loading state
-      loadingSpinner: '.p-progress-spinner',
-      loadingText: 'text="Loading your digest..."',
+      loadingSpinner: '.digest-loading .p-progress-spinner',
+      loadingText: 'text="Building your rewind…"',
 
       // Error state
       errorCard: '.error-card',
       errorIcon: '.error-icon',
-      errorTitle: '.error-title',
-      errorMessage: '.error-message',
-      tryAgainButton: 'button:has-text("Try Again")',
+      errorTitle: '.error-card h3',
+      errorMessage: '.error-card p',
+      tryAgainButton: 'button:has-text("Try again")',
 
       // Empty state
       emptyCard: '.empty-card',
       emptyIcon: '.empty-icon',
-      emptyTitle: '.empty-title',
-      emptyMessage: '.empty-message',
+      emptyTitle: '.empty-card h3',
+      emptyMessage: '.empty-card p',
 
       // Header controls
       digestHeader: '.digest-header',
-      viewModeToggle: '.view-mode-toggle',
-      yearSelector: '.year-selector',
-      monthSelector: '.month-selector',
-      prevButton: 'button:has-text("Previous")',
-      nextButton: 'button:has-text("Next")',
+      viewModeToggle: '.period-toggle',
+      yearSelector: '.mobile-period-selector select:first-child',
+      monthSelector: '.mobile-period-selector select:last-child',
+      prevButton: '.period-navigation .nav-btn:first-child',
+      nextButton: '.period-navigation .nav-btn:last-child',
 
       // Digest content
       digestContent: '.digest-content',
 
       // Metrics section
-      digestMetrics: '.digest-metrics',
-      metricsTitle: '.metrics-title',
-      metricCards: '.metric-card',
-      metricValue: '.metric-value',
-      metricLabel: '.metric-label',
-      metricChange: '.metric-change',
+      digestMetrics: '.digest-hero',
+      metricsTitle: '.digest-eyebrow',
+      metricCards: '.hero-stats > div',
+      metricValue: 'dd',
+      metricLabel: 'dt',
+      metricChange: '.comparison-pill',
 
       // Highlights section
       digestHighlights: '.digest-highlights',
@@ -204,7 +204,10 @@ export class TimeDigestPage {
    */
   async getMetricValues() {
     const metricElements = await this.page.locator(this.selectors.metricCards).all();
-    const metrics = [];
+    const metrics = [{
+      label: 'Distance',
+      value: (await this.page.locator('.digest-hero h2').textContent()).trim()
+    }];
 
     for (const element of metricElements) {
       const label = await element.locator(this.selectors.metricLabel).textContent();

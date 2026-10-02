@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
@@ -158,6 +159,7 @@ public class ImportJobService {
 
                 job.setDetectedDataTypes(detectedDataTypes);
                 job.setStatus(ImportStatus.PROCESSING);
+                job.setPhase(ImportPhase.IMPORTING);
                 job.setProgress(25);
 
                 log.info("Validated import job {} - detected data types: {}", job.getJobId(), detectedDataTypes);
@@ -252,9 +254,14 @@ public class ImportJobService {
                     int importProgress = 75 + (timelineJob.getProgressPercentage() * timelineProgressRange / 100);
                     importJob.setProgress(Math.min(100, Math.max(importJob.getProgress(), importProgress)));
 
-                    // Update progress message based on timeline step
-                    String progressMessage = "Timeline generation: " + timelineJob.getCurrentStep();
-                    importJob.setProgressMessage(progressMessage);
+                    // Update progress message based on timeline step. ImportJob.progressMessage is
+                    // wrapped by ImportJobResponse.descriptor() using a phase-based key (see below), so
+                    // this composite string only needs to carry the English fallback -- the timeline
+                    // sub-step's own key does not carry through here since it belongs to a different job.
+                    String timelineStepFallback = timelineJob.getCurrentStep() != null
+                            ? timelineJob.getCurrentStep().fallback()
+                            : "";
+                    importJob.setProgressMessage("Timeline generation: " + timelineStepFallback);
 
                     // Check if timeline job failed
                     if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.FAILED) {
@@ -295,6 +302,7 @@ public class ImportJobService {
 
     private void completeImportJob(ImportJob job, boolean recalculateBadges) {
         job.setStatus(ImportStatus.COMPLETED);
+        job.setPhase(ImportPhase.COMPLETED);
         job.setCompletedAt(Instant.now());
         job.setProgress(100);
         job.setProgressMessage("Import completed successfully");
@@ -341,6 +349,8 @@ public class ImportJobService {
             if (!coverageStatus.userEnabled()) {
                 return false;
             }
+
+            job.setPhase(ImportPhase.COVERAGE_RECALCULATION);
 
             if (coverageStatus.processing()) {
                 job.setProgress(Math.max(job.getProgress(), 95));

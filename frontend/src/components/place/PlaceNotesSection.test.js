@@ -1,11 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import PlaceNotesSection from './PlaceNotesSection.vue'
-import apiService from '@/utils/apiService'
 
-vi.mock('@/utils/apiService', () => ({
-  default: {
-    get: vi.fn()
-  }
+const searchNotes = vi.fn()
+
+vi.mock('@/stores/notes', () => ({
+  useNotesStore: () => ({ searchNotes })
 }))
 
 vi.mock('@/composables/useTimezone', () => ({
@@ -45,8 +44,8 @@ const mountSection = (props = {}) => mount(PlaceNotesSection, {
   props: {
     title: 'Notes near Test Place',
     searchParams: {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000,
       latitude: 50,
@@ -98,25 +97,20 @@ describe('PlaceNotesSection', () => {
 
   it('calls notes search with place params and renders geotagged notes sorted by event time', async () => {
     const searchParams = {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000,
       latitude: 50,
       longitude: 30,
       radiusMeters: 100
     }
-    apiService.get.mockResolvedValue({
-      status: 'success',
-      data: {
-        notes: [olderNote, latestNote]
-      }
-    })
+    searchNotes.mockResolvedValue({ notes: [olderNote, latestNote] })
 
     const wrapper = mountSection({ searchParams })
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledWith('/notes/search', searchParams)
+    expect(searchNotes).toHaveBeenCalledWith(searchParams)
     const noteCards = wrapper.findAll('.place-note-item')
     expect(noteCards).toHaveLength(2)
     expect(noteCards[0].text()).toContain('Later note')
@@ -127,12 +121,7 @@ describe('PlaceNotesSection', () => {
   })
 
   it('renders an empty state when no place notes are returned', async () => {
-    apiService.get.mockResolvedValue({
-      status: 'success',
-      data: {
-        notes: []
-      }
-    })
+    searchNotes.mockResolvedValue({ notes: [] })
 
     const wrapper = mountSection({ emptyMessage: 'No nearby notes found for this place.' })
     await flushPromises()
@@ -142,7 +131,7 @@ describe('PlaceNotesSection', () => {
   })
 
   it('renders an error state and clears emitted notes when the search fails', async () => {
-    apiService.get.mockRejectedValue(new Error('network down'))
+    searchNotes.mockRejectedValue(new Error('network down'))
 
     const wrapper = mountSection()
     await flushPromises()
@@ -179,17 +168,12 @@ describe('PlaceNotesSection', () => {
       Number(note.longitude) <= 30.2
     ))
     const areaSearchParams = {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000
     }
-    apiService.get.mockResolvedValue({
-      status: 'success',
-      data: {
-        notes: [insideArea, outsideArea, withoutCoordinates]
-      }
-    })
+    searchNotes.mockResolvedValue({ notes: [insideArea, outsideArea, withoutCoordinates] })
 
     const wrapper = mountSection({
       searchParams: areaSearchParams,
@@ -198,7 +182,7 @@ describe('PlaceNotesSection', () => {
     })
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledWith('/notes/search', areaSearchParams)
+    expect(searchNotes).toHaveBeenCalledWith(areaSearchParams)
     expect(inMemoryFilter).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('Earlier note')
     expect(wrapper.text()).not.toContain('Later note')

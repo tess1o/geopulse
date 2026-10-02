@@ -4,18 +4,17 @@
       <div class="share-links-page">
 
         <!-- Page Header -->
-        <div class="page-header" v-if="shareLinksStore.links.length !== 0 || shareLinksStore.isLoading">
-          <!--          <div class="page-header">-->
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Share Links</h1>
-              <p class="page-description">
-                Create and manage shareable links to your location data
+        <div class="gp-page-header" v-if="shareLinksStore.links.length !== 0 || shareLinksStore.isLoading">
+          <div class="gp-page-header-content">
+            <div class="gp-page-header-text">
+              <h1 class="gp-page-title">{{ t('sharing.shareLinksPage.title') }}</h1>
+              <p class="gp-page-subtitle">
+                {{ t('sharing.shareLinksPage.description') }}
               </p>
             </div>
-            <div class="header-actions">
+            <div class="gp-page-actions">
               <Button
-                  label="Create New"
+                  :label="t('sharing.shareLinksPage.createNew')"
                   icon="pi pi-plus"
                   @click="(event) => menu.toggle(event)"
                   class="create-link-btn"
@@ -36,7 +35,7 @@
           <div v-if="shareLinksStore.isLoading && shareLinksStore.links.length === 0"
                class="loading-state">
             <ProgressSpinner/>
-            <p>Loading share links...</p>
+            <p>{{ t('sharing.shareLinksPage.loading') }}</p>
           </div>
 
           <!-- Error State -->
@@ -44,7 +43,7 @@
                    severity="error"
                    :closable="true"
                    @close="shareLinksStore.clearError()">
-            {{ shareLinksStore.getError }}
+            {{ formatApiErrorDetail(shareLinksStore.getError) }}
           </Message>
 
           <!-- Links List -->
@@ -55,12 +54,12 @@
             <div v-if="activeTimelineShares.length > 0 || expiredTimelineShares.length > 0" class="share-type-section">
               <h2 class="type-title">
                 <i class="pi pi-calendar"></i>
-                Timeline Shares
+                {{ t('sharing.shareLinksPage.timelineSharesHeader') }}
               </h2>
 
               <!-- Active Timeline Links -->
               <div v-if="activeTimelineShares.length > 0" class="links-section">
-                <h3 class="section-subtitle">Active ({{ activeTimelineShares.length }})</h3>
+                <h3 class="section-subtitle">{{ t('sharing.shareLinksPage.activeCount', { count: activeTimelineShares.length }) }}</h3>
                 <div class="links-grid">
                 <Card v-for="link in activeTimelineShares"
                       :key="link.id"
@@ -68,20 +67,20 @@
                   <template #content>
                     <div class="link-header">
                       <div class="link-info">
-                        <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                        <h3 class="link-title">{{ link.name || t('sharing.shareLinksPage.untitledLink') }}</h3>
                         <div class="link-meta">
-                          <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
-                          <span class="link-expires">Expires {{ formatDate(link.expires_at) }}</span>
+                          <span class="link-date">{{ t('sharing.shareLinksPage.createdOn', { date: formatDate(link.created_at) }) }}</span>
+                          <span class="link-expires">{{ t('sharing.shareLinksPage.expiresOn', { date: formatDate(link.expires_at) }) }}</span>
                         </div>
                       </div>
                       <div class="link-status">
-                        <Tag severity="success" value="Active"/>
+                        <Tag severity="success" :value="t('sharing.shareLinksPage.statusActive')"/>
                       </div>
                     </div>
 
                     <div class="link-details">
                       <div class="link-url-section">
-                        <label class="url-label">Share URL:</label>
+                        <label class="url-label">{{ t('sharing.shareLinksPage.shareUrlLabel') }}</label>
                         <div class="url-input-group">
                           <InputText
                               :value="getShareUrl(link)"
@@ -94,26 +93,26 @@
                               class="copy-btn"
                               aria-haspopup="true"
                               aria-controls="link_copy_menu"
-                              v-tooltip="'Copy link'"
+                              v-tooltip="t('sharing.shareLinksPage.copyLinkTooltip')"
                           />
                         </div>
                       </div>
 
                       <div class="link-settings">
                         <div class="setting-item">
-                          <span class="setting-label">Type:</span>
-                          <span class="setting-value">{{ link.share_type === 'TIMELINE' ? 'Timeline' : 'Live Location' }}</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.typeLabel') }}</span>
+                          <span class="setting-value">{{ link.share_type === 'TIMELINE' ? t('sharing.shareLinksPage.typeTimeline') : t('sharing.shareLinksPage.typeLiveLocation') }}</span>
                         </div>
                         <div class="setting-item">
-                          <span class="setting-label">Password Protected:</span>
-                          <span class="setting-value">{{ link.has_password ? 'Yes' : 'No' }}</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.passwordProtectedLabel') }}</span>
+                          <span class="setting-value">{{ link.has_password ? t('sharing.shareLinksPage.yes') : t('sharing.shareLinksPage.no') }}</span>
                         </div>
                         <div class="setting-item">
-                          <span class="setting-label">View Count:</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.viewCountLabel') }}</span>
                           <span class="setting-value">{{ link.view_count || 0 }}</span>
                         </div>
                         <div v-if="link.share_type !== 'TIMELINE'" class="setting-item">
-                          <span class="setting-label">Show History:</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.showHistoryLabel') }}</span>
                           <span class="setting-value">{{ formatShowHistory(link) }}</span>
                         </div>
                       </div>
@@ -121,18 +120,18 @@
                       <!-- Timeline-specific info -->
                       <div v-if="link.share_type === 'TIMELINE'" class="timeline-info">
                         <div class="setting-item">
-                          <span class="setting-label">Date Range:</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.dateRangeLabel') }}</span>
                           <span class="setting-value">
-                            {{ formatDate(link.start_date) }} - {{ formatDate(link.end_date) }}
+                            {{ t('sharing.shareLinksPage.dateRangeValue', { start: formatDate(link.start_date), end: formatDate(link.end_date) }) }}
                           </span>
                         </div>
                         <div class="setting-item">
-                          <span class="setting-label">Status:</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.statusLabel') }}</span>
                           <Tag :value="link.timeline_status"
                                :severity="getTimelineStatusSeverity(link.timeline_status)" />
                         </div>
                         <div v-if="getShareLinkedTrip(link)" class="setting-item trip-workspace-setting">
-                          <span class="setting-label">Trip Planner:</span>
+                          <span class="setting-label">{{ t('sharing.shareLinksPage.tripPlannerLabel') }}</span>
                           <span class="setting-value trip-workspace-value">
                             <Button
                               :label="getShareLinkedTripLabel(getShareLinkedTrip(link))"
@@ -149,14 +148,14 @@
 
                     <div class="link-actions">
                       <Button
-                          label="Edit"
+                          :label="t('sharing.shareLinksPage.edit')"
                           icon="pi pi-pencil"
                           severity="secondary"
                           @click="editLink(link)"
                           class="edit-btn"
                       />
                       <Button
-                          label="Delete"
+                          :label="t('sharing.shareLinksPage.delete')"
                           icon="pi pi-trash"
                           severity="danger"
                           @click="confirmDeleteLink(link)"
@@ -170,7 +169,7 @@
 
             <!-- Expired Timeline Links -->
             <div v-if="expiredTimelineShares.length > 0" class="links-section">
-              <h3 class="section-subtitle">Expired ({{ expiredTimelineShares.length }})</h3>
+              <h3 class="section-subtitle">{{ t('sharing.shareLinksPage.expiredCount', { count: expiredTimelineShares.length }) }}</h3>
               <div class="links-grid">
                 <Card v-for="link in expiredTimelineShares"
                       :key="link.id"
@@ -178,20 +177,20 @@
                   <template #content>
                     <div class="link-header">
                       <div class="link-info">
-                        <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                        <h3 class="link-title">{{ link.name || t('sharing.shareLinksPage.untitledLink') }}</h3>
                         <div class="link-meta">
-                          <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
-                          <span class="link-expires">Expired {{ formatDate(link.expires_at) }}</span>
+                          <span class="link-date">{{ t('sharing.shareLinksPage.createdOn', { date: formatDate(link.created_at) }) }}</span>
+                          <span class="link-expires">{{ t('sharing.shareLinksPage.expiredOn', { date: formatDate(link.expires_at) }) }}</span>
                         </div>
                       </div>
                       <div class="link-status">
-                        <Tag severity="danger" value="Expired"/>
+                        <Tag severity="danger" :value="t('sharing.shareLinksPage.statusExpired')"/>
                       </div>
                     </div>
 
                     <div class="link-actions">
                       <Button
-                          label="Delete"
+                          :label="t('sharing.shareLinksPage.delete')"
                           icon="pi pi-trash"
                           severity="danger"
                           @click="confirmDeleteLink(link)"
@@ -208,12 +207,12 @@
             <div v-if="activeLiveLocationShares.length > 0 || expiredLiveLocationShares.length > 0" class="share-type-section">
               <h2 class="type-title">
                 <i class="pi pi-map-marker"></i>
-                Live Location Shares
+                {{ t('sharing.shareLinksPage.liveLocationSharesHeader') }}
               </h2>
 
               <!-- Active Live Location Links -->
               <div v-if="activeLiveLocationShares.length > 0" class="links-section">
-                <h3 class="section-subtitle">Active ({{ activeLiveLocationShares.length }})</h3>
+                <h3 class="section-subtitle">{{ t('sharing.shareLinksPage.activeCount', { count: activeLiveLocationShares.length }) }}</h3>
                 <div class="links-grid">
                   <Card v-for="link in activeLiveLocationShares"
                         :key="link.id"
@@ -221,20 +220,20 @@
                     <template #content>
                       <div class="link-header">
                         <div class="link-info">
-                          <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                          <h3 class="link-title">{{ link.name || t('sharing.shareLinksPage.untitledLink') }}</h3>
                           <div class="link-meta">
-                            <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
-                            <span class="link-expires">Expires {{ formatDate(link.expires_at) }}</span>
+                            <span class="link-date">{{ t('sharing.shareLinksPage.createdOn', { date: formatDate(link.created_at) }) }}</span>
+                            <span class="link-expires">{{ t('sharing.shareLinksPage.expiresOn', { date: formatDate(link.expires_at) }) }}</span>
                           </div>
                         </div>
                         <div class="link-status">
-                          <Tag severity="success" value="Active"/>
+                          <Tag severity="success" :value="t('sharing.shareLinksPage.statusActive')"/>
                         </div>
                       </div>
 
                       <div class="link-details">
                         <div class="link-url-section">
-                          <label class="url-label">Share URL:</label>
+                          <label class="url-label">{{ t('sharing.shareLinksPage.shareUrlLabel') }}</label>
                           <div class="url-input-group">
                             <InputText
                                 :value="getShareUrl(link)"
@@ -247,26 +246,26 @@
                                 class="copy-btn"
                                 aria-haspopup="true"
                                 aria-controls="link_copy_menu"
-                                v-tooltip="'Copy link'"
+                                v-tooltip="t('sharing.shareLinksPage.copyLinkTooltip')"
                             />
                           </div>
                         </div>
 
                         <div class="link-settings">
                           <div class="setting-item">
-                            <span class="setting-label">Type:</span>
-                            <span class="setting-value">Live Location</span>
+                            <span class="setting-label">{{ t('sharing.shareLinksPage.typeLabel') }}</span>
+                            <span class="setting-value">{{ t('sharing.shareLinksPage.typeLiveLocation') }}</span>
                           </div>
                           <div class="setting-item">
-                            <span class="setting-label">Password Protected:</span>
-                            <span class="setting-value">{{ link.has_password ? 'Yes' : 'No' }}</span>
+                            <span class="setting-label">{{ t('sharing.shareLinksPage.passwordProtectedLabel') }}</span>
+                            <span class="setting-value">{{ link.has_password ? t('sharing.shareLinksPage.yes') : t('sharing.shareLinksPage.no') }}</span>
                           </div>
                           <div class="setting-item">
-                            <span class="setting-label">View Count:</span>
+                            <span class="setting-label">{{ t('sharing.shareLinksPage.viewCountLabel') }}</span>
                             <span class="setting-value">{{ link.view_count || 0 }}</span>
                           </div>
                           <div class="setting-item">
-                            <span class="setting-label">Show History:</span>
+                            <span class="setting-label">{{ t('sharing.shareLinksPage.showHistoryLabel') }}</span>
                             <span class="setting-value">{{ formatShowHistory(link) }}</span>
                           </div>
                         </div>
@@ -274,14 +273,14 @@
 
                       <div class="link-actions">
                         <Button
-                            label="Edit"
+                            :label="t('sharing.shareLinksPage.edit')"
                             icon="pi pi-pencil"
                             severity="secondary"
                             @click="editLink(link)"
                             class="edit-btn"
                         />
                         <Button
-                            label="Delete"
+                            :label="t('sharing.shareLinksPage.delete')"
                             icon="pi pi-trash"
                             severity="danger"
                             @click="confirmDeleteLink(link)"
@@ -295,7 +294,7 @@
 
               <!-- Expired Live Location Links -->
               <div v-if="expiredLiveLocationShares.length > 0" class="links-section">
-                <h3 class="section-subtitle">Expired ({{ expiredLiveLocationShares.length }})</h3>
+                <h3 class="section-subtitle">{{ t('sharing.shareLinksPage.expiredCount', { count: expiredLiveLocationShares.length }) }}</h3>
                 <div class="links-grid">
                   <Card v-for="link in expiredLiveLocationShares"
                         :key="link.id"
@@ -303,20 +302,20 @@
                     <template #content>
                       <div class="link-header">
                         <div class="link-info">
-                          <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                          <h3 class="link-title">{{ link.name || t('sharing.shareLinksPage.untitledLink') }}</h3>
                           <div class="link-meta">
-                            <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
-                            <span class="link-expires">Expired {{ formatDate(link.expires_at) }}</span>
+                            <span class="link-date">{{ t('sharing.shareLinksPage.createdOn', { date: formatDate(link.created_at) }) }}</span>
+                            <span class="link-expires">{{ t('sharing.shareLinksPage.expiredOn', { date: formatDate(link.expires_at) }) }}</span>
                           </div>
                         </div>
                         <div class="link-status">
-                          <Tag severity="danger" value="Expired"/>
+                          <Tag severity="danger" :value="t('sharing.shareLinksPage.statusExpired')"/>
                         </div>
                       </div>
 
                       <div class="link-actions">
                         <Button
-                            label="Delete"
+                            :label="t('sharing.shareLinksPage.delete')"
                             icon="pi pi-trash"
                             severity="danger"
                             @click="confirmDeleteLink(link)"
@@ -333,10 +332,10 @@
             <div v-if="shareLinksStore.links.length === 0 && !shareLinksStore.isLoading"
                  class="empty-state">
               <i class="pi pi-share-alt empty-icon"></i>
-              <h3>No share links yet</h3>
-              <p>Create your first share link to start sharing your location data with others.</p>
+              <h3>{{ t('sharing.shareLinksPage.empty.title') }}</h3>
+              <p>{{ t('sharing.shareLinksPage.empty.message') }}</p>
               <Button
-                  label="Create Your First Link"
+                  :label="t('sharing.shareLinksPage.empty.createFirst')"
                   icon="pi pi-plus"
                   @click="(event) => menu.toggle(event)"
                   class="empty-action-btn"
@@ -350,7 +349,7 @@
         <!-- Create/Edit Link Dialog -->
         <Dialog
             v-model:visible="showCreateDialog"
-            :header="liveSuccessState ? 'Share Link Created' : (editingLink ? 'Edit Share Link' : 'Create Share Link')"
+            :header="liveSuccessState ? t('sharing.shareLinksPage.dialog.headerCreated') : (editingLink ? t('sharing.shareLinksPage.dialog.headerEdit') : t('sharing.shareLinksPage.dialog.headerCreate'))"
             :modal="true"
             :closable="true"
             :draggable="false"
@@ -368,17 +367,17 @@
 
           <form v-else @submit.prevent="submitLinkForm" class="link-form">
             <div class="form-group">
-              <label for="name" class="form-label">Name</label>
+              <label for="name" class="form-label">{{ t('sharing.shareLinksPage.dialog.nameLabel') }}</label>
               <InputText
                   id="name"
                   v-model="linkForm.name"
-                  placeholder="Enter a name for this link"
+                  :placeholder="t('sharing.shareLinksPage.dialog.namePlaceholder')"
                   class="form-input"
               />
             </div>
 
             <div class="form-group">
-              <label class="form-label">Location Sharing Scope</label>
+              <label class="form-label">{{ t('sharing.shareLinksPage.dialog.scopeLabel') }}</label>
               <div class="scope-options">
                 <div class="scope-option">
                   <RadioButton
@@ -387,8 +386,8 @@
                       :value="false"
                   />
                   <label for="current-only" class="scope-label">
-                    <strong>Current Location Only</strong>
-                    <span class="scope-description">Share your most recent location</span>
+                    <strong>{{ t('sharing.shareLinksPage.dialog.currentLocationOnly') }}</strong>
+                    <span class="scope-description">{{ t('sharing.shareLinksPage.dialog.currentLocationOnlyHint') }}</span>
                   </label>
                 </div>
                 <div class="scope-option">
@@ -398,21 +397,21 @@
                       :value="true"
                   />
                   <label for="with-history" class="scope-label">
-                    <strong>Location History</strong>
-                    <span class="scope-description">Share your location path and timeline</span>
+                    <strong>{{ t('sharing.shareLinksPage.dialog.locationHistory') }}</strong>
+                    <span class="scope-description">{{ t('sharing.shareLinksPage.dialog.locationHistoryHint') }}</span>
                   </label>
                 </div>
               </div>
             </div>
 
             <div v-if="linkForm.show_history" class="form-group">
-              <label for="history-hours" class="form-label">History Duration (hours)</label>
-              <InputNumber id="history-hours" v-model="linkForm.history_hours" :min="1"  suffix=" hours" class="form-input" />
-              <small class="p-text-secondary">Specify how many hours of location history to share</small>
+              <label for="history-hours" class="form-label">{{ t('sharing.shareLinksPage.dialog.historyDurationLabel') }}</label>
+              <InputNumber id="history-hours" v-model="linkForm.history_hours" :min="1" :suffix="t('sharing.shareLinksPage.dialog.historyDurationSuffix')" class="form-input" />
+              <small class="p-text-secondary">{{ t('sharing.shareLinksPage.dialog.historyDurationHint') }}</small>
             </div>
 
             <div class="form-group">
-              <label for="expires_at" class="form-label">Expires At</label>
+              <label for="expires_at" class="form-label">{{ t('sharing.shareLinksPage.dialog.expiresAtLabel') }}</label>
               <Calendar
                   id="expires_at"
                   v-model="linkForm.expires_at"
@@ -431,16 +430,16 @@
                     v-model="linkForm.has_password"
                     :binary="true"
                 />
-                <label for="has_password" class="checkbox-label">Password protect this link</label>
+                <label for="has_password" class="checkbox-label">{{ t('sharing.shareLinksPage.dialog.hasPasswordLabel') }}</label>
               </div>
             </div>
 
             <div v-if="linkForm.has_password" class="form-group">
-              <label for="password" class="form-label">Password</label>
+              <label for="password" class="form-label">{{ t('sharing.timelineDialog.fields.password') }}</label>
               <Password
                   id="password"
                   v-model="linkForm.password"
-                  placeholder="Enter password (6-100 characters)"
+                  :placeholder="t('sharing.timelineDialog.fields.passwordPlaceholder')"
                   class="form-input"
                   :feedback="false"
                   :class="{'p-invalid': formErrors.password}"
@@ -451,7 +450,7 @@
             </div>
 
             <div class="form-group">
-              <label for="live-map-render-mode" class="form-label">Map Render Mode</label>
+              <label for="live-map-render-mode" class="form-label">{{ t('sharing.shareLinksPage.dialog.mapRenderModeLabel') }}</label>
               <Dropdown
                   id="live-map-render-mode"
                   v-model="linkForm.map_render_mode"
@@ -461,7 +460,7 @@
                   class="form-input"
               />
               <small class="p-text-secondary">
-                Switching modes preserves both custom raster and vector settings.
+                {{ t('sharing.shareLinksPage.dialog.mapRenderModeHint') }}
               </small>
             </div>
 
@@ -472,7 +471,7 @@
                     v-model="linkForm.use_custom_tiles"
                     :binary="true"
                 />
-                <label for="use_custom_tiles" class="checkbox-label">Use custom raster tiles</label>
+                <label for="use_custom_tiles" class="checkbox-label">{{ t('sharing.timelineDialog.fields.useCustomTiles') }}</label>
               </div>
             </div>
 
@@ -481,24 +480,23 @@
                 <div class="warning-content">
                   <i class="pi pi-exclamation-triangle"></i>
                   <div>
-                    <strong>Security Notice:</strong>
-                    The custom tile URL (including any API keys) will be visible to all viewers.
-                    Only enable if you trust the recipients.
+                    <strong>{{ t('sharing.timelineDialog.fields.securityNoticeTitle') }}</strong>
+                    {{ t('sharing.timelineDialog.fields.securityNoticeBody') }}
                   </div>
                 </div>
               </Message>
 
               <div class="form-group">
-                <label for="custom-tile-url" class="form-label">Custom Tile URL</label>
+                <label for="custom-tile-url" class="form-label">{{ t('sharing.timelineDialog.fields.customTileUrl') }}</label>
                 <InputText
                     id="custom-tile-url"
                     v-model="linkForm.custom_map_tile_url"
-                    placeholder="https://tile-provider.com/{z}/{x}/{y}.png"
+                    :placeholder="t('sharing.timelineDialog.fields.customTileUrlPlaceholder')"
                     class="form-input"
                     :class="{'p-invalid': formErrors.custom_map_tile_url}"
                 />
                 <small class="p-text-secondary">
-                  Placeholders: {z} zoom, {x}/{y} coordinates, {s} subdomains
+                  {{ t('sharing.timelineDialog.fields.customTileUrlHelp') }}
                 </small>
                 <small v-if="formErrors.custom_map_tile_url" class="p-error">
                   {{ formErrors.custom_map_tile_url }}
@@ -513,22 +511,22 @@
                     v-model="linkForm.use_custom_style"
                     :binary="true"
                 />
-                <label for="use_custom_style" class="checkbox-label">Use custom vector style</label>
+                <label for="use_custom_style" class="checkbox-label">{{ t('sharing.timelineDialog.fields.useCustomStyle') }}</label>
               </div>
             </div>
 
             <div v-if="linkForm.use_custom_style" class="custom-tiles-section">
               <div class="form-group">
-                <label for="custom-style-url" class="form-label">Custom Vector Style URL</label>
+                <label for="custom-style-url" class="form-label">{{ t('sharing.timelineDialog.fields.customStyleUrl') }}</label>
                 <InputText
                     id="custom-style-url"
                     v-model="linkForm.custom_map_style_url"
-                    placeholder="https://tiles.openfreemap.org/styles/liberty"
+                    :placeholder="t('sharing.timelineDialog.fields.customStyleUrlPlaceholder')"
                     class="form-input"
                     :class="{'p-invalid': formErrors.custom_map_style_url}"
                 />
                 <small class="p-text-secondary">
-                  Should point to a style JSON endpoint (HTTP/HTTPS).
+                  {{ t('sharing.shareLinksPage.dialog.customStyleUrlHint') }}
                 </small>
                 <small v-if="formErrors.custom_map_style_url" class="p-error">
                   {{ formErrors.custom_map_style_url }}
@@ -538,14 +536,14 @@
 
             <div class="form-actions">
               <Button
-                  label="Cancel"
+                  :label="t('common.cancel')"
                   severity="secondary"
                   @click="closeDialog"
                   type="button"
                   class="cancel-btn"
               />
               <Button
-                  :label="editingLink ? 'Update Link' : 'Create Link'"
+                  :label="editingLink ? t('sharing.shareLinksPage.dialog.updateLink') : t('sharing.timelineDialog.actions.createLink')"
                   type="submit"
                   :loading="shareLinksStore.isLoading"
                   class="submit-btn"
@@ -565,7 +563,7 @@
         <!-- Delete Confirmation Dialog -->
         <Dialog
             v-model:visible="showDeleteDialog"
-            header="Confirm Delete"
+            :header="t('sharing.shareLinksPage.deleteDialog.header')"
             :modal="true"
             :closable="true"
             :draggable="false"
@@ -574,20 +572,20 @@
           <div class="delete-content">
             <i class="pi pi-exclamation-triangle warning-icon"></i>
             <div class="delete-message">
-              <h3>Delete Share Link</h3>
-              <p>Are you sure you want to delete "{{ linkToDelete?.name || 'this link' }}"?</p>
-              <p class="warning-text">This action cannot be undone and the link will no longer be accessible.</p>
+              <h3>{{ t('sharing.shareLinksPage.deleteDialog.title') }}</h3>
+              <p>{{ t('sharing.shareLinksPage.deleteDialog.message', { name: linkToDelete?.name || t('sharing.shareLinksPage.deleteDialog.defaultLinkName') }) }}</p>
+              <p class="warning-text">{{ t('sharing.shareLinksPage.deleteDialog.warning') }}</p>
             </div>
           </div>
           <div class="delete-actions">
             <Button
-                label="Cancel"
+                :label="t('common.cancel')"
                 severity="secondary"
                 @click="showDeleteDialog = false"
                 class="cancel-btn"
             />
             <Button
-                label="Delete"
+                :label="t('sharing.shareLinksPage.delete')"
                 severity="danger"
                 @click="deleteLink"
                 :loading="shareLinksStore.isLoading"
@@ -602,6 +600,7 @@
 
 <script setup>
 import {ref, reactive, onMounted, computed, watch} from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useShareLinksStore} from '@/stores/shareLinks'
@@ -617,7 +616,9 @@ import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { buildShareLinkOptions, buildShareUrl } from '@/utils/shareLinkUrls'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const router = useRouter()
@@ -626,16 +627,16 @@ const shareLinksStore = useShareLinksStore()
 const tripsStore = useTripsStore()
 
 // Create menu items for dropdown
-const createMenuItems = ref([
+const createMenuItems = computed(() => [
   {
-    label: 'Live Location Share',
+    label: t('sharing.shareLinksPage.createMenu.liveLocation'),
     icon: 'pi pi-map-marker',
     command: () => {
       showCreateDialog.value = true
     }
   },
   {
-    label: 'Timeline Share',
+    label: t('sharing.shareLinksPage.createMenu.timeline'),
     icon: 'pi pi-calendar',
     command: () => {
       showTimelineDialog.value = true
@@ -675,10 +676,10 @@ const formErrors = reactive({
   custom_map_tile_url: null,
   custom_map_style_url: null
 })
-const mapRenderModeOptions = [
-  { label: 'Vector (MapLibre)', value: 'VECTOR' },
-  { label: 'Raster (Leaflet)', value: 'RASTER' }
-]
+const mapRenderModeOptions = computed(() => [
+  { label: t('sharing.timelineDialog.mapRenderModeOptions.vector'), value: 'VECTOR' },
+  { label: t('sharing.timelineDialog.mapRenderModeOptions.raster'), value: 'RASTER' }
+])
 
 // Computed
 const minDate = computed(() => timezone.now().toDate())
@@ -781,7 +782,7 @@ const submitLinkForm = async () => {
   if (linkForm.has_password) {
     const passwordLength = (linkForm.password || '').length
     if (passwordLength < 6 || passwordLength > 100) {
-      formErrors.password = 'Password must be between 6 and 100 characters'
+      formErrors.password = t('sharing.timelineDialog.errors.passwordLength')
       return
     }
   }
@@ -789,10 +790,10 @@ const submitLinkForm = async () => {
   // Validate custom tiles if enabled
   if (linkForm.use_custom_tiles) {
     if (!linkForm.custom_map_tile_url || !linkForm.custom_map_tile_url.trim()) {
-      formErrors.custom_map_tile_url = 'Custom tile URL required when enabled'
+      formErrors.custom_map_tile_url = t('sharing.timelineDialog.errors.customTileUrlRequired')
       return
     } else if (linkForm.custom_map_tile_url.length > 1000) {
-      formErrors.custom_map_tile_url = 'URL cannot exceed 1000 characters'
+      formErrors.custom_map_tile_url = t('sharing.timelineDialog.errors.urlTooLong')
       return
     }
   }
@@ -801,15 +802,15 @@ const submitLinkForm = async () => {
     const styleUrl = linkForm.custom_map_style_url || ''
     const normalizedUrl = styleUrl.trim().toLowerCase()
     if (!styleUrl.trim()) {
-      formErrors.custom_map_style_url = 'Custom style URL required when enabled'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.customStyleUrlRequired')
       return
     }
     if (styleUrl.length > 1000) {
-      formErrors.custom_map_style_url = 'URL cannot exceed 1000 characters'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.urlTooLong')
       return
     }
     if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-      formErrors.custom_map_style_url = 'URL must use HTTP or HTTPS protocol'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.urlMustBeHttp')
       return
     }
     if (
@@ -818,23 +819,23 @@ const submitLinkForm = async () => {
       normalizedUrl.includes('file:') ||
       normalizedUrl.includes('ftp:')
     ) {
-      formErrors.custom_map_style_url = 'Invalid URL protocol'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.urlInvalidProtocol')
       return
     }
     if (styleUrl.includes('..')) {
-      formErrors.custom_map_style_url = 'Invalid URL format'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.urlInvalidFormat')
       return
     }
     const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
     if (!looksLikeStyleUrl) {
-      formErrors.custom_map_style_url = 'URL should point to a style JSON endpoint'
+      formErrors.custom_map_style_url = t('sharing.timelineDialog.errors.urlShouldBeStyleEndpoint')
       return
     }
   }
 
   try {
     const formData = {
-      name: linkForm.name || 'Untitled Link',
+      name: linkForm.name || t('sharing.shareLinksPage.untitledLink'),
       expires_at: linkForm.expires_at ? linkForm.expires_at.toISOString() : null,
       show_history: linkForm.show_history,
       history_hours: linkForm.show_history ? linkForm.history_hours : null,
@@ -848,8 +849,8 @@ const submitLinkForm = async () => {
       await shareLinksStore.updateShareLink(editingLink.value.id, formData)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Share link updated successfully',
+        summary: t('common.success'),
+        detail: t('sharing.shareLinksPage.toasts.updateSuccessDetail'),
         life: 3000
       })
     } else {
@@ -861,8 +862,8 @@ const submitLinkForm = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.userMessage || error.message || 'Failed to save share link',
+      summary: t('common.error'),
+      detail: error.userMessage || error.message || t('sharing.shareLinksPage.toasts.saveFailedDetail'),
       life: 5000
     })
   }
@@ -878,8 +879,8 @@ const deleteLink = async () => {
     await shareLinksStore.deleteShareLink(linkToDelete.value.id)
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Share link deleted successfully',
+      summary: t('common.success'),
+      detail: t('sharing.shareLinksPage.toasts.deleteSuccessDetail'),
       life: 3000
     })
     showDeleteDialog.value = false
@@ -887,8 +888,8 @@ const deleteLink = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.userMessage || error.message || 'Failed to delete share link',
+      summary: t('common.error'),
+      detail: error.userMessage || error.message || t('sharing.shareLinksPage.toasts.deleteFailedDetail'),
       life: 5000
     })
   }
@@ -903,7 +904,7 @@ const copyMenuItems = computed(() => {
   if (!link) return []
 
   return buildShareLinkOptions(link, shareLinksStore.baseUrl).map((option) => ({
-    label: `Copy ${option.label}`,
+    label: t('sharing.linkSuccess.copyTooltip', { label: option.label }),
     icon: option.key === 'share' ? 'pi pi-link' : option.key === 'map' ? 'pi pi-map' : 'pi pi-list',
     command: () => copyToClipboard(option.url)
   }))
@@ -920,15 +921,15 @@ const copyToClipboard = async (text) => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied',
-      detail: 'Link copied to clipboard',
+      summary: t('sharing.shareLinksPage.toasts.copiedSummary'),
+      detail: t('sharing.shareLinksPage.toasts.copiedDetail'),
       life: 2000
     })
   } else {
     toast.add({
       severity: 'warn',
-      summary: 'Copy Failed',
-      detail: 'Could not copy to clipboard. Please copy the URL manually.',
+      summary: t('sharing.shareLinksPage.toasts.copyFailedSummary'),
+      detail: t('sharing.shareLinksPage.toasts.copyFailedDetail'),
       life: 3000
     })
   }
@@ -941,12 +942,12 @@ const formatDate = (dateString) => {
 
 const formatShowHistory = (link) => {
   if (!link.show_history) {
-    return 'Current Location Only';
+    return t('sharing.shareLinksPage.dialog.currentLocationOnly');
   }
   if (link.history_hours) {
-    return `Yes (${link.history_hours}h)`;
+    return `${t('sharing.shareLinksPage.yes')} (${link.history_hours}h)`;
   }
-  return 'Yes';
+  return t('sharing.shareLinksPage.yes');
 }
 
 function handleTimelineCreated(share) {
@@ -962,8 +963,8 @@ function handleTimelineUpdated(share) {
   shareLinksStore.fetchShareLinks() // Refresh list
   toast.add({
     severity: 'success',
-    summary: 'Success',
-    detail: 'Timeline share updated successfully',
+    summary: t('common.success'),
+    detail: t('sharing.shareLinksPage.toasts.timelineUpdatedDetail'),
     life: 3000
   })
 }
@@ -1011,7 +1012,7 @@ const getShareLinkedTrip = (link) => {
 
 const getShareLinkedTripLabel = (trip) => {
   if (!trip) return ''
-  return trip.name || `Trip #${trip.id}`
+  return trip.name || t('place.visitsTable.tripFallbackLabel', { id: trip.id })
 }
 
 const openTripWorkspace = (trip) => {
@@ -1036,8 +1037,8 @@ onMounted(async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load share links',
+      summary: t('common.error'),
+      detail: t('sharing.shareLinksPage.toasts.loadFailedDetail'),
       life: 5000
     })
   }
@@ -1048,43 +1049,6 @@ onMounted(async () => {
 .share-links-page {
   padding: 0;
 }
-
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: var(--text-color);
-}
-
-.page-description {
-  font-size: 1rem;
-  color: var(--text-color-secondary);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 
 .create-link-btn {
   white-space: nowrap;
@@ -1103,31 +1067,31 @@ onMounted(async () => {
   justify-content: center;
   padding: 3rem;
   text-align: center;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .share-type-section {
   margin-bottom: 3rem;
   padding: 1.5rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 12px;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .type-title {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 1.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--surface-border);
+  border-bottom: 2px solid var(--gp-border);
 }
 
 .type-title i {
-  color: var(--primary-color);
+  color: var(--gp-primary);
   font-size: 1.5rem;
 }
 
@@ -1143,14 +1107,14 @@ onMounted(async () => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .section-subtitle {
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .links-grid {
@@ -1173,18 +1137,14 @@ onMounted(async () => {
 }
 
 .timeline-card {
-  border-left: 4px solid var(--blue-500);
+  border-left: 4px solid var(--p-blue-500);
 }
 
 .live-location-card {
-  border-left: 4px solid var(--green-500);
+  border-left: 4px solid var(--p-green-500);
 }
 
 /* Dark mode adjustments for share type sections */
-.p-dark .share-type-section {
-  background: var(--surface-100);
-  border-color: var(--surface-border);
-}
 
 .link-header {
   display: flex;
@@ -1201,12 +1161,12 @@ onMounted(async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.25rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .link-description {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 0.5rem 0;
 }
 
@@ -1215,7 +1175,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .link-details {
@@ -1231,7 +1191,7 @@ onMounted(async () => {
   font-size: 0.9rem;
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .url-input-group {
@@ -1241,7 +1201,7 @@ onMounted(async () => {
 
 .share-url-input {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   font-size: 0.85rem;
 }
 
@@ -1254,7 +1214,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--surface-50);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
 }
 
@@ -1265,18 +1225,18 @@ onMounted(async () => {
 }
 
 .setting-label {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .setting-value {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .timeline-info {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--surface-100);
+  background: var(--gp-surface-muted);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -1300,7 +1260,7 @@ onMounted(async () => {
 
 .empty-icon {
   font-size: 3rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin-bottom: 1rem;
 }
 
@@ -1308,11 +1268,11 @@ onMounted(async () => {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .empty-state p {
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
   margin: 0 0 1.5rem 0;
 }
 
@@ -1335,7 +1295,7 @@ onMounted(async () => {
 
 .form-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .form-input {
@@ -1355,7 +1315,7 @@ onMounted(async () => {
 
 .checkbox-label {
   font-weight: 500;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .scope-options {
@@ -1369,14 +1329,14 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--surface-border);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
   transition: all 0.2s ease;
 }
 
 .scope-option:hover {
-  background: var(--surface-50);
-  border-color: var(--primary-color);
+  background: var(--gp-surface-muted);
+  border-color: var(--gp-primary);
 }
 
 .scope-label {
@@ -1389,12 +1349,12 @@ onMounted(async () => {
 
 .scope-label strong {
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .scope-description {
   font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .form-actions {
@@ -1418,7 +1378,7 @@ onMounted(async () => {
 
 .warning-icon {
   font-size: 2rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
 }
 
@@ -1426,17 +1386,17 @@ onMounted(async () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .delete-message p {
   margin: 0 0 0.5rem 0;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .warning-text {
   font-weight: 500;
-  color: var(--orange-600);
+  color: var(--p-orange-600);
 }
 
 .delete-actions {
@@ -1446,11 +1406,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .share-type-section {
     padding: 1rem;
     margin-bottom: 2rem;
@@ -1486,7 +1441,7 @@ onMounted(async () => {
 .custom-tiles-section {
   margin-left: 1.75rem;
   padding-left: 1rem;
-  border-left: 3px solid var(--orange-500);
+  border-left: 3px solid var(--p-orange-500);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -1505,7 +1460,7 @@ onMounted(async () => {
 
 .warning-content i {
   font-size: 1.25rem;
-  color: var(--orange-500);
+  color: var(--p-orange-500);
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -1527,25 +1482,20 @@ onMounted(async () => {
 
 .trip-workspace-btn {
   border-radius: 999px;
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card));
   color: var(--gp-primary);
   white-space: nowrap;
 }
 
 .trip-workspace-btn:hover {
-  border-color: color-mix(in srgb, var(--gp-primary) 55%, var(--gp-border-light));
-  background: color-mix(in srgb, var(--gp-primary) 14%, var(--gp-surface-white));
+  border-color: color-mix(in srgb, var(--gp-primary) 55%, var(--gp-border));
+  background: color-mix(in srgb, var(--gp-primary) 14%, var(--gp-surface-card));
   color: var(--gp-primary-hover);
 }
 
 .trip-workspace-btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
   outline-offset: 2px;
-}
-
-.p-dark .trip-workspace-btn {
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
-  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-dark));
 }
 </style>

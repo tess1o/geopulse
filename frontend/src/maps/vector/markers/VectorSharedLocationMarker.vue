@@ -4,6 +4,7 @@
 
 <script setup>
 import { onUnmounted, watch } from 'vue'
+import { t } from '@/locales'
 import maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
 import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
@@ -58,7 +59,7 @@ const createMarkerElement = () => {
 
   if (props.avatarUrl) {
     element.className = 'maplibre-avatar-icon-container'
-    element.innerHTML = `<img src="${props.avatarUrl}" class="maplibre-avatar-icon" alt="Avatar">`
+    element.innerHTML = `<img src="${props.avatarUrl}" class="maplibre-avatar-icon" alt="${t('maps.popups.sharedLocation.avatarAlt')}">`
   } else {
     element.className = 'maplibre-shared-location-dot'
   }
@@ -91,6 +92,7 @@ const createMarker = () => {
     return
   }
 
+  const shouldOpenPopup = props.openPopup && (popup ? popup.isOpen() : true)
   removeMarker()
 
   const markerConfig = createMarkerElement()
@@ -109,7 +111,7 @@ const createMarker = () => {
     .setPopup(popup)
     .addTo(props.map)
 
-  if (props.openPopup) {
+  if (shouldOpenPopup) {
     marker.togglePopup()
   }
 }

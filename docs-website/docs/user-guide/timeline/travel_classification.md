@@ -37,7 +37,9 @@ These types are always available in classification results:
 
 These types can be enabled or disabled in your Timeline Preferences:
 
-- **CAR**  -  Motorized transport including cars, buses, motorcycles (enabled by default)
+- **CAR**  -  Motorized transport label (enabled by default)
+- **MOTORCYCLE**  -  Optional motorized transport label
+- **PUBLIC_TRANSPORT**  -  Optional label for car-like public transportation trips; it does not detect a specific transit vehicle
 - **BICYCLE**  -  Medium-speed cycling
 - **RUNNING**  -  Medium-low speed running and jogging
 - **TRAIN**  -  High-speed rail travel with consistent speeds

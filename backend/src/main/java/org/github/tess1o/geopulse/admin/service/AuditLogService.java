@@ -58,13 +58,14 @@ public class AuditLogService {
      * Log a setting change.
      */
     @Transactional
-    public void logSettingChange(UUID adminUserId, String settingKey, String oldValue, String newValue, String ipAddress) {
+    public void logSettingChange(UUID adminUserId, String settingKey, String oldValue, String newValue,
+                                 boolean redactValues, String ipAddress) {
         logAction(
                 adminUserId,
                 ActionType.SETTING_CHANGED,
                 TargetType.SETTING,
                 settingKey,
-                Map.of("oldValue", oldValue, "newValue", newValue),
+                redactValues ? Map.of("redacted", true) : Map.of("oldValue", oldValue, "newValue", newValue),
                 ipAddress
         );
     }
@@ -73,13 +74,14 @@ public class AuditLogService {
      * Log a setting reset to default.
      */
     @Transactional
-    public void logSettingReset(UUID adminUserId, String settingKey, String oldValue, String ipAddress) {
+    public void logSettingReset(UUID adminUserId, String settingKey, String oldValue,
+                                boolean redactValues, String ipAddress) {
         logAction(
                 adminUserId,
                 ActionType.SETTING_RESET,
                 TargetType.SETTING,
                 settingKey,
-                Map.of("oldValue", oldValue),
+                redactValues ? Map.of("redacted", true) : Map.of("oldValue", oldValue),
                 ipAddress
         );
     }

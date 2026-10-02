@@ -2,7 +2,7 @@
   <Dialog
     v-model:visible="internalVisible"
     modal
-    header="Confirm Bulk Save"
+    :header="t('miscDialogs.bulkSaveConfirm.header')"
     class="gp-dialog-sm"
     @hide="onDialogHide"
   >
@@ -10,22 +10,22 @@
       <div class="summary-section">
         <i class="pi pi-exclamation-triangle warning-icon" />
         <div class="summary-text">
-          <p class="summary-title">You are about to save {{ totalCount }} favorite location{{ totalCount > 1 ? 's' : '' }}:</p>
+          <p class="summary-title">{{ t('miscDialogs.bulkSaveConfirm.summaryTitle', { count: totalCount }, totalCount) }}</p>
           <ul class="summary-list">
-            <li v-if="pointsCount > 0">{{ pointsCount }} point location{{ pointsCount > 1 ? 's' : '' }}</li>
-            <li v-if="areasCount > 0">{{ areasCount }} area{{ areasCount > 1 ? 's' : '' }}</li>
+            <li v-if="pointsCount > 0">{{ t('miscDialogs.bulkSaveConfirm.pointsItem', { count: pointsCount }, pointsCount) }}</li>
+            <li v-if="areasCount > 0">{{ t('miscDialogs.bulkSaveConfirm.areasItem', { count: areasCount }, areasCount) }}</li>
           </ul>
         </div>
       </div>
 
       <Message severity="info" :closable="false">
-        These favorite locations will be saved and after that a full timeline regeneration will be triggered.
+        {{ t('miscDialogs.bulkSaveConfirm.infoMessage') }}
       </Message>
     </div>
 
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('common.cancel')"
         icon="pi pi-times"
         severity="secondary"
         outlined
@@ -33,7 +33,7 @@
         @click="onCancel"
       />
       <Button
-        label="Confirm"
+        :label="t('miscDialogs.bulkSaveConfirm.confirm')"
         icon="pi pi-check"
         severity="success"
         :loading="loading"
@@ -45,9 +45,12 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {
@@ -112,7 +115,7 @@ const onConfirm = () => {
 
 .warning-icon {
   font-size: 2rem;
-  color: var(--yellow-500);
+  color: var(--p-yellow-500);
   flex-shrink: 0;
 }
 
@@ -123,13 +126,13 @@ const onConfirm = () => {
 .summary-title {
   margin: 0 0 0.5rem 0;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .summary-list {
   margin: 0;
   padding-left: 1.5rem;
-  color: var(--text-color-secondary);
+  color: var(--gp-text-secondary);
 }
 
 .summary-list li {

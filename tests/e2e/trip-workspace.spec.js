@@ -9,10 +9,10 @@ const createAndLoginRasterUser = (page, dbManager, userData) =>
   TestSetupHelper.createAndLoginUser(page, dbManager, userData, { mapMode: 'RASTER' });
 
 const stubPlanSuggestion = async (page, title = 'Stubbed plan suggestion') => {
-  await page.route('**/api/trips/plan-suggestion*', async (route) => {
+  await page.route('**/api/v1/trip-planning/suggestions*', async (route) => {
     const url = new URL(route.request().url());
-    const lat = Number(url.searchParams.get('lat') || 51.5007);
-    const lon = Number(url.searchParams.get('lon') || -0.1246);
+    const lat = Number(url.searchParams.get('latitude') || url.searchParams.get('lat') || 51.5007);
+    const lon = Number(url.searchParams.get('longitude') || url.searchParams.get('lon') || -0.1246);
 
     await route.fulfill({
       status: 200,
@@ -52,17 +52,18 @@ test.describe('Trip Workspace Page', () => {
     const tripWorkspacePage = new TripWorkspacePage(page);
     await tripWorkspacePage.waitForPageLoad();
 
-    expect(await tripWorkspacePage.isOverviewTabVisible()).toBe(false);
-    expect(await tripWorkspacePage.isPlanTabVisible()).toBe(true);
-
-    await tripWorkspacePage.isPlanningCalloutVisible('Future trip planning mode');
-    expect(await tripWorkspacePage.getComparisonCardTitle()).toBe('Planned Stops');
-    expect(await tripWorkspacePage.isMatchedStayColumnVisible()).toBe(false);
+    // Same layout in every trip state: summary bar + map + stops rail, no tabs.
+    expect(await tripWorkspacePage.isSummaryBarVisible()).toBe(true);
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (0)');
+    // A future trip has no timeline/path data, so there is nothing to switch to.
+    expect(await tripWorkspacePage.isLensSwitchVisible()).toBe(false);
 
     await tripWorkspacePage.addPlanItemFromMap({ title: 'Tower Bridge' });
 
     const createdItem = await TestSetupHelper.getTripPlanItemByTitle(dbManager, tripId, 'Tower Bridge');
     expect(createdItem).toBeTruthy();
+    await expect(tripWorkspacePage.rowByTitle('Tower Bridge')).toBeVisible({ timeout: 10000 });
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (1)');
 
     await tripWorkspacePage.editPlannedItem('Tower Bridge', 'Tower Bridge Updated');
 
@@ -74,9 +75,10 @@ test.describe('Trip Workspace Page', () => {
     await expect
       .poll(async () => TestSetupHelper.getTripPlanItemById(dbManager, createdItem.id), { timeout: 10000 })
       .toBeNull();
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (0)');
   });
 
-  test('ACTIVE trip: overview+plan tabs, map planning, and visit action transitions', async ({ page, isolatedUsers, dbManager }) => {
+  test('ACTIVE trip: stops rail, map planning, and mark-visited action', async ({ page, isolatedUsers, dbManager }) => {
     const testUser = createManagedUser(isolatedUsers);
     const { user } = await createAndLoginRasterUser(page, dbManager, testUser);
 
@@ -105,31 +107,28 @@ test.describe('Trip Workspace Page', () => {
     const tripWorkspacePage = new TripWorkspacePage(page);
     await tripWorkspacePage.waitForPageLoad();
 
-    expect(await tripWorkspacePage.isOverviewTabVisible()).toBe(true);
-    expect(await tripWorkspacePage.isPlanTabVisible()).toBe(true);
-
-    await tripWorkspacePage.openPlanTab();
-    await tripWorkspacePage.isPlanningCalloutVisible('Active trip planning mode');
+    expect(await tripWorkspacePage.isSummaryBarVisible()).toBe(true);
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (1)');
+    expect(await tripWorkspacePage.getStatusText('Sagrada Familia')).toContain('Planned');
 
     await tripWorkspacePage.addPlanItemFromMap({ title: 'Park Guell' });
     const addedFromMap = await TestSetupHelper.getTripPlanItemByTitle(dbManager, tripId, 'Park Guell');
     expect(addedFromMap).toBeTruthy();
+    await expect(tripWorkspacePage.rowByTitle('Park Guell')).toBeVisible({ timeout: 10000 });
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (2)');
 
-    await tripWorkspacePage.applyVisitAction('Sagrada Familia', 'markVisited');
+    await tripWorkspacePage.markVisited('Sagrada Familia');
     await expect.poll(async () => tripWorkspacePage.getStatusText('Sagrada Familia'), { timeout: 10000 }).toContain('Visited');
 
-    await tripWorkspacePage.applyVisitAction('Sagrada Familia', 'markNotVisited');
-    await expect.poll(async () => tripWorkspacePage.getStatusText('Sagrada Familia'), { timeout: 10000 }).toContain('Missed');
+    const visitedItem = await TestSetupHelper.getTripPlanItemById(dbManager, seededItemId);
+    expect(visitedItem.is_visited).toBe(true);
+    expect(visitedItem.manual_override_state).toBe('CONFIRMED');
 
-    await tripWorkspacePage.applyVisitAction('Sagrada Familia', 'reset');
-    await expect.poll(async () => tripWorkspacePage.getStatusText('Sagrada Familia'), { timeout: 10000 }).toContain('Planned');
-
-    const resetItem = await TestSetupHelper.getTripPlanItemById(dbManager, seededItemId);
-    expect(resetItem.manual_override_state).toBeNull();
-    expect(resetItem.is_visited).toBe(false);
+    // The other stop is untouched.
+    expect(await tripWorkspacePage.getStatusText('Park Guell')).toContain('Planned');
   });
 
-  test('COMPLETED trip: plan-vs-actual with matched stay evidence and manual override reset', async ({ page, isolatedUsers, dbManager }) => {
+  test('COMPLETED trip: auto-matched visit shown in the rail and the Actual lens', async ({ page, isolatedUsers, dbManager }) => {
     const testUser = createManagedUser(isolatedUsers);
     const { user } = await createAndLoginRasterUser(page, dbManager, testUser);
 
@@ -181,21 +180,21 @@ test.describe('Trip Workspace Page', () => {
     const tripWorkspacePage = new TripWorkspacePage(page);
     await tripWorkspacePage.waitForPageLoad();
 
-    await tripWorkspacePage.openPlanTab();
+    // The rail opens on the Plan lens; the stay makes the Actual lens available.
+    await expect(tripWorkspacePage.lensSwitch()).toBeVisible({ timeout: 15000 });
 
-    expect(await tripWorkspacePage.getComparisonCardTitle()).toBe('Plan vs Actual');
-    expect(await tripWorkspacePage.isMatchedStayColumnVisible()).toBe(true);
-
-    await tripWorkspacePage.expectMatchedStayEvidence('Eiffel Tower', 'Eiffel Tower Stay', 'High');
-
-    await tripWorkspacePage.applyVisitAction('Eiffel Tower', 'markNotVisited');
-    await expect.poll(async () => tripWorkspacePage.getStatusText('Eiffel Tower'), { timeout: 10000 }).toContain('Missed');
-
-    await tripWorkspacePage.applyVisitAction('Eiffel Tower', 'reset');
+    expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (1)');
     await expect.poll(async () => tripWorkspacePage.getStatusText('Eiffel Tower'), { timeout: 10000 }).toContain('Visited');
+    expect(await tripWorkspacePage.getStopSummaryText('Eiffel Tower')).toContain('96%');
 
-    const resetItem = await TestSetupHelper.getTripPlanItemById(dbManager, matchedItemId);
-    expect(resetItem.manual_override_state).toBeNull();
+    await tripWorkspacePage.openLens('Actual');
+    await expect(page.locator('.trip-rail .trip-actual-lens')).toContainText('Eiffel Tower Stay', { timeout: 15000 });
+
+    await tripWorkspacePage.openLens('Plan');
+    await expect(tripWorkspacePage.rowByTitle('Eiffel Tower')).toBeVisible({ timeout: 10000 });
+
+    const item = await TestSetupHelper.getTripPlanItemById(dbManager, matchedItemId);
+    expect(item.manual_override_state).toBeNull();
     const persistedMatch = await dbManager.client.query(
       'SELECT decision FROM trip_place_visit_match WHERE trip_id = $1 AND plan_item_id = $2 ORDER BY id DESC LIMIT 1',
       [tripId, matchedItemId]

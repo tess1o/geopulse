@@ -110,7 +110,7 @@ public class StreamingGoogleTimelineParser {
                 // Look at first field name to determine format
                 token = parser.nextToken();
                 if (token == JsonToken.FIELD_NAME) {
-                    String firstField = parser.getCurrentName();
+                    String firstField = parser.currentName();
                     if ("locations".equals(firstField)) {
                         // Records format: object with locations array
                         stats.formatType = FormatType.RECORDS;
@@ -163,7 +163,7 @@ public class StreamingGoogleTimelineParser {
         Instant endTime = null;
         // Track which section we're in
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -223,7 +223,7 @@ public class StreamingGoogleTimelineParser {
         // Parser is already at START_OBJECT, no need to advance
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -242,7 +242,7 @@ public class StreamingGoogleTimelineParser {
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        String tcField = parser.getCurrentName();
+                        String tcField = parser.currentName();
                         if ("type".equals(tcField)) {
                             parser.nextToken();
                             activityType = parser.getValueAsString();
@@ -313,7 +313,7 @@ public class StreamingGoogleTimelineParser {
         // Parser is already at START_OBJECT, no need to advance
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -324,7 +324,7 @@ public class StreamingGoogleTimelineParser {
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        String tcField = parser.getCurrentName();
+                        String tcField = parser.currentName();
                         if ("placeLocation".equals(tcField)) {
                             parser.nextToken();
                             placeLocation = parser.getValueAsString();
@@ -368,7 +368,7 @@ public class StreamingGoogleTimelineParser {
                 int offsetMinutes = 0;
 
                 while (parser.nextToken() != JsonToken.END_OBJECT) {
-                    String fieldName = parser.getCurrentName();
+                    String fieldName = parser.currentName();
                     if (fieldName == null) continue;
 
                     if ("point".equals(fieldName)) {
@@ -448,7 +448,7 @@ public class StreamingGoogleTimelineParser {
 
         // Parser is positioned at START_OBJECT of a location entry
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -510,13 +510,13 @@ public class StreamingGoogleTimelineParser {
         // or at START_OBJECT (if called directly)
         // Handle the first field if we're already at it
         if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             processSemanticSegmentField(parser, fieldName, callback, stats);
         }
 
         // Continue processing remaining fields
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
             processSemanticSegmentField(parser, fieldName, callback, stats);
         }
@@ -553,7 +553,7 @@ public class StreamingGoogleTimelineParser {
         Instant endTime = null;
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -591,7 +591,7 @@ public class StreamingGoogleTimelineParser {
         parser.nextToken(); // START_OBJECT
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -602,11 +602,11 @@ public class StreamingGoogleTimelineParser {
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        String tcField = parser.getCurrentName();
+                        String tcField = parser.currentName();
                         if ("placeLocation".equals(tcField)) {
                             parser.nextToken(); // START_OBJECT
                             while (parser.nextToken() != JsonToken.END_OBJECT) {
-                                if ("latLng".equals(parser.getCurrentName())) {
+                                if ("latLng".equals(parser.currentName())) {
                                     parser.nextToken();
                                     latLng = parser.getValueAsString();
                                 } else {
@@ -650,14 +650,14 @@ public class StreamingGoogleTimelineParser {
         parser.nextToken(); // START_OBJECT
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {
                 case "start" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        if ("latLng".equals(parser.getCurrentName())) {
+                        if ("latLng".equals(parser.currentName())) {
                             parser.nextToken();
                             startLatLng = parser.getValueAsString();
                         } else {
@@ -668,7 +668,7 @@ public class StreamingGoogleTimelineParser {
                 case "end" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        if ("latLng".equals(parser.getCurrentName())) {
+                        if ("latLng".equals(parser.currentName())) {
                             parser.nextToken();
                             endLatLng = parser.getValueAsString();
                         } else {
@@ -683,7 +683,7 @@ public class StreamingGoogleTimelineParser {
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
                     while (parser.nextToken() != JsonToken.END_OBJECT) {
-                        String tcField = parser.getCurrentName();
+                        String tcField = parser.currentName();
                         if ("type".equals(tcField)) {
                             parser.nextToken();
                             activityType = parser.getValueAsString();
@@ -755,7 +755,7 @@ public class StreamingGoogleTimelineParser {
             Instant time = null;
 
             while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.getCurrentName();
+                String fieldName = parser.currentName();
                 if (fieldName == null) continue;
 
                 if ("point".equals(fieldName)) {
@@ -803,7 +803,7 @@ public class StreamingGoogleTimelineParser {
             throws IOException {
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             if ("position".equals(fieldName)) {
@@ -827,7 +827,7 @@ public class StreamingGoogleTimelineParser {
         parser.nextToken(); // START_OBJECT
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             if (fieldName == null) continue;
 
             switch (fieldName) {

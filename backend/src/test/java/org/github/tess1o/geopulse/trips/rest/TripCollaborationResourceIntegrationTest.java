@@ -29,21 +29,31 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
+// restrictToAnnotatedClass was redundant here: there are no initArgs, so this resource returns the
+// same datasource config as the globally applied one, while the flag still forced Quarkus to restart
+// the application for this class. setUp() creates its own users with random emails, so it does not
+// need a database to itself.
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripCollaborationResourceIntegrationTest {
 
     @Inject
     AuthenticationService authenticationService;
+
     @Inject
+
     UserService userService;
+
     @Inject
     UserRepository userRepository;
+
     @Inject
     TripRepository tripRepository;
+
     @Inject
     TripCollaboratorRepository tripCollaboratorRepository;
+
     @Inject
     FriendshipRepository friendshipRepository;
 
@@ -102,12 +112,11 @@ class TripCollaborationResourceIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + friendToken)
                 .when()
-                .get("/api/trips/{tripId}", tripId)
+                .get("/api/v1/trips/{tripId}", tripId)
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.isOwner", equalTo(false))
-                .body("data.accessRole", equalTo("VIEW"));
+                .body("isOwner", equalTo(false))
+                .body("accessRole", equalTo("VIEW"));
 
         given()
                 .contentType(ContentType.JSON)
@@ -118,10 +127,11 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/trips/{tripId}/plan-items", tripId)
+                .post("/api/v1/trips/{tripId}/plan-items", tripId)
                 .then()
+                .log().body(true)
                 .statusCode(404)
-                .body("status", equalTo("error"));
+                .body("code", equalTo("TRIP_NOT_FOUND"));
     }
 
     @Test
@@ -135,11 +145,10 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .put("/api/trips/{tripId}/collaborators/{friendId}", tripId, friendId)
+                .put("/api/v1/trips/{tripId}/collaborators/{friendId}", tripId, friendId)
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.accessRole", equalTo("EDIT"));
+                .body("accessRole", equalTo("EDIT"));
 
         given()
                 .contentType(ContentType.JSON)
@@ -150,11 +159,10 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/trips/{tripId}/plan-items", tripId)
+                .post("/api/v1/trips/{tripId}/plan-items", tripId)
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.title", equalTo("Now editable"));
+                .body("title", equalTo("Now editable"));
     }
 
     @Test
@@ -163,10 +171,11 @@ class TripCollaborationResourceIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + outsiderToken)
                 .when()
-                .get("/api/trips/{tripId}", tripId)
+                .get("/api/v1/trips/{tripId}", tripId)
                 .then()
+                .log().body(true)
                 .statusCode(404)
-                .body("status", equalTo("error"));
+                .body("code", equalTo("TRIP_NOT_FOUND"));
     }
 
     private void persistFriendship(UserEntity owner, UserEntity friend) {

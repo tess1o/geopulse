@@ -316,7 +316,7 @@ public class DataGapStayOverrideService {
         try {
             return DataGapStayOverrideLocationStrategy.valueOf(request.getLocationStrategy().trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Invalid locationStrategy. Allowed values: LATEST_POINT, SELECTED_LOCATION");
+            throw new IllegalArgumentException("Invalid locationStrategy. Allowed values: LATEST_POINT, SELECTED_LOCATION", ex);
         }
     }
 

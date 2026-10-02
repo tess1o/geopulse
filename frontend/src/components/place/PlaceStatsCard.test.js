@@ -1,96 +1,66 @@
-import { mount } from '@vue/test-utils'
+import { shallowMount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import PlaceStatsCard from './PlaceStatsCard.vue'
 
-let PlaceStatsCard
-
-const baseStatistics = {
-  totalVisits: 12,
-  visitsThisWeek: 1,
-  visitsThisMonth: 4,
-  visitsThisYear: 12,
-  totalDuration: 7200,
-  averageDuration: 600,
-  minDuration: 120,
-  maxDuration: 1800,
-  firstVisit: '2026-01-02T08:00:00Z',
-  lastVisit: '2026-07-15T18:00:00Z'
-}
-
-const mountCard = (statistics) => mount(PlaceStatsCard, {
-  props: { statistics },
-  global: {
-    stubs: {
-      BaseCard: {
-        props: ['title'],
-        template: '<section><h2>{{ title }}</h2><slot /></section>'
-      }
-    }
-  }
-})
-
-const installLocalStorageShim = () => {
-  if (typeof globalThis.localStorage?.getItem === 'function') {
-    return
-  }
-
+vi.hoisted(() => {
   const storage = new Map()
   const localStorageShim = {
-    getItem: vi.fn((key) => storage.get(key) || null),
-    setItem: vi.fn((key, value) => storage.set(key, String(value))),
-    removeItem: vi.fn((key) => storage.delete(key)),
-    clear: vi.fn(() => storage.clear())
+    getItem: (key) => storage.get(key) || null,
+    setItem: (key, value) => storage.set(key, String(value)),
+    removeItem: (key) => storage.delete(key),
+    clear: () => storage.clear()
   }
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: localStorageShim })
+})
 
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: localStorageShim
-  })
-  Object.defineProperty(window, 'localStorage', {
-    configurable: true,
-    value: localStorageShim
-  })
+vi.mock('@/composables/useTimezone', () => ({
+  useTimezone: () => ({ format: (value) => `date:${value}` })
+}))
+
+const MetricItem = {
+  props: ['label', 'value'],
+  template: '<div class="metric-stub">{{ label }}: {{ value }}</div>'
+}
+
+const statistics = {
+  totalVisits: 12,
+  totalDuration: 7200,
+  averageDuration: 600,
+  minDuration: 60,
+  maxDuration: 1800,
+  firstVisit: 'first',
+  lastVisit: 'last',
+  visitsThisWeek: 2,
+  visitsThisMonth: 5,
+  visitsThisYear: 10
 }
 
 describe('PlaceStatsCard', () => {
-  beforeAll(async () => {
-    installLocalStorageShim()
-    PlaceStatsCard = (await import('./PlaceStatsCard.vue')).default
-  })
-
-  beforeEach(() => {
-    localStorage.setItem('userInfo', JSON.stringify({
-      timezone: 'UTC',
-      dateFormat: 'MDY',
-      timeFormat: '24h'
-    }))
-  })
-
-  afterEach(() => {
-    localStorage.clear()
-  })
-
-  it('does not render visit patterns when the backend omits them', () => {
-    const wrapper = mountCard(baseStatistics)
-
-    expect(wrapper.text()).not.toContain('Visit Patterns')
-    expect(wrapper.text()).not.toContain('Typical Day')
-  })
-
-  it('renders compact visit patterns when provided', () => {
-    const wrapper = mountCard({
-      ...baseStatistics,
-      visitPatterns: {
-        mostCommonDayOfWeek: 'Friday',
-        mostCommonDayVisitCount: 5,
-        mostCommonArrivalPeriod: 'Evening',
-        mostCommonArrivalPeriodVisitCount: 7,
-        averageDaysBetweenVisits: 8.4,
-        minimumVisitsRequired: 10
-      }
+  it('renders the shared visit metrics and only shows available patterns', () => {
+    const withoutPatterns = shallowMount(PlaceStatsCard, {
+      props: { statistics },
+      global: { stubs: { BaseCard: { template: '<section><slot /></section>' }, MetricItem } }
     })
+    expect(withoutPatterns.text()).toContain('Total visits: 12')
+    expect(withoutPatterns.text()).toContain('Activity')
+    expect(withoutPatterns.text()).toContain('First visit: date:first')
+    expect(withoutPatterns.text()).not.toContain('Visit patterns')
 
-    expect(wrapper.text()).toContain('Visit Patterns')
-    expect(wrapper.text()).toContain('Friday')
-    expect(wrapper.text()).toContain('Evening')
-    expect(wrapper.text()).toContain('Every 8 days')
+    const withPatterns = shallowMount(PlaceStatsCard, {
+      props: {
+        statistics: {
+          ...statistics,
+          visitPatterns: {
+            mostCommonDayOfWeek: 'Saturday',
+            mostCommonArrivalPeriod: 'Evening',
+            averageDaysBetweenVisits: 3
+          }
+        }
+      },
+      global: { stubs: { BaseCard: { template: '<section><slot /></section>' }, MetricItem } }
+    })
+    expect(withPatterns.text()).toContain('Visit patterns')
+    expect(withPatterns.text()).toContain('Typical day: Saturday')
+    expect(withPatterns.text()).toContain('Visit cadence: Every 3 days')
   })
 })

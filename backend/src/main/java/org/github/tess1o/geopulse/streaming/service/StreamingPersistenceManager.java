@@ -20,10 +20,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -124,19 +121,19 @@ public class StreamingPersistenceManager {
         // Step 1: Collect all favorite and geocoding IDs
         Set<Long> favoriteIds = stayList.stream()
                 .map(Stay::getFavoriteId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .filter(id -> id != 0)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         Set<Long> geocodingIds = stayList.stream()
                 .map(Stay::getGeocodingId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .filter(id -> id != 0)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         // Step 2: Batch load all favorites and geocoding entities using repositories
         Map<Long, FavoritesEntity> favoriteMap =
-                favoriteIds.isEmpty() ? java.util.Map.of() :
+                favoriteIds.isEmpty() ? Map.of() :
                         favoritesRepository.find("id in ?1", favoriteIds)
                                 .list()
                                 .stream()
@@ -146,7 +143,7 @@ public class StreamingPersistenceManager {
                                 ));
 
         Map<Long, ReverseGeocodingLocationEntity> geocodingMap =
-                geocodingIds.isEmpty() ? java.util.Map.of() :
+                geocodingIds.isEmpty() ? Map.of() :
                         geocodingRepository.find("id in ?1", geocodingIds)
                                 .list()
                                 .stream()

@@ -1,7 +1,12 @@
 import { hasPhotoThumbnail } from '@/utils/immichPhotoThumbnailMeta'
+import {
+  DEFAULT_NEARBY_GROUP_RADIUS_METERS,
+  addToNearbyGroup,
+  findNearbyGroup as findNearbyGroupWithRadius
+} from './nearbyPointGrouping'
 
 const PHOTO_MARKER_KEY_FACTOR = 10000
-const NEARBY_PHOTO_GROUP_RADIUS_METERS = 15
+const NEARBY_PHOTO_GROUP_RADIUS_METERS = DEFAULT_NEARBY_GROUP_RADIUS_METERS
 
 export const getPhotoMarkerKey = (latitude, longitude) => {
   const roundedLat = Math.round(latitude * PHOTO_MARKER_KEY_FACTOR) / PHOTO_MARKER_KEY_FACTOR
@@ -9,32 +14,13 @@ export const getPhotoMarkerKey = (latitude, longitude) => {
   return `${roundedLat},${roundedLng}`
 }
 
-const distanceMeters = (a, b) => {
-  const lat1 = a.latitude * Math.PI / 180
-  const lat2 = b.latitude * Math.PI / 180
-  const deltaLat = lat2 - lat1
-  const deltaLng = (b.longitude - a.longitude) * Math.PI / 180
-  const sinLat = Math.sin(deltaLat / 2)
-  const sinLng = Math.sin(deltaLng / 2)
-  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng
-  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
-}
-
 const getPhotoGroupCount = (group) => {
   return Math.max(group.count || group.photos?.length || 1, 1)
 }
 
-const findNearbyGroup = (groups, point) => {
-  return groups.find((group) => distanceMeters(group, point) <= NEARBY_PHOTO_GROUP_RADIUS_METERS)
-}
-
-const addToNearbyGroup = (group, point, count = 1) => {
-  const currentCount = Math.max(Number(group.count || 0), 0)
-  const nextCount = currentCount + count
-  group.latitude = ((group.latitude * currentCount) + (point.latitude * count)) / nextCount
-  group.longitude = ((group.longitude * currentCount) + (point.longitude * count)) / nextCount
-  group.count = nextCount
-}
+const findNearbyGroup = (groups, point) => (
+  findNearbyGroupWithRadius(groups, point, NEARBY_PHOTO_GROUP_RADIUS_METERS)
+)
 
 const getMarkerGroupCount = (markerGroup) => {
   if (Number.isFinite(markerGroup.count)) {

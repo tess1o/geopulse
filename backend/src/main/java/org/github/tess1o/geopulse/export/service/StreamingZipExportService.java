@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.zip.ZipEntry;
@@ -107,7 +108,9 @@ public class StreamingZipExportService {
                         int currentProgress = progressStart + (batchCount[0] % 10) * progressRange / 10;
                         job.updateProgress(
                                 Math.min(currentProgress, progressEnd),
-                                String.format("%s %s: %d records", progressPrefix, fileName, totalWritten[0])
+                                "streamingRecordsToZipProgress",
+                                String.format("%s %s: %d records", progressPrefix, fileName, totalWritten[0]),
+                                Map.of("written", totalWritten[0])
                         );
                     }
 
@@ -116,7 +119,7 @@ public class StreamingZipExportService {
                     }
                 });
             } catch (UncheckedIOException e) {
-                throw e.getCause();
+                throw e.getCause(); // NOPMD - deliberately rethrow the original checked cause
             }
 
             gen.writeEndArray(); // End array field

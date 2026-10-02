@@ -1,21 +1,23 @@
 package org.github.tess1o.geopulse.health.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/health")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SERVICE_UNAVAILABLE;
+
+@Path("/system/health")
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
@@ -30,26 +32,20 @@ public class HealthResource {
     }
 
     @GET
-    public Response checkHealth() {
+    public HealthStatusResponse checkHealth() {
         try {
             entityManager.createNativeQuery("SELECT 1").getSingleResult();
-            
-            Map<String, Object> healthStatus = new HashMap<>();
-            healthStatus.put("status", "UP");
-            healthStatus.put("database", "UP");
-            
-            return Response.ok(ApiResponse.success(healthStatus)).build();
-        } catch (Exception e) {
-            log.error("Health check failed", e);
-            
-            Map<String, Object> healthStatus = new HashMap<>();
-            healthStatus.put("status", "DOWN");
-            healthStatus.put("database", "DOWN");
-            healthStatus.put("error", e.getMessage());
-            
-            return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                    .entity(ApiResponse.error("Health check failed", healthStatus))
-                    .build();
+            return new HealthStatusResponse(HealthStatus.UP, HealthStatus.UP);
+        } catch (PersistenceException e) {
+            throw new GeoPulseException(SERVICE_UNAVAILABLE, "Database health check failed",
+                    Map.of("database", HealthStatus.DOWN.name()), e);
         }
+    }
+
+    public record HealthStatusResponse(HealthStatus status, HealthStatus database) { }
+
+    public enum HealthStatus {
+        UP,
+        DOWN
     }
 }

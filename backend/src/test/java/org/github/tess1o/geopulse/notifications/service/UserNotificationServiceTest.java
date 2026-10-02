@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 import org.github.tess1o.geopulse.notifications.model.entity.UserNotificationEntity;
 import org.github.tess1o.geopulse.notifications.repository.UserNotificationRepository;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -50,26 +51,6 @@ class UserNotificationServiceTest {
         when(syncAdapters.iterator()).thenReturn(List.of(geofenceSyncAdapter).iterator());
         when(geofenceSyncAdapter.source()).thenReturn(NotificationSource.GEOFENCE);
         service = new UserNotificationService(notificationRepository, syncAdapters);
-    }
-
-    @Test
-    void shouldClampListLimitToMinimumOne() {
-        UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.findByOwner(ownerId, 1)).thenReturn(List.of());
-
-        service.listNotifications(ownerId, 0);
-
-        verify(notificationRepository).findByOwner(ownerId, 1);
-    }
-
-    @Test
-    void shouldClampListLimitToMaximum() {
-        UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.findByOwner(ownerId, 200)).thenReturn(List.of());
-
-        service.listNotifications(ownerId, 999);
-
-        verify(notificationRepository).findByOwner(ownerId, 200);
     }
 
     @Test
@@ -180,13 +161,14 @@ class UserNotificationServiceTest {
         UserNotificationEntity seen = baseEntity(ownerId, Instant.parse("2026-03-19T12:00:00Z"));
         seen.setId(2L);
         seen.setTitle("B");
-        when(notificationRepository.findByOwner(ownerId, 50)).thenReturn(List.of(unseen, seen));
+        when(notificationRepository.findPageByOwner(ownerId, 0, 50, null, null, null))
+                .thenReturn(new UserNotificationRepository.UserNotificationPageResult(List.of(unseen, seen), 2));
 
-        List<UserNotificationDto> result = service.listNotifications(ownerId, 50);
+        PageResponse<UserNotificationDto> result = service.listNotificationsPage(ownerId, 0, 50, null, null, null);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getSeen()).isFalse();
-        assertThat(result.get(1).getSeen()).isTrue();
+        assertThat(result.items()).hasSize(2);
+        assertThat(result.items().get(0).getSeen()).isFalse();
+        assertThat(result.items().get(1).getSeen()).isTrue();
     }
 
     private UserNotificationEntity baseEntity(UUID ownerId, Instant seenAt) {

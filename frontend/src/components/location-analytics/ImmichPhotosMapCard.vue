@@ -20,12 +20,13 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { MapContainer } from '@/components/maps'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
+import { t as translate } from '@/locales'
 import '@/styles/photo-map-markers.css'
 
 const props = defineProps({
   title: {
     type: String,
-    default: 'Photo Map'
+    default: () => translate('analytics.immichPhotosMapCard.defaultTitle')
   },
   photos: {
     type: Array,

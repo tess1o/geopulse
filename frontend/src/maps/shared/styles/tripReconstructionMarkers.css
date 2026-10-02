@@ -1,3 +1,4 @@
+/* Map markers keep these colours in dark mode: the base tiles don't switch theme (see the marker tokens in tokens.css). */
 .trip-reconstruction-waypoint-icon-wrapper,
 .trip-reconstruction-waypoint-marker {
   box-sizing: border-box;
@@ -44,6 +45,8 @@
 .trip-reconstruction-waypoint-icon--end,
 .trip-reconstruction-waypoint-marker--end {
   background: #dc2626;
+  /* Circle = start, square = end (as for trip endpoints), so the ends differ by shape, not only color. */
+  border-radius: 6px;
 }
 
 .trip-reconstruction-waypoint-icon--mid,

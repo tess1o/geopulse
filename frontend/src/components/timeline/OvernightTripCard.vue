@@ -15,6 +15,7 @@
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
+            :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
         </div>
@@ -24,7 +25,7 @@
     <template #subtitle>
       <div class="timeline-subtitle">
         <p class="transition-title">
-          🔄 Transition to new place
+          🔄 {{ t('timeline.trip.transitionToNewPlace') }}
         </p>
       </div>
     </template>
@@ -32,26 +33,26 @@
     <template #content>
       <div class="trip-content">
         <p class="trip-detail">
-          📈 Total duration: <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
+          📈 {{ t('timeline.dataGap.totalDuration') }} <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
         </p>
         <p class="trip-detail">
-          ⏱️ On this day:
+          ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="font-bold"> {{ getOnThisDayText() }}</span>
         </p>
         <p v-if="tripItem.distanceMeters" class="trip-detail">
-          📏 Distance: <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
+          📏 {{ t('timeline.trip.distanceLabel') }} <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
         </p>
         <p class="trip-detail">
-          🚦 Movement:
+          🚦 {{ t('timeline.trip.movementLabel') }}
           <span class="font-bold">
             {{ getMovementIcon() }}
             {{ formatMovementType(tripItem.movementType) }}
-            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">(Manual)</span>
+            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
             <button
               v-if="showInlineEditIcon"
               class="movement-edit-icon-btn"
-              aria-label="Edit movement type"
-              :title="readOnly ? 'Movement type edits are disabled in demo mode' : 'Edit movement type'"
+              :aria-label="t('timeline.trip.editMovementType')"
+              :title="readOnly ? t('timeline.trip.movementEditDisabledDemo') : t('timeline.trip.editMovementType')"
               :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
@@ -63,12 +64,12 @@
               :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
-              Set movement type
+              {{ t('timeline.trip.setMovementType') }}
             </button>
           </span>
         </p>
         <p v-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
-          Algorithm did not recognize this trip.
+          {{ t('timeline.trip.unrecognizedHint') }}
         </p>
       </div>
     </template>
@@ -91,6 +92,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
@@ -104,6 +106,7 @@ import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
 
+const { t, te } = useI18n()
 const notesStore = useNotesStore()
 
 const props = defineProps({
@@ -118,6 +121,10 @@ const props = defineProps({
   immichPhotos: {
     type: Array,
     default: () => []
+  },
+  immichPhotoAuthToken: {
+    type: String,
+    default: null
   },
   notes: {
     type: Array,
@@ -134,10 +141,14 @@ const props = defineProps({
   readOnly: {
     type: Boolean,
     default: false
+  },
+  mapMatchingInfo: {
+    type: Object,
+    default: null
   }
 });
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved']);
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved', 'show-map-matching-details']);
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -158,10 +169,14 @@ const {
 
 const { appendGpsPointsMenuItem } = useTimelineGpsDrilldown(computed(() => props.tripItem))
 
+const isMapMatchingProblem = computed(() => (
+  props.mapMatchingInfo?.status === 'FAILED' || props.mapMatchingInfo?.status === 'SKIPPED'
+))
+
 const contextMenuItems = computed(() => {
   const items = [
     {
-      label: 'Change movement type...',
+      label: t('timeline.trip.changeMovementType'),
       icon: 'pi pi-pencil',
       disabled: props.readOnly,
       command: () => {
@@ -170,14 +185,14 @@ const contextMenuItems = computed(() => {
       }
     },
     {
-      label: 'Why this classification?',
+      label: t('timeline.trip.whyThisClassification'),
       icon: 'pi pi-question-circle',
       command: () => {
         emit('show-classification', props.tripItem)
       }
     },
     {
-      label: 'Split trip with stay...',
+      label: t('timeline.trip.splitTripWithStay'),
       icon: 'pi pi-directions-alt',
       disabled: props.readOnly,
       command: () => {
@@ -199,7 +214,7 @@ const contextMenuItems = computed(() => {
 
   if (props.allowNoteCreation) {
     items.push({
-      label: 'Add note...',
+      label: t('timeline.card.addNote'),
       icon: 'pi pi-file-edit',
       command: () => {
         noteEditorVisible.value = true
@@ -209,8 +224,18 @@ const contextMenuItems = computed(() => {
 
   appendGpsPointsMenuItem(items)
 
+  if (props.mapMatchingInfo) {
+    items.push({
+      label: t('timeline.trip.mapMatchingDetails'),
+      icon: isMapMatchingProblem.value ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle',
+      command: () => {
+        emit('show-map-matching-details', props.tripItem)
+      }
+    })
+  }
+
   items.push({
-    label: 'Export as GPX',
+    label: t('timeline.card.exportGpx'),
     icon: 'pi pi-download',
     command: () => {
       emit('export-gpx', props.tripItem)
@@ -250,6 +275,7 @@ const getMovementIcon = () => {
     case 'RUNNING': return '🏃'
     case 'CAR': return '🚗'
     case 'MOTORCYCLE': return '🏍️'
+    case 'PUBLIC_TRANSPORT': return '🚌'
     case 'TRAIN': return '🚊'
     case 'FLIGHT': return '✈️'
     case 'BOAT': return '⛵'
@@ -263,18 +289,7 @@ const getOnThisDayText = () => {
 }
 
 const formatMovementType = (type) => {
-  const movementTypeMap = {
-    WALK: 'Walk',
-    BICYCLE: 'Bicycle',
-    RUNNING: 'Running',
-    CAR: 'Car',
-    MOTORCYCLE: 'Motorcycle',
-    TRAIN: 'Train',
-    FLIGHT: 'Flight',
-    BOAT: 'Boat',
-    UNKNOWN: 'Unknown'
-  }
-  return movementTypeMap[type] || type
+  return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
 }
 
 const movementTypeSource = computed(() => props.tripItem.movementTypeSource || 'AUTO')
@@ -306,9 +321,13 @@ const openNotesViewer = () => {
 
 const getViewNotesLabel = () => {
   if (canManageMatchingNotes.value) {
-    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+    return matchingNotes.value.length === 1
+      ? t('timeline.card.manageNoteSingle')
+      : t('timeline.card.manageNotesMultiple', { count: matchingNotes.value.length })
   }
-  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
+  return matchingNotes.value.length === 1
+    ? t('timeline.card.viewNoteSingle')
+    : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
 }
 
 const handleEditMovementType = () => {
@@ -318,100 +337,32 @@ const handleEditMovementType = () => {
 
 </script>
 
-<style scoped>
-.timeline-card {
-  margin-top: var(--gp-spacing-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  overflow: hidden;
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
+<style scoped src="./timeline-card.css"></style>
 
+<style scoped>
 /* Mobile optimizations */
 @media (max-width: 768px) {
-  .timeline-card {
-    margin-top: var(--gp-spacing-sm);
-    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-  }
-  
-  .timeline-timestamp {
-    font-size: 0.875rem;
-  }
-  
-  .timeline-subtitle {
-    margin: var(--gp-spacing-xs) 0 0 0;
-    font-size: 0.875rem;
-  }
-  
   .trip-content {
     margin-top: var(--gp-spacing-xs);
   }
-  
+
   .trip-detail {
     margin: 2px 0;
     font-size: 0.8rem;
   }
-  
+
   .transition-title {
     font-size: 0.875rem;
   }
 }
 
-@media (hover: none) and (pointer: coarse) {
-  .timeline-card {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: pan-y;
-  }
-}
-
-.timeline-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
 .timeline-card--overnight-trip {
-  background-color: var(--gp-timeline-green-light);
+  background-color: var(--gp-timeline-card-trip);
   border-left: 4px solid var(--gp-success);
 }
 
-.timeline-timestamp {
-  color: var(--gp-primary);
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin: 0;
-  line-height: 1.2;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.timeline-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-  flex-wrap: wrap;
-}
-
-.timeline-title-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.timeline-subtitle {
-  margin: var(--gp-spacing-xs) 0 0 0;
-  color: var(--gp-text-primary);
-}
-
 .transition-title {
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
   margin: 0;
   font-size: 0.9rem;
@@ -432,7 +383,7 @@ const handleEditMovementType = () => {
 
 .trip-detail .font-bold {
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
 }
 
 .manual-indicator {
@@ -446,7 +397,7 @@ const handleEditMovementType = () => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   font-weight: 700;
   font-size: 0.75rem;
   cursor: pointer;
@@ -464,7 +415,7 @@ const handleEditMovementType = () => {
   margin-left: 8px;
   border: none;
   background: transparent;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -479,34 +430,5 @@ const handleEditMovementType = () => {
   color: var(--gp-warning);
   font-size: 0.78rem;
   font-weight: 600;
-}
-
-/* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-card--overnight-trip {
-  background-color: var(--gp-timeline-green);
-  border-left: 4px solid var(--gp-success);
-}
-
-.p-dark .timeline-timestamp,
-.p-dark .transition-title {
-  color: var(--gp-primary);
-}
-
-.p-dark .trip-detail .font-bold {
-  color: var(--gp-primary);
-}
-
-.p-dark .timeline-subtitle,
-.p-dark .trip-content,
-.p-dark .trip-detail {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 </style>

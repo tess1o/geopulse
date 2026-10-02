@@ -1,3 +1,5 @@
+import { t } from '@/locales'
+
 const formatTelemetryValue = (item) => {
   if (!item) return '-'
   const value = item.value ?? '-'
@@ -7,26 +9,28 @@ const formatTelemetryValue = (item) => {
 }
 
 const formatDateTime = (timezone, value) => {
-  if (!value) return 'Unknown'
+  if (!value) return t('maps.popups.common.unknown')
   try {
     return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
   } catch {
-    return 'Unknown'
+    return t('maps.popups.common.unknown')
   }
 }
 
 export const buildViewerLocationPopupModel = (location, { timezone } = {}) => {
   const isFallback = location?.source === 'fallback'
-  const title = location?.label || (isFallback ? 'Your last known GeoPulse location' : 'Your location')
+  const title = location?.label || (isFallback ? t('maps.popups.location.lastKnown') : t('maps.popups.location.yourLocation'))
   const timestamp = location?.timestamp
-    ? `${isFallback ? 'Last recorded' : 'Updated'} ${timezone.timeAgo(location.timestamp)}`
+    ? (isFallback
+      ? t('maps.popups.location.lastRecorded', { time: timezone.timeAgo(location.timestamp) })
+      : t('maps.popups.location.updated', { time: timezone.timeAgo(location.timestamp) }))
     : ''
   const rows = []
 
   if (location?.accuracy) {
     rows.push({
-      label: 'Accuracy',
-      value: `About ${Math.round(location.accuracy)} m`
+      label: t('maps.popups.common.accuracy'),
+      value: t('maps.popups.location.aboutMeters', { value: Math.round(location.accuracy) })
     })
   }
 
@@ -41,18 +45,18 @@ export const buildViewerLocationPopupModel = (location, { timezone } = {}) => {
 export const buildSharedLocationPopupModel = (shareData, { timezone } = {}) => {
   const telemetryRows = Array.isArray(shareData?.telemetry)
     ? shareData.telemetry.map((item) => ({
-        label: item.label || item.key || 'Value',
+        label: item.label || item.key || t('maps.popups.common.value'),
         value: formatTelemetryValue(item)
       }))
     : []
 
   return {
-    title: shareData?.sharedBy || 'Shared location',
+    title: shareData?.sharedBy || t('maps.popups.location.sharedLocation'),
     description: shareData?.description || '',
     rows: shareData?.sharedAt
       ? [
           {
-            label: 'Last seen',
+            label: t('maps.popups.friend.lastSeen'),
             value: timezone.timeAgo(shareData.sharedAt)
           }
         ]
@@ -60,7 +64,7 @@ export const buildSharedLocationPopupModel = (shareData, { timezone } = {}) => {
     sections: telemetryRows.length
       ? [
           {
-            title: 'Telemetry',
+            title: t('maps.popups.common.telemetry'),
             rows: telemetryRows
           }
         ]
@@ -70,25 +74,25 @@ export const buildSharedLocationPopupModel = (shareData, { timezone } = {}) => {
 }
 
 export const buildLocationAnalyticsPlacePopupModel = (place, { timezone, onOpenPlaceDetails } = {}) => {
+  const isCity = place?.type === 'city'
   const cityCountry = [place?.city, place?.country].filter(Boolean).join(', ')
 
   return {
-    title: place?.locationName || 'Unknown location',
+    title: place?.locationName || t('maps.popups.common.unknownLocation'),
     subtitle: cityCountry,
-    rows: [
-      {
-        label: 'Visits',
-        value: String(place?.visitCount ?? 0)
-      },
-      {
-        label: 'Last visit',
-        value: formatDateTime(timezone, place?.lastVisit)
-      }
-    ],
+    rows: isCity
+      ? [
+          { label: t('maps.popups.location.visits'), value: String(place?.visitCount ?? 0) },
+          { label: t('maps.popups.location.places'), value: String(place?.uniquePlaces ?? 0) }
+        ]
+      : [
+          { label: t('maps.popups.location.visits'), value: String(place?.visitCount ?? 0) },
+          { label: t('maps.popups.location.lastVisit'), value: formatDateTime(timezone, place?.lastVisit) }
+        ],
     actions: [
       {
         key: 'open-place-details',
-        label: 'Open place details',
+        label: isCity ? t('maps.popups.location.openCityDetails') : t('maps.popups.location.openPlaceDetails'),
         iconClass: 'pi pi-external-link',
         onClick: onOpenPlaceDetails
       }

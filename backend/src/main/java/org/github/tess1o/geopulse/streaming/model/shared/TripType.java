@@ -38,6 +38,12 @@ public enum TripType {
     MOTORCYCLE,
 
     /**
+     * Public transportation trip - uses the same motor-vehicle speed profile as CAR.
+     * It is a user-selected aggregate label for car-like trips, not bus detection.
+     */
+    PUBLIC_TRANSPORT,
+
+    /**
      * Train trip - characterized by high sustained speeds with low variance.
      * Optional type, disabled by default. Distinguished from cars by steady speed.
      */

@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.mapmatching.service;
 
+import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingTripResolutionDTO;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionStatus;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
@@ -83,11 +85,14 @@ class MapMatchingServiceFailureHandlingTest {
         when(target.getId()).thenReturn(2306L);
         when(target.getStatus()).thenReturn(MapMatchingStatus.FAILED);
         when(target.getLastError()).thenReturn("Valhalla trace_route failed with HTTP 400");
+        Instant failedAt = Instant.parse("2026-09-11T13:45:19Z");
+        when(target.getCompletedAt()).thenReturn(failedAt);
         when(matchRepository.findOwnedTargets(userId, List.of(2306L))).thenReturn(List.of(target));
 
         MapMatchingTripResolutionDTO result = service.status(userId, List.of(2306L)).getFirst();
 
-        assertThat(result.getStatus()).isEqualTo("FAILED");
+        assertThat(result.getStatus()).isEqualTo(MapMatchingResolutionStatus.FAILED);
+        assertThat(result.getCompletedAt()).isEqualTo(failedAt);
         assertThat(result.getRetryAt()).isNull();
         assertThat(result.getPollAfterMs()).isZero();
         assertThat(result.getSegments()).isNull();
@@ -98,12 +103,14 @@ class MapMatchingServiceFailureHandlingTest {
         UUID userId = UUID.randomUUID();
         UserEntity user = mock(UserEntity.class);
         TimelineTripEntity regeneratedTrip = mock(TimelineTripEntity.class);
+        Instant matchedAt = Instant.parse("2026-09-16T20:51:32Z");
         TimelineTripPathMatchEntity existing = TimelineTripPathMatchEntity.builder()
                 .id(4400L)
                 .user(user)
                 .provider("valhalla")
                 .profile("auto")
                 .status(MapMatchingStatus.MATCHED)
+                .completedAt(matchedAt)
                 .matchedSegmentsJson("[[{\"latitude\":50.1,\"longitude\":30.1}]]")
                 .build();
         Instant start = Instant.parse("2026-07-02T10:00:00Z");
@@ -114,7 +121,8 @@ class MapMatchingServiceFailureHandlingTest {
         when(configuration.getMaxTripDurationHours()).thenReturn(24);
         when(configuration.configHashSource()).thenReturn("algorithm=v4|valhalla");
         when(userRepository.findById(userId)).thenReturn(user);
-        when(user.getTimelineDisplayMapMatchingEnabled()).thenReturn(true);
+        when(user.getTimelineDisplayPreferences())
+                .thenReturn(TimelineDisplayPreferences.builder().mapMatchingEnabled(true).build());
         when(user.getId()).thenReturn(userId);
         when(timelineConfigurationProvider.getConfigurationForUser(userId))
                 .thenReturn(TimelineConfig.builder().useVelocityAccuracy(false).build());
@@ -136,7 +144,8 @@ class MapMatchingServiceFailureHandlingTest {
 
         assertThat(result.getTripId()).isEqualTo(9001L);
         assertThat(result.getTargetId()).isEqualTo(4400L);
-        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getStatus()).isEqualTo(MapMatchingResolutionStatus.COMPLETED);
+        assertThat(result.getCompletedAt()).isEqualTo(matchedAt);
         verify(matchRepository).attachToTrip(existing, regeneratedTrip, org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource.ON_DEMAND);
         verify(matchRepository, never()).enqueueIfMissing(any(), any(), anyString(), anyString(), anyString(), anyString(), any());
         verifyNoInteractions(valhallaProvider);

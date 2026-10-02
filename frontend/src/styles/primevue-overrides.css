@@ -1,0 +1,207 @@
+/* Global PrimeVue adjustments that can't be expressed as preset tokens (src/presets/GeopulsePreset.js).
+   Unlayered, so these beat PrimeVue's `primevue` layer without !important. */
+
+.p-toggleswitch {
+    flex: 0 0 auto;
+}
+
+/* ================================
+   DIALOG STANDARDIZED SIZES
+   ================================
+   Dialog sets no inline width, so these beat Aura without !important. A dialog that needs another size gets its
+   own class instead of one of these (a `:style` width would beat them). */
+
+/* Small Dialog - Simple forms, basic inputs (max 500px) */
+.gp-dialog-sm {
+  width: 90vw;
+  max-width: 500px;
+}
+
+/* Medium Dialog - Standard content, typical forms (max 700px) */
+.gp-dialog-md {
+  width: 90vw;
+  max-width: 700px;
+}
+
+/* Large Dialog - Complex forms, maps, detailed content (max 900px) */
+.gp-dialog-lg {
+  width: 90vw;
+  max-width: 900px;
+}
+
+/* Extra Large Dialog - Photo viewers, extensive content (max 1200px) */
+.gp-dialog-xl {
+  width: 90vw;
+  max-width: 1200px;
+}
+
+/* Responsive breakpoints for all dialog sizes */
+@media (max-width: 960px) {
+  .gp-dialog-sm,
+  .gp-dialog-md,
+  .gp-dialog-lg,
+  .gp-dialog-xl {
+    width: 92vw;
+  }
+}
+
+@media (max-width: 640px) {
+  .gp-dialog-sm,
+  .gp-dialog-md,
+  .gp-dialog-lg,
+  .gp-dialog-xl {
+    width: 95vw;
+  }
+}
+
+/* DatePicker writes the panel's width and min-width inline when it opens, so those two need !important. */
+.trip-date-range-panel {
+  --p-datepicker-date-width: 2.2rem;
+  --p-datepicker-date-height: 2.2rem;
+  width: min(92vw, 22rem) !important;
+  min-width: min(92vw, 22rem) !important;
+  max-width: min(92vw, 22rem);
+}
+
+.trip-date-range-panel .p-datepicker-calendar-container {
+  width: 100%;
+}
+
+.trip-date-range-panel .p-datepicker-header {
+  padding: var(--gp-spacing-sm);
+}
+
+.trip-date-range-panel .p-datepicker-day,
+.trip-date-range-panel .p-datepicker-weekday {
+  font-size: 0.95rem;
+}
+
+.trip-date-range-panel .p-datepicker-month,
+.trip-date-range-panel .p-datepicker-year {
+  padding: 0.35rem 0.45rem;
+}
+
+@media (max-width: 640px) {
+  .trip-date-range-panel {
+    width: min(92vw, 19rem) !important;
+    min-width: min(92vw, 19rem) !important;
+    max-width: min(92vw, 19rem);
+  }
+}
+
+/* Keep focused mobile form controls at 16px to prevent iOS Safari auto-zoom. !important because it has to win over
+   every component and utility class that sizes an input. */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select,
+  .p-inputtext,
+  .p-password-input,
+  .p-inputnumber-input,
+  .p-autocomplete-input,
+  .p-datepicker-input,
+  .p-datepicker input,
+  .p-inputtext.p-datepicker-input,
+  .p-textarea,
+  .p-inputtextarea,
+  .p-select-label,
+  .p-dropdown-label,
+  .p-multiselect-label,
+  .p-treeselect-label,
+  .p-cascadeselect-label {
+    font-size: 16px !important;
+  }
+
+  .p-datepicker-panel {
+    max-width: calc(100vw - 1rem);
+  }
+}
+
+/* Toasts must stay above the app's own high z-index layers (navbar menus, map overlays). PrimeVue writes the
+   toast's z-index as an inline style, so !important is the only way to raise it from CSS. */
+.p-toast {
+    z-index: 9999 !important;
+}
+
+/* Buttons: soft shadow and a small hover lift. Radius, label weight, icon-only sizes and the disabled opacity
+   come from the preset. */
+.p-button {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.p-button:not(.p-button-text):not(.p-button-outlined) {
+    box-shadow: var(--gp-shadow-button);
+}
+
+.p-button:hover:not(:disabled):not(.p-button-text) {
+    transform: translateY(-1px);
+    box-shadow: var(--gp-shadow-button-hover);
+}
+
+.p-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.p-button:disabled {
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.p-button[aria-label*="Loading"] {
+    pointer-events: none;
+}
+
+.p-button .p-badge {
+    min-width: 1rem;
+    height: 1rem;
+    line-height: 1rem;
+    font-size: 0.6rem;
+    border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+    .p-button {
+        padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+        font-size: 0.875rem;
+    }
+
+    .p-button.p-button-lg {
+        padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+        font-size: 1rem;
+    }
+
+    .p-button.p-button-sm {
+        padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+        font-size: 0.75rem;
+    }
+}
+
+/* Compact tooltips. Colours, padding and radius come from the preset. */
+.p-tooltip-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Clip custom dialog headers and footers to the rounded corners. */
+.p-dialog {
+    overflow: hidden;
+}
+
+/* Confirm dialogs on phones: keep them inside the viewport and stack the buttons. */
+@media (max-width: 768px) {
+    .p-confirmdialog {
+        margin: var(--gp-spacing-md);
+        max-width: calc(100vw - 2rem);
+    }
+
+    .p-confirmdialog .p-dialog-footer {
+        flex-direction: column;
+    }
+
+    .p-confirmdialog .p-dialog-footer .p-button {
+        width: 100%;
+    }
+}

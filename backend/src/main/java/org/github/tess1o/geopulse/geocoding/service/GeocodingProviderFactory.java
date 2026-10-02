@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -23,14 +24,14 @@ import org.github.tess1o.geopulse.geocoding.service.external.GeoapifyGeocodingSe
 import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -52,6 +53,7 @@ public class GeocodingProviderFactory {
     private final PhotonResponseAdapter photonAdapter;
     private final NominatimResponseAdapter nominatimAdapter;
     private final String nominatimUserAgent;
+    private final ExternalIntegrationHealthService integrationHealthService;
 
     @Inject
     public GeocodingProviderFactory(NominatimGeocodingService nominatimService,
@@ -64,6 +66,7 @@ public class GeocodingProviderFactory {
                                     CustomGeocodingProviderService customProviderService,
                                     PhotonResponseAdapter photonAdapter,
                                     NominatimResponseAdapter nominatimAdapter,
+                                    ExternalIntegrationHealthService integrationHealthService,
                                     @ConfigProperty(name = "quarkus.rest-client.nominatim-api.user-agent", defaultValue = "GeoPulse/1.0") String nominatimUserAgent) {
         this.nominatimService = nominatimService;
         this.googleMapsService = googleMapsService;
@@ -75,6 +78,7 @@ public class GeocodingProviderFactory {
         this.customProviderService = customProviderService;
         this.photonAdapter = photonAdapter;
         this.nominatimAdapter = nominatimAdapter;
+        this.integrationHealthService = integrationHealthService;
         this.nominatimUserAgent = nominatimUserAgent;
     }
 
@@ -86,8 +90,7 @@ public class GeocodingProviderFactory {
      */
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         String primaryProvider = configService.getPrimaryProvider();
-        log.debug("Reverse geocoding coordinates: lon={}, lat={} using primary provider: {}",
-                requestCoordinates.getX(), requestCoordinates.getY(), primaryProvider);
+        log.debug("Reverse geocoding using primary provider {}", primaryProvider);
 
         // Try primary provider
         Uni<FormattableGeocodingResult> primaryResult = callProvider(primaryProvider, requestCoordinates);
@@ -110,7 +113,7 @@ public class GeocodingProviderFactory {
      * Call a specific provider by name.
      */
     private Uni<FormattableGeocodingResult> callProvider(String providerName, Point requestCoordinates) {
-        return switch (providerName.toLowerCase()) {
+        Uni<FormattableGeocodingResult> request = switch (providerName.toLowerCase()) {
             case "nominatim" -> {
                 if (!nominatimService.isEnabled()) {
                     yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
@@ -149,13 +152,53 @@ public class GeocodingProviderFactory {
             }
             default -> callCustomProvider(providerName, requestCoordinates);
         };
+        return request
+                .emitOn(Infrastructure.getDefaultWorkerPool())
+                .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, providerName))
+                .onFailure().invoke(failure -> integrationHealthService.recordFailure(
+                        ExternalIntegrationType.GEOCODING,
+                        providerName,
+                        isCircuitOpen(failure) ? ExternalIntegrationHealthStatus.CIRCUIT_OPEN : ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE,
+                        isCircuitOpen(failure) ? "CIRCUIT_OPEN" : failure.getClass().getSimpleName(),
+                        failure.getMessage(),
+                        null,
+                        null));
     }
 
     /**
      * Get available enabled providers for informational purposes.
      */
-    public java.util.List<String> getEnabledProviders() {
-        java.util.List<String> enabled = new java.util.ArrayList<>();
+    /**
+     * Whether any enabled provider can currently answer forward (place-name) searches.
+     *
+     * <p>Distinct from {@link #getEnabledProviders()}: a provider may be enabled and
+     * serving reverse geocoding while being unable to do forward search — Nominatim on
+     * the public host is exactly that case.
+     */
+    public boolean isForwardSearchAvailable() {
+        if (nominatimService.isEnabled() && nominatimService.isForwardSearchAvailable()) {
+            return true;
+        }
+        if (googleMapsService.isEnabled() || mapboxService.isEnabled()
+                || photonService.isEnabled() || geoapifyService.isEnabled()
+                || chibiGeoService.isEnabled()) {
+            return true;
+        }
+        return !customProviderService.listEnabledEntities().isEmpty();
+    }
+
+    /** Configured primary forward-search provider name. */
+    public String getPrimaryProvider() {
+        return configService.getPrimaryProvider();
+    }
+
+    /** Configured fallback forward-search provider name, or empty when none is set. */
+    public String getFallbackProvider() {
+        return configService.getFallbackProvider();
+    }
+
+    public List<String> getEnabledProviders() {
+        List<String> enabled = new ArrayList<>();
         if (nominatimService.isEnabled()) enabled.add("Nominatim");
         if (googleMapsService.isEnabled()) enabled.add("GoogleMaps");
         if (mapboxService.isEnabled()) enabled.add("Mapbox");
@@ -168,6 +211,13 @@ public class GeocodingProviderFactory {
         return enabled;
     }
 
+    private boolean isCircuitOpen(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException) return true;
+        }
+        return false;
+    }
+
     /**
      * Reconcile coordinates with a specific provider (for manual reconciliation).
      * Does not use fallback - only uses the specified provider.
@@ -177,8 +227,7 @@ public class GeocodingProviderFactory {
      * @return Structured geocoding result
      */
     public Uni<FormattableGeocodingResult> reconcileWithProvider(String providerName, Point requestCoordinates) {
-        log.debug("Reconciling coordinates with provider {}: lon={}, lat={}",
-                providerName, requestCoordinates.getX(), requestCoordinates.getY());
+        log.debug("Reconciling location with provider {}", providerName);
 
         return callProvider(providerName, requestCoordinates);
     }
@@ -192,8 +241,9 @@ public class GeocodingProviderFactory {
         Uni<List<GeocodingSearchResult>> primaryResult = callProviderForward(primaryProvider, query, biasCenter, limit);
 
         String fallbackProvider = configService.getFallbackProvider();
+        Uni<List<GeocodingSearchResult>> result;
         if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(primaryProvider)) {
-            return primaryResult.onFailure().recoverWithUni(failure -> {
+            result = primaryResult.onFailure().recoverWithUni(failure -> {
                 log.warn("Primary provider '{}' forward search failed, trying fallback provider '{}'",
                         primaryProvider, fallbackProvider, failure);
                 log.warn("Forward search failure details: type={}, message={}",
@@ -201,9 +251,23 @@ public class GeocodingProviderFactory {
                         failure.getMessage());
                 return callProviderForward(fallbackProvider, query, biasCenter, limit);
             });
+        } else {
+            result = primaryResult;
         }
 
-        return primaryResult;
+        // Mirror the health reporting that callProvider() already does. Without this,
+        // forward-search failures never reached the admin integration-health dashboard.
+        return result
+                .emitOn(Infrastructure.getDefaultWorkerPool())
+                .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, primaryProvider))
+                .onFailure().invoke(failure -> integrationHealthService.recordFailure(
+                        ExternalIntegrationType.GEOCODING,
+                        primaryProvider,
+                        isCircuitOpen(failure) ? ExternalIntegrationHealthStatus.CIRCUIT_OPEN : ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE,
+                        isCircuitOpen(failure) ? "CIRCUIT_OPEN" : failure.getClass().getSimpleName(),
+                        failure.getMessage(),
+                        null,
+                        null));
     }
 
     private Uni<List<GeocodingSearchResult>> callProviderForward(String providerName, String query, Point biasCenter, int limit) {
@@ -357,7 +421,7 @@ public class GeocodingProviderFactory {
     }
 
     private NominatimRestClient buildNominatimClient(CustomGeocodingProviderEntity entity) {
-        Map<String, String> headers = new java.util.LinkedHashMap<>(customProviderService.decryptHeaders(entity));
+        Map<String, String> headers = new LinkedHashMap<>(customProviderService.decryptHeaders(entity));
         headers.putIfAbsent("User-Agent", nominatimUserAgent);
         return RestClientBuilder.newBuilder()
                 .baseUri(URI.create(entity.getUrl()))

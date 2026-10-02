@@ -8,11 +8,16 @@ import org.github.tess1o.geopulse.importdata.model.*;
         ImportStatus.class,
         ImportJob.class,
         ImportJobResponse.class,
+        ImportJobsResponse.class,
+        ImportPhase.class,
         ImportOptions.class,
         DebugImportRequest.class,
         // Chunked upload models
         ChunkedUploadSession.class,
         ChunkedUploadInitRequest.class,
+        ChunkedUploadInitResponse.class,
+        ChunkUploadResponse.class,
+        ChunkedUploadStatusResponse.class,
         UploadStatus.class,
         // Format enum
         ImportFormat.class,

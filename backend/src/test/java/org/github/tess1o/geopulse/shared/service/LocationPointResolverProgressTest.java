@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.junit.jupiter.api.Tag;
@@ -79,7 +80,7 @@ class LocationPointResolverProgressTest {
         ArgumentCaptor<Integer> percentageCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(progressService, org.mockito.Mockito.atLeastOnce()).updateProgress(
                 eq(jobId),
-                any(String.class),
+                any(MessageDescriptor.class),
                 eq(4),
                 percentageCaptor.capture(),
                 any()

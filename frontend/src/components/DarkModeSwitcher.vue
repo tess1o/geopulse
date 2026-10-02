@@ -7,10 +7,10 @@
       severity="secondary"
       outlined
       size="small"
-      v-tooltip.bottom="`Theme: ${currentTheme.label}`"
+      v-tooltip.bottom="t('ui.darkModeSwitcher.themeTooltip', { label: currentTheme.label })"
       aria-haspopup="true"
       :aria-controls="menuId"
-      :aria-label="`Theme mode: ${currentTheme.label}`"
+      :aria-label="t('ui.darkModeSwitcher.themeAriaLabel', { label: currentTheme.label })"
     />
     <Menu ref="themeMenu" :id="menuId" :model="themeMenuItems" popup />
   </div>
@@ -18,6 +18,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useThemeMode } from '@/composables/useThemeMode'
@@ -29,37 +30,38 @@ const props = defineProps({
   }
 })
 
+const { t } = useI18n()
 const { themeMode, setThemeMode, themeModes } = useThemeMode()
 const themeMenu = ref()
 const menuId = `theme-mode-menu-${Math.random().toString(36).slice(2, 10)}`
 
-const themeDefinitions = {
+const themeDefinitions = computed(() => ({
   [themeModes.LIGHT]: {
-    label: 'Light',
+    label: t('ui.darkModeSwitcher.light'),
     icon: 'pi pi-sun'
   },
   [themeModes.DARK]: {
-    label: 'Dark',
+    label: t('ui.darkModeSwitcher.dark'),
     icon: 'pi pi-moon'
   },
   [themeModes.SYSTEM]: {
-    label: 'System',
+    label: t('ui.darkModeSwitcher.system'),
     icon: 'pi pi-desktop'
   }
-}
+}))
 
-const currentTheme = computed(() => themeDefinitions[themeMode.value] || themeDefinitions[themeModes.SYSTEM])
+const currentTheme = computed(() => themeDefinitions.value[themeMode.value] || themeDefinitions.value[themeModes.SYSTEM])
 
 const createThemeMenuItem = (mode, label, icon) => ({
-  label: themeMode.value === mode ? `${label} (Current)` : label,
+  label: themeMode.value === mode ? t('ui.darkModeSwitcher.currentSuffix', { label }) : label,
   icon,
   command: () => setThemeMode(mode)
 })
 
 const themeMenuItems = computed(() => [
-  createThemeMenuItem(themeModes.LIGHT, 'Light', 'pi pi-sun'),
-  createThemeMenuItem(themeModes.DARK, 'Dark', 'pi pi-moon'),
-  createThemeMenuItem(themeModes.SYSTEM, 'System', 'pi pi-desktop')
+  createThemeMenuItem(themeModes.LIGHT, t('ui.darkModeSwitcher.light'), 'pi pi-sun'),
+  createThemeMenuItem(themeModes.DARK, t('ui.darkModeSwitcher.dark'), 'pi pi-moon'),
+  createThemeMenuItem(themeModes.SYSTEM, t('ui.darkModeSwitcher.system'), 'pi pi-desktop')
 ])
 
 const toggleThemeMenu = (event) => {

@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.admin.service.OidcProviderConfigurationService;
+import org.github.tess1o.geopulse.auth.exceptions.OidcFailedMetadataFetchException;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcDiscoveryDocument;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 
@@ -213,7 +214,7 @@ public class OidcProviderService {
                 configurationService.invalidateMetadata(provider.getName());
             }
 
-            throw new RuntimeException("Failed to fetch OIDC provider metadata: " + provider.getName(), e);
+            throw new OidcFailedMetadataFetchException("Failed to fetch OIDC provider metadata: " + provider.getName(), e);
         }
     }
 

@@ -16,10 +16,6 @@ public class TimelineTripStaySplitOverrideRepository implements PanacheRepositor
         return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
     }
 
-    public Optional<TimelineTripStaySplitOverrideEntity> findByUserIdAndStayId(UUID userId, Long stayId) {
-        return find("user.id = ?1 and stay.id = ?2", userId, stayId).firstResultOptional();
-    }
-
     public Optional<TimelineTripStaySplitOverrideEntity> findByUserIdAndSourceTripAndStay(UUID userId,
                                                                                           Instant sourceTripTimestamp,
                                                                                           Instant stayStartTime,

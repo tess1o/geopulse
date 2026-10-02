@@ -1,12 +1,11 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    :header="'Timeline Regeneration'"
+    :header="t('miscDialogs.timelineRegeneration.header')"
     :modal="true"
     :closable="false"
     :draggable="false"
-    :style="{ width: '500px' }"
-    class="timeline-regeneration-modal"
+    class="gp-dialog-sm timeline-regeneration-modal"
   >
     <div class="regeneration-content">
       <div class="icon-container">
@@ -26,11 +25,11 @@
           <!-- Completion Message (shown when completed) -->
           <div v-if="jobProgress.status === 'COMPLETED'" class="completion-indicator">
             <i class="pi pi-check-circle"></i>
-            <span>Timeline generation completed successfully!</span>
+            <span>{{ t('miscDialogs.timelineRegeneration.completedMessage') }}</span>
           </div>
 
           <div class="progress-header">
-            <span class="progress-step">{{ jobProgress.currentStep }}</span>
+            <span class="progress-step">{{ formatMessageDescriptor(jobProgress.currentStep) }}</span>
             <span class="progress-percentage">{{ jobProgress.progressPercentage }}%</span>
           </div>
 
@@ -45,46 +44,46 @@
             <!-- GPS Loading -->
             <div v-if="jobProgress.details.gpsPointsLoaded" class="detail-item">
               <i class="pi pi-map-marker"></i>
-              <span>{{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }} GPS points loaded</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.gpsPointsLoaded', { loaded: jobProgress.details.gpsPointsLoaded.toLocaleString(), total: jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }) }}</span>
             </div>
 
             <!-- GPS Processing (State Machine) -->
             <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-item">
               <i class="pi pi-cog"></i>
-              <span>{{ jobProgress.details.processedPoints.toLocaleString() }} / {{ jobProgress.details.totalPoints?.toLocaleString() || '?' }} points processed</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.pointsProcessed', { processed: jobProgress.details.processedPoints.toLocaleString(), total: jobProgress.details.totalPoints?.toLocaleString() || '?' }) }}</span>
             </div>
 
             <!-- Geocoding Summary -->
             <div v-if="jobProgress.details.totalLocations" class="detail-item">
               <i class="pi pi-globe"></i>
-              <span>{{ jobProgress.details.totalResolved || 0 }} / {{ jobProgress.details.totalLocations }} locations geocoded</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.locationsGeocoded', { resolved: jobProgress.details.totalResolved || 0, total: jobProgress.details.totalLocations }) }}</span>
             </div>
 
             <!-- Geocoding Breakdown -->
             <div v-if="jobProgress.details.favoritesResolved" class="detail-item detail-sub">
               <i class="pi pi-star"></i>
-              <span>{{ jobProgress.details.favoritesResolved }} from favorites</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromFavorites', { count: jobProgress.details.favoritesResolved }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.cachedResolved" class="detail-item detail-sub">
               <i class="pi pi-database"></i>
-              <span>{{ jobProgress.details.cachedResolved }} from cache</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromCache', { count: jobProgress.details.cachedResolved }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.externalCompleted" class="detail-item detail-sub">
               <i class="pi pi-cloud"></i>
-              <span>{{ jobProgress.details.externalCompleted }} from external API</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromExternalApi', { count: jobProgress.details.externalCompleted }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.externalPending > 0" class="detail-item detail-pending">
               <i class="pi pi-clock"></i>
-              <span>{{ jobProgress.details.externalPending }} pending</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.pending', { count: jobProgress.details.externalPending }) }}</span>
             </div>
           </div>
 
           <!-- Link to detailed progress page -->
           <Button
-            label="View Detailed Progress"
+            :label="t('miscDialogs.timelineRegeneration.viewDetailedProgress')"
             icon="pi pi-external-link"
             class="view-details-btn"
             severity="info"
@@ -95,8 +94,7 @@
 
         <!-- Fallback for legacy mode (no jobId) -->
         <p v-else class="regeneration-note">
-          This process may take 5-15 seconds or longer depending on your data size.
-          Your timeline will be temporarily unavailable during regeneration.
+          {{ t('miscDialogs.timelineRegeneration.fallbackNote') }}
         </p>
       </div>
 
@@ -107,7 +105,7 @@
           <span class="dot"></span>
           <span class="dot"></span>
         </div>
-        <p class="progress-text">Please wait...</p>
+        <p class="progress-text">{{ t('miscDialogs.timelineRegeneration.pleaseWait') }}</p>
       </div>
     </div>
   </Dialog>
@@ -115,11 +113,15 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import ProgressBar from 'primevue/progressbar'
 import Button from 'primevue/button'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -155,34 +157,34 @@ const internalVisible = ref(props.visible)
 const title = computed(() => {
   switch (props.type) {
     case 'favorite':
-      return 'Adding Favorite & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.favorite')
     case 'favorite-delete':
-      return 'Deleting Favorite & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.favoriteDelete')
     case 'preferences':
-      return 'Applying Preferences & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.preferences')
     case 'classification':
-      return 'Updating Trip Classifications'
+      return t('miscDialogs.timelineRegeneration.titles.classification')
     case 'reconstruction':
-      return 'Applying Missing Timeline Data'
+      return t('miscDialogs.timelineRegeneration.titles.reconstruction')
     default:
-      return 'Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.general')
   }
 })
 
 const message = computed(() => {
   switch (props.type) {
     case 'favorite':
-      return 'We\'re adding your favorite location and regenerating your complete timeline to incorporate this change. This ensures all timeline data remains accurate and up-to-date.'
+      return t('miscDialogs.timelineRegeneration.messages.favorite')
     case 'favorite-delete':
-      return 'We\'re removing your favorite location and regenerating your complete timeline to reflect this change. This ensures all timeline data remains accurate and up-to-date.'
+      return t('miscDialogs.timelineRegeneration.messages.favoriteDelete')
     case 'preferences':
-      return 'We\'re applying your new preferences and regenerating your complete timeline based on the updated settings. This ensures optimal timeline accuracy with your preferences.'
+      return t('miscDialogs.timelineRegeneration.messages.preferences')
     case 'classification':
-      return 'We\'re recalculating movement types for your existing trips based on your updated speed thresholds. This process will update how your trips are classified without changing the underlying timeline structure.'
+      return t('miscDialogs.timelineRegeneration.messages.classification')
     case 'reconstruction':
-      return 'We\'re applying generated GPS points from your stays and trips, then updating the affected timeline portion. Existing timeline data is not replaced.'
+      return t('miscDialogs.timelineRegeneration.messages.reconstruction')
     default:
-      return 'We\'re regenerating your complete timeline from your GPS data. This process ensures your timeline is accurate and reflects all available location information.'
+      return t('miscDialogs.timelineRegeneration.messages.general')
   }
 })
 
@@ -209,29 +211,6 @@ const goToJobDetails = () => {
 </script>
 
 <style scoped>
-.timeline-regeneration-modal :deep(.p-dialog) {
-  background: var(--gp-surface-card);
-  border: 1px solid var(--gp-surface-border);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-header) {
-  background: var(--gp-surface-card);
-  border-bottom: 1px solid var(--gp-surface-border);
-  padding: 1.5rem 1.5rem 1rem 1.5rem;
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-title) {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.timeline-regeneration-modal :deep(.p-dialog-content) {
-  padding: 0 1.5rem 1.5rem 1.5rem;
-  background: var(--gp-surface-card);
-}
-
 .regeneration-content {
   display: flex;
   flex-direction: column;
@@ -271,7 +250,7 @@ const goToJobDetails = () => {
   padding: 0.75rem;
   background: var(--gp-surface-ground);
   border-radius: 8px;
-  border: 1px solid var(--gp-surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .progress-tracking {
@@ -279,7 +258,7 @@ const goToJobDetails = () => {
   padding: 1rem;
   background: var(--gp-surface-ground);
   border-radius: 8px;
-  border: 1px solid var(--gp-surface-border);
+  border: 1px solid var(--gp-border);
 }
 
 .completion-indicator {
@@ -289,21 +268,21 @@ const goToJobDetails = () => {
   gap: 0.5rem;
   padding: 0.75rem;
   margin-bottom: 1rem;
-  background: var(--green-50);
-  border: 1px solid var(--green-200);
+  background: var(--gp-success-soft);
+  border: 1px solid var(--gp-success-border);
   border-radius: 6px;
-  color: var(--green-700);
+  color: var(--gp-success-text);
   font-weight: 600;
   font-size: 0.95rem;
 }
 
 .completion-indicator i {
   font-size: 1.25rem;
-  color: var(--green-600);
+  color: var(--gp-success);
 }
 
 .progress-bar.progress-complete :deep(.p-progressbar-value) {
-  background: var(--green-500);
+  background: var(--p-green-500);
   transition: background 0.3s ease;
 }
 
@@ -323,7 +302,7 @@ const goToJobDetails = () => {
 .progress-percentage {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
 }
 
 .progress-bar {
@@ -349,7 +328,7 @@ const goToJobDetails = () => {
 }
 
 .detail-item i {
-  color: var(--gp-primary-color);
+  color: var(--gp-primary);
   font-size: 0.875rem;
   flex-shrink: 0;
 }
@@ -361,12 +340,12 @@ const goToJobDetails = () => {
 }
 
 .detail-pending {
-  color: var(--orange-600);
+  color: var(--gp-warning-text);
   font-weight: 600;
 }
 
 .detail-pending i {
-  color: var(--orange-500);
+  color: var(--p-orange-500);
 }
 
 .view-details-btn {
@@ -391,7 +370,7 @@ const goToJobDetails = () => {
 .dot {
   width: 8px;
   height: 8px;
-  background: var(--gp-primary-color);
+  background: var(--gp-primary);
   border-radius: 50%;
   animation: pulse 1.5s infinite;
 }
@@ -422,65 +401,8 @@ const goToJobDetails = () => {
   }
 }
 
-/* Dark mode support */
-.p-dark .timeline-regeneration-modal :deep(.p-dialog) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .timeline-regeneration-modal :deep(.p-dialog-header) {
-  background: var(--gp-surface-dark);
-  border-bottom-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .timeline-regeneration-modal :deep(.p-dialog-content) {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .regeneration-note {
-  background: var(--gp-surface-ground-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .progress-tracking {
-  background: var(--gp-surface-ground-dark);
-  border-color: var(--gp-surface-border-dark);
-}
-
-.p-dark .progress-details {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .completion-indicator {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: var(--green-400);
-}
-
-.p-dark .completion-indicator i {
-  color: var(--green-500);
-}
-
-.p-dark .detail-pending {
-  color: var(--orange-400);
-}
-
-.p-dark .detail-pending i {
-  color: var(--orange-500);
-}
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 90vw !important;
-    max-width: 360px !important;
-    margin: 0 20px;
-  }
-  
-  .timeline-regeneration-modal :deep(.p-dialog-content) {
-    padding: 0 2rem 2rem 2rem;
-  }
-  
   .regeneration-content {
     gap: 1.5rem;
     padding: 0.5rem;
@@ -507,12 +429,6 @@ const goToJobDetails = () => {
 
 /* Large mobile phones (iPhone 14 Pro Max, iPhone 15 Pro Max, iPhone 16 Pro Max) */
 @media (max-width: 768px) and (min-width: 415px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 85vw !important;
-    max-width: 380px !important;
-    margin: 0 25px;
-  }
-  
   .regeneration-content {
     gap: 1.75rem;
     padding: 0.75rem;
@@ -524,15 +440,6 @@ const goToJobDetails = () => {
   
   .regeneration-note {
     padding: 1.25rem;
-  }
-}
-
-/* Extra large mobile phones (iPhone 16 Pro Max and similar) */
-@media (max-width: 768px) and (min-width: 430px) {
-  .timeline-regeneration-modal :deep(.p-dialog) {
-    width: 380px !important;
-    max-width: 380px !important;
-    margin: 0 auto;
   }
 }
 </style>

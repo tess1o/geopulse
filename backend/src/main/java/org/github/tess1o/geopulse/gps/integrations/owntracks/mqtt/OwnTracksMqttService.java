@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -306,13 +307,13 @@ public class OwnTracksMqttService {
      * Handle incoming MQTT messages
      */
     private void handleMqttMessage(String topic, String payload) {
+        long started = System.nanoTime();
         try {
-            log.info("Received OwnTracks MQTT message on topic: {}", topic);
 
             // Parse topic: owntracks/{username}/{deviceId}
             String[] topicParts = topic.split("/");
             if (topicParts.length != 3 || !"owntracks".equals(topicParts[0])) {
-                log.error("Invalid OwnTracks MQTT topic format: {}", topic);
+                log.warn("Invalid OwnTracks MQTT topic format");
                 return;
             }
 
@@ -322,12 +323,12 @@ public class OwnTracksMqttService {
             // Authenticate user
             Optional<GpsAuthenticationResult> userIdOpt = authRegistry.authenticateByUsername(username, GpsSourceType.OWNTRACKS);
             if (userIdOpt.isEmpty()) {
-                log.error("Authentication failed for MQTT user: {}", username);
+                log.warn("OwnTracks MQTT authentication failed");
                 return;
             }
 
             GpsAuthenticationResult authenticationResult = userIdOpt.get();
-            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, Map.class);
+            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, new TypeReference<Map<String, Object>>() {});
             Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(messageData, authenticationResult.getConfig());
             if (resolvedPayload.isEmpty()) {
                 return;
@@ -368,12 +369,13 @@ public class OwnTracksMqttService {
             }
 
             // Save GPS point
-            gpsPointService.saveOwnTracksGpsPoint(locationMessage, authenticationResult.getUserId(), deviceId, GpsSourceType.OWNTRACKS, authenticationResult.getConfig());
-
-            log.info("Successfully processed MQTT location message for user: {}, device: {}", username, deviceId);
+            var summary = gpsPointService.saveOwnTracksGpsPoint(
+                    locationMessage, authenticationResult.getUserId(), deviceId,
+                    GpsSourceType.OWNTRACKS, authenticationResult.getConfig());
+            if (summary != null) summary.logCompletion(GpsSourceType.OWNTRACKS, started);
 
         } catch (Exception e) {
-            log.error("Error processing MQTT message from topic: {}", topic, e);
+            log.error("Error processing OwnTracks MQTT message", e);
         }
     }
 

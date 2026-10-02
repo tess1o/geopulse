@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.sharing.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -7,23 +9,32 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
+import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
-@Path("/api/shared")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+
+@Path("/public/share-links")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
 @Tag(name = "User: Sharing", description = "Read public shared location data and verify shared-link passwords.")
 public class PublicSharedLinkResource {
 
@@ -31,307 +42,220 @@ public class PublicSharedLinkResource {
     SharedLinkService sharedLinkService;
 
     @GET
-    @Path("/{linkId}/info")
-    public Response getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
+    @Path("/{linkId}")
+    public SharedLocationInfo getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
         try {
-            SharedLocationInfo result = sharedLinkService.getSharedLocationInfo(linkId);
-            return Response.ok(result).build();
+            return sharedLinkService.getSharedLocationInfo(linkId);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared location info for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve link information"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         }
     }
 
     @POST
-    @Path("/{linkId}/verify")
-    public Response verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
+    @Path("/{linkId}/access-tokens")
+    public AccessTokenResponse verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
         try {
-            AccessTokenResponse result = sharedLinkService.verifyPassword(linkId, request.getPassword());
-            return Response.ok(result).build();
+            return sharedLinkService.verifyPassword(linkId, request.getPassword());
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Invalid password"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error verifying password for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Verification failed"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_PASSWORD_INVALID, "Invalid password", e);
         }
     }
 
     @GET
     @Path("/{linkId}/location")
-    public Response getSharedLocation(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    public LocationHistoryResponse getSharedLocation(@PathParam("linkId") UUID linkId,
+                                                     @HeaderParam("Authorization") String authHeader) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-            LocationHistoryResponse result = sharedLinkService.getSharedLocation(linkId, token);
-            return Response.ok(result).build();
+            return sharedLinkService.getSharedLocation(linkId, bearerToken(authHeader));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared location for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve location"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         }
     }
 
     @GET
     @Path("/{linkId}/timeline")
-    public Response getSharedTimeline(
+    public MovementTimelineDTO getSharedTimeline(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-
-            // Parse optional date parameters
-            Instant startInstant = null;
-            Instant endInstant = null;
-
-            if (startTime != null && !startTime.isEmpty()) {
-                try {
-                    startInstant = Instant.parse(startTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            if (endTime != null && !endTime.isEmpty()) {
-                try {
-                    endInstant = Instant.parse(endTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            // Validate start < end if both provided
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("startTime must be before endTime"))
-                        .build();
-            }
-
-            MovementTimelineDTO result = sharedLinkService.getSharedTimeline(linkId, token, startInstant, endInstant);
-            return Response.ok(result).build();
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedTimeline(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared timeline for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve timeline"))
-                    .build();
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
     }
 
     @GET
     @Path("/{linkId}/notes")
     @Blocking
-    public java.util.concurrent.CompletableFuture<Response> getSharedNotes(
+    public CompletionStage<NoteSearchResponse> getSharedNotes(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return java.util.concurrent.CompletableFuture.completedFuture(
-                        Response.status(Response.Status.UNAUTHORIZED)
-                                .entity(ApiResponse.error("Authorization token required"))
-                                .build());
-            }
-
-            String token = authHeader.substring("Bearer ".length());
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
             Instant endInstant = parseOptionalInstant(endTime, "endTime");
-
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return java.util.concurrent.CompletableFuture.completedFuture(
-                        Response.status(Response.Status.BAD_REQUEST)
-                                .entity(ApiResponse.error("startTime must be before endTime"))
-                                .build());
-            }
-
-            return sharedLinkService.getSharedNotes(linkId, token, startInstant, endInstant)
-                    .thenApply(Response::ok)
-                    .thenApply(Response.ResponseBuilder::build)
-                    .exceptionally(throwable -> {
-                        log.error("Error getting shared notes for linkId: {}", linkId, throwable);
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(ApiResponse.error("Failed to retrieve notes"))
-                                .build();
-                    });
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedNotes(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build());
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build());
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build());
-        } catch (Exception e) {
-            log.error("Error getting shared notes for linkId: {}", linkId, e);
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve notes"))
-                    .build());
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
+    }
+
+    @GET
+    @Path("/{linkId}/photos")
+    @Blocking
+    public CompletableFuture<ImmichPhotoSearchResponse> getSharedPhotos(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
+            @QueryParam("limit") Integer limit) {
+        try {
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedPhotos(
+                    linkId, bearerToken(authHeader), startInstant, endInstant, limit);
+        } catch (NotFoundException e) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
+        } catch (ForbiddenException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
+        }
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/thumbnail")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Shared Immich photo thumbnail",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> getSharedPhotoThumbnail(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.THUMBNAIL);
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/preview")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Shared Immich photo preview",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> getSharedPhotoPreview(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.PREVIEW);
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/download")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Original shared Immich photo",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> downloadSharedPhoto(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.ORIGINAL);
+    }
+
+    private CompletableFuture<Response> sharedPhotoBytes(
+            UUID linkId, String photoId, String authHeader, SharedLinkService.SharedPhotoVariant variant) {
+        CompletableFuture<byte[]> bytes;
+        try {
+            bytes = sharedLinkService.getSharedPhotoBytes(linkId, bearerToken(authHeader), photoId, variant);
+        } catch (NotFoundException e) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
+        } catch (ForbiddenException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        }
+
+        return bytes.thenApply(image -> {
+            Response.ResponseBuilder response = Response.ok(image).header("Cache-Control", "max-age=3600");
+            if (variant == SharedLinkService.SharedPhotoVariant.ORIGINAL) {
+                response.header("Content-Disposition", "attachment; filename=\"photo_" + photoId + ".jpg\"");
+            }
+            return response.build();
+        }).exceptionally(throwable -> {
+            throw new GeoPulseException(IMMICH_PHOTO_NOT_FOUND, "Immich photo could not be retrieved",
+                    Map.of("photoId", photoId));
+        });
     }
 
     @GET
     @Path("/{linkId}/path")
-    public Response getSharedPath(
+    public GpsPointPathDTO getSharedPath(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-
-            // Parse optional date parameters
-            Instant startInstant = null;
-            Instant endInstant = null;
-
-            if (startTime != null && !startTime.isEmpty()) {
-                try {
-                    startInstant = Instant.parse(startTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            if (endTime != null && !endTime.isEmpty()) {
-                try {
-                    endInstant = Instant.parse(endTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            // Validate start < end if both provided
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("startTime must be before endTime"))
-                        .build();
-            }
-
-            GpsPointPathDTO result = sharedLinkService.getSharedPath(linkId, token, startInstant, endInstant);
-            return Response.ok(result).build();
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedPath(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared path for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve path"))
-                    .build();
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
     }
 
     @GET
-    @Path("/{linkId}/current")
-    public Response getSharedCurrentLocation(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    @Path("/{linkId}/current-location")
+    public LocationHistoryResponse.CurrentLocationData getSharedCurrentLocation(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
             Optional<LocationHistoryResponse.CurrentLocationData> result =
-                    sharedLinkService.getSharedCurrentLocation(linkId, token);
-
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Current location not available"))
-                        .build();
-            }
-
-            return Response.ok(result.get()).build();
+                    sharedLinkService.getSharedCurrentLocation(linkId, bearerToken(authHeader));
+            return result.orElseThrow(() -> new GeoPulseException(
+                    SHARED_LOCATION_NOT_FOUND, "Current location not available"));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Current location not available"))
-                    .build();
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available", e);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting current location for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve current location"))
-                    .build();
+            throw new GeoPulseException(INVALID_SHARE_LINK, INVALID_SHARE_LINK.title(), e);
         }
+    }
+
+    private String bearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new GeoPulseException(SHARED_LINK_TOKEN_REQUIRED, "Authorization token required");
+        }
+        return authHeader.substring("Bearer ".length());
     }
 
     private Instant parseOptionalInstant(String value, String fieldName) {
@@ -340,8 +264,16 @@ public class PublicSharedLinkResource {
         }
         try {
             return Instant.parse(value);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid " + fieldName + " format. Expected ISO-8601");
+        } catch (DateTimeParseException e) {
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE,
+                    "Invalid " + fieldName + " format. Expected ISO-8601",
+                    Map.of("field", fieldName), e);
+        }
+    }
+
+    private void validateRange(Instant start, Instant end) {
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, "startTime must be before endTime");
         }
     }
 }

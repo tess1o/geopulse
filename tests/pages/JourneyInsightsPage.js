@@ -7,90 +7,80 @@ export class JourneyInsightsPage {
   get selectors() {
     return {
       // Page elements
-      pageContainer: '.page-container',
+      pageContainer: '.gp-page-container',
       pageTitle: 'h1:has-text("Journey Insights")',
-      pageSubtitle: 'p:has-text("Discover patterns and achievements from your location data")',
+      pageSubtitle: 'p:has-text("Your location story, all in one place.")',
       
       // Loading state
       loadingSpinner: '.insights-loading .p-progress-spinner',
-      loadingText: '.insights-loading p:has-text("Loading your journey insights...")',
+      loadingText: '.insights-loading p:has-text("Building your journey insights…")',
       
       // Content wrapper
-      contentWrapper: '.insights-content-wrapper',
+      contentWrapper: '.insights-content',
       
       // Sections
       sections: {
-        geographic: '.insights-section:has-text("Geographic Adventures")',
-        travelStory: '.insights-section:has-text("Your Travel Story")',
-        activityPatterns: '.insights-section:has-text("Time Patterns")',
-        milestones: '.insights-section:has-text("Your Journey Milestones")'
+        geographic: 'section:has(#places-title)',
+        travelStory: '.journey-hero',
+        activityPatterns: 'section:has(#patterns-title)',
+        milestones: 'section:has(#milestones-title)'
       },
       
       // Geographic section
       geographic: {
-        section: '.insights-section:has-text("Geographic Adventures")',
-        grid: '.geographic-grid',
-        countriesCard: '.geographic-card:has-text("Countries Explored")',
-        citiesCard: '.geographic-card:has-text("Cities Visited")',
-        countriesCount: '.geographic-card:has-text("Countries Explored") .geographic-count',
-        citiesCount: '.geographic-card:has-text("Cities Visited") .geographic-count',
-        countryItems: '.geographic-card:has-text("Countries Explored") .geographic-item',
-        cityItems: '.geographic-card:has-text("Cities Visited") .geographic-item',
+        section: 'section:has(#places-title)',
+        grid: '.places-grid',
+        countriesCard: '.places-card:has-text("Countries explored")',
+        citiesCard: '.places-card:has-text("Cities visited")',
+        countriesCount: '.places-card:has-text("Countries explored") .places-card-heading > b',
+        citiesCount: '.places-card:has-text("Cities visited") .places-card-heading > b',
+        countryItems: '.places-card:has-text("Countries explored") .place-row',
+        cityItems: '.places-card:has-text("Cities visited") .city-row',
         countryFlags: '.country-flag-img',
-        countryNames: '.country-name',
-        cityNames: '.city-name',
-        cityVisits: '.city-visits',
-        noDataMessage: '.no-data'
+        countryNames: '.places-card:has-text("Countries explored") .place-row > span:last-child',
+        cityNames: '.places-card:has-text("Cities visited") .city-row > span',
+        cityVisits: '.city-row small',
+        noDataMessage: '.places-card .no-data'
       },
       
       // Travel story section
       travelStory: {
-        section: '.insights-section:has-text("Your Travel Story")',
-        grid: '.travel-records-grid',
-        totalDistanceCard: '.travel-card:has-text("Total Distance Traveled")',
-        carDistanceCard: '.travel-card:has-text("Distance by Car")',
-        walkDistanceCard: '.travel-card:has-text("Distance Walking")',
-        travelIcons: '.travel-icon',
-        statNumbers: '.stat-number',
-        statLabels: '.stat-label',
-        statDetails: '.stat-detail'
+        section: '.journey-hero',
+        grid: '.movement-legend',
+        totalDistance: '.journey-hero h2',
+        movementModes: '.movement-legend > span'
       },
       
       // Activity patterns section
       activityPatterns: {
-        section: '.insights-section:has-text("Time Patterns")',
-        grid: '.insights-grid-simple',
-        monthCard: '.insight-stat-pattern:has-text("Most Active Month")',
-        dayCard: '.insight-stat-pattern:has-text("Busiest Day of Week")',
-        timeCard: '.insight-stat-pattern:has-text("Most Active Time of Day")',
-        patternIcons: '.pattern-icon',
-        patternValues: '.pattern-value',
-        patternLabels: '.pattern-label',
-        patternInsights: '.pattern-insight'
+        section: 'section:has(#patterns-title)',
+        grid: '.patterns-grid',
+        monthCard: '.pattern-card:has-text("Most active month")',
+        dayCard: '.pattern-card:has-text("Busiest day")',
+        timeCard: '.pattern-card:has-text("Most active time")',
+        patternValues: 'strong'
       },
       
       // Milestones section
       milestones: {
-        section: '.insights-section:has-text("Your Journey Milestones")',
+        section: 'section:has(#milestones-title)',
         grid: '.milestones-grid',
-        badges: '.achievement-badge',
-        earnedBadges: '.achievement-badge.earned',
+        badges: '.milestone-card',
+        earnedBadges: '.milestone-card.earned',
         badgeIcons: '.badge-icon',
-        badgeTitles: '.badge-title',
-        badgeDescriptions: '.badge-description',
+        badgeTitles: '.milestone-card h5',
+        badgeDescriptions: '.milestone-card p',
         progressBars: '.progress-bar',
-        progressFills: '.progress-fill',
-        progressTexts: '.progress-text',
-        earnedTexts: '.earned-text',
-        earnedDates: '.earned-date'
+        progressFills: '.progress-bar > span',
+        earnedTexts: '.milestone-status:has-text("Earned")'
       },
       
       // Empty state
       emptyState: {
-        container: '.empty-insights',
+        container: '.empty-card',
         icon: '.empty-icon',
-        title: '.empty-title',
-        message: '.empty-message'
+        title: '.empty-card h3',
+        message: '.empty-card p'
       }
     }
   }
@@ -134,7 +124,10 @@ export class JourneyInsightsPage {
    */
   async waitForLoadingComplete() {
     await this.page.waitForSelector(this.selectors.loadingSpinner, { state: 'hidden' });
-    await this.page.waitForSelector(this.selectors.contentWrapper, { state: 'visible' });
+    await Promise.race([
+      this.page.waitForSelector(this.selectors.contentWrapper, { state: 'visible' }),
+      this.page.waitForSelector(this.selectors.emptyState.container, { state: 'visible' })
+    ]);
   }
 
   /**
@@ -207,8 +200,7 @@ export class JourneyInsightsPage {
    * Get total distance value from UI
    */
   async getTotalDistance() {
-    const totalCard = this.page.locator(this.selectors.travelStory.totalDistanceCard);
-    const distanceText = await totalCard.locator('.stat-number').textContent();
+    const distanceText = await this.page.locator(this.selectors.travelStory.totalDistance).textContent();
     return distanceText.trim();
   }
 
@@ -216,17 +208,20 @@ export class JourneyInsightsPage {
    * Get car distance value from UI
    */
   async getCarDistance() {
-    const carCard = this.page.locator(this.selectors.travelStory.carDistanceCard);
-    const distanceText = await carCard.locator('.stat-number').textContent();
-    return distanceText.trim();
+    return this.getMovementDistance('Car');
   }
 
   /**
    * Get walking distance value from UI
    */
   async getWalkDistance() {
-    const walkCard = this.page.locator(this.selectors.travelStory.walkDistanceCard);
-    const distanceText = await walkCard.locator('.stat-number').textContent();
+    return this.getMovementDistance('Walk');
+  }
+
+  async getMovementDistance(label) {
+    const mode = this.page.locator(this.selectors.travelStory.movementModes)
+      .filter({hasText: new RegExp(`^${label}\\s`)});
+    const distanceText = await mode.locator('small').textContent();
     return distanceText.trim();
   }
 
@@ -243,7 +238,7 @@ export class JourneyInsightsPage {
    */
   async getMostActiveMonth() {
     const monthCard = this.page.locator(this.selectors.activityPatterns.monthCard);
-    const value = await monthCard.locator('.pattern-value').textContent();
+    const value = await monthCard.locator(this.selectors.activityPatterns.patternValues).textContent();
     return value.trim();
   }
 
@@ -252,7 +247,7 @@ export class JourneyInsightsPage {
    */
   async getBusiestDayOfWeek() {
     const dayCard = this.page.locator(this.selectors.activityPatterns.dayCard);
-    const value = await dayCard.locator('.pattern-value').textContent();
+    const value = await dayCard.locator(this.selectors.activityPatterns.patternValues).textContent();
     return value.trim();
   }
 
@@ -261,7 +256,7 @@ export class JourneyInsightsPage {
    */
   async getMostActiveTime() {
     const timeCard = this.page.locator(this.selectors.activityPatterns.timeCard);
-    const value = await timeCard.locator('.pattern-value').textContent();
+    const value = await timeCard.locator(this.selectors.activityPatterns.patternValues).textContent();
     return value.trim();
   }
 
@@ -305,7 +300,7 @@ export class JourneyInsightsPage {
    */
   async isBadgeEarned(badgeTitle) {
     const badge = this.page.locator(this.selectors.milestones.badges).filter({hasText: badgeTitle});
-    return await badge.locator('.earned-text').isVisible();
+    return await badge.locator(this.selectors.milestones.earnedTexts).isVisible();
   }
 
   /**
@@ -313,7 +308,7 @@ export class JourneyInsightsPage {
    */
   async getBadgeProgress(badgeTitle) {
     const badge = this.page.locator(this.selectors.milestones.badges).filter({hasText: badgeTitle});
-    const progressBar = badge.locator('.progress-fill');
+    const progressBar = badge.locator(this.selectors.milestones.progressFills);
     if (await progressBar.isVisible()) {
       const style = await progressBar.getAttribute('style');
       const match = style.match(/width:\s*(\d+)%/);

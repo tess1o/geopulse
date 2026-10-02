@@ -9,6 +9,7 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import {formatDurationCompact} from '@/utils/calculationsHelpers'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
+import { t } from '@/locales'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -443,19 +444,6 @@ export function useTimezone() {
         return `${startTimeStr} - ${endTimeStr} (${durationFormatted})`
     }
 
-    const formatContinuationText = (startTime, currentDateString) => {
-        const startDate = fromUtc(startTime)
-        const currentDate = dayjs.tz(currentDateString, userTimezone.value)
-        const daysDiff = currentDate.diff(startDate, 'day')
-
-        if (daysDiff === 1) {
-            return `Continued from yesterday, ${startDate.format(getTimeFormatPattern(false))}`
-        } else {
-            const format = startDate.year() === currentDate.year() ? 'MMM D' : 'MMM D, YYYY'
-            return `Continued from ${startDate.format(format)}, ${startDate.format(getTimeFormatPattern(false))}`
-        }
-    }
-
     // --- Date Range Helpers ---
 
     const getDateRangeArray = (startDate, endDate) => {
@@ -576,7 +564,7 @@ export function useTimezone() {
         } else {
             // Show "Continued from" on other days
             const startDate = fromUtc(utcTimestamp)
-            return `Continued from ${startDate.format(`MMM D, ${getTimeFormatPattern(false)}`)}`
+            return t('timeline.overnight.continuedFrom', { time: startDate.format(`MMM D, ${getTimeFormatPattern(false)}`) })
         }
     }
 
@@ -664,7 +652,6 @@ export function useTimezone() {
         getItemDisplayType,
         shouldShowAsOvernight,
         formatOnThisDayDuration,
-        formatContinuationText,
         getOvernightTimestampText,
         getOvernightOnThisDayText,
 

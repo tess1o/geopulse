@@ -9,9 +9,9 @@ export class TestConfig {
 
   static get API_ENDPOINTS() {
     return {
-      register: `${this.API_BASE_URL}/api/users/register`,
-      login: `${this.API_BASE_URL}/api/auth/login`,
-      logout: `${this.API_BASE_URL}/api/auth/logout`,
+      register: `${this.API_BASE_URL}/api/v1/registrations`,
+      login: `${this.API_BASE_URL}/api/v1/auth/sessions`,
+      logout: `${this.API_BASE_URL}/api/v1/auth/sessions/current`,
     };
   }
 

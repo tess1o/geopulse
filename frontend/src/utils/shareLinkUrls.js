@@ -1,3 +1,5 @@
+import { t } from '@/locales'
+
 export const sanitizeShareBaseUrl = (baseUrl) => {
   const fallbackBaseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const effectiveBaseUrl = baseUrl || fallbackBaseUrl
@@ -23,14 +25,14 @@ export const buildShareLinkOptions = (link, baseUrl) => {
   const options = [
     {
       key: 'share',
-      label: 'Share Link',
-      toastDetail: 'Share link copied to clipboard',
+      label: t('sharing.linkOptions.share.label'),
+      toastDetail: t('sharing.linkOptions.share.toastDetail'),
       url: buildShareUrl(link, baseUrl)
     },
     {
       key: 'map',
-      label: 'Map Embed Link',
-      toastDetail: 'Map embed link copied to clipboard',
+      label: t('sharing.linkOptions.map.label'),
+      toastDetail: t('sharing.linkOptions.map.toastDetail'),
       url: buildShareEmbedUrl(link, baseUrl, 'map')
     }
   ]
@@ -38,8 +40,8 @@ export const buildShareLinkOptions = (link, baseUrl) => {
   if (link.share_type === 'TIMELINE') {
     options.push({
       key: 'timeline',
-      label: 'Map + Timeline Embed Link',
-      toastDetail: 'Map + timeline embed link copied to clipboard',
+      label: t('sharing.linkOptions.timeline.label'),
+      toastDetail: t('sharing.linkOptions.timeline.toastDetail'),
       url: buildShareEmbedUrl(link, baseUrl, 'timeline')
     })
   }

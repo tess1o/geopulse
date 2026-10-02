@@ -6,7 +6,7 @@
         <div class="gp-navbar-logo">
           <router-link to="/" class="gp-navbar-logo-link">
             <span class="gp-navbar-logo-text">GeoPulse</span>
-            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">DEMO</span>
+            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">{{ t('ui.appNavbar.demoBadge') }}</span>
           </router-link>
         </div>
       </div>
@@ -22,14 +22,14 @@
         <div v-if="showLocationSharingToggle" class="location-sharing-navbar">
           <i
             :class="['sharing-icon-navbar', locationSharingEnabled ? 'pi pi-eye' : 'pi pi-eye-slash']"
-            v-tooltip.bottom="locationSharingEnabled ? 'Location sharing enabled' : 'Location sharing disabled'"
+            v-tooltip.bottom="locationSharingEnabled ? t('ui.appNavbar.locationSharingEnabledTooltip') : t('ui.appNavbar.locationSharingDisabledTooltip')"
           ></i>
           <ToggleSwitch
             :modelValue="locationSharingEnabled"
             @update:modelValue="$emit('toggle-location-sharing', $event)"
             class="sharing-toggle-navbar"
           />
-          <span class="sharing-label-desktop">Share Location</span>
+          <span class="sharing-label-desktop">{{ t('ui.appNavbar.shareLocation') }}</span>
         </div>
 
         <!-- Invite Friend Button -->
@@ -39,8 +39,8 @@
           :label="inviteButtonLabel"
           @click="$emit('invite-friend')"
           :disabled="inviteDisabled"
-          :aria-label="inviteDisabled ? 'Invite Friend disabled in demo mode' : 'Invite Friend'"
-          v-tooltip.bottom="inviteDisabled ? 'Invitations are disabled in demo mode' : 'Invite Friend'"
+          :aria-label="inviteDisabled ? t('ui.appNavbar.inviteFriendDisabledAriaLabel') : t('ui.appNavbar.inviteFriend')"
+          v-tooltip.bottom="inviteDisabled ? t('ui.appNavbar.inviteFriendDisabledTooltip') : t('ui.appNavbar.inviteFriend')"
           :class="inviteButtonClass"
         />
         <NotificationBell />
@@ -52,11 +52,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
 import NotificationBell from './NotificationBell.vue'
 import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -92,7 +95,7 @@ const { demoModeEnabled, demoReadOnly } = storeToRefs(authStore)
 
 const inviteButtonLabel = computed(() => {
   // Show label on desktop, hide on mobile
-  return window.innerWidth > 768 ? 'Invite Friend' : ''
+  return window.innerWidth > 768 ? t('ui.appNavbar.inviteFriend') : ''
 })
 
 const inviteButtonClass = computed(() => {
@@ -146,7 +149,7 @@ const handleNavigate = (item) => {
 .gp-navbar-logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--gp-primary);
+  color: var(--gp-primary-text);
   letter-spacing: 0;
 }
 
@@ -179,9 +182,9 @@ const handleNavigate = (item) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.75rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
 }
 
 .sharing-icon-navbar {
@@ -225,24 +228,9 @@ const handleNavigate = (item) => {
 
 /* Transparent Navbar */
 .gp-navbar--transparent {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
-/* Dark Mode */
-.p-dark .gp-navbar-logo-text {
-  color: var(--gp-primary-light);
-}
-
-:global(.p-dark) .gp-navbar-demo-badge {
-  background: #ef4444;
-  border-color: #f87171;
-  color: #111827;
-}
-
-.p-dark .gp-navbar--minimal .gp-navbar-logo-text {
-  color: var(--gp-text-primary);
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* Responsive */
@@ -289,15 +277,15 @@ const handleNavigate = (item) => {
 <style>
 /* Global Toolbar Overrides for GeoPulse */
 .gp-app-navbar-toolbar {
-  background: var(--gp-surface-white) !important;
-  border: none !important;
-  border-bottom: 1px solid var(--gp-border-light) !important;
-  border-radius: 0 !important;
-  padding: 0 var(--gp-spacing-lg) !important;
-  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left)) !important;
-  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right)) !important;
-  height: 60px !important;
-  box-shadow: var(--gp-shadow-light) !important;
+  background: var(--gp-surface-card);
+  border: none;
+  border-bottom: 1px solid var(--gp-border);
+  border-radius: 0;
+  padding: 0 var(--gp-spacing-lg);
+  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left));
+  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right));
+  height: 60px;
+  box-shadow: var(--gp-shadow-light);
 }
 
 .gp-app-navbar-toolbar .p-toolbar-group-start,
@@ -309,47 +297,37 @@ const handleNavigate = (item) => {
 
 /* Compact variant */
 .gp-navbar--compact.gp-app-navbar-toolbar {
-  height: 50px !important;
-  padding: 0 var(--gp-spacing-md) !important;
+  height: 50px;
+  padding: 0 var(--gp-spacing-md);
 }
 
 /* Minimal variant */
 .gp-navbar--minimal.gp-app-navbar-toolbar {
-  box-shadow: none !important;
-  border-bottom: 1px solid var(--gp-border-subtle) !important;
+  box-shadow: none;
+  border-bottom: 1px solid var(--gp-border-subtle);
 }
 
 /* Transparent variant */
 .gp-navbar--transparent.gp-app-navbar-toolbar {
-  background: transparent !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
-
-/* Dark mode */
-.p-dark .gp-app-navbar-toolbar {
-  background: var(--gp-surface-dark) !important;
-  border-bottom-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .gp-navbar--minimal.gp-app-navbar-toolbar {
-  border-bottom-color: var(--gp-border-dark) !important;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .gp-app-navbar-toolbar {
-    padding: 0 var(--gp-spacing-md) !important;
-    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
+    padding: 0 var(--gp-spacing-md);
+    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right));
   }
 }
 
 @media (max-width: 480px) {
   .gp-app-navbar-toolbar {
-    padding: 0 var(--gp-spacing-sm) !important;
-    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
-    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
+    padding: 0 var(--gp-spacing-sm);
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left));
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right));
   }
 }
 

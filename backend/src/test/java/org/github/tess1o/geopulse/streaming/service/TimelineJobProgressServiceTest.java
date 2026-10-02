@@ -17,12 +17,12 @@ class TimelineJobProgressServiceTest {
         UUID userId = UUID.randomUUID();
         UUID jobId = service.createJob(userId);
 
-        service.updateProgress(jobId, "Processing GPS points through state machine", 4, 55, null);
-        service.updateProgress(jobId, "Geocoding location 1/10", 4, 40, null);
+        service.updateProgress(jobId, TimelineJobProgressService.step("processingStateMachine", "Processing GPS points through state machine", null), 4, 55, null);
+        service.updateProgress(jobId, TimelineJobProgressService.step("geocodingLocationProgress", "Geocoding location 1/10", null), 4, 40, null);
 
         TimelineJobProgress progress = service.getJobProgress(jobId).orElseThrow();
 
         assertThat(progress.getProgressPercentage()).isEqualTo(55);
-        assertThat(progress.getCurrentStep()).isEqualTo("Geocoding location 1/10");
+        assertThat(progress.getCurrentStep().fallback()).isEqualTo("Geocoding location 1/10");
     }
 }

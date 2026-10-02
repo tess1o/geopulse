@@ -17,7 +17,7 @@ public class TripDto {
     private Long id;
     private UUID userId;
     private String ownerFullName;
-    private Long periodTagId;
+    private Long timelineLabelId;
     private String name;
     private Instant startTime;
     private Instant endTime;

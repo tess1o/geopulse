@@ -1,8 +1,12 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import {useTimezone} from '@/composables/useTimezone'
+import {useLocale} from '@/composables/useLocale'
 import {clearCachedUserProfile, readCachedUserProfile, writeCachedUserProfile} from '@/utils/userProfileCache'
+import {resolvePreferredLocale} from '@/locales'
 import {isBackendDown} from '@/utils/errorHandler'
+import {normalizeApiError} from '@/utils/apiErrorDetail'
+import {APPEARANCE_PREFERENCE_DEFAULTS} from '@/maps/shared/mapAppearance'
 
 let authReconcilePromise = null
 
@@ -15,8 +19,53 @@ function shouldPreserveCachedProfile(error) {
         return true
     }
 
-    const status = error.response?.status
+    // Errors travelling through fail() have already been normalized by normalizeApiError, which flattens
+    // response.status to a top-level status and drops .response entirely.
+    const status = error.response?.status ?? error.status
     return typeof status === 'number' && status >= 500
+}
+
+// Preference values mirrored flat onto the in-memory user and the cached profile. The API nests them
+// (uiPreferences, timelineDisplay.preferences, timelineDisplay.capabilities) and already applies defaults;
+// these defaults cover partial payloads and cached profiles written by older builds.
+const UI_PREFERENCE_DEFAULTS = {
+    distanceUnit: 'KILOMETERS',
+    temperatureUnit: 'CELSIUS',
+    defaultRedirectUrl: '',
+    dateFormat: 'MDY',
+    timeFormat: '24h',
+    language: 'en'
+}
+
+const TIMELINE_DISPLAY_PREFERENCE_DEFAULTS = {
+    customMapTileUrl: '',
+    customMapStyleUrl: '',
+    mapRenderMode: 'VECTOR',
+    defaultDateRangePreset: '',
+    showCurrentLocationTelemetry: true,
+    autoShowTripReplayControls: true,
+    enable3dBuildingsByDefault: false,
+    mapMatchingEnabled: false,
+    mapMatchingExcludedMovementTypes: [],
+    // Path colors, speed bands, heatmap gradient, width and outline; resolved by maps/shared/mapAppearance.
+    ...APPEARANCE_PREFERENCE_DEFAULTS
+}
+
+const TIMELINE_DISPLAY_CAPABILITY_DEFAULTS = {
+    mapMatchingAvailable: false
+}
+
+// Picks the keys of `defaults` from `source`, falling back to the default for missing, null or empty values.
+function withDefaults(defaults, source) {
+    return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => {
+        const value = source?.[key]
+        const resolved = value === undefined || value === null || value === '' ? fallback : value
+        return [key, Array.isArray(resolved) ? [...resolved] : resolved]
+    }))
+}
+
+function flattenTimelineDisplaySettings(settings) {
+    return settings ? {...settings.preferences, ...settings.capabilities} : settings
 }
 
 function normalizeUser(source) {
@@ -30,6 +79,9 @@ function normalizeUser(source) {
         return null
     }
 
+    // API payloads nest preferences; the cached profile and patched in-memory user are already flat.
+    const timelineDisplay = raw.timelineDisplay || {}
+
     return {
         id,
         userId: id,
@@ -39,18 +91,9 @@ function normalizeUser(source) {
         timezone: raw.timezone || 'UTC',
         createdAt: raw.createdAt || null,
         hasPassword: !!raw.hasPassword,
-        customMapTileUrl: raw.customMapTileUrl || '',
-        customMapStyleUrl: raw.customMapStyleUrl || '',
-        mapRenderMode: raw.mapRenderMode || 'VECTOR',
-        distanceUnit: raw.distanceUnit || 'KILOMETERS',
-        temperatureUnit: raw.temperatureUnit || 'CELSIUS',
-        defaultRedirectUrl: raw.defaultRedirectUrl || '',
-        dateFormat: raw.dateFormat || 'MDY',
-        timeFormat: raw.timeFormat || '24h',
-        defaultDateRangePreset: raw.defaultDateRangePreset || '',
-        autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
-        mapMatchingEnabled: raw.mapMatchingEnabled ?? false,
-        mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
+        ...withDefaults(UI_PREFERENCE_DEFAULTS, raw.uiPreferences || raw),
+        ...withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, timelineDisplay.preferences || raw),
+        ...withDefaults(TIMELINE_DISPLAY_CAPABILITY_DEFAULTS, timelineDisplay.capabilities || raw),
         demoMode: !!raw.demoMode,
         canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
         adminReadOnly: !!raw.adminReadOnly,
@@ -62,6 +105,8 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         isAuthenticated: false,
+        error: null,
+        accountLinking: null,
         authStatus: {
             demoModeEnabled: false,
             demoAdminReadOnlyEnabled: false,
@@ -89,10 +134,15 @@ export const useAuthStore = defineStore('auth', {
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
         timeFormat: (state) => state.user?.timeFormat || '24h',
+        language: (state) => state.user?.language || 'en',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
+        enable3dBuildingsByDefault: (state) => state.user?.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
+        mapMatchingExcludedMovementTypes: (state) => state.user?.mapMatchingExcludedMovementTypes ?? [],
         mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
+        defaultPathColor: (state) => state.user?.defaultPathColor || '',
+        activePathColor: (state) => state.user?.activePathColor || '',
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
         demoMode: (state) => !!state.user?.demoMode,
@@ -112,6 +162,7 @@ export const useAuthStore = defineStore('auth', {
             this.isAuthenticated = !!user
 
             const timezone = useTimezone()
+            const locale = useLocale()
             if (user) {
                 if (persist) {
                     writeCachedUserProfile(user)
@@ -119,10 +170,21 @@ export const useAuthStore = defineStore('auth', {
                 timezone.setTimezone(user.timezone || 'UTC')
                 timezone.setDateFormat(user.dateFormat || 'MDY')
                 timezone.setTimeFormat(user.timeFormat || '24h')
+                // The profile is the authority for language, so persist:false -- writing it back would
+                // be a pointless round trip. Not awaited: setUser stays synchronous for its callers,
+                // and the locale ref is reactive, so the UI re-renders once the catalog resolves.
+                //
+                // Only when the payload actually carries a language: defaulting an absent field to
+                // 'en' would silently reset a Ukrainian user's UI on any partial response. Sign-out
+                // below is the one place that deliberately returns to the default.
+                if (user.language) {
+                    void locale.setLocale(user.language, { persist: false })
+                }
             } else if (persist) {
                 clearCachedUserProfile()
                 timezone.setDateFormat('MDY')
                 timezone.setTimeFormat('24h')
+                void locale.setLocale('en', { persist: false })
             }
 
             return user
@@ -152,6 +214,11 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
+        fail(error, fallback) {
+            this.error = normalizeApiError(error, fallback)
+            return this.error
+        },
+
         clearUser() {
             this.user = null
             this.isAuthenticated = false
@@ -160,39 +227,43 @@ export const useAuthStore = defineStore('auth', {
             timezone.setTimezone('UTC')
             timezone.setDateFormat('MDY')
             timezone.setTimeFormat('24h')
+            // Falls back to the guest's own choice or browser language, not a hardcoded 'en' --
+            // otherwise a Ukrainian-speaking user loses their language on every public page on sign-out.
+            void useLocale().setLocale(resolvePreferredLocale(), { persist: false })
             apiService.clearAuthData()
         },
 
         async login(email, password) {
             try {
                 const response = await apiService.login(email, password)
-                return this.consumeBrowserAuthResponse(response?.data)
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'Login failed')
             }
         },
 
         async demoLogin(personaId) {
             try {
-                const response = await apiService.post('/auth/demo-login', {personaId})
-                return this.consumeBrowserAuthResponse(response?.data)
+                const response = await apiService.post('/auth/demo-sessions', {personaId})
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'Demo login failed')
             }
         },
 
-        async register(email, password, fullName, timezone) {
-            await apiService.post('/users/register', {
+        async register(email, password, fullName, timezone, language) {
+            await apiService.post('/registrations', {
                 email,
                 password,
                 fullName,
-                timezone
+                timezone,
+                language
             })
             await this.login(email, password)
         },
@@ -202,19 +273,33 @@ export const useAuthStore = defineStore('auth', {
             this.clearUser()
         },
 
-        async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
-            const response = await apiService.post('/users/update', {
+        async logoutStrict() {
+            await apiService.logoutStrict()
+            this.clearUser()
+        },
+
+        async fetchTimelineDisplayPreferences() {
+            try {
+                const response = await apiService.get('/preferences/timeline-display')
+                // Keep the in-memory user current: maps read appearance preferences from it (useMapAppearance).
+                if (response && this.user) {
+                    this.patchCurrentUser(withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, response.preferences))
+                }
+                return flattenTimelineDisplaySettings(response)
+            } catch (error) {
+                throw this.fail(error, 'Failed to load timeline display preferences')
+            }
+        },
+
+        async updateProfile({fullName, avatar, timezone, ...uiPreferences}) {
+            const response = await apiService.patch('/users/me', {
                 fullName,
                 avatar,
                 timezone,
-                distanceUnit,
-                temperatureUnit,
-                defaultRedirectUrl,
-                dateFormat,
-                timeFormat
+                uiPreferences
             })
 
-            const updatedUser = response?.data
+            const updatedUser = response
             if (updatedUser) {
                 this.setUser(updatedUser)
                 return this.user
@@ -227,13 +312,13 @@ export const useAuthStore = defineStore('auth', {
             const formData = new FormData()
             formData.append('file', file)
 
-            const response = await apiService.post('/users/avatar', formData, {
+            const response = await apiService.put('/users/me/avatar', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             })
 
-            const avatarPath = response?.data?.avatar || response?.avatar
+            const avatarPath = response?.avatar
             if (!avatarPath) {
                 throw new Error('Avatar upload succeeded but no avatar path was returned')
             }
@@ -242,41 +327,17 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async updateTimelineDisplayPreferences(displayPreferences) {
-            const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
-            const updatedPreferences = response?.data || null
-
-            if (updatedPreferences) {
-                const userPatch = {}
-
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
-                    userPatch.customMapTileUrl = updatedPreferences.customMapTileUrl || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapStyleUrl')) {
-                    userPatch.customMapStyleUrl = updatedPreferences.customMapStyleUrl || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapRenderMode')) {
-                    userPatch.mapRenderMode = updatedPreferences.mapRenderMode || 'VECTOR'
-                }
-
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultDateRangePreset')) {
-                    userPatch.defaultDateRangePreset = updatedPreferences.defaultDateRangePreset || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'autoShowTripReplayControls')) {
-                    userPatch.autoShowTripReplayControls = updatedPreferences.autoShowTripReplayControls ?? true
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingEnabled')) {
-                    userPatch.mapMatchingEnabled = updatedPreferences.mapMatchingEnabled ?? false
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingAvailable')) {
-                    userPatch.mapMatchingAvailable = updatedPreferences.mapMatchingAvailable ?? false
-                }
-
-                if (Object.keys(userPatch).length > 0) {
-                    this.patchCurrentUser(userPatch)
-                }
+            const response = await apiService.put('/preferences/timeline-display', displayPreferences)
+            if (!response) {
+                return null
             }
 
-            return updatedPreferences
+            this.patchCurrentUser({
+                ...withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, response.preferences),
+                ...withDefaults(TIMELINE_DISPLAY_CAPABILITY_DEFAULTS, response.capabilities)
+            })
+
+            return flattenTimelineDisplaySettings(response)
         },
 
         updateUserTimezone(timezone) {
@@ -287,16 +348,16 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async changePassword(oldPassword, newPassword) {
-            const response = await apiService.post('/users/changePassword', {
+            const response = await apiService.put('/users/me/password', {
                 oldPassword,
                 newPassword
             })
 
-            if (response?.data?.hasPassword) {
+            if (response?.hasPassword) {
                 this.patchCurrentUser({hasPassword: true})
             }
 
-            return response?.data || null
+            return response || null
         },
 
         async _reconcileAuthState() {
@@ -364,8 +425,7 @@ export const useAuthStore = defineStore('auth', {
 
         async getOidcProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/providers')
-                return response?.data || []
+                return await apiService.get('/auth/oidc/providers') || []
             } catch (error) {
                 console.error('Failed to get OIDC providers:', error)
                 return []
@@ -374,51 +434,54 @@ export const useAuthStore = defineStore('auth', {
 
         async initiateOidcLogin(providerName, redirectUri = null) {
             try {
-                const response = await apiService.post(`/auth/oidc/login/${providerName}`, {}, {
+                const response = await apiService.post(`/auth/oidc/login-authorizations/${providerName}`, {}, {
                     params: redirectUri ? {redirectUri} : {}
                 })
-                window.location.href = response.data.authorizationUrl
+                window.location.href = response.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC login:', error)
-                throw error
+                throw this.fail(error, 'Failed to initiate OIDC login')
             }
         },
 
         async handleOidcCallback(code, state) {
             try {
-                const response = await apiService.post('/auth/oidc/callback', {code, state})
-                return this.consumeBrowserAuthResponse(response?.data)
+                const response = await apiService.post('/auth/oidc/callbacks', {code, state})
+                this.accountLinking = null
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
+                if (error?.response?.data?.code === 'OIDC_ACCOUNT_LINKING_REQUIRED') {
+                    this.accountLinking = error.response.data.linking || null
+                }
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'OIDC authentication failed')
             }
         },
 
         async linkOidcProvider(providerName) {
             try {
-                const response = await apiService.post(`/auth/oidc/link/${providerName}`)
-                window.location.href = response.data.authorizationUrl
+                const response = await apiService.post(`/auth/oidc/connections/${providerName}/authorizations`)
+                window.location.href = response.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC linking:', error)
-                throw error
+                throw this.fail(error, 'Failed to initiate OIDC linking')
             }
         },
 
         async unlinkOidcProvider(providerName) {
             try {
-                await apiService.delete(`/auth/oidc/unlink/${providerName}`)
+                await apiService.delete(`/auth/oidc/connections/${providerName}`)
             } catch (error) {
                 console.error('Failed to unlink OIDC provider:', error)
-                throw error
+                throw this.fail(error, 'Failed to unlink OIDC provider')
             }
         },
 
         async getLinkedProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/connections')
-                return response.data
+                return await apiService.get('/auth/oidc/connections')
             } catch (error) {
                 console.error('Failed to get linked OIDC providers:', error)
                 return []
@@ -427,20 +490,18 @@ export const useAuthStore = defineStore('auth', {
 
         async fetchCurrentUserProfile() {
             try {
-                const response = await apiService.get('/users/me')
-                const userData = response?.data
-                this.setUser(userData)
+                const user = await apiService.get('/users/me')
+                this.setUser(user)
                 return this.user
             } catch (error) {
                 console.error('Failed to fetch current user profile:', error)
-                throw error
+                throw this.fail(error, 'Failed to fetch user profile')
             }
         },
 
         async getRegistrationStatus() {
             try {
-                const response = await apiService.get('/auth/status')
-                return response.data
+                return await apiService.get('/auth/sessions/current')
             } catch (error) {
                 console.error('Failed to fetch registration status:', error)
                 return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false }
@@ -462,14 +523,81 @@ export const useAuthStore = defineStore('auth', {
                 demoPersonas: []
             }
             try {
-                const response = await apiService.get('/auth/status')
-                const status = {...fallback, ...(response.data || {})}
+                const response = await apiService.get('/auth/sessions/current')
+                const status = {...fallback, ...response}
                 this.authStatus = status
                 return status
             } catch (error) {
                 console.error('Failed to get auth status:', error)
                 this.authStatus = fallback
                 return fallback
+            }
+        },
+
+        async generateMobileAuth() {
+            try {
+                return await apiService.post('/auth/mobile-codes', {})
+            } catch (error) {
+                throw this.fail(error, 'Unable to create authentication link')
+            }
+        },
+
+        async validateInvitation(token) {
+            try {
+                return await apiService.get(`/registration-invitations/${token}`)
+            } catch (error) {
+                throw this.fail(error, 'Failed to validate invitation')
+            }
+        },
+
+        async registerInvitation(token, payload) {
+            try {
+                return await apiService.post(`/registration-invitations/${token}/registrations`, payload)
+            } catch (error) {
+                throw this.fail(error, 'Registration failed')
+            }
+        },
+
+        async listApiTokens() {
+            try {
+                return await apiService.get('/api-tokens')
+            } catch (error) {
+                throw this.fail(error, 'Failed to load API tokens')
+            }
+        },
+
+        async saveApiToken(id, payload) {
+            try {
+                return id
+                    ? await apiService.put(`/api-tokens/${id}`, payload)
+                    : await apiService.post('/api-tokens', payload)
+            } catch (error) {
+                throw this.fail(error, 'Failed to save API token')
+            }
+        },
+
+        async revokeApiToken(id) {
+            try {
+                await apiService.delete(`/api-tokens/${id}`)
+            } catch (error) {
+                throw this.fail(error, 'Failed to revoke API token')
+            }
+        },
+
+        async linkAccountWithPassword(payload) {
+            try {
+                return this.consumeBrowserAuthResponse(
+                    await apiService.post('/auth/oidc/account-links/password', payload))
+            } catch (error) {
+                throw this.fail(error, 'Password verification failed')
+            }
+        },
+
+        async initiateOidcAccountVerification(payload) {
+            try {
+                return await apiService.post('/auth/oidc/account-links/oidc', payload)
+            } catch (error) {
+                throw this.fail(error, 'OIDC verification initiation failed')
             }
         }
     }

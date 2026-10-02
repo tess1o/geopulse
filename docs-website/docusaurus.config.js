@@ -129,6 +129,14 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
             image: 'img/geopulse-app-timeline.png',
+            languageTabs: [
+                {language: 'curl'},
+                {language: 'javascript'},
+                {language: 'nodejs'},
+                {language: 'python'},
+                {language: 'go'},
+                {language: 'java'},
+            ],
 
             colorMode: {
                 respectPrefersColorScheme: true,

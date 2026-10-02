@@ -740,6 +740,7 @@ serviceMonitor:
 | `mosquitto.image.repository`    | Mosquitto image     | `iegomez/mosquitto-go-auth` |
 | `mosquitto.image.tag`           | Mosquitto image tag | `3.0.0-mosquitto_2.0.18`    |
 | `mosquitto.username`            | MQTT admin username | `geopulse_mqtt_admin`       |
+| `mosquitto.verboseLogging`      | Temporary verbose broker/auth logging | `false`          |
 | `mosquitto.persistence.enabled` | Enable persistence  | `true`                      |
 
 ### Ingress Parameters

@@ -6,31 +6,31 @@
           @hide="onDialogHide">
     <div v-if="favoriteLocation" class="edit-favorite-content">
       <div class="form-field">
-        <label for="name" class="field-label">Name</label>
+        <label for="name" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.nameLabel') }}</label>
         <InputText
           id="name"
           v-model="favoriteLocation.name"
-          placeholder="Enter location name"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.namePlaceholder')"
           class="w-full"
         />
       </div>
 
       <div class="form-field">
-        <label for="city" class="field-label">City</label>
+        <label for="city" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.cityLabel') }}</label>
         <InputText
           id="city"
           v-model="favoriteLocation.city"
-          placeholder="Enter city (optional)"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.cityPlaceholder')"
           class="w-full"
         />
       </div>
 
       <div class="form-field">
-        <label for="country" class="field-label">Country</label>
+        <label for="country" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.countryLabel') }}</label>
         <InputText
           id="country"
           v-model="favoriteLocation.country"
-          placeholder="Enter country (optional)"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.countryPlaceholder')"
           class="w-full"
         />
       </div>
@@ -40,10 +40,10 @@
         <div class="bounds-header">
           <div class="bounds-title-group">
             <i class="pi pi-th-large"></i>
-            <span class="bounds-title">Area Boundaries</span>
+            <span class="bounds-title">{{ t('favoritesGeocodingDialogs.editFavorite.areaBoundariesTitle') }}</span>
           </div>
           <Button
-            :label="isDrawing() ? 'Drawing...' : 'Redraw Area'"
+            :label="isDrawing() ? t('favoritesGeocodingDialogs.editFavorite.drawing') : t('favoritesGeocodingDialogs.editFavorite.redrawArea')"
             icon="pi pi-pencil"
             size="small"
             @click="handleRedrawArea"
@@ -65,29 +65,29 @@
           <!-- Drawing instruction overlay -->
           <div v-if="isDrawing()" class="drawing-instruction">
             <i class="pi pi-info-circle"></i>
-            <span>Click and drag on the map to draw a new rectangular area</span>
+            <span>{{ t('favoritesGeocodingDialogs.editFavorite.drawInstruction') }}</span>
           </div>
         </div>
 
         <!-- Coordinates Display (read-only) -->
         <div class="bounds-info">
-          <span class="bounds-info-label">Current Bounds:</span>
+          <span class="bounds-info-label">{{ t('favoritesGeocodingDialogs.editFavorite.currentBoundsLabel') }}</span>
           <span class="bounds-info-text">
-            NE: {{ favoriteLocation.northEastLat?.toFixed(6) }}, {{ favoriteLocation.northEastLon?.toFixed(6) }}
-            | SW: {{ favoriteLocation.southWestLat?.toFixed(6) }}, {{ favoriteLocation.southWestLon?.toFixed(6) }}
+            {{ t('favoritesGeocodingDialogs.editFavorite.neLabel') }} {{ favoriteLocation.northEastLat?.toFixed(6) }}, {{ favoriteLocation.northEastLon?.toFixed(6) }}
+            | {{ t('favoritesGeocodingDialogs.editFavorite.swLabel') }} {{ favoriteLocation.southWestLat?.toFixed(6) }}, {{ favoriteLocation.southWestLon?.toFixed(6) }}
           </span>
         </div>
       </div>
     </div>
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('common.cancel')"
         severity="secondary"
         outlined
         @click="onDialogHide"
       />
       <Button
-        label="Save"
+        :label="t('favoritesGeocodingDialogs.editFavorite.save')"
         @click="onEditButton"
       />
     </template>
@@ -96,6 +96,7 @@
 
 <script setup>
 import {ref, computed, watch, onUnmounted} from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from "primevue/button"
 import Dialog from "primevue/dialog"
 import InputText from "primevue/inputtext"
@@ -106,6 +107,8 @@ import {
   getAreaCenterLatLng,
   toLeafletBounds
 } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -306,7 +309,7 @@ onUnmounted(() => {
 .bounds-section {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  border-top: 1px solid var(--gp-border);
 }
 
 .bounds-header {
@@ -339,7 +342,7 @@ onUnmounted(() => {
   height: 350px;
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
-  border: 1px solid var(--gp-border-medium);
+  border: 1px solid var(--gp-border);
   margin-bottom: 0.75rem;
   position: relative;
 }
@@ -385,7 +388,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
 }
@@ -396,7 +399,7 @@ onUnmounted(() => {
 }
 
 .bounds-info-text {
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
   color: var(--gp-text-primary);
   font-size: 0.8rem;
 }
@@ -405,42 +408,6 @@ onUnmounted(() => {
   .map-container {
     height: 250px;
   }
-}
-
-/* GeoPulse Dialog Styling */
-:deep(.p-dialog) {
-  border-radius: var(--gp-radius-large);
-  box-shadow: var(--gp-shadow-large);
-  border: 1px solid var(--gp-border-medium);
-}
-
-:deep(.p-dialog-header) {
-  background: var(--gp-surface-white);
-  border-bottom: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large) var(--gp-radius-large) 0 0;
-  padding: 1rem 1.25rem;
-}
-
-:deep(.p-dialog-title) {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 1.1rem;
-}
-
-:deep(.p-dialog-content) {
-  background: var(--gp-surface-white);
-  padding: 0 1.25rem;
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-dialog-footer) {
-  background: var(--gp-surface-white);
-  border-top: 1px solid var(--gp-border-light);
-  border-radius: 0 0 var(--gp-radius-large) var(--gp-radius-large);
-  padding: 1rem 1.25rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
 }
 
 /* Input Styling */
@@ -458,108 +425,8 @@ onUnmounted(() => {
   outline: none;
 }
 
-/* Button Styling */
-:deep(.p-button) {
-  border-radius: var(--gp-radius-medium);
-  font-weight: 600;
-  padding: 0.5rem 1.25rem;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-button:not(.p-button-outlined)) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: var(--gp-neutral-white);
-}
-
-:deep(.p-button:not(.p-button-outlined):hover) {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  color: var(--gp-neutral-white);
-}
-
-:deep(.p-button.p-button-outlined) {
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-secondary);
-}
-
-:deep(.p-button.p-button-outlined:hover) {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
-}
-
-/* Dark Mode */
-.p-dark :deep(.p-dialog) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark :deep(.p-dialog-header),
-.p-dark :deep(.p-dialog-content),
-.p-dark :deep(.p-dialog-footer) {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark :deep(.p-dialog-title) {
-  color: var(--gp-text-primary);
-}
-
-.p-dark :deep(.p-inputtext) {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
-}
-
-.p-dark :deep(.p-inputtext:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.2);
-}
-
-.p-dark :deep(.p-button.p-button-outlined) {
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-primary);
-}
-
-.p-dark :deep(.p-button.p-button-outlined:hover) {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-light);
-  color: var(--gp-text-primary);
-}
-
-.p-dark :deep(.p-button:not(.p-button-outlined)) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: var(--gp-neutral-white);
-}
-
-.p-dark .bounds-section {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .map-container {
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .bounds-info {
-  background: var(--gp-surface-darker);
-}
-
 /* Responsive */
-@media (max-width: 1024px) {
-  :deep(.p-dialog) {
-    width: 90vw !important;
-    max-width: 800px !important;
-  }
-}
-
 @media (max-width: 768px) {
-  :deep(.p-dialog) {
-    width: 95vw !important;
-  }
-
   .bounds-header {
     flex-direction: column;
     align-items: stretch;

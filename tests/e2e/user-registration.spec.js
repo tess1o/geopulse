@@ -60,7 +60,7 @@ test.describe('User Registration', () => {
         // Should show error message
         await ValidationHelpers.waitForPageErrorMessage(page, registerPage.getErrorSelector());
         const errorMessage = await ValidationHelpers.getPageErrorMessage(page, registerPage.getErrorSelector());
-        expect(errorMessage).toContain('User with email ' + existingUser.email + ' already exists');
+        expect(errorMessage).toContain('An account with this email already exists');
     });
 
     test('should navigate to login page from register page', async ({page}) => {

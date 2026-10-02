@@ -5,15 +5,18 @@
 
 import { ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { getSettingMetadata } from '@/constants/adminSettingsMetadata'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { transformSettingValue, parseSettingValue, shouldSkipEncryptedUpdate } from '@/utils/settingHelpers'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { t, te } from '@/locales'
 
 export function useAdminSettings() {
   const toast = useToast()
   const authStore = useAuthStore()
+  const adminStore = useAdminStore()
   const loading = ref(false)
 
   /**
@@ -24,13 +27,14 @@ export function useAdminSettings() {
   const loadSettings = async (category) => {
     loading.value = true
     try {
-      const response = await apiService.get(`/admin/settings/${category}`)
+      const response = await adminStore.getSettingsByCategory(category)
       return response.map(setting => {
         const metadata = getSettingMetadata(setting.key)
+        const metadataKey = `adminSettings.metadata.${setting.key}`
         return {
           ...setting,
-          label: metadata.label,
-          description: metadata.description,
+          label: te(metadataKey + '.label') ? t(`${metadataKey}.label`) : metadata.label,
+          description: te(metadataKey + '.description') ? t(`${metadataKey}.description`) : metadata.description,
           readOnly: metadata.readOnly || authStore.adminReadOnly || false,
           currentValue: transformSettingValue(setting)
         }
@@ -39,8 +43,8 @@ export function useAdminSettings() {
       console.error(`Failed to load ${category} settings:`, error)
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: `Failed to load ${category} settings`,
+        summary: t('adminSettings.composable.loadFailedSummary'),
+        detail: t('adminSettings.composable.loadFailedDetail', { category }),
         life: 3000
       })
       throw error
@@ -74,7 +78,7 @@ export function useAdminSettings() {
         if (validationError) {
           toast.add({
             severity: 'error',
-            summary: 'Validation Error',
+            summary: t('adminSettings.composable.validationErrorSummary'),
             detail: validationError,
             life: 3000
           })
@@ -87,14 +91,14 @@ export function useAdminSettings() {
       }
 
       const value = parseSettingValue(setting)
-      await apiService.put(`/admin/settings/${setting.key}`, { value })
+      await adminStore.updateSetting(setting.key, value)
 
       setting.isDefault = false
 
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: `${setting.label} updated`,
+        summary: t('adminSettings.composable.updateSuccessSummary'),
+        detail: t('adminSettings.composable.settingUpdatedDetail', { label: setting.label }),
         life: 3000
       })
 
@@ -104,10 +108,10 @@ export function useAdminSettings() {
       }
     } catch (error) {
       console.error('Failed to update setting:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update setting'
+      const errorMessage = formatApiErrorDetail(error, t('adminSettings.composable.updateFailedFallback'))
       toast.add({
         severity: 'error',
-        summary: 'Error',
+        summary: t('adminSettings.composable.updateErrorSummary'),
         detail: errorMessage,
         life: 3000
       })
@@ -130,7 +134,7 @@ export function useAdminSettings() {
         return
       }
 
-      const response = await apiService.delete(`/admin/settings/${setting.key}`)
+      const response = await adminStore.resetSetting(setting.key)
 
       setting.isDefault = true
       setting.currentValue = transformSettingValue({
@@ -140,16 +144,16 @@ export function useAdminSettings() {
 
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: `${setting.label} reset to default`,
+        summary: t('adminSettings.composable.updateSuccessSummary'),
+        detail: t('adminSettings.composable.resetSuccessDetail', { label: setting.label }),
         life: 3000
       })
     } catch (error) {
       console.error('Failed to reset setting:', error)
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to reset setting',
+        summary: t('adminSettings.composable.updateErrorSummary'),
+        detail: t('adminSettings.composable.resetFailedDetail'),
         life: 3000
       })
     }

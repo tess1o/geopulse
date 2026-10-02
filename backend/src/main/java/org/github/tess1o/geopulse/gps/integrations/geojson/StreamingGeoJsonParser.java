@@ -74,7 +74,7 @@ public class StreamingGeoJsonParser {
 
             // Parse root object fields
             while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.getCurrentName();
+                String fieldName = parser.currentName();
                 parser.nextToken(); // Move to field value
 
                 if ("type".equals(fieldName)) {

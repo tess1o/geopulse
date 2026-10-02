@@ -73,11 +73,11 @@ public class AIFriendLiveTools {
             throw new AIToolException(
                     "LIVE_PERMISSION_DENIED",
                     "Friend has not granted live location access.",
-                    Map.of("friend", toCandidate(selectedFriend))
+                    Map.of("friend", toCandidate(selectedFriend)),
+                    e
             );
         } catch (Exception e) {
-            log.error("Failed to fetch friend live location", e);
-            throw new AIToolException("LIVE_LOCATION_QUERY_FAILED", "Failed to fetch friend live location.");
+            throw new AIToolException("LIVE_LOCATION_QUERY_FAILED", "Failed to fetch friend live location.", e);
         }
 
         if (livePoint == null) {

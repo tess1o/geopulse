@@ -1,9 +1,13 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
@@ -16,15 +20,19 @@ import org.github.tess1o.geopulse.admin.model.UserInvitationEntity;
 import org.github.tess1o.geopulse.admin.service.UserInvitationService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/admin/invitations")
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_INVITATION;
+
+@Path("/admin/invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -49,30 +57,15 @@ public class AdminInvitationResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getInvitations(
+    public PageResponse<InvitationResponse> getInvitations(
             @QueryParam("status") InvitationStatus status,
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("50") int size
+            @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @QueryParam("size") @DefaultValue("50") @Min(1) @Max(200) int size
     ) {
-        try {
-            List<InvitationResponse> invitations = invitationService.getInvitations(status, page, size);
-            long total = invitationService.countInvitations(status);
+        List<InvitationResponse> invitations = invitationService.getInvitations(status, page, size);
+        long total = invitationService.countInvitations(status);
 
-            PagedResponse<InvitationResponse> response = PagedResponse.<InvitationResponse>builder()
-                    .content(invitations)
-                    .totalElements(total)
-                    .totalPages((int) Math.ceil((double) total / size))
-                    .page(page)
-                    .size(size)
-                    .build();
-
-            return Response.ok(response).build();
-        } catch (Exception e) {
-            log.error("Error fetching invitations", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to fetch invitations"))
-                    .build();
-        }
+        return new PageResponse<>(invitations, page, size, total, (int) Math.ceil((double) total / size));
     }
 
     /**
@@ -81,9 +74,8 @@ public class AdminInvitationResource {
     @GET
     @Path("/base-url")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getBaseUrl() {
-        String url = this.baseUrl.orElse("");
-        return Response.ok(Map.of("baseUrl", url)).build();
+    public InvitationBaseUrlResponse getBaseUrl() {
+        return new InvitationBaseUrlResponse(baseUrl.orElse(""));
     }
 
     /**
@@ -91,14 +83,10 @@ public class AdminInvitationResource {
      */
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response createInvitation(
-            @Valid CreateInvitationRequest createRequest,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp
-    ) {
+    public RestResponse<CreateInvitationResponse> createInvitation(@Valid CreateInvitationRequest createRequest) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
 
             UserInvitationEntity invitation = invitationService.createInvitation(
                     adminUserId,
@@ -113,16 +101,9 @@ public class AdminInvitationResource {
                     .expiresAt(invitation.getExpiresAt())
                     .build();
 
-            return Response.status(Response.Status.CREATED).entity(response).build();
+            return RestResponse.status(Response.Status.CREATED, response);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error creating invitation", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to create invitation"))
-                    .build();
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 
@@ -132,27 +113,14 @@ public class AdminInvitationResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response revokeInvitation(
-            @PathParam("id") UUID invitationId,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp
-    ) {
+    public void revokeInvitation(@PathParam("id") UUID invitationId) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
 
             invitationService.revokeInvitation(invitationId, adminUserId, ipAddress);
-
-            return Response.ok(Map.of("message", "Invitation revoked successfully")).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error revoking invitation", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to revoke invitation"))
-                    .build();
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 }

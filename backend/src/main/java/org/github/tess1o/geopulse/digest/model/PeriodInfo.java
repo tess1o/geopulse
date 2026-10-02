@@ -12,6 +12,4 @@ import lombok.NoArgsConstructor;
 public class PeriodInfo {
     private int year;
     private Integer month; // null for yearly digest
-    private String displayName; // "January 2024" or "2024"
-    private String type; // "monthly" or "yearly"
 }

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.dawarich.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -12,15 +15,21 @@ import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.Dawarich
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.DawarichYearlyStats;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 
-@Path("/api/dawarich/api/v1")
+@Path(ApiPaths.GPS_INGEST + "/dawarich")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -41,8 +50,11 @@ public class DawarichResource {
     @Path("/health")
     @Operation(summary = "Check Dawarich compatibility health",
             description = "Returns a Dawarich-compatible health response for source connectivity checks.")
+    @APIResponse(responseCode = "200", description = "Dawarich-compatible health response",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.OBJECT)))
     public Response handleDawarichHealth(Request request, @HeaderParam("Authorization") String authHeader) {
-        log.info("Received health request");
+        log.debug("Received Dawarich health request");
         var authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         String dawarichResponse = authenticated.isPresent() ? "Hey, I'm alive and authenticated!" : "Hey, I'm alive!";
         return Response
@@ -57,15 +69,17 @@ public class DawarichResource {
     @Path("/points")
     @Operation(summary = "Ingest Dawarich points",
             description = "Receives Dawarich point payloads and stores them for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Points accepted")
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
-        log.info("Received payload: {}", payload);
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
+        var summary = gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.DAWARICH, started);
         return Response.ok().build();
     }
 
@@ -73,13 +87,12 @@ public class DawarichResource {
     @Path("/stats")
     @Operation(summary = "Get Dawarich compatibility stats",
             description = "Returns a Dawarich-compatible stats response for authenticated compatibility clients.")
+    @APIResponseSchema(value = DawarichStatsResponse.class, responseCode = "200",
+            responseDescription = "Dawarich-compatible statistics")
     public Response handleDawarichStats(@QueryParam("api_key") String apiKey) {
-        log.info("Received stats request with api_key: {}", apiKey);
-
-
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, apiKey);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         //TODO: implement proper stats, probably use stats service

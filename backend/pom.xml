@@ -16,7 +16,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.35.1</quarkus.platform.version>
+        <quarkus.platform.version>3.39.4</quarkus.platform.version>
         <skipITs>false</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <failsafe-plugin.version>3.5.4</failsafe-plugin.version>
@@ -24,21 +24,20 @@
         <lombok.version>1.18.46</lombok.version>
         <lombok.mapstruct-binding.version>0.2.0</lombok.mapstruct-binding.version>
         <mapstruct.version>1.6.3</mapstruct.version>
-        <hibernate-spatial.version>7.1.2.Final</hibernate-spatial.version>
         <mockito.version>5.19.0</mockito.version>
         <jjwt-api.version>0.13.0</jjwt-api.version>
         <pmd.version>7.17.0</pmd.version>
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
-        <hypersistence-utils-hibernate-71.version>3.15.2</hypersistence-utils-hibernate-71.version>
-        <extra.native.build.args></extra.native.build.args>
         <assertj-core.version>3.27.7</assertj-core.version>
         <testcontainers-junit-jupiter.version>2.0.5</testcontainers-junit-jupiter.version>
         <jbcrypt.version>0.4</jbcrypt.version>
         <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
         <bouncycastle.version>1.85.2</bouncycastle.version>
-        <quarkus-mcp-server.version>2.0.0</quarkus-mcp-server.version>
+        <quarkus-mcp-server.version>2.0.1</quarkus-mcp-server.version>
+        <quarkus-http-problem.version>3.38.2</quarkus-http-problem.version>
+        <pdfbox.version>3.0.8</pdfbox.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -93,6 +92,15 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-logging-json</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.httpproblem</groupId>
+            <artifactId>quarkus-http-problem</artifactId>
+            <version>${quarkus-http-problem.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client</artifactId>
         </dependency>
         <dependency>
@@ -114,10 +122,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-jwt-build</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-csrf</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -179,11 +183,6 @@
             <artifactId>jts-core</artifactId>
             <version>${jts-core.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.hypersistence</groupId>
-            <artifactId>hypersistence-utils-hibernate-71</artifactId>
-            <version>${hypersistence-utils-hibernate-71.version}</version>
-        </dependency>
         <!-- Validation dependencies -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -211,6 +210,11 @@
             <groupId>io.quarkiverse.mcp</groupId>
             <artifactId>quarkus-mcp-server-http</artifactId>
             <version>${quarkus-mcp-server.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -395,7 +399,20 @@
                     </includes>
                     <skipITs>${skipITs}</skipITs>
                     <reuseForks>true</reuseForks>
+                    <!-- Stays at 1 on purpose. Raising it looks like free parallelism (each fork is its own JVM
+                         running its own Quarkus application) but it is counterproductive here: at forkCount>1
+                         surefire switches to a shared-queue work-stealing mode and issues one discovery request
+                         per test class, which defeats Quarkus's cached application, so every class pays a full
+                         boot. Measured on this suite: forkCount=1 gives 13 application boots for the whole run,
+                         forkCount=2 gives one per class and ends up slower overall. -->
                     <forkCount>1</forkCount>
+                    <environmentVariables>
+                        <!-- PostgisTestResource asks Testcontainers to reuse its container, which is what
+                             keeps the integration suite from starting a new PostGIS for every distinct
+                             @TestProfile. Set here rather than relying on ~/.testcontainers.properties so
+                             the behaviour does not depend on who is running the build. -->
+                        <TESTCONTAINERS_REUSE_ENABLE>true</TESTCONTAINERS_REUSE_ENABLE>
+                    </environmentVariables>
                     <properties>
                         <configurationParameters>
                             junit.jupiter.tags.exclude=unit
@@ -453,6 +470,7 @@
                 </dependencies>
                 <executions>
                     <execution>
+                        <id>legacy-pmd</id>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -462,6 +480,32 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>error-handling-pmd</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                        <configuration>
+                            <rulesets>
+                                <ruleset>pmd-error-handling.xml</ruleset>
+                            </rulesets>
+                            <failOnViolation>true</failOnViolation>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>error-handling-rules</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>native</id>
             <activation>
@@ -473,14 +517,13 @@
                 <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
                 <quarkus.native.additional-build-args>
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.backup.BackupEnvelope,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.ApiTokenSecretService,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.AdminPasswordRecoveryService,
-                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.MobileDeepLinkService,
+                    --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
+                    --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.ApiTokenSecretService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,
-                    --initialize-at-run-time=oorg.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModuleFactory,
                     --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.future.FutureValidatorForReadablePartial,
                     --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.futureorpresent.FutureOrPresentValidatorForReadablePartial,

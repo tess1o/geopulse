@@ -1,0 +1,322 @@
+/* ================================================================================================
+   GEOPULSE DESIGN TOKENS
+   ================================================================================================
+   Conventions:
+   - This file is the ONLY place where a token gets a light and a dark value. Components use tokens and
+     never re-color themselves under `.p-dark`; if a component needs a color that differs between the
+     schemes and no token fits, add a semantic token here (light value in :root, dark value in .p-dark).
+   - Tokens that exist in PrimeVue alias the PrimeVue semantic tokens (--p-*), which come from
+     src/presets/GeopulsePreset.js, so custom UI and PrimeVue components always match.
+   - Dark mode is the `p-dark` class on <html> (src/utils/themeMode.js). Don't use prefers-color-scheme,
+     `html.dark` or `[data-theme]` in CSS.
+   - Surfaces: ground (page) < card (panels, dialogs) < muted (nested block inside a card)
+     < emphasis (stronger nested block); hover for interactive rows; inverse for tooltip-like chips.
+   ================================================================================================ */
+
+:root {
+    /* Brand */
+    --gp-primary: var(--p-primary-color);
+    --gp-primary-hover: var(--p-primary-hover-color);
+    --gp-primary-active: var(--p-primary-active-color);
+    --gp-primary-contrast: var(--p-primary-contrast-color);
+    --gp-primary-light: #3b82f6;
+    --gp-primary-dark: #1e40af;
+    --gp-primary-soft: #eff6ff;
+    --gp-primary-soft-border: #bfdbfe;
+    /* Primary used as text, icon or accent line on a card; brighter in dark mode for contrast. */
+    --gp-primary-text: var(--p-primary-color);
+
+    --gp-secondary: #10b981;
+    --gp-secondary-light: #34d399;
+    --gp-secondary-dark: #059669;
+
+    /* Text */
+    --gp-text-primary: var(--p-text-color);
+    --gp-text-secondary: var(--p-text-muted-color);
+    --gp-text-muted: #94a3b8;
+    --gp-neutral-white: #ffffff;
+
+    /* Surfaces */
+    --gp-surface-ground: #f8fafc;
+    --gp-surface-card: var(--p-content-background);
+    --gp-surface-muted: #f8fafc;
+    --gp-surface-emphasis: #f1f5f9;
+    --gp-surface-hover: var(--p-content-hover-background);
+    --gp-surface-inverse: #1e293b;
+    --gp-text-inverse: #ffffff;
+
+    /* Borders */
+    --gp-border: var(--p-content-border-color);
+    --gp-border-medium: #e2e8f0;
+    --gp-border-subtle: #f1f5f9;
+
+    /* Status: solid (icons, fills), strong (hover of a solid fill), soft (tinted background),
+       border (border on a soft background), text (readable text on card or soft background) */
+    --gp-success: #10b981;
+    --gp-success-strong: #059669;
+    --gp-success-soft: #f0fdf4;
+    --gp-success-border: #bbf7d0;
+    --gp-success-text: #15803d;
+
+    --gp-warning: #f59e0b;
+    --gp-warning-strong: #d97706;
+    --gp-warning-soft: #fffbeb;
+    --gp-warning-border: #fde68a;
+    --gp-warning-text: #b45309;
+
+    --gp-danger: #ef4444;
+    --gp-danger-strong: #dc2626;
+    --gp-danger-soft: #fef2f2;
+    --gp-danger-border: #fecaca;
+    --gp-danger-text: #dc2626;
+
+    --gp-info: #06b6d4;
+    --gp-info-strong: #0891b2;
+    --gp-info-soft: #f0f9ff;
+    --gp-info-border: #bae6fd;
+    --gp-info-text: #0284c7;
+
+    --gp-demo-alert-bg: #fef2f2;
+    --gp-demo-alert-border: #fca5a5;
+    --gp-demo-alert-accent: #dc2626;
+    --gp-demo-alert-text: #991b1b;
+    --gp-demo-alert-icon: #dc2626;
+
+    /* Timeline and map accents */
+    --gp-timeline-blue: rgba(30, 64, 175, 0.15);
+    --gp-timeline-blue-light: rgba(219, 234, 254, 0.5);
+    --gp-timeline-green: rgba(5, 150, 105, 0.15);
+    --gp-timeline-green-light: rgba(209, 250, 229, 0.5);
+    --gp-timeline-orange: rgba(245, 158, 11, 0.15);
+    --gp-timeline-orange-light: rgba(254, 243, 199, 0.5);
+    --gp-timeline-purple: rgba(139, 92, 246, 0.15);
+    --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
+    --gp-timeline-purple-text: #6d28d9;
+
+    /* Timeline sidebar card backgrounds. Light: the translucent tints above. Dark: opaque colours, because a tint
+       over the blue-slate panel drifts towards blue (green turns teal, violet turns indigo) and the card types
+       stop looking different. Same lightness for every type, a step above the panel. (A lower-saturation set was
+       tried and read as grey; the type colour needs to show in the card itself.) */
+    --gp-timeline-card-stay: var(--gp-timeline-blue-light);
+    --gp-timeline-card-trip: var(--gp-timeline-green-light);
+    --gp-timeline-card-overnight: var(--gp-timeline-purple-light);
+    --gp-timeline-card-gap: var(--gp-timeline-orange-light);
+
+    /* Weather icon on the timeline cards' weather chip (UI, so it flips; map markers use --gp-map-marker-weather-*) */
+    --gp-weather-icon-neutral: #0f766e;
+    --gp-weather-icon-wet: #2563eb;
+    --gp-weather-icon-snow: #0284c7;
+    --gp-weather-icon-clear: #ca8a04;
+
+    --gp-map-accent-light: rgba(0, 188, 212, 0.7);
+    --gp-map-accent-bg: rgba(0, 188, 212, 0.1);
+
+    /* Map chrome: the empty map before tiles load, popups (MapPopupCard and the stack/raw GPS content in it),
+       the trip hover card and plain Leaflet tooltips. These follow the theme; markers don't (see below). */
+    --gp-map-backdrop: #f0f0f0;
+    --gp-map-popup-background: rgba(255, 255, 255, 0.97);
+    --gp-map-popup-tip: rgba(255, 255, 255, 0.97);
+    --gp-map-popup-border: rgba(148, 163, 184, 0.35);
+    --gp-map-popup-divider: rgba(148, 163, 184, 0.35);
+    --gp-map-popup-divider-subtle: rgba(148, 163, 184, 0.2);
+    --gp-map-popup-shadow: 0 16px 42px rgba(15, 23, 42, 0.25);
+    --gp-map-popup-text: #0f172a;
+    --gp-map-popup-text-secondary: #475569;
+    --gp-map-popup-text-muted: #64748b;
+    --gp-map-popup-close: rgba(71, 85, 105, 0.86);
+    --gp-map-popup-row: #f8fafc;
+    --gp-map-popup-row-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+    --gp-map-popup-sticky-background: #ffffff;
+    --gp-map-popup-chip-background: #f1f5f9;
+    --gp-map-popup-accent: #1d4ed8;
+    --gp-map-popup-accent-soft: rgba(37, 99, 235, 0.08);
+    --gp-map-popup-accent-soft-strong: rgba(37, 99, 235, 0.14);
+    --gp-map-popup-accent-border: rgba(37, 99, 235, 0.35);
+    --gp-map-popup-accent-border-strong: rgba(37, 99, 235, 0.55);
+    --gp-map-hover-card-background: rgba(255, 255, 255, 0.96);
+    --gp-map-hover-card-tip: rgba(255, 255, 255, 0.96);
+    --gp-map-hover-card-border: rgba(148, 163, 184, 0.65);
+    --gp-map-hover-card-text: #0f172a;
+    --gp-map-hover-card-text-muted: #64748b;
+    --gp-map-tooltip-background: linear-gradient(135deg, rgba(0, 0, 0, 0.92), rgba(33, 33, 33, 0.97));
+    --gp-map-tooltip-tip: rgba(0, 0, 0, 0.92);
+    --gp-map-tooltip-border: transparent;
+    --gp-map-tooltip-text: rgba(255, 255, 255, 0.98);
+    --gp-map-attribution-background: rgba(255, 255, 255, 0.95);
+
+    /* Map markers: the same in both themes. The base tiles don't switch theme, so markers are drawn for a light
+       map. JS-drawn markers take the same values from src/maps/shared/mapColors.js (kept in sync by its test). */
+    --gp-map-marker-note: #7c3aed;
+    --gp-map-marker-photo: #2563eb;
+    --gp-map-marker-photo-end: #1d4ed8;
+    --gp-map-marker-weather-neutral: #0f766e;
+    --gp-map-marker-weather-clear: #ca8a04;
+    --gp-map-marker-weather-wet: #2563eb;
+    --gp-map-marker-weather-snow: #0284c7;
+
+    /* Landing page (Home, ExploreGeoPulsePanel, TipOfDayCard): its own tinted palette and glass panels */
+    --gp-landing-bg: #eef4fb;
+    --gp-landing-page-glow: radial-gradient(circle at 8% 10%, #dbeafe 0%, rgba(219, 234, 254, 0) 34%),
+        radial-gradient(circle at 90% 75%, #dcfce7 0%, rgba(220, 252, 231, 0) 30%);
+    --gp-landing-hero-gradient: linear-gradient(140deg, #f4f8ff 0%, #edf7f4 45%, #eaf3ff 100%);
+    --gp-landing-hero-glow: radial-gradient(ellipse at 75% 10%, rgba(37, 99, 235, 0.14) 0%, rgba(37, 99, 235, 0) 62%);
+    --gp-landing-header-bg: rgba(244, 248, 255, 0.78);
+    --gp-landing-border: #d8e4f0;
+    --gp-landing-text-primary: #0f172a;
+    --gp-landing-text-secondary: #52627a;
+    --gp-landing-accent: #0f766e;
+    --gp-landing-glass: rgba(255, 255, 255, 0.8);
+    --gp-landing-glass-hover: rgba(255, 255, 255, 0.95);
+    --gp-landing-glass-border: rgba(203, 213, 225, 0.7);
+    --gp-landing-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+
+    /* Shadows */
+    --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --gp-shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --gp-shadow-large: 0 10px 25px rgba(0, 0, 0, 0.12);
+    --gp-shadow-card: 0 1px 3px rgba(26, 86, 219, 0.1), 0 1px 2px rgba(26, 86, 219, 0.06);
+    --gp-shadow-card-hover: 0 4px 12px rgba(26, 86, 219, 0.15);
+    --gp-shadow-card-highlighted: 0 0 0 1px var(--gp-primary);
+    --gp-shadow-dialog: 0 10px 25px rgba(0, 0, 0, 0.1);
+    --gp-shadow-button: 0 2px 4px rgba(26, 86, 219, 0.1);
+    --gp-shadow-button-hover: 0 4px 8px rgba(26, 86, 219, 0.15);
+    --gp-focus-ring: 0 0 0 3px color-mix(in srgb, var(--gp-primary) 15%, transparent);
+
+    /* Shape */
+    --gp-radius-small: 4px;
+    --gp-radius-medium: 8px;
+    --gp-radius-large: 12px;
+    --gp-radius-pill: 20px;
+
+    /* Spacing */
+    --gp-spacing-xs: 0.25rem;
+    --gp-spacing-sm: 0.5rem;
+    --gp-spacing-md: 0.75rem;
+    --gp-spacing-lg: 1rem;
+    --gp-spacing-xl: 1.5rem;
+    --gp-spacing-xxl: 2rem;
+
+    /* Typography */
+    --gp-font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji';
+    --gp-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+.p-dark {
+    --gp-primary-light: #60a5fa;
+    --gp-primary-text: #60a5fa;
+    --gp-primary-dark: #1d4ed8;
+    --gp-primary-soft: rgba(59, 130, 246, 0.16);
+    --gp-primary-soft-border: rgba(96, 165, 250, 0.35);
+
+    --gp-text-muted: #94a3b8;
+
+    --gp-surface-ground: #0f172a;
+    --gp-surface-muted: #334155;
+    --gp-surface-emphasis: #475569;
+    --gp-surface-inverse: #f8fafc;
+    --gp-text-inverse: #1e293b;
+
+    --gp-border-medium: #475569;
+    --gp-border-subtle: #334155;
+
+    --gp-success-soft: rgba(16, 185, 129, 0.15);
+    --gp-success-border: rgba(16, 185, 129, 0.35);
+    --gp-success-text: #4ade80;
+
+    --gp-warning-soft: rgba(245, 158, 11, 0.15);
+    --gp-warning-border: rgba(245, 158, 11, 0.35);
+    --gp-warning-text: #fbbf24;
+
+    --gp-danger-soft: rgba(239, 68, 68, 0.15);
+    --gp-danger-border: rgba(239, 68, 68, 0.35);
+    --gp-danger-text: #f87171;
+
+    --gp-info-soft: rgba(6, 182, 212, 0.15);
+    --gp-info-border: rgba(6, 182, 212, 0.35);
+    --gp-info-text: #38bdf8;
+
+    --gp-demo-alert-bg: #7f1d1d;
+    --gp-demo-alert-border: #ef4444;
+    --gp-demo-alert-accent: #ef4444;
+    --gp-demo-alert-text: #fee2e2;
+    --gp-demo-alert-icon: #fecaca;
+
+    --gp-landing-bg: #020617;
+    --gp-landing-page-glow: radial-gradient(circle at 8% 10%, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 34%),
+        radial-gradient(circle at 90% 75%, rgba(14, 165, 233, 0.05) 0%, rgba(14, 165, 233, 0) 30%);
+    --gp-landing-hero-gradient: linear-gradient(160deg, #020617 0%, #0a1128 50%, #03081a 100%);
+    --gp-landing-hero-glow: radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
+    --gp-landing-header-bg: rgba(2, 6, 23, 0.85);
+    --gp-landing-border: #1e293b;
+    --gp-landing-text-primary: #f8fafc;
+    --gp-landing-text-secondary: #94a3b8;
+    --gp-landing-accent: #34d399;
+    --gp-landing-glass: rgba(15, 23, 42, 0.72);
+    --gp-landing-glass-hover: rgba(30, 41, 59, 0.9);
+    --gp-landing-glass-border: rgba(148, 163, 184, 0.3);
+    --gp-landing-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+
+    --gp-timeline-blue-light: rgba(59, 130, 246, 0.12);
+    --gp-timeline-green-light: rgba(16, 185, 129, 0.12);
+    --gp-timeline-orange-light: rgba(245, 158, 11, 0.12);
+    --gp-timeline-purple-light: rgba(139, 92, 246, 0.12);
+    --gp-timeline-purple-text: #c4b5fd;
+
+    --gp-timeline-card-stay: #24334c;
+    --gp-timeline-card-trip: #1f372f;
+    --gp-timeline-card-overnight: #352b50;
+    --gp-timeline-card-gap: #3c3120;
+
+    --gp-weather-icon-neutral: #2dd4bf;
+    --gp-weather-icon-wet: #60a5fa;
+    --gp-weather-icon-snow: #38bdf8;
+    --gp-weather-icon-clear: #facc15;
+
+    --gp-map-backdrop: var(--gp-surface-card);
+    --gp-map-popup-background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));
+    --gp-map-popup-tip: rgba(15, 23, 42, 0.97);
+    --gp-map-popup-border: rgba(71, 85, 105, 0.55);
+    --gp-map-popup-divider: rgba(71, 85, 105, 0.65);
+    --gp-map-popup-divider-subtle: rgba(71, 85, 105, 0.45);
+    --gp-map-popup-shadow: 0 18px 46px rgba(2, 6, 23, 0.45);
+    --gp-map-popup-text: rgba(255, 255, 255, 0.94);
+    --gp-map-popup-text-secondary: rgba(203, 213, 225, 0.88);
+    --gp-map-popup-text-muted: rgba(203, 213, 225, 0.88);
+    --gp-map-popup-close: rgba(226, 232, 240, 0.88);
+    --gp-map-popup-row: rgba(15, 23, 42, 0.75);
+    --gp-map-popup-row-shadow: 0 4px 12px rgba(2, 6, 23, 0.4);
+    /* Opaque match for the popup gradient. */
+    --gp-map-popup-sticky-background: #172033;
+    --gp-map-popup-chip-background: rgba(148, 163, 184, 0.2);
+    --gp-map-popup-accent: #93c5fd;
+    --gp-map-popup-accent-soft: rgba(59, 130, 246, 0.18);
+    --gp-map-popup-accent-soft-strong: rgba(59, 130, 246, 0.26);
+    --gp-map-popup-accent-border: rgba(147, 197, 253, 0.36);
+    --gp-map-popup-accent-border-strong: rgba(147, 197, 253, 0.55);
+    /* In dark mode the trip hover card and plain tooltips are the same slate glass panel. */
+    --gp-map-tooltip-background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+    --gp-map-tooltip-tip: rgba(15, 23, 42, 0.95);
+    --gp-map-tooltip-border: rgba(71, 85, 105, 0.3);
+    --gp-map-tooltip-text: rgba(255, 255, 255, 0.95);
+    --gp-map-hover-card-background: var(--gp-map-tooltip-background);
+    --gp-map-hover-card-tip: var(--gp-map-tooltip-tip);
+    --gp-map-hover-card-border: var(--gp-map-tooltip-border);
+    --gp-map-hover-card-text: var(--gp-map-tooltip-text);
+    --gp-map-hover-card-text-muted: rgba(255, 255, 255, 0.8);
+    --gp-map-attribution-background: rgba(30, 41, 59, 0.95);
+    /* leaflet.fullscreen's own button icons (defined on :root by the plugin), redrawn in the light text colour. */
+    --fullscreen-icon-enter: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M5 10.3V5.9c0-.5.4-.9.9-.9h4.4c.2 0 .4.2.4.4V7c0 .2-.2.4-.4.4h-3v3c0 .2-.2.4-.4.4H5.4a.4.4 0 0 1-.4-.4zm10.3-4.9V7c0 .2.2.4.4.4h3v3c0 .2.2.4.4.4h1.5c.2 0 .4-.2.4-.4V5.9c0-.5-.4-.9-.9-.9h-4.4c-.2 0-.4.2-.4.4zm5.3 9.9H19c-.2 0-.4.2-.4.4v3h-3c-.2 0-.4.2-.4.4v1.5c0 .2.2.4.4.4h4.4c.5 0 .9-.4.9-.9v-4.4c0-.2-.2-.4-.4-.4zm-9.9 5.3V19c0-.2-.2-.4-.4-.4h-3v-3c0-.2-.2-.4-.4-.4H5.4c-.2 0-.4.2-.4.4v4.4c0 .5.4.9.9.9h4.4c.2 0 .4-.2.4-.4z" fill="%23f8fafc"/></svg>');
+    --fullscreen-icon-exit: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M20.6 10.7H16a.9.9 0 0 1-.8-.8v-4.5c0-.2.2-.4.4-.4h1.4c.3 0 .5.2.5.4v3h3c.2 0 .4.2.4.5v1.4c0 .2-.2.4-.4.4zm-9.9-.8V5.4c0-.2-.2-.4-.4-.4H8.9c-.3 0-.5.2-.5.4v3h-3c-.2 0-.4.2-.4.5v1.4c0 .2.2.4.4.4H9.9c.4 0 .8-.4.8-.8zm0 10.7V16c0-.4-.4-.8-.8-.8H5.4c-.2 0-.4.2-.4.4v1.4c0 .3.2.5.4.5h3v3c0 .2.2.4.5.4h1.4c.2 0 .4-.2.4-.4zm6.9 0v-3h3c.2 0 .4-.2.4-.5v-1.4c0-.2-.2-.4-.4-.4H16c-.4 0-.8.4-.8.8v4.5c0 .2.2.4.4.4h1.5c.3 0 .5-.2.5-.4z" fill="%23f8fafc"/></svg>');
+
+    --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --gp-shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --gp-shadow-large: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --gp-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --gp-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --gp-shadow-dialog: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --gp-shadow-button: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --gp-shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.4);
+}

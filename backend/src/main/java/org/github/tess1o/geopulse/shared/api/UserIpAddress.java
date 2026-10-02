@@ -11,14 +11,15 @@ public class UserIpAddress {
         return resolve(request, request.getHeader("X-Forwarded-For"), request.getHeader("X-Real-IP"));
     }
 
-    public static String resolve(HttpServerRequest request, String forwardedFor, String realIp) {
+    private static String resolve(HttpServerRequest request, String forwardedFor, String realIp) {
         if (forwardedFor != null && !forwardedFor.isBlank()) {
+            // X-Forwarded-For can be a comma-separated list; the first is the original client
             return forwardedFor.split(",")[0].trim();
         }
         if (realIp != null && !realIp.isBlank()) {
-            return realIp;
+            return realIp.trim();
         }
-        if (request.remoteAddress() != null) {
+        if (request != null && request.remoteAddress() != null) {
             return request.remoteAddress().host(); // fallback for local/dev
         }
         return null;

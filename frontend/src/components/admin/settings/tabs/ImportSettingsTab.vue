@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Chunked Upload Settings">
+    <SettingSection :title="t('adminProviderSettings.importSettingsTab.chunkedUploadSectionTitle')">
       <SettingItem
         v-for="setting in uploadSettings"
         :key="setting.key"
@@ -18,7 +18,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Batch Processing">
+    <SettingSection :title="t('adminProviderSettings.importSettingsTab.batchProcessingSectionTitle')">
       <SettingItem
         v-for="setting in batchSettings"
         :key="setting.key"
@@ -37,7 +37,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Temporary File Storage">
+    <SettingSection :title="t('adminProviderSettings.importSettingsTab.tempFileStorageSectionTitle')">
       <SettingItem
         v-for="setting in tempFileSettings"
         :key="setting.key"
@@ -55,7 +55,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Drop Folder Import">
+    <SettingSection :title="t('adminProviderSettings.importSettingsTab.dropFolderSectionTitle')">
       <SettingItem
         v-for="setting in dropFolderSettings"
         :key="setting.key"
@@ -88,7 +88,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Streaming Parser Batch Sizes">
+    <SettingSection :title="t('adminProviderSettings.importSettingsTab.streamingBatchSizesSectionTitle')">
       <SettingItem
         v-for="setting in streamingSettings"
         :key="setting.key"
@@ -108,8 +108,8 @@
     </SettingSection>
 
     <details class="advanced-settings">
-      <summary>GeoNames</summary>
-      <SettingSection title="City Dataset">
+      <summary>{{ t('adminProviderSettings.importSettingsTab.geonamesSummary') }}</summary>
+      <SettingSection :title="t('adminProviderSettings.importSettingsTab.cityDatasetSectionTitle')">
         <SettingItem
           v-for="setting in geonamesCitySettings"
           :key="setting.key"
@@ -143,7 +143,7 @@
         </SettingItem>
       </SettingSection>
 
-      <SettingSection title="Country Dataset">
+      <SettingSection :title="t('adminProviderSettings.importSettingsTab.countryDatasetSectionTitle')">
         <SettingItem
           v-for="setting in geonamesCountrySettings"
           :key="setting.key"
@@ -179,8 +179,8 @@
     </details>
 
     <details class="advanced-settings">
-      <summary>Advanced Operations</summary>
-      <SettingSection title="Import Runtime">
+      <summary>{{ t('adminProviderSettings.shared.advancedOperations') }}</summary>
+      <SettingSection :title="t('adminProviderSettings.importSettingsTab.importRuntimeSectionTitle')">
         <SettingItem
           v-for="setting in advancedOperationSettings"
           :key="setting.key"
@@ -204,6 +204,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import InputText from 'primevue/inputtext'
@@ -211,6 +212,7 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const importSettings = ref([])
 
@@ -284,7 +286,7 @@ const handleReset = async (setting) => {
 
 .advanced-settings {
   margin: 1rem 0;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: 6px;
 }
 

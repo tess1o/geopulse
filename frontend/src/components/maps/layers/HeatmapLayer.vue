@@ -22,6 +22,7 @@ import { computed } from 'vue'
 import RasterHeatmapLayer from '@/maps/raster/layers/RasterHeatmapLayer.vue'
 import VectorHeatmapLayer from '@/maps/vector/layers/VectorHeatmapLayer.vue'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { HEATMAP_GRADIENTS } from '@/maps/shared/mapAppearance'
 
 const props = defineProps({
   map: {
@@ -62,13 +63,7 @@ const props = defineProps({
   },
   gradient: {
     type: Object,
-    default: () => ({
-      0.0: '#2563eb',
-      0.35: '#22c55e',
-      0.6: '#eab308',
-      0.8: '#f97316',
-      1.0: '#dc2626'
-    })
+    default: () => ({ ...HEATMAP_GRADIENTS.CLASSIC })
   },
   profile: {
     type: String,

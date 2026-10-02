@@ -3,7 +3,7 @@
     <AutoComplete
       v-model="searchQuery"
       :suggestions="filteredResults"
-      placeholder="Search locations, pages, settings..."
+      :placeholder="t('ui.globalSearch.bar.placeholder')"
       :loading="isSearching"
       :min-length="2"
       :delay="250"
@@ -30,19 +30,21 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AutoComplete from 'primevue/autocomplete'
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import { buildPageIndex, buildSettingsIndex } from '@/constants/globalSearchRegistry'
 import { searchAndRankItems } from '@/utils/globalSearchScoring'
 
+const { t } = useI18n()
 const router = useRouter()
 const store = useLocationAnalyticsStore()
-const tagsStore = usePeriodTagsStore()
+const tagsStore = useTimelineLabelsStore()
 const authStore = useAuthStore()
 const timezone = useTimezone()
 
@@ -61,7 +63,7 @@ const pageItems = computed(() => {
     resultType: 'page',
     displayName: item.title,
     metaLine: item.subtitle,
-    groupLabel: 'Pages',
+    groupLabel: t('ui.globalSearch.bar.groupPages'),
     icon: item.icon || 'pi pi-compass',
     to: item.to,
     tab: item.tab,
@@ -76,7 +78,7 @@ const settingItems = computed(() => {
     resultType: 'setting',
     displayName: item.title,
     metaLine: item.subtitle,
-    groupLabel: 'Settings',
+    groupLabel: t('ui.globalSearch.bar.groupSettings'),
     icon: item.icon || 'pi pi-sliders-h',
     to: item.to,
     tab: item.tab,
@@ -87,7 +89,7 @@ const settingItems = computed(() => {
 
 const ensureTagsLoaded = async () => {
   if (tagsLoaded.value) return
-  await tagsStore.fetchPeriodTags()
+  await tagsStore.fetchTimelineLabels()
   tagsLoaded.value = true
 }
 
@@ -100,7 +102,7 @@ const formatTagDate = (tag) => {
     return `${formatDate(tag.startTime)} - ${formatDate(tag.endTime)}`
   }
 
-  return `Since ${formatDate(tag.startTime)}`
+  return t('ui.globalSearch.bar.sinceDate', { date: formatDate(tag.startTime) })
 }
 
 const toLocationSuggestion = (result) => {
@@ -109,29 +111,30 @@ const toLocationSuggestion = (result) => {
 
   switch (result.type) {
     case 'tag':
-      displayName = result.tagName
+      displayName = result.name
       metaLine = formatTagDate(result)
       break
     case 'place':
-      metaLine = `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
       if (result.country) metaLine = `${result.country} • ${metaLine}`
       break
     case 'city':
-      metaLine = result.country ? `${result.country} • ${result.visitCount || 0} visits` : `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
+      if (result.country) metaLine = `${result.country} • ${metaLine}`
       break
     case 'country':
-      metaLine = `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
       break
     default:
       metaLine = ''
   }
 
   return {
-    id: `location:${result.type}:${result.id || result.name || result.tagName}`,
+    id: `location:${result.type}:${result.id || result.name || result.name}`,
     resultType: result.type,
     displayName,
     metaLine,
-    groupLabel: 'Locations',
+    groupLabel: t('ui.globalSearch.bar.groupLocations'),
     icon: result.type === 'tag'
       ? 'pi pi-tag'
       : result.type === 'city'
@@ -148,7 +151,7 @@ const toLocationSuggestion = (result) => {
     visitCount: Number(result.visitCount || 0),
     startTime: result.startTime,
     endTime: result.endTime,
-    keywords: [result.country, result.category, result.type, result.tagName].filter(Boolean)
+    keywords: [result.country, result.category, result.type, result.name].filter(Boolean)
   }
 }
 
@@ -193,8 +196,8 @@ const handleSearch = async (event) => {
     if (token !== requestToken.value) return
 
     const apiLocationItems = (searchResults.value || []).map((result) => toLocationSuggestion(result))
-    const tagItems = (tagsStore.periodTags || [])
-      .filter((tag) => tag.tagName?.toLowerCase().includes(query.toLowerCase()))
+    const tagItems = (tagsStore.timelineLabels || [])
+      .filter((tag) => tag.name?.toLowerCase().includes(query.toLowerCase()))
       .map((tag) => toLocationSuggestion({ ...tag, type: 'tag' }))
 
     locations = searchAndRankItems(query, [...tagItems, ...apiLocationItems], { minScore: 90 })

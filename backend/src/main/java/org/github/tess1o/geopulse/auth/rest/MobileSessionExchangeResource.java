@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -9,15 +11,18 @@ import jakarta.ws.rs.Produces;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.Optional;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/mobile")
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOBILE_SESSION_CODE_INVALID;
+
+@Path("/auth/mobile-sessions")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -28,24 +33,21 @@ public class MobileSessionExchangeResource {
     MobileDeepLinkService mobileDeepLinkService;
 
     @POST
-    @Path("/session/exchange")
+    @APIResponseSchema(value = AuthResponse.class, responseCode = "200",
+            responseDescription = "Authenticated mobile session")
     public Response exchangeSessionCode(@Valid MobileSessionExchangeRequest request) {
         if (request == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("sessionCode is required"))
-                    .build();
+            throw new GeoPulseException(BAD_REQUEST, "sessionCode is required");
         }
 
         Optional<AuthResponse> authResponse =
                 mobileDeepLinkService.exchangeSessionCode(request.getSessionCode());
 
         if (authResponse.isEmpty()) {
-            return Response.status(Response.Status.GONE)
-                    .entity(ApiResponse.error("Mobile session code is expired or invalid"))
-                    .build();
+            throw new GeoPulseException(MOBILE_SESSION_CODE_INVALID, "Mobile session code is expired or invalid");
         }
 
-        return Response.ok(ApiResponse.success(authResponse.get()))
+        return Response.ok(authResponse.get())
                 .header("Cache-Control", "no-store")
                 .header("Pragma", "no-cache")
                 .build();

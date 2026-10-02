@@ -3,12 +3,12 @@
     <BaseCard class="panel-card">
       <div class="table-header">
         <div class="table-header-left">
-          <h3>Events</h3>
-          <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
+          <h3>{{ t('geofences.eventsTab.title') }}</h3>
+          <Tag v-if="unreadCount > 0" :value="t('geofences.eventsTab.unreadTag', { count: unreadCount })" severity="danger" />
         </div>
         <div class="table-header-actions">
           <div class="inline-toggle">
-            <label for="unreadOnlyToggle">Unread only</label>
+            <label for="unreadOnlyToggle">{{ t('geofences.eventsTab.unreadOnlyLabel') }}</label>
             <InputSwitch
               inputId="unreadOnlyToggle"
               :modelValue="query.unreadOnly"
@@ -17,17 +17,17 @@
           </div>
           <Button
             icon="pi pi-check"
-            label="Mark all seen"
+            :label="t('geofences.eventsTab.markAllSeen')"
             severity="secondary"
             outlined
             :disabled="readOnly || unreadCount === 0"
             :loading="markingAllSeen"
-            v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark all geofence events as seen'"
+            v-tooltip.bottom="readOnly ? t('geofences.eventsTab.markAllSeenTooltipDemo') : t('geofences.eventsTab.markAllSeenTooltip')"
             @click="emitMarkAllEventsSeen"
           />
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            :label="t('geofences.eventsTab.refresh')"
             severity="secondary"
             outlined
             :loading="loading"
@@ -37,12 +37,12 @@
       </div>
 
       <p v-if="readOnly" class="demo-disabled-text">
-        Demo mode: marking geofence events as seen is disabled. Filters and refresh remain available.
+        {{ t('geofences.eventsTab.demoDisabled') }}
       </p>
 
       <div class="filters-row">
         <div class="filter-item filter-item--preset">
-          <label>Date</label>
+          <label>{{ t('geofences.eventsTab.filters.date') }}</label>
           <SelectButton
             :modelValue="query.datePreset || 'all'"
             :options="datePresetOptions"
@@ -53,7 +53,7 @@
         </div>
 
         <div v-if="query.datePreset === 'custom'" class="filter-item filter-item--date-range">
-          <label>From</label>
+          <label>{{ t('geofences.eventsTab.filters.from') }}</label>
           <DatePicker
             v-model="customDateFrom"
             showTime
@@ -64,7 +64,7 @@
         </div>
 
         <div v-if="query.datePreset === 'custom'" class="filter-item filter-item--date-range">
-          <label>To</label>
+          <label>{{ t('geofences.eventsTab.filters.to') }}</label>
           <DatePicker
             v-model="customDateTo"
             showTime
@@ -75,13 +75,13 @@
         </div>
 
         <div class="filter-item filter-item--subjects">
-          <label>Subject</label>
+          <label>{{ t('geofences.eventsTab.filters.subject') }}</label>
           <MultiSelect
             :modelValue="query.subjectUserIds"
             :options="subjectFilterOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="All subjects"
+            :placeholder="t('geofences.eventsTab.filters.subjectPlaceholder')"
             display="chip"
             :maxSelectedLabels="2"
             @update:modelValue="onSubjectFilterChange"
@@ -89,13 +89,13 @@
         </div>
 
         <div class="filter-item filter-item--events">
-          <label>Event</label>
+          <label>{{ t('geofences.eventsTab.filters.event') }}</label>
           <MultiSelect
             :modelValue="query.eventTypes"
             :options="eventTypeOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="All events"
+            :placeholder="t('geofences.eventsTab.filters.eventPlaceholder')"
             display="chip"
             :maxSelectedLabels="2"
             @update:modelValue="onEventTypesChange"
@@ -103,13 +103,13 @@
         </div>
 
         <div class="filter-item filter-item--columns">
-          <label>Extra columns</label>
+          <label>{{ t('geofences.eventsTab.filters.extraColumns') }}</label>
           <MultiSelect
             v-model="detailColumns"
             :options="detailColumnOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Title / Message"
+            :placeholder="t('geofences.eventsTab.filters.extraColumnsPlaceholder')"
             display="chip"
             :maxSelectedLabels="2"
             @update:modelValue="persistColumnPreference"
@@ -137,57 +137,57 @@
         >
           <Column expander style="width: 3rem" />
 
-          <Column field="occurredAt" header="Time" :sortable="true">
+          <Column field="occurredAt" :header="t('geofences.eventsTab.columns.time')" :sortable="true">
             <template #body="slotProps">
               {{ formatDate(slotProps.data.occurredAt) }}
             </template>
           </Column>
 
-          <Column field="subjectDisplayName" header="Subject" :sortable="true" />
+          <Column field="subjectDisplayName" :header="t('geofences.eventsTab.columns.subject')" :sortable="true" />
 
-          <Column field="eventType" header="Event" :sortable="true">
+          <Column field="eventType" :header="t('geofences.eventsTab.columns.event')" :sortable="true">
             <template #body="slotProps">
               <Tag :value="slotProps.data.eventType" :severity="slotProps.data.eventType === 'ENTER' ? 'success' : 'warn'" />
             </template>
           </Column>
 
-          <Column field="ruleName" header="Rule" />
+          <Column field="ruleName" :header="t('geofences.eventsTab.columns.rule')" />
 
-          <Column v-if="showTitleColumn" field="title" header="Title" />
+          <Column v-if="showTitleColumn" field="title" :header="t('geofences.eventsTab.detailColumns.title')" />
 
-          <Column v-if="showMessageColumn" field="message" header="Message">
+          <Column v-if="showMessageColumn" field="message" :header="t('geofences.eventsTab.detailColumns.message')">
             <template #body="slotProps">
               <span class="message-preview">{{ slotProps.data.message || '-' }}</span>
             </template>
           </Column>
 
-          <Column field="deliveryStatus" header="Delivery">
+          <Column field="deliveryStatus" :header="t('geofences.eventsTab.columns.delivery')">
             <template #body="slotProps">
               <Tag :value="slotProps.data.deliveryStatus" :severity="deliverySeverity(slotProps.data.deliveryStatus)" />
             </template>
           </Column>
 
-          <Column field="seenAt" header="Seen">
+          <Column field="seenAt" :header="t('geofences.eventsTab.columns.seen')">
             <template #body="slotProps">
               <Tag
-                :value="slotProps.data.seen ? 'Seen' : 'New'"
+                :value="slotProps.data.seen ? t('geofences.eventsTab.seenTag.seen') : t('geofences.eventsTab.seenTag.new')"
                 :severity="slotProps.data.seen ? 'secondary' : 'danger'"
               />
             </template>
           </Column>
 
-          <Column header="Actions">
+          <Column :header="t('geofences.eventsTab.columns.actions')">
             <template #body="slotProps">
               <Button
                 v-if="!slotProps.data.seen"
                 icon="pi pi-check"
-                label="Mark seen"
+                :label="t('geofences.eventsTab.markSeen')"
                 size="small"
                 severity="secondary"
                 outlined
                 :disabled="readOnly"
                 :loading="markingEventId === slotProps.data.id"
-                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                v-tooltip.bottom="readOnly ? t('geofences.eventsTab.markEventSeenTooltipDemo') : t('geofences.eventsTab.markEventSeenTooltip')"
                 @click="emitMarkEventSeen(slotProps.data)"
               />
             </template>
@@ -196,33 +196,33 @@
           <template #expansion="slotProps">
             <div class="event-details-panel">
               <div class="detail-row">
-                <strong>Title:</strong>
+                <strong>{{ t('geofences.eventsTab.details.titleLabel') }}</strong>
                 <span>{{ slotProps.data.title || '-' }}</span>
               </div>
               <div class="detail-row">
-                <strong>Message:</strong>
+                <strong>{{ t('geofences.eventsTab.details.messageLabel') }}</strong>
                 <span>{{ slotProps.data.message || '-' }}</span>
               </div>
               <div class="detail-grid">
-                <div class="detail-item"><strong>Rule</strong><span>{{ slotProps.data.ruleName || '-' }}</span></div>
-                <div class="detail-item"><strong>Subject</strong><span>{{ slotProps.data.subjectDisplayName || '-' }}</span></div>
-                <div class="detail-item"><strong>Event</strong><span>{{ slotProps.data.eventType || '-' }}</span></div>
-                <div class="detail-item"><strong>Delivery</strong><span>{{ slotProps.data.deliveryStatus || '-' }}</span></div>
-                <div class="detail-item"><strong>Occurred</strong><span>{{ formatDate(slotProps.data.occurredAt) }}</span></div>
-                <div class="detail-item"><strong>Seen At</strong><span>{{ slotProps.data.seenAt ? formatDate(slotProps.data.seenAt) : 'Not seen' }}</span></div>
-                <div class="detail-item"><strong>Point ID</strong><span>{{ slotProps.data.pointId || '-' }}</span></div>
-                <div class="detail-item"><strong>Lat / Lon</strong><span>{{ formatLatLon(slotProps.data.pointLat, slotProps.data.pointLon) }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.rule') }}</strong><span>{{ slotProps.data.ruleName || '-' }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.subject') }}</strong><span>{{ slotProps.data.subjectDisplayName || '-' }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.event') }}</strong><span>{{ slotProps.data.eventType || '-' }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.delivery') }}</strong><span>{{ slotProps.data.deliveryStatus || '-' }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.occurred') }}</strong><span>{{ formatDate(slotProps.data.occurredAt) }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.seenAt') }}</strong><span>{{ slotProps.data.seenAt ? formatDate(slotProps.data.seenAt) : t('geofences.eventsTab.details.notSeen') }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.pointId') }}</strong><span>{{ slotProps.data.pointId || '-' }}</span></div>
+                <div class="detail-item"><strong>{{ t('geofences.eventsTab.details.latLon') }}</strong><span>{{ formatLatLon(slotProps.data.pointLat, slotProps.data.pointLon) }}</span></div>
               </div>
               <Button
                 v-if="!slotProps.data.seen"
                 icon="pi pi-check"
-                label="Mark seen"
+                :label="t('geofences.eventsTab.markSeen')"
                 size="small"
                 severity="secondary"
                 outlined
                 :disabled="readOnly"
                 :loading="markingEventId === slotProps.data.id"
-                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                v-tooltip.bottom="readOnly ? t('geofences.eventsTab.markEventSeenTooltipDemo') : t('geofences.eventsTab.markEventSeenTooltip')"
                 @click="emitMarkEventSeen(slotProps.data)"
               />
             </div>
@@ -230,8 +230,8 @@
 
           <template #empty>
             <div class="empty-state">
-              <p v-if="hasActiveFilters">No events match the current filters.</p>
-              <p v-else>No geofence events yet.</p>
+              <p v-if="hasActiveFilters">{{ t('geofences.eventsTab.empty.filtered') }}</p>
+              <p v-else>{{ t('geofences.eventsTab.empty.none') }}</p>
             </div>
           </template>
         </DataTable>
@@ -242,17 +242,17 @@
           <ProgressSpinner style="width: 34px; height: 34px" strokeWidth="6" />
         </div>
         <div v-else-if="events.length === 0" class="empty-state">
-          <p v-if="hasActiveFilters">No events match the current filters.</p>
-          <p v-else>No geofence events yet.</p>
+          <p v-if="hasActiveFilters">{{ t('geofences.eventsTab.empty.filtered') }}</p>
+          <p v-else>{{ t('geofences.eventsTab.empty.none') }}</p>
         </div>
         <div v-else class="event-card-list">
           <article v-for="event in events" :key="event.id" class="event-card" :class="{ 'event-card--unseen': !event.seen }">
             <header class="event-card-header">
               <div>
-                <h4>{{ event.ruleName || 'Geofence Event' }}</h4>
+                <h4>{{ event.ruleName || t('geofences.eventsTab.defaultRuleName') }}</h4>
                 <small>{{ formatDate(event.occurredAt) }}</small>
               </div>
-              <Tag :value="event.seen ? 'Seen' : 'New'" :severity="event.seen ? 'secondary' : 'danger'" />
+              <Tag :value="event.seen ? t('geofences.eventsTab.seenTag.seen') : t('geofences.eventsTab.seenTag.new')" :severity="event.seen ? 'secondary' : 'danger'" />
             </header>
 
             <div class="event-card-meta">
@@ -263,7 +263,7 @@
 
             <div class="event-card-actions">
               <Button
-                :label="expandedCardIds.includes(event.id) ? 'Hide details' : 'View details'"
+                :label="expandedCardIds.includes(event.id) ? t('geofences.eventsTab.hideDetails') : t('geofences.eventsTab.viewDetails')"
                 severity="secondary"
                 outlined
                 size="small"
@@ -272,27 +272,27 @@
               <Button
                 v-if="!event.seen"
                 icon="pi pi-check"
-                label="Mark seen"
+                :label="t('geofences.eventsTab.markSeen')"
                 size="small"
                 severity="secondary"
                 outlined
                 class="mobile-mark-seen"
                 :disabled="readOnly"
                 :loading="markingEventId === event.id"
-                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                v-tooltip.bottom="readOnly ? t('geofences.eventsTab.markEventSeenTooltipDemo') : t('geofences.eventsTab.markEventSeenTooltip')"
                 @click="emitMarkEventSeen(event)"
               />
             </div>
 
             <div v-if="expandedCardIds.includes(event.id)" class="event-card-details">
-              <p><strong>Title:</strong> {{ event.title || '-' }}</p>
-              <p><strong>Message:</strong> {{ event.message || '-' }}</p>
-              <p><strong>Subject:</strong> {{ event.subjectDisplayName || '-' }}</p>
-              <p><strong>Event:</strong> {{ event.eventType || '-' }}</p>
-              <p><strong>Delivery:</strong> {{ event.deliveryStatus || '-' }}</p>
-              <p><strong>Seen At:</strong> {{ event.seenAt ? formatDate(event.seenAt) : 'Not seen' }}</p>
-              <p><strong>Point ID:</strong> {{ event.pointId || '-' }}</p>
-              <p><strong>Lat / Lon:</strong> {{ formatLatLon(event.pointLat, event.pointLon) }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.titleLabel') }}</strong> {{ event.title || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.messageLabel') }}</strong> {{ event.message || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.subject') }}:</strong> {{ event.subjectDisplayName || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.event') }}:</strong> {{ event.eventType || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.delivery') }}:</strong> {{ event.deliveryStatus || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.seenAt') }}:</strong> {{ event.seenAt ? formatDate(event.seenAt) : t('geofences.eventsTab.details.notSeen') }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.pointId') }}:</strong> {{ event.pointId || '-' }}</p>
+              <p><strong>{{ t('geofences.eventsTab.details.latLon') }}:</strong> {{ formatLatLon(event.pointLat, event.pointLon) }}</p>
             </div>
           </article>
         </div>
@@ -300,17 +300,17 @@
         <div v-if="events.length > 0" class="mobile-pagination">
           <Button
             icon="pi pi-angle-left"
-            label="Prev"
+            :label="t('geofences.eventsTab.pagination.prev')"
             severity="secondary"
             outlined
             :disabled="query.page === 0 || loading"
             @click="onMobilePageChange(-1)"
           />
-          <span>Page {{ query.page + 1 }} / {{ totalPages }}</span>
+          <span>{{ t('geofences.eventsTab.pagination.pageOf', { page: query.page + 1, total: totalPages }) }}</span>
           <Button
             icon="pi pi-angle-right"
             iconPos="right"
-            label="Next"
+            :label="t('geofences.eventsTab.pagination.next')"
             severity="secondary"
             outlined
             :disabled="query.page + 1 >= totalPages || loading"
@@ -324,6 +324,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import InputSwitch from 'primevue/inputswitch'
 import Button from 'primevue/button'
@@ -334,6 +335,8 @@ import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import DatePicker from 'primevue/datepicker'
 import ProgressSpinner from 'primevue/progressspinner'
+
+const { t } = useI18n()
 
 const props = defineProps({
   events: {
@@ -393,23 +396,23 @@ const emit = defineEmits([
   'mark-event-seen'
 ])
 
-const datePresetOptions = [
-  { label: 'All', value: 'all' },
-  { label: '24h', value: '24h' },
-  { label: '7d', value: '7d' },
-  { label: '30d', value: '30d' },
-  { label: 'Custom', value: 'custom' }
-]
+const datePresetOptions = computed(() => [
+  { label: t('geofences.eventsTab.datePresets.all'), value: 'all' },
+  { label: t('geofences.eventsTab.datePresets.h24'), value: '24h' },
+  { label: t('geofences.eventsTab.datePresets.d7'), value: '7d' },
+  { label: t('geofences.eventsTab.datePresets.d30'), value: '30d' },
+  { label: t('geofences.eventsTab.datePresets.custom'), value: 'custom' }
+])
 
-const eventTypeOptions = [
-  { label: 'Enter', value: 'ENTER' },
-  { label: 'Leave', value: 'LEAVE' }
-]
+const eventTypeOptions = computed(() => [
+  { label: t('geofences.eventsTab.eventTypes.enter'), value: 'ENTER' },
+  { label: t('geofences.eventsTab.eventTypes.leave'), value: 'LEAVE' }
+])
 
-const detailColumnOptions = [
-  { label: 'Title', value: 'title' },
-  { label: 'Message', value: 'message' }
-]
+const detailColumnOptions = computed(() => [
+  { label: t('geofences.eventsTab.detailColumns.title'), value: 'title' },
+  { label: t('geofences.eventsTab.detailColumns.message'), value: 'message' }
+])
 
 const expandedRows = ref([])
 const expandedCardIds = ref([])
@@ -465,7 +468,7 @@ function loadColumnPreference() {
     }
     const parsed = JSON.parse(raw)
     detailColumns.value = Array.isArray(parsed)
-      ? parsed.filter(column => detailColumnOptions.some(option => option.value === column))
+      ? parsed.filter(column => detailColumnOptions.value.some(option => option.value === column))
       : []
   } catch {
     detailColumns.value = []
@@ -750,7 +753,7 @@ onUnmounted(() => {
 
 .empty-state {
   text-align: center;
-  color: var(--text-color-secondary, #667085);
+  color: var(--gp-text-secondary, #667085);
   padding: 1rem 0.5rem;
 }
 
@@ -760,7 +763,7 @@ onUnmounted(() => {
 }
 
 .event-card {
-  border: 1px solid var(--surface-border, #d0d5dd);
+  border: 1px solid var(--gp-border, #d0d5dd);
   border-radius: 0.75rem;
   padding: 0.75rem;
   display: grid;
@@ -768,7 +771,7 @@ onUnmounted(() => {
 }
 
 .event-card--unseen {
-  border-color: color-mix(in srgb, var(--red-500, #ef4444) 48%, var(--surface-border, #d0d5dd));
+  border-color: color-mix(in srgb, var(--p-red-500, #ef4444) 48%, var(--gp-border, #d0d5dd));
 }
 
 .event-card-header {
@@ -783,7 +786,7 @@ onUnmounted(() => {
 }
 
 .event-card-header small {
-  color: var(--text-color-secondary, #667085);
+  color: var(--gp-text-secondary, #667085);
 }
 
 .event-card-meta {
@@ -794,7 +797,7 @@ onUnmounted(() => {
 }
 
 .subject-chip {
-  background: var(--surface-100, #f3f4f6);
+  background: var(--gp-surface-muted, #f3f4f6);
   border-radius: 999px;
   padding: 0.12rem 0.5rem;
   font-size: 0.8rem;
@@ -811,7 +814,7 @@ onUnmounted(() => {
 }
 
 .event-card-details {
-  border-top: 1px dashed var(--surface-border, #d0d5dd);
+  border-top: 1px dashed var(--gp-border, #d0d5dd);
   padding-top: 0.5rem;
   display: grid;
   gap: 0.25rem;

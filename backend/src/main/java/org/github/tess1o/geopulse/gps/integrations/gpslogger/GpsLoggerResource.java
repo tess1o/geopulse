@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.gpslogger;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
@@ -13,15 +16,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.jboss.resteasy.reactive.RestHeader;
 
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/gpslogger")
+@Path(ApiPaths.GPS_INGEST + "/gpslogger")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -43,25 +51,28 @@ public class GpsLoggerResource {
     @POST
     @Operation(summary = "Ingest GPS Logger location",
             description = "Receives a GPS Logger location update and stores it as a GPS point for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleGpsLogger(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String authHeader,
                                     @RestHeader("X-Limit-D") String deviceId) {
-        log.info("Received GPSLogger payload: {}, device: {}", payload, deviceId);
-
+        long started = System.nanoTime();
         if (!"location".equals(payload.get("_type"))) {
             return Response.ok().build();
         }
 
         var authResult = authRegistry.authenticate(GpsSourceType.GPSLOGGER, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
         OwnTracksLocationMessage locationMessage = MAPPER.convertValue(payload, OwnTracksLocationMessage.class);
 
-        gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.GPSLOGGER, config);
+        var summary = gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.GPSLOGGER, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.GPSLOGGER, started);
         return Response.ok("[]").build();
     }
 }

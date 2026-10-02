@@ -100,9 +100,73 @@ public class TimelineNoteLocationService {
                     note.setLocationSource(location.source());
                     note.setAnchorType(NoteAnchorType.TRIP);
                     note.setAnchorId(trip.getId());
+                    continue;
                 }
             }
+
+            // Note falls inside a GPS data gap (not covered by any stay or trip).
+            // Snap its displayed location to whichever adjacent stay/trip boundary is
+            // closest in time, purely for map placement - but do NOT anchor it there.
+            // The note's own eventTime still falls inside the gap, so it must remain
+            // timestamp-matchable to that gap's card rather than hijacked onto a
+            // neighbor's card whose time window doesn't actually contain it.
+            AdjacentAnchor nearest = findNearestAdjacentAnchor(stays, trips, note.getEventTime());
+            if (nearest != null) {
+                note.setLatitude(nearest.latitude());
+                note.setLongitude(nearest.longitude());
+                note.setLocationSource(NoteLocationSource.DERIVED_GAP_NEIGHBOR);
+            }
         }
+    }
+
+    private AdjacentAnchor findNearestAdjacentAnchor(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, Instant eventTime) {
+        AdjacentAnchor best = null;
+
+        for (TimelineStayEntity stay : stays) {
+            if (stay.getTimestamp() == null || stay.getLocation() == null) {
+                continue;
+            }
+            Instant start = stay.getTimestamp();
+            Instant end = start.plusSeconds(Math.max(0L, stay.getStayDuration()));
+            double lat = stay.getLocation().getY();
+            double lon = stay.getLocation().getX();
+            best = closerAnchor(best, adjacentCandidate(start, end, lat, lon, lat, lon, eventTime));
+        }
+
+        for (TimelineTripEntity trip : trips) {
+            if (trip.getTimestamp() == null || trip.getStartPoint() == null || trip.getEndPoint() == null) {
+                continue;
+            }
+            Instant start = trip.getTimestamp();
+            Instant end = start.plusSeconds(Math.max(0L, trip.getTripDuration()));
+            best = closerAnchor(best, adjacentCandidate(start, end,
+                    trip.getStartPoint().getY(), trip.getStartPoint().getX(),
+                    trip.getEndPoint().getY(), trip.getEndPoint().getX(), eventTime));
+        }
+
+        return best;
+    }
+
+    private AdjacentAnchor adjacentCandidate(Instant start, Instant end,
+                                             double startLat, double startLon, double endLat, double endLon,
+                                             Instant eventTime) {
+        if (eventTime.isBefore(start)) {
+            return new AdjacentAnchor(startLat, startLon, Duration.between(eventTime, start).getSeconds());
+        }
+        if (eventTime.isAfter(end)) {
+            return new AdjacentAnchor(endLat, endLon, Duration.between(end, eventTime).getSeconds());
+        }
+        return new AdjacentAnchor(startLat, startLon, 0L);
+    }
+
+    private AdjacentAnchor closerAnchor(AdjacentAnchor current, AdjacentAnchor candidate) {
+        if (current == null || candidate.distanceSeconds() < current.distanceSeconds()) {
+            return candidate;
+        }
+        return current;
+    }
+
+    private record AdjacentAnchor(double latitude, double longitude, long distanceSeconds) {
     }
 
     TimelineNoteResolvedLocation resolveCreateRequestLocation(UUID userId, CreateNoteRequest request, Instant eventTime) {

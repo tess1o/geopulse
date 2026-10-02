@@ -20,7 +20,7 @@ public class ChunkedUploadSession {
     private long fileSize;
     private int totalChunks;
     private String importFormat;
-    private String options;  // JSON string of import options
+    private ImportOptions options;
     private Set<Integer> receivedChunks;
     private Instant createdAt;
     private Instant expiresAt;
@@ -35,7 +35,7 @@ public class ChunkedUploadSession {
     }
 
     public ChunkedUploadSession(UUID userId, String fileName, long fileSize, int totalChunks,
-                                 String importFormat, String options, long sessionTimeoutHours) {
+                                 String importFormat, ImportOptions options, long sessionTimeoutHours) {
         this();
         this.userId = userId;
         this.fileName = fileName;

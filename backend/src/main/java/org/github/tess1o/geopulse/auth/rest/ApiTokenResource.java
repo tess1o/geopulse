@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -9,16 +11,22 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.dto.CreateApiTokenRequest;
+import org.github.tess1o.geopulse.auth.dto.ApiTokenResponse;
+import org.github.tess1o.geopulse.auth.dto.CreateApiTokenResponse;
 import org.github.tess1o.geopulse.auth.dto.UpdateApiTokenRequest;
 import org.github.tess1o.geopulse.auth.service.ApiTokenService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import java.util.List;
 
-@Path("/api/api-tokens")
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
+
+@Path("/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -35,73 +43,54 @@ public class ApiTokenResource {
     ApiTokenService apiTokenService;
 
     @GET
-    public Response listTokens() {
+    public List<ApiTokenResponse> listTokens() {
         UUID userId = currentUserService.getCurrentUserId();
-        return Response.ok(ApiResponse.success(apiTokenService.listForUser(userId))).build();
+        return apiTokenService.listForUser(userId);
     }
 
     @POST
-    public Response createToken(
-            @Valid CreateApiTokenRequest createRequest,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public RestResponse<CreateApiTokenResponse> createToken(@Valid CreateApiTokenRequest createRequest) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(apiTokenService.createToken(
-                            userId,
-                            createRequest.getName(),
-                            createRequest.getExpiresAt(),
-                            ipAddress
-                    )))
-                    .build();
+            String ipAddress = UserIpAddress.resolve(request);
+            return RestResponse.status(Response.Status.CREATED, apiTokenService.createToken(
+                    userId,
+                    createRequest.getName(),
+                    createRequest.getExpiresAt(),
+                    ipAddress
+            ));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateToken(
-            @PathParam("id") UUID tokenId,
-            @Valid UpdateApiTokenRequest updateRequest,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public ApiTokenResponse updateToken(@PathParam("id") UUID tokenId, @Valid UpdateApiTokenRequest updateRequest) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
-            return Response.ok(ApiResponse.success(apiTokenService.updateToken(
+            String ipAddress = UserIpAddress.resolve(request);
+            return apiTokenService.updateToken(
                     userId,
                     tokenId,
                     updateRequest.getName(),
                     updateRequest.getExpiresAt(),
                     ipAddress
-            ))).build();
+            );
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 
     @DELETE
     @Path("/{id}")
-    public Response revokeToken(
-            @PathParam("id") UUID tokenId,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void revokeToken(@PathParam("id") UUID tokenId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
             apiTokenService.revokeOwnedToken(userId, tokenId, ipAddress);
-            return Response.ok(ApiResponse.success("API token revoked")).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 }

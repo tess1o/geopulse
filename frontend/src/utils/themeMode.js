@@ -13,6 +13,8 @@ const VALID_THEME_MODES = new Set(Object.values(THEME_MODES))
 
 let currentThemeMode = THEME_MODES.SYSTEM
 let stopSystemThemeListener = null
+let initialized = false
+const darkModeListeners = new Set()
 
 const canUseBrowserApis = () =>
   typeof window !== 'undefined' &&
@@ -80,7 +82,21 @@ export const applyThemeMode = (themeMode) => {
 
   const isDarkMode = resolveThemeModeToDark(themeMode)
   document.documentElement.classList.toggle(DARK_THEME_CLASS, isDarkMode)
+  darkModeListeners.forEach((listener) => listener(isDarkMode))
   return isDarkMode
+}
+
+/** Whether the dark theme class is currently applied to <html>. */
+export const isDarkModeApplied = () =>
+  canUseBrowserApis() && document.documentElement.classList.contains(DARK_THEME_CLASS)
+
+/**
+ * Calls `listener(isDark)` every time the theme is (re)applied, including OS theme changes in "system" mode.
+ * Returns an unsubscribe function.
+ */
+export const onDarkModeChange = (listener) => {
+  darkModeListeners.add(listener)
+  return () => darkModeListeners.delete(listener)
 }
 
 const handleSystemThemeChange = () => {
@@ -132,7 +148,13 @@ export const setThemeMode = (themeMode) => {
 
 export const getThemeMode = () => currentThemeMode
 
+// Idempotent: main.js calls it before mounting, and useThemeMode calls it at import time because its module can be
+// evaluated (through App.vue's imports) before main.js's body runs.
 export const initializeThemeMode = () => {
+  if (initialized) {
+    return currentThemeMode
+  }
+  initialized = true
   currentThemeMode = getStoredThemeMode()
   persistThemeMode(currentThemeMode)
   applyThemeMode(currentThemeMode)

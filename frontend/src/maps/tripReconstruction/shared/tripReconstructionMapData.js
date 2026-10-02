@@ -1,3 +1,5 @@
+import { t } from '@/locales'
+
 export const hasValidCoordinates = (lat, lon) => {
   return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
 }
@@ -207,8 +209,8 @@ export const computePreviewSummary = (segments) => {
 }
 
 export const waypointLabel = (index, total) => {
-  if (index === 0) return 'Start'
-  if (index === total - 1) return 'End'
+  if (index === 0) return t('trips.reconstruction.segmentsPanel.waypointStart')
+  if (index === total - 1) return t('trips.reconstruction.segmentsPanel.waypointEnd')
   return `W${index + 1}`
 }
 

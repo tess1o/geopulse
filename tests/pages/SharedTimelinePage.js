@@ -30,6 +30,8 @@ export class SharedTimelinePage {
             dateRangePicker: '.header-datepicker',
             clearFilterButton: 'button[aria-label="Clear date filter"]',
             refreshButton: 'button[aria-label="Refresh data"]',
+            autoRefreshSelect: '[aria-label="Auto-refresh interval"]',
+            autoFollowButton: 'button[aria-label$="auto-follow"]',
 
             // Loading state
             loadingState: '.state-container:has(.p-progress-spinner)',
@@ -178,6 +180,19 @@ export class SharedTimelinePage {
         if (classes.includes('p-tag-info')) return 'info';
         if (classes.includes('p-tag-secondary')) return 'secondary';
         return 'unknown';
+    }
+
+    async selectAutoRefresh(label) {
+        await this.page.locator(this.selectors.autoRefreshSelect).click();
+        await this.page.getByRole('option', {name: label}).click();
+    }
+
+    async getAutoRefreshLabel() {
+        return (await this.page.locator(this.selectors.autoRefreshSelect).textContent()).trim();
+    }
+
+    async isAutoFollowEnabled() {
+        return await this.page.locator(this.selectors.autoFollowButton).getAttribute('aria-pressed') === 'true';
     }
 
     async getHeader() {

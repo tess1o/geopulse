@@ -67,7 +67,7 @@ Once a trip has been identified, the system analyzes its characteristics to clas
 The system supports several trip types:
 
 *   **Walking (WALK):** Low-speed movement where both average and maximum speeds are below the defined walking thresholds (default: ≤6 km/h average, ≤8 km/h maximum).
-*   **Car (CAR):** Motorized transport including cars, buses, and motorcycles. Classified when average speed is ≥10 km/h OR maximum speed is ≥15 km/h.
+*   **Motor vehicle labels (CAR, MOTORCYCLE, PUBLIC_TRANSPORT):** Car-like travel is classified when average speed is ≥10 km/h OR maximum speed is ≥15 km/h. The selected label is a user preference; Public Transportation is not specific bus detection.
 *   **Bicycle (BICYCLE):** Optional type for cycling and running (8-25 km/h). Must be explicitly enabled in Timeline Preferences.
 *   **Train (TRAIN):** Optional type for rail travel (30-150 km/h with low speed variance). Must be explicitly enabled.
 *   **Flight (FLIGHT):** Optional type for air travel (400+ km/h average OR 500+ km/h peak). Must be explicitly enabled.

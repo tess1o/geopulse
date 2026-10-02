@@ -1,4 +1,5 @@
 import {ref, computed, onBeforeUnmount, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useTimezone} from './useTimezone'
 import {findOriginStay, findDestinationStay} from '@/utils/tripHelpers'
 
@@ -14,6 +15,8 @@ const timezone = useTimezone()
  * @param {Number} options.searchDebounce - Debounce delay for search in milliseconds (default: 300)
  */
 export function useTableFilters(options = {}) {
+    const {t} = useI18n()
+
     // Common filter states
     const searchTerm = ref('')
     const debouncedSearchTerm = ref('')
@@ -38,27 +41,28 @@ export function useTableFilters(options = {}) {
 
     // Default filter options (can be overridden by parameters)
     const defaultDurationOptions = [
-        {label: 'Less than 1 hour', value: 'short', maxDuration: 3600},
-        {label: '1-6 hours', value: 'medium', minDuration: 3600, maxDuration: 21600},
-        {label: '6+ hours', value: 'long', minDuration: 21600}
+        {label: t('data.tables.filtersDefault.durationOptions.lessThan1Hour'), value: 'short', maxDuration: 3600},
+        {label: t('data.tables.filtersDefault.durationOptions.oneToSixHours'), value: 'medium', minDuration: 3600, maxDuration: 21600},
+        {label: t('data.tables.filtersDefault.durationOptions.sixPlusHours'), value: 'long', minDuration: 21600}
     ]
 
     const defaultTransportModeOptions = [
-        {label: 'Walk', value: 'WALK'},
-        {label: 'Car', value: 'CAR'},
-        {label: 'Motorcycle', value: 'MOTORCYCLE'},
-        {label: 'Bicycle', value: 'BICYCLE'},
-        {label: 'Running', value: 'RUNNING'},
-        {label: 'Train', value: 'TRAIN'},
-        {label: 'Flight', value: 'FLIGHT'},
-        {label: 'Boat', value: 'BOAT'},
-        {label: 'Unknown', value: 'UNKNOWN'}
+        {label: t('movementTypes.WALK'), value: 'WALK'},
+        {label: t('movementTypes.CAR'), value: 'CAR'},
+        {label: t('movementTypes.MOTORCYCLE'), value: 'MOTORCYCLE'},
+        {label: t('movementTypes.PUBLIC_TRANSPORT'), value: 'PUBLIC_TRANSPORT'},
+        {label: t('movementTypes.BICYCLE'), value: 'BICYCLE'},
+        {label: t('movementTypes.RUNNING'), value: 'RUNNING'},
+        {label: t('movementTypes.TRAIN'), value: 'TRAIN'},
+        {label: t('movementTypes.FLIGHT'), value: 'FLIGHT'},
+        {label: t('movementTypes.BOAT'), value: 'BOAT'},
+        {label: t('movementTypes.UNKNOWN'), value: 'UNKNOWN'}
     ]
 
     const defaultDistanceOptions = [
-        {label: 'Less than 1 km', value: 'short', maxDistance: 1000},
-        {label: '1-10 km', value: 'medium', minDistance: 1000, maxDistance: 10000},
-        {label: '10+ km', value: 'long', minDistance: 10000}
+        {label: t('data.tables.filtersDefault.distanceOptions.lessThan1Km'), value: 'short', maxDistance: 1000},
+        {label: t('data.tables.filtersDefault.distanceOptions.oneToTenKm'), value: 'medium', minDistance: 1000, maxDistance: 10000},
+        {label: t('data.tables.filtersDefault.distanceOptions.tenPlusKm'), value: 'long', minDistance: 10000}
     ]
 
     // Component-specific filter options

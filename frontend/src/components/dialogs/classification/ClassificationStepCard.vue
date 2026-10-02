@@ -4,7 +4,7 @@
       <div class="step-number">{{ index }}</div>
       <div class="step-type">
         <span class="type-icon">{{ getTransportIcon(step.tripType) }}</span>
-        <span class="type-name">{{ step.tripType }}</span>
+        <span class="type-name">{{ movementTypeLabel(step.tripType) }}</span>
       </div>
       <div class="step-status">
         <i v-if="!step.checked" class="pi pi-minus-circle status-icon status-icon--skipped"></i>
@@ -19,7 +19,7 @@
     </div>
 
     <div v-if="step.checks && step.checks.length > 0" class="step-checks">
-      <div class="checks-header">Threshold Checks:</div>
+      <div class="checks-header">{{ t('classification.stepCard.thresholdChecksHeader') }}</div>
       <div class="checks-list">
         <div
           v-for="(check, checkIndex) in step.checks"
@@ -31,7 +31,7 @@
           <span class="check-name">{{ check.name }}</span>
           <span class="check-operator">{{ check.operator }}</span>
           <span class="check-threshold">{{ formatValue(check.threshold) }}</span>
-          <span class="check-actual">(actual: {{ formatValue(check.actual) }})</span>
+          <span class="check-actual">{{ t('classification.stepCard.actual', { value: formatValue(check.actual) }) }}</span>
         </div>
       </div>
     </div>
@@ -40,6 +40,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, te } = useI18n()
 
 const props = defineProps({
   step: {
@@ -66,9 +69,16 @@ const stepClass = computed(() => {
 })
 
 const getStatusText = () => {
-  if (!props.step.checked) return 'Not Enabled'
-  if (props.step.passed) return 'Passed'
-  return 'Failed'
+  if (!props.step.checked) return t('classification.stepCard.notEnabled')
+  if (props.step.passed) return t('classification.stepCard.passed')
+  return t('classification.stepCard.failed')
+}
+
+// Movement type label from the shared movementTypes.* catalog, falling back to the raw enum value.
+const movementTypeLabel = (type) => {
+  if (!type) return type
+  const key = `movementTypes.${type}`
+  return te(key) ? t(key) : type
 }
 
 const getTransportIcon = (type) => {
@@ -86,7 +96,7 @@ const getTransportIcon = (type) => {
 }
 
 const formatValue = (value) => {
-  if (value === null || value === undefined) return 'N/A'
+  if (value === null || value === undefined) return t('classification.na')
   if (typeof value === 'number') return value.toFixed(1)
   return value
 }
@@ -94,10 +104,10 @@ const formatValue = (value) => {
 
 <style scoped>
 .classification-step {
-  border: 2px solid var(--gp-border-light);
+  border: 2px solid var(--gp-border-medium);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
   margin-bottom: var(--gp-spacing-md);
   transition: all 0.2s ease;
 }
@@ -108,7 +118,7 @@ const formatValue = (value) => {
 
 .classification-step--selected {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-50);
+  background: var(--gp-primary-soft);
   box-shadow: var(--gp-shadow-medium);
 }
 
@@ -139,7 +149,7 @@ const formatValue = (value) => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   color: var(--gp-text-secondary);
   font-weight: 700;
   font-size: 0.9rem;
@@ -191,11 +201,11 @@ const formatValue = (value) => {
 }
 
 .classification-step--passed .status-text {
-  color: var(--gp-success-700);
+  color: var(--gp-success-text);
 }
 
 .classification-step--failed .status-text {
-  color: var(--gp-danger-700);
+  color: var(--gp-danger-text);
 }
 
 .classification-step--skipped .status-text {
@@ -207,7 +217,7 @@ const formatValue = (value) => {
   font-size: 0.9rem;
   line-height: 1.5;
   padding: var(--gp-spacing-sm);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-ground);
   border-radius: var(--gp-radius-small);
   margin-bottom: var(--gp-spacing-sm);
 }
@@ -236,17 +246,17 @@ const formatValue = (value) => {
   padding: var(--gp-spacing-xs);
   border-radius: var(--gp-radius-small);
   font-size: 0.85rem;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .check-item--passed {
-  background: var(--gp-success-50);
-  color: var(--gp-success-900);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .check-item--failed {
-  background: var(--gp-danger-50);
-  color: var(--gp-danger-900);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 .check-icon {
@@ -272,49 +282,6 @@ const formatValue = (value) => {
 .check-actual {
   color: var(--gp-text-secondary);
   font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .classification-step {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .classification-step--selected {
-  background: var(--gp-primary-900);
-  border-color: var(--gp-primary);
-}
-
-.p-dark .step-number {
-  background: var(--gp-surface-darker);
-  color: var(--gp-text-primary);
-}
-
-.p-dark .type-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .step-reason {
-  background: var(--gp-surface-darker);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .checks-header {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .check-item--passed {
-  background: var(--gp-success-900);
-  color: var(--gp-success-100);
-}
-
-.p-dark .check-item--failed {
-  background: var(--gp-danger-900);
-  color: var(--gp-danger-100);
-}
-
-.p-dark .check-actual {
-  color: var(--gp-text-muted);
 }
 
 /* Mobile Responsive */

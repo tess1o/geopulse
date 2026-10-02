@@ -49,5 +49,6 @@ public class FavoritesEntity {
      * Used to determine if favorite changes require full timeline regeneration or simple updates.
      */
     @Column(name = "merge_impact")
+    @Builder.Default
     private Boolean mergeImpact = false;
 }

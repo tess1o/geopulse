@@ -1,5 +1,6 @@
 import { formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { resolveHoverSpeedKmh } from '@/maps/shared/tripSpeed'
+import { t } from '@/locales'
 
 export const escapeHtml = (value) => {
   if (value === null || value === undefined) {
@@ -36,7 +37,9 @@ export const buildTripHoverTooltipHtml = (trip, hoverTiming, deps = {}) => {
   const offsetSeconds = Number.isFinite(startMs)
     ? Math.max(0, Math.round((hoverTiming.timeMs - startMs) / 1000))
     : null
-  const confidenceLabel = hoverTiming.mode === 'exact' ? 'Exact GPS point' : 'Estimated between points'
+  const confidenceLabel = hoverTiming.mode === 'exact'
+    ? t('maps.popups.timeline.hoverTooltip.exactGpsPoint')
+    : t('maps.popups.timeline.hoverTooltip.estimatedBetweenPoints')
   const confidenceClass = hoverTiming.mode === 'exact' ? 'exact' : 'estimated'
   const speedKmh = resolveHoverSpeedKmh(hoverTiming)
   const speedText = Number.isFinite(speedKmh) ? formatSpeed(speedKmh) : null
@@ -48,7 +51,7 @@ export const buildTripHoverTooltipHtml = (trip, hoverTiming, deps = {}) => {
       </div>
       ${speedText ? `
       <div class="trip-hover-speed">
-        Speed: ${escapeHtml(speedText)}
+        ${escapeHtml(t('maps.popups.timeline.hoverTooltip.speedPrefix', { speed: speedText }))}
       </div>
       ` : ''}
       <div class="trip-hover-confidence ${confidenceClass}">
@@ -56,7 +59,7 @@ export const buildTripHoverTooltipHtml = (trip, hoverTiming, deps = {}) => {
       </div>
       ${Number.isFinite(offsetSeconds) ? `
       <div class="trip-hover-offset">
-        From trip start: ${formatDuration(offsetSeconds)}
+        ${escapeHtml(t('maps.popups.timeline.hoverTooltip.fromTripStart', { duration: formatDuration(offsetSeconds) }))}
       </div>
       ` : ''}
     </div>

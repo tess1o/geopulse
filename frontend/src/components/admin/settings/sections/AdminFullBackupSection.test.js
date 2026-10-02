@@ -13,15 +13,21 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('primevue/usetoast', () => ({ useToast: () => mocks.toast }))
-vi.mock('@/utils/adminService', () => ({
-  default: {
+vi.mock('@/stores/admin', () => ({
+  useAdminStore: () => ({
     getBackupConfig: mocks.getBackupConfig,
     getBackupFiles: mocks.getBackupFiles,
     getBackupStatus: mocks.getBackupStatus,
     updateBackupConfig: mocks.updateBackupConfig,
     restoreLocalFullBackup: mocks.restoreLocalFullBackup,
-    restoreUploadedFullBackup: mocks.restoreUploadedFullBackup
-  }
+    restoreUploadedFullBackup: mocks.restoreUploadedFullBackup,
+    deleteLocalBackup: vi.fn(),
+    discardPreparedRestore: vi.fn(),
+    downloadFullBackup: vi.fn(),
+    downloadLocalBackup: vi.fn(),
+    retryPreparedRestore: vi.fn(),
+    runFullBackupNow: vi.fn()
+  })
 }))
 vi.mock('@/stores/maintenance', () => ({ applyMaintenanceStatus: vi.fn(), refreshMaintenance: mocks.refreshMaintenance }))
 
@@ -96,6 +102,18 @@ describe('AdminFullBackupSection password validation', () => {
     await flushPromises()
 
     expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ password: 'twelve-chars!' }))
+    wrapper.unmount()
+  })
+
+  it('saves zero days to disable backup freshness alerts', async () => {
+    const wrapper = mountSection()
+    await flushPromises()
+
+    wrapper.vm.backupConfig.healthMaxAgeDays = 0
+    wrapper.vm.backupConfig.healthAppriseEnabled = false
+    await wrapper.vm.saveBackupConfig()
+
+    expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ healthMaxAgeDays: 0, healthAppriseEnabled: false }))
     wrapper.unmount()
   })
 

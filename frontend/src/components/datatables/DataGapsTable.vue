@@ -1,11 +1,11 @@
 <template>
-  <BaseCard title="Data Gaps" class="data-gaps-table-card">
+  <BaseCard :title="t('data.tables.dataGaps.sectionTitle')" class="data-gaps-table-card">
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
         <div v-if="!isMobile" class="table-title-section">
-          <h3 class="table-title">Data Gaps</h3>
-          <span class="table-count">{{ filteredDataGapsData.length }} gaps</span>
+          <h3 class="table-title">{{ t('data.tables.dataGaps.sectionTitle') }}</h3>
+          <span class="table-count">{{ t('data.tables.dataGaps.count', { count: filteredDataGapsData.length }) }}</span>
         </div>
         <div class="table-actions">
           <div class="filter-controls">
@@ -14,19 +14,19 @@
                 :options="durationFilterOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Duration"
+                :placeholder="t('data.tables.durationPlaceholder')"
                 showClear
                 class="duration-filter"
             />
           </div>
           <Button
-              :label="isMobile ? null : 'Export CSV'"
-              :aria-label="'Export CSV'"
+              :label="isMobile ? null : t('data.tables.exportCsv')"
+              :aria-label="t('data.tables.exportCsv')"
               icon="pi pi-download"
               @click="$emit('export')"
               outlined
               :disabled="exportDisabled"
-              v-tooltip.bottom="exportDisabled ? 'Export is disabled in demo mode' : 'Export data gaps to CSV'"
+              v-tooltip.bottom="exportDisabled ? t('data.tables.exportDisabledDemo') : t('data.tables.dataGaps.exportTooltip')"
               class="export-button"
               :class="{ 'export-button--icon': isMobile }"
           />
@@ -51,18 +51,10 @@
         :virtualScrollerOptions="{
           itemSize: 73
         }"
-        :pt="{
-        root: 'bg-surface-0 dark:bg-surface-950',
-        header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
-        tbody: 'bg-surface-0 dark:bg-surface-950',
-        row: 'bg-surface-0 dark:bg-surface-950 hover:bg-surface-50 dark:hover:bg-surface-800',
-        cell: 'text-surface-900 dark:text-surface-100 border-surface-200 dark:border-surface-700',
-        paginator: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700'
-      }"
     >
       <Column
           field="startTime"
-          header="Start Time"
+          :header="t('data.tables.dataGaps.startTimeHeader')"
           :sortable="true"
           :style="{ 'min-width': '150px' }"
       >
@@ -76,7 +68,7 @@
 
       <Column
           field="endTime"
-          header="End Time"
+          :header="t('data.tables.dataGaps.endTimeHeader')"
           :sortable="true"
           :style="{ 'min-width': '150px' }"
       >
@@ -93,7 +85,7 @@
       <!-- Duration Column -->
       <Column
           field="duration"
-          header="Duration"
+          :header="t('data.tables.dataGaps.durationHeader')"
           :sortable="true"
           :style="{ 'min-width': '120px' }"
       >
@@ -115,17 +107,17 @@
         class="mobile-gap-card"
       >
         <header class="mobile-gap-header">
-          <h4 class="mobile-gap-title">Data Gap</h4>
+          <h4 class="mobile-gap-title">{{ t('data.tables.dataGaps.title') }}</h4>
           <span class="duration-badge mobile-gap-duration">{{ formatGapDuration(gap) }}</span>
         </header>
 
         <div class="mobile-gap-meta">
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
             <span class="mobile-meta-value">{{ formatDate(gap.startTime) }} {{ formatTime(gap.startTime) }}</span>
           </div>
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
             <span class="mobile-meta-value">
               <template v-if="!isSameDay(gap.startTime, gap.endTime)">{{ formatDate(gap.endTime) }} </template>{{ formatTime(gap.endTime) }}
             </span>
@@ -135,12 +127,11 @@
     </div>
 
     <!-- No Data State -->
-    <div v-if="!loading && filteredDataGapsData.length === 0" class="no-data-state">
-      <i class="pi pi-check-circle no-data-icon"></i>
-      <h4 class="no-data-title">No Data Gaps Found</h4>
-      <p class="no-data-message">
-        Great! No data gaps found for the selected date range and filters.
-        Your GPS tracking appears to be working well.
+    <div v-if="!loading && filteredDataGapsData.length === 0" class="gp-empty-state">
+      <i class="pi pi-check-circle gp-empty-state-icon"></i>
+      <h4 class="gp-empty-state-title">{{ t('data.tables.dataGaps.noDataTitle') }}</h4>
+      <p class="gp-empty-state-message">
+        {{ t('data.tables.dataGaps.noDataMessage') }}
       </p>
     </div>
   </BaseCard>
@@ -148,6 +139,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
@@ -158,6 +150,7 @@ import {useTableFilters} from '@/composables/useTableFilters'
 import {formatDurationSmart} from "@/utils/calculationsHelpers"
 import { memoizedDateTimeFormat, memoizedDurationFormat } from '@/utils/formatMemoizer'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -182,10 +175,10 @@ const {
   useDataGapsFilter
 } = useTableFilters({
   durationOptions: [
-    {label: 'Less than 1 hour', value: 'short', maxDuration: 3600},
-    {label: '1-2 hours  ', value: 'medium', minDuration: 3600, maxDuration: 7200},
-    {label: '2-8 hours', value: 'long', minDuration: 7200, maxDuration: 28800},
-    {label: 'More than 8 hours', value: 'very-long', minDuration: 28800}
+    {label: t('data.tables.dataGaps.durationOptions.lessThan1Hour'), value: 'short', maxDuration: 3600},
+    {label: t('data.tables.dataGaps.durationOptions.oneToTwoHours'), value: 'medium', minDuration: 3600, maxDuration: 7200},
+    {label: t('data.tables.dataGaps.durationOptions.twoToEightHours'), value: 'long', minDuration: 7200, maxDuration: 28800},
+    {label: t('data.tables.dataGaps.durationOptions.moreThan8Hours'), value: 'very-long', minDuration: 28800}
   ]
 })
 
@@ -253,6 +246,12 @@ onUnmounted(() => {
   margin-bottom: var(--gp-spacing-lg);
 }
 
+/* No gaps is good news: the empty state is in the success colour. */
+.gp-empty-state-icon,
+.gp-empty-state-title {
+  color: var(--gp-success);
+}
+
 .table-header {
   display: flex;
   justify-content: space-between;
@@ -292,7 +291,6 @@ onUnmounted(() => {
   gap: var(--gp-spacing-sm);
 }
 
-
 .gap-type-filter,
 .duration-filter {
   width: 150px;
@@ -309,14 +307,14 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .time-part {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--gp-font-mono);
 }
 
 .duration-badge {
@@ -327,24 +325,24 @@ onUnmounted(() => {
 }
 
 .duration-short {
-  background: var(--gp-success-50);
-  color: var(--gp-success-700);
+  background: var(--gp-success-soft);
+  color: var(--gp-success-text);
 }
 
 .duration-medium {
-  background: var(--gp-warning-50);
-  color: var(--gp-warning-700);
+  background: var(--gp-warning-soft);
+  color: var(--gp-warning-text);
 }
 
 .duration-long {
-  background: var(--gp-danger-50);
-  color: var(--gp-danger-700);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
 }
 
 .duration-very-long {
-  background: var(--gp-danger-100);
-  color: var(--gp-danger-800);
-  border: 1px solid var(--gp-danger-200);
+  background: var(--gp-danger-soft);
+  color: var(--gp-danger-text);
+  border: 1px solid var(--gp-danger-border);
 }
 
 .location-info {
@@ -399,10 +397,10 @@ onUnmounted(() => {
 }
 
 .mobile-gap-card {
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-muted);
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
@@ -449,64 +447,6 @@ onUnmounted(() => {
   font-size: 0.85rem;
   text-align: right;
   line-height: 1.35;
-}
-
-.no-data-state {
-  text-align: center;
-  padding: var(--gp-spacing-xxl);
-  color: var(--gp-text-secondary);
-}
-
-.no-data-icon {
-  font-size: 3rem;
-  margin-bottom: var(--gp-spacing-md);
-  color: var(--gp-success);
-  opacity: 0.7;
-}
-
-.no-data-title {
-  margin: 0 0 var(--gp-spacing-sm) 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-success);
-}
-
-.no-data-message {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-  line-height: 1.5;
-}
-
-/* Dark Mode */
-.p-dark .duration-short {
-  background: var(--gp-success-900);
-  color: var(--gp-success-300);
-}
-
-.p-dark .duration-medium {
-  background: var(--gp-warning-900);
-  color: var(--gp-warning-300);
-}
-
-.p-dark .duration-long {
-  background: var(--gp-danger-900);
-  color: var(--gp-danger-300);
-}
-
-.p-dark .duration-very-long {
-  background: var(--gp-danger-800);
-  color: var(--gp-danger-200);
-  border-color: var(--gp-danger-700);
-}
-
-.p-dark .no-data-title {
-  color: var(--gp-success);
-}
-
-.p-dark .mobile-gap-card {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
 }
 
 /* Mobile Responsive */
@@ -577,82 +517,4 @@ onUnmounted(() => {
   }
 }
 
-/* PrimeVue DataTable Dark Mode Styling */
-.p-dark .data-gaps-data-table :deep(.p-datatable) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-header) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr) {
-  background: var(--gp-surface-dark) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--gp-surface-light) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-tbody > tr > td) {
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-paginator-bottom),
-.p-dark .data-gaps-data-table :deep(.p-paginator.p-component) {
-  background: var(--gp-surface-darker) !important;
-  color: var(--gp-text-primary) !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  border-top: 1px solid var(--gp-border-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-datatable-wrapper) {
-  border-radius: var(--gp-radius-medium) !important;
-  overflow: hidden !important;
-  background: var(--gp-surface-dark) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-page),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-next),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-prev),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-first),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-last) {
-  color: var(--gp-text-primary) !important;
-  background: transparent !important;
-  border: 1px solid var(--gp-border-dark) !important;
-  margin: 0 2px !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-page:hover),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-next:hover),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-prev:hover),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-first:hover),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-last:hover) {
-  background: var(--gp-surface-light) !important;
-  color: var(--gp-text-primary) !important;
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-page-selected) {
-  background: var(--gp-primary) !important;
-  color: white !important;
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .data-gaps-data-table :deep(.p-paginator .p-paginator-current) {
-  color: var(--gp-text-secondary) !important;
-}
 </style>

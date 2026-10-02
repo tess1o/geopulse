@@ -1,5 +1,7 @@
 <template>
   <div class="viewer-location-control">
+    <!-- Same container and button size as MapControls' groups, so the control stack lines up. -->
+    <div class="viewer-location-group">
     <button
       type="button"
       class="viewer-location-button"
@@ -20,12 +22,13 @@
       v-if="active"
       type="button"
       class="viewer-location-stop"
-      title="Hide your location"
-      aria-label="Hide your location"
+      :title="t('maps.popups.viewerLocation.hideLocation')"
+      :aria-label="t('maps.popups.viewerLocation.hideLocation')"
       @click="$emit('stop')"
     >
       <i class="pi pi-times"></i>
     </button>
+    </div>
     <div v-if="message" class="viewer-location-message" role="status">
       {{ message }}
     </div>
@@ -34,6 +37,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   status: {
@@ -57,9 +63,9 @@ const props = defineProps({
 defineEmits(['locate', 'stop'])
 
 const buttonTitle = computed(() => {
-  if (props.status === 'requesting') return 'Finding your location'
-  if (props.active) return 'Center on your location'
-  return 'Show your location'
+  if (props.status === 'requesting') return t('maps.popups.viewerLocation.findingLocation')
+  if (props.active) return t('maps.popups.viewerLocation.centerOnLocation')
+  return t('maps.popups.viewerLocation.showLocation')
 })
 
 const buttonIcon = computed(() => {
@@ -74,8 +80,8 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
 <style scoped>
 .viewer-location-control {
   position: absolute;
-  top: var(--gp-spacing-lg, 1rem);
-  right: var(--gp-spacing-lg, 1rem);
+  top: var(--gp-spacing-lg);
+  right: var(--gp-spacing-lg);
   z-index: 920;
   display: flex;
   flex-direction: column;
@@ -84,26 +90,42 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   pointer-events: none;
 }
 
+.viewer-location-group {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+  padding: var(--gp-spacing-xs);
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+  box-shadow: var(--gp-shadow-medium);
+}
+
 .viewer-location-button,
 .viewer-location-stop {
-  pointer-events: auto;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--surface-border, #d1d5db);
-  border-radius: 6px;
-  background: var(--surface-card, #ffffff);
-  color: var(--text-color, #111827);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--gp-radius-small);
+  background: transparent;
+  color: var(--gp-text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.viewer-location-button i,
+.viewer-location-stop i {
+  font-size: 16px;
 }
 
 .viewer-location-button:hover:not(:disabled),
 .viewer-location-stop:hover {
-  background: var(--surface-hover, #f3f4f6);
+  background: var(--gp-surface-muted);
 }
 
 .viewer-location-button:disabled {
@@ -128,9 +150,17 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   color: #c2410c;
 }
 
-.viewer-location-stop {
-  width: 32px;
-  height: 32px;
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .viewer-location-button,
+  .viewer-location-stop {
+    width: 35px;
+    height: 35px;
+  }
+
+  .viewer-location-button i,
+  .viewer-location-stop i {
+    font-size: 14px;
+  }
 }
 
 .viewer-location-message {
@@ -141,7 +171,7 @@ const hasError = computed(() => ['denied', 'unavailable', 'error'].includes(prop
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.88);
   color: #ffffff;
-  font-size: 0.72rem !important;
+  font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.25;
   text-align: left;

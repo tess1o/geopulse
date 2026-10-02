@@ -1,17 +1,24 @@
+/**
+ * WMO weather-code groups.
+ *
+ * `key` is the catalog key and is the field components should render -- translate by the
+ * locale-neutral code and treat `label` as the English fallback, mirroring how backend messages work.
+ * `label` is kept because existing consumers (map popups, weather layers, tests) read it directly.
+ */
 const WEATHER_CODE_INFO = [
-  { codes: [0], label: 'Clear', icon: 'fas fa-sun', severity: 'clear' },
-  { codes: [1, 2], label: 'Partly cloudy', icon: 'fas fa-cloud-sun', severity: 'cloud' },
-  { codes: [3], label: 'Cloudy', icon: 'fas fa-cloud', severity: 'cloud' },
-  { codes: [45, 48], label: 'Fog', icon: 'fas fa-smog', severity: 'fog' },
-  { codes: [51, 53, 55, 56, 57], label: 'Drizzle', icon: 'fas fa-cloud-rain', severity: 'rain' },
-  { codes: [61, 63, 65, 66, 67], label: 'Rain', icon: 'fas fa-cloud-showers-heavy', severity: 'rain' },
-  { codes: [71, 73, 75, 77], label: 'Snow', icon: 'fas fa-snowflake', severity: 'snow' },
-  { codes: [80, 81, 82], label: 'Rain showers', icon: 'fas fa-cloud-showers-heavy', severity: 'rain' },
-  { codes: [85, 86], label: 'Snow showers', icon: 'fas fa-snowflake', severity: 'snow' },
-  { codes: [95, 96, 99], label: 'Storm', icon: 'fas fa-cloud-bolt', severity: 'storm' }
+  { codes: [0], key: 'weather.conditions.clear', label: 'Clear', icon: 'fas fa-sun', severity: 'clear' },
+  { codes: [1, 2], key: 'weather.conditions.partlyCloudy', label: 'Partly cloudy', icon: 'fas fa-cloud-sun', severity: 'cloud' },
+  { codes: [3], key: 'weather.conditions.cloudy', label: 'Cloudy', icon: 'fas fa-cloud', severity: 'cloud' },
+  { codes: [45, 48], key: 'weather.conditions.fog', label: 'Fog', icon: 'fas fa-smog', severity: 'fog' },
+  { codes: [51, 53, 55, 56, 57], key: 'weather.conditions.drizzle', label: 'Drizzle', icon: 'fas fa-cloud-rain', severity: 'rain' },
+  { codes: [61, 63, 65, 66, 67], key: 'weather.conditions.rain', label: 'Rain', icon: 'fas fa-cloud-showers-heavy', severity: 'rain' },
+  { codes: [71, 73, 75, 77], key: 'weather.conditions.snow', label: 'Snow', icon: 'fas fa-snowflake', severity: 'snow' },
+  { codes: [80, 81, 82], key: 'weather.conditions.rainShowers', label: 'Rain showers', icon: 'fas fa-cloud-showers-heavy', severity: 'rain' },
+  { codes: [85, 86], key: 'weather.conditions.snowShowers', label: 'Snow showers', icon: 'fas fa-snowflake', severity: 'snow' },
+  { codes: [95, 96, 99], key: 'weather.conditions.storm', label: 'Storm', icon: 'fas fa-cloud-bolt', severity: 'storm' }
 ]
 
-const DEFAULT_CODE_INFO = { label: 'Weather', icon: 'fas fa-cloud', severity: 'cloud' }
+const DEFAULT_CODE_INFO = { key: 'weather.conditions.unknown', label: 'Weather', icon: 'fas fa-cloud', severity: 'cloud' }
 const HOURLY_SAMPLE_TOLERANCE_MS = 60 * 60 * 1000
 const STAY_WEATHER_RADIUS_KM = 25
 
@@ -37,6 +44,7 @@ export function summarizeWeatherSamples(samples = []) {
     sampleCount: cleanSamples.length,
     weatherCode: code,
     condition: codeInfo.label,
+    conditionKey: codeInfo.key,
     icon: codeInfo.icon,
     severity: codeInfo.severity,
     avgTemperature: average(temperatures),

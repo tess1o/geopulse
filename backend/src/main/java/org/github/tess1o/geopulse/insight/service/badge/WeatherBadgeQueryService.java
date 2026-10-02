@@ -106,6 +106,7 @@ public class WeatherBadgeQueryService {
         if (count <= 0) {
             return null;
         }
+        @SuppressWarnings("unchecked")
         Object result = entityManager.createNativeQuery(NTH_RAINY_SAMPLE_QUERY)
                 .setParameter("userId", userId)
                 .setParameter("offset", count - 1)
@@ -121,6 +122,7 @@ public class WeatherBadgeQueryService {
     }
 
     public Instant firstSampleAtOrAboveTemperature(UUID userId, double threshold) {
+        @SuppressWarnings("unchecked")
         Object result = entityManager.createNativeQuery(FIRST_HEATWAVE_SAMPLE_QUERY)
                 .setParameter("userId", userId)
                 .setParameter("threshold", threshold)
@@ -136,6 +138,7 @@ public class WeatherBadgeQueryService {
     }
 
     public Instant firstSampleAtOrBelowTemperature(UUID userId, double threshold) {
+        @SuppressWarnings("unchecked")
         Object result = entityManager.createNativeQuery(FIRST_FROST_SAMPLE_QUERY)
                 .setParameter("userId", userId)
                 .setParameter("threshold", threshold)
@@ -179,6 +182,7 @@ public class WeatherBadgeQueryService {
     }
 
     private Instant firstInstant(String sql, UUID userId) {
+        @SuppressWarnings("unchecked")
         Object result = entityManager.createNativeQuery(sql)
                 .setParameter("userId", userId)
                 .getResultList()

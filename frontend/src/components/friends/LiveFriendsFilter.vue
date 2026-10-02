@@ -12,7 +12,7 @@
             :maxSelectedLabels="2"
             :disabled="totalFriends === 0"
             class="friends-select"
-            placeholder="Select friends to show"
+            :placeholder="t('friends.liveFilter.selectPlaceholder')"
         >
           <template #option="slotProps">
             <FriendFilterOptionRow :option="slotProps.option" />
@@ -34,7 +34,7 @@
             optionLabel="label"
             optionValue="value"
             class="trail-range-select"
-            aria-label="Trail duration"
+            :aria-label="t('friends.liveFilter.trailDurationLabel')"
         />
       </div>
 
@@ -61,7 +61,7 @@
 
     <Dialog
         v-model:visible="mobileDialogVisible"
-        header="Filter Friends"
+        :header="t('friends.liveFilter.mobileFilterHeader')"
         modal
         position="bottom"
         :draggable="false"
@@ -72,7 +72,7 @@
         <p class="mobile-summary">{{ summaryLabel }}</p>
 
         <div class="mobile-trail-range">
-          <label class="mobile-trail-range-label" for="mobileTrailRangeSelect">Trail duration</label>
+          <label class="mobile-trail-range-label" for="mobileTrailRangeSelect">{{ t('friends.liveFilter.trailDurationLabel') }}</label>
           <Select
               input-id="mobileTrailRangeSelect"
               v-model="trailRangeModel"
@@ -80,7 +80,7 @@
               optionLabel="label"
               optionValue="value"
               class="mobile-trail-range-select"
-              aria-label="Trail duration"
+              :aria-label="t('friends.liveFilter.trailDurationLabel')"
           />
         </div>
 
@@ -94,7 +94,7 @@
             :maxSelectedLabels="1"
             :disabled="totalFriends === 0"
             class="mobile-friends-select"
-            placeholder="Select friends to show"
+            :placeholder="t('friends.liveFilter.selectPlaceholder')"
         >
           <template #option="slotProps">
             <FriendFilterOptionRow :option="slotProps.option" />
@@ -110,7 +110,7 @@
           />
         </div>
 
-        <Button label="Done" class="mobile-done-button" @click="mobileDialogVisible = false" />
+        <Button :label="t('friends.liveFilter.doneButton')" class="mobile-done-button" @click="mobileDialogVisible = false" />
       </div>
     </Dialog>
   </div>
@@ -118,11 +118,13 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Select from 'primevue/select'
 import FriendFilterOptionRow from '@/components/friends/FriendFilterOptionRow.vue'
 import FriendFilterQuickActions from '@/components/friends/FriendFilterQuickActions.vue'
 import { FRIEND_TRAIL_RANGE_OPTIONS, normalizeFriendTrailRange } from '@/utils/friendsTrailRange'
 
+const { t } = useI18n()
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
 
 const props = defineProps({
@@ -179,8 +181,8 @@ const friendOptions = computed(() => {
     seenKeys.add(key)
     options.push({
       key,
-      label: friend.fullName || friend.name || friend.email || 'Friend',
-      email: friend.email || 'No email',
+      label: friend.fullName || friend.name || friend.email || t('friends.liveFilter.friendFallbackLabel'),
+      email: friend.email || t('friends.liveFilter.noEmailFallback'),
       avatar: friend.avatar,
       isOnline: isFriendOnline(friend)
     })
@@ -236,42 +238,42 @@ const selectedCount = computed(() => selectionModel.value.length)
 
 const summaryLabel = computed(() => {
   if (totalFriends.value === 0) {
-    return 'No friends available'
+    return t('friends.liveFilter.summary.none')
   }
 
   if (selectedCount.value === 0) {
-    return 'None selected'
+    return t('friends.liveFilter.summary.noneSelected')
   }
 
   if (selectedCount.value === totalFriends.value) {
-    return `All ${totalFriends.value} selected`
+    return t('friends.liveFilter.summary.allSelected', { count: totalFriends.value })
   }
 
-  return `${selectedCount.value} of ${totalFriends.value} selected`
+  return t('friends.liveFilter.summary.partialSelected', { selected: selectedCount.value, total: totalFriends.value })
 })
 
 const mobileButtonLabel = computed(() => {
   if (selectedCount.value === totalFriends.value) {
-    return 'Filter Friends'
+    return t('friends.liveFilter.mobileButton.allSelected')
   }
 
-  return `Filter (${selectedCount.value})`
+  return t('friends.liveFilter.mobileButton.partial', { count: selectedCount.value })
 })
 
 const getSelectionSummary = (keys) => {
   if (!Array.isArray(keys) || keys.length === 0) {
-    return 'Select friends'
+    return t('friends.liveFilter.selectionSummary.none')
   }
 
   if (keys.length === totalFriends.value) {
-    return 'All friends'
+    return t('friends.liveFilter.selectionSummary.all')
   }
 
   if (keys.length === 1) {
-    return optionLabelByKey.value.get(keys[0]) || '1 friend'
+    return optionLabelByKey.value.get(keys[0]) || t('friends.liveFilter.selectionSummary.oneFriend')
   }
 
-  return `${keys.length} friends`
+  return t('friends.liveFilter.selectionSummary.multiple', { count: keys.length })
 }
 
 const selectAllFriends = () => {
@@ -302,9 +304,9 @@ const selectOnlineFriends = () => {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem;
-  border: 1px solid var(--gp-border-light);
+  border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-white);
+  background: var(--gp-surface-card);
 }
 
 .filter-main {
@@ -388,15 +390,6 @@ const selectOnlineFriends = () => {
 
 .mobile-done-button {
   width: 100%;
-}
-
-.p-dark .filter-desktop {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .selected-summary {
-  color: var(--gp-text-primary);
 }
 
 @media (max-width: 768px) {

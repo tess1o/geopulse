@@ -1,4 +1,5 @@
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+import { TIMELINE_MARKER_COLORS } from './mapColors'
 
 const MARKER_SIZES = {
   STANDARD: {
@@ -53,29 +54,18 @@ const getResponsiveTimelineMarkerSize = (highlighted = false) => {
   return highlighted ? DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE : DESKTOP_TIMELINE_MARKER_SIZE
 }
 
-const resolveTimelineMarkerVisual = (item) => {
+// Marker colour, icon and highlight ring for a timeline item. Stays use the location pin, trips their transport icon.
+export const resolveTimelineMarkerVisual = (item) => {
   const itemType = item?.type
   if (itemType === 'trip') {
-    return {
-      color: '#10B981',
-      icon: getTripMovementIconClass(item?.movementType),
-      highlightRingColor: 'rgba(52, 211, 153, 0.55)'
-    }
+    return { ...TIMELINE_MARKER_COLORS.trip, icon: getTripMovementIconClass(item?.movementType) }
   }
 
   if (itemType === 'dataGap') {
-    return {
-      color: '#F59E0B',
-      icon: 'pi pi-question',
-      highlightRingColor: 'rgba(251, 191, 36, 0.55)'
-    }
+    return { ...TIMELINE_MARKER_COLORS.dataGap, icon: 'pi pi-question' }
   }
 
-  return {
-    color: '#1A56DB',
-    icon: 'pi pi-map-marker',
-    highlightRingColor: 'rgba(96, 165, 250, 0.55)'
-  }
+  return { ...TIMELINE_MARKER_COLORS.stay, icon: 'pi pi-map-marker' }
 }
 
 const createCustomMarkerElement = ({
@@ -145,6 +135,37 @@ export const createTimelineMarkerElement = ({ item, highlighted = false, dimmed 
       : (dimmed ? TIMELINE_MARKER_DIMMED_STYLE : {}),
     shape: 'circle'
   })
+}
+
+// The item a same-location group is drawn as: its first stay (a trip usually
+// starts right where the previous stay was), else its first item.
+export const getDominantTimelineItem = (items = []) => (
+  items.find((item) => item?.type === 'stay')
+  || items.find((item) => item?.type === 'trip')
+  || items[0]
+)
+
+/**
+ * Several timeline items at one spot: the dominant item's own marker with a
+ * count badge, so it can't be mistaken for a zoom cluster (the teal
+ * createTimelineStackMarkerElement), which zooms in rather than listing.
+ */
+export const createTimelineGroupMarkerElement = ({ items = [], highlighted = false, dimmed = false } = {}) => {
+  const markerSpec = createTimelineMarkerElement({
+    item: getDominantTimelineItem(items),
+    highlighted,
+    dimmed
+  })
+
+  const badge = document.createElement('span')
+  badge.className = 'timeline-marker-count-badge'
+  badge.textContent = String(items.length)
+
+  // The inner circle carries the dimmed/highlighted styles, so the badge follows them.
+  const markerCircle = markerSpec.element.firstElementChild || markerSpec.element
+  markerCircle.appendChild(badge)
+
+  return markerSpec
 }
 
 export const createTimelineStackMarkerElement = ({ count, highlighted = false, dimmed = false } = {}) => {
