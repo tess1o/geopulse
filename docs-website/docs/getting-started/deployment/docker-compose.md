@@ -104,7 +104,7 @@ For full admin/user configuration, templates, and in-app behavior, see:
 #### After Start
 
 - Open GeoPulse UI: `http://localhost:5555`
-- Check backend health: `curl http://localhost:8080/api/health`
+- Check backend health: `curl http://localhost:8080/api/v1/system/health`
 - Follow logs if needed: `docker compose logs -f`
 
 If these checks pass, your deployment is up and running. The sections below are optional tuning and production guidance.
@@ -570,7 +570,7 @@ docker ps --format "table {{.Names}}\t{{.Ports}}"
 
 ```bash
 docker compose logs -f
-curl http://localhost:8080/api/health
+curl http://localhost:8080/api/v1/system/health
 ```
 
 **Authentication issues:**

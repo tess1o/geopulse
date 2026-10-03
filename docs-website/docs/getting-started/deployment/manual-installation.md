@@ -1112,7 +1112,7 @@ sudo tail -f /var/log/geopulse/backend/geopulse.log
 ### Test Backend Health Endpoint
 
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:8080/api/v1/system/health
 ```
 
 **Expected response:**
@@ -1327,7 +1327,7 @@ sudo systemctl start geopulse-backend
 sudo systemctl status geopulse-backend
 
 # Verify health
-curl http://localhost:8080/api/health
+curl http://localhost:8080/api/v1/system/health
 ```
 
 #### 6. Verify Upgrade
@@ -1479,7 +1479,7 @@ This error means the backend is rejecting requests from your frontend URL due to
 **Test backend directly:**
 
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:8080/api/v1/system/health
 ```
 
 **If backend responds but frontend can't connect:**
