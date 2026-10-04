@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.064ae357.css">
-<script src="/assets/js/runtime~main.3a078ae6.js" defer="defer"></script>
-<script src="/assets/js/main.ab0ebeae.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.d9bb181a.js" defer="defer"></script>
+<script src="/assets/js/main.1760fe03.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -71,7 +71,7 @@ and stops automatically, no manual steps are required.</p>
 <h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="after-start">After Start<a href="#after-start" class="hash-link" aria-label="Direct link to After Start" title="Direct link to After Start" translate="no">​</a></h4>
 <ul>
 <li class="">Open GeoPulse UI: <code>http://localhost:5555</code></li>
-<li class="">Check backend health: <code>curl http://localhost:8080/api/health</code></li>
+<li class="">Check backend health: <code>curl http://localhost:8080/api/v1/system/health</code></li>
 <li class="">Follow logs if needed: <code>docker compose logs -f</code></li>
 </ul>
 <p>If these checks pass, your deployment is up and running. The sections below are optional tuning and production guidance.</p>
@@ -272,7 +272,7 @@ sizes use appropriate memory allocations and query optimization settings.</p><h4
 <p><strong>Port conflicts:</strong></p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">docker ps --format &quot;table {{.Names}}\t{{.Ports}}&quot;</span><br></span></code></pre></div></div>
 <p><strong>Service issues:</strong></p>
-<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">docker compose logs -f</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">curl http://localhost:8080/api/health</span><br></span></code></pre></div></div>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">docker compose logs -f</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">curl http://localhost:8080/api/v1/system/health</span><br></span></code></pre></div></div>
 <p><strong>Authentication issues:</strong></p>
 <ul>
 <li class="">Check domains match between frontend/backend</li>
