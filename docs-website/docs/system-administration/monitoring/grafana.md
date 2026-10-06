@@ -13,7 +13,7 @@ Before importing the GeoPulse Grafana dashboard, ensure you have:
 1. **Grafana** installed and running (version 9.x or later)
 2. **Prometheus** configured as a data source in Grafana
 3. **GeoPulse Prometheus metrics** enabled (see [Prometheus Configuration](./prometheus.md))
-4. Prometheus configured to scrape the GeoPulse `/api/prometheus/metrics` endpoint
+4. Prometheus configured to scrape the GeoPulse `/api/v1/system/metrics` endpoint
 
 ## Installation
 

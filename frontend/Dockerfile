@@ -56,6 +56,6 @@ COPY --chmod=755 frontend/docker-entrypoint.sh /docker-entrypoint.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80 8080
-ENV API_BASE_URL=/api
+ENV API_BASE_URL=/api/v1
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

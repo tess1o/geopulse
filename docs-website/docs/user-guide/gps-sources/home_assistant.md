@@ -33,7 +33,7 @@ Add the following `rest_command` entry to your `configuration.yaml` file. This d
 ```yaml
 rest_command:
   send_gps_data:
-    url: "https://geopulse.yourdomain.com/api/homeassistant"
+    url: "https://geopulse.yourdomain.com/api/v1/gps/ingest/home-assistant"
     method: POST
     headers:
       content-type: "application/json"

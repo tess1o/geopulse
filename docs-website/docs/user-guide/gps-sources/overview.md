@@ -29,6 +29,10 @@ GeoPulse supports a variety of common location tracking apps, including:
 
 During the creation process, you will provide the necessary credentials (e.g., username/password or a token/API key) specific to the chosen third-party system.
 
+:::note Endpoint URLs changed in GeoPulse 2.0
+HTTP sources now send data to `/api/v1/gps/ingest/<provider>` (for example `/api/v1/gps/ingest/owntracks`). Devices configured before 2.0 with the old `/api/<provider>` URLs (for example `/api/owntracks`) keep working, but those URLs are deprecated and log a warning on each request. Switch to the URL shown on the **Location Sources** page when convenient.
+:::
+
 ---
 
 ## Managing Configured Sources

@@ -1,4 +1,4 @@
-import { t } from '@/locales'
+import { intlLocale, t } from '@/locales'
 
 export const DISTANCE_UNITS = {
   KILOMETERS: 'KILOMETERS',
@@ -8,6 +8,18 @@ export const DISTANCE_UNITS = {
 const normalizeDistanceUnit = (unit) => (
   unit === DISTANCE_UNITS.MILES ? DISTANCE_UNITS.MILES : DISTANCE_UNITS.KILOMETERS
 )
+
+// Locale-grouped numbers ("442,830" / "442 830"), so long distances stay readable.
+const numberFormats = new Map()
+const formatNumber = (value, minimumFractionDigits, maximumFractionDigits) => {
+  const key = `${intlLocale()}|${minimumFractionDigits}|${maximumFractionDigits}`
+  let format = numberFormats.get(key)
+  if (!format) {
+    format = new Intl.NumberFormat(intlLocale(), { minimumFractionDigits, maximumFractionDigits })
+    numberFormats.set(key, format)
+  }
+  return format.format(value)
+}
 
 export function formatDistanceForUnit(meters, options = {}) {
   const {
@@ -24,25 +36,18 @@ export function formatDistanceForUnit(meters, options = {}) {
   if (normalizeDistanceUnit(unit) === DISTANCE_UNITS.MILES) {
     const feet = numericValue * 3.28084
     if (feet < 5280) {
-      return `${Math.round(feet)} ${t('common.units.ft')}`
+      return `${formatNumber(feet, 0, 0)} ${t('common.units.ft')}`
     }
 
     const miles = feet / 5280
-    return `${rounded ? Math.round(miles) : miles.toFixed(2)} ${t('common.units.mi')}`
+    return `${rounded ? formatNumber(miles, 0, 0) : formatNumber(miles, 2, 2)} ${t('common.units.mi')}`
   }
 
   if (numericValue < 1000) {
-    const displayMeters = rounded
-      ? Math.round(numericValue)
-      : Math.round(numericValue * 100) / 100
-    return `${displayMeters} ${t('common.units.m')}`
+    return `${formatNumber(numericValue, 0, rounded ? 0 : 2)} ${t('common.units.m')}`
   }
 
-  const kilometers = numericValue / 1000
-  const displayKilometers = rounded
-    ? Math.round(kilometers)
-    : Math.round(kilometers * 100) / 100
-  return `${displayKilometers} ${t('common.units.km')}`
+  return `${formatNumber(numericValue / 1000, 0, rounded ? 0 : 2)} ${t('common.units.km')}`
 }
 
 export function formatSpeedForUnit(speedKmH, options = {}) {

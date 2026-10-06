@@ -21,13 +21,13 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **335** distinct env vars.
+Backend runtime currently includes **337** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
 - Runtime env changes require backend restart to take effect.
 
-### Core and Database (9)
+### Core and Database (11)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -40,6 +40,8 @@ Notes:
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
 | `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
+| `GEOPULSE_PROXY_ADDRESS_FORWARDING` | `false` | Trust `X-Forwarded-*` / `Forwarded` headers from a reverse proxy when the backend resolves the request scheme, host, and client address. Property: `quarkus.http.proxy.proxy-address-forwarding`. | `true` or `false`. Enable only when the backend is reachable exclusively through your proxy. | Backend restart |
+| `GEOPULSE_TRUSTED_PROXIES` | `(empty)` | Restrict forwarded-header trust to these proxy addresses when `GEOPULSE_PROXY_ADDRESS_FORWARDING=true`. Empty trusts any sender. Property: `quarkus.http.proxy.trusted-proxies`. | Comma-separated IP addresses, CIDR ranges, or hostnames. | Backend restart |
 
 ### Logging (4)
 
@@ -397,7 +399,7 @@ Both endpoints are shared public infrastructure. The place and photo caches are 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_POI_ENABLED` | `true` | Master switch for place discovery and photo suggestions. Property: \`geopulse.poi.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
-| `GEOPULSE_POI_USER_AGENT` | `GeoPulse/<version> (+https://github.com/tess1o/geopulse)` | User-Agent sent to Wikidata and Commons. Property: \`geopulse.poi.user-agent\`. Keep it identifying your instance; an anonymous client is the one that gets rate-limited. | Non-empty string. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_USER_AGENT` | `GeoPulse (+https://github.com/tess1o/geopulse)` | User-Agent sent to Wikidata and Commons. Property: \`geopulse.poi.user-agent\`. Keep it identifying your instance; an anonymous client is the one that gets rate-limited. | Non-empty string. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_POI_LANGUAGE` | `en` | Preferred language for place names and descriptions. Property: \`geopulse.poi.language\`. | Simple language tag (e.g. `en`, `de`, `uk`). Invalid values fall back to `en`. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_POI_ATTRIBUTION_ENABLED` | `true` | Display photo credits and data attribution. Property: \`geopulse.poi.attribution.enabled\`. Disabling it in your own deployment means you take on the licence obligation yourself. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_POI_WIKIDATA_ENDPOINT` | `https://query.wikidata.org` | Wikidata Query Service base URL. Property: \`geopulse.poi.wikidata.endpoint\`. Point at a self-hosted instance to avoid public rate limits. Query is made with a bounded radius. | Absolute URL, no trailing slash. | Backend restart for env changes; Admin UI changes apply through system settings |

@@ -170,4 +170,18 @@ export const t = (key, ...args) => i18n.global.t(key, ...args)
  */
 export const te = (key) => i18n.global.te(key)
 
+/**
+ * BCP 47 tags for `Intl` formatting.
+ *
+ * The UI language drives number/date formatting because the profile has no separate region setting;
+ * this is a simplification to revisit if a region preference is ever added.
+ */
+const INTL_LOCALES = {
+    en: 'en-US',
+    uk: 'uk-UA'
+}
+
+/** The `Intl` tag for the active UI locale; read at call time, so it tracks the locale like `t()`. */
+export const intlLocale = () => INTL_LOCALES[i18n.global.locale.value] || INTL_LOCALES.en
+
 export default i18n

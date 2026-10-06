@@ -32,6 +32,16 @@ public final class ApiPaths {
      */
     public static final Map<String, String> LEGACY_INGESTION_ALIASES = buildLegacyIngestionAliases();
 
+    /**
+     * Absolute pre-v1 health and metrics paths mapped to their canonical {@code /api/v1/system/*} targets.
+     *
+     * <p>Retained so container healthchecks, Kubernetes probes and Prometheus scrape configs written
+     * for 1.x keep working after an upgrade. The {@link LegacySystemPathRewriter} uses this map.</p>
+     */
+    public static final Map<String, String> LEGACY_SYSTEM_ALIASES = Map.of(
+            "/api/health", API_V1 + "/system/health",
+            "/api/prometheus/metrics", API_V1 + "/system/metrics");
+
     private ApiPaths() {
     }
 

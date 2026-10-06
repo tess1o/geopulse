@@ -16,7 +16,7 @@ First, create a new location source in GeoPulse that will receive the data from 
 1.  In your GeoPulse account, navigate to **Settings -> Location Sources**.
 2.  Click **Add New Source** and select **Colota**.
 3.  Enter a unique **Username** and a strong **Password**. You will need these credentials for Colota, so save them.
-4.  Click **Save** to create the source. GeoPulse is now ready to receive data at `/api/colota`.
+4.  Click **Save** to create the source. GeoPulse is now ready to receive data at `/api/v1/gps/ingest/colota`.
 
 ---
 
@@ -26,7 +26,7 @@ After creating the source in GeoPulse, configure Colota to post to the endpoint 
 
 1.  Set the endpoint URL to:
     ```
-    https://geopulse.yourdomain.com/api/colota
+    https://geopulse.yourdomain.com/api/v1/gps/ingest/colota
     ```
     Replace `geopulse.yourdomain.com` with the public URL of your GeoPulse instance.
 

@@ -52,7 +52,7 @@ public class PoiConfigurationService {
 
     public String getUserAgent() {
         return nonBlankOrDefault(settings.getString(KEY_USER_AGENT),
-                "GeoPulse/1.39.0 (+https://github.com/tess1o/geopulse)");
+                "GeoPulse (+https://github.com/tess1o/geopulse)");
     }
 
     public int getThumbWidth() {

@@ -82,7 +82,7 @@ location /mirror_to_geopulse {
 
   # Set the destination for the mirrored request
   # Note: The URI path is preserved from the original request
-  proxy_pass http://geopulse-ui:80/api/owntracks;
+  proxy_pass http://geopulse-ui:80/api/v1/gps/ingest/owntracks;
 
   # Make sure the body and headers (specifically Auth) are passed along
   proxy_pass_request_body on;
@@ -164,8 +164,8 @@ location /mirror_to_geopulse {
     internal;
 
     # Send the copy to GeoPulse
-    # Note: We force the path to /api/owntracks which GeoPulse expects
-    proxy_pass http://geopulse-ui:80/api/owntracks;
+    # Note: We force the path to /api/v1/gps/ingest/owntracks which GeoPulse expects
+    proxy_pass http://geopulse-ui:80/api/v1/gps/ingest/owntracks;
 
     # Pass the body (location data) and headers (Auth)
     proxy_pass_request_body on;
@@ -220,7 +220,7 @@ location / {
 2. **Check credentials:** Ensure the username and password match your GeoPulse account.
 3. **Test GeoPulse endpoint directly:** Use curl to test the endpoint:
    ```bash
-   curl -u "username:password" -X POST https://geopulse.mydomain.com/api/owntracks \
+   curl -u "username:password" -X POST https://geopulse.mydomain.com/api/v1/gps/ingest/owntracks \
      -H "Content-Type: application/json" \
      -d '{"_type":"location","lat":52.0,"lon":13.0,"tst":1234567890}'
    ```

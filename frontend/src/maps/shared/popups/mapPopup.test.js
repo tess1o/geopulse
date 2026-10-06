@@ -297,7 +297,7 @@ describe('map popup models', () => {
       distanceMeters: 450
     }, { unit: 'MILES' })
 
-    expect(friendTripModel.rows).toContainEqual({ label: 'Distance', value: '1476 ft' })
+    expect(friendTripModel.rows).toContainEqual({ label: 'Distance', value: '1,476 ft' })
   })
 
   it('formats stacked timeline trip summaries with imperial units', () => {

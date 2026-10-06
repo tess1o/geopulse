@@ -1,5 +1,23 @@
 [
   {
+    "version": "2.0.0",
+    "title": "GeoPulse 2.0.0",
+    "highlights": [
+      "REST API fully reimplemented under /api/v1 with consistent endpoints, request/response schemas and structured error responses",
+      "Localization support: GeoPulse is now available in English and Ukrainian, with more languages to come",
+      "Refreshed UI across almost every page, backed by a global CSS and theming cleanup with consistent dark mode",
+      "Timeline map: 3D map support and customizable map appearance, including path and highlighted path colors",
+      "Trip Plans: place discovery with photos, per-stop travel mode with routed legs, and a reworked Trip Workspace",
+      "Added Public Transport trip type and the option to disable map matching for specific trip types",
+      "New notifications for new releases, missing GPS data, ready Rewinds and backups",
+      "Shared links: auto-refresh and auto-follow, Immich photos with album restriction",
+      "Period Tags are renamed to Timeline Labels",
+      "Better observability: structured JSON logs, request IDs and log level changes from the Admin panel",
+      "Upgraded to Quarkus 3.40 LTS, with many internal fixes and improvements"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.0.0"
+  },
+  {
     "version": "1.39.0",
     "title": "GeoPulse 1.39.0",
     "highlights": [

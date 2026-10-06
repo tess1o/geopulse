@@ -11,7 +11,7 @@ GeoPulse exposes a range of metrics in Prometheus format, providing valuable ins
 The Prometheus metrics are available via the following endpoint:
 
 ```
-/api/prometheus/metrics
+/api/v1/system/metrics
 ```
 
 You can use this endpoint to scrape metrics with a Prometheus server or any other compatible monitoring tool.
@@ -21,7 +21,7 @@ You can use this endpoint to scrape metrics with a Prometheus server or any othe
 GeoPulse allows you to configure custom Prometheus metrics collection through environment variables at runtime. This is useful for controlling resource usage, especially in environments with many users or limited resources.
 
 :::note
-The Prometheus endpoint `/api/prometheus/metrics` is always available (configured at build time). You can control **custom GeoPulse metrics** at runtime, but default Micrometer metrics (HTTP requests, JVM, datasource, etc.) will always be collected and exposed.
+The Prometheus endpoint `/api/v1/system/metrics` is always available (configured at build time). You can control **custom GeoPulse metrics** at runtime, but default Micrometer metrics (HTTP requests, JVM, datasource, etc.) will always be collected and exposed.
 :::
 
 ### Global Configuration
@@ -152,7 +152,7 @@ spec:
       app.kubernetes.io/component: backend
   endpoints:
   - port: http
-    path: /api/prometheus/metrics
+    path: /api/v1/system/metrics
     interval: 30s
 ```
 
@@ -301,7 +301,7 @@ For high-user-count deployments:
 
 The configuration works in a hierarchical manner:
 
-1. **Prometheus Endpoint** - Always enabled at build time. The `/api/prometheus/metrics` endpoint is always available and will always expose default Micrometer metrics (HTTP requests, JVM, datasource).
+1. **Prometheus Endpoint** - Always enabled at build time. The `/api/v1/system/metrics` endpoint is always available and will always expose default Micrometer metrics (HTTP requests, JVM, datasource).
 
 2. **`GEOPULSE_PROMETHEUS_ENABLED=false`** (default) - Disables all custom GeoPulse metrics. Only default Micrometer metrics are exposed.
 

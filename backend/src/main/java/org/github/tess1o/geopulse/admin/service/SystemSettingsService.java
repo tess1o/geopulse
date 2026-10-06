@@ -133,7 +133,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("poi.commons.endpoint",
                 new SettingDefinition("geopulse.poi.commons.endpoint", "https://commons.wikimedia.org", ValueType.STRING, "poi", "Wikimedia Commons API base URL"));
         SETTING_DEFINITIONS.put("poi.user-agent",
-                new SettingDefinition("geopulse.poi.user-agent", "GeoPulse/1.39.0 (+https://github.com/tess1o/geopulse)", ValueType.STRING, "poi", "User-Agent sent to Wikidata and Commons (identify your instance!)"));
+                new SettingDefinition("geopulse.poi.user-agent", "GeoPulse (+https://github.com/tess1o/geopulse)", ValueType.STRING, "poi", "User-Agent sent to Wikidata and Commons (identify your instance!)"));
         SETTING_DEFINITIONS.put("poi.language",
                 new SettingDefinition("geopulse.poi.language", "en", ValueType.STRING, "poi", "Preferred language for place names and descriptions"));
         SETTING_DEFINITIONS.put("poi.max-results",

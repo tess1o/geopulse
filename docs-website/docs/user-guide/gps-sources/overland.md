@@ -29,7 +29,7 @@ After setting up the source in GeoPulse, configure the Overland app on your iOS 
 1.  In the Overland app, go to the settings screen.
 2.  In the **Endpoint URL** field, enter the endpoint address for your GeoPulse instance. You can find this URL on the **Location Sources** page in GeoPulse. It will look like this:
     ```
-    https://geopulse.yourdomain.com/api/overland
+    https://geopulse.yourdomain.com/api/v1/gps/ingest/overland
     ```
     > Be sure to replace `geopulse.yourdomain.com` with the actual domain of your GeoPulse server.
 

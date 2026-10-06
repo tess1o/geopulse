@@ -62,7 +62,7 @@ The `.gpb` envelope uses a random Tink `AES256_GCM_HKDF_1MB` Streaming AEAD key.
 
 Preparation errors leave the original application and data available without a restart. If the backend stops during preparation, the next startup discards incomplete staging. If activation cannot acquire its exclusive lock or is interrupted before the pool closes, the original application resumes and the staged database can be retried or discarded from the admin page. If the connection pool was already closed, GeoPulse exits; startup identifies whether PostgreSQL committed or rolled back the cutover by comparing recorded database OIDs.
 
-While activation or identity recovery blocks the application, backend admission control returns `503 Service Unavailable` with `X-GeoPulse-Restore-Blocked: true`. Health/version, maintenance status, logout, and the required admin retry/discard/status endpoints remain available. `/api/maintenance/status` is explicitly non-cacheable and exposes only public lifecycle information.
+While activation or identity recovery blocks the application, backend admission control returns `503 Service Unavailable` with `X-GeoPulse-Restore-Blocked: true`. Health/version, maintenance status, logout, and the required admin retry/discard/status endpoints remain available. `/api/v1/system/maintenance` is explicitly non-cacheable and exposes only public lifecycle information.
 
 :::danger Trusted backups only
 PostgreSQL dumps execute SQL. Only restore archives created by trusted administrators from trusted installations. Knowing an archive password authenticates its bytes, not the safety of its SQL. Legacy full-backup ZIPs and user-export ZIPs are not accepted by this restore feature.
@@ -125,7 +125,7 @@ Watch the backend logs after activation and confirm that GeoPulse completes star
 
 **Do not restart PostgreSQL.** GeoPulse exits its own process; it does not call Docker, Kubernetes, systemd, or hypervisor APIs.
 
-#### Why can `/api/maintenance/status` log an error while the backend exits?
+#### Why can `/api/v1/system/maintenance` log an error while the backend exits?
 
 The maintenance page polls this endpoint while waiting for the backend to return. One poll can reach Quarkus after shutdown has begun but before the HTTP socket has closed, producing a `500` or an `Error Occurred After Shutdown` message. This shutdown race does not by itself mean the database swap failed. Check the subsequent backend logs and health status after restart. If no new backend process starts, restart the GeoPulse backend manually.
 

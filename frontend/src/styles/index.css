@@ -5,6 +5,7 @@
 @import './tokens.css';
 @import './base.css';
 @import './components.css';
+@import './flags.css' layer(app-components);
 @import './primevue-overrides.css';
 @import './maps.css';
 @import '../maps/shared/styles/mapPopup.css';

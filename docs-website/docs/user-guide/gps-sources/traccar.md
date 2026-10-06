@@ -29,13 +29,13 @@ Edit your Traccar `traccar.xml` file and add (or update) the following entries:
 ```xml
 <entry key='forward.enable'>true</entry>
 <entry key='forward.type'>json</entry>
-<entry key='forward.url'>https://geopulse.yourdomain.com/api/traccar</entry>
+<entry key='forward.url'>https://geopulse.yourdomain.com/api/v1/gps/ingest/traccar</entry>
 <entry key='forward.header'>Authorization: Bearer YOUR_CONFIGURED_TOKEN</entry>
 ```
 
 Replace:
 
-*   `https://geopulse.yourdomain.com/api/traccar` with your actual GeoPulse URL.
+*   `https://geopulse.yourdomain.com/api/v1/gps/ingest/traccar` with your actual GeoPulse URL.
 *   `YOUR_CONFIGURED_TOKEN` with the token created in GeoPulse (Step 1).
 
 After saving `traccar.xml`, restart Traccar so the new forwarding settings are applied.

@@ -38,7 +38,7 @@ This is the simplest method to get started.
 2.  Set the **Mode** to `HTTP`.
 3.  In the **Host** field, enter the full URL for your GeoPulse OwnTracks endpoint. You can find this URL on the **Location Sources** page in GeoPulse. It will look like this:
     ```
-    https://geopulse.yourdomain.com/api/owntracks
+    https://geopulse.yourdomain.com/api/v1/gps/ingest/owntracks
     ```
 4.  Enable **Authentication**.
 5.  Enter the **Username** and **Password** you created in GeoPulse.

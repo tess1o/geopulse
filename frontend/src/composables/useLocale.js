@@ -12,22 +12,11 @@
 import { computed } from 'vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/uk'
-import { i18n, loadLocale, loadPrimeVueLocale, normalizeLocale } from '@/locales'
+import { i18n, intlLocale, loadLocale, loadPrimeVueLocale, normalizeLocale } from '@/locales'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 import { useTimezone } from '@/composables/useTimezone'
 import { writeCachedUserLanguage } from '@/utils/userProfileCache'
 import { writeCachedGuestLocale } from '@/utils/guestLocaleCache'
-
-/**
- * BCP 47 tags for `Intl` formatting.
- *
- * The UI language drives number/date formatting because the profile has no separate region setting;
- * this is a simplification to revisit if a region preference is ever added.
- */
-const INTL_LOCALES = {
-    en: 'en-US',
-    uk: 'uk-UA'
-}
 
 /**
  * Language names are endonyms -- each written in its own language and never translated. Translating
@@ -126,7 +115,7 @@ export function useLocale() {
     return {
         locale: computed(() => i18n.global.locale.value),
         localeOptions: LOCALE_OPTIONS,
-        numberLocale: computed(() => INTL_LOCALES[i18n.global.locale.value] || INTL_LOCALES.en),
+        numberLocale: computed(() => intlLocale()),
         setLocale,
         applyLocale
     }

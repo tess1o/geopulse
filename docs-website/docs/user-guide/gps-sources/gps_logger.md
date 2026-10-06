@@ -28,9 +28,9 @@ First, you need to create a new location source in GeoPulse that will receive th
 Next, configure the GPSLogger app on your Android device to send data to the endpoint you just created.
 
 1.  In the GPSLogger app, navigate to **Logging details** and enable **Log to custom URL**.
-2.  Tap on **URL** and enter the endpoint address for your GeoPulse instance, followed by `/api/gpslogger`. For example:
+2.  Tap on **URL** and enter the endpoint address for your GeoPulse instance, followed by `/api/v1/gps/ingest/gpslogger`. For example:
     ```
-    https://geopulse.yourdomain.com/api/gpslogger
+    https://geopulse.yourdomain.com/api/v1/gps/ingest/gpslogger
     ```
     > Be sure to replace `geopulse.yourdomain.com` with the actual domain of your GeoPulse server.
 

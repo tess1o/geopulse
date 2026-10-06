@@ -674,7 +674,7 @@ config:
 serviceMonitor:
   enabled: true
   interval: 30s
-  path: /api/prometheus/metrics
+  path: /api/v1/system/metrics
 ```
 
 ---
