@@ -134,6 +134,9 @@ class SharedLinkResourceContractTest {
         assertProblemEnvelope(publicAuthorized(hiddenToken)
                         .when().get(PUBLIC_LINKS + "/" + hiddenCurrent + "/current-location"),
                 404, "SHARED_LOCATION_NOT_FOUND");
+        assertProblemEnvelope(publicAuthorized(hiddenToken)
+                        .when().get(PUBLIC_LINKS + "/" + hiddenCurrent + "/location"),
+                403, "SHARED_LINK_ACCESS_DENIED");
 
         UUID timelineLink = createTimelineLink(owner, "Invalid range link", "secret4", true);
         String timelineToken = accessToken(timelineLink, "secret4");

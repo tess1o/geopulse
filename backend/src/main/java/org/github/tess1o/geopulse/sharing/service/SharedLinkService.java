@@ -331,6 +331,13 @@ public class SharedLinkService {
 
         SharedLinkEntity entity = entityOpt.get();
 
+        // Timeline shares expose only their own date range. This endpoint ignores
+        // showCurrentLocation and the share period, so it is restricted to live shares.
+        if (entity.getShareType() != ShareType.LIVE_LOCATION) {
+            log.warn("Live location requested for non-live share link: {}", linkId);
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "This endpoint is only for live location shares");
+        }
+
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
