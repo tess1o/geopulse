@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.mapmatching;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaLocation;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClient;
+import org.github.tess1o.geopulse.mapmatching.client.ValhallaRouteRequest;
+import org.github.tess1o.geopulse.mapmatching.client.ValhallaRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.dto.*;
@@ -31,6 +33,12 @@ import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
         ValhallaTraceRouteResponse.ValhallaTrip.class,
         ValhallaTraceRouteResponse.ValhallaLeg.class,
         ValhallaTraceRouteResponse.ValhallaAlternate.class,
+        ValhallaRouteRequest.class,
+        ValhallaRouteRequest.Location.class,
+        ValhallaRouteResponse.class,
+        ValhallaRouteResponse.Trip.class,
+        ValhallaRouteResponse.Leg.class,
+        ValhallaRouteResponse.Summary.class,
         ValhallaRestClient.class
 })
 public class MapMatchingNativeConfig {

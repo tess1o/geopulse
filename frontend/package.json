@@ -36,6 +36,7 @@
     "unplugin-vue-components": "latest",
     "vite": "^4.0.0",
     "vue": "^3.2.45",
+    "vue-draggable-plus": "^0.6.1",
     "vue-i18n": "11.4.12",
     "vue-router": "^4.5.1"
   },

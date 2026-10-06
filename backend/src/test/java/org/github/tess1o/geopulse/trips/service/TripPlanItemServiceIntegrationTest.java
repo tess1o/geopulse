@@ -1,11 +1,13 @@
 package org.github.tess1o.geopulse.trips.service;
 import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
+import org.github.tess1o.geopulse.trips.model.dto.ReorderTripPlanItemsDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitOverrideRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripPlanItemDto;
@@ -23,8 +25,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
@@ -76,7 +80,8 @@ class TripPlanItemServiceIntegrationTest {
         TripPlanItemDto created = tripPlanItemService.createTripPlanItem(userId, tripId, dto);
         assertThat(created.getTitle()).isEqualTo("Sagrada Familia");
         assertThat(created.getPriority()).isEqualTo(TripPlanItemPriority.OPTIONAL);
-        assertThat(created.getOrderIndex()).isEqualTo(1);
+        // Appended after the highest position, not at the item count, which collides after deletes.
+        assertThat(created.getOrderIndex()).isEqualTo(8);
         assertThat(created.getIsVisited()).isFalse();
     }
     @Test
@@ -167,5 +172,104 @@ class TripPlanItemServiceIntegrationTest {
         assertThat(reset.getManualOverrideState()).isNull();
         assertThat(reset.getVisitedAt()).isNull();
         assertThat(reset.getVisitConfidence()).isNull();
+    }
+
+    private TripPlanItemEntity persistItem(String title, LocalDate plannedDay, int orderIndex) {
+        TripPlanItemEntity item = TripPlanItemEntity.builder()
+                .trip(tripRepository.findById(tripId))
+                .title(title)
+                .plannedDay(plannedDay)
+                .priority(TripPlanItemPriority.OPTIONAL)
+                .orderIndex(orderIndex)
+                .build();
+        tripPlanItemRepository.persist(item);
+        return item;
+    }
+
+    @Test
+    @Transactional
+    void getTripPlanItems_shouldOrderByDayThenPositionWithUnscheduledLast() {
+        persistItem("Unscheduled", null, 0);
+        persistItem("Day 2 second", LocalDate.of(2026, 2, 2), 1);
+        persistItem("Day 1", LocalDate.of(2026, 2, 1), 9);
+        persistItem("Day 2 first", LocalDate.of(2026, 2, 2), 0);
+
+        List<String> titles = tripPlanItemService.getTripPlanItems(userId, tripId).stream()
+                .map(TripPlanItemDto::getTitle)
+                .toList();
+
+        // An earlier day always comes first, whatever its position number.
+        assertThat(titles).containsExactly("Day 1", "Day 2 first", "Day 2 second", "Unscheduled");
+    }
+
+    @Test
+    @Transactional
+    void reorderTripPlanItems_shouldApplyPositionsAndDays() {
+        TripPlanItemEntity a = persistItem("A", LocalDate.of(2026, 2, 1), 0);
+        TripPlanItemEntity b = persistItem("B", LocalDate.of(2026, 2, 1), 1);
+        TripPlanItemEntity c = persistItem("C", null, 2);
+
+        // C dragged onto day 1 ahead of A; B dragged to day 2.
+        List<TripPlanItemDto> result = tripPlanItemService.reorderTripPlanItems(userId, tripId,
+                new ReorderTripPlanItemsDto(List.of(
+                        new ReorderTripPlanItemsDto.Entry(c.getId(), LocalDate.of(2026, 2, 1)),
+                        new ReorderTripPlanItemsDto.Entry(a.getId(), LocalDate.of(2026, 2, 1)),
+                        new ReorderTripPlanItemsDto.Entry(b.getId(), LocalDate.of(2026, 2, 2))
+                )));
+
+        assertThat(result).extracting(TripPlanItemDto::getTitle).containsExactly("C", "A", "B");
+        assertThat(result).extracting(TripPlanItemDto::getOrderIndex).containsExactly(0, 1, 2);
+        assertThat(result).extracting(TripPlanItemDto::getPlannedDay).containsExactly(
+                LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 2));
+    }
+
+    // Not @Transactional: each rejected call must roll back its own transaction, as it would in
+    // production, instead of marking a shared test transaction rollback-only.
+    @Test
+    void reorderTripPlanItems_shouldRejectStaleOrDuplicateLists() {
+        Long aId = QuarkusTransaction.requiringNew().call(() -> persistItem("A", null, 0).getId());
+        Long bId = QuarkusTransaction.requiringNew().call(() -> persistItem("B", null, 1).getId());
+
+        // Missing an item: a collaborator added B after this client loaded the plan.
+        assertThatThrownBy(() -> tripPlanItemService.reorderTripPlanItems(userId, tripId,
+                new ReorderTripPlanItemsDto(List.of(new ReorderTripPlanItemsDto.Entry(aId, null)))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Duplicate id.
+        assertThatThrownBy(() -> tripPlanItemService.reorderTripPlanItems(userId, tripId,
+                new ReorderTripPlanItemsDto(List.of(
+                        new ReorderTripPlanItemsDto.Entry(aId, null),
+                        new ReorderTripPlanItemsDto.Entry(aId, null)))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // An id from elsewhere.
+        assertThatThrownBy(() -> tripPlanItemService.reorderTripPlanItems(userId, tripId,
+                new ReorderTripPlanItemsDto(List.of(
+                        new ReorderTripPlanItemsDto.Entry(aId, null),
+                        new ReorderTripPlanItemsDto.Entry(bId + 100_000, null)))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(tripPlanItemService.getTripPlanItems(userId, tripId))
+                .extracting(TripPlanItemDto::getOrderIndex)
+                .containsExactly(0, 1);
+    }
+
+    @Test
+    @Transactional
+    void updateTripPlanItem_shouldAppendToNewDayWhenNoPositionGiven() {
+        persistItem("Day 2 existing", LocalDate.of(2026, 2, 2), 4);
+        TripPlanItemEntity moving = persistItem("Moving", LocalDate.of(2026, 2, 1), 0);
+
+        UpdateTripPlanItemDto updateDto = new UpdateTripPlanItemDto();
+        updateDto.setTitle("Moving");
+        updateDto.setPlannedDay(LocalDate.of(2026, 2, 2));
+        updateDto.setOrderIndex(null);
+
+        TripPlanItemDto updated = tripPlanItemService.updateTripPlanItem(userId, tripId, moving.getId(), updateDto);
+
+        assertThat(updated.getOrderIndex()).isEqualTo(5);
+        assertThat(tripPlanItemService.getTripPlanItems(userId, tripId))
+                .extracting(TripPlanItemDto::getTitle)
+                .containsExactly("Day 2 existing", "Moving");
     }
 }

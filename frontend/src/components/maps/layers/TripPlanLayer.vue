@@ -6,7 +6,9 @@
     :planned-items-data="plannedItemsData"
     :visible="visible"
     :marker-options="markerOptions"
+    :selected-plan-item-id="selectedPlanItemId"
     @plan-item-contextmenu="(payload) => emit('plan-item-contextmenu', payload)"
+    @plan-item-click="(payload) => emit('plan-item-click', payload)"
   />
 </template>
 
@@ -32,10 +34,14 @@ const props = defineProps({
   markerOptions: {
     type: Object,
     default: () => ({})
+  },
+  selectedPlanItemId: {
+    type: [Number, String],
+    default: null
   }
 })
 
-const emit = defineEmits(['plan-item-contextmenu'])
+const emit = defineEmits(['plan-item-contextmenu', 'plan-item-click'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))

@@ -51,14 +51,10 @@ export default {
         coordinates: 'Координати'
     },
     status: {
-        planned: 'Заплановано',
         missed: 'Пропущено',
         visited: 'Відвідано',
         needsReview: 'Потребує перевірки',
-        manualOverride: 'Ручне перевизначення',
-        notVisitedYet: 'Ще не відвідано',
         noActualDataYet: 'Даних поки немає',
-        confidence: 'Впевненість {value}',
         confidenceHigh: 'Висока',
         confidenceMedium: 'Середня',
         confidenceLow: 'Низька'
@@ -138,24 +134,6 @@ export default {
             geocodingNotFound: 'Геокодування {id} не знайдено для перейменування.'
         }
     },
-    planItemsTable: {
-        titleHeader: 'Назва',
-        priorityHeader: 'Пріоритет',
-        matchedStayHeader: 'Зіставлена зупинка',
-        statusHeader: 'Статус',
-        actionsHeader: 'Дії',
-        markVisited: 'Позначити відвіданим',
-        markNotVisited: 'Позначити невідвіданим',
-        resetVisitState: 'Скинути стан відвідування',
-        editItem: 'Редагувати елемент',
-        openInGoogleMaps: 'Відкрити в Google Maps',
-        deleteItem: 'Видалити елемент',
-        emptyTitle: 'Ще немає елементів плану',
-        emptyText: 'Почніть з "Додати місце", потім шукайте за назвою або натисніть на карту в діалозі.',
-        addPlace: 'Додати місце',
-        unknownPlace: 'Невідоме місце',
-        addMapPointToAutoMatch: 'Додайте точку на карті для автоматичного зіставлення'
-    },
     addStopPanel: {
         modeSearch: 'Пошук за назвою',
         modeExplore: 'Дослідити поблизу',
@@ -167,21 +145,39 @@ export default {
         usePhotoTitle: 'Використати "{name}"',
         hint: 'Натисніть на фото, щоб назвати цю зупинку на його честь.'
     },
+    travelModes: {
+        auto: 'Автоматично',
+        walk: 'Пішки',
+        bicycle: 'Велосипедом',
+        drive: 'Автомобілем',
+        straight: 'Пряма лінія (літак, пором, потяг)'
+    },
     stopsRail: {
         backAria: 'Назад до зупинок',
         addAPlace: 'Додати місце',
         stopsCount: 'Зупинки ({count})',
         add: 'Додати',
         lensPlan: 'План',
-        lensActual: 'Фактично',
+        lensActual: 'Хронологія',
         noStopsYet: 'Зупинок поки немає.',
         addFirstStop: 'Додати першу зупинку',
         unscheduled: 'Не заплановано',
         priorityMust: "Обов'язково",
         priorityOptional: 'Необов\'язково',
-        addLocationToAutoMatch: 'Додайте місцезнаходження для автоматичного зіставлення',
         editStop: 'Редагувати зупинку',
-        deleteStop: 'Видалити зупинку'
+        deleteStop: 'Видалити зупинку',
+        markVisited: 'Позначити відвіданим',
+        markNotVisited: 'Позначити невідвіданим',
+        resetToAutomatic: 'Скинути до автоматичного',
+        dropHere: 'Перетягніть зупинку сюди',
+        mustVisit: 'Обов\'язково відвідати',
+        stopNumber: 'Зупинка {number}',
+        stopActions: 'Дії із зупинкою',
+        noLocation: 'Немає місцезнаходження',
+        dayNumber: 'День {number}',
+        dayStops: '{count} зупинка | {count} зупинки | {count} зупинок',
+        legRouted: '{distance} · {duration}',
+        legStraight: '{distance} · пряма лінія'
     },
     managementPage: {
         title: 'Плани поїздок',
@@ -331,7 +327,8 @@ export default {
             notesPlaceholder: 'Необов\'язковий контекст...',
             plannedDayLabel: 'Запланований день',
             priorityLabel: 'Пріоритет',
-            orderLabel: 'Порядок',
+            travelModeLabel: 'Як дістатися',
+            travelModeStraightHint: 'Для маршрутів потрібен сервер маршрутизації (Valhalla), налаштований адміністратором. Доти зупинки з\'єднуються прямими лініями.',
             coordinatesLabel: 'Координати',
             notSelectedYet: 'Ще не обрано',
             searchPlaceLabel: 'Пошук місця',
@@ -405,6 +402,8 @@ export default {
             addedToPlanDetail: '"{title}" додано до ваших зупинок',
             couldNotAddPlaceSummary: 'Не вдалося додати місце',
             couldNotAddPlaceFallback: 'Не вдалося додати це місце',
+            reorderFailedSummary: 'Не вдалося змінити порядок зупинок',
+            reorderFailedFallback: 'План змінився або його не вдалося зберегти. Його перезавантажено.',
             planItemUpdatedSummary: 'Елемент плану оновлено',
             planItemUpdatedDetail: 'Елемент плану поїздки успішно оновлено',
             planItemAddedSummary: 'Елемент плану додано',

@@ -1415,17 +1415,28 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         if (items == null) {
             return;
         }
+        // A plan can hold the same place more than once (back at the hotel each night), so an
+        // existing item is matched at most once per import.
+        Set<Long> matchedItemIds = new HashSet<>();
         for (TripWorkspaceDataDto.TripPlanItemDto dto : items) {
+            // Matched on title and location rather than position: stops are reordered and moved
+            // between days by drag-and-drop, so re-importing an older export must still find them.
             TripPlanItemEntity entity = entityManager.createQuery("""
                             SELECT item FROM TripPlanItemEntity item
-                            WHERE item.trip.id = :tripId AND item.title = :title AND item.orderIndex = :orderIndex
+                            WHERE item.trip.id = :tripId AND item.title = :title
+                            ORDER BY item.id
                             """, TripPlanItemEntity.class)
                     .setParameter("tripId", trip.getId())
                     .setParameter("title", dto.getTitle())
-                    .setParameter("orderIndex", dto.getOrderIndex() == null ? 0 : dto.getOrderIndex())
                     .getResultStream()
+                    .filter(existing -> !matchedItemIds.contains(existing.getId()))
+                    .filter(existing -> sameCoordinate(existing.getLatitude(), dto.getLatitude())
+                            && sameCoordinate(existing.getLongitude(), dto.getLongitude()))
                     .findFirst()
                     .orElseGet(TripPlanItemEntity::new);
+            if (entity.getId() != null) {
+                matchedItemIds.add(entity.getId());
+            }
             entity.setTrip(trip);
             entity.setTitle(dto.getTitle());
             entity.setNotes(dto.getNotes());
@@ -1433,6 +1444,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             entity.setLongitude(dto.getLongitude());
             entity.setPlannedDay(dto.getPlannedDay());
             entity.setPriority(parseEnum(TripPlanItemPriority.class, dto.getPriority(), TripPlanItemPriority.OPTIONAL));
+            entity.setTravelMode(parseEnum(TripPlanItemTravelMode.class, dto.getTravelMode(), null));
             entity.setOrderIndex(dto.getOrderIndex() == null ? 0 : dto.getOrderIndex());
             entity.setIsVisited(Boolean.TRUE.equals(dto.getVisited()));
             entity.setVisitConfidence(dto.getVisitConfidence());
@@ -1445,6 +1457,13 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
             entityManager.persist(entity);
         }
+    }
+
+    private static boolean sameCoordinate(Double a, Double b) {
+        if (a == null || b == null) {
+            return a == null && b == null;
+        }
+        return Math.abs(a - b) < 1e-6;
     }
 
     private void importTripCollaborators(TripEntity trip, List<TripWorkspaceDataDto.TripCollaboratorDto> collaborators) {

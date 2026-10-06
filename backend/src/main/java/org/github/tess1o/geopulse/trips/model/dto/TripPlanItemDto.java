@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemOverrideState;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemPriority;
+import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemTravelMode;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
 
 import java.time.Instant;
@@ -24,6 +25,7 @@ public class TripPlanItemDto {
     private Double longitude;
     private LocalDate plannedDay;
     private TripPlanItemPriority priority;
+    private TripPlanItemTravelMode travelMode;
     private Integer orderIndex;
     private Boolean isVisited;
     private Double visitConfidence;

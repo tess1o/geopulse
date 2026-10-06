@@ -45,6 +45,10 @@ public class TripPlanItemEntity {
     @Builder.Default
     private TripPlanItemPriority priority = TripPlanItemPriority.OPTIONAL;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "travel_mode", length = 16)
+    private TripPlanItemTravelMode travelMode;
+
     @Column(name = "order_index", nullable = false)
     @Builder.Default
     private Integer orderIndex = 0;

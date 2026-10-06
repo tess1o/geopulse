@@ -12,14 +12,21 @@ import java.util.UUID;
 public class TripPlanItemRepository implements PanacheRepository<TripPlanItemEntity> {
 
     public List<TripPlanItemEntity> findByTripId(Long tripId) {
-        return list("trip.id = ?1 ORDER BY orderIndex ASC, createdAt ASC", tripId);
+        // The one ordering rule shared with the frontend rail and the map route: planned day first
+        // (unscheduled last), then the position within the day.
+        return list("trip.id = ?1 ORDER BY plannedDay ASC NULLS LAST, orderIndex ASC, createdAt ASC, id ASC", tripId);
     }
 
     public Optional<TripPlanItemEntity> findByIdAndTripId(Long itemId, Long tripId) {
         return find("id = ?1 and trip.id = ?2", itemId, tripId).firstResultOptional();
     }
 
-    public long countByTripId(Long tripId) {
-        return count("trip.id = ?1", tripId);
+    /** Next free position, so a new or re-dated stop lands at the end of its day. */
+    public int nextOrderIndex(Long tripId) {
+        Integer max = getEntityManager()
+                .createQuery("SELECT MAX(p.orderIndex) FROM TripPlanItemEntity p WHERE p.trip.id = :tripId", Integer.class)
+                .setParameter("tripId", tripId)
+                .getSingleResult();
+        return max == null ? 0 : max + 1;
     }
 }

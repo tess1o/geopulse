@@ -167,13 +167,22 @@
           @favorite-contextmenu="handleFavoriteContextMenu"
         />
 
+        <!-- Before the stop markers, so the route is drawn underneath them. -->
+        <TripPlanRouteLayer
+          v-if="map && isReady"
+          :map="map"
+          :legs="plannedRouteLegs"
+        />
+
         <TripPlanLayer
           v-if="map && isReady"
           ref="tripPlanLayerRef"
           :map="map"
           :planned-items-data="processedPlannedItemsData"
           :visible="true"
+          :selected-plan-item-id="selectedPlanItemId"
           @plan-item-contextmenu="handlePlannedItemContextMenu"
+          @plan-item-click="(payload) => emit('plan-item-click', payload)"
         />
 
         <!-- Immich Photos Layer -->
@@ -446,7 +455,7 @@ import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
-import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, TripPlanRouteLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
 import VectorCrossTypeCollisionLayer from '@/maps/vector/layers/VectorCrossTypeCollisionLayer.vue'
 import VectorPanoramaxLayer from '@/maps/vector/layers/VectorPanoramaxLayer.vue'
 import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDialog.vue'
@@ -507,6 +516,15 @@ const props = defineProps({
   plannedItemsData: {
     type: Array,
     default: () => []
+  },
+  /** Legs of the line through the planned stops, in plan order (see TripPlanRouteLayer). */
+  plannedRouteLegs: {
+    type: Array,
+    default: () => []
+  },
+  selectedPlanItemId: {
+    type: [Number, String],
+    default: null
   },
   currentLocation: {
     type: Object,
@@ -651,7 +669,8 @@ const emit = defineEmits([
   'viewer-location-stop',
   'plan-to-visit',
   'plan-item-edit',
-  'plan-item-delete'
+  'plan-item-delete',
+  'plan-item-click'
 ])
 
 // Router

@@ -460,6 +460,7 @@ public class ExportDataMapper {
                 .longitude(item.getLongitude())
                 .plannedDay(item.getPlannedDay())
                 .priority(item.getPriority() != null ? item.getPriority().name() : null)
+                .travelMode(item.getTravelMode() != null ? item.getTravelMode().name() : null)
                 .orderIndex(item.getOrderIndex())
                 .visited(item.getIsVisited())
                 .visitConfidence(item.getVisitConfidence())

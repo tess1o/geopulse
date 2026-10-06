@@ -52,14 +52,10 @@ export default {
         coordinates: 'Coordinates'
     },
     status: {
-        planned: 'Planned',
         missed: 'Missed',
         visited: 'Visited',
         needsReview: 'Needs review',
-        manualOverride: 'Manual override',
-        notVisitedYet: 'Not visited yet',
         noActualDataYet: 'No actual data yet',
-        confidence: 'Confidence {value}',
         confidenceHigh: 'High',
         confidenceMedium: 'Medium',
         confidenceLow: 'Low'
@@ -139,24 +135,6 @@ export default {
             geocodingNotFound: 'Geocoding {id} not found for rename.'
         }
     },
-    planItemsTable: {
-        titleHeader: 'Title',
-        priorityHeader: 'Priority',
-        matchedStayHeader: 'Matched Stay',
-        statusHeader: 'Status',
-        actionsHeader: 'Actions',
-        markVisited: 'Mark visited',
-        markNotVisited: 'Mark not visited',
-        resetVisitState: 'Reset visit state',
-        editItem: 'Edit item',
-        openInGoogleMaps: 'Open in Google Maps',
-        deleteItem: 'Delete item',
-        emptyTitle: 'No plan items yet',
-        emptyText: 'Start with Add Place, then search by name or click on the map in the dialog.',
-        addPlace: 'Add Place',
-        unknownPlace: 'Unknown place',
-        addMapPointToAutoMatch: 'Add map point for auto-matching'
-    },
     addStopPanel: {
         modeSearch: 'Search by name',
         modeExplore: 'Explore nearby',
@@ -168,21 +146,39 @@ export default {
         usePhotoTitle: 'Use "{name}"',
         hint: 'Click a photo to name this stop after it.'
     },
+    travelModes: {
+        auto: 'Automatic',
+        walk: 'Walk',
+        bicycle: 'Bike',
+        drive: 'Drive',
+        straight: 'Straight line (flight, ferry, train)'
+    },
     stopsRail: {
         backAria: 'Back to stops',
         addAPlace: 'Add a place',
         stopsCount: 'Stops ({count})',
         add: 'Add',
         lensPlan: 'Plan',
-        lensActual: 'Actual',
+        lensActual: 'Timeline',
         noStopsYet: 'No stops yet.',
         addFirstStop: 'Add your first stop',
         unscheduled: 'Unscheduled',
         priorityMust: 'Must',
         priorityOptional: 'Optional',
-        addLocationToAutoMatch: 'Add a location to auto-match',
         editStop: 'Edit stop',
-        deleteStop: 'Delete stop'
+        deleteStop: 'Delete stop',
+        markVisited: 'Mark visited',
+        markNotVisited: 'Mark not visited',
+        resetToAutomatic: 'Reset to automatic',
+        dropHere: 'Drop a stop here',
+        mustVisit: 'Must visit',
+        stopNumber: 'Stop {number}',
+        stopActions: 'Stop actions',
+        noLocation: 'No location',
+        dayNumber: 'Day {number}',
+        dayStops: '{count} stop | {count} stops',
+        legRouted: '{distance} · {duration}',
+        legStraight: '{distance} · straight line'
     },
     managementPage: {
         title: 'Trip Plans',
@@ -332,7 +328,8 @@ export default {
             notesPlaceholder: 'Optional context...',
             plannedDayLabel: 'Planned Day',
             priorityLabel: 'Priority',
-            orderLabel: 'Order',
+            travelModeLabel: 'Getting here',
+            travelModeStraightHint: 'Routes need a routing server (Valhalla) set up by an admin. Until then, stops are joined by straight lines.',
             coordinatesLabel: 'Coordinates',
             notSelectedYet: 'Not selected yet',
             searchPlaceLabel: 'Search place',
@@ -406,6 +403,8 @@ export default {
             addedToPlanDetail: '"{title}" was added to your stops',
             couldNotAddPlaceSummary: 'Could not add place',
             couldNotAddPlaceFallback: 'Failed to add this place',
+            reorderFailedSummary: 'Could Not Reorder Stops',
+            reorderFailedFallback: 'The plan changed or could not be saved. It has been reloaded.',
             planItemUpdatedSummary: 'Plan Item Updated',
             planItemUpdatedDetail: 'Trip plan item updated successfully',
             planItemAddedSummary: 'Plan Item Added',

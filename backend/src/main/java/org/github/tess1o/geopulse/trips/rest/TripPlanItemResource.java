@@ -20,10 +20,13 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
+import org.github.tess1o.geopulse.trips.model.dto.ReorderTripPlanItemsDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
+import org.github.tess1o.geopulse.trips.model.dto.TripPlanRouteDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitOverrideRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.service.TripPlanItemService;
+import org.github.tess1o.geopulse.trips.service.TripPlanRouteService;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
@@ -42,11 +45,15 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_
 public class TripPlanItemResource {
 
     private final TripPlanItemService service;
+    private final TripPlanRouteService routeService;
     private final CurrentUserService currentUserService;
 
     @Inject
-    public TripPlanItemResource(TripPlanItemService service, CurrentUserService currentUserService) {
+    public TripPlanItemResource(TripPlanItemService service,
+                                TripPlanRouteService routeService,
+                                CurrentUserService currentUserService) {
         this.service = service;
+        this.routeService = routeService;
         this.currentUserService = currentUserService;
     }
 
@@ -54,6 +61,16 @@ public class TripPlanItemResource {
     public List<TripPlanItemDto> getPlanItems(@PathParam("tripId") Long tripId) {
         try {
             return service.getTripPlanItems(currentUserService.getCurrentUserId(), tripId);
+        } catch (NotFoundException e) {
+            throw notFound(tripId, null, e);
+        }
+    }
+
+    @GET
+    @Path("/route")
+    public TripPlanRouteDto getPlanRoute(@PathParam("tripId") Long tripId) {
+        try {
+            return routeService.getPlanRoute(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
             throw notFound(tripId, null, e);
         }
@@ -82,6 +99,19 @@ public class TripPlanItemResource {
             return service.updateTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId, dto);
         } catch (NotFoundException e) {
             throw notFound(tripId, itemId, e);
+        } catch (IllegalArgumentException e) {
+            throw invalid(e);
+        }
+    }
+
+    @PUT
+    @Path("/order")
+    public List<TripPlanItemDto> reorderPlanItems(
+            @PathParam("tripId") Long tripId, @Valid ReorderTripPlanItemsDto dto) {
+        try {
+            return service.reorderTripPlanItems(currentUserService.getCurrentUserId(), tripId, dto);
+        } catch (NotFoundException e) {
+            throw notFound(tripId, null, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }

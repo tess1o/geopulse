@@ -13,3 +13,4 @@ export { default as LocationAnalyticsDotsLayer } from './LocationAnalyticsDotsLa
 export { default as TripPlanLayer } from './TripPlanLayer.vue'
 export { default as RawGpsPointsLayer } from './RawGpsPointsLayer.vue'
 export { default as WeatherLayer } from './WeatherLayer.vue'
+export { default as TripPlanRouteLayer } from './TripPlanRouteLayer.vue'

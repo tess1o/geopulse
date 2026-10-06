@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemPriority;
+import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemTravelMode;
 
 import java.time.LocalDate;
 
@@ -31,6 +32,9 @@ public class CreateTripPlanItemDto {
     private LocalDate plannedDay;
 
     private TripPlanItemPriority priority;
+
+    /** How to get here from the previous stop; null = automatic. */
+    private TripPlanItemTravelMode travelMode;
 
     @Min(value = 0, message = "Order index must be non-negative")
     private Integer orderIndex;

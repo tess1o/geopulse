@@ -50,6 +50,7 @@ public class TripWorkspaceDataDto {
         private Double longitude;
         private LocalDate plannedDay;
         private String priority;
+        private String travelMode;
         private Integer orderIndex;
         private Boolean visited;
         private Double visitConfidence;

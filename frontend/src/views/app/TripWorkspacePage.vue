@@ -115,6 +115,8 @@
                 :timelineData="workspaceTimeline"
                 :weather-samples="weatherSamples"
                 :plannedItemsData="tripPlanMapItems"
+                :planned-route-legs="plannedRouteLegs"
+                :selected-plan-item-id="focusedPlanItemId"
                 :showFavoritesByDefault="false"
                 :showImmichByDefault="true"
                 :showPlanToVisitAction="canEditPlanItems"
@@ -128,6 +130,7 @@
                 @plan-to-visit="handlePlanToVisit"
                 @plan-item-edit="handlePlanItemEditFromMap"
                 @plan-item-delete="handlePlanItemDeleteFromMap"
+                @plan-item-click="handlePlanItemClickFromMap"
               />
             </template>
 
@@ -139,12 +142,17 @@
                 :has-actual-data="hasTimelineData || hasPathData"
                 :lens="railLens"
                 :selected-id="focusedPlanItemId"
+                :trip-days="tripPlanDays"
+                collapsible
+                @collapse="timelineSplitLayoutRef?.setSheetState('collapsed')"
+                :legs-by-stop="plannedRouteLegsByStop"
                 @update:lens="railLens = $event"
                 @add-stop="handleAddStopFromRail"
                 @focus-stop="focusPlannedItemOnMap"
                 @edit-stop="openEditPlanItemDialog"
                 @delete-stop="confirmDeletePlanItem"
-                @mark-visited="handleMarkVisitedFromRail"
+                @visit-override="handleVisitOverrideFromRail"
+                @reorder="handleReorderStops"
               >
                 <template #actual>
                   <div class="trip-actual-lens">
@@ -247,14 +255,18 @@
 
           <div class="plan-item-dialog-row">
             <div>
-              <label for="planOrder" class="field-label">{{ t('trips.workspacePage.planItemDialog.orderLabel') }}</label>
-              <InputNumber
-                id="planOrder"
-                v-model="planItemForm.orderIndex"
-                :min="0"
-                :maxFractionDigits="0"
+              <label for="planTravelMode" class="field-label">{{ t('trips.workspacePage.planItemDialog.travelModeLabel') }}</label>
+              <Select
+                id="planTravelMode"
+                v-model="planItemForm.travelMode"
+                :options="travelModeOptions"
+                optionLabel="label"
+                optionValue="value"
                 class="w-full"
               />
+              <small v-if="!routingAvailable" class="plan-item-field-hint">
+                {{ t('trips.workspacePage.planItemDialog.travelModeStraightHint') }}
+              </small>
             </div>
             <div>
               <label class="field-label">{{ t('trips.workspacePage.planItemDialog.coordinatesLabel') }}</label>
@@ -539,11 +551,11 @@ import ProgressBar from 'primevue/progressbar'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
-import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
 import { formatMessageDescriptor } from '@/utils/messageDescriptor'
+import { buildSequenceMap, buildStraightLegs, hasPlanCoordinates, sortPlanItems } from '@/utils/tripPlanOrder'
 import {
   getTripPlanSuggestionCoordinates,
   useTripPlanLocationSearch
@@ -565,6 +577,7 @@ const {
   currentTrip,
   tripSummary,
   tripPlanItems,
+  tripPlanRoute,
   workspaceTimeline,
   workspacePath,
   visitSuggestions
@@ -582,7 +595,6 @@ const timelineSplitLayoutRef = ref(null)
 const timelineContainerRef = ref(null)
 const planItemDialogMapRef = ref(null)
 const planLocationSearchRef = ref(null)
-const activeWorkspaceTab = ref('overview')
 
 const {
   clearTimelineSelection: clearWorkspaceTimelineSelection,
@@ -668,8 +680,20 @@ const planItemForm = ref({
   longitude: null,
   plannedDay: null,
   priority: 'OPTIONAL',
-  orderIndex: 0
+  travelMode: 'AUTO'
 })
+
+// The form uses 'AUTO' because a Select cannot show a null option as selected; it is sent as null.
+const TRAVEL_MODE_AUTO = 'AUTO'
+const travelModeOptions = computed(() => [
+  { label: t('trips.travelModes.auto'), value: TRAVEL_MODE_AUTO },
+  { label: t('trips.travelModes.walk'), value: 'WALK' },
+  { label: t('trips.travelModes.bicycle'), value: 'BICYCLE' },
+  { label: t('trips.travelModes.drive'), value: 'DRIVE' },
+  { label: t('trips.travelModes.straight'), value: 'STRAIGHT' }
+])
+/** Road routing needs an admin-configured Valhalla; without it every leg is a straight line. */
+const routingAvailable = computed(() => Boolean(authStore.mapMatchingAvailable))
 
 const priorityOptions = computed(() => [
   { label: t('trips.stopsRail.priorityOptional'), value: 'OPTIONAL' },
@@ -772,61 +796,24 @@ const isFutureTrip = computed(() => {
   if (!currentTrip.value?.startTime) return false
   return timezone.fromUtc(currentTrip.value.startTime).isAfter(timezone.now())
 })
-const isPlanningMode = computed(() => isFutureTrip.value && !hasPathData.value && !hasTimelineData.value)
-const isPlanningWorkspace = computed(() => isUnplannedTrip.value || isPlanningMode.value)
-const isActiveTrip = computed(() => String(currentTrip.value?.status || '').toUpperCase() === 'ACTIVE')
-const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value && !isUnplannedTrip.value)
-const showPlanSection = computed(() => activeWorkspaceTab.value === 'plan')
-const showDiscoverSection = computed(() => activeWorkspaceTab.value === 'discover')
-const showPlanningPanelMode = computed(() => isPlanningWorkspace.value || (showPlanSection.value && isActiveTrip.value))
-const workspaceTabs = computed(() => {
-  // Discovery is offered for trips that have not happened yet - the case where the user
-  // has never been there and needs ideas. It is the same trip type that has no Overview.
-  const discover = { key: 'discover', label: 'Discover', icon: 'pi pi-compass' }
-
-  if (isUnplannedTrip.value) {
-    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }, discover]
-  }
-
-  const tabs = []
-  if (!isFutureTrip.value) {
-    tabs.push({ key: 'overview', label: 'Overview', icon: 'pi pi-chart-line' })
-  }
-  tabs.push({ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' })
-  tabs.push(discover)
-  return tabs
-})
-const comparisonCardTitle = computed(() => ((isPlanningWorkspace.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
-const planningPanelTitle = computed(() => {
-  if (isUnplannedTrip.value) return 'Unplanned trip planning mode'
-  return isPlanningMode.value ? 'Future trip planning mode' : 'Active trip planning mode'
-})
-const planningPanelPrimaryText = computed(() => (
-  isUnplannedTrip.value
-    ? 'This trip has no schedule yet. Build your place plan first, then set trip dates when you are ready.'
-    : (isPlanningMode.value
-      ? 'This trip has no actual timeline data yet.'
-      : 'This trip is in progress. Keep adding planned stops while actual visits are matched automatically.')
-))
-const planningPanelHintText = computed(() => {
-  if (!canEditPlanItems.value) {
-    return 'You have read-only access to this trip plan.'
-  }
-  return 'Use Add Place to search and add planned stops quickly, or right-click the map as a shortcut.'
-})
-const sortPlanItems = (items) => {
-  const safeItems = Array.isArray(items) ? items : []
-  const priorityRank = (priority) => (String(priority || '').toUpperCase() === 'MUST' ? 0 : 1)
-  return [...safeItems].sort((a, b) => {
-    const priorityDiff = priorityRank(a?.priority) - priorityRank(b?.priority)
-    if (priorityDiff !== 0) return priorityDiff
-    const orderA = a?.orderIndex ?? 0
-    const orderB = b?.orderIndex ?? 0
-    if (orderA !== orderB) return orderA - orderB
-    return Number(a?.id || 0) - Number(b?.id || 0)
-  })
-}
+// Trip photos belong to trips that have actually happened.
+const showOverviewSection = computed(() => !isFutureTrip.value && !isUnplannedTrip.value)
 const sortedTripPlanItems = computed(() => sortPlanItems(tripPlanItems.value))
+/** The trip's days as ISO dates; days without stops become drop targets in the rail. */
+const MAX_TRIP_DROP_DAYS = 60
+const tripPlanDays = computed(() => {
+  const startTime = currentTrip.value?.startTime
+  const endTime = currentTrip.value?.endTime
+  if (isUnplannedTrip.value || !startTime || !endTime) return []
+
+  const start = timezone.fromUtc(startTime).startOf('day')
+  const end = timezone.fromUtc(endTime).startOf('day')
+  const days = []
+  for (let day = start; !day.isAfter(end) && days.length < MAX_TRIP_DROP_DAYS; day = day.add(1, 'day')) {
+    days.push(day.format('YYYY-MM-DD'))
+  }
+  return days
+})
 const hasPlanItems = computed(() => sortedTripPlanItems.value.length > 0)
 
 const parsePlanItemCoordinate = (value, min, max) => {
@@ -873,13 +860,9 @@ const planItemMapSourceHint = computed(() => {
 
   return `${sourceLabel}: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
 })
-const planningPanelItems = computed(() => {
-  return sortPlanItems(tripPlanItems.value)
-    .filter((item) => typeof item.latitude === 'number' && typeof item.longitude === 'number')
-    .slice(0, 8)
-})
+const tripPlanSequence = computed(() => buildSequenceMap(sortedTripPlanItems.value))
 const tripPlanMapItems = computed(() => {
-  return (tripPlanItems.value || [])
+  return sortedTripPlanItems.value
     .filter((item) => typeof item.latitude === 'number' && typeof item.longitude === 'number')
     .map((item) => ({
       id: `trip-plan-${item.id}`,
@@ -887,6 +870,8 @@ const tripPlanMapItems = computed(() => {
       type: 'trip-plan',
       planItemId: item.id,
       priority: item.priority || 'OPTIONAL',
+      // The same number the stop has in the rail.
+      sequence: tripPlanSequence.value.get(item.id) ?? null,
       latitude: item.latitude,
       longitude: item.longitude,
       // Carried through for the marker's hover card, which otherwise had nothing to
@@ -898,6 +883,50 @@ const tripPlanMapItems = computed(() => {
       manualOverrideState: item.manualOverrideState || null
     }))
 })
+/**
+ * Identifies the route the current plan needs: the located stops in order, with where they are
+ * and how they are reached. Day and position changes show up as a different order.
+ */
+const planRouteSignature = computed(() => sortedTripPlanItems.value
+  .filter(hasPlanCoordinates)
+  .map((item) => `${item.id}:${item.latitude}:${item.longitude}:${item.travelMode || ''}`)
+  .join('|'))
+const fetchedRouteSignature = ref(null)
+
+/**
+ * The line through the located stops in plan order: the server's routed legs once they match the
+ * current plan, and straight legs until then (or when routing is unavailable).
+ */
+const plannedRouteLegs = computed(() => {
+  if (fetchedRouteSignature.value === planRouteSignature.value && Array.isArray(tripPlanRoute.value?.legs)) {
+    return tripPlanRoute.value.legs
+  }
+  return buildStraightLegs(sortedTripPlanItems.value)
+})
+
+/** Legs keyed by the stop they arrive at, for the rail's connectors and per-day distances. */
+const plannedRouteLegsByStop = computed(() => new Map(
+  plannedRouteLegs.value.map((leg) => [leg.toItemId, leg])
+))
+
+// Every edit, drag or visit change re-derives the plan, so route requests are coalesced.
+const ROUTE_REFRESH_DELAY_MS = 300
+let routeRefreshTimer = null
+watch(planRouteSignature, (signature) => {
+  clearTimeout(routeRefreshTimer)
+  if (!tripId.value || !signature.includes('|')) {
+    // Fewer than two located stops: there is no line to route.
+    return
+  }
+  routeRefreshTimer = setTimeout(async () => {
+    const requestedTripId = tripId.value
+    const route = await tripsStore.fetchTripPlanRoute(requestedTripId)
+    // A newer change, or another trip, may have landed while this request was in flight.
+    if (route && requestedTripId === tripId.value && signature === planRouteSignature.value) {
+      fetchedRouteSignature.value = signature
+    }
+  }, ROUTE_REFRESH_DELAY_MS)
+}, { immediate: true })
 const workspaceFallbackCenter = computed(() => {
   const firstPathPoint = workspacePath.value?.points?.[0]
   if (
@@ -1068,17 +1097,6 @@ const getPhotoCoordinates = (photo) => {
     return { latitude: exif.latitude, longitude: exif.longitude }
   }
   return null
-}
-
-const ensureActiveWorkspaceTab = () => {
-  const availableTabKeys = workspaceTabs.value.map((tab) => tab.key)
-  if (!availableTabKeys.includes(activeWorkspaceTab.value)) {
-    activeWorkspaceTab.value = isFutureTrip.value ? 'plan' : (availableTabKeys[0] || 'plan')
-  }
-}
-
-const selectWorkspaceTab = (tabKey) => {
-  activeWorkspaceTab.value = tabKey
 }
 
 const openTripScheduling = () => {
@@ -1405,10 +1423,6 @@ const handleTripPhotoShowOnMap = (photo) => {
   const coords = getPhotoCoordinates(photo)
   if (!photo || !coords) {
     return
-  }
-
-  if (activeWorkspaceTab.value !== 'overview' && !isFutureTrip.value) {
-    activeWorkspaceTab.value = 'overview'
   }
 
   const setView = timelineMapRef.value?.setView
@@ -1789,6 +1803,19 @@ const focusPlannedItemOnMap = (item) => {
   setView([item.latitude, item.longitude], 16, { animate: true })
 }
 
+/**
+ * A marker click selects its stop in the rail (which scrolls it into view); the marker layer
+ * shows the stop's card itself. The Timeline lens has no stops to select, so it switches to Plan.
+ */
+const handlePlanItemClickFromMap = (payload) => {
+  const planItemId = resolvePlanItemIdFromContext(payload)
+  if (planItemId === null) return
+  focusedPlanItemId.value = planItemId
+  if (railLens.value !== 'plan') {
+    railLens.value = 'plan'
+  }
+}
+
 const resolvePlanItemIdFromContext = (contextPayload) => {
   const contextItem = contextPayload?.item || contextPayload?.favorite || contextPayload
   if (!contextItem) return null
@@ -1831,16 +1858,6 @@ const handlePlanItemDeleteFromMap = (contextPayload) => {
   confirmDeletePlanItem(planItem)
 }
 
-const handlePlanItemOverrideFromTable = (payload) => {
-  if (!ensurePlanEditAccess()) return
-  const item = payload?.item
-  const action = payload?.action
-  if (!item || !action) {
-    return
-  }
-  applyVisitOverride(item, action)
-}
-
 const focusPlanLocationSearch = async () => {
   await nextTick()
   const autocompleteInput = planLocationSearchRef.value?.$el?.querySelector?.('input')
@@ -1866,7 +1883,7 @@ const resetPlanItemForm = () => {
     longitude: null,
     plannedDay: null,
     priority: 'OPTIONAL',
-    orderIndex: 0
+    travelMode: TRAVEL_MODE_AUTO
   }
   planItemErrors.value = {}
   editingPlanItemId.value = null
@@ -1900,7 +1917,7 @@ const openEditPlanItemDialog = (item) => {
     longitude: item.longitude ?? null,
     plannedDay: parsePlannedDayToDate(item.plannedDay),
     priority: item.priority || 'OPTIONAL',
-    orderIndex: item.orderIndex ?? 0
+    travelMode: item.travelMode || TRAVEL_MODE_AUTO
   }
 
   setPlanItemDialogMapCenter({ centerFromSelection: true, zoom: hasPlanItemCoordinates.value ? 16 : 13 })
@@ -1960,8 +1977,7 @@ const handleAddStopFromRail = async (place) => {
       latitude: place.latitude ?? null,
       longitude: place.longitude ?? null,
       plannedDay: null,
-      priority: 'OPTIONAL',
-      orderIndex: (tripPlanItems.value || []).length
+      priority: 'OPTIONAL'
     })
     toast.add({
       severity: 'success',
@@ -1979,10 +1995,26 @@ const handleAddStopFromRail = async (place) => {
   }
 }
 
-/** Mark a stop visited from the rail, through the same override path used everywhere else. */
-const handleMarkVisitedFromRail = (stop) => {
-  if (!stop || !ensurePlanEditAccess()) return
-  applyVisitOverride(stop, 'CONFIRM_VISITED')
+/** Visit status from the rail's menu, through the same override path used everywhere else. */
+const handleVisitOverrideFromRail = ({ stop, action } = {}) => {
+  if (!stop || !action || !ensurePlanEditAccess()) return
+  applyVisitOverride(stop, action)
+}
+
+/** Saves a drag-and-drop ordering; on refusal the plan is reloaded, since it changed under us. */
+const handleReorderStops = async (payload) => {
+  if (!ensurePlanEditAccess()) return
+  try {
+    await tripsStore.reorderTripPlanItems(tripId.value, payload)
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('trips.workspacePage.toasts.reorderFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.reorderFailedFallback')),
+      life: 5000
+    })
+    await tripsStore.fetchTripPlanItems(tripId.value).catch(() => {})
+  }
 }
 
 const submitPlanItem = async () => {
@@ -1998,7 +2030,9 @@ const submitPlanItem = async () => {
       longitude: planItemForm.value.longitude ?? null,
       plannedDay: formatCalendarDate(planItemForm.value.plannedDay),
       priority: planItemForm.value.priority || 'OPTIONAL',
-      orderIndex: planItemForm.value.orderIndex ?? 0
+      travelMode: planItemForm.value.travelMode && planItemForm.value.travelMode !== TRAVEL_MODE_AUTO
+        ? planItemForm.value.travelMode
+        : null
     }
 
     if (editingPlanItemId.value) {
@@ -2194,17 +2228,13 @@ const handleReconstructionCommitted = async (result) => {
 
 onMounted(async () => {
   await loadWorkspace()
-  ensureActiveWorkspaceTab()
 })
 
 onUnmounted(() => {
+  clearTimeout(routeRefreshTimer)
   clearWorkspaceTimelineSelection()
   cleanupPlanItemDialogMap()
 })
-
-watch(workspaceTabs, () => {
-  ensureActiveWorkspaceTab()
-}, { deep: true })
 
 watch(showPlanItemDialog, async (nextVisible) => {
   if (!nextVisible) {
@@ -2383,6 +2413,25 @@ watch(showPlanItemDialog, async (nextVisible) => {
   overflow: hidden;
 }
 
+/* The Timeline lens (internally 'actual') nests the timeline inside the rail's own scrolling body. TimelineSplitLayout
+   styles a side-pane timeline as a fixed-height scroller (`flex: 1 1 0`, `min-height: 0`,
+   `overflow: hidden`), which assumes it is the pane's direct, definitely-sized child. Here it has
+   no definite height to fill, so its list resolved to 0px and was clipped away - the lens showed
+   only the photos below it, and nothing at all without Immich. Inside the rail the timeline takes
+   its natural height and the rail body scrolls. `.trip-rail` lifts specificity above the layout's
+   rules, which would otherwise win or lose on stylesheet order. */
+.trip-rail .trip-actual-lens :deep(.timeline-container) {
+  flex: none;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.trip-rail .trip-actual-lens :deep(.timeline-content) {
+  flex: none;
+  overflow: visible;
+}
+
 .pane-loading {
   display: flex;
   flex-direction: column;
@@ -2398,6 +2447,12 @@ watch(showPlanItemDialog, async (nextVisible) => {
   margin-bottom: var(--gp-spacing-xs);
   color: var(--gp-text-secondary);
   font-weight: 500;
+}
+
+.plan-item-field-hint {
+  display: block;
+  margin-top: var(--gp-spacing-xs);
+  color: var(--gp-text-secondary);
 }
 
 .plan-item-dialog-layout {

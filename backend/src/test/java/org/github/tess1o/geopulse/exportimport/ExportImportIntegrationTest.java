@@ -410,6 +410,7 @@ class ExportImportIntegrationTest {
                 .longitude(-122.4177)
                 .plannedDay(LocalDate.of(2026, 2, 2))
                 .priority(TripPlanItemPriority.MUST)
+                .travelMode(TripPlanItemTravelMode.BICYCLE)
                 .orderIndex(3)
                 .isVisited(true)
                 .visitConfidence(0.92)
@@ -944,6 +945,7 @@ class ExportImportIntegrationTest {
             assertEquals(originalData.planItemTitle(), planItem.getTitle());
             assertEquals(originalData.planItemNotes(), planItem.getNotes());
             assertEquals(TripPlanItemPriority.MUST, planItem.getPriority());
+            assertEquals(TripPlanItemTravelMode.BICYCLE, planItem.getTravelMode());
             assertTrue(planItem.getIsVisited());
 
             TripCollaboratorEntity collaborator = tripCollaboratorRepository.findByTripIdWithCollaborator(trip.getId()).get(0);

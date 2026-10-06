@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { applyReorderPayload, sortPlanItems } from '@/utils/tripPlanOrder'
 import {
   applyStayFavoriteUpdateToTimelineItems,
   applyStayGeocodingUpdateToTimelineItems,
@@ -71,6 +72,8 @@ export const useTripsStore = defineStore('trips', {
     currentTrip: null,
     tripSummary: null,
     tripPlanItems: [],
+    /** Legs of the line through the planned stops ({ routingAvailable, legs }); see fetchTripPlanRoute. */
+    tripPlanRoute: null,
     workspaceTimeline: [],
     workspacePath: {
       points: [],
@@ -97,6 +100,7 @@ export const useTripsStore = defineStore('trips', {
       this.currentTrip = null
       this.tripSummary = null
       this.tripPlanItems = []
+      this.tripPlanRoute = null
       this.workspaceTimeline = []
       this.workspacePath = {
         points: [],
@@ -259,15 +263,27 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
+    /**
+     * The routed line through the located stops, in plan order. Failure is not fatal: the map
+     * keeps drawing straight legs, so the error is recorded and the previous route kept.
+     */
+    async fetchTripPlanRoute(tripId) {
+      try {
+        const response = await apiService.get(`/trips/${tripId}/plan-items/route`)
+        this.tripPlanRoute = response && Array.isArray(response.legs) ? response : null
+        return this.tripPlanRoute
+      } catch (error) {
+        console.warn('Failed to load trip plan route', error)
+        return null
+      }
+    },
+
     async createTripPlanItem(tripId, payload) {
       this.error = null
       try {
         const created = await apiService.post(`/trips/${tripId}/plan-items`, payload)
         if (created) {
-          this.tripPlanItems = [...this.tripPlanItems, created].sort((a, b) => {
-            if (a.orderIndex !== b.orderIndex) return (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
-            return Number(a.id) - Number(b.id)
-          })
+          this.tripPlanItems = sortPlanItems([...this.tripPlanItems, created])
         }
         return created
       } catch (error) {
@@ -283,6 +299,25 @@ export const useTripsStore = defineStore('trips', {
         return updated
       } catch (error) {
         fail(this, error, 'Failed to update trip plan item')
+      }
+    },
+
+    /**
+     * Saves a drag-and-drop ordering. The list moves immediately; if the server refuses (e.g. a
+     * collaborator changed the plan meanwhile) it is restored and the error is rethrown so the
+     * caller can refetch.
+     */
+    async reorderTripPlanItems(tripId, payload) {
+      this.error = null
+      const previous = this.tripPlanItems
+      this.tripPlanItems = applyReorderPayload(previous, payload)
+      try {
+        const response = await apiService.put(`/trips/${tripId}/plan-items/order`, { items: payload })
+        if (Array.isArray(response)) this.tripPlanItems = response
+        return this.tripPlanItems
+      } catch (error) {
+        this.tripPlanItems = previous
+        fail(this, error, 'Failed to reorder trip plan items')
       }
     },
 

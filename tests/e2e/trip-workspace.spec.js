@@ -109,7 +109,7 @@ test.describe('Trip Workspace Page', () => {
 
     expect(await tripWorkspacePage.isSummaryBarVisible()).toBe(true);
     expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (1)');
-    expect(await tripWorkspacePage.getStatusText('Sagrada Familia')).toContain('Planned');
+    expect(await tripWorkspacePage.getVisitStatus('Sagrada Familia')).toBe('planned');
 
     await tripWorkspacePage.addPlanItemFromMap({ title: 'Park Guell' });
     const addedFromMap = await TestSetupHelper.getTripPlanItemByTitle(dbManager, tripId, 'Park Guell');
@@ -118,14 +118,14 @@ test.describe('Trip Workspace Page', () => {
     expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (2)');
 
     await tripWorkspacePage.markVisited('Sagrada Familia');
-    await expect.poll(async () => tripWorkspacePage.getStatusText('Sagrada Familia'), { timeout: 10000 }).toContain('Visited');
+    await expect.poll(async () => tripWorkspacePage.getVisitStatus('Sagrada Familia'), { timeout: 10000 }).toBe('visited');
 
     const visitedItem = await TestSetupHelper.getTripPlanItemById(dbManager, seededItemId);
     expect(visitedItem.is_visited).toBe(true);
     expect(visitedItem.manual_override_state).toBe('CONFIRMED');
 
     // The other stop is untouched.
-    expect(await tripWorkspacePage.getStatusText('Park Guell')).toContain('Planned');
+    expect(await tripWorkspacePage.getVisitStatus('Park Guell')).toBe('planned');
   });
 
   test('COMPLETED trip: auto-matched visit shown in the rail and the Actual lens', async ({ page, isolatedUsers, dbManager }) => {
@@ -184,10 +184,10 @@ test.describe('Trip Workspace Page', () => {
     await expect(tripWorkspacePage.lensSwitch()).toBeVisible({ timeout: 15000 });
 
     expect(await tripWorkspacePage.getStopsHeading()).toBe('Stops (1)');
-    await expect.poll(async () => tripWorkspacePage.getStatusText('Eiffel Tower'), { timeout: 10000 }).toContain('Visited');
+    await expect.poll(async () => tripWorkspacePage.getVisitStatus('Eiffel Tower'), { timeout: 10000 }).toBe('visited');
     expect(await tripWorkspacePage.getStopSummaryText('Eiffel Tower')).toContain('96%');
 
-    await tripWorkspacePage.openLens('Actual');
+    await tripWorkspacePage.openLens('Timeline');
     await expect(page.locator('.trip-rail .trip-actual-lens')).toContainText('Eiffel Tower Stay', { timeout: 15000 });
 
     await tripWorkspacePage.openLens('Plan');

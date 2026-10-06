@@ -217,6 +217,13 @@ backend-test-all:
 	@echo "Running full backend test suite"
 	./mvnw -pl backend clean verify -DskipITs=false
 
+# Frontend unit tests (vitest, single run)
+# Filter by file name: make frontend-test TEST=timelineStore
+.PHONY: frontend-test
+frontend-test:
+	@echo "Running frontend tests"
+	cd frontend && npm run test:run -- $(TEST)
+
 # Timezone matrix settings for local verification
 # Override like:
 #   make backend-test-unit-tz-matrix TZ_MATRIX="UTC Europe/Kyiv America/New_York"
@@ -461,6 +468,7 @@ help:
 	@echo "  backend-test-unit      Run backend unit tests"
 	@echo "  backend-test-integration Run backend integration tests"
 	@echo "  backend-test-all       Run all backend tests (unit + integration)"
+	@echo "  frontend-test          Run frontend vitest tests (optional TEST=<file filter>)"
 	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR, requires E2E environment)"
 	@echo "  test-e2e-ui            Run E2E tests in UI mode (RASTER + VECTOR)"
 	@echo "  test-e2e-headed        Run E2E tests in headed mode (RASTER + VECTOR)"

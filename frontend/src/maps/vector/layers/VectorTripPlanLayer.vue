@@ -37,10 +37,14 @@ const props = defineProps({
   markerOptions: {
     type: Object,
     default: () => ({})
+  },
+  selectedPlanItemId: {
+    type: [Number, String],
+    default: null
   }
 })
 
-const emit = defineEmits(['plan-item-contextmenu'])
+const emit = defineEmits(['plan-item-contextmenu', 'plan-item-click'])
 
 const state = {
   token: nextLayerToken('gp-trip-plan'),
@@ -82,10 +86,11 @@ const buildCollection = () => {
         properties: {
           itemRaw: JSON.stringify(item || {}),
           itemIndex: index,
+          planItemId: String(item?.planItemId ?? ''),
           isMust,
           isVisited,
-          // Visited reads as a tick, pending as the priority letter.
-          label: isVisited ? '✓' : (isMust ? 'M' : 'P')
+          // The stop's number in the plan, matching the rail; visit state is the colour.
+          label: item?.sequence ? String(item.sequence) : ''
         }
       }
     })
@@ -148,13 +153,30 @@ const registerEvents = () => {
     hideHoverPopup()
   }
 
+  // Click selects the stop in the rail and shows its card - on touch screens, which have no
+  // hover, this is the only way to see what a stop is.
+  const handleClick = (event) => {
+    const item = parseItem(event)
+    if (!item) {
+      return
+    }
+
+    const index = Number.parseInt(event?.features?.[0]?.properties?.itemIndex, 10)
+    if (event?.lngLat) {
+      showHoverPopup(event.lngLat, item)
+    }
+    emit('plan-item-click', { item, index: Number.isFinite(index) ? index : -1, type: 'trip-plan' })
+  }
+
   props.map.on('mouseenter', state.layerId, handleMouseEnter)
   props.map.on('mouseleave', state.layerId, handleMouseLeave)
+  props.map.on('click', state.layerId, handleClick)
 
   state.listeners = [
     { event: 'contextmenu', layerId: state.layerId, handler: handleContextMenu },
     { event: 'mouseenter', layerId: state.layerId, handler: handleMouseEnter },
-    { event: 'mouseleave', layerId: state.layerId, handler: handleMouseLeave }
+    { event: 'mouseleave', layerId: state.layerId, handler: handleMouseLeave },
+    { event: 'click', layerId: state.layerId, handler: handleClick }
   ]
 }
 
@@ -216,6 +238,10 @@ const unregisterEvents = () => {
   state.listeners = []
 }
 
+const isSelectedExpression = () => ['==', ['get', 'planItemId'], String(props.selectedPlanItemId ?? '')]
+const circleRadiusExpression = () => ['case', isSelectedExpression(), 20, ['case', ['get', 'isMust'], 17, 15]]
+const circleStrokeWidthExpression = () => ['case', isSelectedExpression(), 4, 2.5]
+
 const renderLayer = () => {
   if (!isMapLibreMap(props.map)) {
     return
@@ -230,7 +256,7 @@ const renderLayer = () => {
     type: 'circle',
     source: state.sourceId,
     paint: {
-      'circle-radius': ['case', ['get', 'isMust'], 17, 15],
+      'circle-radius': circleRadiusExpression(),
       // Two things are encoded, so they need two channels:
       //   colour = whether the stop has been visited, so a glance at the map shows progress
       //   glyph  = the same, redundantly, plus the priority letter while still pending
@@ -243,7 +269,7 @@ const renderLayer = () => {
         ['case', ['get', 'isMust'], '#b91c1c', '#b45309']
       ],
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2.5,
+      'circle-stroke-width': circleStrokeWidthExpression(),
       'circle-stroke-opacity': 1
     }
   })
@@ -313,6 +339,16 @@ watch(
   },
   { immediate: true, deep: true }
 )
+
+// Selection only restyles the circles: a full re-render tears down the card the selecting
+// click has just opened.
+watch(() => props.selectedPlanItemId, () => {
+  if (!isMapLibreMap(props.map) || !hasMapLibreLayer(props.map, state.layerId)) {
+    return
+  }
+  props.map.setPaintProperty(state.layerId, 'circle-radius', circleRadiusExpression())
+  props.map.setPaintProperty(state.layerId, 'circle-stroke-width', circleStrokeWidthExpression())
+})
 
 onBeforeUnmount(() => {
   clearLayer()

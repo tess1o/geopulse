@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.trips.model.entity.TripPlaceVisitMatchEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemOverrideState;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemPriority;
+import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemTravelMode;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
 import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 
@@ -22,6 +23,7 @@ import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
         // Entity enums
         TripStatus.class,
         TripPlanItemPriority.class,
+        TripPlanItemTravelMode.class,
         TripPlanItemVisitSource.class,
         TripPlanItemOverrideState.class,
         TripCollaboratorAccessRole.class,
@@ -35,6 +37,10 @@ import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
         TripSummaryDto.class,
         CreateTripPlanItemDto.class,
         UpdateTripPlanItemDto.class,
+        ReorderTripPlanItemsDto.class,
+        ReorderTripPlanItemsDto.Entry.class,
+        TripPlanRouteDto.class,
+        TripPlanRouteDto.Leg.class,
         TripPlanItemDto.class,
         TripVisitSuggestionDto.class,
         TripVisitOverrideRequestDto.class,

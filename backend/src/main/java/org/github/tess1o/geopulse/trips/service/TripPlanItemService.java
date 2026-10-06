@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
+import org.github.tess1o.geopulse.trips.model.dto.ReorderTripPlanItemsDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitOverrideRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripPlanItemDto;
@@ -16,8 +17,13 @@ import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_NOT_FOUND;
@@ -48,7 +54,7 @@ public class TripPlanItemService {
 
         int orderIndex = dto.getOrderIndex() != null
                 ? dto.getOrderIndex()
-                : (int) tripPlanItemRepository.countByTripId(tripId);
+                : tripPlanItemRepository.nextOrderIndex(tripId);
 
         TripPlanItemEntity entity = TripPlanItemEntity.builder()
                 .trip(trip)
@@ -58,6 +64,7 @@ public class TripPlanItemService {
                 .longitude(dto.getLongitude())
                 .plannedDay(dto.getPlannedDay())
                 .priority(dto.getPriority() != null ? dto.getPriority() : TripPlanItemPriority.OPTIONAL)
+                .travelMode(dto.getTravelMode())
                 .orderIndex(orderIndex)
                 .build();
 
@@ -73,6 +80,8 @@ public class TripPlanItemService {
         TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
                 .orElseThrow(() -> new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip plan item not found"));
 
+        boolean dayChanged = !Objects.equals(entity.getPlannedDay(), dto.getPlannedDay());
+
         entity.setTitle(dto.getTitle().trim());
         entity.setNotes(dto.getNotes());
         entity.setLatitude(dto.getLatitude());
@@ -81,8 +90,14 @@ public class TripPlanItemService {
         if (dto.getPriority() != null) {
             entity.setPriority(dto.getPriority());
         }
+        // Always applied: null is a real choice here ("automatic"), not "unchanged".
+        entity.setTravelMode(dto.getTravelMode());
         if (dto.getOrderIndex() != null) {
             entity.setOrderIndex(dto.getOrderIndex());
+        } else if (dayChanged) {
+            // Moving a stop to another day without an explicit position appends it to that day,
+            // rather than dropping it wherever its old position happens to fall.
+            entity.setOrderIndex(tripPlanItemRepository.nextOrderIndex(tripId));
         }
 
         // Visit evidence (isVisited, visitConfidence, visitSource, visitedAt,
@@ -95,6 +110,45 @@ public class TripPlanItemService {
         tripPlanItemRepository.persist(entity);
         log.info("Updated trip plan item {} for trip {} and user {}", itemId, tripId, userId);
         return toDto(entity);
+    }
+
+    /**
+     * Applies a complete ordering, as produced by drag-and-drop: each item takes its list position
+     * as its order index and the day it was dropped on. The list must name exactly the trip's
+     * current items - a stale list (a collaborator added or removed a stop meanwhile) is rejected
+     * so it cannot silently reorder around, or drop, an item the client has not seen.
+     */
+    @Transactional
+    public List<TripPlanItemDto> reorderTripPlanItems(UUID userId, Long tripId, ReorderTripPlanItemsDto dto) {
+        tripAccessService.requirePlanEditAccess(userId, tripId);
+
+        List<ReorderTripPlanItemsDto.Entry> entries = dto != null && dto.getItems() != null ? dto.getItems() : List.of();
+        List<TripPlanItemEntity> current = tripPlanItemRepository.findByTripId(tripId);
+        Map<Long, TripPlanItemEntity> byId = current.stream()
+                .collect(Collectors.toMap(TripPlanItemEntity::getId, Function.identity()));
+
+        Set<Long> requestedIds = new HashSet<>();
+        for (ReorderTripPlanItemsDto.Entry entry : entries) {
+            if (entry == null || entry.getId() == null || !requestedIds.add(entry.getId())) {
+                throw new IllegalArgumentException("Reorder list contains a missing or duplicate item id");
+            }
+        }
+        if (!requestedIds.equals(byId.keySet())) {
+            throw new IllegalArgumentException("Reorder list does not match the trip's current plan items");
+        }
+
+        for (int position = 0; position < entries.size(); position++) {
+            ReorderTripPlanItemsDto.Entry entry = entries.get(position);
+            TripPlanItemEntity entity = byId.get(entry.getId());
+            entity.setOrderIndex(position);
+            entity.setPlannedDay(entry.getPlannedDay());
+        }
+
+        tripPlanItemRepository.flush();
+        log.info("Reordered {} plan items in trip {} for user {}", entries.size(), tripId, userId);
+        return tripPlanItemRepository.findByTripId(tripId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -156,6 +210,7 @@ public class TripPlanItemService {
                 .longitude(entity.getLongitude())
                 .plannedDay(entity.getPlannedDay())
                 .priority(entity.getPriority())
+                .travelMode(entity.getTravelMode())
                 .orderIndex(entity.getOrderIndex())
                 .isVisited(entity.getIsVisited())
                 .visitConfidence(entity.getVisitConfidence())

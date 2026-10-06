@@ -141,7 +141,7 @@ export class TripWorkspacePage {
     const row = this.rowByTitle(currentTitle);
     await expect(row).toBeVisible({ timeout: 10000 });
 
-    await row.locator('button:has(.pi-pencil)').click();
+    await this.chooseStopAction(row, 'Edit stop');
     await this.page.waitForSelector('.p-dialog:visible:has-text("Edit Plan Item")', { timeout: 5000 });
     await this.page.fill('.p-dialog:visible input#planTitle', nextTitle);
     await this.page.locator('.p-dialog:visible button:has-text("Update Item")').click();
@@ -153,34 +153,48 @@ export class TripWorkspacePage {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
 
-    await row.locator('button:has(.pi-trash)').click();
+    await this.chooseStopAction(row, 'Delete stop');
     await this.page.waitForSelector(this.selectors.confirmAccept, { timeout: 5000 });
     await this.page.click(this.selectors.confirmAccept);
     await expect(this.rowByTitle(title)).toHaveCount(0, { timeout: 10000 });
   }
 
-  /** Stops can only be confirmed as visited from the rail; there is no reject/reset action in the UI. */
-  async markVisited(title) {
+  /** Every stop action (visit state, edit, delete) lives in the card's "Stop actions" menu. */
+  async chooseStopAction(row, actionLabel) {
+    await row.getByRole('button', { name: 'Stop actions' }).click();
+    await this.page.getByRole('menuitem', { name: actionLabel }).click();
+  }
+
+  async setVisitStatus(title, actionLabel) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
-    await row.getByRole('button', { name: 'Mark visited' }).click();
+    await this.chooseStopAction(row, actionLabel);
+  }
+
+  async markVisited(title) {
+    await this.setVisitStatus(title, 'Mark visited');
   }
 
   async hasMarkVisitedAction(title) {
-    return this.rowByTitle(title).getByRole('button', { name: 'Mark visited' }).isVisible().catch(() => false);
+    return this.rowByTitle(title).getByRole('button', { name: 'Stop actions' }).isVisible().catch(() => false);
   }
 
-  async getStatusText(title) {
+  /**
+   * The card's visit state: planned | visited | review | missed. The card no longer prints the
+   * default "Planned", so the state is read from its data attribute.
+   */
+  async getVisitStatus(title) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
-
-    return (await row.locator('.trip-stop-status').innerText()).replace(/\s+/g, ' ').trim();
+    return row.getAttribute('data-visit-status');
   }
 
-  /** Status tag plus its subtext (e.g. "Visited" / "Confidence 96%"). */
+  /** The number badge's label (e.g. "Stop 1 · Optional · Visited (96%)") plus the card's text. */
   async getStopSummaryText(title) {
     const row = this.rowByTitle(title);
     await expect(row).toBeVisible({ timeout: 10000 });
-    return (await row.locator('.trip-stop-main').innerText()).replace(/\s+/g, ' ').trim();
+    const badgeLabel = await row.locator('.trip-stop-sequence').getAttribute('aria-label');
+    const text = await row.locator('.trip-stop-main').innerText();
+    return `${badgeLabel || ''} ${text}`.replace(/\s+/g, ' ').trim();
   }
 }

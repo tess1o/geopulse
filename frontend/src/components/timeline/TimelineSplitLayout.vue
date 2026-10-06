@@ -418,6 +418,12 @@ defineExpose({
   }
 }
 
+/* Collapsed, the handle is the floating pill that brings the pane back, so it must show on
+   desktop too - the pane's own heading (the reason for mobile-only) is hidden with the pane. */
+.timeline-main--sheet-collapsed .timeline-sheet-handle--mobile-only {
+  display: flex;
+}
+
 .timeline-sheet-toggle-button {
   display: inline-flex;
   align-items: center;
@@ -554,6 +560,12 @@ defineExpose({
 
 .timeline-main--sheet-collapsed .timeline-sheet-toggle-icon {
   right: var(--gp-spacing-sm);
+}
+
+/* Collapsed, the pane is just its handle: whatever the page put in it is hidden, not only the
+   timeline list, so other side content (e.g. the trip stops rail) can't paint over the pill. */
+.timeline-sheet--compact > :deep(:not(.timeline-sheet-handle)) {
+  display: none;
 }
 
 .timeline-sheet--compact :deep(.timeline-container) {

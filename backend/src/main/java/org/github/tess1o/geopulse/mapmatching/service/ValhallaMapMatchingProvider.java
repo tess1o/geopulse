@@ -4,10 +4,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaLocation;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClient;
+import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClients;
+import org.github.tess1o.geopulse.mapmatching.client.ValhallaShapeDecoder;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchedPointDTO;
@@ -16,10 +17,8 @@ import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @ApplicationScoped
@@ -111,11 +110,7 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
     }
 
     private ValhallaRestClient buildClient() {
-        return RestClientBuilder.newBuilder()
-                .baseUri(URI.create(configuration.valhallaBaseUrl()))
-                .connectTimeout(Math.max(1, configuration.getConnectTimeoutSeconds()), TimeUnit.SECONDS)
-                .readTimeout(Math.max(1, configuration.getReadTimeoutSeconds()), TimeUnit.SECONDS)
-                .build(ValhallaRestClient.class);
+        return ValhallaRestClients.create(configuration);
     }
 
     private ValhallaTraceRouteResponse traceRoute(ValhallaRestClient client, ValhallaTraceRouteRequest request) {
@@ -183,49 +178,10 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
         if (trip != null && trip.getLegs() != null) {
             return trip.getLegs().stream()
                     .filter(leg -> leg.getShape() != null && !leg.getShape().isBlank())
-                    .flatMap(leg -> decodeValhallaShape(leg.getShape()).stream())
+                    .flatMap(leg -> ValhallaShapeDecoder.decode(leg.getShape()).stream())
                     .toList();
         }
         return List.of();
-    }
-
-    private List<List<Double>> decodeValhallaShape(String encoded) {
-        List<List<Double>> coordinates = new ArrayList<>();
-        int index = 0;
-        int lat = 0;
-        int lon = 0;
-
-        while (index < encoded.length()) {
-            DecodeResult latResult = decodeValue(encoded, index);
-            index = latResult.nextIndex();
-            lat += latResult.value();
-
-            DecodeResult lonResult = decodeValue(encoded, index);
-            index = lonResult.nextIndex();
-            lon += lonResult.value();
-
-            coordinates.add(List.of(lon / 1_000_000.0, lat / 1_000_000.0));
-        }
-
-        return coordinates;
-    }
-
-    private DecodeResult decodeValue(String encoded, int startIndex) {
-        int result = 1;
-        int shift = 0;
-        int index = startIndex;
-        int value;
-
-        do {
-            value = encoded.charAt(index++) - 63 - 1;
-            result += value << shift;
-            shift += 5;
-        } while (value >= 0x1f && index < encoded.length());
-
-        return new DecodeResult((result & 1) != 0 ? ~(result >> 1) : result >> 1, index);
-    }
-
-    private record DecodeResult(int value, int nextIndex) {
     }
 
     private List<MapMatchedPointDTO> toMatchedPoints(List<List<Double>> coordinates) {

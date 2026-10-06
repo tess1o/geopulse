@@ -12,4 +12,10 @@ public interface ValhallaRestClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     ValhallaTraceRouteResponse traceRoute(ValhallaTraceRouteRequest request);
+
+    @POST
+    @Path("/route")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    ValhallaRouteResponse route(ValhallaRouteRequest request);
 }
