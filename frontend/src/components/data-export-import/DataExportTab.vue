@@ -350,6 +350,11 @@
           </div>
 
           <div class="job-details">
+            <div class="job-detail" v-if="currentExportJob.format">
+              <span class="detail-label">{{ t('data.exportTab.formatLabel') }}</span>
+              <span class="detail-value">{{ getFormatDisplayName(currentExportJob.format) }}</span>
+            </div>
+
             <div class="job-detail">
               <span class="detail-label">{{ t('data.exportTab.dataTypesLabel') }}</span>
               <span class="detail-value">
@@ -357,10 +362,10 @@
               </span>
             </div>
 
-            <div class="job-detail" v-if="currentExportJob.dateRange">
+            <div class="job-detail" v-if="currentExportJob.startTime">
               <span class="detail-label">{{ t('data.exportTab.dateRangeLabel') }}</span>
               <span class="detail-value">
-                {{ formatDateRange(currentExportJob.dateRange) }}
+                {{ formatDateRange(currentExportJob) }}
               </span>
             </div>
 
@@ -440,7 +445,7 @@
                 </div>
                 <div class="export-item-details">
                   <span class="export-detail">
-                    {{ job.dataTypes?.map(getDataTypeDisplayName).join(', ') }}
+                    <template v-if="job.format">{{ getFormatDisplayName(job.format) }} · </template>{{ job.dataTypes?.map(getDataTypeDisplayName).join(', ') }}
                   </span>
                   <span v-if="job.fileSizeBytes" class="export-size">
                     {{ getFileSizeDisplay(job.fileSizeBytes) }}
@@ -609,32 +614,23 @@ const startExport = async () => {
   }
 
   try {
-    const dateRange = {
-      startDate: exportStartDate.value.toISOString(),
-      endDate: exportEndDate.value.toISOString()
+    const request = {
+      format: exportFormat.value,
+      startTime: exportStartDate.value.toISOString(),
+      endTime: exportEndDate.value.toISOString()
     }
 
-    if (exportFormat.value === 'owntracks') {
-      await exportImportStore.createOwnTracksExportJob(dateRange, owntracksExportFormat.value)
-    } else if (exportFormat.value === 'geojson') {
-      // For GeoJSON, use only GPS data and different endpoint
-      await exportImportStore.createGeoJsonExportJob(dateRange)
+    if (exportFormat.value === 'geopulse') {
+      request.dataTypes = selectedDataTypes.value
     } else if (exportFormat.value === 'gpx') {
-      // For GPX, use GPX export endpoint with options
-      const zipPerTrip = gpxExportMode.value === 'zip'
-      const zipGroupBy = gpxZipGroupBy.value
-      await exportImportStore.createGpxExportJob(dateRange, zipPerTrip, zipGroupBy)
-    } else if (exportFormat.value === 'csv') {
-      // For CSV, use CSV export endpoint
-      await exportImportStore.createCsvExportJob(dateRange)
-    } else {
-      // For GeoPulse, use selected data types
-      await exportImportStore.createExportJob(
-          selectedDataTypes.value,
-          dateRange,
-          'geopulse' // Always JSON for GeoPulse format
-      )
+      request.gpxLayout = gpxExportMode.value === 'single'
+        ? 'single'
+        : (gpxZipGroupBy.value === 'daily' ? 'zip-per-day' : 'zip-per-trip')
+    } else if (exportFormat.value === 'owntracks') {
+      request.owntracksLayout = owntracksExportFormat.value
     }
+
+    await exportImportStore.createExportJob(request)
 
     toast.add({
       severity: 'success',
@@ -756,11 +752,16 @@ const formatDate = (dateString) => {
   return `${timezone.formatDateDisplay(dateString)} ${timezone.formatTime(dateString, { withSeconds: true })}`
 }
 
-const formatDateRange = (dateRange) => {
-  if (!dateRange) return t('data.exportTab.allTimeLabel')
-  const start = timezone.formatDateDisplay(dateRange.startDate)
-  const end = timezone.formatDateDisplay(dateRange.endDate)
+const formatDateRange = (job) => {
+  if (!job?.startTime) return t('data.exportTab.allTimeLabel')
+  const start = timezone.formatDateDisplay(job.startTime)
+  const end = timezone.formatDateDisplay(job.endTime)
   return `${start} - ${end}`
+}
+
+const getFormatDisplayName = (format) => {
+  const option = exportFormatOptions.value.find(option => option.value === format)
+  return option ? option.label : format
 }
 
 // Store utility methods

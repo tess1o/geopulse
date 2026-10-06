@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.export.service;
+import org.github.tess1o.geopulse.export.model.GpxLayout;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -70,7 +71,7 @@ class GpxExportServiceTest {
         createGpsPoint(testStartDate.plus(1, ChronoUnit.MINUTES), 37.7749, -122.4194);
         createGpsPoint(testStartDate.plus(2, ChronoUnit.MINUTES), 37.7750, -122.4195);
         ExportJob job = createExportJob();
-        gpxExportService.generateGpxExport(job, false, "individual");
+        gpxExportService.generateGpxExport(job, GpxLayout.SINGLE);
         assertNotNull(job.getTempFilePath());
         assertEquals(".gpx", job.getFileExtension());
         byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
@@ -85,7 +86,7 @@ class GpxExportServiceTest {
     void testGenerateGpxExport_ZipIndividual() throws Exception {
         createGpsPoint(testStartDate.plus(1, ChronoUnit.MINUTES), 37.7749, -122.4194);
         ExportJob job = createExportJob();
-        gpxExportService.generateGpxExport(job, true, "individual");
+        gpxExportService.generateGpxExport(job, GpxLayout.ZIP_PER_TRIP);
         assertNotNull(job.getTempFilePath());
         assertEquals(".zip", job.getFileExtension());
         byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
@@ -111,7 +112,7 @@ class GpxExportServiceTest {
         }
         gpsPointRepository.flush();
         ExportJob job = createExportJob();
-        gpxExportService.generateGpxExport(job, false, "individual");
+        gpxExportService.generateGpxExport(job, GpxLayout.SINGLE);
         assertNotNull(job.getTempFilePath());
         byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         assertTrue(result.length > 0);

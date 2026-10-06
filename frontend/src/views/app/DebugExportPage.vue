@@ -321,8 +321,8 @@ const exportDebugData = async () => {
     const dateRange = timezone.createDateRangeFromPicker(startDate.value, endDate.value)
 
     const requestData = {
-      startDate: dateRange.start,  // Already UTC ISO string (start of day in user's timezone)
-      endDate: dateRange.end,      // Already UTC ISO string (end of day in user's timezone)
+      startTime: dateRange.start,  // Already UTC ISO string (start of day in user's timezone)
+      endTime: dateRange.end,      // Already UTC ISO string (end of day in user's timezone)
       latitudeShift: latitudeShift.value,
       longitudeShift: longitudeShift.value,
       includeConfiguration: includeConfiguration.value

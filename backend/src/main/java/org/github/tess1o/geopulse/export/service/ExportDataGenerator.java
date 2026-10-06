@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.export.model.GpxLayout;
 
 import java.io.IOException;
 
@@ -64,8 +65,8 @@ public class ExportDataGenerator {
     /**
      * Generates a GPX format export.
      */
-    public void generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
-        gpxExportService.generateGpxExport(job, zipPerTrip, zipGroupBy);
+    public void generateGpxExport(ExportJob job, GpxLayout layout) throws IOException {
+        gpxExportService.generateGpxExport(job, layout);
     }
 
     /**

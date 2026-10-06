@@ -36,8 +36,9 @@ public class ExportJob {
     private MessageDescriptor progressMessage;
     private List<String> dataTypes;
     private ExportDateRange dateRange;
-    private String format;
-    private Map<String, Object> options;
+    private ExportFormat format;
+    private GpxLayout gpxLayout = GpxLayout.SINGLE;
+    private OwnTracksLayout owntracksLayout = OwnTracksLayout.OCAT;
     private Instant createdAt;
     private Instant completedAt;
     private String tempFilePath;   // Path to temp file on disk (replaces in-memory byte arrays)
@@ -53,17 +54,12 @@ public class ExportJob {
         this.createdAt = Instant.now();
     }
 
-    public ExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format) {
+    public ExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, ExportFormat format) {
         this();
         this.userId = userId;
         this.dataTypes = dataTypes;
         this.dateRange = dateRange;
         this.format = format;
-    }
-
-    public ExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format, Map<String, Object> options) {
-        this(userId, dataTypes, dateRange, format);
-        this.options = options;
     }
 
     /**

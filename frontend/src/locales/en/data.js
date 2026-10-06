@@ -274,6 +274,7 @@ export default {
         startExport: 'Start Export',
         demoDisabledNote: 'Export is disabled in demo mode. The demo dataset is reset regularly and cannot be exported.',
         currentJobTitle: 'Current Export Job',
+        formatLabel: 'Format:',
         dataTypesLabel: 'Data Types:',
         dateRangeLabel: 'Date Range:',
         progressLabel: 'Progress:',

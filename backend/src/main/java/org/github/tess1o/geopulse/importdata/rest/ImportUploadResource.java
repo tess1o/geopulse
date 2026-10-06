@@ -67,6 +67,9 @@ public class ImportUploadResource {
                         "Unknown import format: " + request.getImportFormat() +
                                 ". Supported formats: " + ImportFormat.getSupportedFormats());
             }
+            if (request.getOptions() != null) {
+                request.getOptions().validateTimeRange();
+            }
 
             log.info("Initializing chunked upload for user {}: fileName={}, fileSize={} MB, format={}",
                     userId, request.getFileName(), request.getFileSize() / (1024 * 1024),

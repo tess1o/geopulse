@@ -37,9 +37,9 @@ public class ImportDataClearingService {
         }
         
         // If user specified a date range filter, calculate intersection
-        if (job.getOptions().getDateRangeFilter() != null) {
-            Instant userStart = job.getOptions().getDateRangeFilter().getStartDate();
-            Instant userEnd = job.getOptions().getDateRangeFilter().getEndDate();
+        if (job.getOptions().hasTimeRange()) {
+            Instant userStart = job.getOptions().getStartTime();
+            Instant userEnd = job.getOptions().getEndTime();
             
             // Calculate intersection: max(userStart, fileStart) to min(userEnd, fileEnd)
             Instant deleteStart = userStart.isAfter(fileDataRange.getStartDate()) ? 

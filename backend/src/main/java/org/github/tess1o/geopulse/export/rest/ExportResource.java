@@ -27,12 +27,16 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.export.model.CreateExportRequest;
 import org.github.tess1o.geopulse.export.model.DebugExportRequest;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportJobResponse;
+import org.github.tess1o.geopulse.export.model.GpxLayout;
+import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
 import org.github.tess1o.geopulse.export.service.DebugExportService;
 import org.github.tess1o.geopulse.export.service.ExportJobManager;
 import org.github.tess1o.geopulse.shared.api.SliceResponse;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
+import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.io.InputStream;
@@ -108,22 +112,39 @@ public class ExportResource {
     @APIResponse(responseCode = "400", description = "Invalid export request")
     @APIResponse(responseCode = "429", description = "Too many active export jobs")
     public ExportJobResponse createExport(CreateExportRequest request) {
-        if (request == null || request.getDataTypes() == null || request.getDataTypes().isEmpty()) {
-            throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Data types are required",
-                    Map.of("field", "dataTypes"));
+        if (request == null) {
+            throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Request body is required");
         }
-        validateDateRange(request.getDateRange());
-        if (request.getFormat() == null || request.getFormat().isBlank()) {
-            request.setFormat("geopulse");
-        }
+        validateDateRange(request.getStartTime(), request.getEndTime());
+        ExportFormat format = request.getFormat() == null ? ExportFormat.GEOPULSE : request.getFormat();
+        List<String> dataTypes = resolveDataTypes(format, request.getDataTypes());
 
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            return toResponse(exportJobManager.createExportJob(userId, request.getDataTypes(),
-                    request.getDateRange(), request.getFormat(), request.getOptions()));
+            return toResponse(exportJobManager.createExportJob(userId, dataTypes,
+                    new ExportDateRange(request.getStartTime(), request.getEndTime()), format,
+                    request.getGpxLayout() == null ? GpxLayout.SINGLE : request.getGpxLayout(),
+                    request.getOwntracksLayout() == null ? OwnTracksLayout.OCAT : request.getOwntracksLayout()));
         } catch (IllegalStateException exception) {
             throw new GeoPulseException(RATE_LIMIT_EXCEEDED, RATE_LIMIT_EXCEEDED.title(), exception);
         }
+    }
+
+    /**
+     * Only the native format lets the caller choose data types; every other format exports raw GPS points.
+     */
+    private static List<String> resolveDataTypes(ExportFormat format, List<String> requested) {
+        if (format != ExportFormat.GEOPULSE || requested == null || requested.isEmpty()) {
+            return List.of(ExportImportConstants.DataTypes.RAW_GPS);
+        }
+        List<String> unknown = requested.stream()
+                .filter(dataType -> !ExportImportConstants.DataTypes.ALL.contains(dataType))
+                .toList();
+        if (!unknown.isEmpty()) {
+            throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Unknown data types: " + String.join(", ", unknown),
+                    Map.of("field", "dataTypes", "unknown", unknown));
+        }
+        return List.copyOf(requested);
     }
 
     @GET
@@ -246,27 +267,27 @@ public class ExportResource {
                 "geopulse-debug-%s-%d.zip".formatted(userId, Instant.now().getEpochSecond()));
     }
 
-    private void validateDateRange(ExportDateRange dateRange) {
-        if (dateRange == null || dateRange.getStartDate() == null || dateRange.getEndDate() == null) {
-            throw new GeoPulseException(INVALID_DATE_RANGE, "Date range is required");
+    private void validateDateRange(Instant startTime, Instant endTime) {
+        if (startTime == null || endTime == null) {
+            throw new GeoPulseException(INVALID_DATE_RANGE, "startTime and endTime are required");
         }
-        if (dateRange.getStartDate().isAfter(Instant.now())) {
-            throw new GeoPulseException(INVALID_DATE_RANGE, "Start date cannot be in the future");
+        if (startTime.isAfter(Instant.now())) {
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Start time cannot be in the future");
         }
-        if (dateRange.getStartDate().isAfter(dateRange.getEndDate())) {
-            throw new GeoPulseException(INVALID_DATE_RANGE, "Start date must be before end date");
+        if (startTime.isAfter(endTime)) {
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Start time must be before end time");
         }
     }
 
     private void validateDebugRequest(DebugExportRequest request) {
-        if (request == null || request.getStartDate() == null || request.getEndDate() == null) {
-            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date and end date are required");
+        if (request == null || request.getStartTime() == null || request.getEndTime() == null) {
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "startTime and endTime are required");
         }
-        if (request.getStartDate().isAfter(Instant.now())) {
-            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date cannot be in the future");
+        if (request.getStartTime().isAfter(Instant.now())) {
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start time cannot be in the future");
         }
-        if (request.getStartDate().isAfter(request.getEndDate())) {
-            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date must be before end date");
+        if (request.getStartTime().isAfter(request.getEndTime())) {
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start time must be before end time");
         }
         if (request.getLatitudeShift() == null || request.getLongitudeShift() == null) {
             throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Latitude and longitude shift are required");
@@ -276,13 +297,15 @@ public class ExportResource {
     private ExportJobResponse toResponse(ExportJob job) {
         ExportJobResponse response = new ExportJobResponse();
         response.setExportJobId(job.getJobId());
+        response.setFormat(job.getFormat());
         response.setStatus(job.getStatus().name().toLowerCase());
         response.setProgress(job.getProgress());
         response.setProgressMessage(job.getProgressMessage());
         response.setCreatedAt(job.getCreatedAt());
         response.setCompletedAt(job.getCompletedAt());
         response.setDataTypes(job.getDataTypes());
-        response.setDateRange(job.getDateRange());
+        response.setStartTime(job.getDateRange().getStartDate());
+        response.setEndTime(job.getDateRange().getEndDate());
         response.setFileSizeBytes(job.getFileSizeBytes());
         if (job.getError() != null) {
             response.setError(new MessageDescriptor("export.error.failed", Map.of(), job.getError()));
@@ -306,8 +329,8 @@ public class ExportResource {
     private String generateFilename(ExportJob job, UUID userId) {
         String extension = job.getFileExtension() == null ? "dat" : job.getFileExtension().replaceFirst("^\\.", "");
         String filename = switch (job.getFormat()) {
-            case "owntracks" -> "owntracks-export-%s-%d.%s";
-            case "gpx" -> "geopulse-gpx-export-%s-%d.%s";
+            case OWNTRACKS -> "owntracks-export-%s-%d.%s";
+            case GPX -> "geopulse-gpx-export-%s-%d.%s";
             default -> "geopulse-export-%s-%d.%s";
         };
         return filename.formatted(userId.toString().substring(0, 8), job.getCreatedAt().getEpochSecond(), extension);

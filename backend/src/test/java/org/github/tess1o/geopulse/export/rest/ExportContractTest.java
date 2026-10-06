@@ -68,10 +68,14 @@ class ExportContractTest {
         assertThat(template.contentType()).startsWith("text/csv");
         assertThat(template.body().asString()).isNotBlank();
 
-        Response created = authenticated(ownerToken).body(exportBody(List.of("gps"))).when().post(EXPORTS);
+        Response created = authenticated(ownerToken).body(exportBody()).when().post(EXPORTS);
         assertThat(created.statusCode()).isEqualTo(200);
         UUID jobId = UUID.fromString(created.jsonPath().getString("exportJobId"));
         assertThat(created.jsonPath().getString("status")).isEqualTo("processing");
+        assertThat(created.jsonPath().getString("format")).isEqualTo("geopulse");
+        assertThat(created.jsonPath().getList("dataTypes")).containsExactly("rawgps");
+        assertThat(created.jsonPath().getString("startTime")).isEqualTo(RANGE_START.toString());
+        assertThat(created.jsonPath().getString("endTime")).isEqualTo(RANGE_END.toString());
 
         Response polled = authenticated(ownerToken).when().get(EXPORTS + "/" + jobId);
         assertThat(polled.statusCode()).isEqualTo(200);
@@ -90,26 +94,52 @@ class ExportContractTest {
     }
 
     @Test
+    void nonNativeFormatsAlwaysExportRawGps() {
+        Map<String, Object> body = exportBody();
+        body.put("format", "gpx");
+        body.put("gpxLayout", "zip-per-day");
+        body.put("dataTypes", List.of("timeline", "favorites"));
+
+        Response created = authenticated(ownerToken).body(body).when().post(EXPORTS);
+        assertThat(created.statusCode()).isEqualTo(200);
+        assertThat(created.jsonPath().getString("format")).isEqualTo("gpx");
+        assertThat(created.jsonPath().getList("dataTypes")).containsExactly("rawgps");
+
+        authenticated(ownerToken).when().delete(EXPORTS + "/" + created.jsonPath().getString("exportJobId"));
+    }
+
+    @Test
     void exactErrorCodesForInvalidRequests() {
-        assertProblemEnvelope(authenticated(ownerToken)
-                        .body(exportBody(List.of()))
-                        .when().post(EXPORTS),
+        Map<String, Object> unknownDataType = exportBody();
+        unknownDataType.put("dataTypes", List.of("rawgps", "gps"));
+        assertProblemEnvelope(authenticated(ownerToken).body(unknownDataType).when().post(EXPORTS),
                 400, "INVALID_EXPORT_REQUEST");
 
         Map<String, Object> noRange = new HashMap<>();
-        noRange.put("dataTypes", List.of("gps"));
+        noRange.put("format", "gpx");
         assertProblemEnvelope(authenticated(ownerToken).body(noRange).when().post(EXPORTS),
                 400, "INVALID_DATE_RANGE");
 
         assertProblemEnvelope(authenticated(ownerToken)
-                        .body(exportBody(List.of("gps"), Instant.now().plusSeconds(86_400), RANGE_END))
+                        .body(exportBody(Instant.now().plusSeconds(86_400), RANGE_END))
                         .when().post(EXPORTS),
                 400, "INVALID_DATE_RANGE");
 
         assertProblemEnvelope(authenticated(ownerToken)
-                        .body(exportBody(List.of("gps"), RANGE_END, RANGE_START))
+                        .body(exportBody(RANGE_END, RANGE_START))
                         .when().post(EXPORTS),
                 400, "INVALID_DATE_RANGE");
+
+        Map<String, Object> unknownFormat = exportBody();
+        unknownFormat.put("format", "json");
+        assertProblemEnvelope(authenticated(ownerToken).body(unknownFormat).when().post(EXPORTS),
+                400, "BAD_REQUEST");
+
+        Map<String, Object> unknownLayout = exportBody();
+        unknownLayout.put("format", "gpx");
+        unknownLayout.put("gpxLayout", "zip");
+        assertProblemEnvelope(authenticated(ownerToken).body(unknownLayout).when().post(EXPORTS),
+                400, "BAD_REQUEST");
     }
 
     @Test
@@ -126,7 +156,7 @@ class ExportContractTest {
     @Test
     void exportsRequireAuthentication() {
         assertProblemEnvelope(given().when().get(EXPORTS), 401, "AUTHENTICATION_REQUIRED");
-        assertProblemEnvelope(given().contentType(ContentType.JSON).body(exportBody(List.of("gps")))
+        assertProblemEnvelope(given().contentType(ContentType.JSON).body(exportBody())
                 .when().post(EXPORTS), 401, "AUTHENTICATION_REQUIRED");
     }
 
@@ -139,13 +169,13 @@ class ExportContractTest {
     void tooManyActiveJobsIsRateLimited() {
         List<UUID> created = new ArrayList<>();
         try {
-            Response first = authenticated(otherToken).body(exportBody(List.of("gps"))).when().post(EXPORTS);
+            Response first = authenticated(otherToken).body(exportBody()).when().post(EXPORTS);
             assertThat(first.statusCode()).isEqualTo(200);
 
             // export.max-jobs-per-user defaults to 5; keep creating until the limit trips.
             boolean limited = false;
             for (int i = 0; i < 10 && !limited; i++) {
-                Response response = authenticated(otherToken).body(exportBody(List.of("gps"))).when().post(EXPORTS);
+                Response response = authenticated(otherToken).body(exportBody()).when().post(EXPORTS);
                 if (response.statusCode() == 429) {
                     assertProblemEnvelope(response, 429, "RATE_LIMIT_EXCEEDED");
                     limited = true;
@@ -174,8 +204,8 @@ class ExportContractTest {
                 400, "INVALID_DEBUG_EXPORT_REQUEST");
 
         Map<String, Object> missingShifts = new HashMap<>();
-        missingShifts.put("startDate", RANGE_START.toString());
-        missingShifts.put("endDate", RANGE_END.toString());
+        missingShifts.put("startTime", RANGE_START.toString());
+        missingShifts.put("endTime", RANGE_END.toString());
         assertProblemEnvelope(authenticated(ownerToken).body(missingShifts).when().post(EXPORTS + "/debug"),
                 400, "INVALID_DEBUG_EXPORT_REQUEST");
 
@@ -190,22 +220,21 @@ class ExportContractTest {
         assertThat(zip.contentType()).startsWith("application/zip");
     }
 
-    private static Map<String, Object> exportBody(List<String> dataTypes) {
-        return exportBody(dataTypes, RANGE_START, RANGE_END);
+    private static Map<String, Object> exportBody() {
+        return exportBody(RANGE_START, RANGE_END);
     }
 
-    private static Map<String, Object> exportBody(List<String> dataTypes, Instant start, Instant end) {
+    private static Map<String, Object> exportBody(Instant start, Instant end) {
         Map<String, Object> body = new HashMap<>();
-        body.put("dataTypes", dataTypes);
-        body.put("dateRange", Map.of("startDate", start.toString(), "endDate", end.toString()));
-        body.put("format", "json");
+        body.put("startTime", start.toString());
+        body.put("endTime", end.toString());
         return body;
     }
 
     private static Map<String, Object> debugBody(Instant start, Instant end) {
         Map<String, Object> body = new HashMap<>();
-        body.put("startDate", start.toString());
-        body.put("endDate", end.toString());
+        body.put("startTime", start.toString());
+        body.put("endTime", end.toString());
         body.put("latitudeShift", 0.0);
         body.put("longitudeShift", 0.0);
         return body;

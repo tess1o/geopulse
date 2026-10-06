@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.exportimport;
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -122,7 +123,7 @@ class SequenceResetTest {
                     List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.FAVORITES,
                             ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION),
                     dateRange,
-                    ExportImportConstants.Formats.JSON);
+                    ExportFormat.GEOPULSE);
             exportDataGenerator.generateGeoPulseNativeExport(exportJob);
             byte[] data = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
             log.info("Export completed with {} bytes", data.length);

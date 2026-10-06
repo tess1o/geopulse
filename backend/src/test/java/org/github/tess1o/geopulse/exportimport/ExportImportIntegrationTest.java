@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.exportimport;
 
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -218,7 +219,7 @@ class ExportImportIntegrationTest {
         exportJob.setDataTypes(List.of(
                 ExportImportConstants.DataTypes.FAVORITES,
                 ExportImportConstants.DataTypes.USER_INFO));
-        exportJob.setFormat(ExportImportConstants.Formats.JSON);
+        exportJob.setFormat(ExportFormat.GEOPULSE);
         exportJob.setDateRange(testDateRange());
 
         byte[] exportedData = generateGeoPulseNativeExport(exportJob);
@@ -622,7 +623,7 @@ class ExportImportIntegrationTest {
                 testUser.getId(),
                 allNativeDataTypes(),
                 testDateRange(),
-                ExportImportConstants.Formats.JSON);
+                ExportFormat.GEOPULSE);
         return generateGeoPulseNativeExport(exportJob);
     }
 

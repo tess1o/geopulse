@@ -476,11 +476,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
 
             // Apply date range filter if specified
-            if (job.getOptions().getDateRangeFilter() != null) {
-                if (pointDto.getTimestamp().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                        pointDto.getTimestamp().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
-                    continue;
-                }
+            if (job.getOptions().isOutsideTimeRange(pointDto.getTimestamp())) {
+                continue;
             }
 
             try {
@@ -1948,11 +1945,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     private boolean shouldSkipDueToDateFilter(Instant timestamp, ImportJob job) {
-        if (timestamp == null || job.getOptions().getDateRangeFilter() == null) {
-            return false;
-        }
-        return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
+        return job.getOptions().isOutsideTimeRange(timestamp);
     }
 
     /**

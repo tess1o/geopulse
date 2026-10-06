@@ -1658,23 +1658,56 @@
         }
       },
       "CreateExportRequest" : {
+        "required" : [ "startTime", "endTime" ],
         "type" : "object",
         "properties" : {
+          "format" : {
+            "description" : "Export file format.",
+            "default" : "geopulse",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/ExportFormat"
+            } ]
+          },
+          "startTime" : {
+            "description" : "Start of the range, inclusive (ISO-8601 instant).",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-01T00:00:00Z"
+          },
+          "endTime" : {
+            "description" : "End of the range, inclusive (ISO-8601 instant).",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-31T23:59:59Z"
+          },
           "dataTypes" : {
+            "description" : "Data types to include in a geopulse export. Ignored by other formats, which always export raw GPS points.",
+            "default" : [ "rawgps" ],
             "type" : "array",
             "items" : {
               "type" : "string"
             }
           },
-          "dateRange" : {
-            "$ref" : "#/components/schemas/ExportDateRange"
+          "gpxLayout" : {
+            "description" : "How a gpx export is packaged. Ignored by other formats.",
+            "default" : "single",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/GpxLayout"
+            } ]
           },
-          "format" : {
-            "type" : "string"
-          },
-          "options" : {
-            "type" : "object",
-            "additionalProperties" : { }
+          "owntracksLayout" : {
+            "description" : "JSON shape of an owntracks export. Ignored by other formats.",
+            "default" : "ocat",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/OwnTracksLayout"
+            } ]
           }
         }
       },
@@ -2146,6 +2179,9 @@
           "priority" : {
             "$ref" : "#/components/schemas/TripPlanItemPriority"
           },
+          "travelMode" : {
+            "$ref" : "#/components/schemas/TripPlanItemTravelMode"
+          },
           "orderIndex" : {
             "format" : "int32",
             "minimum" : 0,
@@ -2597,10 +2633,10 @@
       "DebugExportRequest" : {
         "type" : "object",
         "properties" : {
-          "startDate" : {
+          "startTime" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "endDate" : {
+          "endTime" : {
             "$ref" : "#/components/schemas/Instant"
           },
           "latitudeShift" : {
@@ -2930,6 +2966,19 @@
           }
         }
       },
+      "Entry" : {
+        "required" : [ "id" ],
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "plannedDay" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          }
+        }
+      },
       "EnvironmentStatus" : {
         "enum" : [ "PENDING", "RUNNING", "READY", "FAILED", "UNKNOWN" ],
         "type" : "string"
@@ -2938,32 +2987,18 @@
         "enum" : [ "IMPORT_FAILED", "SETUP_FAILED", "TRIP_RECLASSIFICATION_FAILED", "SETUP_WORKER_STALE", "UNKNOWN" ],
         "type" : "string"
       },
-      "ExportDateRange" : {
-        "type" : "object",
-        "properties" : {
-          "startDate" : {
-            "description" : "Start of the range, inclusive (ISO-8601 instant).",
-            "type" : "string",
-            "allOf" : [ {
-              "$ref" : "#/components/schemas/Instant"
-            } ],
-            "example" : "2026-01-01T00:00:00Z"
-          },
-          "endDate" : {
-            "description" : "End of the range, inclusive (ISO-8601 instant).",
-            "type" : "string",
-            "allOf" : [ {
-              "$ref" : "#/components/schemas/Instant"
-            } ],
-            "example" : "2026-01-31T23:59:59Z"
-          }
-        }
+      "ExportFormat" : {
+        "enum" : [ "geopulse", "gpx", "owntracks", "geojson", "csv" ],
+        "type" : "string"
       },
       "ExportJobResponse" : {
         "type" : "object",
         "properties" : {
           "exportJobId" : {
             "$ref" : "#/components/schemas/UUID"
+          },
+          "format" : {
+            "$ref" : "#/components/schemas/ExportFormat"
           },
           "status" : {
             "type" : "string"
@@ -2993,8 +3028,11 @@
               "type" : "string"
             }
           },
-          "dateRange" : {
-            "$ref" : "#/components/schemas/ExportDateRange"
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
           },
           "fileSizeBytes" : {
             "format" : "int64",
@@ -3941,6 +3979,10 @@
           }
         }
       },
+      "GpxLayout" : {
+        "enum" : [ "single", "zip-per-trip", "zip-per-day" ],
+        "type" : "string"
+      },
       "Health" : {
         "type" : "object",
         "properties" : {
@@ -4348,12 +4390,21 @@
               "type" : "string"
             }
           },
-          "dateRangeFilter" : {
-            "description" : "Only import data with timestamps inside this range. No filtering when omitted.",
-            "type" : "object",
+          "startTime" : {
+            "description" : "Only import data at or after this time (ISO-8601 instant). Send together with endTime. No filtering when both are omitted.",
+            "type" : "string",
             "allOf" : [ {
-              "$ref" : "#/components/schemas/ExportDateRange"
-            } ]
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-01T00:00:00Z"
+          },
+          "endTime" : {
+            "description" : "Only import data at or before this time (ISO-8601 instant). Send together with startTime. No filtering when both are omitted.",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2026-01-31T23:59:59Z"
           },
           "clearDataBeforeImport" : {
             "description" : "Delete existing data in the imported date range before importing.",
@@ -4590,6 +4641,46 @@
       "JsonNodeType" : {
         "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ],
         "type" : "string"
+      },
+      "Leg" : {
+        "type" : "object",
+        "properties" : {
+          "fromItemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "toItemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "requestedMode" : {
+            "$ref" : "#/components/schemas/TripPlanItemTravelMode"
+          },
+          "resolvedMode" : {
+            "$ref" : "#/components/schemas/TripPlanItemTravelMode"
+          },
+          "routed" : {
+            "type" : "boolean"
+          },
+          "coordinates" : {
+            "type" : "array",
+            "items" : {
+              "type" : "array",
+              "items" : {
+                "format" : "double",
+                "type" : "number"
+              }
+            }
+          },
+          "distanceMeters" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "durationSeconds" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
       },
       "LinkAccountWithPasswordRequest" : {
         "required" : [ "email", "password", "provider", "linkingToken" ],
@@ -5757,6 +5848,10 @@
           }
         }
       },
+      "OwnTracksLayout" : {
+        "enum" : [ "ocat", "array" ],
+        "type" : "string"
+      },
       "OwnTracksMqttConfigDTO" : {
         "type" : "object",
         "properties" : {
@@ -6731,6 +6826,18 @@
           },
           "release" : {
             "$ref" : "#/components/schemas/WhatsNewItem"
+          }
+        }
+      },
+      "ReorderTripPlanItemsDto" : {
+        "required" : [ "items" ],
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Entry"
+            }
           }
         }
       },
@@ -8654,6 +8761,9 @@
           "priority" : {
             "$ref" : "#/components/schemas/TripPlanItemPriority"
           },
+          "travelMode" : {
+            "$ref" : "#/components/schemas/TripPlanItemTravelMode"
+          },
           "orderIndex" : {
             "format" : "int32",
             "type" : "integer"
@@ -8690,9 +8800,27 @@
         "enum" : [ "OPTIONAL", "MUST" ],
         "type" : "string"
       },
+      "TripPlanItemTravelMode" : {
+        "enum" : [ "WALK", "BICYCLE", "DRIVE", "STRAIGHT" ],
+        "type" : "string"
+      },
       "TripPlanItemVisitSource" : {
         "enum" : [ "AUTO", "MANUAL" ],
         "type" : "string"
+      },
+      "TripPlanRouteDto" : {
+        "type" : "object",
+        "properties" : {
+          "routingAvailable" : {
+            "type" : "boolean"
+          },
+          "legs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Leg"
+            }
+          }
+        }
       },
       "TripReconstructionCommitResponseDto" : {
         "type" : "object",
@@ -9809,7 +9937,7 @@
           "flightMinAvgSpeed" : {
             "format" : "double",
             "maximum" : 600.0,
-            "minimum" : 250.0,
+            "minimum" : 100.0,
             "type" : "number"
           },
           "flightMinMaxSpeed" : {
@@ -9914,6 +10042,9 @@
           },
           "priority" : {
             "$ref" : "#/components/schemas/TripPlanItemPriority"
+          },
+          "travelMode" : {
+            "$ref" : "#/components/schemas/TripPlanItemTravelMode"
           },
           "orderIndex" : {
             "format" : "int32",
@@ -23486,6 +23617,96 @@
           }
         },
         "summary" : "Create Plan Item",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/trips/{tripId}/plan-items/order" : {
+      "put" : {
+        "operationId" : "TripPlanItemResource_reorderPlanItems",
+        "tags" : [ "User: Trips and Planning" ],
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReorderTripPlanItemsDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TripPlanItemDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Reorder Plan Items",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/v1/trips/{tripId}/plan-items/route" : {
+      "get" : {
+        "operationId" : "TripPlanItemResource_getPlanRoute",
+        "tags" : [ "User: Trips and Planning" ],
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TripPlanRouteDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Plan Route",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]

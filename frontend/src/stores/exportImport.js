@@ -174,20 +174,12 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Export
-        async createExportJob(dataTypes, dateRange, format = 'json', options = null) {
+        // request: { format, startTime, endTime, dataTypes?, gpxLayout?, owntracksLayout? }
+        async createExportJob(request) {
             this.isExporting = true
             this.exportError = null
             try {
-                const payload = {
-                    dataTypes,
-                    dateRange,
-                    format
-                }
-                if (options) {
-                    payload.options = options
-                }
-
-                const job = await apiService.post('/exports', payload)
+                const job = await apiService.post('/exports', request)
                 this.setCurrentExportJob(job)
                 this.addExportJob(job)
                 return job
@@ -243,30 +235,6 @@ export const useExportImportStore = defineStore('exportImport', {
             } catch (error) {
                 throw this.failExport(error, 'Failed to delete export')
             }
-        },
-
-        // API Actions - Export (OwnTracks)
-        // Convenience wrapper for createExportJob with OwnTracks format
-        async createOwnTracksExportJob(dateRange, owntracksFormat = 'ocat') {
-            return this.createExportJob(['raw_gps'], dateRange, 'owntracks', { owntracksFormat })
-        },
-
-        // API Actions - Export (GeoJSON)
-        // Convenience wrapper for createExportJob with GeoJSON format
-        async createGeoJsonExportJob(dateRange) {
-            return this.createExportJob(['raw_gps'], dateRange, 'geojson')
-        },
-
-        // API Actions - Export (GPX)
-        // Convenience wrapper for createExportJob with GPX format
-        async createGpxExportJob(dateRange, zipPerTrip = false, zipGroupBy = 'individual') {
-            return this.createExportJob(['raw_gps'], dateRange, 'gpx', { zipPerTrip, zipGroupBy })
-        },
-
-        // API Actions - Export (CSV)
-        // Convenience wrapper for createExportJob with CSV format
-        async createCsvExportJob(dateRange) {
-            return this.createExportJob(['raw_gps'], dateRange, 'csv')
         },
 
         // Download CSV template

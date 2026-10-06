@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.shared.exportimport;
 
+import java.util.Set;
+
 /**
  * Constants for export/import functionality to ensure consistency between
  * export and import services and avoid naming mismatches.
@@ -31,6 +33,11 @@ public final class ExportImportConstants {
         public static final String MAP_MATCHING = "mapmatching";
         public static final String FRIENDS = "friends";
         public static final String FRIEND_PERMISSIONS = "friendpermissions";
+
+        public static final Set<String> ALL = Set.of(
+                RAW_GPS, TIMELINE, DATA_GAPS, FAVORITES, USER_INFO, LOCATION_SOURCES, REVERSE_GEOCODING_LOCATION,
+                TIMELINE_LABELS, TIMELINE_OVERRIDES, TRIP_WORKSPACE, NOTIFICATION_TEMPLATES, GEOFENCING, NOTES,
+                WEATHER_SAMPLES, MAP_MATCHING, FRIENDS, FRIEND_PERMISSIONS);
     }
 
     /**

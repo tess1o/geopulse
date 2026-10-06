@@ -6,10 +6,12 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportStatus;
+import org.github.tess1o.geopulse.export.model.GpxLayout;
+import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -32,15 +34,18 @@ public class ExportJobManager {
     private final ConcurrentHashMap<UUID, ExportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
-    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format) {
-        return createExportJob(userId, dataTypes, dateRange, format, null);
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, ExportFormat format) {
+        return createExportJob(userId, dataTypes, dateRange, format, GpxLayout.SINGLE, OwnTracksLayout.OCAT);
     }
 
-    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format, Map<String, Object> options) {
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, ExportFormat format,
+                                     GpxLayout gpxLayout, OwnTracksLayout owntracksLayout) {
         // Validate active jobs limit
         validateJobLimit(userId);
 
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, format, options);
+        ExportJob job = new ExportJob(userId, dataTypes, dateRange, format);
+        job.setGpxLayout(gpxLayout);
+        job.setOwntracksLayout(owntracksLayout);
         activeJobs.put(job.getJobId(), job);
 
         log.info("Created {} export job {} for user {} with date range: {} to {}",
@@ -102,30 +107,15 @@ public class ExportJobManager {
         return true;
     }
 
-    private final Map<String, ExportJobProcessor> exportStrategies = new HashMap<>();
+    private final Map<ExportFormat, ExportJobProcessor> exportStrategies = new EnumMap<>(ExportFormat.class);
 
     @jakarta.annotation.PostConstruct
     public void init() {
-        exportStrategies.put("owntracks", job -> exportDataGenerator.generateOwnTracksExport(job));
-        exportStrategies.put("geojson", job -> exportDataGenerator.generateGeoJsonExport(job));
-        exportStrategies.put("csv", job -> exportDataGenerator.generateCsvExport(job));
-        exportStrategies.put("gpx", this::generateGpx);
-        exportStrategies.put("geopulse", job -> exportDataGenerator.generateGeoPulseNativeExport(job));
-    }
-
-    private void generateGpx(ExportJob job) throws IOException {
-        boolean zipPerTrip = false;
-        String zipGroupBy = "individual"; // default
-
-        if (job.getOptions() != null) {
-            if (job.getOptions().containsKey("zipPerTrip")) {
-                zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
-            }
-            if (job.getOptions().containsKey("zipGroupBy")) {
-                zipGroupBy = job.getOptions().get("zipGroupBy").toString();
-            }
-        }
-        exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
+        exportStrategies.put(ExportFormat.OWNTRACKS, job -> exportDataGenerator.generateOwnTracksExport(job));
+        exportStrategies.put(ExportFormat.GEOJSON, job -> exportDataGenerator.generateGeoJsonExport(job));
+        exportStrategies.put(ExportFormat.CSV, job -> exportDataGenerator.generateCsvExport(job));
+        exportStrategies.put(ExportFormat.GPX, job -> exportDataGenerator.generateGpxExport(job, job.getGpxLayout()));
+        exportStrategies.put(ExportFormat.GEOPULSE, job -> exportDataGenerator.generateGeoPulseNativeExport(job));
     }
 
     @FunctionalInterface
@@ -162,17 +152,7 @@ public class ExportJobManager {
             try {
                 log.debug("Processing export job {} with format {}", job.getJobId(), job.getFormat());
 
-                // Get format-specific processor - fail fast if unsupported
-                ExportJobProcessor processor = exportStrategies.get(job.getFormat());
-                if (processor == null) {
-                    throw new IllegalArgumentException(
-                            String.format("Unsupported export format: '%s'. Supported formats: %s",
-                                    job.getFormat(),
-                                    String.join(", ", exportStrategies.keySet()))
-                    );
-                }
-
-                processor.process(job);
+                exportStrategies.get(job.getFormat()).process(job);
 
                 // Status and progress are updated by the generator services,
                 // but we finalize it here to ensure consistency

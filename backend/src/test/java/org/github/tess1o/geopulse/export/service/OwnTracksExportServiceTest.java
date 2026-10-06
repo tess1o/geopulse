@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.export.service;
+import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -22,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Comprehensive unit tests for OwnTracks streaming export service.
@@ -181,7 +181,7 @@ class OwnTracksExportServiceTest {
                     37.7749, -122.4194, 100.0, 15.0, 95.0);
         }
         ExportJob job = createExportJob();
-        job.setOptions(Map.of("owntracksFormat", "array"));
+        job.setOwntracksLayout(OwnTracksLayout.ARRAY);
         ownTracksExportService.generateOwnTracksExport(job);
         assertNotNull(job.getTempFilePath());
         byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));

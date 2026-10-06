@@ -70,7 +70,7 @@ public class DebugExportService {
      */
     public byte[] generateDebugExport(UUID userId, DebugExportRequest request) throws IOException {
         log.info("Starting debug export for user {} from {} to {}",
-                userId, request.getStartDate(), request.getEndDate());
+                userId, request.getStartTime(), request.getEndTime());
 
         log.info("Applying configured coordinate shift to debug export");
 
@@ -149,8 +149,8 @@ public class DebugExportService {
                 baos,
                 batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
                         userId,
-                        request.getStartDate(),
-                        request.getEndDate(),
+                        request.getStartTime(),
+                        request.getEndTime(),
                         batchSize,
                         batchConsumer
                 ),
@@ -200,8 +200,8 @@ public class DebugExportService {
                                 "AND timestamp <= :endDate"
                 )
                 .setParameter("userId", userId)
-                .setParameter("startDate", request.getStartDate())
-                .setParameter("endDate", request.getEndDate())
+                .setParameter("startDate", request.getStartTime())
+                .setParameter("endDate", request.getEndTime())
                 .getSingleResult();
 
         if (bounds[0] == null || bounds[1] == null) {
@@ -253,8 +253,8 @@ public class DebugExportService {
         metadata.put("anonymization_applied", true);
 
         Map<String, String> dateRange = new HashMap<>();
-        dateRange.put("start", request.getStartDate().toString());
-        dateRange.put("end", request.getEndDate().toString());
+        dateRange.put("start", request.getStartTime().toString());
+        dateRange.put("end", request.getEndTime().toString());
         metadata.put("original_date_range", dateRange);
 
         metadata.put("gps_point_count", gpsPointCount);

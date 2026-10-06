@@ -97,6 +97,11 @@ const restApiItems = [
     },
     {
         type: 'doc',
+        id: 'api/examples',
+        label: 'API Examples',
+    },
+    {
+        type: 'doc',
         id: 'api/mcp',
         label: 'MCP Server',
     },

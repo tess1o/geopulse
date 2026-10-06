@@ -199,12 +199,7 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
      * @return true if the timestamp is outside the date range and should be skipped
      */
     protected boolean isOutsideDateRange(Instant timestamp, ImportJob job) {
-        if (job.getOptions().getDateRangeFilter() == null || timestamp == null) {
-            return false;
-        }
-        
-        return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-               timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
+        return job.getOptions().isOutsideTimeRange(timestamp);
     }
     
     /**

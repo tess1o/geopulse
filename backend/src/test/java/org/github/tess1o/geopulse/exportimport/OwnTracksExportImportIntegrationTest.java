@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.exportimport;
 
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -150,7 +151,7 @@ class OwnTracksExportImportIntegrationTest {
                 dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.HOURS));
                 List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
                 ExportJob exportJob = exportJobManager.createExportJob(testUser.getId(), dataTypes, dateRange,
-                                "owntracks");
+                                ExportFormat.OWNTRACKS);
                 // Process the export job
                 byte[] exportedJsonData = generateOwnTracksExport(exportJob);
                 // Verify it's valid official OwnTracks Recorder/ocat JSON
@@ -239,7 +240,7 @@ class OwnTracksExportImportIntegrationTest {
                 fullDateRange.setEndDate(Instant.now().plus(1, ChronoUnit.HOURS));
                 List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
                 ExportJob exportJob = exportJobManager.createExportJob(testUser.getId(), dataTypes, fullDateRange,
-                                "owntracks");
+                                ExportFormat.OWNTRACKS);
                 byte[] exportedJsonData = generateOwnTracksExport(exportJob);
                 // Clear existing GPS data
                 long clearedCount = QuarkusTransaction.requiringNew().call(() -> {
@@ -250,10 +251,8 @@ class OwnTracksExportImportIntegrationTest {
                 // Import with date range filter (only last 2 hours)
                 ImportOptions importOptions = new ImportOptions();
                 importOptions.setImportFormat("owntracks");
-                ExportDateRange filterDateRange = new ExportDateRange();
-                filterDateRange.setStartDate(Instant.now().minus(2, ChronoUnit.HOURS));
-                filterDateRange.setEndDate(Instant.now().plus(1, ChronoUnit.HOURS));
-                importOptions.setDateRangeFilter(filterDateRange);
+                importOptions.setStartTime(Instant.now().minus(2, ChronoUnit.HOURS));
+                importOptions.setEndTime(Instant.now().plus(1, ChronoUnit.HOURS));
                 ImportJob importJob = importJobService.createImportJob(
                                 testUser.getId(), importOptions, "test-owntracks-filtered.json", exportedJsonData);
                 importDataService.processImportData(importJob);
@@ -265,8 +264,8 @@ class OwnTracksExportImportIntegrationTest {
                 // Verify imported points are within the date range
                 List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
                                 testUser.getId(),
-                                filterDateRange.getStartDate(),
-                                filterDateRange.getEndDate());
+                                importOptions.getStartTime(),
+                                importOptions.getEndTime());
                 assertEquals(importedCount, importedPoints.size(),
                                 "All imported points should be within the filter date range");
                 log.info("Date range filter test completed: imported {} out of {} points",

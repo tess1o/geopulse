@@ -273,6 +273,7 @@ export default {
         startExport: 'Почати експорт',
         demoDisabledNote: 'Експорт вимкнено в демо-режимі. Демо-набір даних регулярно скидається і не може бути експортований.',
         currentJobTitle: 'Поточне завдання експорту',
+        formatLabel: 'Формат:',
         dataTypesLabel: 'Типи даних:',
         dateRangeLabel: 'Діапазон дат:',
         progressLabel: 'Прогрес:',

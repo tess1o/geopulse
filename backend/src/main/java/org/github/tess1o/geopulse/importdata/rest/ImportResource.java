@@ -107,6 +107,7 @@ public class ImportResource {
         }
 
         ImportOptions importOptions = options != null ? options : new ImportOptions();
+        importOptions.validateTimeRange();
         importOptions.setImportFormat(importFormat.getValue());
 
             // Create import job

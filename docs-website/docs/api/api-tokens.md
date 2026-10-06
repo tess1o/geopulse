@@ -22,8 +22,8 @@ Treat API tokens like passwords. Anyone with the token can use it until it expir
 
 1. Sign in to GeoPulse.
 2. Open **Profile**.
-3. Select the **Security** tab.
-4. Find **API Tokens**.
+3. In the **Personal** group, select **Security**. You can also go straight to `/app/profile?tab=security`.
+4. Scroll to the **API tokens** section.
 5. Click **Create Token**.
 6. Enter a clear name, such as `Home dashboard` or `Nightly export job`.
 7. Optionally choose an expiration date.
@@ -39,15 +39,36 @@ Send the token on every API request with `X-API-Key`:
 
 ```bash
 curl -H "X-API-Key: <your-api-token>" \
-  http://localhost:8080/api/users/me
+  http://localhost:8080/api/v1/users/me
 ```
 
 Or use a bearer token header:
 
 ```bash
 curl -H "Authorization: Bearer <your-api-token>" \
-  http://localhost:8080/api/users/me
+  http://localhost:8080/api/v1/users/me
 ```
+
+Either request returns the profile of the user who owns the token. The response (abbreviated) looks like:
+
+```json
+{
+  "userId": "3f6c1d2e-8a4b-4c5d-9e0f-1a2b3c4d5e6f",
+  "email": "user@example.com",
+  "fullName": "Jane Doe",
+  "role": "USER",
+  "timezone": "Europe/Kyiv",
+  "avatar": "/avatars/avatar3.png",
+  "hasPassword": true,
+  "demoMode": false,
+  "canViewAdmin": false,
+  "adminReadOnly": false,
+  "uiPreferences": {},
+  "timelineDisplay": {}
+}
+```
+
+For more requests, such as reading the timeline or importing a GPX file, see [API Examples](./examples.md).
 
 ## Expiration and rotation
 

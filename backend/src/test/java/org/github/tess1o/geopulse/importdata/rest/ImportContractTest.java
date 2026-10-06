@@ -143,7 +143,7 @@ class ImportContractTest {
     @Test
     void directUploadAcceptsOptionsWithOrWithoutAPartContentType() {
         String options = "{\"clearDataBeforeImport\":true,"
-                + "\"dateRangeFilter\":{\"startDate\":\"2026-01-01T00:00:00Z\",\"endDate\":\"2026-01-31T23:59:59Z\"}}";
+                + "\"startTime\":\"2026-01-01T00:00:00Z\",\"endTime\":\"2026-01-31T23:59:59Z\"}";
 
         Response plainField = multipart(ownerToken,
                         filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
@@ -176,6 +176,24 @@ class ImportContractTest {
                                 "importFormat", "geojson", "options", "{}"))
                         .when().post(UPLOADS),
                 400, "BAD_REQUEST");
+    }
+
+    @Test
+    void timeRangeMustBeCompleteAndOrdered() {
+        assertProblemEnvelope(multipart(ownerToken,
+                        filePart("file", FIXTURE_NAME, fixtureBytes(), "application/geo+json"),
+                        fieldPart("format", "geojson"),
+                        fieldPart("options", "{\"startTime\":\"2026-01-01T00:00:00Z\"}"))
+                        .when().post(IMPORTS),
+                400, "INVALID_DATE_RANGE");
+
+        assertProblemEnvelope(authenticated(ownerToken)
+                        .body(Map.of("fileName", FIXTURE_NAME, "fileSize", fixtureBytes().length,
+                                "importFormat", "geojson",
+                                "options", Map.of("startTime", "2026-01-31T00:00:00Z",
+                                        "endTime", "2026-01-01T00:00:00Z")))
+                        .when().post(UPLOADS),
+                400, "INVALID_DATE_RANGE");
     }
 
     @Test

@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -11,7 +12,6 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -23,10 +23,6 @@ import java.util.function.Consumer;
 @ApplicationScoped
 @Slf4j
 public class OwnTracksExportService {
-    private static final String OPTION_OWNTRACKS_FORMAT = "owntracksFormat";
-    private static final String FORMAT_OCAT = "ocat";
-    private static final String FORMAT_ARRAY = "array";
-
     @Inject
     GpsPointMapper gpsPointMapper;
 
@@ -51,7 +47,7 @@ public class OwnTracksExportService {
         log.info("Starting streaming OwnTracks export for user {}", job.getUserId());
 
         job.updateProgress(5, "initializingOwnTracks", "Initializing OwnTracks export...");
-        String ownTracksFormat = resolveOwnTracksFormat(job);
+        OwnTracksLayout layout = job.getOwntracksLayout() == null ? OwnTracksLayout.OCAT : job.getOwntracksLayout();
 
         // Create temp file
         java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".json");
@@ -68,7 +64,7 @@ public class OwnTracksExportService {
                     job.getDateRange().getEndDate());
 
             int totalWritten;
-            if (FORMAT_ARRAY.equals(ownTracksFormat)) {
+            if (layout == OwnTracksLayout.ARRAY) {
                 totalWritten = streamingExportService.<GpsPointEntity, OwnTracksLocationMessage>streamJsonArray(
                         bos,
                         batchConsumer -> streamExportPoints(job, batchSize, batchConsumer),
@@ -94,7 +90,7 @@ public class OwnTracksExportService {
             }
 
             log.info("Completed streaming OwnTracks export: {} messages, format={}",
-                    totalWritten, ownTracksFormat);
+                    totalWritten, layout.value());
         }
 
         // Update job with file info
@@ -114,25 +110,6 @@ public class OwnTracksExportService {
                 job.getDateRange().getEndDate(),
                 batchSize,
                 batchConsumer);
-    }
-
-    private String resolveOwnTracksFormat(ExportJob job) {
-        if (job.getOptions() == null || !job.getOptions().containsKey(OPTION_OWNTRACKS_FORMAT)) {
-            return FORMAT_OCAT;
-        }
-
-        Object requested = job.getOptions().get(OPTION_OWNTRACKS_FORMAT);
-        if (requested == null) {
-            return FORMAT_OCAT;
-        }
-
-        String normalized = requested.toString().trim().toLowerCase(Locale.ENGLISH);
-        if (FORMAT_OCAT.equals(normalized) || FORMAT_ARRAY.equals(normalized)) {
-            return normalized;
-        }
-
-        throw new IllegalArgumentException(
-                "Unsupported OwnTracks export format: " + requested + ". Supported values: ocat, array");
     }
 
     private int toProgressTotal(long totalRecords) {

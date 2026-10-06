@@ -659,10 +659,8 @@ const startImport = async () => {
     }
 
     if (enableDateFilter.value && importStartDate.value && importEndDate.value) {
-      options.dateRangeFilter = {
-        startDate: importStartDate.value.toISOString(),
-        endDate: importEndDate.value.toISOString()
-      }
+      options.startTime = importStartDate.value.toISOString()
+      options.endTime = importEndDate.value.toISOString()
     }
 
     // Add clear data before import option

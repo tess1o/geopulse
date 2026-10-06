@@ -11,14 +11,14 @@ import java.time.Instant;
 @Data
 public class DebugExportRequest {
     /**
-     * Start date of the export range
+     * Start of the export range
      */
-    private Instant startDate;
+    private Instant startTime;
 
     /**
-     * End date of the export range
+     * End of the export range
      */
-    private Instant endDate;
+    private Instant endTime;
 
     /**
      * Latitude shift in degrees (added to all GPS coordinates).

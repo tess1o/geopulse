@@ -12,6 +12,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ExportJobResponse {
     private UUID exportJobId;
+    private ExportFormat format;
     private String status;
     private Integer progress;
     private MessageDescriptor progressMessage;
@@ -20,7 +21,8 @@ public class ExportJobResponse {
     private String downloadUrl;
     private Instant expiresAt;
     private List<String> dataTypes;
-    private ExportDateRange dateRange;
+    private Instant startTime;
+    private Instant endTime;
     private Long fileSizeBytes;
     private MessageDescriptor error;
 }

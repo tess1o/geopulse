@@ -9,7 +9,6 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -196,10 +195,8 @@ class OwnTracksExportImportUnitTest {
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         // Set date range filter (last 2 hours)
-        ExportDateRange dateFilter = new ExportDateRange();
-        dateFilter.setStartDate(now.minus(2, ChronoUnit.HOURS));
-        dateFilter.setEndDate(now.plus(30, ChronoUnit.MINUTES));
-        options.setDateRangeFilter(dateFilter);
+        options.setStartTime(now.minus(2, ChronoUnit.HOURS));
+        options.setEndTime(now.plus(30, ChronoUnit.MINUTES));
         ImportJob job = new ImportJob(testUser.getId(), options, "daterange.json", jsonData);
         // Import with date filtering
         importDataService.processImportData(job);
@@ -213,8 +210,8 @@ class OwnTracksExportImportUnitTest {
         assertEquals(2, importedPoints.size(), "Only 2 messages should be imported within the date range");
         // Verify the imported points are within the expected time range
         for (GpsPointEntity point : importedPoints) {
-            assertTrue(!point.getTimestamp().isBefore(dateFilter.getStartDate()) &&
-                      !point.getTimestamp().isAfter(dateFilter.getEndDate()),
+            assertTrue(!point.getTimestamp().isBefore(options.getStartTime()) &&
+                      !point.getTimestamp().isAfter(options.getEndTime()),
                       "Imported point timestamp should be within date range");
         }
     }

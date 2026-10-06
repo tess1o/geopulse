@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.export.model.GpxLayout;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -97,23 +98,19 @@ public class GpxExportService {
      * files.
      * Writes directly to a temporary file to avoid memory issues.
      *
-     * @param job        the export job
-     * @param zipPerTrip if true, creates a ZIP with separate GPX files per
-     *                   trip/stay
-     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or
-     *                   "daily" (per day)
+     * @param job    the export job
+     * @param layout a single GPX file, or a ZIP with one file per trip/stay or per day
      * @throws IOException if an I/O error occurs
      */
-    public void generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
-        log.info("Generating GPX export for user {}, zipPerTrip={}, zipGroupBy={}",
-                job.getUserId(), zipPerTrip, zipGroupBy);
+    public void generateGpxExport(ExportJob job, GpxLayout layout) throws IOException {
+        log.info("Generating GPX export for user {}, layout={}", job.getUserId(), layout);
 
         job.updateProgress(5, "initializingGpx", "Initializing GPX export...");
 
-        if (zipPerTrip) {
-            generateGpxExportAsZip(job, zipGroupBy);
-        } else {
-            generateSingleGpxFile(job);
+        switch (layout) {
+            case SINGLE -> generateSingleGpxFile(job);
+            case ZIP_PER_TRIP -> generateGpxExportAsZipIndividual(job);
+            case ZIP_PER_DAY -> generateGpxExportAsZipGroupedByDay(job);
         }
     }
 
@@ -405,23 +402,6 @@ public class GpxExportService {
         }
 
         log.debug("Streamed {} timeline stay waypoints", stays.size());
-    }
-
-    /**
-     * Generates a ZIP archive with separate GPX files for each trip and stay.
-     *
-     * @param job        the export job
-     * @param zipGroupBy grouping mode: "individual" (per trip/stay) or "daily" (per
-     *                   day)
-     * @throws IOException if an I/O error occurs
-     */
-    private void generateGpxExportAsZip(ExportJob job, String zipGroupBy) throws IOException {
-        if ("daily".equalsIgnoreCase(zipGroupBy)) {
-            generateGpxExportAsZipGroupedByDay(job);
-        } else {
-            // Default to individual grouping (one file per trip/stay)
-            generateGpxExportAsZipIndividual(job);
-        }
     }
 
     /**

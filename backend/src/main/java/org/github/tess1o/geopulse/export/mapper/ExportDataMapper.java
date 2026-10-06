@@ -50,7 +50,7 @@ public class ExportDataMapper {
                 .dataTypes(job.getDataTypes())
                 .startDate(job.getDateRange().getStartDate())
                 .endDate(job.getDateRange().getEndDate())
-                .format(job.getFormat())
+                .format(job.getFormat().value())
                 .version(ExportImportConstants.Versions.CURRENT)
                 .build();
     }

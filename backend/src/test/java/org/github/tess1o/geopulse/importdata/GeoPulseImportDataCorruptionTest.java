@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.importdata;
+import org.github.tess1o.geopulse.export.model.ExportFormat;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -79,7 +80,7 @@ public class GeoPulseImportDataCorruptionTest {
                 testUserA.getId(),
                 List.of(ExportImportConstants.DataTypes.RAW_GPS),
                 dateRange,
-                ExportImportConstants.Formats.JSON);
+                ExportFormat.GEOPULSE);
         exportDataGenerator.generateGeoPulseNativeExport(exportJob);
         exportData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
         assertNotNull(exportData);
