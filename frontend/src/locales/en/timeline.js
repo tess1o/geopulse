@@ -702,7 +702,7 @@ export default {
                 minAvgSpeed: {
                     label: 'Minimum Average Speed',
                     description: 'Conservative default for typical flights (including taxi/takeoff/landing time)',
-                    labelLow: '250.0 km/h (Regional)',
+                    labelLow: '100.0 km/h (Regional)',
                     labelMid: '400.0 km/h (Default)',
                     labelHigh: '600.0 km/h (Long-haul)'
                 },

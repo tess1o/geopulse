@@ -174,7 +174,7 @@ public class UpdateTimelinePreferencesRequest {
     // Optional Trip Types - Flight
     private Boolean flightEnabled;
 
-    @DecimalMin(value = "250.0", message = "Flight min avg speed must be at least 250.0 km/h")
+    @DecimalMin(value = "100.0", message = "Flight min avg speed must be at least 100.0 km/h")
     @DecimalMax(value = "600.0", message = "Flight min avg speed must be at most 600.0 km/h")
     private Double flightMinAvgSpeed;
 

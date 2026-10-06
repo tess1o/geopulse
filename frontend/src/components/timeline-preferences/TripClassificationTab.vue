@@ -443,7 +443,7 @@
             v-if="modelValue.flightMinAvgSpeed !== undefined"
             :model-value="modelValue.flightMinAvgSpeed"
             @update:model-value="updatePref('flightMinAvgSpeed', $event)"
-            :min="250.0" :max="600.0" :step="50.0"
+            :min="100.0" :max="600.0" :step="50.0"
             :labels="threeLabels('flight.minAvgSpeed')"
             suffix=" km/h" :decimal-places="1"
           />

@@ -224,6 +224,27 @@ export function useClassificationValidation(prefs) {
   })
 
   /**
+   * Check for flight avg threshold reaching into the train speed range
+   * Flight is checked first (OR logic), so trains at or above flight min avg become FLIGHT
+   */
+  const flightTrainOverlapWarning = computed(() => {
+    if (!prefs.value?.flightEnabled || !prefs.value?.trainEnabled) return null
+
+    const flightMinAvg = prefs.value?.flightMinAvgSpeed ?? 400.0
+    const trainMaxAvg = prefs.value?.trainMaxAvgSpeed ?? 150.0
+
+    if (flightMinAvg <= trainMaxAvg) {
+      return {
+        type: 'flight',
+        severity: 'warn',
+        message: `Flight min avg speed (${flightMinAvg} km/h) is at or below train max avg speed (${trainMaxAvg} km/h). Flight is checked first, so train trips in this range will be classified as FLIGHT.`
+      }
+    }
+
+    return null
+  })
+
+  /**
    * Check for car min/max inversion
    */
   const carMinMaxWarning = computed(() => {
@@ -294,6 +315,7 @@ export function useClassificationValidation(prefs) {
       trainMinMaxWarning.value,
       trainMinPeakWarning.value,
       flightMinMaxWarning.value,
+      flightTrainOverlapWarning.value,
       carMinMaxWarning.value,
       walkingMaxWarning.value,
       boatWaterEvidenceWarning.value
