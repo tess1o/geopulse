@@ -308,6 +308,15 @@ export const useAuthStore = defineStore('auth', {
             return this.fetchCurrentUserProfile()
         },
 
+        // PATCH /users/me always writes fullName (null clears it), so a language-only change resends the
+        // current name. Avatar and timezone are omitted, which the backend leaves unchanged.
+        async updateLanguage(language) {
+            return this.updateProfile({
+                fullName: this.user?.fullName || undefined,
+                language
+            })
+        },
+
         async uploadAvatar(file) {
             const formData = new FormData()
             formData.append('file', file)

@@ -35,10 +35,12 @@
               @date-change="handleDateChange"
           />
         </div>
-        <NotificationBell />
+        <NotificationBell class="gp-navbar-bell" />
 
         <!-- Additional end content -->
         <slot name="end-after"/>
+
+        <UserMenu class="gp-navbar-user-menu" />
       </div>
     </template>
   </Toolbar>
@@ -52,6 +54,7 @@ import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
 import NotificationBell from './NotificationBell.vue'
+import UserMenu from './UserMenu.vue'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -231,6 +234,11 @@ const handleNavigate = (item) => {
     order: -1;
   }
 
+  /* The row is reversed here, so the lowest order sits rightmost: keep the avatar at the edge. */
+  .gp-navbar-user-menu {
+    order: -2;
+  }
+
   .gp-navbar-end {
     flex-direction: row-reverse;
   }
@@ -304,6 +312,11 @@ const handleNavigate = (item) => {
 
 @media (max-width: 480px) {
   .gp-navbar-logo-text {
+    display: none;
+  }
+
+  /* No room beside the date picker; UserMenu shows the unread count and a Notifications entry instead. */
+  .gp-navbar-bell {
     display: none;
   }
 

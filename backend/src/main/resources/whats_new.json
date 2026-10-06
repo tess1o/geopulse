@@ -6,6 +6,7 @@
       "REST API fully reimplemented under /api/v1 with consistent endpoints, request/response schemas and structured error responses",
       "Localization support: GeoPulse is now available in English and Ukrainian, with more languages to come",
       "Refreshed UI across almost every page, backed by a global CSS and theming cleanup with consistent dark mode",
+      "New account menu behind your avatar in the top bar: profile, timeline preferences, theme, language and logout now live there, and the side menu is shorter",
       "Timeline map: 3D map support and customizable map appearance, including path and highlighted path colors",
       "Trip Plans: place discovery with photos, per-stop travel mode with routed legs, and a reworked Trip Workspace",
       "Added Public Transport trip type and the option to disable map matching for specific trip types",

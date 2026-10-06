@@ -6,8 +6,7 @@ export class AppNavigation {
   }
 
   /**
-   * Logout from any authenticated page
-   * Handles menu opening and logout button clicking
+   * Logout from any authenticated page via the avatar menu.
    */
   async logout() {
     try {
@@ -17,52 +16,12 @@ export class AppNavigation {
         { timeout: 7000 }
       ).catch(() => null);
 
-      // First check if logout button is already visible
-      const logoutButton = this.page.locator('.gp-nav-logout');
-
-      if (await logoutButton.isVisible({ timeout: 2000 })) {
-        await logoutButton.click();
-      } else {
-        const menuSelectors = [
-          'span.pi-bars', // PrimeVue menu icon
-          '.p-button:has(.pi-bars)',
-          'button:has(.pi-bars)',
-          '.sidebar-toggle',
-          '.menu-toggle',
-          'button[aria-label="Menu"]',
-          '.hamburger-menu'
-        ];
-
-        let menuOpened = false;
-        for (const selector of menuSelectors) {
-          try {
-            const menuButton = this.page.locator(selector);
-            if (await menuButton.isVisible({ timeout: 1000 })) {
-              await menuButton.click();
-              await this.page.waitForTimeout(500); // Wait for menu animation
-
-              // Check if logout is now visible
-              if (await logoutButton.isVisible({ timeout: 2000 })) {
-                await logoutButton.click();
-                menuOpened = true;
-                break;
-              }
-            }
-          } catch (e) {
-            // Continue to next selector
-          }
-        }
-
-        if (!menuOpened) {
-          // Last resort: try to click any button with "Logout" text
-          const logoutByText = this.page.locator('button:has-text("Logout")');
-          if (await logoutByText.isVisible({ timeout: 2000 })) {
-            await logoutByText.click();
-          } else {
-            throw new Error('Could not find logout button anywhere');
-          }
-        }
+      // Logout lives in the account menu behind the avatar in the top bar.
+      const logoutButton = this.page.locator('.gp-user-menu-logout');
+      if (!(await logoutButton.isVisible({ timeout: 1000 }).catch(() => false))) {
+        await this.page.locator('.gp-user-menu-trigger:visible').first().click();
       }
+      await logoutButton.click();
 
       // Wait for logout call if captured; do not fail on missing response event.
       await logoutResponsePromise;

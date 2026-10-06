@@ -70,7 +70,7 @@ describe('locale catalogs', () => {
     })
 
     it('interpolates named parameters', () => {
-        expect(t('nav.theme.label', { mode: 'Світла' })).toContain('Світла')
+        expect(t('nav.newVersionAvailable', { version: '9.9.9' })).toContain('9.9.9')
         expect(t('errors.http.unknown.title', { status: 418 })).toContain('418')
     })
 })

@@ -11,13 +11,8 @@ export default {
         timeline: 'Хронологія',
         explore: 'Дослідження',
         organizeAndShare: 'Організація та обмін',
-        settingsAndData: 'Налаштування та дані',
-        administration: 'Адміністрування',
-        overview: 'Огляд',
-        operations: 'Операції',
-        peopleAndAccess: 'Користувачі та доступ',
-        configuration: 'Конфігурація',
-        appearance: 'Зовнішній вигляд'
+        data: 'Дані',
+        administration: 'Адміністрування'
     },
     items: {
         timeline: 'Хронологія',
@@ -51,14 +46,24 @@ export default {
         'admin-settings': 'Системні налаштування'
     },
     theme: {
-        label: 'Тема: {mode}',
+        title: 'Тема',
         modes: {
             light: 'Світла',
             dark: 'Темна',
             system: 'Системна'
         }
     },
-    loggedInAs: 'Ви увійшли як:',
+    userMenu: {
+        open: 'Меню облікового запису',
+        adminBadge: 'Адмін',
+        adminDashboard: 'Панель адміністратора',
+        language: 'Мова',
+        languageSaveFailed: 'Не вдалося зберегти вибір мови',
+        hint: {
+            title: 'Нове: меню облікового запису',
+            body: 'Профіль, налаштування хронології, тема, мова та вихід тепер тут.'
+        }
+    },
     logout: 'Вийти',
     version: 'Версія',
     newVersionAvailable: 'Доступна версія {version}',

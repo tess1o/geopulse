@@ -120,7 +120,7 @@ You can:
 
 - Navbar bell shows unread count and latest notifications.
 - In-app toasts appear for new events while app tab is visible/focused.
-- Side menu badge mirrors unread count.
+- On phones, where the bell is hidden, your avatar in the top bar shows the unread count and its menu has a Notifications entry.
 - Events stay available until marked seen (and later cleaned up by retention policy).
 
 ## Optional External Delivery with Apprise

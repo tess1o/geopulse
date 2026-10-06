@@ -13,13 +13,8 @@ export default {
         timeline: 'Timeline',
         explore: 'Explore',
         organizeAndShare: 'Organize & Share',
-        settingsAndData: 'Settings & Data',
-        administration: 'Administration',
-        overview: 'Overview',
-        operations: 'Operations',
-        peopleAndAccess: 'People & Access',
-        configuration: 'Configuration',
-        appearance: 'Appearance'
+        data: 'Data',
+        administration: 'Administration'
     },
     items: {
         timeline: 'Timeline',
@@ -53,14 +48,27 @@ export default {
         'admin-settings': 'System Settings'
     },
     theme: {
-        label: 'Theme: {mode}',
+        title: 'Theme',
         modes: {
             light: 'Light',
             dark: 'Dark',
             system: 'System'
         }
     },
-    loggedInAs: 'Logged in as:',
+    // Account menu behind the avatar in the top bar.
+    userMenu: {
+        open: 'Account menu',
+        adminBadge: 'Admin',
+        // The drawer calls this page 'Overview' under its Administration header; the menu has no header.
+        adminDashboard: 'Admin Dashboard',
+        language: 'Language',
+        languageSaveFailed: 'Could not save your language preference',
+        // One-time pointer for people used to the pre-2.0 side menu (UserMenuHint.vue).
+        hint: {
+            title: 'New: your account menu',
+            body: 'Profile, timeline preferences, theme, language and logout have moved here.'
+        }
+    },
     logout: 'Logout',
     version: 'Version',
     newVersionAvailable: 'New: {version} available',

@@ -26,76 +26,6 @@
               :items="section.items"
               @item-click="handleItemClick"
             />
-
-            <!-- Administration (Admin only) -->
-            <template v-if="canViewAdmin">
-              <div class="gp-nav-admin-header">
-                <span class="gp-nav-section-title">{{ t('nav.sections.administration') }}</span>
-              </div>
-
-              <NavigationSection
-                :title="t('nav.sections.overview')"
-                :items="adminOverviewItems"
-                @item-click="handleItemClick"
-              />
-              <NavigationSection
-                :title="t('nav.sections.operations')"
-                :items="adminOperationsItems"
-                @item-click="handleItemClick"
-              />
-              <NavigationSection
-                :title="t('nav.sections.peopleAndAccess')"
-                :items="adminPeopleItems"
-                @item-click="handleItemClick"
-              />
-              <NavigationSection
-                :title="t('nav.sections.configuration')"
-                :items="adminConfigurationItems"
-                @item-click="handleItemClick"
-              />
-            </template>
-
-            <!-- Theme & Settings -->
-            <div class="gp-nav-theme">
-              <div class="gp-nav-theme-header">
-                <span class="gp-nav-section-title">{{ t('nav.sections.appearance') }}</span>
-              </div>
-              <div class="gp-nav-theme-control">
-                <span class="gp-theme-label">{{ t('nav.theme.label', { mode: themeModeLabel }) }}</span>
-                <DarkModeSwitcher class="gp-theme-switcher" />
-              </div>
-            </div>
-
-            <!-- User Profile Section -->
-            <div class="gp-nav-user">
-              <div class="gp-nav-user-info">
-                <span class="gp-nav-user-label">{{ t('nav.loggedInAs') }}</span>
-                <span class="gp-nav-user-name">{{ userName }}</span>
-              </div>
-              <BaseButton
-                icon="pi pi-sign-out"
-                :label="t('nav.logout')"
-                variant="gp-minimal"
-                @click="handleLogout"
-                class="gp-nav-logout"
-              />
-            </div>
-
-            <!-- Version Display -->
-            <div class="gp-nav-version">
-              <span class="gp-nav-version-label">{{ t('nav.version') }}</span>
-              <span class="gp-nav-version-number">{{ appVersion }}</span>
-              <a
-                v-if="updateAvailable && latestVersion"
-                :href="releaseUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="gp-nav-version-update"
-              >
-                <i class="pi pi-arrow-circle-up" />
-                <span>{{ t('nav.newVersionAvailable', { version: latestVersion }) }}</span>
-              </a>
-            </div>
           </nav>
         </div>
       </template>
@@ -120,12 +50,8 @@ import { storeToRefs } from 'pinia'
 import Drawer from 'primevue/drawer'
 import BaseButton from '../base/BaseButton.vue'
 import NavigationSection from './NavigationSection.vue'
-import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
-import { useThemeMode } from '@/composables/useThemeMode'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
-import { useNotificationsStore } from '@/stores/notifications'
-import { useVersionStore } from '@/stores/version'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { isMaintenanceInterruption } from '@/stores/maintenance'
 
@@ -143,25 +69,15 @@ const emit = defineEmits(['navigate'])
 
 // Composables
 const router = useRouter()
-const authStore = useAuthStore()
 const friendsStore = useFriendsStore()
-const notificationsStore = useNotificationsStore()
-const versionStore = useVersionStore()
 const { handleError } = useErrorHandler()
-const { themeMode, themeModes } = useThemeMode()
 
 // Store refs
-const { userName, canViewAdmin, adminReadOnly } = storeToRefs(authStore)
+const { canViewAdmin, adminReadOnly } = storeToRefs(useAuthStore())
 const { receivedInvitesCount } = storeToRefs(friendsStore)
-const { unreadCount: notificationUnreadCount } = storeToRefs(notificationsStore)
 
 // Local state
 const visible = ref(false)
-const appVersion = ref('')
-const latestVersion = ref('')
-const updateAvailable = ref(false)
-const DEFAULT_RELEASE_URL = 'https://github.com/tess1o/geopulse/releases'
-const releaseUrl = ref(DEFAULT_RELEASE_URL)
 
 // Computed
 const drawerClasses = computed(() => ({
@@ -171,12 +87,6 @@ const drawerClasses = computed(() => ({
 const toggleClasses = computed(() => ({
   'gp-nav-toggle--compact': props.variant === 'compact'
 }))
-
-const themeModeLabel = computed(() => {
-  if (themeMode.value === themeModes.LIGHT) return t('nav.theme.modes.light')
-  if (themeMode.value === themeModes.DARK) return t('nav.theme.modes.dark')
-  return t('nav.theme.modes.system')
-})
 
 // Labels are resolved from the catalogs here rather than stored as display text. This computed reads
 // the reactive locale, so the whole navigation re-renders when the language changes. Each entry keeps
@@ -205,7 +115,7 @@ const navigationSections = computed(() => [
     title: t('nav.sections.organizeAndShare'),
     items: [
       { label: t('nav.items.favorites-management'), icon: 'pi pi-heart', to: '/app/favorites-management', key: 'favorites-management' },
-      { label: t('nav.items.geofences'), icon: 'pi pi-map-marker', to: '/app/geofences', key: 'geofences' },
+      { label: t('nav.items.geofences'), icon: 'pi pi-bullseye', to: '/app/geofences', key: 'geofences' },
       {
         label: t('nav.items.friends'),
         icon: 'pi pi-users',
@@ -218,85 +128,31 @@ const navigationSections = computed(() => [
     ]
   },
   {
-    title: t('nav.sections.settingsAndData'),
+    title: t('nav.sections.data'),
     items: [
-      { label: t('nav.items.profile'), icon: 'pi pi-user', to: '/app/profile', key: 'profile' },
-      {
-        label: t('nav.items.notifications'),
-        icon: 'pi pi-bell',
-        to: '/app/notifications',
-        key: 'notifications',
-        badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
-        badgeType: 'danger'
-      },
       { label: t('nav.items.location-sources'), icon: 'pi pi-mobile', to: '/app/location-sources', key: 'location-sources' },
-      { label: t('nav.items.preferences'), icon: 'pi pi-cog', to: '/app/timeline/preferences', key: 'preferences' },
       { label: t('nav.items.gps-data'), icon: 'pi pi-database', to: '/app/gps-data', key: 'gps-data' },
       { label: t('nav.items.geocoding-management'), icon: 'pi pi-map-marker', to: '/app/geocoding-management', key: 'geocoding-management' },
-      { label: t('nav.items.export'), icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' },
-      { label: t('nav.items.help'), icon: 'pi pi-question-circle', to: '/app/help', key: 'help' }
+      { label: t('nav.items.export'), icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' }
     ]
-  }
+  },
+  ...(canViewAdmin.value ? [adminSection.value] : [])
 ])
 
-const adminOverviewItems = computed(() => [
-  {
-    label: t('nav.items.admin-dashboard'),
-    icon: 'pi pi-th-large',
-    to: '/app/admin',
-    key: 'admin-dashboard'
-  }
-])
-
-const adminOperationsItems = computed(() => [
-  {
-    label: t('nav.items.admin-backups'),
-    icon: 'pi pi-database',
-    to: '/app/admin/backups',
-    key: 'admin-backups'
-  },
-  {
-    label: t('nav.items.admin-timeline-regeneration'),
-    icon: 'pi pi-refresh',
-    to: '/app/admin/timeline-regeneration-campaigns',
-    key: 'admin-timeline-regeneration'
-  }
-])
-
-const adminPeopleItems = computed(() => [
-  {
-    label: t('nav.items.admin-users'),
-    icon: 'pi pi-users',
-    to: '/app/admin/users',
-    key: 'admin-users'
-  },
-  {
-    label: t('nav.items.admin-invitations'),
-    icon: 'pi pi-send',
-    to: '/app/admin/invitations',
-    key: 'admin-invitations'
-  },
-  {
-    label: t('nav.items.admin-oidc-providers'),
-    icon: 'pi pi-key',
-    to: '/app/admin/oidc-providers',
-    key: 'admin-oidc-providers'
-  },
-  {
-    label: t('nav.items.admin-audit-logs'),
-    icon: 'pi pi-history',
-    to: '/app/admin/audit-logs',
-    key: 'admin-audit-logs',
-    disabled: adminReadOnly.value
-  }
-])
-
-const adminConfigurationItems = computed(() => [{
-  label: t('nav.items.admin-settings'),
-  icon: 'pi pi-cog',
-  to: '/app/admin/settings',
-  key: 'admin-settings'
-}])
+// One flat group, most-used first, so every admin page is a single click from anywhere in the app.
+const adminSection = computed(() => ({
+  title: t('nav.sections.administration'),
+  items: [
+    { label: t('nav.items.admin-dashboard'), icon: 'pi pi-th-large', to: '/app/admin', key: 'admin-dashboard' },
+    { label: t('nav.items.admin-settings'), icon: 'pi pi-sliders-h', to: '/app/admin/settings', key: 'admin-settings' },
+    { label: t('nav.items.admin-users'), icon: 'pi pi-users', to: '/app/admin/users', key: 'admin-users' },
+    { label: t('nav.items.admin-invitations'), icon: 'pi pi-send', to: '/app/admin/invitations', key: 'admin-invitations' },
+    { label: t('nav.items.admin-oidc-providers'), icon: 'pi pi-key', to: '/app/admin/oidc-providers', key: 'admin-oidc-providers' },
+    { label: t('nav.items.admin-backups'), icon: 'pi pi-database', to: '/app/admin/backups', key: 'admin-backups' },
+    { label: t('nav.items.admin-timeline-regeneration'), icon: 'pi pi-refresh', to: '/app/admin/timeline-regeneration-campaigns', key: 'admin-timeline-regeneration' },
+    { label: t('nav.items.admin-audit-logs'), icon: 'pi pi-history', to: '/app/admin/audit-logs', key: 'admin-audit-logs', disabled: adminReadOnly.value }
+  ]
+}))
 
 // Methods
 const handleItemClick = (item) => {
@@ -307,43 +163,8 @@ const handleItemClick = (item) => {
   }
 }
 
-const handleLogout = async () => {
-  try {
-    await authStore.logout()
-    await router.push('/')
-  } catch (error) {
-    console.error('Logout error:', error)
-    await router.push('/')
-  }
-}
-
-// Version fetching
-const fetchVersionStatus = async () => {
-  try {
-    const response = await versionStore.fetchStatus()
-    appVersion.value = response.currentVersion || response.version || 'Unknown'
-    latestVersion.value = response.latestVersion || ''
-    updateAvailable.value = response.updateAvailable === true
-    releaseUrl.value = response.releaseUrl || DEFAULT_RELEASE_URL
-  } catch (error) {
-    console.warn('Failed to fetch version status:', error)
-    latestVersion.value = ''
-    updateAvailable.value = false
-    releaseUrl.value = DEFAULT_RELEASE_URL
-
-    try {
-      const response = await versionStore.fetchVersion()
-      appVersion.value = response.version || 'Unknown'
-    } catch (fallbackError) {
-      console.warn('Failed to fetch app version fallback:', fallbackError)
-      appVersion.value = 'Unknown'
-    }
-  }
-}
-
-// Load friends data and version status
+// Load received invitations count for the Friends badge
 onMounted(async () => {
-  // Load received invitations count for badge display
   try {
     await friendsStore.fetchReceivedInvitations()
   } catch (error) {
@@ -353,9 +174,6 @@ onMounted(async () => {
       handleError(error, { life: 2000, severity: 'warn' })
     }
   }
-
-  // Load app version status
-  await fetchVersionStatus()
 })
 </script>
 
@@ -411,151 +229,9 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
-/* Admin Section Header */
-.gp-nav-admin-header {
-  padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-sm);
-  margin-top: var(--gp-spacing-md);
-  border-top: 2px solid var(--gp-primary-text);
-}
-
-.gp-nav-admin-header .gp-nav-section-title {
-  color: var(--gp-primary-text);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-/* Theme Section */
-.gp-nav-theme {
-  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border);
-  flex-shrink: 0;
-}
-
-.gp-nav-theme-header {
-  margin-bottom: var(--gp-spacing-md);
-}
-
-.gp-nav-section-title {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--gp-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.025em;
-}
-
-.gp-nav-theme-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-}
-
-.gp-theme-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--gp-text-primary);
-}
-
-/* User Section */
-.gp-nav-user {
-  margin-top: auto;
-  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border);
-  flex-shrink: 0;
-}
-
-.gp-nav-user-info {
-  margin-bottom: var(--gp-spacing-md);
-}
-
-.gp-nav-user-label {
-  display: block;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--gp-text-muted);
-  font-weight: 500;
-  letter-spacing: 0.025em;
-  margin-bottom: var(--gp-spacing-xs);
-}
-
-.gp-nav-user-name {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.gp-nav-logout {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-/* Version Section */
-.gp-nav-version {
-  padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
-  border-top: 1px solid var(--gp-border);
-  text-align: center;
-  background: var(--gp-surface-muted, rgba(0, 0, 0, 0.02));
-  flex-shrink: 0;
-}
-
-.gp-nav-version-label {
-  display: block;
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  color: var(--gp-text-muted);
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--gp-spacing-xs);
-  opacity: 0.7;
-}
-
-.gp-nav-version-number {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  font-family: var(--gp-font-mono);
-}
-
-.gp-nav-version-update {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gp-spacing-xs);
-  margin-top: var(--gp-spacing-xs);
-  padding: 2px 8px;
-  border-radius: var(--gp-radius-pill);
-  background: var(--gp-warning-soft);
-  color: var(--gp-warning-text);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: opacity 0.2s ease;
-}
-
-.gp-nav-version-update:hover {
-  opacity: 0.85;
-}
-
-/* Dark Mode */
-
-.gp-theme-switcher :deep(.p-button) {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  padding: 0.5rem;
-}
-
 /* Compact variant */
 .gp-drawer--compact .gp-nav-header {
   padding: var(--gp-spacing-md);
-}
-
-.gp-drawer--compact .gp-nav-user {
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
-
-.gp-drawer--compact .gp-nav-version {
-  padding: var(--gp-spacing-xs) var(--gp-spacing-md);
 }
 
 /* Responsive */
@@ -564,16 +240,8 @@ onMounted(async () => {
     padding: var(--gp-spacing-md);
   }
 
-  .gp-nav-user {
-    padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-  }
-
   .gp-nav-logo-img {
     width: 60px;
-  }
-
-  .gp-nav-version {
-    padding: var(--gp-spacing-xs) var(--gp-spacing-md);
   }
 }
 </style>

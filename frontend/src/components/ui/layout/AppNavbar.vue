@@ -43,8 +43,9 @@
           v-tooltip.bottom="inviteDisabled ? t('ui.appNavbar.inviteFriendDisabledTooltip') : t('ui.appNavbar.inviteFriend')"
           :class="inviteButtonClass"
         />
-        <NotificationBell />
+        <NotificationBell class="gp-navbar-bell" />
         <slot name="end" />
+        <UserMenu class="gp-navbar-user-menu" />
       </div>
     </template>
   </Toolbar>
@@ -57,6 +58,7 @@ import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
 import NotificationBell from './NotificationBell.vue'
+import UserMenu from './UserMenu.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
@@ -266,6 +268,11 @@ const handleNavigate = (item) => {
 @media (max-width: 480px) {
   .gp-navbar-start {
     gap: var(--gp-spacing-sm);
+  }
+
+  /* Same as the date-picker navbar: UserMenu takes over notifications on phones. */
+  .gp-navbar-bell {
+    display: none;
   }
 
   .gp-navbar-logo-text {
