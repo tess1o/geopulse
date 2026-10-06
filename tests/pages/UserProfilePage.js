@@ -95,7 +95,7 @@ export class UserProfilePage {
       toast: '.p-toast-message',
       toastSuccess: '.p-toast-message-success',
       toastError: '.p-toast-message-error',
-      pageTitle: '.page-title'
+      pageTitle: '.gp-page-title'
     };
   }
 

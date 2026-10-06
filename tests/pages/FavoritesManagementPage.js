@@ -474,7 +474,7 @@ export class FavoritesManagementPage {
   }
 
   async isTableEmpty() {
-    const emptyState = this.page.locator('.empty-state');
+    const emptyState = this.page.locator('.gp-empty-state');
     return await emptyState.isVisible();
   }
 

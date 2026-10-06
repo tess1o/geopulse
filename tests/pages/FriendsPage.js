@@ -83,10 +83,10 @@ export class FriendsPage {
       errorMessage: '.p-error',
 
       // Empty States
-      emptyState: '.empty-state',
-      emptyIcon: '.empty-icon',
-      emptyTitle: '.empty-title',
-      emptyDescription: '.empty-description',
+      emptyState: '.gp-empty-state',
+      emptyIcon: '.gp-empty-state-icon',
+      emptyTitle: '.gp-empty-state-title',
+      emptyDescription: '.gp-empty-state-message',
 
       // Loading States
       loadingSpinner: '.p-progress-spinner',

@@ -64,9 +64,9 @@ export class PlaceDetailsPage {
       tableHeader: '.p-datatable-thead th',
       tableHeaderTitle: '.table-header',
       tableTitle: '.table-title',
-      noDataState: '.no-data-state',
-      noDataTitle: '.no-data-title',
-      noDataMessage: '.no-data-message',
+      noDataState: '.gp-empty-state',
+      noDataTitle: '.gp-empty-state-title',
+      noDataMessage: '.gp-empty-state-message',
 
       // Dialogs
       editFavoriteDialog: '.p-dialog:has(.p-dialog-title:text("Edit Favorite Location"))',

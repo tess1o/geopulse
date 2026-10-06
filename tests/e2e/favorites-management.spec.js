@@ -1424,7 +1424,7 @@ test.describe('Favorites Management Page', () => {
             expect(await favoritesPage.isTableEmpty()).toBe(true);
 
             // Verify empty message text
-            const emptyState = page.locator('.empty-state');
+            const emptyState = page.locator('.gp-empty-state');
             const text = await emptyState.textContent();
             expect(text).toContain('No Favorite Locations Found');
         });

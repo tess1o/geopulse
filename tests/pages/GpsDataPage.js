@@ -34,9 +34,9 @@ export class GpsDataPage {
       tableHeader: '.table-header',
       tableTitle: '.table-title',
       tableSubtitle: '.table-subtitle',
-      emptyState: '.empty-state',
-      emptyStateIcon: '.empty-icon',
-      emptyStateText: '.empty-state p',
+      emptyState: '.gp-empty-state',
+      emptyStateIcon: '.gp-empty-state-icon',
+      emptyStateText: '.gp-empty-state-message',
       
       // Table columns
       timestampColumn: '[data-field="timestamp"]',

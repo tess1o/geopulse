@@ -15,7 +15,7 @@ export class GeofencesPage {
       bellBadge: '.gp-bell-badge',
       bellPanel: '.gp-notification-panel',
       bellListItem: '.gp-notification-item',
-      notificationToastSummary: '.gp-notification-toast-summary'
+      notificationToastSummary: '.gp-notification-toast .p-toast-summary'
     };
   }
 

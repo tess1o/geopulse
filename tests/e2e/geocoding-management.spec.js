@@ -780,7 +780,7 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.isTableEmpty()).toBe(true);
 
       // Verify empty message text
-      const emptyState = page.locator('.empty-state');
+      const emptyState = page.locator('.gp-empty-state');
       const text = await emptyState.textContent();
       expect(text).toContain('No Geocoding Results Found');
     });
