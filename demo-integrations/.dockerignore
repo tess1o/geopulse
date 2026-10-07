@@ -1,0 +1,4 @@
+scripts
+sql
+*.md
+docker-compose.example.yml

@@ -119,7 +119,7 @@ export default {
         // Backend status code -> sentence. The codes are the keys the store returns and are never
         // translated; see the matching table in ImmichTab.vue.
         messages: {
-            connected: 'Successfully connected to Immich server',
+            connected: 'Successfully connected to Immich server. ',
             userNotFound: 'The configured Immich user could not be found',
             apiKeyRequired: 'An Immich API key is required',
             authenticationFailed: 'Immich rejected the API key',

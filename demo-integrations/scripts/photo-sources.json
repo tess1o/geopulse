@@ -1,0 +1,507 @@
+[
+  {
+    "id": "kyiv-khreshchatyk-evening",
+    "region": "kyiv",
+    "category": "street",
+    "caption": "Evening walk on Khreshchatyk",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Khreshchatyk street in the evening.jpg"
+  },
+  {
+    "id": "kyiv-khreshchatyk-day",
+    "region": "kyiv",
+    "category": "street",
+    "caption": "Khreshchatyk on a summer day",
+    "commonsTitle": "File:Вид на Хрещатик в червні 2014.JPG"
+  },
+  {
+    "id": "kyiv-city-centre-traffic",
+    "region": "kyiv",
+    "category": "street",
+    "caption": "City centre traffic",
+    "commonsTitle": "File:Вулиця Хрещатик, Київ, 2008 рік - 2.jpg"
+  },
+  {
+    "id": "kyiv-st-sophia-night",
+    "region": "kyiv",
+    "category": "landmark",
+    "caption": "St Sophia's Cathedral at night",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:St.Sofia in night 01.JPG"
+  },
+  {
+    "id": "kyiv-lavra-dormition",
+    "region": "kyiv",
+    "category": "landmark",
+    "caption": "Dormition Cathedral, Pechersk Lavra",
+    "commonsTitle": "File:Kiev Pechersk Lavra Dormition Cathedral.jpg"
+  },
+  {
+    "id": "kyiv-lavra-gate-church",
+    "region": "kyiv",
+    "category": "landmark",
+    "caption": "Trinity Gate Church, Pechersk Lavra",
+    "commonsTitle": "File:Pechersk Lavra GCT.jpg"
+  },
+  {
+    "id": "kyiv-dnipro-station-sunset",
+    "region": "kyiv",
+    "category": "transit",
+    "caption": "Sunset at Dnipro station",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Dnipro (Kiev Metro).JPG"
+  },
+  {
+    "id": "kyiv-metro-train",
+    "region": "kyiv",
+    "category": "transit",
+    "caption": "Metro train over the river",
+    "commonsTitle": "File:Днепр (станция метро) 07.jpg"
+  },
+  {
+    "id": "kyiv-night-view",
+    "region": "kyiv",
+    "category": "view",
+    "caption": "Night view over the city",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Podil from Zamkova 02.jpg"
+  },
+  {
+    "id": "kyiv-podil-river",
+    "region": "kyiv",
+    "category": "view",
+    "caption": "Podil from the river",
+    "commonsTitle": "File:Podil view from Dnieper.JPG"
+  },
+  {
+    "id": "kyiv-st-michaels-night",
+    "region": "kyiv",
+    "category": "landmark",
+    "caption": "St Michael's Golden-Domed Monastery",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:St. Michael's Golden-Domed Monastery in Kiev 04.JPG"
+  },
+  {
+    "id": "kyiv-quiet-street",
+    "region": "kyiv",
+    "category": "street",
+    "caption": "Quiet residential street",
+    "commonsTitle": "File:Khotynska Street, Kyiv 1.jpg"
+  },
+  {
+    "id": "london-thames-tower-bridge",
+    "region": "london",
+    "category": "view",
+    "caption": "Thames towards Tower Bridge",
+    "commonsTitle": "File:View of Tower Bridge from London Bridge 2023-05-14.jpg"
+  },
+  {
+    "id": "london-tower-bridge-sunrise",
+    "region": "london",
+    "category": "landmark",
+    "caption": "Tower Bridge at sunrise",
+    "timeOfDay": "morning",
+    "commonsTitle": "File:Tower Bridge, London at sunrise.jpg"
+  },
+  {
+    "id": "london-westminster",
+    "region": "london",
+    "category": "landmark",
+    "caption": "Westminster and Big Ben",
+    "commonsTitle": "File:Big Ben from the Westminster Bridge.jpg"
+  },
+  {
+    "id": "london-black-cabs",
+    "region": "london",
+    "category": "street",
+    "caption": "Black cabs at Westminster",
+    "commonsTitle": "File:Two black cabs with Big Ben in the background.jpg"
+  },
+  {
+    "id": "london-red-bus-trees",
+    "region": "london",
+    "category": "street",
+    "caption": "Red bus on a leafy street",
+    "commonsTitle": "File:London bus 2011 1.jpg"
+  },
+  {
+    "id": "london-red-bus",
+    "region": "london",
+    "category": "street",
+    "caption": "Bus on the way to work",
+    "commonsTitle": "File:London Bus Route 100 bus.jpg"
+  },
+  {
+    "id": "london-borough-market",
+    "region": "london",
+    "category": "food",
+    "caption": "Borough Market",
+    "commonsTitle": "File:Borough Market in London.jpg"
+  },
+  {
+    "id": "london-stoney-street",
+    "region": "london",
+    "category": "street",
+    "caption": "Stoney Street and the Shard",
+    "commonsTitle": "File:Stoney Street, London.jpg"
+  },
+  {
+    "id": "london-underground",
+    "region": "london",
+    "category": "transit",
+    "caption": "Underground platform",
+    "commonsTitle": "File:Finchley Road Northbound Platform 2020.jpg"
+  },
+  {
+    "id": "london-thames-skyline",
+    "region": "london",
+    "category": "view",
+    "caption": "City skyline from the Thames",
+    "commonsTitle": "File:Thames - London, UK - DSC06784.jpg"
+  },
+  {
+    "id": "london-the-shard",
+    "region": "london",
+    "category": "landmark",
+    "caption": "Looking up at the Shard",
+    "commonsTitle": "File:Shard London Bridge 2011.jpg"
+  },
+  {
+    "id": "london-hyde-park",
+    "region": "london",
+    "category": "park",
+    "caption": "Hyde Park path",
+    "commonsTitle": "File:Hyde Park - London, UK - DSC06501.jpg"
+  },
+  {
+    "id": "london-phone-box",
+    "region": "london",
+    "category": "street",
+    "caption": "Red telephone box",
+    "commonsTitle": "File:Red telephone box, St Paul's Cathedral, London, England, GB, IMG 5182 edit.jpg"
+  },
+  {
+    "id": "london-millennium-bridge",
+    "region": "london",
+    "category": "landmark",
+    "caption": "Millennium Bridge to St Paul's",
+    "commonsTitle": "File:St. Paul's Cathedral from across the Thames - August 2024.jpg"
+  },
+  {
+    "id": "london-camden",
+    "region": "london",
+    "category": "street",
+    "caption": "Camden High Street",
+    "commonsTitle": "File:Camden Town ,London.jpg"
+  },
+  {
+    "id": "london-camden-street-art",
+    "region": "london",
+    "category": "street",
+    "caption": "Street art in Camden",
+    "commonsTitle": "File:Just Be Nice street art in Camden Town, London, UK.jpg"
+  },
+  {
+    "id": "nyc-times-square",
+    "region": "new-york",
+    "category": "street",
+    "caption": "Times Square crowds",
+    "commonsTitle": "File:At the bustling Times Square (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-times-square-photo",
+    "region": "new-york",
+    "category": "street",
+    "caption": "Snapping Times Square",
+    "commonsTitle": "File:Times Square, United States (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-brooklyn-bridge-walk",
+    "region": "new-york",
+    "category": "landmark",
+    "caption": "Walking the Brooklyn Bridge",
+    "commonsTitle": "File:Brooklyn Bridge pedestrians (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-brooklyn-bridge-skyline",
+    "region": "new-york",
+    "category": "landmark",
+    "caption": "Brooklyn Bridge and Lower Manhattan",
+    "commonsTitle": "File:My favorite view from the Brooklyn Bridge (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-central-park-bikes",
+    "region": "new-york",
+    "category": "park",
+    "caption": "Cycling in Central Park",
+    "commonsTitle": "File:Central Park, New York, United States (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-yellow-cabs",
+    "region": "new-york",
+    "category": "street",
+    "caption": "Yellow cabs downtown",
+    "commonsTitle": "File:Yellow Cabs in NYC (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-subway",
+    "region": "new-york",
+    "category": "transit",
+    "caption": "Subway platform",
+    "commonsTitle": "File:Train stopping at a New York subway station (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-empire-state-sunset",
+    "region": "new-york",
+    "category": "view",
+    "caption": "Empire State Building at sunset",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Midtown Manhattan Skyline in Evening (Unsplash 5omwAMDxmkU).jpg"
+  },
+  {
+    "id": "nyc-top-of-the-rock",
+    "region": "new-york",
+    "category": "view",
+    "caption": "View from Top of the Rock",
+    "commonsTitle": "File:Goodies from Top of the Rock (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-flatiron",
+    "region": "new-york",
+    "category": "landmark",
+    "caption": "Flatiron Building",
+    "commonsTitle": "File:Flatiron Building, New York, United States (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-grand-central",
+    "region": "new-york",
+    "category": "landmark",
+    "caption": "Grand Central Terminal",
+    "commonsTitle": "File:Grand Central Terminal facade.jpg"
+  },
+  {
+    "id": "nyc-high-line",
+    "region": "new-york",
+    "category": "park",
+    "caption": "The High Line",
+    "commonsTitle": "File:The High Line, New York, United States (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-steam-street",
+    "region": "new-york",
+    "category": "street",
+    "caption": "Steam rising on a Manhattan street",
+    "commonsTitle": "File:Steam in new york street (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-crosswalk",
+    "region": "new-york",
+    "category": "street",
+    "caption": "Crosswalk downtown",
+    "commonsTitle": "File:People crossing street (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-deli-night",
+    "region": "new-york",
+    "category": "food",
+    "caption": "Late-night deli",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Busy New York City restaurant (Unsplash).jpg"
+  },
+  {
+    "id": "nyc-skyline-dusk",
+    "region": "new-york",
+    "category": "view",
+    "caption": "Skyline at dusk",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Sunset in New York City (Unsplash).jpg"
+  },
+  {
+    "id": "coffee-cappuccino",
+    "region": "",
+    "category": "coffee",
+    "caption": "Cappuccino",
+    "commonsTitle": "File:Latte art on cappuccino (Unsplash).jpg"
+  },
+  {
+    "id": "coffee-latte-art",
+    "region": "",
+    "category": "coffee",
+    "caption": "Latte art",
+    "commonsTitle": "File:Foamy latte art (Unsplash).jpg"
+  },
+  {
+    "id": "coffee-cookies-book",
+    "region": "",
+    "category": "coffee",
+    "caption": "Coffee, cookies and a book",
+    "commonsTitle": "File:Coffee and cookies (Unsplash).jpg"
+  },
+  {
+    "id": "coffee-latte-laptop",
+    "region": "",
+    "category": "coffee",
+    "caption": "Latte next to the laptop",
+    "commonsTitle": "File:Latte art and laptop (Unsplash).jpg"
+  },
+  {
+    "id": "food-pancake-breakfast",
+    "region": "",
+    "category": "food",
+    "caption": "Pancake breakfast",
+    "timeOfDay": "morning",
+    "commonsTitle": "File:Breakfast table with pancakes (Unsplash).jpg"
+  },
+  {
+    "id": "food-breakfast-reading",
+    "region": "",
+    "category": "food",
+    "caption": "Breakfast and a magazine",
+    "timeOfDay": "morning",
+    "commonsTitle": "File:Relaxing Breakfast (Unsplash).jpg"
+  },
+  {
+    "id": "food-pizza",
+    "region": "",
+    "category": "food",
+    "caption": "Pizza night",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Margherita PIzza (Unsplash).jpg"
+  },
+  {
+    "id": "food-last-slice",
+    "region": "",
+    "category": "food",
+    "caption": "The last slice",
+    "commonsTitle": "File:The last piece (Unsplash).jpg"
+  },
+  {
+    "id": "restaurant-table",
+    "region": "",
+    "category": "restaurant",
+    "caption": "Drinks at the table",
+    "commonsTitle": "File:Interior of a restaurant (Unsplash).jpg"
+  },
+  {
+    "id": "restaurant-dim-bar",
+    "region": "",
+    "category": "restaurant",
+    "caption": "Cosy bar",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Rustic Restaurant (Unsplash).jpg"
+  },
+  {
+    "id": "restaurant-busy",
+    "region": "",
+    "category": "restaurant",
+    "caption": "Busy restaurant",
+    "commonsTitle": "File:Chatting in a coffee shop (Unsplash).jpg"
+  },
+  {
+    "id": "restaurant-bartenders",
+    "region": "",
+    "category": "restaurant",
+    "caption": "Bartenders at work",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Bartenders serving cocktail (Unsplash).jpg"
+  },
+  {
+    "id": "home-cat-window",
+    "region": "",
+    "category": "home",
+    "caption": "Cat napping by the window",
+    "commonsTitle": "File:Cat napping by the window (Unsplash).jpg"
+  },
+  {
+    "id": "home-cat-blanket",
+    "region": "",
+    "category": "home",
+    "caption": "Cat on the blanket",
+    "commonsTitle": "File:Cat dozing off on a blanket (Unsplash).jpg"
+  },
+  {
+    "id": "home-living-room",
+    "region": "",
+    "category": "home",
+    "caption": "Living room",
+    "commonsTitle": "File:Living room (Unsplash).jpg"
+  },
+  {
+    "id": "home-bookshelf",
+    "region": "",
+    "category": "home",
+    "caption": "Bookshelf corner",
+    "commonsTitle": "File:Bookshelf and blue couch (Unsplash).jpg"
+  },
+  {
+    "id": "work-home-office",
+    "region": "",
+    "category": "work",
+    "caption": "Desk setup",
+    "commonsTitle": "File:Laptop on a neat desk (Unsplash).jpg"
+  },
+  {
+    "id": "work-laptop-mug",
+    "region": "",
+    "category": "work",
+    "caption": "Laptop and a mug",
+    "commonsTitle": "File:Laptop and a mug (Unsplash).jpg"
+  },
+  {
+    "id": "street-bike-night",
+    "region": "",
+    "category": "street",
+    "caption": "Cycling home at night",
+    "timeOfDay": "evening",
+    "commonsTitle": "File:Man on a bicycle at night (Unsplash).jpg"
+  },
+  {
+    "id": "street-red-bicycle",
+    "region": "",
+    "category": "street",
+    "caption": "Red bicycle",
+    "commonsTitle": "File:Red bicycle (Unsplash).jpg"
+  },
+  {
+    "id": "park-autumn-bench",
+    "region": "",
+    "category": "park",
+    "caption": "Autumn leaves on a bench",
+    "commonsTitle": "File:Autumn leaves (Unsplash).jpg"
+  },
+  {
+    "id": "park-dog-walk",
+    "region": "",
+    "category": "park",
+    "caption": "Dog walk",
+    "commonsTitle": "File:Walking Dogs (Unsplash).jpg"
+  },
+  {
+    "id": "park-benches",
+    "region": "",
+    "category": "park",
+    "caption": "Benches in the park",
+    "commonsTitle": "File:Bucharest park benches (Unsplash).jpg"
+  },
+  {
+    "id": "food-market-produce",
+    "region": "",
+    "category": "food",
+    "caption": "Market produce",
+    "commonsTitle": "File:Farmer's Market Produce (Unsplash).jpg"
+  },
+  {
+    "id": "transit-station-suitcase",
+    "region": "",
+    "category": "transit",
+    "caption": "Station with a suitcase",
+    "commonsTitle": "File:Suitcase in train station (Unsplash).jpg"
+  },
+  {
+    "id": "transit-train-platform",
+    "region": "",
+    "category": "transit",
+    "caption": "Waiting for the train",
+    "commonsTitle": "File:Waiting For The Train (Unsplash).jpg"
+  }
+]

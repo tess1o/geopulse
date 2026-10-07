@@ -1,0 +1,14 @@
+# Add this service to the demo's docker-compose.yml (next to geopulse-backend and geopulse-postgres).
+services:
+  geopulse-demo-integrations:
+    build: ./demo-integrations            # path to this folder
+    image: geopulse-demo-integrations:latest
+    container_name: geopulse-demo-integrations
+    restart: unless-stopped
+    env_file: .env                        # reuses GEOPULSE_POSTGRES_HOST/PORT/DB/USERNAME/PASSWORD
+    depends_on:
+      - geopulse-postgres
+    # The backend reaches both servers over the compose network, so no ports are needed.
+    # Publish 5230 behind your reverse proxy only if "Open in Memos" links should work:
+    # ports:
+    #   - "127.0.0.1:5230:5230"
