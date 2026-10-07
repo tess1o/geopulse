@@ -22,7 +22,10 @@ import java.util.UUID;
 import java.util.List;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
 
@@ -30,7 +33,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVAL
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: API Tokens", description = "Manage API tokens owned by the authenticated user.")
+@Tag(name = ApiTags.API_TOKENS)
 public class ApiTokenResource {
 
     @Context
@@ -43,12 +46,19 @@ public class ApiTokenResource {
     ApiTokenService apiTokenService;
 
     @GET
+    @Operation(summary = "List API tokens",
+            description = "Returns the API tokens of the signed-in user with name, short preview, status, "
+                    + "expiration, and last-use metadata. Token secrets are never returned.")
     public List<ApiTokenResponse> listTokens() {
         UUID userId = currentUserService.getCurrentUserId();
         return apiTokenService.listForUser(userId);
     }
 
     @POST
+    @Operation(summary = "Create an API token",
+            description = "Creates an API token that acts as the signed-in user. The response contains the full "
+                    + "token secret; it is shown only once and cannot be retrieved later. Optionally set an "
+                    + "expiration time.")
     public RestResponse<CreateApiTokenResponse> createToken(@Valid CreateApiTokenRequest createRequest) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -66,7 +76,11 @@ public class ApiTokenResource {
 
     @PUT
     @Path("/{id}")
-    public ApiTokenResponse updateToken(@PathParam("id") UUID tokenId, @Valid UpdateApiTokenRequest updateRequest) {
+    @Operation(summary = "Rename an API token",
+            description = "Changes the name or expiration time of an API token owned by the signed-in user.")
+    public ApiTokenResponse updateToken(
+            @Parameter(description = "API token ID.")
+            @PathParam("id") UUID tokenId, @Valid UpdateApiTokenRequest updateRequest) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request);
@@ -84,7 +98,12 @@ public class ApiTokenResource {
 
     @DELETE
     @Path("/{id}")
-    public void revokeToken(@PathParam("id") UUID tokenId) {
+    @Operation(summary = "Revoke an API token",
+            description = "Revokes an API token owned by the signed-in user. Requests using the token are rejected "
+                    + "from then on.")
+    public void revokeToken(
+            @Parameter(description = "API token ID.")
+            @PathParam("id") UUID tokenId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request);

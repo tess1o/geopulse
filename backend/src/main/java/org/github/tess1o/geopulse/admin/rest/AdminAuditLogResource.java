@@ -21,6 +21,9 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
 
@@ -32,7 +35,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
-@Tag(name = "Admin: Audit Logs", description = "Review administrator audit events and security-relevant activity.")
+@Tag(name = ApiTags.ADMIN_AUDIT_LOGS)
 public class AdminAuditLogResource {
 
     @Inject
@@ -45,13 +48,26 @@ public class AdminAuditLogResource {
      * Get paginated list of audit logs with filters.
      */
     @GET
+    @Operation(summary = "List audit log entries",
+            description = "Returns administrator actions and security events, newest first, one page at a time, with "
+                    + "filters. Each entry has the acting administrator, action, target, details, and IP address.")
     public PageResponse<AuditLogResponse> getAuditLogs(
+            @Parameter(description = "Only entries with this action type, such as `USER_ROLE_CHANGED`.")
             @QueryParam("actionType") String actionTypeStr,
+            @Parameter(description = "Only entries about this kind of target: `SETTING`, `USER`, `OIDC_PROVIDER`, "
+                    + "`INVITATION`, `API_TOKEN`, `TIMELINE_REGENERATION_CAMPAIGN`, or `BACKUP`.", example = "USER")
             @QueryParam("targetType") String targetTypeStr,
+            @Parameter(description = "Only entries for actions by this administrator.")
             @QueryParam("adminUserId") UUID adminUserId,
+            @Parameter(description = "Only entries at or after this time, in epoch milliseconds.",
+                    example = "1735689600000")
             @QueryParam("from") Long fromTimestamp,
+            @Parameter(description = "Only entries at or before this time, in epoch milliseconds.",
+                    example = "1767225599000")
             @QueryParam("to") Long toTimestamp,
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @Parameter(description = "Page size, from 1 to 200. Defaults to 20.")
             @QueryParam("size") @DefaultValue("20") @Min(1) @Max(200) int size) {
 
         // Parse enum parameters

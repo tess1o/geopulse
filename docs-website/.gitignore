@@ -6,6 +6,7 @@
 
 # Generated files
 .docusaurus
+/.generated
 .cache-loader
 docs/api/reference/*
 !docs/api/reference/.gitkeep

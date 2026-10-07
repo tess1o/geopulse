@@ -22,6 +22,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
 @Path("/digests")
@@ -29,7 +32,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
-@Tag(name = "User: Digests", description = "Read monthly and yearly movement digests.")
+@Tag(name = ApiTags.DIGESTS)
 public class DigestResource {
 
     @Inject
@@ -45,7 +48,15 @@ public class DigestResource {
     @Path("/monthly")
     @APIResponse(responseCode = "200", description = "Monthly digest retrieved")
     @APIResponse(responseCode = "400", description = "Invalid digest period")
-    public TimeDigest getMonthlyDigest(@QueryParam("year") int year, @QueryParam("month") int month) {
+    @Operation(summary = "Get a monthly digest",
+            description = "Returns the digest of a calendar month in the user's timezone: key metrics such as "
+                    + "distance and time, top places, highlights, milestones, activity charts, and a comparison "
+                    + "with the previous month.")
+    public TimeDigest getMonthlyDigest(
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
+            @QueryParam("year") int year,
+            @Parameter(description = "Month, from 1 to 12.", example = "6")
+            @QueryParam("month") int month) {
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         String timezone = user.getTimezone();
@@ -70,7 +81,12 @@ public class DigestResource {
     @Path("/yearly")
     @APIResponse(responseCode = "200", description = "Yearly digest retrieved")
     @APIResponse(responseCode = "400", description = "Invalid digest year")
-    public TimeDigest getYearlyDigest(@QueryParam("year") int year) {
+    @Operation(summary = "Get a yearly digest",
+            description = "Returns the digest of a calendar year in the user's timezone, with the same sections as "
+                    + "the monthly digest and a comparison with the previous year.")
+    public TimeDigest getYearlyDigest(
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
+            @QueryParam("year") int year) {
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         String timezone = user.getTimezone();
@@ -102,11 +118,19 @@ public class DigestResource {
             responseCode = "400",
             description = "Invalid export parameters"
     )
+    @Operation(summary = "Download a digest as PDF",
+            description = "Generates the monthly or yearly digest (\"Rewind\") as a PDF file, optionally with Immich "
+                    + "photos.")
     public Response exportPdf(
+            @Parameter(description = "`monthly` or `yearly`.", example = "monthly")
             @QueryParam("viewMode") String viewMode,
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
             @QueryParam("year") int year,
+            @Parameter(description = "Month, from 1 to 12. Required when `viewMode` is `monthly`.", example = "6")
             @QueryParam("month") Integer month,
-            @DefaultValue("false") @QueryParam("includePhotos") boolean includePhotos) {
+            @DefaultValue("false")
+            @Parameter(description = "Include photos from Immich. Defaults to `false`.")
+            @QueryParam("includePhotos") boolean includePhotos) {
         if (!"monthly".equals(viewMode) && !"yearly".equals(viewMode)) {
             throw new GeoPulseException(INVALID_DIGEST_VIEW_MODE, "viewMode must be monthly or yearly",
                     Map.of("viewMode", String.valueOf(viewMode)));

@@ -102,13 +102,13 @@ const config = {
                 docsPluginId: 'classic',
                 config: {
                     geopulse: {
-                        specPath: '../docs/openapi/openapi.yaml',
+                        // Written by scripts/public-openapi.mjs from docs/openapi/openapi.json, without internal endpoints.
+                        specPath: '.generated/openapi.public.json',
                         outputDir: 'docs/api/reference',
                         hideSendButton: true,
-                        showSchemas: true,
                         sidebarOptions: {
-                            groupPathsBy: 'tag',
-                            categoryLinkSource: 'auto',
+                            groupPathsBy: 'tagGroup',
+                            categoryLinkSource: 'tag',
                         },
                     },
                 },
@@ -129,13 +129,9 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
             image: 'img/geopulse-app-timeline.png',
+            // Code samples come from x-codeSamples (scripts/code-samples.mjs); keep these in sync with that list.
             languageTabs: [
                 {language: 'curl'},
-                {language: 'javascript'},
-                {language: 'nodejs'},
-                {language: 'python'},
-                {language: 'go'},
-                {language: 'java'},
             ],
 
             colorMode: {

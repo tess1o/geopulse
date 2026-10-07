@@ -16,6 +16,9 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_STATISTICS_RANGE;
 
@@ -23,7 +26,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_STATIST
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Statistics", description = "Read movement statistics for range, week, and month views.")
+@Tag(name = ApiTags.STATISTICS)
 public class StatisticsResource {
 
     private final StatisticsService statisticsService;
@@ -38,8 +41,18 @@ public class StatisticsResource {
     @GET
     @Path("")
     @Produces(MediaType.APPLICATION_JSON)
-    public UserStatistics getRangeStatistics(@QueryParam("from") String startTime,
-                                       @QueryParam("to") String endTime) {
+    @Operation(summary = "Get statistics for a range",
+            description = "Returns movement statistics for a time range: total distance, time moving, daily average "
+                    + "distance, average speed, unique places, most active day, top places, frequent routes, and "
+                    + "distance charts by movement type. Charts are grouped by day for ranges shorter than 10 days "
+                    + "and by week otherwise.")
+    public UserStatistics getRangeStatistics(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-30T23:59:59Z")
+            @QueryParam("to") String endTime) {
         try {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
@@ -58,6 +71,9 @@ public class StatisticsResource {
     @GET
     @Path("/weekly")
     @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get statistics for the last 7 days",
+            description = "Returns the same statistics as the range endpoint for the last 7 days up to the end of "
+                    + "today (UTC), with charts grouped by day.")
     public UserStatistics getWeeklyStatistics() {
         UUID userId = currentUserService.getCurrentUserId();
         Instant start = Instant.now()
@@ -72,6 +88,9 @@ public class StatisticsResource {
     @GET
     @Path("/monthly")
     @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get statistics for the last 30 days",
+            description = "Returns the same statistics as the range endpoint for the last 30 days up to the end of "
+                    + "today (UTC), with charts grouped by week.")
     public UserStatistics getMonthlyStatistics() {
         UUID userId = currentUserService.getCurrentUserId();
         Instant start = Instant.now()

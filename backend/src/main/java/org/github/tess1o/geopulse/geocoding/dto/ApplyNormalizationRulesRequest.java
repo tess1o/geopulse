@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @Builder
@@ -12,7 +13,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ApplyNormalizationRulesRequest {
 
+    @Schema(examples = "true")
     private Boolean applyToGeocoding;
+    @Schema(examples = "true")
     private Boolean applyToFavorites;
 
     @AssertTrue(message = "At least one scope must be selected")

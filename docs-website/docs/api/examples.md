@@ -218,8 +218,9 @@ After the points are imported, GeoPulse regenerates the timeline for the importe
 current step, such as `importing` or `timeline_generation`.
 
 :::tip Large files
-For very large files, use the chunked upload endpoints under `/api/v1/import-uploads` instead. The web app switches to
-chunked uploads automatically for files larger than 80 MB.
+A reverse proxy in front of GeoPulse, such as Cloudflare or nginx, may reject large uploads. If it does, raise its
+upload limit or call the backend directly. The web app works around such limits by uploading files larger than 80 MB in
+chunks through internal endpoints.
 :::
 
 ## Export to GPX or OwnTracks

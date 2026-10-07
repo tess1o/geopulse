@@ -23,6 +23,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.immich.model.ImmichAlbum;
 import org.github.tess1o.geopulse.immich.model.ImmichConfigResponse;
@@ -42,6 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.IMMICH_PHOTO_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_CONFIG;
@@ -52,7 +57,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Immich", description = "Manage Immich configuration and retrieve Immich photo data.")
+@Tag(name = ApiTags.IMMICH)
 public class ImmichResource {
 
     @Inject
@@ -64,6 +69,9 @@ public class ImmichResource {
     @GET
     @Blocking
     @APIResponse(responseCode = "204", description = "Immich is not configured")
+    @Operation(summary = "Get Immich settings",
+            description = "Returns the signed-in user's Immich server URL, API key, and whether the integration is "
+                    + "enabled, or `204 No Content` when Immich is not configured.")
     public RestResponse<ImmichConfigResponse> getImmichConfig() {
         return getConfig(currentUserService.getCurrentUserId());
     }
@@ -71,6 +79,9 @@ public class ImmichResource {
     @PUT
     @Blocking
     @APIResponse(responseCode = "204", description = "Immich configuration updated")
+    @Operation(summary = "Save Immich settings",
+            description = "Saves the Immich server URL and API key of the signed-in user and enables or disables the "
+                    + "integration.")
     public RestResponse<Void> updateImmichConfig(@NotNull @Valid UpdateImmichConfigRequest request) {
         return updateConfig(currentUserService.getCurrentUserId(), request);
     }
@@ -78,14 +89,28 @@ public class ImmichResource {
     @GET
     @Path("/photos/search")
     @Blocking
+    @Operation(summary = "Search Immich photos",
+            description = "Searches the user's Immich library for photos taken in a time range, optionally near a "
+                    + "location or in a city or country. Returns photo metadata; load the images through the "
+                    + "thumbnail, preview, and download endpoints.")
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(
+            @Parameter(description = "Start of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startDate,
+            @Parameter(description = "End of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-30T23:59:59Z")
             @QueryParam("to") String endDate,
+            @Parameter(description = "Latitude of a search center. Use with `longitude` and `radiusMeters`.")
             @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude of a search center.")
             @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Search radius around the center, in meters.")
             @QueryParam("radiusMeters") Double radiusMeters,
+            @Parameter(description = "Only photos Immich places in this city.")
             @QueryParam("city") String city,
+            @Parameter(description = "Only photos Immich places in this country.")
             @QueryParam("country") String country,
+            @Parameter(description = "Maximum number of photos.")
             @QueryParam("limit") Integer limit) {
         return searchPhotosForUser(currentUserService.getCurrentUserId(), startDate, endDate,
                 latitude, longitude, radiusMeters, city, country, limit);
@@ -94,14 +119,28 @@ public class ImmichResource {
     @GET
     @Path("/photos/map-markers")
     @Blocking
+    @Operation(summary = "Get photo map markers",
+            description = "Returns Immich photos matching the search, grouped into map markers by rounded "
+                    + "coordinates, with the number of photos per marker.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public CompletableFuture<ImmichPhotoMapMarkersResponse> getPhotoMapMarkers(
+            @Parameter(description = "Start of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startDate,
+            @Parameter(description = "End of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-30T23:59:59Z")
             @QueryParam("to") String endDate,
+            @Parameter(description = "Latitude of a search center. Use with `longitude` and `radiusMeters`.")
             @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude of a search center.")
             @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Search radius around the center, in meters.")
             @QueryParam("radiusMeters") Double radiusMeters,
+            @Parameter(description = "Only photos Immich places in this city.")
             @QueryParam("city") String city,
+            @Parameter(description = "Only photos Immich places in this country.")
             @QueryParam("country") String country,
+            @Parameter(description = "Decimal places used to group nearby photos into one marker.")
             @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
         return photoMapMarkersForUser(currentUserService.getCurrentUserId(), startDate, endDate,
                 latitude, longitude, radiusMeters, city, country, coordinatePrecision);
@@ -110,17 +149,34 @@ public class ImmichResource {
     @GET
     @Path("/photos/by-marker")
     @Blocking
+    @Operation(summary = "List photos of a map marker",
+            description = "Returns the photos behind one marker from the map-markers endpoint. Send the same search "
+                    + "parameters and precision, plus the marker coordinates.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public CompletableFuture<ImmichPhotoSearchResponse> getPhotosForMapMarker(
+            @Parameter(description = "Start of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startDate,
+            @Parameter(description = "End of the time range, as an ISO-8601 date-time with offset. Required.",
+                    example = "2025-06-30T23:59:59Z")
             @QueryParam("to") String endDate,
+            @Parameter(description = "Latitude of a search center. Use with `longitude` and `radiusMeters`.")
             @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude of a search center.")
             @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Search radius around the center, in meters.")
             @QueryParam("radiusMeters") Double radiusMeters,
+            @Parameter(description = "Only photos Immich places in this city.")
             @QueryParam("city") String city,
+            @Parameter(description = "Only photos Immich places in this country.")
             @QueryParam("country") String country,
+            @Parameter(description = "Latitude of the marker. Required.")
             @QueryParam("markerLatitude") Double markerLatitude,
+            @Parameter(description = "Longitude of the marker. Required.")
             @QueryParam("markerLongitude") Double markerLongitude,
+            @Parameter(description = "Decimal places used to group nearby photos into one marker.")
             @QueryParam("coordinatePrecision") Integer coordinatePrecision,
+            @Parameter(description = "Maximum number of photos.")
             @QueryParam("limit") Integer limit) {
         return photosForMapMarkerForUser(currentUserService.getCurrentUserId(), startDate, endDate,
                 latitude, longitude, radiusMeters, city, country, markerLatitude, markerLongitude,
@@ -130,6 +186,9 @@ public class ImmichResource {
     @GET
     @Path("/albums")
     @Blocking
+    @Operation(summary = "List Immich albums",
+            description = "Returns the albums in the user's Immich library, for example to pick an album for a share "
+                    + "link.")
     public CompletableFuture<List<ImmichAlbum>> listAlbums() {
         return immichService.listAlbums(currentUserService.getCurrentUserId());
     }
@@ -137,6 +196,10 @@ public class ImmichResource {
     @POST
     @Path("/connection-tests")
     @Blocking
+    @Operation(summary = "Test an Immich connection",
+            description = "Checks that GeoPulse can reach an Immich server with the given URL and API key, without "
+                    + "saving them. When the API key is omitted, the saved key is used.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public CompletableFuture<TestImmichConnectionResponse> testImmichConnection(
             @NotNull @Valid TestImmichConnectionRequest request) {
         return immichService.testImmichConnection(currentUserService.getCurrentUserId(), request);
@@ -149,7 +212,11 @@ public class ImmichResource {
     @APIResponse(responseCode = "200", description = "Immich photo thumbnail",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getPhotoThumbnail(@PathParam("photoId") String photoId) {
+    @Operation(summary = "Get a photo thumbnail",
+            description = "Returns a small JPEG thumbnail of an Immich photo, fetched through GeoPulse.")
+    public CompletableFuture<Response> getPhotoThumbnail(
+            @Parameter(description = "Immich asset ID.")
+            @PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.THUMBNAIL);
     }
 
@@ -160,7 +227,11 @@ public class ImmichResource {
     @APIResponse(responseCode = "200", description = "Immich photo preview",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getPhotoPreview(@PathParam("photoId") String photoId) {
+    @Operation(summary = "Get a photo preview",
+            description = "Returns a larger JPEG preview of an Immich photo, fetched through GeoPulse.")
+    public CompletableFuture<Response> getPhotoPreview(
+            @Parameter(description = "Immich asset ID.")
+            @PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.PREVIEW);
     }
 
@@ -171,7 +242,11 @@ public class ImmichResource {
     @APIResponse(responseCode = "200", description = "Original Immich photo",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> downloadPhoto(@PathParam("photoId") String photoId) {
+    @Operation(summary = "Download a photo",
+            description = "Downloads the original file of an Immich photo.")
+    public CompletableFuture<Response> downloadPhoto(
+            @Parameter(description = "Immich asset ID.")
+            @PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.ORIGINAL);
     }
 

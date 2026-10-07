@@ -21,6 +21,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.favorites.model.AddAreaToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
@@ -41,6 +42,10 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -50,7 +55,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
-@Tag(name = "User: Favorites", description = "Manage favorite places, areas, distinct values, and reconciliation.")
+@Tag(name = ApiTags.FAVORITES)
 public class FavoritesResource {
 
     private final FavoriteLocationService service;
@@ -67,6 +72,9 @@ public class FavoritesResource {
     }
 
     @GET
+    @Operation(summary = "List favorites",
+            description = "Returns all favorite points and areas of the signed-in user with their names, cities, and "
+                    + "countries.")
     public FavoriteLocationsDto getFavorites() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("User {} is retrieving favorites", userId);
@@ -77,8 +85,14 @@ public class FavoritesResource {
     @Path("/{favoriteId}")
     @APIResponse(responseCode = "200", description = "Favorite updated")
     @APIResponse(responseCode = "403", description = "Favorite is not owned by the current user")
-    public JobResponse updateFavorite(@PathParam("favoriteId") long favoriteId,
-                                      @NotNull @Valid EditFavoriteDto dto) {
+    @Operation(summary = "Update a favorite",
+            description = "Changes the name, city, country, or (for areas) the bounds of a favorite. When the bounds "
+                    + "change, a background timeline regeneration starts and its job ID is returned; otherwise the "
+                    + "job ID is empty.")
+    public JobResponse updateFavorite(
+            @Parameter(description = "Favorite ID.")
+            @PathParam("favoriteId") long favoriteId,
+            @NotNull @Valid EditFavoriteDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
             boolean boundsChanged = service.updateFavorite(userId, favoriteId, dto);
@@ -95,7 +109,13 @@ public class FavoritesResource {
     @Path("/{favoriteId}")
     @APIResponse(responseCode = "200", description = "Favorite deleted")
     @APIResponse(responseCode = "404", description = "Favorite not found")
-    public JobResponse deleteFavorite(@PathParam("favoriteId") long favoriteId) {
+    @Operation(summary = "Delete a favorite",
+            description = "Deletes a favorite. Stays inside it fall back to their reverse-geocoded names. Starts a "
+                    + "background timeline regeneration so existing stays pick up the change; the response contains "
+                    + "the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`.")
+    public JobResponse deleteFavorite(
+            @Parameter(description = "Favorite ID.")
+            @PathParam("favoriteId") long favoriteId) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
             service.deleteFavorite(userId, favoriteId);
@@ -110,6 +130,10 @@ public class FavoritesResource {
     @POST
     @Path("/points")
     @APIResponse(responseCode = "201", description = "Point favorite created")
+    @Operation(summary = "Add a favorite point",
+            description = "Creates a favorite at a single location. Stays near the point use the favorite's name. "
+                    + "Starts a background timeline regeneration so existing stays pick up the change; the response "
+                    + "contains the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`.")
     public RestResponse<JobResponse> addPointToFavorites(@NotNull @Valid AddPointToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
@@ -124,6 +148,11 @@ public class FavoritesResource {
     @POST
     @Path("/areas")
     @APIResponse(responseCode = "201", description = "Area favorite created")
+    @Operation(summary = "Add a favorite area",
+            description = "Creates a favorite covering a rectangular area, such as a campus or a park. Stays inside "
+                    + "the area use the favorite's name. Starts a background timeline regeneration so existing "
+                    + "stays pick up the change; the response contains the job ID to poll with `GET "
+                    + "/api/v1/timeline/jobs/{jobId}`.")
     public RestResponse<JobResponse> addAreaToFavorites(@NotNull @Valid AddAreaToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
@@ -138,6 +167,9 @@ public class FavoritesResource {
     @POST
     @Path("/bulk")
     @APIResponse(responseCode = "201", description = "Favorites created")
+    @Operation(summary = "Add several favorites",
+            description = "Creates several favorite points and areas in one request. The response reports which ones "
+                    + "succeeded. A single timeline regeneration job is started for all of them.")
     public RestResponse<BulkAddFavoritesResult> bulkAddFavorites(@NotNull @Valid BulkAddFavoritesDto request) {
         if (request.getPoints().isEmpty() && request.getAreas().isEmpty()) {
             throw new GeoPulseException(NO_FAVORITES_PROVIDED, "No favorites provided for bulk add");
@@ -161,6 +193,9 @@ public class FavoritesResource {
 
     @PATCH
     @Path("/bulk-update")
+    @Operation(summary = "Set city or country of several favorites",
+            description = "Sets the city, the country, or both, on several favorites at once, for example to fix "
+                    + "inconsistent names.")
     public BulkUpdateFavoritesResult bulkUpdateFavorites(@NotNull @Valid BulkUpdateFavoritesDto request) {
         try {
             BulkUpdateFavoritesResult result = service.bulkUpdateFavorites(
@@ -176,12 +211,21 @@ public class FavoritesResource {
 
     @GET
     @Path("/distinct-values")
+    @Operation(summary = "List favorite cities and countries",
+            description = "Returns the distinct city and country names used by the signed-in user's favorites, for "
+                    + "filters and autocomplete.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public DistinctValuesDto getDistinctValues() {
         return service.getDistinctValues(currentUserService.getCurrentUserId());
     }
 
     @POST
     @Path("/reconcile/bulk")
+    @Operation(summary = "Re-resolve favorite addresses",
+            description = "Starts a background job that looks up the city and country of favorites again with a "
+                    + "chosen geocoding provider. Pass specific `favoriteIds`, or set `reconcileAll` with optional "
+                    + "filters. Only one reconciliation job per user can run at a time. Poll `GET "
+                    + "/api/v1/favorites/reconcile/jobs/{jobId}` for progress.")
     public JobResponse reconcileFavoritesBulk(@NotNull @Valid FavoriteReconcileRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(userId);
@@ -195,7 +239,11 @@ public class FavoritesResource {
 
     @GET
     @Path("/reconcile/jobs/{jobId}")
-    public ReconciliationJobProgress getReconciliationJobProgress(@PathParam("jobId") String jobId) {
+    @Operation(summary = "Get favorite reconciliation progress",
+            description = "Returns the progress and result of a favorite reconciliation job.")
+    public ReconciliationJobProgress getReconciliationJobProgress(
+            @Parameter(description = "Reconciliation job ID.")
+            @PathParam("jobId") String jobId) {
         UUID parsedJobId;
         try {
             parsedJobId = UUID.fromString(jobId);

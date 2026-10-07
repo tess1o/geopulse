@@ -20,6 +20,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.CityDetailsDTO;
@@ -42,6 +43,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.CITY_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.COUNTRY_NOT_FOUND;
@@ -56,7 +59,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.LOCATION_VISITS
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
-@Tag(name = "User: Location Analytics", description = "Search and analyze visited cities, countries, places, and visits.")
+@Tag(name = ApiTags.LOCATION_ANALYTICS)
 public class LocationAnalyticsResource {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -70,8 +73,12 @@ public class LocationAnalyticsResource {
 
     @GET
     @Path("/search")
+    @Operation(summary = "Search visited locations",
+            description = "Searches the places, cities, and countries the signed-in user has visited by name.")
     public List<LocationSearchResultDTO> search(
+            @Parameter(description = "Search text, at least 2 characters.", example = "Lisb")
             @QueryParam("q") String query,
+            @Parameter(description = "Limit results to `place`, `city`, or `country`. Defaults to all.")
             @QueryParam("type") String type) {
         if (query == null || query.trim().length() < 2) {
             throw new GeoPulseException(INVALID_LOCATION_SEARCH, "Search query must be at least 2 characters");
@@ -81,26 +88,42 @@ public class LocationAnalyticsResource {
 
     @GET
     @Path("/cities")
+    @Operation(summary = "List visited cities",
+            description = "Returns every city the signed-in user has stayed in, with visit counts and time spent.")
     public List<CitySummaryDTO> getCities() {
         return analyticsService.getAllCities(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/countries")
+    @Operation(summary = "List visited countries",
+            description = "Returns every country the signed-in user has stayed in, with visit counts, time spent, "
+                    + "and number of cities.")
     public List<CountrySummaryDTO> getCountries() {
         return analyticsService.getAllCountries(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/map/places")
+    @Operation(summary = "Get visited places for the map",
+            description = "Returns visited places with their visit counts for drawing on a map, optionally limited "
+                    + "to a time range and a map viewport. The viewport needs all four bounds.")
     public List<LocationAnalyticsMapPlaceDTO> getMapPlaces(
+            @Parameter(description = "Only visits after this ISO-8601 instant.", example = "2025-01-01T00:00:00Z")
             @QueryParam("from") String from,
+            @Parameter(description = "Only visits before this ISO-8601 instant.", example = "2025-12-31T23:59:59Z")
             @QueryParam("to") String to,
+            @Parameter(description = "Southern edge of the viewport, in degrees.")
             @QueryParam("minLat") Double minLat,
+            @Parameter(description = "Northern edge of the viewport, in degrees.")
             @QueryParam("maxLat") Double maxLat,
+            @Parameter(description = "Western edge of the viewport, in degrees.")
             @QueryParam("minLon") Double minLon,
+            @Parameter(description = "Eastern edge of the viewport, in degrees.")
             @QueryParam("maxLon") Double maxLon,
+            @Parameter(description = "Only places with at least this many visits. Defaults to 1.")
             @QueryParam("minVisits") @DefaultValue("1") Integer minVisits,
+            @Parameter(description = "Maximum number of places. Defaults to 3000.")
             @QueryParam("limit") @DefaultValue("3000") Integer limit) {
         try {
             Instant fromInstant = parseOptionalInstant(from);
@@ -119,25 +142,45 @@ public class LocationAnalyticsResource {
 
     @GET
     @Path("/cities/{name}")
-    public CityDetailsDTO getCityDetails(@PathParam("name") String cityName) {
+    @Operation(summary = "Get city details",
+            description = "Returns statistics for a city: visits, time spent, first and last visit, and the most "
+                    + "visited places in it.")
+    public CityDetailsDTO getCityDetails(
+            @Parameter(description = "City name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/cities`.", example = "Lisbon")
+            @PathParam("name") String cityName) {
         return analyticsService.getCityDetails(currentUserService.getCurrentUserId(), cityName)
                 .orElseThrow(() -> new GeoPulseException(CITY_NOT_FOUND, "City not found or no visits recorded"));
     }
 
     @GET
     @Path("/countries/{name}")
-    public CountryDetailsDTO getCountryDetails(@PathParam("name") String countryName) {
+    @Operation(summary = "Get country details",
+            description = "Returns statistics for a country: visits, time spent, first and last visit, and the "
+                    + "cities visited in it.")
+    public CountryDetailsDTO getCountryDetails(
+            @Parameter(description = "Country name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/countries`.", example = "Portugal")
+            @PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
                 .orElseThrow(() -> new GeoPulseException(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
     }
 
     @GET
     @Path("/cities/{name}/visits")
+    @Operation(summary = "List visits in a city",
+            description = "Returns the stays in a city one page at a time.")
     public PageResponse<PlaceVisitDTO> getCityVisits(
+            @Parameter(description = "City name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/cities`.")
             @PathParam("name") String cityName,
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size. Defaults to 50.")
             @QueryParam("size") @DefaultValue("50") int size,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         validatePage(page);
         return analyticsService.getCityVisits(
@@ -146,11 +189,19 @@ public class LocationAnalyticsResource {
 
     @GET
     @Path("/countries/{name}/visits")
+    @Operation(summary = "List visits in a country",
+            description = "Returns the stays in a country one page at a time.")
     public PageResponse<PlaceVisitDTO> getCountryVisits(
+            @Parameter(description = "Country name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/countries`.")
             @PathParam("name") String countryName,
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size. Defaults to 50.")
             @QueryParam("size") @DefaultValue("50") int size,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         validatePage(page);
         return analyticsService.getCountryVisits(
@@ -162,9 +213,16 @@ public class LocationAnalyticsResource {
     @Produces("text/csv")
     @APIResponse(responseCode = "200", description = "City visits CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
+    @Operation(summary = "Export visits in a city as CSV",
+            description = "Downloads all stays in a city as a CSV file with location, start and end time, duration, "
+                    + "and day of week.")
     public Response exportCityVisits(
+            @Parameter(description = "City name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/cities`.")
             @PathParam("name") String cityName,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         List<PlaceVisitDTO> visits = analyticsService.getAllCityVisits(
                 currentUserService.getCurrentUserId(), cityName, sortBy, sortDirection);
@@ -179,9 +237,16 @@ public class LocationAnalyticsResource {
     @Produces("text/csv")
     @APIResponse(responseCode = "200", description = "Country visits CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
+    @Operation(summary = "Export visits in a country as CSV",
+            description = "Downloads all stays in a country as a CSV file with location, start and end time, "
+                    + "duration, and day of week.")
     public Response exportCountryVisits(
+            @Parameter(description = "Country name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/countries`.")
             @PathParam("name") String countryName,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         List<PlaceVisitDTO> visits = analyticsService.getAllCountryVisits(
                 currentUserService.getCurrentUserId(), countryName, sortBy, sortDirection);
@@ -193,7 +258,13 @@ public class LocationAnalyticsResource {
 
     @GET
     @Path("/countries/{name}/cities")
-    public List<CityInCountryDTO> getCitiesInCountry(@PathParam("name") String countryName) {
+    @Operation(summary = "List cities in a country",
+            description = "Returns the cities the signed-in user has visited in a country, with visit counts and "
+                    + "time spent.")
+    public List<CityInCountryDTO> getCitiesInCountry(
+            @Parameter(description = "Country name, URL-encoded, exactly as returned by `GET "
+                    + "/api/v1/location-analytics/countries`.", example = "Portugal")
+            @PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
                 .map(CountryDetailsDTO::getCities)
                 .orElseThrow(() -> new GeoPulseException(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));

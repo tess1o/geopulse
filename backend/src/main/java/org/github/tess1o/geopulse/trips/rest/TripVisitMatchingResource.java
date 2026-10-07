@@ -13,6 +13,9 @@ import org.github.tess1o.geopulse.trips.service.TripVisitAutoMatchService;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
@@ -22,7 +25,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips", description = "Read visit suggestions for trips.")
+@Tag(name = ApiTags.TRIPS)
 public class TripVisitMatchingResource {
 
     private final TripVisitAutoMatchService tripVisitAutoMatchService;
@@ -35,7 +38,13 @@ public class TripVisitMatchingResource {
     }
 
     @GET
-    public List<TripVisitSuggestionDto> getVisitSuggestions(@PathParam("tripId") Long tripId) {
+    @Operation(summary = "Get visit suggestions",
+            description = "Returns stays that GeoPulse matched to the trip's plan items, with distance, confidence, "
+                    + "and whether each match was applied. Confirm or override a match with `PUT "
+                    + "/api/v1/trips/{tripId}/plan-items/{itemId}/visit-override`.")
+    public List<TripVisitSuggestionDto> getVisitSuggestions(
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId) {
         try {
             return tripVisitAutoMatchService.getStoredSuggestions(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {

@@ -26,6 +26,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 /**
  * REST resource for admin dashboard statistics.
@@ -34,7 +38,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
 @Slf4j
-@Tag(name = "Admin: Dashboard", description = "Read administrator dashboard metrics and system statistics.")
+@Tag(name = ApiTags.ADMIN_DASHBOARD)
 public class AdminDashboardResource {
 
     @Inject
@@ -60,6 +64,10 @@ public class AdminDashboardResource {
      * @return Dashboard statistics including user and GPS metrics
      */
     @GET
+    @Operation(summary = "Get dashboard metrics",
+            description = "Returns server-wide metrics for the administrator dashboard: users and GPS points (total "
+                    + "and last 24 hours), and health of backups, GPS ingestion, geocoding providers, map matching, "
+                    + "timeline jobs, weather, and security warnings.")
     public AdminDashboardResponse getDashboardStats() {
         log.debug("Metrics status - User: {}, GPS: {}", userMetrics.isEnabled(), gpsPointsMetrics.isEnabled());
         AdminDashboardResponse.BackupHealth backup = backupHealth();

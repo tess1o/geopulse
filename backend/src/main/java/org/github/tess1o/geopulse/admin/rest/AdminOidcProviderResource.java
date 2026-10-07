@@ -31,7 +31,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -42,7 +47,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: OIDC Providers", description = "Manage OpenID Connect provider configuration.")
+@Tag(name = ApiTags.ADMIN_OIDC_PROVIDERS)
 public class AdminOidcProviderResource {
 
     @Context
@@ -62,6 +67,9 @@ public class AdminOidcProviderResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "List OIDC providers",
+            description = "Returns all OpenID Connect providers, whether they are defined by environment variables "
+                    + "or in the database, with their source. Client secrets are not returned.")
     public List<OidcProviderResponse> getAllProviders() {
         List<OidcProviderConfiguration> providers = configurationService.loadAllProviders();
 
@@ -76,7 +84,11 @@ public class AdminOidcProviderResource {
     @GET
     @Path("/{name}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public OidcProviderResponse getProvider(@PathParam("name") String name) {
+    @Operation(summary = "Get an OIDC provider",
+            description = "Returns one OpenID Connect provider and where its configuration comes from.")
+    public OidcProviderResponse getProvider(
+            @Parameter(description = "Provider name (identifier).", example = "google")
+            @PathParam("name") String name) {
         return configurationService.getProviderByName(name)
                 .map(this::mapToResponse)
                 .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND, "Provider not found"));
@@ -87,6 +99,9 @@ public class AdminOidcProviderResource {
      */
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Create an OIDC provider",
+            description = "Adds an OpenID Connect provider with its discovery URL, client ID, client secret, scopes, "
+                    + "and display name.")
     public RestResponse<OidcProviderResponse> createProvider(@Valid CreateOidcProviderRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
@@ -135,8 +150,14 @@ public class AdminOidcProviderResource {
     @PUT
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public OidcProviderResponse updateProvider(@PathParam("name") String name,
-                                               @Valid UpdateOidcProviderRequest request) {
+    @Operation(summary = "Update an OIDC provider",
+            description = "Updates an OpenID Connect provider. Leave the client secret empty to keep the current "
+                    + "one. Updating a provider that comes from environment variables saves a database copy that "
+                    + "takes precedence.")
+    public OidcProviderResponse updateProvider(
+            @Parameter(description = "Provider name (identifier).", example = "google")
+            @PathParam("name") String name,
+            @Valid UpdateOidcProviderRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -199,7 +220,13 @@ public class AdminOidcProviderResource {
     @DELETE
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void deleteProvider(@PathParam("name") String name) {
+    @Operation(summary = "Delete an OIDC provider",
+            description = "Deletes a provider stored in the database. Providers defined only by environment "
+                    + "variables cannot be deleted here; when a provider exists in both, it reverts to the "
+                    + "environment configuration.")
+    public void deleteProvider(
+            @Parameter(description = "Provider name (identifier).", example = "google")
+            @PathParam("name") String name) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -242,7 +269,12 @@ public class AdminOidcProviderResource {
     @POST
     @Path("/{name}/reset")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public OidcProviderResponse resetProvider(@PathParam("name") String name) {
+    @Operation(summary = "Reset an OIDC provider",
+            description = "Removes the database override of a provider so its environment-variable configuration "
+                    + "applies again.")
+    public OidcProviderResponse resetProvider(
+            @Parameter(description = "Provider name (identifier).", example = "google")
+            @PathParam("name") String name) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -279,7 +311,13 @@ public class AdminOidcProviderResource {
     @POST
     @Path("/{name}/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public TestOidcProviderResponse testProvider(@PathParam("name") String name) {
+    @Operation(summary = "Test an OIDC provider",
+            description = "Fetches the provider's discovery document and returns its endpoints and issuer, to "
+                    + "confirm the discovery URL works.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public TestOidcProviderResponse testProvider(
+            @Parameter(description = "Provider name (identifier).", example = "google")
+            @PathParam("name") String name) {
         try {
             // Get provider configuration
             OidcProviderConfiguration provider = configurationService.getProviderByName(name)

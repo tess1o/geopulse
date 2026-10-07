@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRouting
 
 import java.time.Instant;
 import java.io.Serializable;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /** Per-user controls for the small set of actionable notifications. */
 @Getter
@@ -41,13 +42,19 @@ public class NotificationPreferences implements Serializable {
     @EqualsAndHashCode
     public static class Channel implements Serializable {
         @Builder.Default
+        @Schema(examples = "true")
         private boolean inAppEnabled = true;
         @Builder.Default
+        @Schema(examples = "false")
         private boolean appriseEnabled = false;
         @Builder.Default
+        @Schema(examples = "URLS")
         private AppriseExternalRoutingMode routingMode = AppriseExternalRoutingMode.URLS;
+        @Schema(examples = "tgram://bottoken/ChatID")
         private String destination;
+        @Schema(examples = "geopulse")
         private String appriseConfigKey;
+        @Schema(examples = "family")
         private String appriseTag;
     }
 }

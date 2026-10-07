@@ -19,6 +19,8 @@ import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RECONSTRUCTION;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
@@ -28,7 +30,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips and Planning", description = "Preview and commit timeline reconstruction changes.")
+@Tag(name = ApiTags.TRIP_PLANNING)
 public class ReconstructionResource {
 
     private final TripReconstructionService tripReconstructionService;
@@ -42,6 +44,11 @@ public class ReconstructionResource {
 
     @POST
     @Path("/preview")
+    @Operation(summary = "Preview a trip reconstruction",
+            description = "Checks a reconstruction request and returns how many GPS points it would create, and for "
+                    + "which time range. A reconstruction describes missing parts of a trip as a list of stays and "
+                    + "movements (with optional waypoints) so GeoPulse can generate GPS points for them. Nothing is "
+                    + "saved.")
     public TripReconstructionPreviewDto preview(@Valid TripReconstructionRequestDto request) {
         try {
             return tripReconstructionService.preview(currentUserService.getCurrentUserId(), request);
@@ -54,6 +61,10 @@ public class ReconstructionResource {
 
     @POST
     @Path("/commit")
+    @Operation(summary = "Save a trip reconstruction",
+            description = "Generates GPS points from the reconstruction segments and stores them for the trip owner. "
+                    + "Points that already exist are skipped. Then starts a timeline regeneration from the earliest "
+                    + "new point and returns its job ID.")
     public TripReconstructionCommitResponseDto commit(@Valid TripReconstructionRequestDto request) {
         try {
             return tripReconstructionService.commit(currentUserService.getCurrentUserId(), request);

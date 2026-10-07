@@ -30,13 +30,21 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 @Path(ApiPaths.GPS_INGEST + "/owntracks")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Integrations", description = "Ingest location updates from OwnTracks clients.")
+@Tag(name = ApiTags.GPS_TRACKER_INGEST)
+@SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_BASIC)
 public class OwnTracksResource {
 
     @ConfigProperty(name = "geopulse.owntracks.ping.timestamp.override", defaultValue = "false")
@@ -68,12 +76,21 @@ public class OwnTracksResource {
 
     @POST
     @Operation(summary = "Ingest OwnTracks location",
-            description = "Receives an OwnTracks location update and stores it as a GPS point for the matching source token.")
-    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+            description = "Receives an OwnTracks HTTP-mode message and stores location updates as GPS points for the "
+                    + "user who owns the OwnTracks GPS source. Encrypted payloads are decrypted with the source's "
+                    + "encryption key. Messages other than `location`, and payloads that cannot be decrypted, are "
+                    + "accepted and ignored. OwnTracks points of interest and tags in the message are stored too.")
+    @APIResponse(responseCode = "200", description = "Message accepted or ignored. The body is an empty JSON array.",
             content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(type = SchemaType.ARRAY)))
-    public Response handleOwnTracks(Map<String, Object> payload,
+    public Response handleOwnTracks(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = OwnTracksLocationMessage.class),
+                    examples = @ExampleObject(name = "location", value = GpsIngestExamples.OWNTRACKS)))
+                                    Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
+                                    @Parameter(description = "OwnTracks device identifier. When missing, the device "
+                                            + "is taken from the message topic (`owntracks/<user>/<device>`).",
+                                            example = "phone")
                                     @RestHeader("X-Limit-D") String deviceId) {
         long requestStart = metricsStart();
         String result = "success";

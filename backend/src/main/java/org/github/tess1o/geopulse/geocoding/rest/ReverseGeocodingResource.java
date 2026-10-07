@@ -21,6 +21,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geocoding.dto.ApplyNormalizationRulesRequest;
 import org.github.tess1o.geopulse.geocoding.dto.BulkUpdateGeocodingDto;
@@ -45,6 +46,10 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_RESULT_NOT_FOUND;
@@ -60,7 +65,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Geocoding", description = "Manage reverse geocoding results, normalization, providers, and reconciliation.")
+@Tag(name = ApiTags.GEOCODING)
 public class ReverseGeocodingResource {
 
     private final ReverseGeocodingManagementService managementService;
@@ -81,12 +86,22 @@ public class ReverseGeocodingResource {
     }
 
     @GET
+    @Operation(summary = "List geocoding results",
+            description = "Returns the reverse-geocoding results used by the signed-in user's stays, one page at a "
+                    + "time, with optional provider and text filters.")
     public PageResponse<ReverseGeocodingDTO> getGeocodingResults(
+            @Parameter(description = "Only results from this geocoding provider.", example = "Nominatim")
             @QueryParam("providerName") String providerName,
+            @Parameter(description = "Text to search for in the name, city, or country.")
             @QueryParam("searchText") String searchText,
+            @Parameter(description = "Page number, starting at 1.")
             @QueryParam("page") @DefaultValue("1") int page,
+            @Parameter(description = "Page size. Defaults to 50.")
             @QueryParam("limit") @DefaultValue("50") int limit,
+            @Parameter(description = "Sort field: `displayName`, `city`, `country`, `providerName`, `createdAt`, or "
+                    + "`lastAccessedAt` (default).")
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         if (page < 1 || limit < 1) {
             throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
@@ -100,7 +115,12 @@ public class ReverseGeocodingResource {
 
     @GET
     @Path("/{id}")
-    public ReverseGeocodingDTO getGeocodingResult(@PathParam("id") Long id) {
+    @Operation(summary = "Get a geocoding result",
+            description = "Returns one reverse-geocoding result: name, address, city, country, coordinates, and "
+                    + "provider.")
+    public ReverseGeocodingDTO getGeocodingResult(
+            @Parameter(description = "Geocoding result ID.")
+            @PathParam("id") Long id) {
         try {
             return managementService.getGeocodingResult(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
@@ -112,7 +132,12 @@ public class ReverseGeocodingResource {
 
     @PUT
     @Path("/{id}")
+    @Operation(summary = "Update a geocoding result",
+            description = "Corrects the name, city, or country of a reverse-geocoding result. Shared provider "
+                    + "results are not changed: the first edit creates a private copy for the signed-in user, and "
+                    + "the user's stays are updated to use it.")
     public ReverseGeocodingDTO updateGeocodingResult(
+            @Parameter(description = "Geocoding result ID.")
             @PathParam("id") Long id, @Valid ReverseGeocodingUpdateDTO update) {
         try {
             return managementService.updateGeocodingResult(currentUserService.getCurrentUserId(), id, update);
@@ -125,6 +150,10 @@ public class ReverseGeocodingResource {
 
     @PATCH
     @Path("/bulk-update")
+    @Operation(summary = "Set city or country of several results",
+            description = "Sets the city, the country, or both, on several geocoding results at once. Shared "
+                    + "provider results are not changed: the first edit creates a private copy for the signed-in "
+                    + "user, and the user's stays are updated to use it.")
     public BulkUpdateGeocodingResult bulkUpdateGeocoding(@Valid BulkUpdateGeocodingDto request) {
         try {
             BulkUpdateGeocodingResult result = managementService.bulkUpdateGeocoding(
@@ -140,18 +169,29 @@ public class ReverseGeocodingResource {
 
     @GET
     @Path("/distinct-values")
+    @Operation(summary = "List geocoded cities and countries",
+            description = "Returns the distinct city and country names in the signed-in user's geocoding results, "
+                    + "for filters and autocomplete.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public DistinctValuesDto getDistinctValues() {
         return managementService.getDistinctValues(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/normalization-rules")
+    @Operation(summary = "List normalization rules",
+            description = "Returns the signed-in user's rules for renaming cities or countries, for example \"Kiev\" "
+                    + "to \"Kyiv\".")
     public List<NormalizationRuleDto> listNormalizationRules() {
         return normalizationService.listRules(currentUserService.getCurrentUserId());
     }
 
     @POST
     @Path("/normalization-rules")
+    @Operation(summary = "Create a normalization rule",
+            description = "Creates a rule that renames a country (`ruleType: COUNTRY`) or a city within a country "
+                    + "(`ruleType: CITY`). New favorites and re-resolved locations use the rule automatically; "
+                    + "apply it to existing data with the apply endpoints.")
     public RestResponse<NormalizationRuleDto> createNormalizationRule(
             @Valid CreateNormalizationRuleRequest request) {
         try {
@@ -164,7 +204,11 @@ public class ReverseGeocodingResource {
 
     @PUT
     @Path("/normalization-rules/{id}")
+    @Operation(summary = "Update a normalization rule",
+            description = "Changes the source or target names of a normalization rule. Existing data is not changed "
+                    + "until the rule is applied.")
     public NormalizationRuleDto updateNormalizationRule(
+            @Parameter(description = "Normalization rule ID.")
             @PathParam("id") Long id, @Valid UpdateNormalizationRuleRequest request) {
         try {
             return normalizationService.updateRule(currentUserService.getCurrentUserId(), id, request);
@@ -179,7 +223,11 @@ public class ReverseGeocodingResource {
 
     @DELETE
     @Path("/normalization-rules/{id}")
-    public RestResponse<Void> deleteNormalizationRule(@PathParam("id") Long id) {
+    @Operation(summary = "Delete a normalization rule",
+            description = "Deletes a normalization rule. Names it already changed stay as they are.")
+    public RestResponse<Void> deleteNormalizationRule(
+            @Parameter(description = "Normalization rule ID.")
+            @PathParam("id") Long id) {
         try {
             normalizationService.deleteRule(currentUserService.getCurrentUserId(), id);
             return RestResponse.noContent();
@@ -192,6 +240,10 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/normalization-rules/apply")
+    @Operation(summary = "Apply all normalization rules",
+            description = "Starts a background job that applies all of the user's normalization rules to existing "
+                    + "geocoding results, favorites, or both. Poll `GET /api/v1/geocoding/reconcile/jobs/{jobId}` "
+                    + "for progress. Only one such job per user can run at a time.")
     public JobResponse applyNormalizationRules(@Valid ApplyNormalizationRulesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         rejectActiveJob(userId);
@@ -200,7 +252,12 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/normalization-rules/{id}/apply")
+    @Operation(summary = "Apply one normalization rule",
+            description = "Starts a background job that applies a single normalization rule to existing geocoding "
+                    + "results, favorites, or both. Poll `GET /api/v1/geocoding/reconcile/jobs/{jobId}` for "
+                    + "progress. Only one such job per user can run at a time.")
     public JobResponse applyNormalizationRule(
+            @Parameter(description = "Normalization rule ID.")
             @PathParam("id") Long id, @Valid ApplyNormalizationRulesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         rejectActiveJob(userId);
@@ -215,6 +272,11 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/reconcile/bulk")
+    @Operation(summary = "Re-resolve geocoding results",
+            description = "Starts a background job that looks up locations again with a chosen geocoding provider "
+                    + "and updates the results that changed. Pass specific `geocodingIds`, or set `reconcileAll` "
+                    + "with an optional provider filter. Poll `GET /api/v1/geocoding/reconcile/jobs/{jobId}` for "
+                    + "progress. Only one such job per user can run at a time.")
     public JobResponse reconcileWithProviderBulk(@Valid ReverseGeocodingReconcileRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         rejectActiveJob(userId);
@@ -223,7 +285,11 @@ public class ReverseGeocodingResource {
 
     @GET
     @Path("/reconcile/jobs/{jobId}")
-    public ReconciliationJobProgress getReconciliationJobProgress(@PathParam("jobId") String jobId) {
+    @Operation(summary = "Get geocoding job progress",
+            description = "Returns the progress and result of a geocoding reconciliation or normalization job.")
+    public ReconciliationJobProgress getReconciliationJobProgress(
+            @Parameter(description = "Job ID.")
+            @PathParam("jobId") String jobId) {
         UUID id;
         try {
             id = UUID.fromString(jobId);
@@ -241,18 +307,27 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/reconcile/single")
+    @Operation(summary = "Re-resolve one geocoding result",
+            description = "Looks up the given locations again with a chosen geocoding provider and returns the "
+                    + "result immediately, without a background job.")
     public ReverseGeocodingReconcileResult reconcileSingle(@Valid ReverseGeocodingReconcileRequest request) {
         return managementService.reconcileWithProvider(currentUserService.getCurrentUserId(), request);
     }
 
     @GET
     @Path("/providers")
+    @Operation(summary = "List geocoding providers",
+            description = "Returns the geocoding providers enabled on this server, which can be used for "
+                    + "re-resolving locations.")
     public List<GeocodingProviderDTO> getEnabledProviders() {
         return managementService.getEnabledProviders();
     }
 
     @GET
     @Path("/providers/available")
+    @Operation(summary = "List providers used by your data",
+            description = "Returns the names of the providers that produced the signed-in user's geocoding results, "
+                    + "for filtering.")
     public List<String> getProvidersWithData() {
         return managementService.getProvidersWithData();
     }

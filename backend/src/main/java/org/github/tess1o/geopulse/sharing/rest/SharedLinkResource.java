@@ -17,7 +17,10 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -25,7 +28,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Tag(name = "User: Sharing", description = "Manage shared location links.")
+@Tag(name = ApiTags.SHARE_LINKS)
 public class SharedLinkResource {
 
     @Inject
@@ -36,6 +39,9 @@ public class SharedLinkResource {
 
     @GET
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "List share links",
+            description = "Returns the share links of the signed-in user with their type, settings, expiration, and "
+                    + "view count, plus the per-user link limit.")
     public SharedLinksDto getSharedLinks() {
         try {
             return sharedLinkService.getSharedLinks(currentUserService.getCurrentUserId());
@@ -46,6 +52,11 @@ public class SharedLinkResource {
 
     @POST
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Create a share link",
+            description = "Creates a public link. `shareType` is `LIVE_LOCATION` (your current location, optionally "
+                    + "with the last `historyHours` of movement) or `TIMELINE` (the timeline between `startDate` "
+                    + "and `endDate`, optionally with notes and Immich photos). Links can expire and can require a "
+                    + "password. The number of links per user is limited.")
     public RestResponse<CreateShareLinkResponse> createShareLink(@Valid CreateShareLinkRequest request) {
         try {
             UserEntity currentUser = currentUserService.getCurrentUser();
@@ -63,7 +74,11 @@ public class SharedLinkResource {
     @PUT
     @Path("/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public SharedLinkDto updateShareLink(@PathParam("id") UUID id, @Valid UpdateShareLinkDto updateDto) {
+    @Operation(summary = "Update a share link",
+            description = "Changes the name, expiration, password, or display options of a share link.")
+    public SharedLinkDto updateShareLink(
+            @Parameter(description = "Share link ID.")
+            @PathParam("id") UUID id, @Valid UpdateShareLinkDto updateDto) {
         try {
             return sharedLinkService.updateShareLink(id, updateDto, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {
@@ -78,7 +93,11 @@ public class SharedLinkResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public void deleteShareLink(@PathParam("id") UUID id) {
+    @Operation(summary = "Delete a share link",
+            description = "Deletes a share link. The link stops working immediately.")
+    public void deleteShareLink(
+            @Parameter(description = "Share link ID.")
+            @PathParam("id") UUID id) {
         try {
             sharedLinkService.deleteShareLink(id, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {

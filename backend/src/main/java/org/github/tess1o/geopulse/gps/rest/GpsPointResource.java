@@ -48,8 +48,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 /**
  * REST resource for GPS point data.
@@ -58,7 +66,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Data", description = "Ingest, query, update, export, and delete GPS points.")
+@Tag(name = ApiTags.GPS_POINTS)
 public class GpsPointResource {
     private static final int DEFAULT_RAW_MAP_POINTS_LIMIT = 10000;
     private static final int MAX_RAW_MAP_POINTS_LIMIT = 25000;
@@ -107,7 +115,16 @@ public class GpsPointResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public GpsIngestionResponse ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
+    @Operation(summary = "Upload points from the mobile app",
+            description = "Stores a batch of GPS points sent by the GeoPulse mobile app for the signed-in user. The "
+                    + "server-wide default filters for inaccurate points and duplicates apply. Third-party tracker "
+                    + "apps should use the **GPS Tracker Ingest** endpoints instead.")
+    public GpsIngestionResponse ingestMobileAppPoints(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(name = "points", value = GpsIngestExamples.MOBILE_APP)))
+                                                      @Valid GpsPointsRetentionRequest request,
+                                                      @Parameter(description = "Device identifier stored with the "
+                                                              + "points. Defaults to `MOBILE APP`.",
+                                                              example = "pixel-8")
                                                       @RestHeader("X-Device-Id") String xDeviceId) {
         long started = System.nanoTime();
         var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
@@ -149,9 +166,19 @@ public class GpsPointResource {
     @Path("/path")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get the GPS path",
+            description = "Returns the GPS points of a time range as a path for drawing on a map, split into "
+                    + "segments wherever there is a gap longer than the data-gap threshold from the timeline "
+                    + "preferences. By default the path is simplified when path simplification is enabled in the "
+                    + "timeline preferences.")
     public GpsPointPathDTO getGpsPointPath(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-30T23:59:59Z")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Simplify the path to fewer points. Defaults to `true`.")
             @QueryParam("simplify") @DefaultValue("true") boolean simplify) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point path for user {} between {} and {}", user.getId(), startTime, endTime);
@@ -181,9 +208,18 @@ public class GpsPointResource {
     @Path("/map")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get raw points for the map",
+            description = "Returns individual GPS points of a time range for showing on a map, up to `limit` points. "
+                    + "The response says how many points match in total and whether the result was cut off.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public RawGpsPointMapResponseDTO getRawGpsMapPoints(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-30T23:59:59Z")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Maximum number of points to return, from 1 to 25000. Defaults to 10000.")
             @QueryParam("limit") @DefaultValue("" + DEFAULT_RAW_MAP_POINTS_LIMIT) int limit) {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -206,7 +242,12 @@ public class GpsPointResource {
     @Path("/{pointId}/location")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public RawGpsPointLocationDTO resolveRawGpsPointLocation(@PathParam("pointId") Long pointId) {
+    @Operation(summary = "Resolve the place of a GPS point",
+            description = "Returns the place name for a GPS point: the favorite it falls into or its "
+                    + "reverse-geocoded address, with the ID of the matching favorite or geocoding result.")
+    public RawGpsPointLocationDTO resolveRawGpsPointLocation(
+            @Parameter(description = "GPS point ID.")
+            @PathParam("pointId") Long pointId) {
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
@@ -276,13 +317,28 @@ public class GpsPointResource {
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get GPS point counts",
+            description = "Returns the total number of GPS points, points recorded today (in the user's timezone), "
+                    + "and the first and last point times. When filters are given, also returns the number of "
+                    + "points that match them.")
     public GpsPointSummaryDTO getGpsPointSummary(
+            @Parameter(description = "Start of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, start "
+                    + "of day UTC).", example = "2025-06-01")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, end of "
+                    + "day UTC).", example = "2025-06-30")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Minimum reported accuracy, in meters.")
             @QueryParam("accuracyMin") Double accuracyMin,
+            @Parameter(description = "Maximum reported accuracy, in meters.")
             @QueryParam("accuracyMax") Double accuracyMax,
+            @Parameter(description = "Minimum speed, in km/h.")
             @QueryParam("speedMin") Double speedMin,
+            @Parameter(description = "Maximum speed, in km/h.")
             @QueryParam("speedMax") Double speedMax,
+            @Parameter(description = "Comma-separated source types to include: `OWNTRACKS`, `GPSLOGGER`, `OVERLAND`, "
+                    + "`TRACCAR`, `GOOGLE_TIMELINE`, `GPX`, `DAWARICH`, `HOME_ASSISTANT`, `GEOJSON`, `CSV`, "
+                    + "`COLOTA`, `MANUAL`, `MOBILE_APP`.", example = "OWNTRACKS,GPX")
             @QueryParam("sourceTypes") String sourceTypes) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point summary for user {} with timezone {}", user.getId(), user.getTimezone());
@@ -318,17 +374,35 @@ public class GpsPointResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "List GPS points",
+            description = "Returns GPS points one page at a time, with optional filters and sorting.")
     public PageResponse<GpsPointDTO> getGpsPoints(
+            @Parameter(description = "Page number, starting at 1.")
             @QueryParam("page") @DefaultValue("1") int page,
+            @Parameter(description = "Page size, from 1 to 1000. Defaults to 50.")
             @QueryParam("size") @DefaultValue("50") int limit,
+            @Parameter(description = "Start of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, start "
+                    + "of day UTC).", example = "2025-06-01")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, end of "
+                    + "day UTC).", example = "2025-06-30")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Sort field: `timestamp`, `altitude`, `battery`, `velocity`, or `accuracy`. "
+                    + "Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortOrder,
+            @Parameter(description = "Minimum reported accuracy, in meters.")
             @QueryParam("accuracyMin") Double accuracyMin,
+            @Parameter(description = "Maximum reported accuracy, in meters.")
             @QueryParam("accuracyMax") Double accuracyMax,
+            @Parameter(description = "Minimum speed, in km/h.")
             @QueryParam("speedMin") Double speedMin,
+            @Parameter(description = "Maximum speed, in km/h.")
             @QueryParam("speedMax") Double speedMax,
+            @Parameter(description = "Comma-separated source types to include: `OWNTRACKS`, `GPSLOGGER`, `OVERLAND`, "
+                    + "`TRACCAR`, `GOOGLE_TIMELINE`, `GPX`, `DAWARICH`, `HOME_ASSISTANT`, `GEOJSON`, `CSV`, "
+                    + "`COLOTA`, `MANUAL`, `MOBILE_APP`.", example = "OWNTRACKS,GPX")
             @QueryParam("sourceTypes") String sourceTypes) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get GPS points for user {} - page: {}, limit: {}, filters: accuracyMin: {}, accuracyMax: {}, speedMin: {}, speedMax: {}",
@@ -371,14 +445,29 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponse(responseCode = "200", description = "GPS points CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
+    @Operation(summary = "Export GPS points as CSV",
+            description = "Streams the GPS points that match the filters as a CSV file download. Pass `ids` to "
+                    + "export only specific points.")
     public Response exportGpsPoints(
+            @Parameter(description = "Start of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, start "
+                    + "of day UTC).", example = "2025-06-01")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range: an ISO-8601 instant, or a date (`YYYY-MM-DD`, end of "
+                    + "day UTC).", example = "2025-06-30")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Minimum reported accuracy, in meters.")
             @QueryParam("accuracyMin") Double accuracyMin,
+            @Parameter(description = "Maximum reported accuracy, in meters.")
             @QueryParam("accuracyMax") Double accuracyMax,
+            @Parameter(description = "Minimum speed, in km/h.")
             @QueryParam("speedMin") Double speedMin,
+            @Parameter(description = "Maximum speed, in km/h.")
             @QueryParam("speedMax") Double speedMax,
+            @Parameter(description = "Comma-separated source types to include: `OWNTRACKS`, `GPSLOGGER`, `OVERLAND`, "
+                    + "`TRACCAR`, `GOOGLE_TIMELINE`, `GPX`, `DAWARICH`, `HOME_ASSISTANT`, `GEOJSON`, `CSV`, "
+                    + "`COLOTA`, `MANUAL`, `MOBILE_APP`.", example = "OWNTRACKS,GPX")
             @QueryParam("sourceTypes") String sourceTypes,
+            @Parameter(description = "Comma-separated GPS point IDs to export.", example = "101,102,103")
             @QueryParam("ids") String ids) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to export GPS points for user {} with filters", user.getId());
@@ -489,6 +578,10 @@ public class GpsPointResource {
     @Path("/status")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get GPS data freshness",
+            description = "Returns when the most recent GPS point was recorded and received, how old it is, its "
+                    + "source and device, and the total number of points. Useful for checking that a tracker is "
+                    + "still sending data.")
     public GpsStatusDTO getGpsStatus() {
         UUID userId = currentUserService.getCurrentUserId();
         long startedAtNanos = workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
@@ -523,7 +616,12 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public GpsPointDTO updateGpsPoint(@PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
+    @Operation(summary = "Update a GPS point",
+            description = "Corrects the coordinates or other fields of a GPS point. The affected part of the "
+                    + "timeline is regenerated.")
+    public GpsPointDTO updateGpsPoint(
+            @Parameter(description = "GPS point ID.")
+            @PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to update GPS point {} for user {}", pointId, userId);
 
@@ -547,6 +645,9 @@ public class GpsPointResource {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Delete all GPS data",
+            description = "Permanently deletes all GPS points of the signed-in user together with the generated "
+                    + "timeline (stays, trips, and data gaps). This cannot be undone.")
     public void deleteAllGpsData() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete ALL GPS data for user {}", userId);
@@ -564,7 +665,13 @@ public class GpsPointResource {
     @DELETE
     @Path("/{pointId}")
     @RolesAllowed({"USER", "ADMIN"})
-    public GpsPointDeleteResponse deleteGpsPoint(@PathParam("pointId") Long pointId) {
+    @Operation(summary = "Delete a GPS point",
+            description = "Deletes a GPS point. Timeline regeneration from the point's time, and a coverage rebuild "
+                    + "when coverage is enabled, are scheduled in the background; the response says what was "
+                    + "scheduled.")
+    public GpsPointDeleteResponse deleteGpsPoint(
+            @Parameter(description = "GPS point ID.")
+            @PathParam("pointId") Long pointId) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete GPS point {} for user {}", pointId, userId);
 
@@ -590,6 +697,9 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Delete several GPS points",
+            description = "Deletes the GPS points with the given IDs. Like single deletion, schedules timeline "
+                    + "regeneration from the earliest deleted point and a coverage rebuild in the background.")
     public GpsPointDeleteResponse deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete {} GPS points for user {}",
@@ -645,6 +755,9 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponseSchema(value = GpsPointDTO.class, responseCode = "200",
             responseDescription = "Last known GPS position")
+    @Operation(summary = "Get the last known position",
+            description = "Returns the most recent GPS point of the signed-in user, or an empty body when there are "
+                    + "no points.")
     public Response getLastKnownPosition() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get last known position for user {}", userId);

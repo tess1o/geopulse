@@ -14,6 +14,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.poi.dto.PoiSearchResponseDto;
 import org.github.tess1o.geopulse.poi.repository.PoiCacheRepository;
 import org.github.tess1o.geopulse.poi.service.PoiDiscoveryService;
@@ -21,6 +22,8 @@ import org.github.tess1o.geopulse.poi.service.PoiImageService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import java.util.Optional;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_POI_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.POI_UNAVAILABLE;
@@ -35,7 +38,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.POI_UNAVAILABLE
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Places to visit", description = "Discover places worth visiting, with photos.")
+@Tag(name = ApiTags.PLACES_TO_VISIT)
 public class PoiResource {
 
     private static final int THUMBNAIL_CACHE_SECONDS = 86_400;
@@ -56,10 +59,18 @@ public class PoiResource {
     @GET
     @Path("/search")
     @APIResponse(responseCode = "200", description = "Places around the given point")
-    public PoiSearchResponseDto search(@QueryParam("latitude") Double latitude,
-                                       @QueryParam("longitude") Double longitude,
-                                       @QueryParam("radiusMeters") @DefaultValue("8000") Integer radiusMeters,
-                                       @QueryParam("limit") Integer limit) {
+    @Operation(summary = "Find places to visit nearby",
+            description = "Returns notable places (sights, museums, landmarks) around a point, based on Wikidata, "
+                    + "with a photo when available. Results are cached per area for all users.")
+    public PoiSearchResponseDto search(
+            @Parameter(description = "Latitude of the center, in decimal degrees. Required.", example = "41.9028")
+            @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude of the center, in decimal degrees. Required.", example = "12.4964")
+            @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Search radius in meters, from 500 to 50000. Defaults to 8000.")
+            @QueryParam("radiusMeters") @DefaultValue("8000") Integer radiusMeters,
+            @Parameter(description = "Maximum number of places, up to 60.")
+            @QueryParam("limit") Integer limit) {
         if (latitude == null || longitude == null) {
             throw new GeoPulseException(INVALID_POI_REQUEST, "latitude and longitude are required");
         }
@@ -84,7 +95,12 @@ public class PoiResource {
     @Blocking
     @APIResponse(responseCode = "200", description = "Cached thumbnail of the place's photo")
     @APIResponse(responseCode = "404", description = "No usable image for this place")
-    public Response thumbnail(@PathParam("poiId") Long poiId) {
+    @Operation(summary = "Get a place photo",
+            description = "Returns the cached thumbnail of a place's photo. The `X-Image-License`, `X-Image-Author`, "
+                    + "and `X-Image-Source` headers carry the attribution required by the image license.")
+    public Response thumbnail(
+            @Parameter(description = "Place ID from the search results.")
+            @PathParam("poiId") Long poiId) {
         // Resolve the file through our own cache: the client never supplies a URL, so this
         // endpoint cannot be pointed at an arbitrary host.
         String imageFile = poiCacheRepository.findByIdOptional(poiId)

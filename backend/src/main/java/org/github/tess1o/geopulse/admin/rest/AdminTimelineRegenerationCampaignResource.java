@@ -26,7 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_INVALID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND;
@@ -34,7 +37,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENE
 @Path("/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Tag(name = "Admin: Timeline Regeneration", description = "Preview, create, inspect, and retry timeline regeneration campaigns.")
+@Tag(name = ApiTags.ADMIN_TIMELINE_REGENERATION)
 public class AdminTimelineRegenerationCampaignResource {
 
     @Context
@@ -52,6 +55,9 @@ public class AdminTimelineRegenerationCampaignResource {
     @POST
     @Path("/preview")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Preview a regeneration campaign",
+            description = "Returns how many users have GPS data at or after `affectedFrom` and would be included in "
+                    + "a regeneration campaign starting from that time.")
     public TimelineRegenerationCampaignPreviewDTO previewCampaign(TimelineRegenerationCampaignPreviewRequest request) {
         try {
             TimelineRegenerationCampaignPreviewDTO preview = campaignService.previewAdminCampaign(request);
@@ -63,6 +69,10 @@ public class AdminTimelineRegenerationCampaignResource {
 
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Start a regeneration campaign",
+            description = "Starts regenerating the timelines of all affected users from `affectedFrom`, for example "
+                    + "after changing global timeline settings. Users are processed in the background. The campaign "
+                    + "is recorded in the audit log.")
     public RestResponse<TimelineRegenerationCampaignSummaryDTO> createCampaign(CreateTimelineRegenerationCampaignRequest request) {
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -88,6 +98,8 @@ public class AdminTimelineRegenerationCampaignResource {
 
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "List regeneration campaigns",
+            description = "Returns all timeline regeneration campaigns with their status and progress counts.")
     public List<TimelineRegenerationCampaignSummaryDTO> listCampaigns() {
         return campaignService.listCampaigns();
     }
@@ -95,7 +107,12 @@ public class AdminTimelineRegenerationCampaignResource {
     @GET
     @Path("/{campaignId}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public TimelineRegenerationCampaignDetailDTO getCampaign(@PathParam("campaignId") UUID campaignId) {
+    @Operation(summary = "Get a regeneration campaign",
+            description = "Returns a campaign with its progress and the users whose regeneration failed, with the "
+                    + "errors.")
+    public TimelineRegenerationCampaignDetailDTO getCampaign(
+            @Parameter(description = "Campaign ID.")
+            @PathParam("campaignId") UUID campaignId) {
         try {
             TimelineRegenerationCampaignDetailDTO details = campaignService.getCampaignDetails(campaignId);
             return details;
@@ -107,7 +124,11 @@ public class AdminTimelineRegenerationCampaignResource {
     @POST
     @Path("/{campaignId}/retry-failed")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public TimelineRegenerationCampaignSummaryDTO retryFailed(@PathParam("campaignId") UUID campaignId) {
+    @Operation(summary = "Retry failed users",
+            description = "Queues the users whose regeneration failed in a campaign again.")
+    public TimelineRegenerationCampaignSummaryDTO retryFailed(
+            @Parameter(description = "Campaign ID.")
+            @PathParam("campaignId") UUID campaignId) {
         UUID adminId = currentUserService.getCurrentUserId();
 
         try {

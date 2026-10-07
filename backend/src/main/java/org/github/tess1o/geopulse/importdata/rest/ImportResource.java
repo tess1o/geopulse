@@ -26,6 +26,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -37,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: Import and Export", description = "Upload files, and read, monitor, and delete import jobs.")
+@Tag(name = ApiTags.IMPORT)
 public class ImportResource {
 
     @Inject
@@ -61,6 +64,14 @@ public class ImportResource {
      */
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Import a file",
+            description = "Uploads a file and starts an import job. Supported formats: `owntracks` (.json), `gpx` "
+                    + "(.gpx, or .zip with several GPX files), `google-timeline` (.json), `geojson` (.json, "
+                    + ".geojson), `csv` (.csv), and `geopulse` (.zip created by a GeoPulse export). The optional "
+                    + "`options` part (JSON) can limit the import to a time range and replace existing data in that "
+                    + "range. Only one import can run at a time. The import runs in the background; poll `GET "
+                    + "/api/v1/imports/{importJobId}` for progress. A reverse proxy in front of GeoPulse may limit "
+                    + "the upload size.")
     public ImportJobResponse uploadFile(
             @RestForm("file") FileUpload file,
             @RestForm("format") @Schema(required = true, enumeration = {
@@ -125,8 +136,14 @@ public class ImportResource {
     }
 
     @GET
-    public SliceResponse<ImportJobResponse> getImportJobs(@QueryParam("page") @DefaultValue("0") int page,
-                                                          @QueryParam("size") @DefaultValue("10") int size) {
+    @Operation(summary = "List import jobs",
+            description = "Returns the import jobs of the signed-in user, newest first, one page at a time. Jobs "
+                    + "are kept in memory and the list is cleared when the server restarts.")
+    public SliceResponse<ImportJobResponse> getImportJobs(
+            @Parameter(description = "Page number, starting at 0.")
+            @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size, from 1 to 100. Defaults to 10.")
+            @QueryParam("size") @DefaultValue("10") int size) {
         if (size < 1 || size > 100) {
             throw new GeoPulseException(INVALID_LIMIT, "Limit must be between 1 and 100", Map.of("min", 1, "max", 100));
         }
@@ -143,7 +160,11 @@ public class ImportResource {
 
     @GET
     @Path("/{importJobId}")
-    public ImportJobResponse getImportStatus(@PathParam("importJobId") UUID importJobId) {
+    @Operation(summary = "Get an import job",
+            description = "Returns the status, progress, and result of an import job.")
+    public ImportJobResponse getImportStatus(
+            @Parameter(description = "Import job ID.")
+            @PathParam("importJobId") UUID importJobId) {
         ImportJob job = importJobService.getImportJob(importJobId, currentUserService.getCurrentUserId());
         if (job == null) {
             throw new GeoPulseException(IMPORT_JOB_NOT_FOUND, "Import job not found",
@@ -154,7 +175,11 @@ public class ImportResource {
 
     @DELETE
     @Path("/{importJobId}")
-    public void deleteImportJob(@PathParam("importJobId") UUID importJobId) {
+    @Operation(summary = "Delete an import job",
+            description = "Removes an import job from the job list. Data that was already imported is kept.")
+    public void deleteImportJob(
+            @Parameter(description = "Import job ID.")
+            @PathParam("importJobId") UUID importJobId) {
         if (!importJobService.deleteImportJob(importJobId, currentUserService.getCurrentUserId())) {
             throw new GeoPulseException(IMPORT_JOB_NOT_FOUND, "Import job not found",
                     Map.of("importJobId", importJobId.toString()));

@@ -15,6 +15,9 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
@@ -24,7 +27,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips", description = "Read trip workspace timeline and path data.")
+@Tag(name = ApiTags.TRIPS)
 public class TripWorkspaceDataResource {
 
     private final TripWorkspaceDataService tripWorkspaceDataService;
@@ -38,9 +41,18 @@ public class TripWorkspaceDataResource {
 
     @GET
     @Path("/timeline")
-    public MovementTimelineDTO getTripTimeline(@PathParam("tripId") Long tripId,
-                                    @QueryParam("from") String startTime,
-                                    @QueryParam("to") String endTime) {
+    @Operation(summary = "Get the timeline of a trip",
+            description = "Returns the stays, trips, and data gaps of the trip owner during the trip. Collaborators "
+                    + "see the owner's timeline. Optionally narrow the range within the trip dates.")
+    public MovementTimelineDTO getTripTimeline(
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the trip start; must "
+                    + "be within the trip.")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the trip end; must be "
+                    + "within the trip.")
+            @QueryParam("to") String endTime) {
         try {
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);
@@ -55,9 +67,18 @@ public class TripWorkspaceDataResource {
 
     @GET
     @Path("/path")
-    public GpsPointPathDTO getTripPath(@PathParam("tripId") Long tripId,
-                                @QueryParam("from") String startTime,
-                                @QueryParam("to") String endTime) {
+    @Operation(summary = "Get the GPS path of a trip",
+            description = "Returns the trip owner's GPS path during the trip for drawing on a map. Optionally narrow "
+                    + "the range within the trip dates.")
+    public GpsPointPathDTO getTripPath(
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the trip start; must "
+                    + "be within the trip.")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the trip end; must be "
+                    + "within the trip.")
+            @QueryParam("to") String endTime) {
         try {
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);

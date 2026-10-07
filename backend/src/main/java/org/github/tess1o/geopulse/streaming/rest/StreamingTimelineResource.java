@@ -16,6 +16,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.JobResponse;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
@@ -44,6 +45,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_NOT_FOUND;
@@ -61,7 +66,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVER
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
-@Tag(name = "User: Timeline", description = "Read timelines and manage timeline generation, jobs, and overrides.")
+@Tag(name = ApiTags.TIMELINE)
 public class StreamingTimelineResource {
 
     @Inject StreamingTimelineAggregator streamingTimelineAggregator;
@@ -76,8 +81,17 @@ public class StreamingTimelineResource {
     @Inject TimelineLocationLookupService timelineLocationLookupService;
 
     @GET
-    public MovementTimelineDTO getTimeline(@QueryParam("from") String startTime,
-                                           @QueryParam("to") String endTime) {
+    @Operation(summary = "Get the timeline",
+            description = "Returns the stays, trips, and data gaps that overlap a time range, in chronological "
+                    + "order. Items that start before `from` or end after `to` are included. Large ranges can "
+                    + "return many items; check the size first with `GET /api/v1/timeline/count`.")
+    public MovementTimelineDTO getTimeline(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-07T23:59:59Z")
+            @QueryParam("to") String endTime) {
         TimeRange range = parseTimeRange(startTime, endTime);
         return streamingTimelineAggregator.getTimelineFromDb(
                 currentUserService.getCurrentUserId(), range.start(), range.end());
@@ -85,8 +99,15 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/location-lookup")
-    public LocationLookupResponseDTO lookupLocation(@QueryParam("latitude") Double latitude,
-                                                    @QueryParam("longitude") Double longitude) {
+    @Operation(summary = "Look up visits near a point",
+            description = "Finds what you know about a map point: favorites that contain it, earlier stays matched "
+                    + "to it, and the nearest stays, within a search radius.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public LocationLookupResponseDTO lookupLocation(
+            @Parameter(description = "Latitude in decimal degrees.", example = "50.4501")
+            @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude in decimal degrees.", example = "30.5234")
+            @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
             throw new GeoPulseException(INVALID_LOCATION_LOOKUP, "latitude and longitude are required");
         }
@@ -101,8 +122,16 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/count")
-    public TimelineCountResponse getTimelineCount(@QueryParam("from") String startTime,
-                                                  @QueryParam("to") String endTime) {
+    @Operation(summary = "Count timeline items",
+            description = "Returns the number of stays, trips, and data gaps in a time range, and the maximum number "
+                    + "of items the web app shows at once. Use it to decide whether a range is small enough to load.")
+    public TimelineCountResponse getTimelineCount(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-07T23:59:59Z")
+            @QueryParam("to") String endTime) {
         TimeRange range = parseTimeRange(startTime, endTime);
         Map<String, Long> counts = streamingTimelineAggregator.getTimelineItemCounts(
                 currentUserService.getCurrentUserId(), range.start(), range.end());
@@ -116,13 +145,23 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/preferences")
+    @Operation(summary = "Get effective timeline settings",
+            description = "Returns the timeline detection settings in effect for the signed-in user: the user's own "
+                    + "preferences merged with the server defaults. Change them with `PUT "
+                    + "/api/v1/preferences/timeline`.")
     public TimelineConfig getUserPreferences() {
         return configurationProvider.getConfigurationForUser(currentUserService.getCurrentUserId());
     }
 
     @DELETE
     @Path("/stay-split-overrides/{overrideId}")
-    public TripStaySplitResponse resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
+    @Operation(summary = "Undo a trip split",
+            description = "Removes a manual split that turned part of a trip into a stay, and regenerates the "
+                    + "affected timeline.")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    public TripStaySplitResponse resetTripStaySplitOverride(
+            @Parameter(description = "ID of the stay-split override.")
+            @PathParam("overrideId") Long overrideId) {
         return timelineGenerationService
                 .resetTripStaySplitOverride(currentUserService.getCurrentUserId(), overrideId)
                 .orElseThrow(() -> new GeoPulseException(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
@@ -131,7 +170,14 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/data-gaps/{gapId}/stay-conversion-preview")
-    public DataGapStayConversionPreviewDTO getDataGapStayConversionPreview(@PathParam("gapId") Long gapId) {
+    @Operation(summary = "Preview converting a data gap to a stay",
+            description = "Shows the stay that would replace a data gap if it were converted: the location (the last "
+                    + "known point before the gap) and the time range.")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public DataGapStayConversionPreviewDTO getDataGapStayConversionPreview(
+            @Parameter(description = "Data gap ID, as returned by the timeline.")
+            @PathParam("gapId") Long gapId) {
         try {
             return dataGapStayOverrideService
                     .previewLatestPointConversion(currentUserService.getCurrentUserId(), gapId)
@@ -144,7 +190,13 @@ public class StreamingTimelineResource {
 
     @PUT
     @Path("/data-gaps/{gapId}/stay-conversion")
+    @Operation(summary = "Convert a data gap to a stay",
+            description = "Replaces a data gap with a stay, for example when the phone stopped sending data while "
+                    + "you stayed in one place. The conversion is saved as an override and kept when the timeline "
+                    + "is regenerated.")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
     public DataGapStayOverrideResponseDTO convertDataGapToStay(
+            @Parameter(description = "Data gap ID, as returned by the timeline.")
             @PathParam("gapId") Long gapId, DataGapStayOverrideRequest request) {
         try {
             return dataGapStayOverrideService
@@ -158,7 +210,12 @@ public class StreamingTimelineResource {
 
     @DELETE
     @Path("/data-gap-overrides/{overrideId}/stay-conversion")
-    public DataGapStayOverrideResponseDTO resetDataGapStayOverride(@PathParam("overrideId") Long overrideId) {
+    @Operation(summary = "Undo a data gap conversion",
+            description = "Removes a data-gap-to-stay override so the period is shown as a data gap again.")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    public DataGapStayOverrideResponseDTO resetDataGapStayOverride(
+            @Parameter(description = "ID of the data gap override.")
+            @PathParam("overrideId") Long overrideId) {
         return timelineGenerationService
                 .resetDataGapStayOverride(currentUserService.getCurrentUserId(), overrideId)
                 .orElseThrow(() -> new GeoPulseException(DATA_GAP_OVERRIDE_NOT_FOUND,
@@ -167,9 +224,19 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/multi-user")
+    @Operation(summary = "Get timelines of several users",
+            description = "Returns the timelines of the signed-in user and of friends who share their timeline, for "
+                    + "the same time range, so they can be compared. Without `userIds`, includes the signed-in user "
+                    + "and every friend who granted timeline access.")
     public MultiUserTimelineDTO getMultiUserTimeline(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Defaults to the earliest data.",
+                    example = "2025-06-01T00:00:00Z")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
+                    example = "2025-06-07T23:59:59Z")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Comma-separated user IDs to include. Each must be the signed-in user or a "
+                    + "friend who granted timeline access.")
             @QueryParam("userIds") String userIds) {
         TimeRange range = parseTimeRange(startTime, endTime);
         return multiUserTimelineService.getMultiUserTimeline(
@@ -178,6 +245,10 @@ public class StreamingTimelineResource {
 
     @POST
     @Path("/jobs")
+    @Operation(summary = "Regenerate the timeline",
+            description = "Starts a background job that rebuilds the whole timeline of the signed-in user from GPS "
+                    + "points, using the current timeline settings. Manual overrides are kept. Only one timeline "
+                    + "job per user can run at a time. Poll `GET /api/v1/timeline/jobs/{jobId}` for progress.")
     public JobResponse regenerateAllTimeline() {
         try {
             return new JobResponse(asyncTimelineGenerationService
@@ -189,7 +260,11 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/jobs/{jobId}")
-    public TimelineJobProgress getJobProgress(@PathParam("jobId") String jobId) {
+    @Operation(summary = "Get timeline job progress",
+            description = "Returns the progress of a timeline generation job: status, current step, and percentage.")
+    public TimelineJobProgress getJobProgress(
+            @Parameter(description = "Timeline job ID.")
+            @PathParam("jobId") String jobId) {
         UUID jobUuid;
         try {
             jobUuid = UUID.fromString(jobId);
@@ -207,6 +282,9 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/jobs/current")
+    @Operation(summary = "Get the running timeline job",
+            description = "Returns the timeline job that is currently running for the signed-in user, or `204 No "
+                    + "Content` when none is running.")
     public RestResponse<TimelineJobProgress> getActiveJob() {
         return jobProgressService.getUserActiveJob(currentUserService.getCurrentUserId())
                 .map(RestResponse::ok)
@@ -215,6 +293,8 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/jobs/history")
+    @Operation(summary = "List recent timeline jobs",
+            description = "Returns recently finished timeline jobs of the signed-in user.")
     public List<TimelineJobProgress> getJobHistory() {
         return jobProgressService.getUserHistoryJobs(currentUserService.getCurrentUserId());
     }

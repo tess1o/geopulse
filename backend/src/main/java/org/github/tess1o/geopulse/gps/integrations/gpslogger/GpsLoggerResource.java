@@ -28,13 +28,21 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 @Path(ApiPaths.GPS_INGEST + "/gpslogger")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Integrations", description = "Ingest location updates from GPS Logger clients.")
+@Tag(name = ApiTags.GPS_TRACKER_INGEST)
+@SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_BASIC)
 public class GpsLoggerResource {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -49,13 +57,20 @@ public class GpsLoggerResource {
     }
 
     @POST
-    @Operation(summary = "Ingest GPS Logger location",
-            description = "Receives a GPS Logger location update and stores it as a GPS point for the matching source token.")
-    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+    @Operation(summary = "Ingest GPSLogger location",
+            description = "Receives a location update from GPSLogger for Android, sent in the OwnTracks JSON format, "
+                    + "and stores it as a GPS point for the user who owns the GPSLogger GPS source. Messages whose "
+                    + "`_type` is not `location` are ignored.")
+    @APIResponse(responseCode = "200", description = "Location accepted or ignored. The body is an empty JSON array.",
             content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(type = SchemaType.ARRAY)))
-    public Response handleGpsLogger(Map<String, Object> payload,
+    public Response handleGpsLogger(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = OwnTracksLocationMessage.class),
+                    examples = @ExampleObject(name = "location", value = GpsIngestExamples.GPSLOGGER)))
+                                    Map<String, Object> payload,
                                     @HeaderParam("Authorization") String authHeader,
+                                    @Parameter(description = "Device identifier stored with the GPS point. Optional.",
+                                            example = "phone")
                                     @RestHeader("X-Limit-D") String deviceId) {
         long started = System.nanoTime();
         if (!"location".equals(payload.get("_type"))) {

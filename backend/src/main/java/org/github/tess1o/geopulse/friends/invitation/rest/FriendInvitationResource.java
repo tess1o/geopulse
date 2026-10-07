@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.friends.exceptions.FriendsException;
 import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationDTO;
@@ -34,6 +35,8 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATION_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATION_NOT_FOUND;
@@ -46,7 +49,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Friends", description = "Send and manage friend invitations.")
+@Tag(name = ApiTags.FRIENDS)
 public class FriendInvitationResource {
 
     private final FriendInvitationService friendInvitationService;
@@ -65,6 +68,8 @@ public class FriendInvitationResource {
     @POST
     @Transactional
     @APIResponse(responseCode = "201", description = "Friend invitation created")
+    @Operation(summary = "Send a friend invitation",
+            description = "Invites another user of this GeoPulse server, identified by email, to become friends.")
     public RestResponse<FriendInvitationDTO> sendInvitation(@NotNull @Valid SendFriendInvitationDTO request) {
         try {
             UUID receiverId = userService.findByEmail(request.getReceiverEmail())
@@ -82,12 +87,16 @@ public class FriendInvitationResource {
 
     @GET
     @Path("/received")
+    @Operation(summary = "List received invitations",
+            description = "Returns pending friend invitations sent to the signed-in user.")
     public List<FriendInvitationDTO> getReceivedInvitations() {
         return friendInvitationService.getPendingInvitations(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/sent")
+    @Operation(summary = "List sent invitations",
+            description = "Returns friend invitations the signed-in user has sent.")
     public List<FriendInvitationDTO> getSentInvitations() {
         return friendInvitationService.getSentInvitations(currentUserService.getCurrentUserId());
     }
@@ -95,21 +104,34 @@ public class FriendInvitationResource {
     @POST
     @Path("/{invitationId}/accept")
     @Transactional
-    public FriendInvitationDTO acceptInvitation(@PathParam("invitationId") Long invitationId) {
+    @Operation(summary = "Accept a friend invitation",
+            description = "Accepts an invitation sent to you, and you and the sender become friends. Choose what you "
+                    + "share with the permission endpoints.")
+    public FriendInvitationDTO acceptInvitation(
+            @Parameter(description = "Friend invitation ID.")
+            @PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::acceptInvitation);
     }
 
     @POST
     @Path("/{invitationId}/reject")
     @Transactional
-    public FriendInvitationDTO rejectInvitation(@PathParam("invitationId") Long invitationId) {
+    @Operation(summary = "Reject a friend invitation",
+            description = "Declines an invitation sent to you.")
+    public FriendInvitationDTO rejectInvitation(
+            @Parameter(description = "Friend invitation ID.")
+            @PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::rejectInvitation);
     }
 
     @DELETE
     @Path("/{invitationId}")
     @Transactional
-    public FriendInvitationDTO cancelInvitation(@PathParam("invitationId") Long invitationId) {
+    @Operation(summary = "Cancel a friend invitation",
+            description = "Withdraws a pending invitation you sent.")
+    public FriendInvitationDTO cancelInvitation(
+            @Parameter(description = "Friend invitation ID.")
+            @PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::cancelInvitation);
     }
 

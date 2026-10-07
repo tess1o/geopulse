@@ -21,6 +21,11 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
 
@@ -29,7 +34,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SE
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips and Planning", description = "Suggest trip plans for a location.")
+@Tag(name = ApiTags.TRIP_PLANNING)
 public class PlanSuggestionResource {
 
     private final CurrentUserService currentUserService;
@@ -48,8 +53,15 @@ public class PlanSuggestionResource {
     }
 
     @GET
-    public PlanSuggestionDto getPlanSuggestion(@QueryParam("latitude") Double latitude,
-                                      @QueryParam("longitude") Double longitude) {
+    @Operation(summary = "Suggest a plan item for a point",
+            description = "Suggests a title for a plan item at a map point: the name of a favorite at that point if "
+                    + "there is one, otherwise the reverse-geocoded address.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public PlanSuggestionDto getPlanSuggestion(
+            @Parameter(description = "Latitude in decimal degrees.", example = "48.8606")
+            @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude in decimal degrees.", example = "2.3376")
+            @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
             throw new GeoPulseException(INVALID_TRIP_SEARCH, "lat and lon are required");
         }

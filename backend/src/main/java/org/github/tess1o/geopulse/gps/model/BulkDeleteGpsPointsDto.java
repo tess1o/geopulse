@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * DTO for bulk deletion of GPS points.
@@ -16,5 +17,6 @@ import java.util.List;
 public class BulkDeleteGpsPointsDto {
     
     @NotEmpty(message = "GPS point IDs list cannot be empty")
+    @Schema(examples = "[101, 102, 103]")
     private List<Long> gpsPointIds;
 }

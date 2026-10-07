@@ -30,6 +30,9 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -37,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Coverage", description = "Read and manage coverage grid status, cells, and recalculation jobs.")
+@Tag(name = ApiTags.COVERAGE)
 public class CoverageResource {
 
     private final CoverageService coverageService;
@@ -58,6 +61,9 @@ public class CoverageResource {
 
     @GET
     @Path("/status")
+    @Operation(summary = "Get coverage status",
+            description = "Returns whether coverage is enabled for the signed-in user and the state of coverage "
+                    + "processing: whether it is running and when it last finished.")
     public CoverageStatus getCoverageStatus() {
         UUID userId = currentUserService.getCurrentUserId();
         return coverageService.getCoverageStatus(userId);
@@ -67,6 +73,9 @@ public class CoverageResource {
     @Path("/settings")
     @APIResponse(responseCode = "200", description = "Coverage settings updated")
     @APIResponse(responseCode = "400", description = "Invalid coverage settings")
+    @Operation(summary = "Enable or disable coverage",
+            description = "Turns coverage on or off for the signed-in user. Turning it on starts calculating "
+                    + "coverage from existing GPS points in the background.")
     public CoverageStatus updateCoverageSettings(CoverageSettingsRequest request) {
         if (request == null || request.enabled() == null) {
             throw new GeoPulseException(COVERAGE_ENABLED_REQUIRED, "enabled is required",
@@ -90,6 +99,9 @@ public class CoverageResource {
     @APIResponse(responseCode = "200", description = "Coverage recalculation started")
     @APIResponse(responseCode = "400", description = "Coverage is not enabled")
     @APIResponse(responseCode = "409", description = "An import already manages recalculation")
+    @Operation(summary = "Recalculate coverage",
+            description = "Rebuilds coverage from all GPS points in the background. Coverage must be enabled. Not "
+                    + "allowed while an import is running, because the import updates coverage itself.")
     public CoverageStatus recalculateCoverage() {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
@@ -112,9 +124,18 @@ public class CoverageResource {
     @APIResponse(responseCode = "200", description = "Coverage cells retrieved")
     @APIResponse(responseCode = "400", description = "Invalid coverage query")
     @APIResponse(responseCode = "403", description = "Coverage is not enabled")
-    public List<CoverageCell> getCoverageCells(@QueryParam("bbox") String bbox,
-                                                @QueryParam("grid") Integer gridMeters,
-                                                @QueryParam("limit") @Min(1) Integer limit) {
+    @Operation(summary = "Get coverage cells",
+            description = "Returns the explored grid cells inside a bounding box for drawing on a map. Coverage must "
+                    + "be enabled.")
+    public List<CoverageCell> getCoverageCells(
+            @Parameter(description = "Bounding box as `minLon,minLat,maxLon,maxLat` in degrees. Required.",
+                    example = "-9.25,38.69,-9.09,38.80")
+            @QueryParam("bbox") String bbox,
+            @Parameter(description = "Grid cell size in meters: 20, 50 (default), 250, 1000, 5000, 20000, or 40000.",
+                    example = "50")
+            @QueryParam("grid") Integer gridMeters,
+            @Parameter(description = "Maximum number of cells, up to 12000. Defaults to 12000.")
+            @QueryParam("limit") @Min(1) Integer limit) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
             throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
@@ -168,7 +189,13 @@ public class CoverageResource {
     @APIResponse(responseCode = "200", description = "Coverage summary retrieved")
     @APIResponse(responseCode = "400", description = "Invalid coverage grid")
     @APIResponse(responseCode = "403", description = "Coverage is not enabled")
-    public CoverageSummary getCoverageSummary(@QueryParam("grid") Integer gridMeters) {
+    @Operation(summary = "Get coverage summary",
+            description = "Returns totals for one grid size, such as the number of explored cells and the covered "
+                    + "area. Coverage must be enabled.")
+    public CoverageSummary getCoverageSummary(
+            @Parameter(description = "Grid cell size in meters: 20, 50 (default), 250, 1000, 5000, 20000, or 40000.",
+                    example = "50")
+            @QueryParam("grid") Integer gridMeters) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
             throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");

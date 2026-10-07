@@ -22,6 +22,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
@@ -53,6 +54,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.APPRISE_TEST_FAILED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOFENCE_EVENT_NOT_FOUND;
@@ -67,7 +72,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_TE
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Geofences", description = "Manage geofence rules, events, templates, and notification tests.")
+@Tag(name = ApiTags.GEOFENCES)
 public class GeofenceResource {
 
     private final GeofenceRuleService ruleService;
@@ -91,6 +96,8 @@ public class GeofenceResource {
 
     @GET
     @Path("/rules")
+    @Operation(summary = "List geofence rules",
+            description = "Returns the geofence rules of the signed-in user.")
     public List<GeofenceRuleDto> getRules() {
         return ruleService.listRules(currentUserService.getCurrentUserId());
     }
@@ -98,6 +105,11 @@ public class GeofenceResource {
     @POST
     @Path("/rules")
     @APIResponse(responseCode = "201", description = "Geofence rule created")
+    @Operation(summary = "Create a geofence rule",
+            description = "Creates a rule that watches a rectangular area for one or more people (yourself or "
+                    + "friends who share their live location with you) and records an event when they enter, leave, "
+                    + "or both. `cooldownSeconds` suppresses repeated events, and templates choose how each event "
+                    + "is delivered.")
     public RestResponse<GeofenceRuleDto> createRule(@NotNull @Valid CreateGeofenceRuleRequest request) {
         try {
             GeofenceRuleDto created = ruleService.createRule(currentUserService.getCurrentUserId(), request);
@@ -109,8 +121,12 @@ public class GeofenceResource {
 
     @PATCH
     @Path("/rules/{ruleId}")
-    public GeofenceRuleDto updateRule(@PathParam("ruleId") Long ruleId,
-                                      @NotNull @Valid UpdateGeofenceRuleRequest request) {
+    @Operation(summary = "Update a geofence rule",
+            description = "Changes some fields of a geofence rule; fields that are not sent stay unchanged.")
+    public GeofenceRuleDto updateRule(
+            @Parameter(description = "Geofence rule ID.")
+            @PathParam("ruleId") Long ruleId,
+            @NotNull @Valid UpdateGeofenceRuleRequest request) {
         try {
             return ruleService.updateRule(currentUserService.getCurrentUserId(), ruleId, request);
         } catch (NoSuchElementException exception) {
@@ -123,7 +139,11 @@ public class GeofenceResource {
     @DELETE
     @Path("/rules/{ruleId}")
     @APIResponse(responseCode = "204", description = "Geofence rule deleted")
-    public RestResponse<Void> deleteRule(@PathParam("ruleId") Long ruleId) {
+    @Operation(summary = "Delete a geofence rule",
+            description = "Deletes a geofence rule.")
+    public RestResponse<Void> deleteRule(
+            @Parameter(description = "Geofence rule ID.")
+            @PathParam("ruleId") Long ruleId) {
         try {
             ruleService.deleteRule(currentUserService.getCurrentUserId(), ruleId);
             return RestResponse.noContent();
@@ -134,15 +154,28 @@ public class GeofenceResource {
 
     @GET
     @Path("/events")
-    public PageResponse<GeofenceEventDto> getEvents(@QueryParam("page") @DefaultValue("0") int page,
-                                          @QueryParam("size") @DefaultValue("25") int pageSize,
-                                          @QueryParam("sortBy") @DefaultValue("occurredAt") String sortBy,
-                                          @QueryParam("sortDirection") @DefaultValue("desc") String sortDir,
-                                          @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly,
-                                          @QueryParam("from") String dateFromValue,
-                                          @QueryParam("to") String dateToValue,
-                                          @QueryParam("subjectUserIds") String subjectUserIdsValue,
-                                          @QueryParam("eventTypes") String eventTypesValue) {
+    @Operation(summary = "List geofence events",
+            description = "Returns enter and leave events recorded by the signed-in user's rules, one page at a "
+                    + "time, with filters.")
+    public PageResponse<GeofenceEventDto> getEvents(
+            @Parameter(description = "Page number, starting at 0.")
+            @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size, up to 200. Defaults to 25.")
+            @QueryParam("size") @DefaultValue("25") int pageSize,
+            @Parameter(description = "Sort field: `occurredAt` (default), `subjectDisplayName`, or `eventType`.")
+            @QueryParam("sortBy") @DefaultValue("occurredAt") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDir,
+            @Parameter(description = "Return only events not marked as seen. Defaults to `false`.")
+            @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly,
+            @Parameter(description = "Only events at or after this ISO-8601 instant.")
+            @QueryParam("from") String dateFromValue,
+            @Parameter(description = "Only events at or before this ISO-8601 instant.")
+            @QueryParam("to") String dateToValue,
+            @Parameter(description = "Comma-separated user IDs of the people the events are about.")
+            @QueryParam("subjectUserIds") String subjectUserIdsValue,
+            @Parameter(description = "Comma-separated event types: `ENTER`, `LEAVE`.", example = "ENTER")
+            @QueryParam("eventTypes") String eventTypesValue) {
         GeofenceEventQueryDto query = GeofenceEventQueryDto.builder()
                 .page(page)
                 .pageSize(pageSize)
@@ -159,13 +192,19 @@ public class GeofenceResource {
 
     @GET
     @Path("/events/unread-count")
+    @Operation(summary = "Count unread geofence events",
+            description = "Returns the number of geofence events not yet marked as seen.")
     public CountResponse getUnreadEventCount() {
         return new CountResponse(eventService.countUnread(currentUserService.getCurrentUserId()));
     }
 
     @PATCH
     @Path("/events/{eventId}/read-status")
-    public GeofenceEventDto markEventSeen(@PathParam("eventId") Long eventId) {
+    @Operation(summary = "Mark a geofence event as seen",
+            description = "Marks one geofence event as seen.")
+    public GeofenceEventDto markEventSeen(
+            @Parameter(description = "Geofence event ID.")
+            @PathParam("eventId") Long eventId) {
         try {
             return eventService.markSeen(currentUserService.getCurrentUserId(), eventId);
         } catch (NoSuchElementException exception) {
@@ -176,18 +215,27 @@ public class GeofenceResource {
 
     @PATCH
     @Path("/events/read-status")
+    @Operation(summary = "Mark all geofence events as seen",
+            description = "Marks every unread geofence event as seen and returns how many were updated.")
     public UpdatedCountResponse markAllEventsSeen() {
         return new UpdatedCountResponse(eventService.markAllSeen(currentUserService.getCurrentUserId()));
     }
 
     @GET
     @Path("/templates")
+    @Operation(summary = "List notification templates",
+            description = "Returns the notification templates of the signed-in user. A template defines the title "
+                    + "and body of a geofence notification and where it is sent: in-app, through Apprise, or both.")
     public List<NotificationTemplateDto> getTemplates() {
         return templateService.listTemplates(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/templates/capabilities")
+    @Operation(summary = "Get notification delivery options",
+            description = "Returns whether Apprise delivery is enabled and configured on this server, so clients "
+                    + "know which template destinations work.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public TemplateDeliveryCapabilitiesDto getTemplateCapabilities() {
         return TemplateDeliveryCapabilitiesDto.builder()
                 .appriseEnabled(appriseNotificationService.isEnabled())
@@ -197,6 +245,10 @@ public class GeofenceResource {
 
     @POST
     @Path("/templates/connection-tests")
+    @Operation(summary = "Send a test notification",
+            description = "Sends a test message through Apprise with the given destination settings and returns the "
+                    + "result.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public AppriseTestResponse testTemplateConnection(@NotNull @Valid AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {
@@ -208,6 +260,11 @@ public class GeofenceResource {
     @POST
     @Path("/templates")
     @APIResponse(responseCode = "201", description = "Notification template created")
+    @Operation(summary = "Create a notification template",
+            description = "Creates a notification template. The title and body can contain placeholders filled in "
+                    + "from the event, such as `{{subjectName}}`, `{{eventVerb}}`, `{{geofenceName}}`, "
+                    + "`{{timestamp}}`, `{{lat}}`, and `{{lon}}`. A template can be the default for enter or leave "
+                    + "events.")
     public RestResponse<NotificationTemplateDto> createTemplate(
             @NotNull @Valid CreateNotificationTemplateRequest request) {
         try {
@@ -220,8 +277,12 @@ public class GeofenceResource {
 
     @PATCH
     @Path("/templates/{templateId}")
-    public NotificationTemplateDto updateTemplate(@PathParam("templateId") Long templateId,
-                                                   @NotNull @Valid UpdateNotificationTemplateRequest request) {
+    @Operation(summary = "Update a notification template",
+            description = "Changes some fields of a notification template; fields that are not sent stay unchanged.")
+    public NotificationTemplateDto updateTemplate(
+            @Parameter(description = "Notification template ID.")
+            @PathParam("templateId") Long templateId,
+            @NotNull @Valid UpdateNotificationTemplateRequest request) {
         try {
             return templateService.updateTemplate(currentUserService.getCurrentUserId(), templateId, request);
         } catch (NoSuchElementException exception) {
@@ -234,7 +295,11 @@ public class GeofenceResource {
     @DELETE
     @Path("/templates/{templateId}")
     @APIResponse(responseCode = "204", description = "Notification template deleted")
-    public RestResponse<Void> deleteTemplate(@PathParam("templateId") Long templateId) {
+    @Operation(summary = "Delete a notification template",
+            description = "Deletes a notification template.")
+    public RestResponse<Void> deleteTemplate(
+            @Parameter(description = "Notification template ID.")
+            @PathParam("templateId") Long templateId) {
         try {
             templateService.deleteTemplate(currentUserService.getCurrentUserId(), templateId);
             return RestResponse.noContent();

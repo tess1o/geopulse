@@ -28,7 +28,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_INVITATION;
 
@@ -36,7 +41,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_INVITAT
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: Invitations", description = "Manage account invitations and registration links.")
+@Tag(name = ApiTags.ADMIN_INVITATIONS)
 public class AdminInvitationResource {
 
     @Context
@@ -57,11 +62,17 @@ public class AdminInvitationResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "List invitations",
+            description = "Returns registration invitations one page at a time, optionally filtered by status.")
     public PageResponse<InvitationResponse> getInvitations(
+            @Parameter(description = "Only invitations with this status: `PENDING`, `USED`, `EXPIRED`, or `REVOKED`.",
+                    example = "PENDING")
             @QueryParam("status") InvitationStatus status,
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @Parameter(description = "Page size, from 1 to 200. Defaults to 50.")
             @QueryParam("size") @DefaultValue("50") @Min(1) @Max(200) int size
-    ) {
+            ) {
         List<InvitationResponse> invitations = invitationService.getInvitations(status, page, size);
         long total = invitationService.countInvitations(status);
 
@@ -74,6 +85,10 @@ public class AdminInvitationResource {
     @GET
     @Path("/base-url")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "Get the invitation base URL",
+            description = "Returns the base URL configured for invitation links (`GEOPULSE_INVITATION_BASE_URL`), or "
+                    + "an empty string when links should use the address the administrator is browsing from.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public InvitationBaseUrlResponse getBaseUrl() {
         return new InvitationBaseUrlResponse(baseUrl.orElse(""));
     }
@@ -83,6 +98,10 @@ public class AdminInvitationResource {
      */
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Create an invitation",
+            description = "Creates a single-use registration invitation, optionally with an expiration time. The "
+                    + "response contains the invitation token; the link is `<base URL>/register/invite/<token>`. "
+                    + "Invitations work even when open registration is disabled.")
     public RestResponse<CreateInvitationResponse> createInvitation(@Valid CreateInvitationRequest createRequest) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
@@ -113,7 +132,11 @@ public class AdminInvitationResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void revokeInvitation(@PathParam("id") UUID invitationId) {
+    @Operation(summary = "Revoke an invitation",
+            description = "Revokes an unused invitation so its link stops working.")
+    public void revokeInvitation(
+            @Parameter(description = "Invitation ID.")
+            @PathParam("id") UUID invitationId) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request);

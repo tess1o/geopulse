@@ -20,6 +20,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripCollaboratorDto;
@@ -32,6 +33,8 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_LABEL_NOT_FOUND;
@@ -42,7 +45,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips", description = "Manage trips, collaborators, and timeline-label links.")
+@Tag(name = ApiTags.TRIPS)
 public class TripResource {
 
     private final TripService tripService;
@@ -55,7 +58,13 @@ public class TripResource {
     }
 
     @GET
-    public List<TripDto> getTrips(@QueryParam("status") String status) {
+    @Operation(summary = "List trips",
+            description = "Returns the trips the signed-in user owns and the trips shared with them as a "
+                    + "collaborator.")
+    public List<TripDto> getTrips(
+            @Parameter(description = "Only trips with this status: `UNPLANNED`, `UPCOMING`, `ACTIVE`, `COMPLETED`, "
+                    + "or `CANCELLED`.", example = "UPCOMING")
+            @QueryParam("status") String status) {
         try {
             return tripService.getTrips(currentUserService.getCurrentUserId(), status);
         } catch (IllegalArgumentException e) {
@@ -65,7 +74,12 @@ public class TripResource {
 
     @GET
     @Path("/{id}")
-    public TripDto getTrip(@PathParam("id") Long id) {
+    @Operation(summary = "Get a trip",
+            description = "Returns a trip with its name, dates, status, color, and the timeline label it is linked "
+                    + "to, if any.")
+    public TripDto getTrip(
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id) {
         try {
             return tripService.getTrip(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
@@ -74,6 +88,9 @@ public class TripResource {
     }
 
     @POST
+    @Operation(summary = "Create a trip",
+            description = "Creates a trip for a date range. The status follows the dates (upcoming, active, "
+                    + "completed) unless set otherwise.")
     public RestResponse<TripDto> createTrip(@Valid CreateTripDto dto) {
         try {
             return RestResponse.status(Response.Status.CREATED,
@@ -85,7 +102,12 @@ public class TripResource {
 
     @POST
     @Path("/from-timeline-label/{timelineLabelId}")
-    public RestResponse<TripDto> createTripFromTimelineLabel(@PathParam("timelineLabelId") Long timelineLabelId) {
+    @Operation(summary = "Create a trip from a timeline label",
+            description = "Creates a trip with the name, dates, and color of an existing timeline label and links "
+                    + "the two. Later changes to the label update the trip.")
+    public RestResponse<TripDto> createTripFromTimelineLabel(
+            @Parameter(description = "Timeline label ID.")
+            @PathParam("timelineLabelId") Long timelineLabelId) {
         try {
             return RestResponse.status(Response.Status.CREATED,
                     tripService.createTripFromTimelineLabel(currentUserService.getCurrentUserId(), timelineLabelId));
@@ -98,7 +120,11 @@ public class TripResource {
 
     @PUT
     @Path("/{id}")
-    public TripDto updateTrip(@PathParam("id") Long id, @Valid UpdateTripDto dto) {
+    @Operation(summary = "Update a trip",
+            description = "Changes the name, dates, status, color, or notes of a trip.")
+    public TripDto updateTrip(
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id, @Valid UpdateTripDto dto) {
         try {
             return tripService.updateTrip(currentUserService.getCurrentUserId(), id, dto);
         } catch (NotFoundException e) {
@@ -110,8 +136,15 @@ public class TripResource {
 
     @DELETE
     @Path("/{id}")
-    public RestResponse<Void> deleteTrip(@PathParam("id") Long id,
-                                         @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
+    @Operation(summary = "Delete a trip",
+            description = "Deletes a trip. If the trip is linked to a timeline label, `mode` decides what happens to "
+                    + "the label.")
+    public RestResponse<Void> deleteTrip(
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id,
+            @Parameter(description = "`unlink_only` (default) keeps the linked timeline label; `delete_both` deletes "
+                    + "it too.")
+            @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
         if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
             throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid delete mode",
                     Map.of("mode", mode, "allowedValues", "unlink_only,delete_both"));
@@ -126,7 +159,12 @@ public class TripResource {
 
     @DELETE
     @Path("/{id}/timeline-label")
-    public TripDto unlinkTripFromTimelineLabel(@PathParam("id") Long id) {
+    @Operation(summary = "Unlink a trip from its timeline label",
+            description = "Removes the link between a trip and its timeline label. Both are kept; changes to one no "
+                    + "longer affect the other.")
+    public TripDto unlinkTripFromTimelineLabel(
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id) {
         try {
             return tripService.unlinkTripFromTimelineLabel(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
@@ -136,7 +174,11 @@ public class TripResource {
 
     @GET
     @Path("/{id}/collaborators")
-    public List<TripCollaboratorDto> getTripCollaborators(@PathParam("id") Long id) {
+    @Operation(summary = "List trip collaborators",
+            description = "Returns the friends a trip is shared with and their access level (`VIEW` or `EDIT`).")
+    public List<TripCollaboratorDto> getTripCollaborators(
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id) {
         try {
             return tripService.getTripCollaborators(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
@@ -146,8 +188,13 @@ public class TripResource {
 
     @PUT
     @Path("/{id}/collaborators/{friendId}")
+    @Operation(summary = "Share a trip with a friend",
+            description = "Adds a friend as a collaborator on a trip, or changes their access level: `VIEW` lets "
+                    + "them see the trip, `EDIT` also lets them change the plan.")
     public TripCollaboratorDto upsertTripCollaborator(
+            @Parameter(description = "Trip ID.")
             @PathParam("id") Long id,
+            @Parameter(description = "User ID of the friend.")
             @PathParam("friendId") String friendId,
             @Valid UpdateTripCollaboratorDto dto) {
         try {
@@ -162,8 +209,13 @@ public class TripResource {
 
     @DELETE
     @Path("/{id}/collaborators/{friendId}")
+    @Operation(summary = "Stop sharing a trip with a friend",
+            description = "Removes a collaborator from a trip.")
     public RestResponse<Void> removeTripCollaborator(
-            @PathParam("id") Long id, @PathParam("friendId") String friendId) {
+            @Parameter(description = "Trip ID.")
+            @PathParam("id") Long id,
+            @Parameter(description = "User ID of the friend.")
+            @PathParam("friendId") String friendId) {
         try {
             tripService.removeTripCollaborator(
                     currentUserService.getCurrentUserId(), id, UUID.fromString(friendId));

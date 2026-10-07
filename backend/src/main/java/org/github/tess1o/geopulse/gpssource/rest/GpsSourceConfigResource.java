@@ -19,6 +19,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt.MqttConfiguration;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
@@ -38,6 +39,8 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_SOURCE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GPS_SOURCE;
@@ -48,7 +51,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TELEMET
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
-@Tag(name = "User: GPS Sources", description = "Manage GPS source configuration, telemetry mappings, and status.")
+@Tag(name = ApiTags.GPS_SOURCES)
 public class GpsSourceConfigResource {
 
     private final GpsSourceService gpsSourceService;
@@ -67,12 +70,18 @@ public class GpsSourceConfigResource {
     }
 
     @GET
+    @Operation(summary = "List GPS sources",
+            description = "Returns the GPS sources of the signed-in user: type, credentials (username or token), "
+                    + "device filter, active status, and point filtering settings.")
     public List<GpsSourceConfigDTO> getGpsSourceConfigs() {
         return gpsSourceService.findGpsSourceConfigs(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/defaults")
+    @Operation(summary = "Get default point filters",
+            description = "Returns the server defaults for filtering inaccurate points (maximum accuracy and speed) "
+                    + "and detecting duplicates. New GPS sources start with these values.")
     public GpsFilteringDefaultsDTO getDefaultFilteringValues() {
         return new GpsFilteringDefaultsDTO(
                 gpsSourceService.isDefaultFilterInaccurateDataEnabled(),
@@ -84,6 +93,9 @@ public class GpsSourceConfigResource {
 
     @GET
     @Path("/owntracks/mqtt-config")
+    @Operation(summary = "Get OwnTracks MQTT settings",
+            description = "Returns whether the built-in MQTT broker for OwnTracks is enabled, and the host, port, "
+                    + "and TLS setting to configure in the OwnTracks app.")
     public OwnTracksMqttConfigDTO getOwnTracksMqttConfig() {
         return OwnTracksMqttConfigDTO.builder()
                 .mqttEnabled(mqttConfiguration.isMqttEnabled())
@@ -95,7 +107,15 @@ public class GpsSourceConfigResource {
 
     @GET
     @Path("/telemetry/{sourceType}")
-    public GpsSourceTypeTelemetryConfigDTO getTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+    @Operation(summary = "Get telemetry mapping",
+            description = "Returns how extra fields sent by a GPS source type (such as battery level or charging "
+                    + "state) are labeled, typed, and shown in GeoPulse. Returns the user's customized mapping, or "
+                    + "the defaults when none is saved.")
+    public GpsSourceTypeTelemetryConfigDTO getTelemetryMapping(
+            @Parameter(description = "GPS source type, for example `OWNTRACKS`, `OVERLAND`, `TRACCAR`, "
+                    + "`HOME_ASSISTANT`, `GPSLOGGER`, `COLOTA`, or `DAWARICH`. Case-insensitive.",
+                    example = "OWNTRACKS")
+            @PathParam("sourceType") String sourceTypeValue) {
         try {
             return telemetryConfigService.getResolvedConfig(
                     currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
@@ -107,7 +127,14 @@ public class GpsSourceConfigResource {
 
     @PUT
     @Path("/telemetry/{sourceType}")
+    @Operation(summary = "Save telemetry mapping",
+            description = "Replaces the telemetry mapping of a GPS source type for the signed-in user. Each entry "
+                    + "maps a payload field (`key`) to a label, type (`boolean`, `number`, or `string`), unit, and "
+                    + "where it is displayed.")
     public GpsSourceTypeTelemetryConfigDTO upsertTelemetryMapping(
+            @Parameter(description = "GPS source type, for example `OWNTRACKS`, `OVERLAND`, `TRACCAR`, "
+                    + "`HOME_ASSISTANT`, `GPSLOGGER`, `COLOTA`, or `DAWARICH`. Case-insensitive.",
+                    example = "OWNTRACKS")
             @PathParam("sourceType") String sourceTypeValue,
             @NotNull List<@Valid GpsTelemetryMappingEntry> mapping) {
         try {
@@ -122,7 +149,14 @@ public class GpsSourceConfigResource {
     @DELETE
     @Path("/telemetry/{sourceType}")
     @APIResponse(responseCode = "204", description = "Telemetry mapping reset")
-    public RestResponse<Void> resetTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+    @Operation(summary = "Reset telemetry mapping",
+            description = "Deletes the customized telemetry mapping of a GPS source type so the defaults are used "
+                    + "again.")
+    public RestResponse<Void> resetTelemetryMapping(
+            @Parameter(description = "GPS source type, for example `OWNTRACKS`, `OVERLAND`, `TRACCAR`, "
+                    + "`HOME_ASSISTANT`, `GPSLOGGER`, `COLOTA`, or `DAWARICH`. Case-insensitive.",
+                    example = "OWNTRACKS")
+            @PathParam("sourceType") String sourceTypeValue) {
         try {
             telemetryConfigService.resetConfig(
                     currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
@@ -135,6 +169,10 @@ public class GpsSourceConfigResource {
 
     @POST
     @APIResponse(responseCode = "201", description = "GPS source created")
+    @Operation(summary = "Create a GPS source",
+            description = "Creates a GPS source that a tracker app can send data to. Basic-auth sources (OwnTracks, "
+                    + "GPSLogger, Colota) need a username and password; token sources (Overland, Traccar, Home "
+                    + "Assistant, Dawarich) need a token.")
     public RestResponse<GpsSourceConfigDTO> addGpsSourceConfig(
             @NotNull @Valid CreateGpsSourceConfigDto config) {
         config.setUserId(currentUserService.getCurrentUserId());
@@ -148,7 +186,12 @@ public class GpsSourceConfigResource {
     @DELETE
     @Path("/{id}")
     @APIResponse(responseCode = "204", description = "GPS source deleted")
-    public RestResponse<Void> deleteGpsSourceConfig(@PathParam("id") UUID configId) {
+    @Operation(summary = "Delete a GPS source",
+            description = "Deletes a GPS source. Its credentials stop working immediately. GPS points already "
+                    + "received are kept.")
+    public RestResponse<Void> deleteGpsSourceConfig(
+            @Parameter(description = "GPS source ID.")
+            @PathParam("id") UUID configId) {
         boolean deleted = gpsSourceService.deleteGpsSourceConfig(
                 configId, currentUserService.getCurrentUserId());
         if (!deleted) {
@@ -161,7 +204,10 @@ public class GpsSourceConfigResource {
     @PATCH
     @Path("/{id}/status")
     @APIResponse(responseCode = "204", description = "GPS source status updated")
+    @Operation(summary = "Enable or disable a GPS source",
+            description = "Turns a GPS source on or off. Data sent to a disabled source is rejected.")
     public RestResponse<Void> updateStatus(
+            @Parameter(description = "GPS source ID.")
             @PathParam("id") UUID configId,
             @NotNull @Valid UpdateGpsSourceConfigStatusDto newStatus) {
         boolean updated = gpsSourceService.updateGpsConfigSourceStatus(
@@ -176,7 +222,10 @@ public class GpsSourceConfigResource {
     @PUT
     @Path("/{id}")
     @APIResponse(responseCode = "204", description = "GPS source updated")
+    @Operation(summary = "Update a GPS source",
+            description = "Updates the credentials, device filter, and point filtering settings of a GPS source.")
     public RestResponse<Void> updateGpsConfigSource(
+            @Parameter(description = "GPS source ID.")
             @PathParam("id") String configId,
             @NotNull @Valid UpdateGpsSourceConfigDto config) {
         config.setId(configId);

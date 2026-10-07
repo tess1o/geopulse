@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
  * The complete, ordered list of a trip's plan items after a drag-and-drop. Each entry's position
@@ -27,8 +28,10 @@ public class ReorderTripPlanItemsDto {
     @AllArgsConstructor
     public static class Entry {
         @NotNull(message = "Item id is required")
+        @Schema(examples = "31")
         private Long id;
 
+        @Schema(examples = "2025-06-07")
         private LocalDate plannedDay;
     }
 }

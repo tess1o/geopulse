@@ -21,7 +21,10 @@ import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.jboss.resteasy.reactive.RestResponse;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -30,7 +33,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Consumes(MediaType.APPLICATION_JSON)
 @PermitAll
 @Slf4j
-@Tag(name = "User: Authentication", description = "Validate invitations and register invited users.")
+@Tag(name = ApiTags.REGISTRATION)
 public class InvitationAuthResource {
 
     @Inject
@@ -47,7 +50,12 @@ public class InvitationAuthResource {
      */
     @GET
     @Path("/{token}")
-    public ValidateInvitationResponse validateToken(@PathParam("token") String token) {
+    @Operation(summary = "Check an invitation",
+            description = "Returns whether an invitation link can still be used, and its status (pending, used, "
+                    + "expired, or revoked).")
+    public ValidateInvitationResponse validateToken(
+            @Parameter(description = "Invitation token from the invitation link.")
+            @PathParam("token") String token) {
         try {
             UserInvitationEntity invitation = invitationService.validateToken(token);
 
@@ -68,7 +76,11 @@ public class InvitationAuthResource {
      */
     @POST
     @Path("/{token}/registrations")
+    @Operation(summary = "Register with an invitation",
+            description = "Creates an account using an invitation link. Works even when open registration is "
+                    + "disabled. The invitation is marked as used. The new user signs in afterwards.")
     public RestResponse<UserResponse> registerViaInvitation(
+            @Parameter(description = "Invitation token from the invitation link.")
             @PathParam("token") String token,
             @Valid InvitationRegisterRequest request) {
         try {

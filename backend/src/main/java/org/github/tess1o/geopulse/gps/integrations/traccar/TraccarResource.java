@@ -24,13 +24,22 @@ import java.util.Locale;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 @Path(ApiPaths.GPS_INGEST + "/traccar")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Traccar clients.")
+@Tag(name = ApiTags.GPS_TRACKER_INGEST)
+@SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_TOKEN)
 public class TraccarResource {
 
     private final GpsPointService gpsPointService;
@@ -44,9 +53,14 @@ public class TraccarResource {
 
     @POST
     @Operation(summary = "Ingest Traccar position",
-            description = "Receives a Traccar position update and routes it to matching active Traccar source configurations.")
-    @APIResponse(responseCode = "200", description = "Position accepted or ignored")
-    public Response handleTraccar(TraccarPositionData payload,
+            description = "Receives a position forwarded by a Traccar server and stores it as a GPS point. Several "
+                    + "Traccar GPS sources can share one token: the position is stored for every active source whose "
+                    + "device ID matches the position's device or, when none matches, for every source without a "
+                    + "device ID.")
+    @APIResponse(responseCode = "200", description = "Position accepted, or ignored when no source matches the device")
+    public Response handleTraccar(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(name = "position", value = GpsIngestExamples.TRACCAR)))
+                                  TraccarPositionData payload,
                                   @HeaderParam("Authorization") String authHeader) {
         long started = System.nanoTime();
         String token;

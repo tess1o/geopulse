@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @Builder
@@ -13,12 +14,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UpdateProfileRequest {
     @Size(min = 1, max = 100, message = "Full name must be between 1 and 100 characters")
+    @Schema(examples = "Jane Doe")
     private String fullName;
 
     @Size(max = 500, message = "Avatar URL cannot exceed 500 characters")
+    @Schema(examples = "/avatars/avatar3.png")
     private String avatar;
 
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
+    @Schema(examples = "Europe/Kyiv")
     private String timezone;
 
     /**

@@ -174,6 +174,8 @@ openapi:
 	@echo "📦 Copying OpenAPI files to docs/openapi..."
 	mkdir -p docs/openapi
 	cp -v backend/target/openapi/* docs/openapi/
+	@grep -q '"x-tagGroups"' docs/openapi/openapi.json || \
+		(echo "❌ OpenAPI filter did not run: x-tagGroups is missing. Check the GeoPulseOpenApiFilter build logs." && exit 1)
 	@echo "✅ OpenAPI spec copied to docs/openapi/"
 
 .PHONY: publish-helm

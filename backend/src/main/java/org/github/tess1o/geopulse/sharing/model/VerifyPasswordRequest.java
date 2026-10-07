@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
@@ -11,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class VerifyPasswordRequest {
 
     @JsonProperty("password")
+    @Schema(examples = "share-password")
     private String password;
 }

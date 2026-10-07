@@ -11,7 +11,7 @@ MCP clients, dashboards, scheduled jobs, and other automation owned by a GeoPuls
 
 An API token acts as the user who created it:
 
-- It can call authenticated **User API** endpoints available to that user.
+- It can call every authenticated endpoint available to that user.
 - If an administrator creates a token for their own account, that token has the administrator's API permissions.
 - It is separate from browser login cookies and does not require CSRF handling.
 - It records usage metadata such as last-used time and last-used IP.
@@ -95,7 +95,7 @@ Revoking a token takes effect immediately. Any automation using that token will 
 
 ## Admin visibility
 
-Administrators can review and revoke user API tokens from the Admin API and admin UI. This is intended for audit,
+Administrators can review and revoke user API tokens from the Administration API and admin UI. This is intended for audit,
 support, and incident response. Administrators cannot recover the full secret after creation; only the original one-time
 token value can be used by clients.
 

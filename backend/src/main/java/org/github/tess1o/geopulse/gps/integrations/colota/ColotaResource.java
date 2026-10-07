@@ -21,13 +21,20 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 @Path(ApiPaths.GPS_INGEST + "/colota")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Colota-compatible clients.")
+@Tag(name = ApiTags.GPS_TRACKER_INGEST)
+@SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_BASIC)
 public class ColotaResource {
 
     private final GpsPointService gpsPointService;
@@ -41,11 +48,14 @@ public class ColotaResource {
 
     @POST
     @Operation(summary = "Ingest Colota location",
-            description = "Receives a Colota-compatible location update and stores it for the matching source token.")
-    @APIResponse(responseCode = "200", description = "Location accepted",
+            description = "Receives a location update from the Colota app and stores it as a GPS point for the user "
+                    + "who owns the Colota GPS source.")
+    @APIResponse(responseCode = "200", description = "Location accepted. The body is an empty JSON array.",
             content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(type = SchemaType.ARRAY)))
-    public Response handleColota(ColotaLocationMessage payload,
+    public Response handleColota(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(name = "location", value = GpsIngestExamples.COLOTA)))
+                                 ColotaLocationMessage payload,
                                  @HeaderParam("Authorization") String authHeader) {
         long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.COLOTA, authHeader);

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,16 +15,21 @@ public class BulkUpdateGeocodingDto {
 
     @NotNull(message = "Geocoding IDs cannot be null")
     @NotEmpty(message = "Geocoding IDs cannot be empty")
+    @Schema(examples = "[301, 302]")
     private List<Long> geocodingIds;
 
+    @Schema(examples = "true")
     private Boolean updateCity;
 
     @Size(max = 200, message = "City must be less than 200 characters")
+    @Schema(examples = "Kyiv")
     private String city;
 
+    @Schema(examples = "false")
     private Boolean updateCountry;
 
     @Size(max = 100, message = "Country must be less than 100 characters")
+    @Schema(examples = "Ukraine")
     private String country;
 
     /**

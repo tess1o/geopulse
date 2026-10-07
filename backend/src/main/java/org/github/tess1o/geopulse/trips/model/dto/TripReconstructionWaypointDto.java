@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
@@ -15,10 +16,12 @@ public class TripReconstructionWaypointDto {
     @NotNull(message = "Waypoint latitude is required")
     @DecimalMin(value = "-90.0", message = "Waypoint latitude must be >= -90")
     @DecimalMax(value = "90.0", message = "Waypoint latitude must be <= 90")
+    @Schema(examples = "49.8397")
     private Double latitude;
 
     @NotNull(message = "Waypoint longitude is required")
     @DecimalMin(value = "-180.0", message = "Waypoint longitude must be >= -180")
     @DecimalMax(value = "180.0", message = "Waypoint longitude must be <= 180")
+    @Schema(examples = "24.0297")
     private Double longitude;
 }

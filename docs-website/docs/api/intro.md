@@ -9,19 +9,50 @@ the same data available in the web application.
 
 ## API structure
 
-The reference is generated from the backend OpenAPI specification and is grouped by audience:
+The reference is generated from the backend OpenAPI specification and is grouped by what you want to do:
 
-- **Public API** - endpoints that do not require a logged-in GeoPulse session, such as login, registration, health,
-  shared links, and GPS integration ingest endpoints.
-- **User API** - endpoints available to authenticated users and user-owned API tokens.
-- **Admin API** - endpoints that require an administrator account.
+| Group                 | What it covers                                                                                              |
+|-----------------------|-------------------------------------------------------------------------------------------------------------|
+| **Authentication**    | Sign-in with tokens, mobile sign-in, registration, and API tokens.                                          |
+| **Location Data**     | GPS tracker ingest (OwnTracks, Overland, Traccar, and others), GPS points, GPS sources, import, and export. |
+| **Timeline & Places** | The timeline, manual timeline corrections, timeline labels, places, favorites, geocoding, and notes.        |
+| **Insights**          | Statistics, digests, journey insights, location analytics, and coverage.                                    |
+| **Trips**             | Trips and trip planning.                                                                                    |
+| **Friends & Sharing** | Friends, share links, and the public share-link viewer.                                                     |
+| **Alerts**            | Geofences and notifications.                                                                                |
+| **Integrations**      | Immich, Memos, the AI assistant, places to visit, and weather.                                              |
+| **Account & App**     | Your profile and preferences, and server health and version.                                                |
+| **Administration**    | User management, invitations, backups, system settings, and other administrator tools.                      |
+
+Each tag page starts with an overview of the concepts involved, such as how the timeline is built or how imports run
+as background jobs.
+
+The reference covers the endpoints meant for integrations, scripts, and automation. The web app also uses internal
+endpoints, such as browser sign-in, chunked uploads, and connection tests. They are listed in the OpenAPI specification
+with `x-internal: true`, are not shown here, and can change without notice.
+
+## Who can call an endpoint
+
+Every endpoint description ends with an **Access** line:
+
+| Access                          | Meaning                                                                                     |
+|---------------------------------|---------------------------------------------------------------------------------------------|
+| Public                          | No authentication. For example sign-in, registration, health, and version.                  |
+| Any signed-in user              | A browser session or a user API token. The request acts as that user.                       |
+| Administrators only             | A session or API token of a user with the `ADMIN` role.                                     |
+| GPS source credentials          | The username and password, or token, of a GPS source configured in GeoPulse.                |
+| Anyone with the share link      | A short-lived access token issued for a share link. No GeoPulse account needed.             |
 
 ## Authentication options
 
 Browser users authenticate through the normal GeoPulse login flow with secure cookies and JWTs.
 
 External API clients should use a user API token. A token acts as the user that created it and can call the same
-authenticated REST endpoints that user can access. See [API Tokens](./api-tokens.md) for creation and usage details.
+authenticated REST endpoints that user can access, including administrator endpoints when the user is an administrator.
+See [API Tokens](./api-tokens.md) for creation and usage details.
+
+GPS tracking apps do not use API tokens. They send data to the **GPS Tracker Ingest** endpoints with the credentials of
+a GPS source, configured in GeoPulse under **GPS Sources**.
 
 Send a token with either header:
 
@@ -49,6 +80,20 @@ http://localhost:8080
 For deployed environments, use the public URL of your GeoPulse backend or reverse proxy.
 
 REST endpoints are versioned under `/api/v1`, for example `http://localhost:8080/api/v1/timeline`.
+
+## Code samples
+
+Each endpoint page has a curl sample. It reads the server address from `GEOPULSE_URL` and your
+API token from `GEOPULSE_API_TOKEN`, so set both before running it:
+
+```bash
+export GEOPULSE_URL=http://localhost:8080
+export GEOPULSE_API_TOKEN=<your-api-token>
+```
+
+Samples for the **GPS Tracker Ingest** endpoints use the GPS source's credentials instead: `GPS_SOURCE_USERNAME` and
+`GPS_SOURCE_PASSWORD`, or `GPS_SOURCE_TOKEN`. Samples for the public share-link endpoints use
+`SHARE_LINK_ACCESS_TOKEN`.
 
 ## OpenAPI specification
 

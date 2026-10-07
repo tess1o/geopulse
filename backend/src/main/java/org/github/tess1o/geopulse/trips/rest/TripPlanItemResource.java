@@ -18,6 +18,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.ReorderTripPlanItemsDto;
@@ -31,6 +32,8 @@ import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_PLAN_ITEM;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
@@ -41,7 +44,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips and Planning", description = "Manage trip plan items and visit overrides.")
+@Tag(name = ApiTags.TRIP_PLANNING)
 public class TripPlanItemResource {
 
     private final TripPlanItemService service;
@@ -58,7 +61,11 @@ public class TripPlanItemResource {
     }
 
     @GET
-    public List<TripPlanItemDto> getPlanItems(@PathParam("tripId") Long tripId) {
+    @Operation(summary = "List plan items",
+            description = "Returns the places planned for a trip, in plan order, with their visit status.")
+    public List<TripPlanItemDto> getPlanItems(
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId) {
         try {
             return service.getTripPlanItems(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
@@ -68,7 +75,13 @@ public class TripPlanItemResource {
 
     @GET
     @Path("/route")
-    public TripPlanRouteDto getPlanRoute(@PathParam("tripId") Long tripId) {
+    @Operation(summary = "Get the planned route",
+            description = "Returns a line through the trip's plan items in plan order. Each leg follows roads or "
+                    + "paths when a Valhalla routing server is configured, and is a straight line otherwise, or "
+                    + "when it is too long to route.")
+    public TripPlanRouteDto getPlanRoute(
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId) {
         try {
             return routeService.getPlanRoute(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
@@ -77,7 +90,10 @@ public class TripPlanItemResource {
     }
 
     @POST
+    @Operation(summary = "Add a plan item",
+            description = "Adds a place to visit to a trip. Requires edit access to the trip.")
     public RestResponse<TripPlanItemDto> createPlanItem(
+            @Parameter(description = "Trip ID.")
             @PathParam("tripId") Long tripId, @Valid CreateTripPlanItemDto dto) {
         try {
             return RestResponse.status(Response.Status.CREATED,
@@ -91,8 +107,12 @@ public class TripPlanItemResource {
 
     @PUT
     @Path("/{itemId}")
+    @Operation(summary = "Update a plan item",
+            description = "Changes a plan item, such as its title, location, planned day, or notes.")
     public TripPlanItemDto updatePlanItem(
+            @Parameter(description = "Trip ID.")
             @PathParam("tripId") Long tripId,
+            @Parameter(description = "Plan item ID.")
             @PathParam("itemId") Long itemId,
             @Valid UpdateTripPlanItemDto dto) {
         try {
@@ -106,7 +126,10 @@ public class TripPlanItemResource {
 
     @PUT
     @Path("/order")
+    @Operation(summary = "Reorder plan items",
+            description = "Sets the order of the trip's plan items. Returns the items in their new order.")
     public List<TripPlanItemDto> reorderPlanItems(
+            @Parameter(description = "Trip ID.")
             @PathParam("tripId") Long tripId, @Valid ReorderTripPlanItemsDto dto) {
         try {
             return service.reorderTripPlanItems(currentUserService.getCurrentUserId(), tripId, dto);
@@ -119,8 +142,13 @@ public class TripPlanItemResource {
 
     @DELETE
     @Path("/{itemId}")
+    @Operation(summary = "Delete a plan item",
+            description = "Removes a place from the trip plan.")
     public RestResponse<Void> deletePlanItem(
-            @PathParam("tripId") Long tripId, @PathParam("itemId") Long itemId) {
+            @Parameter(description = "Trip ID.")
+            @PathParam("tripId") Long tripId,
+            @Parameter(description = "Plan item ID.")
+            @PathParam("itemId") Long itemId) {
         try {
             service.deleteTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId);
             return RestResponse.noContent();
@@ -131,8 +159,13 @@ public class TripPlanItemResource {
 
     @PUT
     @Path("/{itemId}/visit-override")
+    @Operation(summary = "Mark a plan item as visited or not",
+            description = "Overrides automatic visit matching for a plan item: `CONFIRM_VISITED` (optionally with "
+                    + "`visitedAt`), `REJECT_VISIT`, or `RESET_TO_AUTO`.")
     public TripPlanItemDto applyVisitOverride(
+            @Parameter(description = "Trip ID.")
             @PathParam("tripId") Long tripId,
+            @Parameter(description = "Plan item ID.")
             @PathParam("itemId") Long itemId,
             @Valid TripVisitOverrideRequestDto request) {
         try {

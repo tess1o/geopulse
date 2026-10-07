@@ -20,6 +20,11 @@ import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BOAT_SETUP_JOB_NOT_FOUND;
 
@@ -27,7 +32,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BOAT_SETUP_JOB_
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Tag(name = "User: Trips and Planning", description = "Run and monitor boat setup analysis.")
+@Tag(name = ApiTags.TIMELINE)
 public class BoatSetupResource {
 
     @Inject
@@ -38,6 +43,11 @@ public class BoatSetupResource {
 
     @GET
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get boat detection setup status",
+            description = "Returns whether boat detection is ready for the signed-in user: whether the water dataset "
+                    + "is imported on the server and how many of the user's GPS points have been checked against "
+                    + "it, or the progress of a running setup job.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public BoatSetupStatusDTO getStatus() {
         UUID userId = currentUserService.getCurrentUserId();
         return boatSetupService.getStatus(userId);
@@ -45,6 +55,12 @@ public class BoatSetupResource {
 
     @POST
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Set up boat detection",
+            description = "Starts a background job that prepares boat detection: it downloads and imports the water "
+                    + "dataset if the server does not have it yet, checks the user's GPS points against it so trips "
+                    + "over water can be classified as `BOAT`, and reclassifies existing trips. Poll `GET "
+                    + "/api/v1/trip-planning/boat-setup/jobs/{jobId}` for progress.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public BoatSetupStartResponseDTO startSetup() {
         UUID userId = currentUserService.getCurrentUserId();
         return boatSetupService.startSetup(userId);
@@ -53,7 +69,12 @@ public class BoatSetupResource {
     @GET
     @Path("/jobs/{jobId}")
     @RolesAllowed({"USER", "ADMIN"})
-    public BoatSetupStatusDTO getJob(@PathParam("jobId") UUID jobId) {
+    @Operation(summary = "Get boat detection setup job",
+            description = "Returns the progress of a boat detection setup job.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public BoatSetupStatusDTO getJob(
+            @Parameter(description = "Setup job ID.")
+            @PathParam("jobId") UUID jobId) {
         UUID userId = currentUserService.getCurrentUserId();
         return boatSetupService.getJobStatus(userId, jobId)
                 .orElseThrow(() -> new GeoPulseException(BOAT_SETUP_JOB_NOT_FOUND, "Boat setup job not found"));

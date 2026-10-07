@@ -14,13 +14,20 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 import java.nio.file.Files;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import io.quarkus.security.Authenticated;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DEBUG_IMPORT_FAILED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DEBUG_IMPORT;
 
 @Path("/debug-imports")
+@Authenticated
 @Slf4j
-@Tag(name = "User: Import and Export", description = "Upload debug import data.")
+@Tag(name = ApiTags.IMPORT)
 public class DebugImportResource {
 
     @Inject
@@ -32,9 +39,17 @@ public class DebugImportResource {
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Import a debug export",
+            description = "Imports a ZIP archive created by `POST /api/v1/exports/debug`, which is used to reproduce "
+                    + "timeline issues. By default, the user's existing data is deleted first and the timeline "
+                    + "settings from the archive are applied. Intended for troubleshooting, not for regular imports.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public void uploadDebugData(
             @FormParam("file") FileUpload file,
+            @Parameter(description = "Delete the user's existing GPS and timeline data before importing. Defaults to "
+                    + "`true`.")
             @FormParam("clearExistingData") @DefaultValue("true") boolean clearExistingData,
+            @Parameter(description = "Apply the timeline settings stored in the archive. Defaults to `true`.")
             @FormParam("updateTimelineConfig") @DefaultValue("true") boolean updateTimelineConfig) {
 
         if (file == null || file.uploadedFile() == null) {

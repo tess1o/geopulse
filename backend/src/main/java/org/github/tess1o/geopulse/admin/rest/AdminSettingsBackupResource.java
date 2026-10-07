@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.admin.dto.AdminSettingsBackupDto;
 import org.github.tess1o.geopulse.admin.dto.AdminSettingsImportResult;
 import org.github.tess1o.geopulse.admin.model.ActionType;
@@ -36,13 +37,14 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
 @Path(ApiPaths.ADMIN_SETTINGS_BACKUPS)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: Backups", description = "Export and import admin-configurable global settings.")
+@Tag(name = ApiTags.ADMIN_BACKUPS)
 public class AdminSettingsBackupResource {
 
     @Context
@@ -66,6 +68,10 @@ public class AdminSettingsBackupResource {
     @Produces(MediaType.APPLICATION_JSON)
     @APIResponseSchema(value = AdminSettingsBackupDto.class, responseCode = "200",
             responseDescription = "Admin settings backup")
+    @Operation(summary = "Export admin settings",
+            description = "Downloads the administrator-configured settings as JSON: system settings saved in the "
+                    + "database, OIDC providers, and custom geocoding providers. User data and the backup password "
+                    + "are not included. The file can contain provider credentials in plain text.")
     public Response exportSettingsBackup() {
         AdminSettingsBackupDto backup = backupService.exportBackup();
         byte[] payload;
@@ -99,6 +105,10 @@ public class AdminSettingsBackupResource {
     @Path("/imports")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Import admin settings",
+            description = "Imports a settings file created by the export endpoint (multipart field `file`). Replaces "
+                    + "the saved system settings and provider configuration, and reports what was imported, "
+                    + "removed, or not supported.")
     public AdminSettingsImportResult importSettingsBackup(@RestForm("file") FileUpload file) {
         if (file == null || file.uploadedFile() == null) {
             throw new GeoPulseException(INVALID_ADMIN_SETTINGS_BACKUP, "Admin settings backup file is required");

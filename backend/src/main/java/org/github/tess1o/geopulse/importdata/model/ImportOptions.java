@@ -18,7 +18,8 @@ public class ImportOptions {
     private String importFormat = "geopulse";
 
     @Schema(description = "Data types to import from a GeoPulse export archive. Ignored by other formats. "
-            + "All data types found in the archive are imported when omitted.")
+            + "All data types found in the archive are imported when omitted.",
+            examples = "[\"rawgps\", \"favorites\"]")
     private List<String> dataTypes;
 
     @Schema(description = "Only import data at or after this time (ISO-8601 instant). Send together with endTime. "

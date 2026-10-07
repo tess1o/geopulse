@@ -13,6 +13,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
@@ -48,10 +50,17 @@ public class TraccarPosition {
     private Double course;
     private String address;
     private Double accuracy;
+    @Schema(type = SchemaType.OBJECT, description = "Cell towers and Wi-Fi access points reported by the device.")
     private Object network;
     private List<Long> geofenceIds;
+    @Schema(implementation = String.class, description = "Date-time as ISO-8601 text or epoch seconds or milliseconds.",
+            examples = "2025-06-07T09:15:30.000+00:00")
     private JsonNode serverTime;
+    @Schema(implementation = String.class, description = "Date-time as ISO-8601 text or epoch seconds or milliseconds.",
+            examples = "2025-06-07T09:15:30.000+00:00")
     private JsonNode deviceTime;
+    @Schema(implementation = String.class, description = "Date-time as ISO-8601 text or epoch seconds or milliseconds.",
+            examples = "2025-06-07T09:15:30.000+00:00")
     private JsonNode fixTime;
     private Map<String, Object> attributes;
 

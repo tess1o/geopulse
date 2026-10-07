@@ -14,6 +14,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
 import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
@@ -28,6 +29,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -35,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Tag(name = "User: Sharing", description = "Read public shared location data and verify shared-link passwords.")
+@Tag(name = ApiTags.SHARED_LINK_VIEWER)
 public class PublicSharedLinkResource {
 
     @Inject
@@ -43,7 +48,12 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}")
-    public SharedLocationInfo getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
+    @Operation(summary = "Get share link info",
+            description = "Returns what a share link shows: its type, name, owner, shared period, display options, "
+                    + "and whether a password is required. Does not need an access token.")
+    public SharedLocationInfo getSharedLocationInfo(
+            @Parameter(description = "Share link ID from the shared URL.")
+            @PathParam("linkId") UUID linkId) {
         try {
             return sharedLinkService.getSharedLocationInfo(linkId);
         } catch (NotFoundException e) {
@@ -53,7 +63,13 @@ public class PublicSharedLinkResource {
 
     @POST
     @Path("/{linkId}/access-tokens")
-    public AccessTokenResponse verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
+    @Operation(summary = "Get an access token",
+            description = "Returns a short-lived access token for a share link, to send as `Authorization: Bearer "
+                    + "<token>` on the other viewer endpoints. For password-protected links, send the password; "
+                    + "otherwise the password can be empty.")
+    public AccessTokenResponse verifyPassword(
+            @Parameter(description = "Share link ID from the shared URL.")
+            @PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
         try {
             return sharedLinkService.verifyPassword(linkId, request.getPassword());
         } catch (NotFoundException e) {
@@ -65,8 +81,15 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/location")
-    public LocationHistoryResponse getSharedLocation(@PathParam("linkId") UUID linkId,
-                                                     @HeaderParam("Authorization") String authHeader) {
+    @Operation(summary = "Get the shared live location",
+            description = "Returns the current location of the link owner and, if the link includes history, their "
+                    + "recent movement. Live-location links only. Requires the access token from `POST "
+                    + "/api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
+    public LocationHistoryResponse getSharedLocation(
+            @Parameter(description = "Share link ID from the shared URL.")
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader) {
         try {
             return sharedLinkService.getSharedLocation(linkId, bearerToken(authHeader));
         } catch (NotFoundException e) {
@@ -78,10 +101,19 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/timeline")
+    @Operation(summary = "Get the shared timeline",
+            description = "Returns the stays, trips, and data gaps of the shared period. Timeline links only. "
+                    + "Requires the access token from `POST /api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public MovementTimelineDTO getSharedTimeline(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the start of the "
+                    + "shared period; the result is always limited to the shared period.")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the end of the shared "
+                    + "period.")
             @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
@@ -101,10 +133,20 @@ public class PublicSharedLinkResource {
     @GET
     @Path("/{linkId}/notes")
     @Blocking
+    @Operation(summary = "Get shared notes",
+            description = "Returns the owner's notes in the shared period, when the link includes notes. Timeline "
+                    + "links only. Requires the access token from `POST "
+                    + "/api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public CompletionStage<NoteSearchResponse> getSharedNotes(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the start of the "
+                    + "shared period; the result is always limited to the shared period.")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the end of the shared "
+                    + "period.")
             @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
@@ -124,11 +166,22 @@ public class PublicSharedLinkResource {
     @GET
     @Path("/{linkId}/photos")
     @Blocking
+    @Operation(summary = "List shared photos",
+            description = "Returns the owner's Immich photos taken in the shared period (or from the selected "
+                    + "album), when the link includes photos. Timeline links only. Requires the access token from "
+                    + "`POST /api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public CompletableFuture<ImmichPhotoSearchResponse> getSharedPhotos(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the start of the "
+                    + "shared period; the result is always limited to the shared period.")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the end of the shared "
+                    + "period.")
             @QueryParam("to") String endTime,
+            @Parameter(description = "Maximum number of photos.")
             @QueryParam("limit") Integer limit) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
@@ -152,8 +205,14 @@ public class PublicSharedLinkResource {
     @APIResponse(responseCode = "200", description = "Shared Immich photo thumbnail",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Operation(summary = "Get a shared photo thumbnail",
+            description = "Returns a small JPEG thumbnail of a shared photo. Timeline links only. Requires the "
+                    + "access token from `POST /api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public CompletableFuture<Response> getSharedPhotoThumbnail(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
+            @Parameter(description = "Immich photo ID, as returned by the photos endpoint.")
             @PathParam("photoId") String photoId,
             @HeaderParam("Authorization") String authHeader) {
         return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.THUMBNAIL);
@@ -166,8 +225,14 @@ public class PublicSharedLinkResource {
     @APIResponse(responseCode = "200", description = "Shared Immich photo preview",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Operation(summary = "Get a shared photo preview",
+            description = "Returns a larger JPEG preview of a shared photo. Timeline links only. Requires the access "
+                    + "token from `POST /api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public CompletableFuture<Response> getSharedPhotoPreview(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
+            @Parameter(description = "Immich photo ID, as returned by the photos endpoint.")
             @PathParam("photoId") String photoId,
             @HeaderParam("Authorization") String authHeader) {
         return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.PREVIEW);
@@ -180,8 +245,14 @@ public class PublicSharedLinkResource {
     @APIResponse(responseCode = "200", description = "Original shared Immich photo",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Operation(summary = "Download a shared photo",
+            description = "Downloads the original file of a shared photo. Timeline links only. Requires the access "
+                    + "token from `POST /api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public CompletableFuture<Response> downloadSharedPhoto(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
+            @Parameter(description = "Immich photo ID, as returned by the photos endpoint.")
             @PathParam("photoId") String photoId,
             @HeaderParam("Authorization") String authHeader) {
         return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.ORIGINAL);
@@ -212,10 +283,20 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/path")
+    @Operation(summary = "Get the shared GPS path",
+            description = "Returns the owner's GPS path in the shared period for drawing on a map. Timeline links "
+                    + "only. Requires the access token from `POST "
+                    + "/api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public GpsPointPathDTO getSharedPath(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
+            @Parameter(description = "Start of the range, as an ISO-8601 instant. Defaults to the start of the "
+                    + "shared period; the result is always limited to the shared period.")
             @QueryParam("from") String startTime,
+            @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the end of the shared "
+                    + "period.")
             @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
@@ -234,7 +315,13 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/current-location")
+    @Operation(summary = "Get the owner's current location",
+            description = "Returns the owner's latest location, when the timeline link is set to show the current "
+                    + "location. Timeline links only. Requires the access token from `POST "
+                    + "/api/v1/public/share-links/{linkId}/access-tokens`.")
+    @SecurityRequirement(name = ApiSecuritySchemes.SHARE_LINK_TOKEN)
     public LocationHistoryResponse.CurrentLocationData getSharedCurrentLocation(
+            @Parameter(description = "Share link ID from the shared URL.")
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader) {
         try {

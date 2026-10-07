@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
 /**
@@ -33,7 +36,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
-@Tag(name = "User: Digests", description = "Read digest heatmap data for monthly, yearly, and custom ranges.")
+@Tag(name = ApiTags.DIGESTS)
 public class DigestHeatmapResource {
 
     @Inject
@@ -51,9 +54,16 @@ public class DigestHeatmapResource {
     @Path("/monthly")
     @APIResponse(responseCode = "200", description = "Monthly heatmap retrieved")
     @APIResponse(responseCode = "400", description = "Invalid heatmap period or layer")
+    @Operation(summary = "Get a monthly heatmap",
+            description = "Returns heatmap points for a calendar month in the user's timezone. Each point has "
+                    + "coordinates, a place name when known, the number of visits, and the time spent, for drawing "
+                    + "a heatmap.")
     public List<HeatmapDataPoint> getMonthlyHeatmap(
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
             @QueryParam("year") int year,
+            @Parameter(description = "Month, from 1 to 12.", example = "6")
             @QueryParam("month") int month,
+            @Parameter(description = "What to include: `stays`, `trips`, or `combined` (default).", example = "stays")
             @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();
@@ -90,8 +100,15 @@ public class DigestHeatmapResource {
     @Path("/yearly")
     @APIResponse(responseCode = "200", description = "Yearly heatmap retrieved")
     @APIResponse(responseCode = "400", description = "Invalid heatmap year or layer")
-    public List<HeatmapDataPoint> getYearlyHeatmap(@QueryParam("year") int year,
-                                                    @QueryParam("layer") String layer) {
+    @Operation(summary = "Get a yearly heatmap",
+            description = "Returns heatmap points for a calendar year in the user's timezone. Each point has "
+                    + "coordinates, a place name when known, the number of visits, and the time spent, for drawing "
+                    + "a heatmap.")
+    public List<HeatmapDataPoint> getYearlyHeatmap(
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
+            @QueryParam("year") int year,
+            @Parameter(description = "What to include: `stays`, `trips`, or `combined` (default).", example = "stays")
+            @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
@@ -122,9 +139,18 @@ public class DigestHeatmapResource {
     @Path("/range")
     @APIResponse(responseCode = "200", description = "Heatmap range retrieved")
     @APIResponse(responseCode = "400", description = "Invalid heatmap range or layer")
-    public List<HeatmapDataPoint> getRangeHeatmap(@QueryParam("from") String startTime,
-                                                   @QueryParam("to") String endTime,
-                                                   @QueryParam("layer") String layer) {
+    @Operation(summary = "Get a heatmap for a range",
+            description = "Returns heatmap points for a custom time range. Each point has coordinates, a place name "
+                    + "when known, the number of visits, and the time spent, for drawing a heatmap.")
+    public List<HeatmapDataPoint> getRangeHeatmap(
+            @Parameter(description = "Start of the time range, as an ISO-8601 instant. Required.",
+                    example = "2025-06-01T00:00:00Z")
+            @QueryParam("from") String startTime,
+            @Parameter(description = "End of the time range, as an ISO-8601 instant. Required.",
+                    example = "2025-06-30T23:59:59Z")
+            @QueryParam("to") String endTime,
+            @Parameter(description = "What to include: `stays`, `trips`, or `combined` (default).", example = "stays")
+            @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();

@@ -7,12 +7,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class TripReconstructionRequestDto {
 
+    @Schema(examples = "7")
     private Long tripId;
 
     @NotEmpty(message = "At least one segment is required")

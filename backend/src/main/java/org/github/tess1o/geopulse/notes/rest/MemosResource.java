@@ -17,6 +17,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.notes.model.MemosConfigResponse;
 import org.github.tess1o.geopulse.notes.model.TestMemosConnectionRequest;
@@ -26,6 +27,9 @@ import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.concurrent.CompletionStage;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MEMOS_CONFIG;
 
@@ -34,7 +38,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MEMOS_C
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Memos", description = "Manage Memos configuration for live notes integration.")
+@Tag(name = ApiTags.MEMOS)
 public class MemosResource {
 
     @Inject
@@ -47,6 +51,10 @@ public class MemosResource {
     @Path("")
     @Blocking
     @APIResponse(responseCode = "204", description = "Memos is not configured")
+    @Operation(summary = "Get Memos settings",
+            description = "Returns the signed-in user's Memos settings: server URL, API key, whether the integration "
+                    + "is enabled, the default destination and visibility for new notes, request limits, and tag "
+                    + "filters. Returns `204 No Content` when Memos is not configured.")
     public RestResponse<MemosConfigResponse> getCurrentUserMemosConfig() {
         return noteService.getMemosConfig(currentUserService.getCurrentUserId())
                 .map(RestResponse::ok)
@@ -57,6 +65,9 @@ public class MemosResource {
     @Path("")
     @Blocking
     @APIResponse(responseCode = "204", description = "Memos configuration updated")
+    @Operation(summary = "Save Memos settings",
+            description = "Saves the signed-in user's Memos settings. With `includeTags` and `excludeTags` you "
+                    + "choose which memos appear on the timeline.")
     public RestResponse<Void> updateCurrentUserMemosConfig(
             @NotNull @Valid UpdateMemosConfigRequest request) {
         try {
@@ -70,6 +81,10 @@ public class MemosResource {
     @POST
     @Path("/connection-tests")
     @Blocking
+    @Operation(summary = "Test a Memos connection",
+            description = "Checks that GeoPulse can reach a Memos server with the given URL and API key, without "
+                    + "saving them.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public CompletionStage<TestMemosConnectionResponse> testCurrentUserMemosConnection(
             @NotNull @Valid TestMemosConnectionRequest request) {
         return noteService.testMemosConnection(currentUserService.getCurrentUserId(), request);

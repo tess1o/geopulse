@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
@@ -25,6 +26,8 @@ import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderServi
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -32,7 +35,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: Geocoding Providers", description = "Manage custom geocoding provider instances.")
+@Tag(name = ApiTags.ADMIN_GEOCODING_PROVIDERS)
 public class AdminCustomGeocodingProviderResource {
 
     private final CustomGeocodingProviderService providerService;
@@ -44,12 +47,19 @@ public class AdminCustomGeocodingProviderResource {
 
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "List custom geocoding providers",
+            description = "Returns the additional reverse-geocoding providers configured on this server.")
     public List<CustomGeocodingProviderResponse> list() {
         return providerService.list();
     }
 
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Add a custom geocoding provider",
+            description = "Adds a reverse-geocoding provider instance of type `nominatim` or `photon`, such as a "
+                    + "self-hosted server, with optional language, extra HTTP headers, and a delay between "
+                    + "requests. It can then be chosen as the primary or fallback provider in the geocoding "
+                    + "settings.")
     public RestResponse<CustomGeocodingProviderResponse> create(@Valid CustomGeocodingProviderRequest request) {
         try {
             return RestResponse.status(Response.Status.CREATED, providerService.create(request));
@@ -61,7 +71,10 @@ public class AdminCustomGeocodingProviderResource {
     @PUT
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Update a custom geocoding provider",
+            description = "Updates a custom reverse-geocoding provider.")
     public CustomGeocodingProviderResponse update(
+            @Parameter(description = "Provider name (identifier).", example = "my-nominatim")
             @PathParam("name") String name,
             @Valid CustomGeocodingProviderRequest request) {
         try {
@@ -76,7 +89,12 @@ public class AdminCustomGeocodingProviderResource {
     @DELETE
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void delete(@PathParam("name") String name) {
+    @Operation(summary = "Delete a custom geocoding provider",
+            description = "Deletes a custom reverse-geocoding provider. A provider selected as primary or fallback "
+                    + "cannot be deleted.")
+    public void delete(
+            @Parameter(description = "Provider name (identifier).", example = "my-nominatim")
+            @PathParam("name") String name) {
         try {
             providerService.delete(name);
         } catch (NotFoundException e) {

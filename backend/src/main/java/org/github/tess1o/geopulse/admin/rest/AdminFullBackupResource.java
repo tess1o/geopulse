@@ -17,6 +17,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupConfigDto;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupCreatedResponse;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupFileDto;
@@ -41,6 +42,8 @@ import java.nio.file.Files;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.admin.backup.RestoreOperationState.PREPARING;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
@@ -49,7 +52,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Path("/admin/backups")
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: Backups", description = "Create and restore native full backups.")
+@Tag(name = ApiTags.ADMIN_BACKUPS)
 public class AdminFullBackupResource {
     private static final String BACKUP_FAILURE_MESSAGE =
             "Could not create encrypted backup. Verify the backup password, client tools, permissions, and free disk space.";
@@ -79,6 +82,10 @@ public class AdminFullBackupResource {
     @APIResponse(responseCode = "200", description = "Encrypted backup file",
             content = @Content(mediaType = "application/octet-stream",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Operation(summary = "Create and download a backup",
+            description = "Creates an encrypted full database backup, saves it in the backup folder, and streams it "
+                    + "as the response. Requires a backup password to be configured. Fails with `409` while another "
+                    + "backup or restore is running.")
     public Response downloadFullBackup() {
         if (!maintenanceService.tryStartBackup("download")) {
             throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
@@ -113,6 +120,9 @@ public class AdminFullBackupResource {
     @POST
     @Path("/run-now")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Create a backup",
+            description = "Creates an encrypted full database backup in the backup folder and returns its file name "
+                    + "and size. Requires a backup password to be configured.")
     public AdminBackupCreatedResponse runBackupNow() {
         if (!maintenanceService.tryStartBackup("manual-local")) {
             throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
@@ -133,6 +143,9 @@ public class AdminFullBackupResource {
     @GET
     @Path("/files")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "List backup files",
+            description = "Returns the backup files in the configured backup folder with their sizes and "
+                    + "modification times.")
     public List<AdminBackupFileDto> listFiles() {
         try {
             return backupService.listLocalBackups();
@@ -149,7 +162,11 @@ public class AdminFullBackupResource {
     @APIResponse(responseCode = "200", description = "Encrypted backup file",
             content = @Content(mediaType = "application/octet-stream",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public Response downloadLocalBackup(@PathParam("fileName") String fileName) {
+    @Operation(summary = "Download a backup file",
+            description = "Downloads an existing encrypted backup file from the backup folder.")
+    public Response downloadLocalBackup(
+            @Parameter(description = "Backup file name, as returned by `GET /api/v1/admin/backups/files`.")
+            @PathParam("fileName") String fileName) {
         try {
             java.nio.file.Path file = backupService.resolveLocalBackup(fileName);
             InputStream download = Files.newInputStream(file);
@@ -179,7 +196,12 @@ public class AdminFullBackupResource {
     @DELETE
     @Path("/files/{fileName}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void deleteLocalBackup(@PathParam("fileName") String fileName) {
+    @Operation(summary = "Delete a backup file",
+            description = "Deletes a backup file from the backup folder. Not allowed while a backup or restore is "
+                    + "running.")
+    public void deleteLocalBackup(
+            @Parameter(description = "Backup file name, as returned by `GET /api/v1/admin/backups/files`.")
+            @PathParam("fileName") String fileName) {
         if (!maintenanceService.tryStartFileMutation("delete")) {
             throw new GeoPulseException(BACKUP_OPERATION_CONFLICT,
                     "Cannot delete a backup while another backup or restore is running");
@@ -205,6 +227,13 @@ public class AdminFullBackupResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @APIResponseSchema(value = RestoreAcceptedResponse.class, responseCode = "202",
             responseDescription = "Restore preparation accepted")
+    @Operation(summary = "Restore an uploaded backup",
+            description = "Starts restoring an uploaded backup file (multipart fields `file` and `password`). "
+                    + "GeoPulse prepares the restore in a separate database while the application keeps running, "
+                    + "then switches to it and the backend process exits so it can be restarted on the restored "
+                    + "data. All current data is replaced. Poll `GET /api/v1/admin/backups/status` for progress. "
+                    + "See [Backup and "
+                    + "Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore).")
     public Response restoreUploaded(@RestForm("file") FileUpload file,
                                     @RestForm("password") String password) {
         if (file == null || file.uploadedFile() == null) {
@@ -218,6 +247,11 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     @APIResponseSchema(value = RestoreAcceptedResponse.class, responseCode = "202",
             responseDescription = "Restore preparation accepted")
+    @Operation(summary = "Restore a backup file",
+            description = "Starts restoring a backup file that is already in the backup folder, with the password "
+                    + "used to create it. Works like restoring an uploaded backup: all current data is replaced and "
+                    + "the backend restarts. See [Backup and "
+                    + "Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore).")
     public Response restoreLocal(RestoreLocalBackupRequest request) {
         if (request == null) {
             throw new GeoPulseException(INVALID_BACKUP_REQUEST, "Restore request is required");
@@ -233,6 +267,10 @@ public class AdminFullBackupResource {
     @GET
     @Path("/config")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Get backup settings",
+            description = "Returns the backup settings: whether a password is configured (the password itself is "
+                    + "never returned), scheduled backup and cron expression, backup folder, retention count, "
+                    + "operation timeout, and backup health alerts.")
     public AdminBackupConfigDto getConfig() {
         return backupService.getConfig();
     }
@@ -240,6 +278,9 @@ public class AdminFullBackupResource {
     @PUT
     @Path("/config")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Update backup settings",
+            description = "Updates the backup settings and reschedules automatic backups. A new password applies to "
+                    + "new backups only.")
     public AdminBackupConfigDto updateConfig(AdminBackupConfigDto config) {
         try {
             backupService.validateConfig(config);
@@ -255,6 +296,9 @@ public class AdminFullBackupResource {
     @GET
     @Path("/status")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Get backup and restore status",
+            description = "Returns the state of the current or last backup or restore operation, including restore "
+                    + "preparation and activation progress and errors.")
     public AdminBackupStatusDto status() {
         return maintenanceService.getStatus();
     }
@@ -264,6 +308,10 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     @APIResponseSchema(value = AdminBackupStatusDto.class, responseCode = "202",
             responseDescription = "Restore activation retry accepted")
+    @Operation(summary = "Retry restore activation",
+            description = "Retries switching to a prepared restore after activation could not complete, for example "
+                    + "after an interrupted cutover that PostgreSQL rolled back. See [Backup and "
+                    + "Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore).")
     public Response retryPreparedRestore() {
         try {
             String operationId = backupService.retryActivation();
@@ -279,6 +327,9 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     @APIResponseSchema(value = AdminBackupStatusDto.class, responseCode = "200",
             responseDescription = "Prepared restore discarded")
+    @Operation(summary = "Discard a prepared restore",
+            description = "Deletes a prepared restore that was not activated and returns to normal operation on the "
+                    + "current data.")
     public Response discardPreparedRestore() {
         try {
             String fileName = maintenanceService.getStatus().getFileName();

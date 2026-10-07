@@ -18,6 +18,9 @@ import org.github.tess1o.geopulse.trips.service.TripPlanSearchService;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
 
@@ -26,7 +29,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SE
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips and Planning", description = "Search trip plan candidates.")
+@Tag(name = ApiTags.TRIP_PLANNING)
 public class PlanSearchResource {
 
     private final CurrentUserService currentUserService;
@@ -39,10 +42,20 @@ public class PlanSearchResource {
     }
 
     @GET
-    public PlanSearchResponseDto search(@QueryParam("q") String query,
-                           @QueryParam("latitude") Double latitude,
-                           @QueryParam("longitude") Double longitude,
-                           @QueryParam("limit") Integer limit) {
+    @Operation(summary = "Search places to plan",
+            description = "Searches by name for places to add to a trip plan: the user's favorites, previously "
+                    + "geocoded locations, and results from the external geocoding provider. Pass coordinates to "
+                    + "prefer results near them. The response says whether the external search worked, so a "
+                    + "provider problem is not mistaken for no results.")
+    public PlanSearchResponseDto search(
+            @Parameter(description = "Search text, at least 2 characters.", example = "Louvre")
+            @QueryParam("q") String query,
+            @Parameter(description = "Latitude to bias results toward. Use together with `longitude`.")
+            @QueryParam("latitude") Double latitude,
+            @Parameter(description = "Longitude to bias results toward.")
+            @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Maximum number of results.")
+            @QueryParam("limit") Integer limit) {
         String safeQuery = query == null ? "" : query.trim();
         if (safeQuery.length() < 2) {
             throw new GeoPulseException(INVALID_TRIP_SEARCH, "q must be at least 2 characters", Map.of("minLength", 2));

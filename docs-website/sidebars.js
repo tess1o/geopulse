@@ -23,66 +23,16 @@ if (hasGeneratedApiReference) {
     generatedApiSidebar = sidebarModule.default || sidebarModule;
 }
 
-const USER_API_PREFIX = 'User: ';
-const ADMIN_API_PREFIX = 'Admin: ';
-const PUBLIC_API_PREFIX = 'Public: ';
-
-const stripGeneratedIndexTitle = (item, label) => ({
-    ...item,
-    label,
-    link: item.link?.type === 'generated-index'
-        ? {...item.link, title: label}
-        : item.link,
-});
-
-const findOrCreateCategory = (items, label) => {
-    let category = items.find((item) => item.type === 'category' && item.label === label);
-    if (!category) {
-        category = {
-            type: 'category',
-            label,
-            items: [],
-        };
-        items.push(category);
-    }
-    return category;
-};
-
-const splitGeneratedApiItems = (items, prefix) => {
-    const groupedItems = [];
-
-    items
-        .filter((item) => item.type === 'category' && item.label.startsWith(prefix))
-        .forEach((item) => {
-            const labelPath = item.label
-                .replace(prefix, '')
-                .split(':')
-                .map((label) => label.trim())
-                .filter(Boolean);
-            const label = labelPath.pop();
-            if (!label) {
-                return;
-            }
-
-            const apiItem = stripGeneratedIndexTitle(item, label);
-            let currentItems = groupedItems;
-            labelPath.forEach((categoryLabel) => {
-                currentItems = findOrCreateCategory(currentItems, categoryLabel).items;
-            });
-            currentItems.push(apiItem);
-        });
-
-    return groupedItems;
-};
-
-const publicApiItems = splitGeneratedApiItems(generatedApiSidebar, PUBLIC_API_PREFIX);
-const userApiItems = splitGeneratedApiItems(generatedApiSidebar, USER_API_PREFIX);
-const adminApiItems = splitGeneratedApiItems(generatedApiSidebar, ADMIN_API_PREFIX);
-const generalApiItems = generatedApiSidebar
-    .filter((item) => item.type === 'category'
-        && !item.label.startsWith(PUBLIC_API_PREFIX)
-        && !item.label.startsWith(USER_API_PREFIX)
-        && !item.label.startsWith(ADMIN_API_PREFIX));
+// The generated sidebar is grouped by the x-tagGroups of the OpenAPI document (see ApiTagCatalog in the backend).
+// Only its categories are used; the generated info page is replaced by the hand-written API overview. In tagGroup
+// mode the plugin also prepends that info page to every group, so it is removed from the group items as well.
+const GENERATED_INFO_DOC_ID = 'api/reference/geopulse-api';
+const generatedApiCategories = generatedApiSidebar
+    .filter((item) => item.type === 'category')
+    .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !(item.type === 'doc' && item.id === GENERATED_INFO_DOC_ID)),
+    }));
 
 const restApiItems = [
     {
@@ -105,24 +55,7 @@ const restApiItems = [
         id: 'api/mcp',
         label: 'MCP Server',
     },
-    ...(hasGeneratedApiReference ? [
-        ...(publicApiItems.length > 0 ? [{
-            type: 'category',
-            label: 'Public API',
-            items: publicApiItems,
-        }] : []),
-        ...(userApiItems.length > 0 ? [{
-            type: 'category',
-            label: 'User API',
-            items: userApiItems,
-        }] : []),
-        ...(adminApiItems.length > 0 ? [{
-            type: 'category',
-            label: 'Admin API',
-            items: adminApiItems,
-        }] : []),
-        ...generalApiItems,
-    ] : []),
+    ...generatedApiCategories,
 ];
 
 const sidebars = {

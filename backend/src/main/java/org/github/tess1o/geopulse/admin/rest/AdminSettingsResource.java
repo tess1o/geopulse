@@ -61,6 +61,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -71,7 +76,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: System Settings", description = "View, update, reset, and test system-wide settings.")
+@Tag(name = ApiTags.ADMIN_SYSTEM_SETTINGS)
 public class AdminSettingsResource {
 
     @Context
@@ -121,6 +126,10 @@ public class AdminSettingsResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "List all settings",
+            description = "Returns all server-wide settings grouped by category. Each setting has its current value, "
+                    + "type, description, default value, and whether it still uses the default from the environment "
+                    + "configuration.")
     public Map<String, List<SettingInfo>> getAllSettings() {
         return settingsService.getAllSettings();
     }
@@ -131,13 +140,21 @@ public class AdminSettingsResource {
     @GET
     @Path("/categories/{category}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public List<SettingInfo> getSettingsByCategory(@PathParam("category") String category) {
+    @Operation(summary = "List settings in a category",
+            description = "Returns the server-wide settings of one category.")
+    public List<SettingInfo> getSettingsByCategory(
+            @Parameter(description = "Settings category: `auth`, `geocoding`, `weather`, `poi`, `map-matching`, "
+                    + "`panoramax`, `ai`, `gps`, `import`, `export`, or `system`.", example = "geocoding")
+            @PathParam("category") String category) {
         return settingsService.getSettingsByCategory(category);
     }
 
     @GET
     @Path("/logging-status")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "Get logging status",
+            description = "Returns the current application log level and related logging configuration.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public LogLevelService.LoggingStatus getLoggingStatus() {
         return logLevelService.getStatus();
     }
@@ -152,7 +169,15 @@ public class AdminSettingsResource {
     @PUT
     @Path("/keys/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void updateSetting(@PathParam("key") String key, UpdateSettingRequest request) {
+    @Operation(summary = "Update a setting",
+            description = "Saves a new value for one setting in the database, overriding the environment default. "
+                    + "The value is validated against the setting type, and the change is recorded in the audit log "
+                    + "(secrets are redacted). Use the bulk endpoint for geocoding and weather settings, which "
+                    + "depend on each other.")
+    public void updateSetting(
+            @Parameter(description = "Setting key, as returned by `GET /api/v1/admin/settings`.",
+                    example = "auth.registration.enabled")
+            @PathParam("key") String key, UpdateSettingRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
         boolean redactValues = settingsService.isSensitiveForAudit(key)
@@ -178,7 +203,13 @@ public class AdminSettingsResource {
     @DELETE
     @Path("/keys/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public SettingResetResponse resetSetting(@PathParam("key") String key) {
+    @Operation(summary = "Reset a setting",
+            description = "Deletes the saved value of a setting so the default from the environment configuration "
+                    + "applies again, and returns that default.")
+    public SettingResetResponse resetSetting(
+            @Parameter(description = "Setting key, as returned by `GET /api/v1/admin/settings`.",
+                    example = "auth.registration.enabled")
+            @PathParam("key") String key) {
 
         UUID adminId = currentUserService.getCurrentUserId();
         boolean redactValues = settingsService.isSensitiveForAudit(key)
@@ -207,6 +238,10 @@ public class AdminSettingsResource {
     @Path("/bulk")
     @Transactional
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Update several settings",
+            description = "Saves several settings in one transaction. Geocoding and weather changes are validated "
+                    + "together (for example, enabling a provider together with its API key); if any value is "
+                    + "invalid, nothing is saved.")
     public void bulkUpdateSettings(BulkUpdateRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
@@ -313,6 +348,10 @@ public class AdminSettingsResource {
     @POST
     @Path("/system-notifications/apprise/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Test Apprise",
+            description = "Sends a test notification through Apprise with the given settings and returns whether it "
+                    + "worked.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public AppriseTestResponse testAppriseConnection(AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {
@@ -329,6 +368,9 @@ public class AdminSettingsResource {
     @POST
     @Path("/weather/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Test the weather provider",
+            description = "Checks that the configured weather provider can be reached with the saved settings.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public WeatherTestResponse testWeatherConnection() {
         return weatherService.testProviderConnection();
     }
@@ -336,6 +378,10 @@ public class AdminSettingsResource {
     @POST
     @Path("/panoramax/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Test Panoramax",
+            description = "Checks that the configured Panoramax endpoint is reachable and offers vector tiles for "
+                    + "the street-level imagery layer.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public PanoramaxTestResponse testPanoramaxConnection() {
         String endpoint = settingsService.getString("panoramax.endpoint").trim();
         try {
@@ -364,6 +410,10 @@ public class AdminSettingsResource {
     @POST
     @Path("/poi/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Test place discovery",
+            description = "Checks that the Wikidata and Wikimedia Commons endpoints used by **Places to Visit** are "
+                    + "reachable.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public PoiTestResponse testPoiConnection() {
         // Read through PoiConfigurationService, never by raw settings key: the keys are the short
         // poi.* names, and going through the service means a blank setting falls back to the same
@@ -442,6 +492,10 @@ public class AdminSettingsResource {
     @POST
     @Path("/map-matching/valhalla/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Test Valhalla",
+            description = "Checks that the configured Valhalla server, used for map matching and route drawing, is "
+                    + "reachable.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public MapMatchingProviderTestResponse testValhallaConnection() {
         if (!mapMatchingConfiguration.valhallaConfigured()) {
             return new MapMatchingProviderTestResponse(
@@ -485,6 +539,10 @@ public class AdminSettingsResource {
     @GET
     @Path("/map-matching/status")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "Get map matching status",
+            description = "Returns the state of the background map matching worker: whether it is enabled, the "
+                    + "provider, and queue and result counts.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public MapMatchingAdminStatusDTO mapMatchingStatus() {
         return mapMatchingWorker.status();
     }
@@ -497,7 +555,14 @@ public class AdminSettingsResource {
     @POST
     @Path("/map-matching/rebuilds")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public MapMatchingRebuildResponse rebuildMapMatching(@QueryParam("mode") String mode) {
+    @Operation(summary = "Re-run map matching",
+            description = "Re-runs map matching over the stored history of all users. By default only trips that "
+                    + "never got a usable match are queued again; with `mode=ALL` every stored result is deleted "
+                    + "and the whole history is matched again. Requires map matching, historical backfill, and "
+                    + "Valhalla to be configured.")
+    public MapMatchingRebuildResponse rebuildMapMatching(
+            @Parameter(description = "`UNSUCCESSFUL` (default) or `ALL`.", example = "UNSUCCESSFUL")
+            @QueryParam("mode") String mode) {
         if (!mapMatchingConfiguration.isEnabled()) {
             throw new GeoPulseException(MAP_MATCHING_DISABLED, "Map matching is disabled");
         }

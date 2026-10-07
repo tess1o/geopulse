@@ -21,13 +21,21 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.github.tess1o.geopulse.shared.openapi.ApiSecuritySchemes;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
+import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 
 @Path(ApiPaths.GPS_INGEST + "/overland")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Overland clients.")
+@Tag(name = ApiTags.GPS_TRACKER_INGEST)
+@SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_TOKEN)
 public class OverlandResource {
 
     private final GpsPointService gpsPointService;
@@ -41,10 +49,14 @@ public class OverlandResource {
 
     @POST
     @Operation(summary = "Ingest Overland locations",
-            description = "Receives an Overland location batch and stores the points for the matching source token.")
+            description = "Receives a batch of locations from the Overland app and stores them as GPS points for "
+                    + "the user who owns the Overland GPS source. Overland removes the batch from the device once it "
+                    + "receives `{\"result\": \"ok\"}`.")
     @APIResponseSchema(value = OverlandResultResponse.class, responseCode = "200",
-            responseDescription = "Locations accepted")
-    public Response handleOverland(OverlandLocations overlandLocations,
+            responseDescription = "Batch accepted")
+    public Response handleOverland(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(name = "batch", value = GpsIngestExamples.OVERLAND)))
+                                   OverlandLocations overlandLocations,
                                    @HeaderParam("Authorization") String overlandAuth) {
         long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.OVERLAND, overlandAuth);

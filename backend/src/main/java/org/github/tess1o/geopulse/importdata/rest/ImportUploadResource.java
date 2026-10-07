@@ -19,6 +19,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -30,7 +35,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: Import and Export", description = "Upload large files in chunks and manage chunked imports.")
+@Tag(name = ApiTags.IMPORT)
 public class ImportUploadResource {
 
     @Inject
@@ -54,6 +59,13 @@ public class ImportUploadResource {
     @POST
     @Path("/import-uploads")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Start a chunked upload",
+            description = "Starts uploading a large import file in parts. Send the file name, total size, import "
+                    + "format, and optional import options. The response contains the upload ID, the chunk size the "
+                    + "server expects, the number of chunks, and when the upload expires. Then upload every chunk "
+                    + "and call the completion endpoint. Only one chunked upload and one import job can be active "
+                    + "at a time.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public ChunkedUploadInitResponse initializeChunkedUpload(ChunkedUploadInitRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
             if (request == null) {
@@ -139,8 +151,14 @@ public class ImportUploadResource {
     @PUT
     @Path("/import-uploads/{uploadId}/parts/{chunkIndex}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Upload a chunk",
+            description = "Uploads one part of a chunked upload as the multipart field `chunk`. Chunks can arrive in "
+                    + "any order; sending a chunk again is ignored.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public ChunkUploadResponse uploadChunk(
+            @Parameter(description = "Upload ID returned when the upload was started.")
             @PathParam("uploadId") UUID uploadId,
+            @Parameter(description = "Zero-based chunk index.")
             @PathParam("chunkIndex") int chunkIndex,
             @RestForm("chunk") FileUpload chunkFile) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -203,7 +221,13 @@ public class ImportUploadResource {
      */
     @POST
     @Path("/import-uploads/{uploadId}/completion")
-    public ImportJobResponse completeChunkedUpload(@PathParam("uploadId") UUID uploadId) {
+    @Operation(summary = "Finish a chunked upload",
+            description = "Assembles the uploaded chunks and starts the import job. Fails if any chunk is missing. "
+                    + "Returns the import job; poll `GET /api/v1/imports/{importJobId}` for progress.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public ImportJobResponse completeChunkedUpload(
+            @Parameter(description = "Upload ID.")
+            @PathParam("uploadId") UUID uploadId) {
         UUID userId = currentUserService.getCurrentUserId();
 
             // Validate session exists and belongs to user
@@ -264,7 +288,13 @@ public class ImportUploadResource {
      */
     @GET
     @Path("/import-uploads/{uploadId}")
-    public ChunkedUploadStatusResponse getUploadStatus(@PathParam("uploadId") UUID uploadId) {
+    @Operation(summary = "Get chunked upload status",
+            description = "Returns which chunks have been received, the progress, and whether the upload is complete "
+                    + "or expired. Use it to resume an interrupted upload.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public ChunkedUploadStatusResponse getUploadStatus(
+            @Parameter(description = "Upload ID.")
+            @PathParam("uploadId") UUID uploadId) {
         UUID userId = currentUserService.getCurrentUserId();
 
             Optional<ChunkedUploadSession> sessionOpt = chunkedUploadService.getUploadStatus(uploadId, userId);
@@ -286,7 +316,12 @@ public class ImportUploadResource {
      */
     @DELETE
     @Path("/import-uploads/{uploadId}")
-    public void abortUpload(@PathParam("uploadId") UUID uploadId) {
+    @Operation(summary = "Cancel a chunked upload",
+            description = "Cancels a chunked upload and deletes the chunks received so far.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public void abortUpload(
+            @Parameter(description = "Upload ID.")
+            @PathParam("uploadId") UUID uploadId) {
         UUID userId = currentUserService.getCurrentUserId();
         boolean deleted = chunkedUploadService.abortUpload(uploadId, userId);
         if (!deleted) {

@@ -22,6 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.export.model.CreateExportRequest;
@@ -48,6 +49,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 
@@ -56,7 +61,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: Import and Export", description = "Create, monitor, download, and delete export jobs.")
+@Tag(name = ApiTags.EXPORT)
 public class ExportResource {
 
     @Inject
@@ -78,7 +83,11 @@ public class ExportResource {
             content = @Content(mediaType = "application/gpx+xml",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
     @APIResponse(responseCode = "404", description = "Trip not found")
-    public Response exportSingleTrip(@PathParam("tripId") Long tripId) throws Exception {
+    @Operation(summary = "Download a trip as GPX",
+            description = "Returns the GPS track of a single timeline trip as a GPX file.")
+    public Response exportSingleTrip(
+            @Parameter(description = "Timeline trip ID, as returned by the timeline endpoints.")
+            @PathParam("tripId") Long tripId) throws Exception {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             byte[] data = exportJobManager.exportSingleTrip(userId, tripId);
@@ -96,7 +105,11 @@ public class ExportResource {
             content = @Content(mediaType = "application/gpx+xml",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
     @APIResponse(responseCode = "404", description = "Stay not found")
-    public Response exportSingleStay(@PathParam("stayId") Long stayId) throws Exception {
+    @Operation(summary = "Download a stay as GPX",
+            description = "Returns the GPS points of a single timeline stay as a GPX file.")
+    public Response exportSingleStay(
+            @Parameter(description = "Timeline stay ID, as returned by the timeline endpoints.")
+            @PathParam("stayId") Long stayId) throws Exception {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             byte[] data = exportJobManager.exportSingleStay(userId, stayId);
@@ -111,6 +124,13 @@ public class ExportResource {
     @APIResponse(responseCode = "200", description = "Export job created")
     @APIResponse(responseCode = "400", description = "Invalid export request")
     @APIResponse(responseCode = "429", description = "Too many active export jobs")
+    @Operation(summary = "Start an export",
+            description = "Starts a background export of a time range. Formats: `geopulse` (ZIP that can be imported "
+                    + "back into GeoPulse; list what to include in `dataTypes`, such as `rawgps`, `timeline`, "
+                    + "`favorites`, or `timelinelabels`; without `dataTypes` only raw GPS points are exported), and "
+                    + "`gpx`, `owntracks`, `geojson`, and `csv` (raw GPS points). Poll `GET "
+                    + "/api/v1/exports/{exportJobId}` until the status is `completed`, then download the file from "
+                    + "`downloadUrl`. The number of export jobs per user is limited.")
     public ExportJobResponse createExport(CreateExportRequest request) {
         if (request == null) {
             throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Request body is required");
@@ -151,7 +171,12 @@ public class ExportResource {
     @Path("/{exportJobId}")
     @APIResponse(responseCode = "200", description = "Export job status")
     @APIResponse(responseCode = "404", description = "Export job not found")
-    public ExportJobResponse getExportStatus(@PathParam("exportJobId") UUID exportJobId) {
+    @Operation(summary = "Get an export job",
+            description = "Returns the status and progress of an export job. When it is `completed`, the response "
+                    + "includes `downloadUrl` and the time the file expires.")
+    public ExportJobResponse getExportStatus(
+            @Parameter(description = "Export job ID.")
+            @PathParam("exportJobId") UUID exportJobId) {
         ExportJob job = exportJobManager.getExportJob(exportJobId, currentUserService.getCurrentUserId());
         if (job == null) {
             throw new GeoPulseException(EXPORT_NOT_FOUND, "Export job not found");
@@ -165,6 +190,8 @@ public class ExportResource {
     @APIResponse(responseCode = "200", description = "CSV import template",
             content = @Content(mediaType = "text/csv",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Operation(summary = "Download the CSV import template",
+            description = "Returns an example CSV file with the columns the CSV import accepts.")
     public Response downloadCsvTemplate() {
         String csv = "timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n"
                 + "2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV\n"
@@ -192,7 +219,12 @@ public class ExportResource {
     @APIResponse(responseCode = "404", description = "Export job not found")
     @APIResponse(responseCode = "409", description = "Export job is not ready")
     @APIResponse(responseCode = "410", description = "Export expired or file missing")
-    public Response downloadExport(@PathParam("exportJobId") UUID exportJobId) {
+    @Operation(summary = "Download an export",
+            description = "Downloads the file of a completed export job. The content type depends on the export "
+                    + "format. Returns `409` while the job is still running and `410` after the file has expired.")
+    public Response downloadExport(
+            @Parameter(description = "Export job ID.")
+            @PathParam("exportJobId") UUID exportJobId) {
         UUID userId = currentUserService.getCurrentUserId();
         ExportJob job = exportJobManager.getExportJob(exportJobId, userId);
         if (job == null) {
@@ -226,8 +258,12 @@ public class ExportResource {
 
     @GET
     @APIResponse(responseCode = "200", description = "Export jobs")
+    @Operation(summary = "List export jobs",
+            description = "Returns the export jobs of the signed-in user, newest first, one page at a time.")
     public SliceResponse<ExportJobResponse> listExportJobs(
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size, from 1 to 50. Defaults to 10.")
             @QueryParam("size") @DefaultValue("10") int size) {
         int normalizedPage = Math.max(0, page);
         int normalizedSize = Math.min(Math.max(size, 1), 50);
@@ -245,7 +281,11 @@ public class ExportResource {
     @Path("/{exportJobId}")
     @APIResponse(responseCode = "204", description = "Export job deleted")
     @APIResponse(responseCode = "404", description = "Export job not found")
-    public RestResponse<Void> deleteExportJob(@PathParam("exportJobId") UUID exportJobId) {
+    @Operation(summary = "Delete an export job",
+            description = "Deletes an export job and its file.")
+    public RestResponse<Void> deleteExportJob(
+            @Parameter(description = "Export job ID.")
+            @PathParam("exportJobId") UUID exportJobId) {
         if (!exportJobManager.deleteExportJob(exportJobId, currentUserService.getCurrentUserId())) {
             throw new GeoPulseException(EXPORT_NOT_FOUND, "Export job not found");
         }
@@ -259,6 +299,12 @@ public class ExportResource {
             content = @Content(mediaType = "application/zip",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
     @APIResponse(responseCode = "400", description = "Invalid debug export request")
+    @Operation(summary = "Create a debug export",
+            description = "Returns a ZIP archive with GPS data, and optionally the timeline and timeline settings, "
+                    + "for a time range, with all coordinates shifted by the given latitude and longitude offsets "
+                    + "to hide real locations. Share it when reporting a timeline issue; it can be loaded with "
+                    + "`POST /api/v1/debug-imports`.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public Response createDebugExport(DebugExportRequest request) throws Exception {
         validateDebugRequest(request);
         UUID userId = currentUserService.getCurrentUserId();

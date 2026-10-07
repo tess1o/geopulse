@@ -18,6 +18,8 @@ import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
 
 import java.util.Optional;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOBILE_SESSION_CODE_INVALID;
@@ -26,7 +28,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOBILE_SESSION_
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Tag(name = "User: Authentication", description = "Exchange mobile session codes for authenticated sessions.")
+@Tag(name = ApiTags.MOBILE_SIGN_IN)
 public class MobileSessionExchangeResource {
 
     @Inject
@@ -35,6 +37,9 @@ public class MobileSessionExchangeResource {
     @POST
     @APIResponseSchema(value = AuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated mobile session")
+    @Operation(summary = "Exchange a mobile sign-in code",
+            description = "Exchanges a code created with `POST /api/v1/auth/mobile-codes` for access and refresh "
+                    + "tokens. Each code works once and expires after a short time.")
     public Response exchangeSessionCode(@Valid MobileSessionExchangeRequest request) {
         if (request == null) {
             throw new GeoPulseException(BAD_REQUEST, "sessionCode is required");

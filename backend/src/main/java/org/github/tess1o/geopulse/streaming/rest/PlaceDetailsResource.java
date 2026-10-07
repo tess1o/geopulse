@@ -36,6 +36,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PLACE_REQUEST;
@@ -51,7 +56,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PLACE_RENAME_NO
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
 @RequestScoped
-@Tag(name = "User: Places", description = "Read and update place details, visits, photos, and exports.")
+@Tag(name = ApiTags.PLACES)
 public class PlaceDetailsResource {
 
     @Inject
@@ -70,7 +75,15 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public PlaceDetailsDTO getPlaceDetails(@PathParam("type") String type, @PathParam("id") Long id) {
+    @Operation(summary = "Get place details",
+            description = "Returns a place with its name, coordinates or area, and visit statistics such as the "
+                    + "number of visits, total and average time spent, and first and last visit.")
+    public PlaceDetailsDTO getPlaceDetails(
+            @Parameter(description = "`favorite` for a favorite place or area, `geocoding` for a reverse-geocoded "
+                    + "location.", example = "favorite")
+            @PathParam("type") String type,
+            @Parameter(description = "ID of the favorite or geocoding result.")
+            @PathParam("id") Long id) {
         UserEntity user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         log.info("Place details request from user {} for {}:{}", userId, type, id);
@@ -91,9 +104,18 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}/photo-search-window")
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Get the photo search window of a place",
+            description = "Returns the earliest and latest visit times of stays at or near a place, and how many "
+                    + "stays matched. Used to search Immich for photos taken there.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public PlacePhotoSearchWindowDTO getPlacePhotoSearchWindow(
+            @Parameter(description = "`favorite` for a favorite place or area, `geocoding` for a reverse-geocoded "
+                    + "location.", example = "favorite")
             @PathParam("type") String type,
+            @Parameter(description = "ID of the favorite or geocoding result.")
             @PathParam("id") Long id,
+            @Parameter(description = "Include stays within this distance of the place, in meters (up to 5000). "
+                    + "Defaults to 100.")
             @QueryParam("radiusMeters") @DefaultValue("100") double radiusMeters) {
 
         UUID userId = currentUserService.getCurrentUserId();
@@ -122,12 +144,21 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}/visits")
     @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "List visits to a place",
+            description = "Returns the stays at a place one page at a time.")
     public PageResponse<PlaceVisitDTO> getPlaceVisits(
+            @Parameter(description = "`favorite` for a favorite place or area, `geocoding` for a reverse-geocoded "
+                    + "location.", example = "favorite")
             @PathParam("type") String type,
+            @Parameter(description = "ID of the favorite or geocoding result.")
             @PathParam("id") Long id,
+            @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") int page,
+            @Parameter(description = "Page size, up to 200. Defaults to 50.")
             @QueryParam("size") @DefaultValue("50") int size,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
 
         UUID userId = currentUserService.getCurrentUserId();
@@ -152,8 +183,13 @@ public class PlaceDetailsResource {
     @Path("/{type}/{id}")
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponse(responseCode = "204", description = "Place name updated")
+    @Operation(summary = "Rename a place",
+            description = "Renames a favorite place. Reverse-geocoded locations cannot be renamed here; edit them "
+                    + "with `PUT /api/v1/geocoding/{id}`.")
     public RestResponse<Void> updatePlaceName(
+            @Parameter(description = "Must be `favorite`.", example = "favorite")
             @PathParam("type") String type,
+            @Parameter(description = "Favorite ID.")
             @PathParam("id") Long id,
             @NotNull @Valid UpdatePlaceNameRequest request) {
 
@@ -184,10 +220,18 @@ public class PlaceDetailsResource {
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponse(responseCode = "200", description = "Place visits CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
+    @Operation(summary = "Export visits to a place as CSV",
+            description = "Downloads all stays at a place as a CSV file with location, start and end time, duration, "
+                    + "and day of week.")
     public Response exportPlaceVisits(
+            @Parameter(description = "`favorite` for a favorite place or area, `geocoding` for a reverse-geocoded "
+                    + "location.", example = "favorite")
             @PathParam("type") String type,
+            @Parameter(description = "ID of the favorite or geocoding result.")
             @PathParam("id") Long id,
+            @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
 
         UserEntity user = currentUserService.getCurrentUser();
