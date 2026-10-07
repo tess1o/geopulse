@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.064ae357.css">
-<script src="/assets/js/runtime~main.d9bb181a.js" defer="defer"></script>
-<script src="/assets/js/main.1d74953c.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.7ea120a9.js" defer="defer"></script>
+<script src="/assets/js/main.c26c5d4c.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -24,7 +24,7 @@
 <li class="">In your GeoPulse account, navigate to <strong>Settings -&gt; Location Sources</strong>.</li>
 <li class="">Click <strong>Add New Source</strong> and select <strong>Colota</strong>.</li>
 <li class="">Enter a unique <strong>Username</strong> and a strong <strong>Password</strong>. You will need these credentials for Colota, so save them.</li>
-<li class="">Click <strong>Save</strong> to create the source. GeoPulse is now ready to receive data at <code>/api/colota</code>.</li>
+<li class="">Click <strong>Save</strong> to create the source. GeoPulse is now ready to receive data at <code>/api/v1/gps/ingest/colota</code>.</li>
 </ol>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-2-configure-colota">Step 2: Configure Colota<a href="#step-2-configure-colota" class="hash-link" aria-label="Direct link to Step 2: Configure Colota" title="Direct link to Step 2: Configure Colota" translate="no">​</a></h2>
@@ -32,7 +32,7 @@
 <ol>
 <li class="">
 <p>Set the endpoint URL to:</p>
-<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">https://geopulse.yourdomain.com/api/colota</span><br></span></code></pre></div></div>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">https://geopulse.yourdomain.com/api/v1/gps/ingest/colota</span><br></span></code></pre></div></div>
 <p>Replace <code>geopulse.yourdomain.com</code> with the public URL of your GeoPulse instance.</p>
 </li>
 <li class="">
