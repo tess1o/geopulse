@@ -206,6 +206,10 @@ public class GpsPointService {
 
     @Transactional
     public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (!isValidMessage(message)) {
+            log.info("Overland message is not valid - skipping it");
+            return;
+        }
         Instant timestamp = message.getProperties().getTimestamp();
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -237,6 +241,16 @@ public class GpsPointService {
 
         filterAndPersistGpsPoint(entity, config)
                 .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+    }
+
+    private boolean isValidMessage(OverlandLocationMessage message) {
+        return message != null &&
+                message.getProperties() != null &&
+                message.getProperties().getTimestamp() != null &&
+                message.getGeometry() != null &&
+                message.getGeometry().getCoordinates() != null &&
+                message.getType() != null;
+
     }
 
     @Transactional
