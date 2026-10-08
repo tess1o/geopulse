@@ -16615,7 +16615,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.39.0",
+    "version" : "1.39.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
