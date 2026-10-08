@@ -47,7 +47,7 @@ spec:
               protocol: TCP
           env:
             - name: API_BASE_URL
-              value: "/api"
+              value: "/api/v1"
             - name: CLIENT_MAX_BODY_SIZE
               value: {{ .Values.frontend.nginx.clientMaxBodySize | quote }}
             - name: OSM_RESOLVER

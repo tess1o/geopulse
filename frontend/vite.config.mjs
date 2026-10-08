@@ -96,6 +96,25 @@ function devServiceWorkerCleanupPlugin() {
     };
 }
 
+// leaflet.heat and leaflet.markercluster are pre-ESM plugins that patch the global `L` as soon as they run.
+// Leaflet itself is CommonJS, so the build only executes it (and sets window.L) when something first calls its
+// wrapped require. Nothing ties that to the plugins' chunks, so a lazy route can evaluate a plugin chunk first and
+// fail with "L is not defined". Importing leaflet into the plugin modules gives Rollup a real dependency edge and
+// binds `L` locally.
+const LEAFLET_GLOBAL_PLUGINS = /[\\/]node_modules[\\/]leaflet\.(heat|markercluster)[\\/]dist[\\/][^/\\]+\.js$/;
+
+function leafletPluginImportsPlugin() {
+    return {
+        name: 'geopulse-leaflet-plugin-imports',
+        apply: 'build',
+        enforce: 'pre',
+        transform(code, id) {
+            if (!LEAFLET_GLOBAL_PLUGINS.test(id.split('?')[0])) return null;
+            return { code: `import L from 'leaflet';\n${code}`, map: null };
+        }
+    };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
     esbuild: mode === 'production'
@@ -114,6 +133,7 @@ export default defineConfig(({ mode }) => ({
             }
         }),
         devServiceWorkerCleanupPlugin(),
+        leafletPluginImportsPlugin(),
         Components({
             resolvers: [
                 PrimeVueResolver()
