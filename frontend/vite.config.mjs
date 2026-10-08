@@ -167,7 +167,19 @@ export default defineConfig(({ mode }) => ({
                     '**/*.{js,css,ico,png,svg,woff,woff2,ttf,eot}'
                 ],
                 globIgnores: [
-                    '**/index.html'
+                    '**/index.html',
+                    // Panoramax photo viewer (~1.5 MB) is only loaded when its dialog opens; cache on first use instead.
+                    '**/index_photoviewer-*.js'
+                ],
+                runtimeCaching: [
+                    {
+                        urlPattern: /\/assets\/index_photoviewer-[^/]+\.js$/,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'panoramax-viewer',
+                            expiration: {maxEntries: 2}
+                        }
+                    }
                 ],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
             }

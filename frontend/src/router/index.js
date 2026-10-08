@@ -1,36 +1,4 @@
 import {createRouter, createWebHistory} from 'vue-router'
-import LoginPage from '../views/LoginPage.vue'
-import RegisterPage from '../views/RegisterPage.vue'
-import Home from "@/views/Home.vue";
-import FriendsPage from "@/views/app/FriendsPage.vue";
-import MainAppPage from "@/views/app/MainAppPage.vue";
-import TimelinePage from "@/views/app/TimelinePage.vue";
-import DashboardPage from "@/views/app/DashboardPage.vue";
-import JourneyInsights from "@/views/app/JourneyInsights.vue";
-import LocationSourcesPage from "@/views/app/LocationSourcesPage.vue";
-import TimelinePreferencesPage from "@/views/app/TimelinePreferencesPage.vue";
-import UserProfilePage from "@/views/app/UserProfilePage.vue";
-import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
-import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
-import DebugExportPage from "@/views/app/DebugExportPage.vue";
-import DebugImportPage from "@/views/app/DebugImportPage.vue";
-import HelpPage from "@/views/app/HelpPage.vue";
-import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
-import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
-import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
-import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
-import GeofencesPage from "@/views/app/GeofencesPage.vue";
-import TimelineLabelsManagementPage from "@/views/app/TimelineLabelsManagementPage.vue";
-import TripsManagementPage from "@/views/app/TripsManagementPage.vue";
-import TripWorkspacePage from "@/views/app/TripWorkspacePage.vue";
-import CoverageExplorerPage from "@/views/app/CoverageExplorerPage.vue";
-import AIChatPage from "@/views/app/AIChatPage.vue";
-import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
-import PlaceDetailsPage from "@/views/app/PlaceDetailsPage.vue";
-import SharedLocationPage from "@/views/SharedLocationPage.vue";
-import SharedTimelinePage from "@/views/SharedTimelinePage.vue";
-import ErrorPage from "@/views/ErrorPage.vue";
-import NotFoundPage from "@/views/NotFoundPage.vue";
 import { useAuthStore } from '@/stores/auth'
 import { maintenance, refreshMaintenance } from '@/stores/maintenance'
 import { applyDocumentTitle } from '@/utils/documentTitle'
@@ -114,12 +82,12 @@ const requireAdmin = async (to, from, next) => {
 const routes = [
     {
         path: '/app',
-        component: MainAppPage,
+        component: () => import('@/views/app/MainAppPage.vue'),
         children: [
             {path: '', redirect: '/app/timeline'},
-            {path: 'timeline', component: TimelinePage, meta: {title: 'Timeline', titleKey: 'nav.items.timeline'}},
-            {path: 'timeline-reports', component: TimelineReportsPage, meta: {title: 'Timeline Reports', titleKey: 'timeline.reports.page.title'}},
-            {path: 'dashboard', component: DashboardPage, meta: {title: 'Dashboard', titleKey: 'nav.items.dashboard'}},
+            {path: 'timeline', component: () => import('@/views/app/TimelinePage.vue'), meta: {title: 'Timeline', titleKey: 'nav.items.timeline'}},
+            {path: 'timeline-reports', component: () => import('@/views/app/TimelineReportsPage.vue'), meta: {title: 'Timeline Reports', titleKey: 'timeline.reports.page.title'}},
+            {path: 'dashboard', component: () => import('@/views/app/DashboardPage.vue'), meta: {title: 'Dashboard', titleKey: 'nav.items.dashboard'}},
         ],
         beforeEnter: requireAuth,
     },
@@ -127,7 +95,7 @@ const routes = [
     {
         path: '/',
         name: 'Home',
-        component: Home,
+        component: () => import('@/views/Home.vue'),
         meta: {title: 'Home', titleKey: 'nav.pageTitles.home'},
         beforeEnter: async (to, from, next) => {
             const authStore = useAuthStore()
@@ -166,14 +134,14 @@ const routes = [
     {
         path: '/login',
         name: 'Login',
-        component: LoginPage,
+        component: () => import('@/views/LoginPage.vue'),
         meta: {title: 'Welcome Back', titleKey: 'auth.login.title'},
         beforeEnter: requireGuest
     },
     {
         path: '/register',
         name: 'Register',
-        component: RegisterPage,
+        component: () => import('@/views/RegisterPage.vue'),
         meta: {title: 'Create Account', titleKey: 'auth.register.title'},
         beforeEnter: requireGuest
     },
@@ -199,14 +167,14 @@ const routes = [
     {
         path: '/app/friends/:tab?',
         name: 'Friends',
-        component: FriendsPage,
+        component: () => import('@/views/app/FriendsPage.vue'),
         meta: {title: 'Friends', titleKey: 'nav.items.friends'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/profile',
         name: 'User Profile',
-        component: UserProfilePage,
+        component: () => import('@/views/app/UserProfilePage.vue'),
         meta: {title: 'Profile', titleKey: 'nav.items.profile'},
         beforeEnter: requireAuth
     },
@@ -220,14 +188,14 @@ const routes = [
     {
         path: '/app/location-sources',
         name: 'Location Sources',
-        component: LocationSourcesPage,
+        component: () => import('@/views/app/LocationSourcesPage.vue'),
         meta: {title: 'Location Sources', titleKey: 'nav.items.location-sources'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/timeline/preferences',
         name: 'Timeline Preferences',
-        component: TimelinePreferencesPage,
+        component: () => import('@/views/app/TimelinePreferencesPage.vue'),
         meta: {title: 'Timeline Preferences', titleKey: 'nav.items.preferences'},
         beforeEnter: requireAuth
     },
@@ -248,112 +216,112 @@ const routes = [
     {
         path: '/app/share-links',
         name: 'Share Links',
-        component: ShareLinksPage,
+        component: () => import('@/views/app/ShareLinksPage.vue'),
         meta: {title: 'Share Links', titleKey: 'nav.items.share-links'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/data-export-import',
         name: 'Data Export & Import',
-        component: DataExportImportPage,
+        component: () => import('@/views/app/DataExportImportPage.vue'),
         meta: {title: 'Data Export & Import', titleKey: 'data.exportImportPage.pageTitle'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/debug-export',
         name: 'Debug Export',
-        component: DebugExportPage,
+        component: () => import('@/views/app/DebugExportPage.vue'),
         meta: {title: 'Debug Data Export', titleKey: 'data.debugExport.pageTitle'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/debug-import',
         name: 'Debug Import',
-        component: DebugImportPage,
+        component: () => import('@/views/app/DebugImportPage.vue'),
         meta: {title: 'Import Debug Data', titleKey: 'data.debugImport.pageTitle'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/help',
         name: 'Help & Support',
-        component: HelpPage,
+        component: () => import('@/views/app/HelpPage.vue'),
         meta: {title: 'Help & Support', titleKey: 'nav.items.help'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/journey-insights',
         name: 'Journey Insights',
-        component: JourneyInsights,
+        component: () => import('@/views/app/JourneyInsights.vue'),
         meta: {title: 'Journey Insights', titleKey: 'nav.items.journey-insights'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/rewind',
         name: 'Rewind',
-        component: TimeDigestPage,
+        component: () => import('@/views/app/TimeDigestPage.vue'),
         meta: {title: 'Rewind', titleKey: 'nav.items.rewind'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/gps-data',
         name: 'GPS Data',
-        component: TechnicalDataPage,
+        component: () => import('@/views/app/TechnicalDataPage.vue'),
         meta: {title: 'GPS Data', titleKey: 'nav.items.gps-data'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/geocoding-management',
         name: 'Geocoding Management',
-        component: GeocodingManagementPage,
+        component: () => import('@/views/app/GeocodingManagementPage.vue'),
         meta: {title: 'Reverse Geocoding Management', titleKey: 'geocoding.page.title'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/favorites-management',
         name: 'Favorites Management',
-        component: FavoritesManagementPage,
+        component: () => import('@/views/app/FavoritesManagementPage.vue'),
         meta: {title: 'Favorites', titleKey: 'nav.items.favorites-management'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/geofences',
         name: 'Geofences',
-        component: GeofencesPage,
+        component: () => import('@/views/app/GeofencesPage.vue'),
         meta: {title: 'Geofences', titleKey: 'nav.items.geofences'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/timeline-labels',
         name: 'Timeline Labels',
-        component: TimelineLabelsManagementPage,
+        component: () => import('@/views/app/TimelineLabelsManagementPage.vue'),
         meta: {title: 'Timeline Labels', titleKey: 'nav.items.timeline-labels'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/trips',
         name: 'Trip Plans',
-        component: TripsManagementPage,
+        component: () => import('@/views/app/TripsManagementPage.vue'),
         meta: {title: 'Trip Plans', titleKey: 'nav.items.trips'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/trips/:tripId',
         name: 'Trip Planner',
-        component: TripWorkspacePage,
+        component: () => import('@/views/app/TripWorkspacePage.vue'),
         meta: {title: 'Trip Planner', titleKey: 'trips.workspacePage.defaultTitle'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/ai/chat',
         name: 'AI Assistant',
-        component: AIChatPage,
+        component: () => import('@/views/app/AIChatPage.vue'),
         meta: {title: 'AI Assistant', titleKey: 'nav.items.ai-chat'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/place-details/:type/:id',
         name: 'Place Details',
-        component: PlaceDetailsPage,
+        component: () => import('@/views/app/PlaceDetailsPage.vue'),
         meta: {title: 'Place Details', titleKey: 'place.detailsPage.pageTitleFallback'},
         beforeEnter: requireAuth
     },
@@ -367,7 +335,7 @@ const routes = [
     {
         path: '/app/coverage',
         name: 'Coverage Explorer',
-        component: CoverageExplorerPage,
+        component: () => import('@/views/app/CoverageExplorerPage.vue'),
         meta: {title: 'Coverage Explorer', titleKey: 'nav.items.coverage-explorer'},
         beforeEnter: requireAuth
     },
@@ -388,19 +356,19 @@ const routes = [
     {
         path: '/shared/:linkId',
         name: 'Shared Location',
-        component: SharedLocationPage,
+        component: () => import('@/views/SharedLocationPage.vue'),
         meta: {title: 'Shared Location', titleKey: 'nav.pageTitles.sharedLocation'}
     },
     {
         path: '/shared-timeline/:linkId',
         name: 'Shared Timeline',
-        component: SharedTimelinePage,
+        component: () => import('@/views/SharedTimelinePage.vue'),
         meta: {title: 'Shared Timeline', titleKey: 'nav.pageTitles.sharedTimeline'}
     },
     {
         path: '/error',
         name: 'Error',
-        component: ErrorPage,
+        component: () => import('@/views/ErrorPage.vue'),
         meta: {title: 'Error', titleKey: 'nav.pageTitles.error'},
         props: route => ({
           errorType: route.query.type || 'generic',
@@ -475,7 +443,7 @@ const routes = [
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
-        component: NotFoundPage,
+        component: () => import('@/views/NotFoundPage.vue'),
         meta: {title: 'Page Not Found', titleKey: 'nav.pageTitles.pageNotFound'}
     }
 ]
