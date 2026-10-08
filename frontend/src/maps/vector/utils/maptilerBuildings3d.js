@@ -1,6 +1,8 @@
-import { isMapLibreMap } from './maplibreLayerUtils'
+import { isMapLibreMap } from '@/maps/shared/mapEngineUtils'
 
 export const MAPTILER_BUILDINGS_LAYER_ID = 'gp-maptiler-3d-buildings'
+// Building footprints are complete in MapTiler (OpenMapTiles) tiles from z14.
+export const MAPTILER_BUILDINGS_MIN_ZOOM = 14
 
 const getStyle = (map) => {
   if (!isMapLibreMap(map) || typeof map.getStyle !== 'function') return null
@@ -71,12 +73,12 @@ export const setMapTilerBuildings3dEnabled = (map, enabled) => {
     source: buildingLayer.source,
     'source-layer': buildingLayer['source-layer'],
     type: 'fill-extrusion',
-    minzoom: 15,
+    minzoom: MAPTILER_BUILDINGS_MIN_ZOOM,
     ...(buildingLayer.filter ? { filter: buildingLayer.filter } : {}),
     paint: {
       'fill-extrusion-color': '#aaa',
-      'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['coalesce', ['get', 'render_height'], ['get', 'height'], 0]],
-      'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0]],
+      'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], MAPTILER_BUILDINGS_MIN_ZOOM, 0, MAPTILER_BUILDINGS_MIN_ZOOM + 0.05, ['coalesce', ['get', 'render_height'], ['get', 'height'], 0]],
+      'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], MAPTILER_BUILDINGS_MIN_ZOOM, 0, MAPTILER_BUILDINGS_MIN_ZOOM + 0.05, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0]],
       'fill-extrusion-opacity': 0.6
     }
   }, labelLayerId)

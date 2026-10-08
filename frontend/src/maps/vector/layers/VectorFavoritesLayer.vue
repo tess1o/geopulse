@@ -2,7 +2,7 @@
 
 <script setup>
 import { readonly, ref, watch, onBeforeUnmount } from 'vue'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import {
   createFeatureCollection,
   ensureGeoJsonSource,

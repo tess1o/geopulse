@@ -213,7 +213,8 @@
         />
 
         <!-- Combo markers for Stays/Trips, Notes and Photos that overlap each other (vector maps only). -->
-        <VectorCrossTypeCollisionLayer
+        <component
+          :is="vectorEngine.VectorCrossTypeCollisionLayer"
           v-if="map && isReady && isVectorMapMode"
           ref="crossTypeLayerRef"
           :map="map"
@@ -235,7 +236,8 @@
           @groups-change="requestCrossTypeCompute"
         />
 
-        <VectorPanoramaxLayer
+        <component
+          :is="vectorEngine.VectorPanoramaxLayer"
           v-if="map && isReady && panoramaxControlAvailable && isVectorMapMode"
           :map="map"
           :visible="showPanoramax"
@@ -456,8 +458,7 @@ import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, TripPlanRouteLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
-import VectorCrossTypeCollisionLayer from '@/maps/vector/layers/VectorCrossTypeCollisionLayer.vue'
-import VectorPanoramaxLayer from '@/maps/vector/layers/VectorPanoramaxLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDialog.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import MapColorLegend from '@/components/maps/MapColorLegend.vue'
@@ -681,6 +682,7 @@ const TIMELINE_SINGLE_LOCATION_ZOOM = 14
 const TIMELINE_FIT_BOUNDS_MAX_ZOOM = 16
 const TIMELINE_COLLAPSED_BOUNDS_THRESHOLD_METERS = 250
 const TIMELINE_FIT_BOUNDS_PADDING = [20, 20]
+const BUILDINGS_3D_PITCH = 45
 
 // Composables
 const {
@@ -955,21 +957,34 @@ const getTimelineBoundsViewport = (bounds) => {
   }
 }
 
+// A data fit stops any running camera animation and otherwise keeps the current pitch,
+// so it would cancel the 3D tilt started on map load; carry the tilt in the fit itself.
+const getBuildings3dViewportOptions = () => {
+  if (!buildings3dEnabled.value || !map.value) {
+    return {}
+  }
+
+  const currentPitch = map.value.getPitch?.()
+  return { pitch: Math.max(Number.isFinite(currentPitch) ? currentPitch : 0, BUILDINGS_3D_PITCH) }
+}
+
 const applyTimelineDataViewport = (bounds, options = {}) => {
   const viewport = getTimelineBoundsViewport(bounds)
   if (!viewport) {
     return
   }
 
+  const viewportOptions = { ...getBuildings3dViewportOptions(), ...options }
+
   if (viewport.isCollapsedBounds) {
-    mapContainerRef.value?.setView?.(viewport.center, TIMELINE_SINGLE_LOCATION_ZOOM, options)
+    mapContainerRef.value?.setView?.(viewport.center, TIMELINE_SINGLE_LOCATION_ZOOM, viewportOptions)
     return
   }
 
   mapContainerRef.value?.fitBounds?.(viewport.points, {
     padding: TIMELINE_FIT_BOUNDS_PADDING,
     maxZoom: TIMELINE_FIT_BOUNDS_MAX_ZOOM,
-    ...options
+    ...viewportOptions
   })
 }
 
@@ -1055,6 +1070,8 @@ const showHeatmapLegend = computed(() => heatmapEnabled.value && heatmapAvailabl
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+// Vector-only layer components; resolved only once a MapLibre map exists (see vectorEngineRegistry).
+const vectorEngine = computed(() => (isVectorMapMode.value ? getVectorEngine() : {}))
 const show3dBuildingsControl = computed(() => isVectorMapMode.value && mapTilerBuildings3dSupported.value)
 const panoramaxControlAvailable = computed(() => !props.isPublicView && props.panoramaxAvailable && Boolean(props.panoramaxEndpoint))
 
@@ -1342,7 +1359,7 @@ const syncMapTilerBuildings3dSupport = (mapInstance) => {
       buildings3dEnabled.value = false
       return
     }
-    mapInstance?.easeTo?.({ pitch: 45, duration: 300, essential: true })
+    mapInstance?.easeTo?.({ pitch: BUILDINGS_3D_PITCH, duration: 300, essential: true })
   }
 }
 
@@ -1356,7 +1373,7 @@ const handleToggle3dBuildings = (enabled) => {
   }
 
   buildings3dEnabled.value = enabled
-  map.value.easeTo?.({ pitch: enabled ? 45 : 0, duration: 300, essential: true })
+  map.value.easeTo?.({ pitch: enabled ? BUILDINGS_3D_PITCH : 0, duration: 300, essential: true })
 }
 
 const handleMapReady = (mapInstance) => {

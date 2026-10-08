@@ -116,12 +116,15 @@ function leafletPluginImportsPlugin() {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-    esbuild: mode === 'production'
-        ? { pure: ['console.log', 'console.info', 'console.debug'] }
-        : undefined,
+export default defineConfig(() => ({
     build: {
-        outDir: 'dist' // explicitly define output directory
+        outDir: 'dist', // explicitly define output directory
+        rolldownOptions: {
+            // Strip debug logging from production bundles (replaces the pre-Vite 8 `esbuild.pure` option).
+            treeshake: {
+                manualPureFunctions: ['console.log', 'console.info', 'console.debug']
+            }
+        }
     },
     base: "/",
     plugins: [
@@ -184,7 +187,7 @@ export default defineConfig(({ mode }) => ({
                 skipWaiting: true,
                 navigateFallback: null,
                 globPatterns: [
-                    '**/*.{js,css,ico,png,svg,woff,woff2,ttf,eot}'
+                    '**/*.{js,mjs,css,ico,png,svg,woff,woff2,ttf,eot}'
                 ],
                 globIgnores: [
                     '**/index.html',

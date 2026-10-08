@@ -586,6 +586,8 @@ export class FavoritesManagementPage {
     const dialog = this.page.locator(this.selectors.bulkEditDialog);
     const field = dialog.locator(`input[placeholder*="${fieldName}"]`);
     await field.fill(value);
+    await TestHelpers.dismissAutocompleteSuggestions(field);
+    await expect(dialog).toBeVisible();
   }
 
   async submitBulkEdit() {

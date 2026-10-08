@@ -13,6 +13,7 @@ import {TimelineLabelsManagementPage} from "../pages/TimelineLabelsManagementPag
 import {TripsManagementPage} from "../pages/TripsManagementPage.js";
 import {TripWorkspacePage} from "../pages/TripWorkspacePage.js";
 import {DateFormatTestHelper} from './date-format-test-helper.js';
+import {resolvePageMapMode} from './map-mode-registry.js';
 import {GeofencesPage} from "../pages/GeofencesPage.js";
 
 /**
@@ -20,16 +21,7 @@ import {GeofencesPage} from "../pages/GeofencesPage.js";
  */
 export class TestSetupHelper {
   static async resolveMapModeFromPage(page) {
-    try {
-      const mode = await page.evaluate(() => window.__GP_E2E_MAP_DEBUG__?.mode || null);
-      if (!mode) {
-        return null;
-      }
-
-      return String(mode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
-    } catch {
-      return null;
-    }
+    return resolvePageMapMode(page);
   }
 
   static async applyMapRenderModeIfProvided(dbManager, email, mapMode = null) {

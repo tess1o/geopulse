@@ -1,7 +1,26 @@
+import { expect } from '@playwright/test';
 import { TestConfig } from '../config/test-config.js';
 
 export class TestHelpers {
-  
+
+  /**
+   * Close a PrimeVue AutoComplete suggestion list after typing into it, so the list cannot cover the next
+   * control the test clicks. The list opens after the component's search delay, so wait for it first; if no
+   * list opens, there is nothing to close. Escape only closes the list: the app stops it from also closing
+   * an enclosing dialog.
+   * @param {import('@playwright/test').Locator} input the AutoComplete's text input
+   * @param {number} openTimeout how long to wait for the suggestion list to open
+   */
+  static async dismissAutocompleteSuggestions(input, openTimeout = 2000) {
+    try {
+      await expect(input).toHaveAttribute('aria-expanded', 'true', { timeout: openTimeout });
+    } catch {
+      return;
+    }
+    await input.press('Escape');
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+  }
+
   /**
    * Wait for navigation to complete
    * @param {import('@playwright/test').Page} page 

@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.58.1-noble
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
 
 # Set working directory
 WORKDIR /app

@@ -3,6 +3,7 @@ import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {DateFormatTestHelper} from '../utils/date-format-test-helper.js';
+import {resolvePageMapMode} from '../utils/map-mode-registry.js';
 
 export class TimelinePage {
   constructor(page) {
@@ -10,16 +11,7 @@ export class TimelinePage {
   }
 
   async resolveMapModeFromPage() {
-    try {
-      const mode = await this.page.evaluate(() => window.__GP_E2E_MAP_DEBUG__?.mode || null);
-      if (!mode) {
-        return null;
-      }
-
-      return String(mode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
-    } catch {
-      return null;
-    }
+    return resolvePageMapMode(this.page);
   }
 
   /**

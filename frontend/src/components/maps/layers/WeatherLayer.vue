@@ -13,7 +13,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterWeatherLayer from '@/maps/raster/layers/RasterWeatherLayer.vue'
-import VectorWeatherLayer from '@/maps/vector/layers/VectorWeatherLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -44,7 +44,7 @@ const emit = defineEmits(['groups-change'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorWeatherLayer : RasterWeatherLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorWeatherLayer : RasterWeatherLayer)
 const vectorOnlyBindings = computed(() => (
   mapMode.value === MAP_RENDER_MODES.VECTOR
     ? { managed: props.managed, onGroupsChange: () => emit('groups-change') }

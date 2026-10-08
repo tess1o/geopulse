@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { TestHelpers } from '../utils/test-helpers.js';
 
 export class FriendsPage {
   constructor(page) {
@@ -296,7 +297,10 @@ export class FriendsPage {
   }
 
   async fillInviteEmail(email) {
-    await this.page.locator(this.selectors.friendEmailInput).fill(email);
+    const input = this.page.locator(this.selectors.friendEmailInput);
+    await input.fill(email);
+    await TestHelpers.dismissAutocompleteSuggestions(input);
+    await expect(this.page.locator(this.selectors.inviteDialogHeader)).toBeVisible();
   }
 
   async sendInvitation(email) {

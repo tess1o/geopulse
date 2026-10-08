@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import {
   createFeatureCollection,
   ensureClusterSource,

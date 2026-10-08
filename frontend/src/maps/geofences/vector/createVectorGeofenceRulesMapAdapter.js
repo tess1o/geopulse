@@ -1,8 +1,8 @@
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import {
   isMapLibreMap,
   normalizeLeafletBoundsToMapLibre
-} from '@/maps/vector/utils/maplibreLayerUtils'
+} from '@/maps/shared/mapEngineUtils'
 import { buildRenderableRuleAreas, toRuleAreaBounds } from '@/maps/geofences/shared/geofenceRuleAreaUtils'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'

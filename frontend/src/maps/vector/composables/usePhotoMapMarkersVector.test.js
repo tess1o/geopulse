@@ -2,13 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePhotoMapMarkersVector } from './usePhotoMapMarkersVector'
 
 vi.mock('maplibre-gl', () => ({
-  default: {
-    Marker: vi.fn(() => ({
-      setLngLat: vi.fn().mockReturnThis(),
-      addTo: vi.fn().mockReturnThis(),
-      remove: vi.fn()
-    }))
-  }
+  Marker: vi.fn(() => ({
+    setLngLat: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
+    remove: vi.fn()
+  }))
 }))
 
 vi.mock('@/utils/immichPhotoThumbnails', () => ({

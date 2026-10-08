@@ -10,6 +10,7 @@ import { acknowledgeActivation, maintenance, markMaintenanceUnavailable, refresh
 import apiService from '@/utils/apiService'
 import { useAuthStore } from '@/stores/auth'
 import GeopulsePreset from "@/presets/GeopulsePreset";
+import {autocompleteEscapePassThrough} from '@/utils/autocompleteEscape'
 import { initializeThemeMode } from "@/utils/themeMode";
 import router from "./router";
 import ToastService from 'primevue/toastservice';
@@ -57,6 +58,9 @@ const timezone = useTimezone()
 
 app.use(PrimeVue, {
     ripple: false,
+    pt: {
+        autocomplete: autocompleteEscapePassThrough
+    },
     locale: {
         firstDayOfWeek: timezone.getPrimeVueFirstDayOfWeek()
     },

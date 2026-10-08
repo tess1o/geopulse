@@ -15,7 +15,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterSharedLocationMarker from '@/maps/raster/markers/RasterSharedLocationMarker.vue'
-import VectorSharedLocationMarker from '@/maps/vector/markers/VectorSharedLocationMarker.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -55,7 +55,7 @@ const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_R
 
 const activeComponent = computed(() => {
   return mapMode.value === MAP_RENDER_MODES.VECTOR
-    ? VectorSharedLocationMarker
+    ? getVectorEngine().VectorSharedLocationMarker
     : RasterSharedLocationMarker
 })
 

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -25,6 +26,7 @@ public class UserResponse {
     private String timezone;
     private String avatar;
     private boolean hasPassword;
+    private Instant createdAt;
     /** UI preferences with defaults applied. */
     private UserUiPreferences uiPreferences;
     /** Timeline display preferences with defaults applied, plus server capabilities. */

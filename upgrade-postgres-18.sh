@@ -17,7 +17,7 @@
 set -Eeuo pipefail
 umask 077
 
-PG_CONTAINER=geopulse-postgres
+PG_CONTAINER=""
 BACKEND_CONTAINER=""
 APP_CONTAINERS=""
 BACKUP_DIR=./postgres-upgrade-backups
@@ -47,7 +47,8 @@ Modes:
   --cleanup [TIMESTAMP]   Delete a kept PostgreSQL 17 cluster after a successful upgrade.
 
 Options:
-  --container NAME        PostgreSQL container (default: geopulse-postgres)
+  --container NAME        PostgreSQL container (default: the PostgreSQL container of the compose project
+                          started from the current folder, or the only PostgreSQL container on the host)
   --backend NAME          GeoPulse backend container (default: the *backend* service of the same compose project)
   --app-containers LIST   Containers stopped during the upgrade (default: the other running containers of the
                           PostgreSQL container's compose project, so other GeoPulse instances on the host are
@@ -223,7 +224,30 @@ SQL
 # Discovery
 # ---------------------------------------------------------------------------------------------------------------
 
+# Without --container, the instance is the compose project started from the current folder, so running the
+# script from a project folder never picks another instance on the same host.
+default_container() {
+    [ -z "$PG_CONTAINER" ] || return 0
+    local dir found=""
+    for dir in "$(pwd)" "$(pwd -P)"; do
+        found=$(docker ps -a --filter "label=com.docker.compose.project.working_dir=$dir" --format '{{.Names}} {{.Image}}' \
+            | awk '$2 ~ /postgis|postgres/ { print $1 }')
+        [ -z "$found" ] || break
+    done
+    if [ -z "$found" ]; then
+        # Not in a project folder: only an unambiguous host (a single PostgreSQL container) is safe to guess.
+        found=$(docker ps -a --format '{{.Names}} {{.Image}}' | awk '$2 ~ /postgis|postgres/ { print $1 }')
+        [ -n "$found" ] || die "No PostgreSQL container found. Run the script in the GeoPulse folder, or pass --container."
+        [ "$(printf '%s\n' "$found" | grep -c .)" = 1 ] \
+            || die "No GeoPulse compose project was started from $(pwd), and this host has several PostgreSQL containers: $(printf '%s\n' "$found" | paste -sd ' ' -). Run the script in the folder of the instance to upgrade, or pass --container."
+    fi
+    [ "$(printf '%s\n' "$found" | grep -c .)" = 1 ] \
+        || die "Several PostgreSQL containers belong to the project in $(pwd): $(printf '%s\n' "$found" | paste -sd ' ' -). Pass --container."
+    PG_CONTAINER=$found
+}
+
 discover() {
+    default_container
     if container_exists "$PG_CONTAINER"; then
         local mount
         mount=$(docker inspect -f '{{range .Mounts}}{{if or (eq .Destination "'"$OLD_TARGET"'") (eq .Destination "'"$NEW_TARGET"'")}}{{.Type}}|{{.Name}}|{{.Source}}|{{.Destination}}{{println}}{{end}}{{end}}' "$PG_CONTAINER" | head -n 1)
@@ -256,6 +280,7 @@ discover() {
         esac
     fi
     HELPER_IMAGE=${TARGET_IMAGE:-postgis/postgis:$TARGET_TAG}
+    docker image inspect "$HELPER_IMAGE" >/dev/null 2>&1 || { log "Pulling $HELPER_IMAGE"; docker pull -q "$HELPER_IMAGE" >/dev/null || die "Cannot pull $HELPER_IMAGE. Pass --target-image."; }
     TEMP_CONTAINER=$PG_CONTAINER-pg18-upgrade
 }
 
@@ -495,6 +520,7 @@ abort_before_switch() {
 
 preflight() {
     log "Checking the current installation"
+    info "Instance:             $PG_CONTAINER${COMPOSE_PROJECT:+ (compose project $COMPOSE_PROJECT in ${COMPOSE_WORKDIR:-?})}"
     container_running "$PG_CONTAINER" || die "$PG_CONTAINER is not running. Start GeoPulse first."
     [ "$MOUNT_TARGET" = "$OLD_TARGET" ] || die "$PG_CONTAINER does not mount its data at $OLD_TARGET; this script handles the standard GeoPulse layout only."
     local pgdata major

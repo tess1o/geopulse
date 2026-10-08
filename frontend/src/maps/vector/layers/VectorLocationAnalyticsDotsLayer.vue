@@ -2,7 +2,7 @@
 
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
 import {
   createFeatureCollection,

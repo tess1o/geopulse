@@ -4,13 +4,18 @@
 
 <script setup>
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import '@/styles/vendor/maplibre.css'
 import '@/maps/shared/styles/maplibreMarkerFixes.css'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { resolveVectorStyleSource } from '@/maps/runtime/mapSourceResolver'
 import { normalizeLeafletBoundsToMapLibre, toLngLatTuple } from '@/maps/vector/utils/maplibreLayerUtils'
+
+// MapLibre 6 locates its worker relative to import.meta.url, which breaks once Vite bundles it into /assets.
+// Import the worker as an emitted asset and point MapLibre at it explicitly.
+maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
 const props = defineProps({
   mapId: {
@@ -557,7 +562,11 @@ const setView = (center, zoom, options = {}) => {
     return
   }
 
-  map.value.jumpTo({ center: targetCenter, zoom: targetZoom })
+  map.value.jumpTo({
+    center: targetCenter,
+    zoom: targetZoom,
+    ...(Number.isFinite(options?.pitch) ? { pitch: options.pitch } : {})
+  })
 }
 
 const fitBounds = (bounds, options = {}) => {

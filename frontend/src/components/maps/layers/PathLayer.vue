@@ -27,7 +27,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterPathLayer from '@/maps/raster/layers/RasterPathLayer.vue'
-import VectorPathLayer from '@/maps/vector/layers/VectorPathLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useMapAppearance } from '@/composables/useMapAppearance'
 
@@ -102,7 +102,7 @@ const resolvedPathOptions = computed(() => props.pathOptions || {
 const resolvedHighlightedPathColor = computed(() => props.highlightedPathColor || appearance.value.activePathColor)
 const resolvedOutline = computed(() => props.outline ?? appearance.value.outlineEnabled)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorPathLayer : RasterPathLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorPathLayer : RasterPathLayer)
 
 const getHighlightedEndpointObstacles = () => implRef.value?.getHighlightedEndpointObstacles?.() ?? []
 

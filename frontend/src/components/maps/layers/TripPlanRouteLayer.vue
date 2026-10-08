@@ -13,7 +13,7 @@
 <script setup>
 import { computed } from 'vue'
 import RasterTripPlanRouteLayer from '@/maps/raster/layers/RasterTripPlanRouteLayer.vue'
-import VectorTripPlanRouteLayer from '@/maps/vector/layers/VectorTripPlanRouteLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useMapAppearance } from '@/composables/useMapAppearance'
 
@@ -43,5 +43,5 @@ const props = defineProps({
 
 const appearance = useMapAppearance()
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorTripPlanRouteLayer : RasterTripPlanRouteLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorTripPlanRouteLayer : RasterTripPlanRouteLayer)
 </script>

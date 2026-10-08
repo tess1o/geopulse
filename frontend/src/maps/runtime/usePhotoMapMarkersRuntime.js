@@ -1,23 +1,29 @@
 import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
-import { usePhotoMapMarkersVector } from '@/maps/vector/composables/usePhotoMapMarkersVector'
-import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
+import { isMapLibreMap } from '@/maps/shared/mapEngineUtils'
 
 export function usePhotoMapMarkersRuntime(options = {}) {
   const rasterMarkers = usePhotoMapMarkers(options)
-  const vectorMarkers = usePhotoMapMarkersVector(options)
+  // Created on first use with a MapLibre map: the vector engine (and maplibre-gl) is only loaded for vector maps.
+  let vectorMarkers = null
+
+  const getVectorMarkers = () => {
+    vectorMarkers ||= getVectorEngine().usePhotoMapMarkersVector(options)
+    return vectorMarkers
+  }
 
   const pickImplementation = (mapInstance) => {
-    return isMapLibreMap(mapInstance) ? vectorMarkers : rasterMarkers
+    return isMapLibreMap(mapInstance) ? getVectorMarkers() : rasterMarkers
   }
 
   const clearPhotoMarkers = () => {
     rasterMarkers.clearPhotoMarkers?.()
-    vectorMarkers.clearPhotoMarkers?.()
+    vectorMarkers?.clearPhotoMarkers?.()
   }
 
   const clearFocusMarker = () => {
     rasterMarkers.clearFocusMarker?.()
-    vectorMarkers.clearFocusMarker?.()
+    vectorMarkers?.clearFocusMarker?.()
   }
 
   const renderPhotoMarkers = (mapInstance, photos = []) => {

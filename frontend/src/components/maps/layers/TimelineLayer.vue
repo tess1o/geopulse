@@ -17,7 +17,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterTimelineLayer from '@/maps/raster/layers/RasterTimelineLayer.vue'
-import VectorTimelineLayer from '@/maps/vector/layers/VectorTimelineLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -57,7 +57,7 @@ const vectorOnlyBindings = computed(() => (
     ? { itemWeather: props.itemWeather, onGroupsChange: () => emit('groups-change') }
     : {}
 ))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorTimelineLayer : RasterTimelineLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorTimelineLayer : RasterTimelineLayer)
 
 const getCurrentGroups = () => implRef.value?.getCurrentGroups?.() ?? []
 const getRenderedEntities = () => implRef.value?.getRenderedEntities?.() ?? []

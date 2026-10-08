@@ -15,7 +15,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterTripPlanLayer from '@/maps/raster/layers/RasterTripPlanLayer.vue'
-import VectorTripPlanLayer from '@/maps/vector/layers/VectorTripPlanLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -45,7 +45,7 @@ const emit = defineEmits(['plan-item-contextmenu', 'plan-item-click'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorTripPlanLayer : RasterTripPlanLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorTripPlanLayer : RasterTripPlanLayer)
 
 const clearPlanMarkers = (...args) => implRef.value?.clearPlanMarkers?.(...args)
 

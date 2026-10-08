@@ -18,7 +18,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterImmichLayer from '@/maps/raster/layers/RasterImmichLayer.vue'
-import VectorImmichLayer from '@/maps/vector/layers/VectorImmichLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -51,7 +51,7 @@ const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_R
 const groupsChangeListener = computed(() => (
   mapMode.value === MAP_RENDER_MODES.VECTOR ? { onGroupsChange: () => emit('groups-change') } : {}
 ))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorImmichLayer : RasterImmichLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorImmichLayer : RasterImmichLayer)
 
 const refreshPhotos = (...args) => implRef.value?.refreshPhotos?.(...args)
 const clearPhotoMarkers = (...args) => implRef.value?.clearPhotoMarkers?.(...args)

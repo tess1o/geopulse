@@ -494,53 +494,48 @@ test.describe('Timeline Page', () => {
       expect(await timelinePage.getDateGroupsCount()).toBeGreaterThanOrEqual(1);
     });
 
-    test('should calculate "on this day" duration correctly when browser timezone differs from user timezone', async ({ page, isolatedUsers, dbManager}) => {
-      const timelinePage = new TimelinePage(page);
-      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/London' });
-      
-      // Simulate browser in New York timezone but user setting is Europe/London
-      
-      // Mock browser timezone to America/New_York
-      await page.addInitScript(() => {
-        // Override getTimezoneOffset to simulate New York timezone
-        const originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
-        Date.prototype.getTimezoneOffset = function() {
-          // New York is UTC-5 (300 minutes) or UTC-4 (240 minutes) depending on DST
-          return 300; // Simulate EST (UTC-5)
-        };
-      });
-      
-      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
-      
-      await timelinePage.waitForTimelineContent();
-      
-      const overnightStayCards = timelinePage.getTimelineCards('overnightStays');
-      expect(await overnightStayCards.count()).toBeGreaterThan(0);
-      
-      // Get the first overnight stay card
-      const firstStayCard = overnightStayCards.nth(0);
-      const cardText = await firstStayCard.textContent();
+    test.describe('with browser in a different timezone', () => {
+      // Emulate a real New York browser while the user setting is Europe/London.
+      // Don't stub Date.prototype.getTimezoneOffset: a constant offset that disagrees with
+      // the real local time breaks dayjs timezone math and makes the URL/date-range sync loop.
+      test.use({ timezoneId: 'America/New_York' });
 
-      // The "on this day" calculation should still work correctly despite browser timezone mismatch
-      // It should show the start time as 00:00 (midnight) in Europe/London, NOT affected by browser timezone
-      expect(cardText).toMatch(/on this day|this day/i);
+      test('should calculate "on this day" duration correctly when browser timezone differs from user timezone', async ({ page, isolatedUsers, dbManager}) => {
+        const timelinePage = new TimelinePage(page);
+        const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/London' });
       
-      // Should show correct start time (00:00) when stay continues from previous day
-      // This tests that getStartOfDay/getEndOfDay use user timezone, not browser timezone
-      if (cardText.includes('Continued from')) {
-        expect(cardText).toMatch(/00:00/);
-        // Should NOT show times that would indicate browser timezone usage like 17:00 or 05:00
-        expect(cardText).not.toMatch(/17:00|05:00/);
-      }
+        const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       
-      // Verify the frontend cached profile still contains the backend user timezone.
-      const userInfo = await page.evaluate(() => {
-        const userInfoStr = localStorage.getItem('userInfo');
-        return userInfoStr ? JSON.parse(userInfoStr) : null;
+        await timelinePage.waitForTimelineContent();
+      
+        const overnightStayCards = timelinePage.getTimelineCards('overnightStays');
+        expect(await overnightStayCards.count()).toBeGreaterThan(0);
+      
+        // Get the first overnight stay card
+        const firstStayCard = overnightStayCards.nth(0);
+        const cardText = await firstStayCard.textContent();
+
+        // The "on this day" calculation should still work correctly despite browser timezone mismatch
+        // It should show the start time as 00:00 (midnight) in Europe/London, NOT affected by browser timezone
+        expect(cardText).toMatch(/on this day|this day/i);
+      
+        // Should show correct start time (00:00) when stay continues from previous day
+        // This tests that getStartOfDay/getEndOfDay use user timezone, not browser timezone
+        if (cardText.includes('Continued from')) {
+          expect(cardText).toMatch(/00:00/);
+          // Should NOT show times that would indicate browser timezone usage like 17:00 or 05:00
+          expect(cardText).not.toMatch(/17:00|05:00/);
+        }
+      
+        // Verify the frontend cached profile still contains the backend user timezone.
+        const userInfo = await page.evaluate(() => {
+          const userInfoStr = localStorage.getItem('userInfo');
+          return userInfoStr ? JSON.parse(userInfoStr) : null;
+        });
+      
+        expect(userInfo).toBeTruthy();
+        expect(userInfo.timezone).toBe('Europe/London');
       });
-      
-      expect(userInfo).toBeTruthy();
-      expect(userInfo.timezone).toBe('Europe/London');
     });
 
     test('should display overnight trips with correct data and special formatting', async ({ page, isolatedUsers, dbManager}) => {

@@ -15,7 +15,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterNotesLayer from '@/maps/raster/layers/RasterNotesLayer.vue'
-import VectorNotesLayer from '@/maps/vector/layers/VectorNotesLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -48,7 +48,7 @@ const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_R
 const groupsChangeListener = computed(() => (
   mapMode.value === MAP_RENDER_MODES.VECTOR ? { onGroupsChange: () => emit('groups-change') } : {}
 ))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorNotesLayer : RasterNotesLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorNotesLayer : RasterNotesLayer)
 
 const refreshNotes = (...args) => implRef.value?.refreshNotes?.(...args)
 const clearNoteMarkers = (...args) => implRef.value?.clearNoteMarkers?.(...args)

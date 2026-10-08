@@ -1,5 +1,6 @@
 import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
+import {TestHelpers} from '../utils/test-helpers.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Favorites Management Page', () => {
@@ -1112,12 +1113,9 @@ test.describe('Favorites Management Page', () => {
             const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
             await cityInput.click();
             await cityInput.fill('New York');
-            await page.waitForTimeout(500);
-
-            // Click on dialog header to close autocomplete dropdown
-            const dialogHeader = dialog.locator('.p-dialog-header');
-            await dialogHeader.click();
-            await page.waitForTimeout(300);
+            // Close the suggestion list so it cannot cover the next control; the dialog must stay open.
+            await TestHelpers.dismissAutocompleteSuggestions(cityInput);
+            await expect(dialog).toBeVisible();
 
             // Enable and fill country field (autocomplete input)
             const countryCheckbox = dialog.locator('label:has-text("Country")').locator('..').locator('input[type="checkbox"]');
@@ -1127,11 +1125,9 @@ test.describe('Favorites Management Page', () => {
             const countryInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="country"]');
             await countryInput.click();
             await countryInput.fill('USA');
-            await page.waitForTimeout(500);
-
-            // Click on dialog header again to close autocomplete dropdown
-            await dialogHeader.click();
-            await page.waitForTimeout(300);
+            // Close the suggestion list so it cannot cover the next control; the dialog must stay open.
+            await TestHelpers.dismissAutocompleteSuggestions(countryInput);
+            await expect(dialog).toBeVisible();
 
             // Submit bulk edit
             const saveButton = dialog.locator('button:has-text("Update")');
@@ -1228,12 +1224,9 @@ test.describe('Favorites Management Page', () => {
             const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
             await cityInput.click();
             await cityInput.fill('San Francisco');
-            await page.waitForTimeout(500);
-
-            // Click on dialog header to close autocomplete dropdown
-            const dialogHeader = dialog.locator('.p-dialog-header');
-            await dialogHeader.click();
-            await page.waitForTimeout(300);
+            // Close the suggestion list so it cannot cover the next control; the dialog must stay open.
+            await TestHelpers.dismissAutocompleteSuggestions(cityInput);
+            await expect(dialog).toBeVisible();
 
             // Do NOT enable country field - leave it unchecked so it won't be updated
 

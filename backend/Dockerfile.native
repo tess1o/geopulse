@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
 # ==========================
 # Stage 2: Runtime image
 # ==========================
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1791279563
 WORKDIR /work
 
 # PGDG publishes matching clients for both amd64 and arm64. No PostgreSQL server is installed.

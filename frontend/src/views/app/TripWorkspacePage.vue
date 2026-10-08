@@ -540,7 +540,7 @@ import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vu
 import TripSummaryBar from '@/components/trips/workspace/TripSummaryBar.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import L from 'leaflet'
-import maplibregl from 'maplibre-gl'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
@@ -1597,6 +1597,7 @@ const createVectorPlanItemDialogMarkerElement = () => {
 }
 
 const createVectorPlanItemDialogMapAdapter = (map) => {
+  const { maplibregl } = getVectorEngine()
   let marker = null
 
   const clear = () => {

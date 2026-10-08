@@ -15,7 +15,7 @@
 <script setup>
 import { computed } from 'vue'
 import RasterCoverageLayer from '@/maps/raster/layers/RasterCoverageLayer.vue'
-import VectorCoverageLayer from '@/maps/vector/layers/VectorCoverageLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -54,5 +54,5 @@ const props = defineProps({
 })
 
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorCoverageLayer : RasterCoverageLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorCoverageLayer : RasterCoverageLayer)
 </script>

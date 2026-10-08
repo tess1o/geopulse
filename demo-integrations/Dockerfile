@@ -1,5 +1,5 @@
 # Fake Immich (port 2283) and fake Memos (port 5230) for the GeoPulse demo, in one container.
-FROM golang:1.25-alpine AS build
+FROM golang:1.25.14-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -8,7 +8,7 @@ COPY internal ./internal
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fake-immich ./cmd/fake-immich \
  && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fake-memos ./cmd/fake-memos
 
-FROM alpine:3.22
+FROM alpine:3.22.6
 RUN apk add --no-cache tzdata && adduser -D -H -u 10001 demo
 COPY --from=build /out/ /usr/local/bin/
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

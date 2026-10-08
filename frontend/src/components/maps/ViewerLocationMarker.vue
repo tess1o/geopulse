@@ -9,7 +9,7 @@
 <script setup>
 import { computed } from 'vue'
 import RasterViewerLocationMarker from '@/maps/raster/markers/RasterViewerLocationMarker.vue'
-import VectorViewerLocationMarker from '@/maps/vector/markers/VectorViewerLocationMarker.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -27,7 +27,7 @@ const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_R
 
 const activeComponent = computed(() => {
   return mapMode.value === MAP_RENDER_MODES.VECTOR
-    ? VectorViewerLocationMarker
+    ? getVectorEngine().VectorViewerLocationMarker
     : RasterViewerLocationMarker
 })
 </script>

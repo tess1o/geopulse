@@ -122,7 +122,7 @@ import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import { MapContainer } from '@/components/maps'
 import L from 'leaflet'
-import maplibregl from 'maplibre-gl'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -303,6 +303,7 @@ const createVectorMarkerElement = (variant) => {
 }
 
 const createVectorGpsEditMapAdapter = (map) => {
+  const { maplibregl } = getVectorEngine()
   let currentMarker = null
   let originalMarker = null
 

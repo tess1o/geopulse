@@ -14,7 +14,7 @@
       </div>
       <div class="identity-copy">
         <h1>{{ title }}</h1>
-        <p v-if="subtitle">{{ subtitle }}</p>
+        <p v-if="$slots.subtitle || subtitle"><slot name="subtitle">{{ subtitle }}</slot></p>
         <div v-if="$slots.metadata" class="identity-metadata">
           <slot name="metadata" />
         </div>

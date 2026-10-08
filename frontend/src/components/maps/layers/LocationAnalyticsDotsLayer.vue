@@ -15,7 +15,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterLocationAnalyticsDotsLayer from '@/maps/raster/layers/RasterLocationAnalyticsDotsLayer.vue'
-import VectorLocationAnalyticsDotsLayer from '@/maps/vector/layers/VectorLocationAnalyticsDotsLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -45,7 +45,7 @@ const emit = defineEmits(['marker-click', 'open-place-details'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorLocationAnalyticsDotsLayer : RasterLocationAnalyticsDotsLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorLocationAnalyticsDotsLayer : RasterLocationAnalyticsDotsLayer)
 
 defineExpose({
   implRef

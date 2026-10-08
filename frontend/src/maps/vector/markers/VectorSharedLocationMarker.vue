@@ -5,7 +5,7 @@
 <script setup>
 import { onUnmounted, watch } from 'vue'
 import { t } from '@/locales'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
 import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'

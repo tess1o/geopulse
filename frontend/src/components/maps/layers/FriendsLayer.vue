@@ -16,7 +16,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterFriendsLayer from '@/maps/raster/layers/RasterFriendsLayer.vue'
-import VectorFriendsLayer from '@/maps/vector/layers/VectorFriendsLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -50,7 +50,7 @@ const emit = defineEmits(['friend-click', 'friend-hover'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorFriendsLayer : RasterFriendsLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorFriendsLayer : RasterFriendsLayer)
 
 const getMarkerByFriend = (...args) => implRef.value?.getMarkerByFriend?.(...args)
 const focusOnFriend = (...args) => implRef.value?.focusOnFriend?.(...args)

@@ -38,7 +38,7 @@ export default {
         buildings3d: {
             title: '3D buildings',
             description: 'Show building shapes on compatible vector maps.',
-            details: 'Available only for MapTiler styles with building height data.'
+            details: 'Available only for MapTiler styles with building height data. Buildings appear when you zoom in to street level.'
         },
         rasterTiles: {
             title: 'Custom raster tiles',

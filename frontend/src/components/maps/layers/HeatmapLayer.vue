@@ -20,7 +20,7 @@
 <script setup>
 import { computed } from 'vue'
 import RasterHeatmapLayer from '@/maps/raster/layers/RasterHeatmapLayer.vue'
-import VectorHeatmapLayer from '@/maps/vector/layers/VectorHeatmapLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { HEATMAP_GRADIENTS } from '@/maps/shared/mapAppearance'
 
@@ -80,5 +80,5 @@ const props = defineProps({
 })
 
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorHeatmapLayer : RasterHeatmapLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorHeatmapLayer : RasterHeatmapLayer)
 </script>

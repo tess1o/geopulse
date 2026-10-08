@@ -29,4 +29,15 @@ describe('LocationDetailsHeader', () => {
     await wrapper.get('.back-button').trigger('click')
     expect(wrapper.emitted('back')).toHaveLength(1)
   })
+
+  it('renders the subtitle slot in place of the subtitle prop', () => {
+    const wrapper = shallowMount(LocationDetailsHeader, {
+      props: { title: 'Cafe', subtitle: 'Kyiv, Ukraine' },
+      slots: { subtitle: '<a class="city-link">Kyiv</a>' },
+      global: { stubs: { Button } }
+    })
+
+    expect(wrapper.get('.identity-copy p .city-link').text()).toBe('Kyiv')
+    expect(wrapper.text()).not.toContain('Kyiv, Ukraine')
+  })
 })

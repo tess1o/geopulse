@@ -37,6 +37,17 @@
         :back-label="t('common.back')"
         @back="goBack"
       >
+        <template v-if="placeDetails.city || placeDetails.country" #subtitle>
+          <RouterLink
+            v-if="placeDetails.city"
+            :to="`/app/location-analytics/city/${encodeURIComponent(placeDetails.city)}`"
+            class="detail-link"
+          >{{ placeDetails.city }}</RouterLink><template v-if="placeDetails.city && placeDetails.country">, </template><RouterLink
+            v-if="placeDetails.country"
+            :to="`/app/location-analytics/country/${encodeURIComponent(placeDetails.country)}`"
+            class="detail-link"
+          >{{ placeDetails.country }}</RouterLink>
+        </template>
         <template #metadata>
           <Tag :value="placeTypeLabel" :severity="placeType === 'favorite' ? 'success' : 'info'" />
           <span v-if="displayCoordinates" class="place-coordinates">
@@ -854,6 +865,16 @@ watch(
 </script>
 
 <style scoped>
+.detail-link {
+  color: var(--gp-primary-text);
+  font-weight: 600;
+  text-underline-offset: .18em;
+}
+
+.detail-link:hover {
+  color: var(--gp-primary-text);
+}
+
 .place-coordinates {
   display: inline-flex;
   align-items: center;

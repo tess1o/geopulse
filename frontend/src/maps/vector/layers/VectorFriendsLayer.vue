@@ -1,7 +1,7 @@
 <template></template>
 
 <script setup>
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import { readonly, ref, watch, onBeforeUnmount } from 'vue'
 import {
   createFeatureCollection,

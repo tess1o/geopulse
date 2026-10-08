@@ -13,12 +13,12 @@
     "validate:isolation": "node scripts/validate-isolated-specs.js"
   },
   "dependencies": {
-    "@playwright/test": "^1.58.1",
-    "faker": "^5.5.3",
-    "pg": "^8.11.3"
+    "@playwright/test": "1.64.0",
+    "faker": "5.5.3",
+    "pg": "8.16.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.10.9",
-    "dotenv": "^16.3.1"
+    "@types/pg": "8.15.5",
+    "dotenv": "16.6.1"
   }
 }

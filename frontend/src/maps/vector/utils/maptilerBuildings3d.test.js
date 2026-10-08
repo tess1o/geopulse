@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   MAPTILER_BUILDINGS_LAYER_ID,
+  MAPTILER_BUILDINGS_MIN_ZOOM,
   setMapTilerBuildings3dEnabled,
   supportsMapTilerBuildings3d
 } from './maptilerBuildings3d'
@@ -40,7 +41,8 @@ describe('MapTiler building extrusions', () => {
       id: MAPTILER_BUILDINGS_LAYER_ID,
       source: 'basemap',
       'source-layer': 'building',
-      type: 'fill-extrusion'
+      type: 'fill-extrusion',
+      minzoom: MAPTILER_BUILDINGS_MIN_ZOOM
     }), 'place-label')
     expect(setMapTilerBuildings3dEnabled(map, true)).toBe(true)
     expect(map.addLayer).toHaveBeenCalledTimes(1)

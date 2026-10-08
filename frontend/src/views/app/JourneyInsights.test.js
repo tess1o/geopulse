@@ -69,7 +69,8 @@ const insights = {
 }
 
 const stubs = {
-  ProgressSpinner: true
+  ProgressSpinner: true,
+  RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }
 }
 
 const mountPage = () => mount(JourneyInsights, { global: { plugins: [pinia], stubs } })
@@ -115,6 +116,13 @@ describe('JourneyInsights', () => {
     expect(wrapper.text()).toContain('Consistency streaks')
     expect(wrapper.text()).toContain('Weather explorer')
     expect(wrapper.text()).toContain('92%')
+  })
+
+  it('links visited countries and cities to their location analytics pages', () => {
+    const wrapper = mountPage()
+    const hrefs = wrapper.findAll('.places-list a').map((link) => link.attributes('href'))
+
+    expect(hrefs).toEqual(['/app/location-analytics/country/Ukraine', '/app/location-analytics/city/Kyiv'])
   })
 
   it('formats time patterns from locale-neutral backend data and resolves their MessageDescriptor insight text', () => {

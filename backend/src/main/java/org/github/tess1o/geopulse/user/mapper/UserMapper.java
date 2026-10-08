@@ -41,6 +41,7 @@ public class UserMapper {
                 .adminReadOnly(demoModeService.isAdminReadOnly(entity))
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
+                .createdAt(entity.getCreatedAt())
                 .uiPreferences(entity.getUiPreferences().withDefaults())
                 .timelineDisplay(userService.getTimelineDisplaySettings(entity))
                 .build();

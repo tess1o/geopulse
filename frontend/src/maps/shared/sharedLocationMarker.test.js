@@ -36,10 +36,8 @@ vi.mock('leaflet', () => ({
   }
 }))
 vi.mock('maplibre-gl', () => ({
-  default: {
-    Marker: function () { return mocks.vectorMarker },
-    Popup: function () { return mocks.popup }
-  }
+  Marker: function () { return mocks.vectorMarker },
+  Popup: function () { return mocks.popup }
 }))
 vi.mock('@/composables/useTimezone', () => ({useTimezone: () => ({})}))
 vi.mock('@/maps/vector/utils/maplibreLayerUtils', () => ({isMapLibreMap: () => true}))

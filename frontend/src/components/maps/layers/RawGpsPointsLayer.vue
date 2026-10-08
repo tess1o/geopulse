@@ -12,7 +12,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterRawGpsPointsLayer from '@/maps/raster/layers/RasterRawGpsPointsLayer.vue'
-import VectorRawGpsPointsLayer from '@/maps/vector/layers/VectorRawGpsPointsLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -37,7 +37,7 @@ const props = defineProps({
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
 const activeComponent = computed(() => (
-  mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorRawGpsPointsLayer : RasterRawGpsPointsLayer
+  mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorRawGpsPointsLayer : RasterRawGpsPointsLayer
 ))
 
 defineExpose({

@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:26.10.0-alpine3.24 AS build
 WORKDIR /app
 
 # Copy package.json and package-lock.json
@@ -14,7 +14,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Runtime
-FROM nginx:stable-alpine
+FROM nginx:1.30.5-alpine3.24
 WORKDIR /usr/share/nginx/html
 
 # Remove default nginx static assets

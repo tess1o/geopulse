@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { DatabaseManager } from '../setup/database-manager.js';
 import { TestData } from './test-data.js';
 import { UserFactory } from '../utils/user-factory.js';
+import { registerPageMapMode } from '../utils/map-mode-registry.js';
 
 const sanitizeSegment = (value, fallback = 'test', maxLength = 24) => {
   const sanitized = String(value ?? '')
@@ -92,6 +93,7 @@ export const test = base.extend({
   }, { auto: true }],
 
   mapE2EDebugBootstrap: [async ({ page, mapMode }, use) => {
+    registerPageMapMode(page, mapMode || 'RASTER');
     await page.addInitScript(({ mode }) => {
       window.__GP_E2E_MAP_DEBUG_ENABLED__ = true;
       window.__GP_E2E_MAP_DEBUG__ = {

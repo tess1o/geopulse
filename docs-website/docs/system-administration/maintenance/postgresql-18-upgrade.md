@@ -98,22 +98,25 @@ The dump and the reports are written to `./postgres-upgrade-backups/`:
 | `--backup-dir DIR` | Where to write the dump and reports. |
 | `--target-image IMAGE` | The PostgreSQL 18 image. By default the tag `17-3.5` is replaced with `18-3.6` in the same repository, so `imresamu/postgis:17-3.5-alpine` becomes `imresamu/postgis:18-3.6-alpine`. |
 | `--no-compose-edit` | Print the compose edits instead of making them. |
-| `--container NAME` | The PostgreSQL container (default `geopulse-postgres`). |
+| `--container NAME` | The PostgreSQL container. Default: the one in the compose project started from the current folder. |
 | `--app-containers LIST`, `--backend NAME` | Containers stopped during the upgrade, and the backend whose health is checked. By default these are the other running containers of the PostgreSQL container's compose project. |
 | `--health-timeout SEC` | How long to wait for GeoPulse after the switch (default 600). |
 | `--rollback`, `--cleanup` | See [Rolling back](#rolling-back) and [Cleaning up](#cleaning-up). |
 
 ### Several instances on one host
 
-If you run more than one GeoPulse (for example prod, dev and a demo) on the same host, upgrade them one at a time and name the PostgreSQL container of the instance you want:
+If you run more than one GeoPulse (for example prod, dev and a demo) on the same host, upgrade them one at a time, each from its own folder:
 
 ```bash
-./upgrade-postgres-18.sh --container geopulse-postgres-dev --backup-dir ./postgres-upgrade-backups-dev
+cd /srv/geopulse-dev        # the folder you run "docker compose up" in for this instance
+./upgrade-postgres-18.sh
 ```
 
-The compose file, the service name, the volume and the containers to stop are all read from that container's compose project, so the other instances keep running. The script lists what it will stop before it asks to continue. Use the same `--container` for `--rollback` and `--cleanup`.
+The script picks the PostgreSQL container of the compose project started from the current folder, and stops only that project's other containers, so the other instances keep running. It prints the instance it picked (`Instance: ...`) before doing anything else. Use `--container <name>` to choose the instance explicitly, and use the same folder or `--container` for `--rollback` and `--cleanup`.
 
-For a PostgreSQL container that is not managed by Docker Compose, pass `--app-containers` and `--backend` yourself; the script does not guess.
+Outside a project folder, the script only guesses when the host has a single PostgreSQL container; otherwise it lists them and asks for `--container`. For a PostgreSQL container that is not managed by Docker Compose, also pass `--app-containers` and `--backend`.
+
+Each instance's backend image must include the PostgreSQL 18 client tools, so update that instance's GeoPulse first.
 
 ### ARM64 (Raspberry Pi)
 

@@ -14,7 +14,7 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { buildTripPlanItemPopupModel } from '@/maps/shared/popups/tripPlanPopupModel'

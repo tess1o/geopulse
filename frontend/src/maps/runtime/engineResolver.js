@@ -1,8 +1,10 @@
 import { normalizeMapRenderMode } from '@/maps/contracts/mapContracts'
+import { loadVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 
 const ENGINE_MODULE_LOADERS = {
   RASTER: () => import('@/maps/raster/RasterMapHost.vue'),
-  VECTOR: () => import('@/maps/vector/VectorMapHost.vue')
+  // The vector layers/adapters must be ready before VectorMapHost creates a map that they will be asked to render on.
+  VECTOR: () => Promise.all([import('@/maps/vector/VectorMapHost.vue'), loadVectorEngine()]).then(([module]) => module)
 }
 
 const componentCache = new Map()

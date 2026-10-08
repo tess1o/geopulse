@@ -3,19 +3,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const popups = []
 vi.mock('maplibre-gl', () => ({
-  default: {
-    Popup: class {
-      constructor(options) {
-        this.options = options
-        popups.push(this)
-      }
-
-      setLngLat(value) { this.lngLat = value; return this }
-      setDOMContent(value) { this.element = value; return this }
-      addTo() { return this }
-      on() { return this }
-      remove() { this.removed = true }
+  Popup: class {
+    constructor(options) {
+      this.options = options
+      popups.push(this)
     }
+
+    setLngLat(value) { this.lngLat = value; return this }
+    setDOMContent(value) { this.element = value; return this }
+    addTo() { return this }
+    on() { return this }
+    remove() { this.removed = true }
   }
 }))
 import VectorPanoramaxLayer from './VectorPanoramaxLayer.vue'

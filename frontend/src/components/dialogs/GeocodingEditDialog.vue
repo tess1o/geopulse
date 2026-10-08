@@ -118,7 +118,7 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { MapContainer } from '@/components/maps'
 import L from 'leaflet'
-import maplibregl from 'maplibre-gl'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const { t } = useI18n()
@@ -209,6 +209,7 @@ const createVectorMarkerElement = () => {
 }
 
 const createVectorGeocodingMapAdapter = (map) => {
+  const { maplibregl } = getVectorEngine()
   let marker = null
 
   const clear = () => {

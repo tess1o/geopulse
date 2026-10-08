@@ -17,7 +17,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RasterFavoritesLayer from '@/maps/raster/layers/RasterFavoritesLayer.vue'
-import VectorFavoritesLayer from '@/maps/vector/layers/VectorFavoritesLayer.vue'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
@@ -43,7 +43,7 @@ const emit = defineEmits(['favorite-click', 'favorite-hover', 'favorite-edit', '
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
-const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorFavoritesLayer : RasterFavoritesLayer)
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? getVectorEngine().VectorFavoritesLayer : RasterFavoritesLayer)
 
 const getMarkerByFavorite = (...args) => implRef.value?.getMarkerByFavorite?.(...args)
 const focusOnFavorite = (...args) => implRef.value?.focusOnFavorite?.(...args)

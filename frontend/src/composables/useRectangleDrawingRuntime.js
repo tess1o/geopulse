@@ -5,14 +5,10 @@ import {
   isVectorMapInstance,
   MAP_RENDER_MODES
 } from '@/maps/contracts/mapContracts'
-import {
-  ensureGeoJsonSource,
-  ensureLayer,
-  getMapLibreSource,
-  hasMapLibreLayer,
-  removeLayers,
-  removeSources
-} from '@/maps/vector/utils/maplibreLayerUtils'
+import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
+
+// MapLibre layer helpers live in the lazily loaded vector engine; only the vector code paths below use them.
+const vectorLayerUtils = () => getVectorEngine().maplibreLayerUtils
 
 const MIN_RECTANGLE_SIZE = 0.00001
 
@@ -166,7 +162,7 @@ export function useRectangleDrawingRuntime(options = {}) {
   }
 
   const ensureVectorSource = (sourceId, coordinates) => {
-    const source = getMapLibreSource(map, sourceId)
+    const source = vectorLayerUtils().getMapLibreSource(map, sourceId)
     const data = createPolygonFeatureCollection(coordinates)
 
     if (source && typeof source.setData === 'function') {
@@ -174,15 +170,15 @@ export function useRectangleDrawingRuntime(options = {}) {
       return
     }
 
-    ensureGeoJsonSource(map, sourceId, data)
+    vectorLayerUtils().ensureGeoJsonSource(map, sourceId, data)
   }
 
   const ensureVectorLineLayer = (layerId, sourceId, options = {}) => {
-    if (hasMapLibreLayer(map, layerId)) {
+    if (vectorLayerUtils().hasMapLibreLayer(map, layerId)) {
       return
     }
 
-    ensureLayer(map, {
+    vectorLayerUtils().ensureLayer(map, {
       id: layerId,
       type: 'line',
       source: sourceId,
@@ -200,11 +196,11 @@ export function useRectangleDrawingRuntime(options = {}) {
   }
 
   const removeVectorLayer = (layerId) => {
-    removeLayers(map, [layerId])
+    vectorLayerUtils().removeLayers(map, [layerId])
   }
 
   const removeVectorSource = (sourceId) => {
-    removeSources(map, [sourceId])
+    vectorLayerUtils().removeSources(map, [sourceId])
   }
 
   const removeVectorPreview = () => {
