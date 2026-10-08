@@ -622,7 +622,7 @@ For restore:
 5. If the backend does not come back automatically, restart or replace only the backend pod while keeping the backup PVC attached.
 6. After validating the restored data, clean up any retained previous database using the exact name recorded by the restore journal.
 
-The native backend image includes PostgreSQL 17 client tools, matching the chart's bundled PostgreSQL 17 server. If you use a custom backend image or external PostgreSQL with a different major version, ensure `pg_dump` and `pg_restore` in the backend match the server major version, or set `GEOPULSE_BACKUP_BINARY_DIRECTORY` through `backend.extraEnv`.
+The backend images include PostgreSQL 17 and 18 client tools and use the ones matching the server, so the bundled PostgreSQL and external PostgreSQL 17 or 18 work without configuration. For other major versions, or a custom backend image, provide matching `pg_dump` and `pg_restore` and point `GEOPULSE_BACKUP_BINARY_DIRECTORY` at them through `backend.extraEnv`.
 
 ### Self-Hosted Geocoding
 
@@ -724,7 +724,7 @@ serviceMonitor:
 |-------------------------------------|---------------------------|-------------------|
 | `postgres.enabled`                  | Deploy PostgreSQL         | `true`            |
 | `postgres.image.repository`         | PostgreSQL image          | `postgis/postgis` |
-| `postgres.image.tag`                | PostgreSQL image tag      | `17-3.5`          |
+| `postgres.image.tag`                | PostgreSQL image tag      | `18-3.6`          |
 | `postgres.persistence.enabled`      | Enable persistence        | `true`            |
 | `postgres.persistence.size`         | PVC size                  | `10Gi`            |
 | `postgres.persistence.storageClass` | Storage class             | `""`              |

@@ -22,11 +22,9 @@ import java.util.zip.*;
 public final class NativeDatabaseBackup {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final NativeBackupContext context;
-    private final PgTools tools;
 
     public NativeDatabaseBackup(NativeBackupContext context) {
         this.context = context;
-        tools = new PgTools(context);
     }
 
     public void write(Path output, char[] password, Instant deadline, String operationId) throws Exception {
@@ -38,6 +36,7 @@ public final class NativeDatabaseBackup {
             snapshot.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             snapshot.setReadOnly(true);
             NativeBackupManifest manifest = describe(snapshot);
+            PgTools tools = new PgTools(context, manifest.postgresMajor);
             int pgDumpMajor = tools.major(operationId, "pg_dump");
             if (pgDumpMajor != manifest.postgresMajor) {
                 log.error("Backup operation {} pg_dump/server major mismatch; toolMajor={}; serverMajor={}",
@@ -122,18 +121,27 @@ public final class NativeDatabaseBackup {
             state.keyFingerprint = destination.fingerprint();
             phase.accept(RestorePhase.PREFLIGHT);
             List<Map<String, Object>> localSettings;
+            int serverMajor;
             try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(live, deadline)) {
                 NativeBackupManifest local = describe(live);
-                boolean incompatible = manifest.postgresMajor != local.postgresMajor || !manifest.migrations.equals(local.migrations);
+                serverMajor = local.postgresMajor;
+                // A backup restores onto the same or a newer PostgreSQL major (e.g. 17 -> 18), never onto an older one.
+                if (manifest.postgresMajor > serverMajor)
+                    throw new IOException("Backup was created on PostgreSQL " + manifest.postgresMajor
+                            + " and cannot be restored onto older PostgreSQL " + serverMajor);
+                boolean incompatible = !manifest.migrations.equals(local.migrations);
                 if (incompatible || !Objects.equals(manifest.schemaFingerprint, local.schemaFingerprint)) {
                     logRestoreManifestMismatch(state.operationId, manifest, local);
                     if (incompatible)
-                        throw new IOException("Backup requires the same Flyway migration history and PostgreSQL major version");
+                        throw new IOException("Backup requires the same Flyway migration history");
                 }
                 localSettings = rows(live, "SELECT * FROM system_settings WHERE key LIKE 'backup.%' ORDER BY key");
             }
-            if (tools.major(state.operationId, "pg_restore") != manifest.postgresMajor)
+            PgTools tools = new PgTools(context, serverMajor);
+            // pg_restore reads archives written by older pg_dump majors.
+            if (tools.major(state.operationId, "pg_restore") != serverMajor)
                 throw new IOException("pg_restore must match the server PostgreSQL major version");
+            Map<String, String> extensions;
             try (Connection admin = context.postgres().connect(context.postgres().maintenanceDatabase(), true); ConnectionDeadline guard = new ConnectionDeadline(admin, deadline)) {
                 state.originalDatabase = context.postgres().database();
                 state.originalOid = databaseOid(admin, state.originalDatabase);
@@ -141,7 +149,8 @@ public final class NativeDatabaseBackup {
                 state.stagingDatabase = "gp_restore_" + suffix;
                 state.previousDatabase = "gp_previous_" + suffix;
                 context.journal().write(state);
-                createStaging(admin, state, manifest);
+                extensions = extensionVersions(admin, manifest, serverMajor);
+                createStaging(admin, state);
                 state.stagingOid = databaseOid(admin, state.stagingDatabase);
                 context.journal().write(state);
                 log.info("Restore operation {} created staging database {}", state.operationId, state.stagingDatabase);
@@ -149,7 +158,7 @@ public final class NativeDatabaseBackup {
             phase.accept(RestorePhase.RESTORING);
             Set<String> installedSchemas = new HashSet<>();
             try (Connection staging = context.postgres().connect(state.stagingDatabase, true); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
-                installExtensions(staging, manifest);
+                installExtensions(staging, extensions);
                 for (List<String> schema : strings(staging, "SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'"))
                     installedSchemas.add(schema.get(0));
             }
@@ -182,7 +191,7 @@ public final class NativeDatabaseBackup {
                 phase.accept(RestorePhase.VALIDATING);
                 NativeBackupManifest restored = describe(staging);
                 if (!manifest.schemaFingerprint.equals(restored.schemaFingerprint) || !manifest.migrations.equals(restored.migrations)
-                        || !manifest.extensions.equals(restored.extensions))
+                        || !extensions.equals(restored.extensions))
                     throw new IOException("Restored database metadata does not match the backup");
                 validate(staging);
                 checkDeadline(deadline);
@@ -298,6 +307,8 @@ public final class NativeDatabaseBackup {
         // PostgreSQL rewrites equivalent CHECK casts while restoring (array casts become element casts).
         // Compare structural identities here; Flyway checksums establish the application definitions and
         // pg_restore builds/validates the actual constraints from the authenticated native dump.
+        // PostgreSQL 18 also catalogs NOT NULL as contype 'n'; attnotnull above already covers it, and skipping
+        // those rows keeps fingerprints identical across majors (and unchanged for PostgreSQL 17 backups).
         schema.addAll(strings(connection, """
                 SELECT conrelid::regclass::text, conname, contype::text,
                        ARRAY(SELECT a.attname FROM unnest(conkey) WITH ORDINALITY k(attnum,ord)
@@ -306,7 +317,7 @@ public final class NativeDatabaseBackup {
                        ARRAY(SELECT a.attname FROM unnest(confkey) WITH ORDINALITY k(attnum,ord)
                              JOIN pg_attribute a ON a.attrelid=confrelid AND a.attnum=k.attnum ORDER BY ord)::text,
                        confupdtype::text, confdeltype::text, condeferrable::text, condeferred::text, convalidated::text
-                FROM pg_constraint WHERE connamespace='public'::regnamespace
+                FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype <> 'n'
                 ORDER BY conrelid::regclass::text, conname
                 """));
         // Catalog order can change when pg_restore recreates objects even when every structural row is identical.
@@ -314,17 +325,40 @@ public final class NativeDatabaseBackup {
         return schema;
     }
 
-    private void createStaging(Connection admin, RestoreState state, NativeBackupManifest manifest) throws Exception {
+    /**
+     * Same-major restores need the exact extension versions. A backup from an older major gets the server's
+     * default versions instead (PostGIS 3.5 is not installable next to PostgreSQL 18), as a dump/restore upgrade would.
+     */
+    private static Map<String, String> extensionVersions(Connection admin, NativeBackupManifest manifest, int serverMajor) throws Exception {
+        Map<String, String> versions = new TreeMap<>();
         for (var ext : manifest.extensions.entrySet()) {
             try (PreparedStatement check = admin.prepareStatement("SELECT 1 FROM pg_available_extension_versions WHERE name=? AND version=?")) {
                 check.setString(1, ext.getKey());
                 check.setString(2, ext.getValue());
                 try (ResultSet rs = check.executeQuery()) {
-                    if (!rs.next())
-                        throw new IOException("Required PostgreSQL extension version is not available: " + ext.getKey());
+                    if (rs.next()) {
+                        versions.put(ext.getKey(), ext.getValue());
+                        continue;
+                    }
                 }
             }
+            String fallback = null;
+            if (manifest.postgresMajor < serverMajor) {
+                try (PreparedStatement query = admin.prepareStatement("SELECT default_version FROM pg_available_extensions WHERE name=?")) {
+                    query.setString(1, ext.getKey());
+                    try (ResultSet rs = query.executeQuery()) {
+                        if (rs.next()) fallback = rs.getString(1);
+                    }
+                }
+            }
+            if (fallback == null)
+                throw new IOException("Required PostgreSQL extension version is not available: " + ext.getKey());
+            versions.put(ext.getKey(), fallback);
         }
+        return versions;
+    }
+
+    private void createStaging(Connection admin, RestoreState state) throws Exception {
         try (PreparedStatement query = admin.prepareStatement("SELECT pg_encoding_to_char(encoding), datcollate, datctype, datlocprovider FROM pg_database WHERE oid=?")) {
             query.setLong(1, state.originalOid);
             try (ResultSet rs = query.executeQuery()) {
@@ -336,8 +370,8 @@ public final class NativeDatabaseBackup {
         }
     }
 
-    private void installExtensions(Connection staging, NativeBackupManifest manifest) throws SQLException {
-        for (var ext : manifest.extensions.entrySet()) {
+    private void installExtensions(Connection staging, Map<String, String> extensions) throws SQLException {
+        for (var ext : extensions.entrySet()) {
             execute(staging, "CREATE EXTENSION IF NOT EXISTS " + PostgresTarget.quote(ext.getKey()) + " VERSION " + literal(ext.getValue()) + " CASCADE");
         }
         // Extension config tables may be included in pg_dump, but are owned by the installer rather than the app role.

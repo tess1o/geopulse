@@ -1,10 +1,12 @@
 package org.github.tess1o.geopulse.admin.backup;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -12,10 +14,27 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class PgTools {
-    private final NativeBackupContext context;
+    // Alpine, PGDG RPM and Debian layouts. Images ship clients for several majors side by side.
+    private static final List<String> CLIENT_DIRECTORIES = List.of("/usr/libexec/postgresql%d", "/usr/pgsql-%d/bin", "/usr/lib/postgresql/%d/bin");
 
-    public PgTools(NativeBackupContext context) {
+    private final NativeBackupContext context;
+    private final String binaryDirectory;
+
+    public PgTools(NativeBackupContext context, int serverMajor) {
         this.context = context;
+        binaryDirectory = binaryDirectory(context.binaryDirectory(), serverMajor, Files::isDirectory);
+    }
+
+    /**
+     * A configured directory always wins; otherwise the packaged clients for the server's major; blank means PATH.
+     */
+    static String binaryDirectory(String configured, int serverMajor, Predicate<Path> exists) {
+        if (configured != null && !configured.isBlank()) return configured;
+        for (String pattern : CLIENT_DIRECTORIES) {
+            Path candidate = Path.of(pattern.formatted(serverMajor));
+            if (exists.test(candidate)) return candidate.toString();
+        }
+        return "";
     }
 
     public int major(String operationId, String tool) throws IOException {
@@ -29,7 +48,7 @@ public final class PgTools {
     public void run(String operationId, String tool, List<String> arguments, String database, boolean admin,
                     OutputStream output, Instant deadline) throws IOException {
         List<String> command = new ArrayList<>();
-        command.add(context.binaryDirectory().isBlank() ? tool : Path.of(context.binaryDirectory(), tool).toString());
+        command.add(binaryDirectory.isBlank() ? tool : Path.of(binaryDirectory, tool).toString());
         command.addAll(arguments);
         ProcessBuilder builder = new ProcessBuilder(command);
         Map<String, String> env = builder.environment();

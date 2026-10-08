@@ -210,9 +210,11 @@ postgres:
   # Set to false if using external PostgreSQL
   enabled: true
 
+  # PostgreSQL 18. Releases deployed with 17-3.5 must migrate first with helm/upgrade-postgres-18.sh;
+  # see https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade
   image:
     repository: postgis/postgis
-    tag: "17-3.5"
+    tag: "18-3.6"
     pullPolicy: IfNotPresent
 
   service:

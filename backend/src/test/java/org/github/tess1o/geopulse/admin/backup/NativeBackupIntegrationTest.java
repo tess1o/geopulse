@@ -31,18 +31,28 @@ class NativeBackupIntegrationTest {
     @BeforeAll
     static void startDatabase() throws Exception {
         root = Files.createTempDirectory(Path.of(System.getProperty("user.home")), ".geopulse-native-backup-test-");
-        postgres = new PostgreSQLContainer(DockerImageName.parse("postgis/postgis:17-3.5").asCompatibleSubstituteFor("postgres"))
+        postgres = start("postgis/postgis:18-3.6");
+        tools(postgres, "bin");
+    }
+
+    static PostgreSQLContainer start(String image) {
+        PostgreSQLContainer container = new PostgreSQLContainer(DockerImageName.parse(image).asCompatibleSubstituteFor("postgres"))
                 .withUsername("postgres").withPassword("test-password").withDatabaseName("test")
                 .withFileSystemBind(root.toString(), root.toString(), BindMode.READ_WRITE);
-        postgres.start();
-        Path bin = Files.createDirectories(root.resolve("bin"));
+        container.start();
+        return container;
+    }
+
+    static Path tools(PostgreSQLContainer container, String name) throws Exception {
+        Path bin = Files.createDirectories(root.resolve(name));
         for (String tool : List.of("pg_dump", "pg_restore")) {
             // Execute the container's matching client version; the extracted dump is in the shared mount.
             Path script = bin.resolve(tool);
             Files.writeString(script, "#!/bin/sh\nexec docker exec -i -e PGDATABASE -e PGUSER -e PGPASSWORD -e PGAPPNAME "
-                    + postgres.getContainerId() + " " + tool + " \"$@\" 2>" + root.resolve(tool + "-stderr") + "\n");
+                    + container.getContainerId() + " " + tool + " \"$@\" 2>" + root.resolve(name + "-" + tool + "-stderr") + "\n");
             assertThat(script.toFile().setExecutable(true)).isTrue();
         }
+        return bin;
     }
 
     @AfterAll
@@ -58,6 +68,15 @@ class NativeBackupIntegrationTest {
         sourceKey = KeyCipher.load(source.keyLocation());
         destinationKey = KeyCipher.load(destination.keyLocation());
         archive = root.resolve(UUID.randomUUID() + ".gpb");
+        seedSource();
+        try (Connection c = destination.postgres().connect(destination.postgres().database(), false)) {
+            execute(c, "INSERT INTO users(id,email,emailverified,password_hash,role,is_active) VALUES (gen_random_uuid(),'original@destination.test',true,'original-hash','ADMIN',true)");
+            setting(c, "backup.password", "destination saved password", true, destinationKey);
+            setting(c, "backup.local.path", "/destination/backups", false, destinationKey);
+        }
+    }
+
+    private void seedSource() throws Exception {
         try (Connection c = source.postgres().connect(source.postgres().database(), false)) {
             execute(c, "INSERT INTO users(id,email,emailverified,password_hash,role,is_active,full_name) VALUES ('" + user + "','admin@source.test',true,'password-hash','ADMIN',true,'0')");
             setting(c, "test.snapshot", "0", false, sourceKey);
@@ -84,22 +103,21 @@ class NativeBackupIntegrationTest {
             }
             execute(c, "INSERT INTO gps_points(user_id,coordinates,timestamp,source_type) VALUES ('" + user + "',ST_SetSRID(ST_MakePoint(30.5,50.4),4326),now(),'OWNTRACKS')");
         }
-        try (Connection c = destination.postgres().connect(destination.postgres().database(), false)) {
-            execute(c, "INSERT INTO users(id,email,emailverified,password_hash,role,is_active) VALUES (gen_random_uuid(),'original@destination.test',true,'original-hash','ADMIN',true)");
-            setting(c, "backup.password", "destination saved password", true, destinationKey);
-            setting(c, "backup.local.path", "/destination/backups", false, destinationKey);
-        }
     }
 
     private NativeBackupContext installation(String prefix) throws Exception {
+        return installation(prefix, postgres, root.resolve("bin"));
+    }
+
+    private NativeBackupContext installation(String prefix, PostgreSQLContainer server, Path bin) throws Exception {
         String name = "gp_" + prefix + "_" + UUID.randomUUID().toString().replace("-", "");
         Path dir = Files.createDirectories(root.resolve(name));
         byte[] key = new byte[32];
         new java.security.SecureRandom().nextBytes(key);
         Path keyPath = Files.writeString(dir.resolve("key"), Base64.getEncoder().encodeToString(key));
         keyPath.toFile().setReadOnly();
-        PostgresTarget target = new PostgresTarget(postgres.getJdbcUrl().replace("/test", "/" + name), "postgres", "test-password", "", "", "postgres", "test-" + UUID.randomUUID());
-        NativeBackupContext context = new NativeBackupContext(target, dir, root.resolve("bin").toString(), keyPath.toString(), "test-version");
+        PostgresTarget target = new PostgresTarget(server.getJdbcUrl().replace("/test", "/" + name), "postgres", "test-password", "", "", "postgres", "test-" + UUID.randomUUID());
+        NativeBackupContext context = new NativeBackupContext(target, dir, bin.toString(), keyPath.toString(), "test-version");
         try (Connection c = target.connect("postgres", true)) {
             execute(c, "CREATE DATABASE " + PostgresTarget.quote(name) + " TEMPLATE template0");
         }
@@ -217,6 +235,41 @@ class NativeBackupIntegrationTest {
         try (Connection control = another.postgres().connect("postgres", true)) {
             assertThat(databaseOid(control, another.postgres().database())).isEqualTo(original);
             assertThat(databaseOid(control, "gp_rollback_probe")).isZero();
+        }
+    }
+
+    @Test
+    void olderMajorBackupRestoresOntoNewerServerButNeverTheReverse() throws Exception {
+        try (PostgreSQLContainer older = start("postgis/postgis:17-3.5")) {
+            Path olderBin = tools(older, "bin-17");
+            source = installation("src17", older, olderBin);
+            sourceKey = KeyCipher.load(source.keyLocation());
+            seedSource();
+            new NativeDatabaseBackup(source).write(archive, password, deadline(), "integration-backup-17");
+
+            RestoreState state = prepare();
+            assertOriginalUntouched();
+            try (Connection c = destination.postgres().connect(state.stagingDatabase, false)) {
+                assertThat(scalar(c, "SELECT ST_AsText(coordinates) FROM gps_points")).isEqualTo("POINT(30.5 50.4)");
+                assertThat(decrypt(c, "SELECT client_secret_encrypted FROM oidc_providers")).isEqualTo("OIDC secret");
+                assertThat(decrypt(c, "SELECT value FROM system_settings WHERE key='backup.password'")).isEqualTo("destination saved password");
+                assertThat(scalar(c, "SELECT nextval('gps_points_id_seq')")).isEqualTo("2");
+                assertThat(scalar(c, "SELECT extversion FROM pg_extension WHERE extname='postgis'"))
+                        .isEqualTo(scalar(c, "SELECT default_version FROM pg_available_extensions WHERE name='postgis'"));
+            }
+            new DatabaseCutover(destination.postgres()).activate(state);
+            try (Connection c = destination.postgres().connect(destination.postgres().database(), false)) {
+                assertThat(scalar(c, "SELECT email FROM users")).isEqualTo("admin@source.test");
+            }
+
+            Path newerArchive = root.resolve(UUID.randomUUID() + ".gpb");
+            new NativeDatabaseBackup(destination).write(newerArchive, password, deadline(), "integration-backup-18");
+            NativeBackupContext olderDestination = installation("dst17", older, olderBin);
+            RestoreState refused = new RestoreState();
+            refused.fileName = newerArchive.getFileName().toString();
+            assertThatThrownBy(() -> new NativeDatabaseBackup(olderDestination).prepare(newerArchive, password, refused, deadline(), p -> {
+            })).hasMessageContaining("cannot be restored onto older PostgreSQL 17");
+            assertThat(refused.stagingDatabase).isNull();
         }
     }
 

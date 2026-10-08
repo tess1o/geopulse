@@ -117,6 +117,11 @@ const sidebars = {
                     id: 'system-administration/maintenance/updating',
                     label: 'Upgrading GeoPulse',
                 },
+                {
+                    type: 'doc',
+                    id: 'system-administration/maintenance/postgresql-18-upgrade',
+                    label: 'Upgrading to PostgreSQL 18',
+                },
             ],
         },
         {

@@ -64,7 +64,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                 String postgisImage = System.getenv("GEOPULSE_TEST_POSTGIS_IMAGE");
                 if (postgisImage == null || postgisImage.isBlank()) {
                     // Keep test DB behavior aligned with CI and production.
-                    postgisImage = "postgis/postgis:17-3.5";
+                    postgisImage = "postgis/postgis:18-3.6";
                 }
                 var postgis = DockerImageName.parse(postgisImage)
                         .asCompatibleSubstituteFor("postgres");

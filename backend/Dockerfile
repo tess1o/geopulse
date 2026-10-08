@@ -34,8 +34,9 @@ COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/quarkus/ /app/q
 FROM eclipse-temurin:25-jdk-alpine
 WORKDIR /app
 
-# The full-backup format requires clients matching the bundled PostgreSQL 17 server.
-RUN apk add --no-cache postgresql17-client
+# Full backups need pg_dump/pg_restore matching the server major. Both majors are installed side by side
+# (/usr/libexec/postgresqlNN) so installations still on PostgreSQL 17 keep working after 18 became the default.
+RUN apk add --no-cache postgresql17-client postgresql18-client
 
 # Create directories and set permissions for arbitrary UIDs and GIDs
 # Supports both OpenShift pattern (any UID with GID 0) and standard docker-compose (any UID:GID)

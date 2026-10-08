@@ -108,6 +108,24 @@ configure a LoadBalancer or NodePort service.
 
 {{- end }}
 
+{{- if and .Values.postgres.enabled (hasPrefix "18" (toString .Values.postgres.image.tag)) .Release.IsUpgrade }}
+
+--------------------------------------------------------------------------------
+POSTGRESQL 18
+--------------------------------------------------------------------------------
+
+This chart runs PostgreSQL 18. If this release previously ran PostgreSQL 17,
+PostgreSQL will not start ("database files are incompatible with server") until
+the data is migrated. No data is lost. Migrate with helm/upgrade-postgres-18.sh.
+To go back to PostgreSQL 17 first:
+
+  helm rollback {{ .Release.Name }} -n {{ .Release.Namespace }}
+  kubectl -n {{ .Release.Namespace }} delete pod {{ include "geopulse.fullname" . }}-postgres-0
+
+  https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade
+
+{{- end }}
+
 --------------------------------------------------------------------------------
 NEXT STEPS
 --------------------------------------------------------------------------------

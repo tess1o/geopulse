@@ -41,7 +41,7 @@ The Unraid compose files use conservative defaults for homelab hardware:
 |-----------|---------------|--------|
 | Backend | `tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat` | Safest default for older Intel/AMD Unraid systems. |
 | Frontend | `tess1o/geopulse-ui:${GEOPULSE_VERSION}` | Same UI image used by Docker Compose installs. |
-| Postgres/PostGIS | `postgis/postgis:17-3.5` | Unraid runs on x86_64, so the standard PostGIS image is the right default. |
+| Postgres/PostGIS | `postgis/postgis:18-3.6` | Unraid runs on x86_64, so the standard PostGIS image is the right default. Installations created before PostgreSQL 18 keep `17-3.5` until they [upgrade](../../system-administration/maintenance/postgresql-18-upgrade.md#unraid). |
 
 For modern CPUs, edit the backend image in the Unraid compose file:
 
@@ -197,7 +197,8 @@ image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
 **Database does not start**
 
 - Confirm `/mnt/user/appdata/geopulse/postgres` is writable.
-- Keep the standard `postgis/postgis:17-3.5` image on Unraid.
+- Keep the standard `postgis/postgis` image on Unraid: `18-3.6` for new installations, `17-3.5` for installations that have not been [upgraded to PostgreSQL 18](../../system-administration/maintenance/postgresql-18-upgrade.md#unraid).
+- If the log says `in 18+, these Docker images are configured to store database data in a format which is compatible with "pg_ctlcluster"`, the image was changed to PostgreSQL 18 without migrating the data. See [Troubleshooting](../../system-administration/maintenance/postgresql-18-upgrade.md#troubleshooting).
 - Do not switch to the ARM64 PostGIS image unless you are running outside normal Unraid hardware.
 
 **Keys are missing**

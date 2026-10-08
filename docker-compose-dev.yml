@@ -46,7 +46,7 @@ services:
       - geopulse-backend-dev
 
   geopulse-postgres-dev:
-    image: postgis/postgis:17-3.5
+    image: postgis/postgis:18-3.6
     container_name: geopulse-postgres-dev
     restart: unless-stopped
     environment:
@@ -56,7 +56,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - postgres-data-dev:/var/lib/postgresql/data
+      - postgres-data-dev:/var/lib/postgresql
     # Development PostgreSQL settings with enhanced logging for debugging
     # Minimal resource usage with detailed monitoring for local development
     command: >

@@ -92,7 +92,7 @@ The working directory must survive **process, container, and pod replacement**, 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
 | `GEOPULSE_BACKUP_WORK_PATH` | `/data/geopulse-backups/.work` | External restore journal, encrypted upload, temporary extracted dump |
-| `GEOPULSE_BACKUP_BINARY_DIRECTORY` | PATH (JVM); `/usr/pgsql-17/bin` (native image) | Matching-major `pg_dump` and `pg_restore` binaries |
+| `GEOPULSE_BACKUP_BINARY_DIRECTORY` | Clients matching the server, picked automatically (images ship PostgreSQL 17 and 18) | Matching-major `pg_dump` and `pg_restore` binaries |
 | `GEOPULSE_BACKUP_MAINTENANCE_DATABASE` | `postgres` | Database used for coordination and activation |
 | `GEOPULSE_BACKUP_RESTORE_USERNAME` | Application username | Optional dedicated restore role |
 | `GEOPULSE_BACKUP_RESTORE_PASSWORD` | Application password | Dedicated restore role password |
@@ -156,7 +156,7 @@ The simplest way to back up your GeoPulse database directly is using `pg_dump`:
 
 ```bash
 # Create a compressed backup with current timestamp
-docker exec -t geopulse-postgres pg_dump \
+docker exec geopulse-postgres pg_dump \
   -U ${GEOPULSE_POSTGRES_USERNAME} \
   -d ${GEOPULSE_POSTGRES_DB} \
   -F c \
@@ -171,7 +171,7 @@ Or create a plain SQL backup:
 
 ```bash
 # Plain SQL format (larger but human-readable)
-docker exec -t geopulse-postgres pg_dump \
+docker exec geopulse-postgres pg_dump \
   -U ${GEOPULSE_POSTGRES_USERNAME} \
   -d ${GEOPULSE_POSTGRES_DB} \
   > geopulse-backup-$(date +%Y%m%d-%H%M%S).sql
@@ -260,7 +260,7 @@ mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="$BACKUP_DIR/geopulse-$(date +%Y%m%d-%H%M%S).dump"
 
 # Perform backup
-docker exec -t geopulse-postgres pg_dump \
+docker exec geopulse-postgres pg_dump \
   -U ${GEOPULSE_POSTGRES_USERNAME} \
   -d ${GEOPULSE_POSTGRES_DB} \
   -F c \
@@ -368,7 +368,7 @@ Example encrypted backup:
 
 ```bash
 # Create and encrypt backup
-docker exec -t geopulse-postgres pg_dump \
+docker exec geopulse-postgres pg_dump \
   -U ${GEOPULSE_POSTGRES_USERNAME} \
   -d ${GEOPULSE_POSTGRES_DB} \
   -F c | gpg --encrypt --recipient your@email.com \
@@ -505,7 +505,7 @@ If backups are slow with large databases:
 
 ```bash
 # Use parallel dump for faster backups (PostgreSQL 17+)
-docker exec -t geopulse-postgres pg_dump \
+docker exec geopulse-postgres pg_dump \
   -U ${GEOPULSE_POSTGRES_USERNAME} \
   -d ${GEOPULSE_POSTGRES_DB} \
   -F d \

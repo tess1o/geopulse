@@ -111,6 +111,12 @@ Configure backup password, schedule, retention, backup folder, and timeout in **
 
 For restore activation, scale the backend deployment to exactly one replica and keep PostgreSQL running. GeoPulse exits only the backend process after the database cutover; if the pod does not restart automatically, restart or replace the backend pod while keeping the backup PVC attached. External PostgreSQL must be a direct server connection with privileges for database creation, rename, session termination, PostGIS extension creation, and `SET ROLE`.
 
+### Upgrading from PostgreSQL 17
+
+The bundled database is PostgreSQL 18 (`postgis/postgis:18-3.6`). PostgreSQL 18 cannot open PostgreSQL 17 data files, so a release that ran `17-3.5` has to migrate its data. Until then the postgres pod fails with "database files are incompatible with server"; nothing is deleted.
+
+Run `helm/upgrade-postgres-18.sh` before upgrading the chart. It dumps the PostgreSQL 17 database, restores it into a new PostgreSQL 18 data directory on the same PVC, keeps the PostgreSQL 17 directory for rollback, and then upgrades the release. See the [PostgreSQL 18 upgrade guide](https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade). To stay on PostgreSQL 17 for now, set `postgres.image.tag=17-3.5`. If the chart was already upgraded and the postgres pod is crash-looping, run `helm rollback` and then delete the postgres pod (`kubectl delete pod <release>-postgres-0`); a StatefulSet does not replace a pod stuck on a broken template by itself.
+
 ### Most Common Parameters
 
 | Parameter | Description | Default |

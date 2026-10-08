@@ -54,6 +54,10 @@ Save this script as `update-geopulse.sh`, make it executable with `chmod +x upda
 
 Database migrations are handled automatically when the backend starts up. You don't need to run any manual migration commands.
 
+### PostgreSQL Version
+
+Updating GeoPulse does not change your PostgreSQL version: the `GEOPULSE_VERSION` in `.env` only selects the GeoPulse images, and `docker-compose.yml` keeps its PostgreSQL image. New installations use PostgreSQL 18; installations on PostgreSQL 17 keep working. To move to PostgreSQL 18, follow [Upgrading to PostgreSQL 18](./postgresql-18-upgrade.md) after updating GeoPulse.
+
 ### CORS/OIDC Variable Migration (Compatibility)
 
 Recent versions introduced explicit CORS and public base URL variables while keeping legacy behavior for existing setups.
@@ -79,6 +83,10 @@ Update your `values.yaml` file or chart repository to point to the new version:
 image:
   tag: "1.9.0"  # Update to the desired version
 ```
+
+:::warning PostgreSQL 18
+Recent charts use PostgreSQL 18 (`postgis/postgis:18-3.6`). A release that still runs PostgreSQL 17 must either migrate its data first with the [PostgreSQL 18 upgrade script](./postgresql-18-upgrade.md#kubernetes--helm) or keep `postgres.image.tag: "17-3.5"` in its values. Otherwise the postgres pod fails to start (no data is lost).
+:::
 
 ### Step 2: Upgrade with Helm
 

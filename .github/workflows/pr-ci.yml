@@ -59,7 +59,7 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: postgis/postgis:18-3.6
         env:
           POSTGRES_DB: geopulse_test
           POSTGRES_USER: geopulse_test

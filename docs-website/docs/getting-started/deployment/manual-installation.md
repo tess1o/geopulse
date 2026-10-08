@@ -172,8 +172,8 @@ sudo apt-get install -y curl wget tar openssl ca-certificates tzdata lsb-release
 sudo ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 sudo dpkg-reconfigure -f noninteractive tzdata
 
-# Install PostgreSQL 17 + PostGIS
-sudo apt-get install -y postgresql-17 postgresql-17-postgis-3
+# Install PostgreSQL 18 + PostGIS
+sudo apt-get install -y postgresql-18 postgresql-18-postgis-3
 
 # Install Nginx
 sudo apt-get install -y nginx
@@ -182,8 +182,8 @@ sudo apt-get install -y nginx
 # sudo apt-get install -y openjdk-25-jre-headless
 ```
 
-:::note PostgreSQL 17 Repository
-If PostgreSQL 17 is not available in your distribution's repositories, you can use PostgreSQL's official APT repository:
+:::note PostgreSQL 18 Repository
+If PostgreSQL 18 is not available in your distribution's repositories, you can use PostgreSQL's official APT repository. GeoPulse also supports PostgreSQL 17; existing installations can move to 18 later as described in [Upgrading to PostgreSQL 18](../../system-administration/maintenance/postgresql-18-upgrade.md#manual-and-proxmox-lxc-installations):
 :::
 
 ```bash
@@ -200,8 +200,8 @@ sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] htt
 # Update package lists
 sudo apt-get update
 
-# Install PostgreSQL 17
-sudo apt-get install -y postgresql-17 postgresql-17-postgis-3
+# Install PostgreSQL 18
+sudo apt-get install -y postgresql-18 postgresql-18-postgis-3
 ```
 
 ### RHEL / Rocky Linux / AlmaLinux
@@ -213,8 +213,8 @@ sudo dnf install -y curl wget tar openssl ca-certificates tzdata
 # Configure timezone (required for PostgreSQL)
 sudo ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 
-# Install PostgreSQL 17 + PostGIS
-sudo dnf install -y postgresql17-server postgresql17-contrib postgis35_17
+# Install PostgreSQL 18 + PostGIS
+sudo dnf install -y postgresql18-server postgresql18-contrib postgis36_18
 
 # Install Nginx (optional)
 sudo dnf install -y nginx
@@ -232,7 +232,7 @@ sudo dnf install -y curl wget tar openssl ca-certificates tzdata
 # Configure timezone (required for PostgreSQL)
 sudo ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 
-# Install PostgreSQL 17 + PostGIS
+# Install PostgreSQL + PostGIS (17 or newer)
 sudo dnf install -y postgresql-server postgresql-contrib postgis
 
 # Install Nginx (optional)
@@ -309,11 +309,11 @@ sudo systemctl enable postgresql
 
 ```bash
 # Initialize database cluster (first time only)
-sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
+sudo /usr/pgsql-18/bin/postgresql-18-setup initdb
 
 # Start and enable
-sudo systemctl start postgresql-17
-sudo systemctl enable postgresql-17
+sudo systemctl start postgresql-18
+sudo systemctl enable postgresql-18
 ```
 
 ### Create Database and User

@@ -165,17 +165,23 @@ for broader compatibility. Modern CPUs should use the default optimized image fo
 
 ### PostGIS On ARM64
 
-The default PostGIS image in the compose files, `postgis/postgis:17-3.5`, currently publishes an AMD64 image. On
-ARM64 hosts such as Raspberry Pi, replace the PostGIS image with `imresamu/postgis:17-3.5-alpine`:
+The default PostGIS image in the compose files, `postgis/postgis:18-3.6`, currently publishes an AMD64 image. On
+ARM64 hosts such as Raspberry Pi, replace the PostGIS image with `imresamu/postgis:18-3.6-alpine`:
 
 ```yaml
 services:
   geopulse-postgres:
-    # image: postgis/postgis:17-3.5
-    image: imresamu/postgis:17-3.5-alpine
+    # image: postgis/postgis:18-3.6
+    image: imresamu/postgis:18-3.6-alpine
 ```
 
 Keep the rest of the `geopulse-postgres` service configuration unchanged.
+
+:::info Existing installations on PostgreSQL 17
+PostgreSQL 18 mounts its volume at `/var/lib/postgresql` instead of `/var/lib/postgresql/data` and cannot open
+PostgreSQL 17 data. If your compose file still uses a `17-3.5` image, keep it as it is, or upgrade with
+[Upgrading to PostgreSQL 18](../../system-administration/maintenance/postgresql-18-upgrade.md).
+:::
 
 ### 2. Configure Environment (`.env`)
 
