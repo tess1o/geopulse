@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.39.1",
+    "title": "GeoPulse 1.39.1",
+    "highlights": [
+      "Fixed Overland uploads failing when a location message is missing fields (#619)"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.39.0"
+  },
+  {
     "version": "1.39.0",
     "title": "GeoPulse 1.39.0",
     "highlights": [
