@@ -450,8 +450,8 @@ watch(() => route.query.tab, (tab) => {
 }
 
 :deep(.format-option.selected) {
-  border-color: var(--gp-primary);
-  background: var(--p-primary-50);
+  border-color: var(--gp-primary-text);
+  background: var(--gp-primary-soft);
 }
 
 :deep(.format-radio) {

@@ -1,8 +1,12 @@
+import Screenshot from '@site/src/components/Screenshot';
+
 # Trip Workspace
 
 Trip Workspace is the per-trip execution page where you plan stops, track visit progress, and compare plan vs actual timeline data.
 
 Route: `/app/trips/:tripId`
+
+<Screenshot name="trip_workspace" alt="Trip Workspace with planned stops on the map and the Stops panel" width={1600} height={791} />
 
 ## Page structure
 
@@ -52,6 +56,8 @@ For finished trips:
   - confidence badge (`High`, `Medium`, `Low`)
 
 ## Plan item actions
+
+<Screenshot name="add_trip_plan_item" alt="Add Plan Item dialog with place search, travel mode, and nearby places" width={1600} height={736} />
 
 Each plan item supports:
 

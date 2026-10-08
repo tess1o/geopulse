@@ -34,7 +34,7 @@ const githubStats = {
 /** @type {import('@docusaurus/types').Config} */
 const config = {
     title: 'GeoPulse',
-    tagline: 'A privacy-first, self-hosted Google Timeline alternative',
+    tagline: 'A self-hosted Google Timeline alternative',
     favicon: 'img/favicon.png',
 
     // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -128,7 +128,7 @@ const config = {
     themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
-            image: 'img/geopulse-app-timeline.png',
+            image: 'img/screenshots/social-card.jpg',
             // Code samples come from x-codeSamples (scripts/code-samples.mjs); keep these in sync with that list.
             languageTabs: [
                 {language: 'curl'},

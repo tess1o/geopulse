@@ -3,6 +3,8 @@ title: Connecting Your Location Sources
 description: How to connect and configure your GPS tracking apps and devices with GeoPulse.
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # Connecting Your Location Sources
 
 The **Location Sources** page in GeoPulse is your central hub for connecting and managing external applications that send your GPS data. By integrating with third-party tracking apps, you can automatically sync your location history with GeoPulse, ensuring your timeline is always up-to-date.
@@ -11,7 +13,7 @@ You can access this page by navigating to `Location Sources` page from the menu 
 
 ---
 
-![Location Sources Page](/img/location_sources.png)
+<Screenshot name="location_sources" alt="Location Sources page with a configured OwnTracks source and setup instructions" width={1600} height={828} />
 
 ## Adding New Location Sources
 

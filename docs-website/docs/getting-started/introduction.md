@@ -3,13 +3,15 @@ title: Introduction
 description: Introduction to GeoPulse, a self-hosted Google Timeline alternative for private location history, maps, and analytics.
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # Introduction
 
 **GeoPulse** turns GPS points from your trackers, imports, and services into a private timeline of stays, trips, routes, places, photos, weather, and movement analytics, all hosted on your own server.
 
 It is built for people who want the useful parts of Google Timeline without handing their location history to someone else. You can connect live GPS sources, import old data, replay routes on a map, compare places and travel patterns, and decide exactly what is shared.
 
-![GeoPulse timeline map with route history and event cards](/img/geopulse-app-timeline.png)
+<Screenshot name="timeline" alt="GeoPulse timeline map with route history and event cards" width={1600} height={735} />
 
 ---
 
@@ -19,7 +21,7 @@ It is built for people who want the useful parts of Google Timeline without hand
 
 Connect the trackers you already use: **OwnTracks**, **Overland**, **Dawarich**, **GPSLogger**, **Home Assistant**, **Traccar**, and **Colota**. GeoPulse supports HTTP ingestion, MQTT for OwnTracks, and per-source GPS filtering so inaccurate points do not distort your timeline.
 
-![GeoPulse location sources page with configured GPS integrations](/img/location_sources.png)
+<Screenshot name="location_sources" alt="GeoPulse location sources page with configured GPS integrations" width={1600} height={828} />
 
 You can also import historical data from **GeoPulse backups**, **OwnTracks exports**, **Google Timeline**, **GPX**, **GeoJSON**, and **CSV**. Imports run in the background and can regenerate your timeline from the data you bring in.
 
@@ -35,7 +37,7 @@ View your history on vector maps or raster maps, switch to custom map tiles, and
 
 Coverage Explorer shows the streets, blocks, and areas you have already explored. Monthly trends and heatmaps help compare movement over time. Journey Insights calculates travel distance, countries and cities visited, time patterns, milestones, and badges from your timeline data.
 
-![GeoPulse Journey Insights dashboard with travel statistics and milestones](/img/journey_insights.png)
+<Screenshot name="journey_insight-card" alt="GeoPulse Journey Insights with travel statistics and milestones" width={1600} height={1000} />
 
 ### Add Context From Your Self-Hosted Stack
 
@@ -51,7 +53,7 @@ Sharing is explicit. Invite friends, choose whether they can see live location o
 
 Your location data stays on your infrastructure. GeoPulse has no telemetry or analytics beacons, supports full export and account deletion, and works for multiple users with invitations, roles, admin audit logs, and optional OIDC/SSO.
 
-Administrators can change most operational and feature settings from the UI without restarting the application. GeoPulse is also lightweight in regular use: typically around **40-100 MB RAM** and under **0.2% CPU**, with temporary spikes during imports, timeline regeneration, and other background jobs.
+Administrators can change most operational and feature settings from the UI without restarting the application. GeoPulse is also lightweight in regular use: typically around **50-100 MB RAM** and under **1% CPU**, with temporary spikes during imports, timeline regeneration, and other background jobs.
 
 Deployment options include Docker Compose, Unraid, Proxmox LXC, Kubernetes/Helm, and manual Linux installation.
 

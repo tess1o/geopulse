@@ -542,6 +542,12 @@ html.docs-wrapper[data-theme='dark'] .theme-code-block span {
     color: inherit !important;
 }
 
+/* The API theme caps code blocks at 200px. Show the whole curl sample instead; on wide screens the sticky right
+   panel scrolls when a sample is taller than the viewport, and on narrow screens the page itself does. */
+.api-code-sample .openapi-explorer__code-block code {
+    max-height: none;
+}
+
 @media (max-width: 996px) {
     .navbar {
         min-height: 3.75rem;

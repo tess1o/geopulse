@@ -4,7 +4,7 @@
   <img src="frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="180"/>
 </p>
 
-<h3 align="center">The open-source, privacy-first Google Timeline alternative.</h3>
+<h3 align="center">The self-hosted, source-available Google Timeline alternative.</h3>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSL_1.1-red" alt="License"></a>
@@ -19,7 +19,10 @@ searchable timeline of stays, trips, and movement patterns. It runs fully on you
 **Immich**, **Memos**, and **Weather** so photos, notes, and conditions appear directly on your map history.
 
 <div align="center">
-  <img src="docs-website/static/img/geopulse-app-timeline.png" alt="GeoPulse Timeline" width="800" style="border-radius: 8px;"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/timeline.webp">
+    <img src="docs-website/static/img/screenshots/light/timeline.webp" alt="GeoPulse Timeline with route map and stay and trip cards" width="800">
+  </picture>
   <p><em>Comprehensive timeline visualization with automatic trip classification.</em></p>
 </div>
 
@@ -46,7 +49,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 
 ## Why GeoPulse
 
-- **Privacy-first and self-hosted:** Your location data remains on your own infrastructure.
+- **Self-hosted, no telemetry:** Your location data remains on your own infrastructure.
 - **Open ecosystem:** Works with popular GPS apps (OwnTracks, Overland, GPSLogger, Home Assistant, Colota, Traccar) and tools like Immich, Memos, and Weather.
 - **Full data ownership:** Import historical data and export your data in standard formats anytime.
 - **Lightweight runtime:** Typically under 100MB RAM and under 1% CPU in regular usage.
@@ -95,38 +98,124 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 
 ## 📸 Feature Tour
 
-<details>
-<summary>Click to expand gallery</summary>
-
-### Dashboard
-![Dashboard overview with key activity metrics](images/dashboard.png)
-*High-level overview of your activity.*
-
-### Journey Insights
-![Journey insights with milestones and badges](images/journey_insights_full.jpg)
-*Global travel statistics, milestones, and badges.*
-
-### Monthly Trends
-![Monthly movement stats and heatmap](images/month_stats.jpg)
-*Monthly summaries and movement heatmap.*
-
-### Location Analytics
-![Location analytics map view](images/location_analytics_map.jpeg)
-*Map-first analytics similar to Timeline views.*
-
-### Country/City Stats
-![Country and city travel statistics](images/location_analytics_countries.png)
-*Track travels by country and city.*
-
-### GPS Data Management
-![Raw GPS data management interface](images/gps_data.png)
-*Inspect and manage raw location points.*
-
-### AI Assistant
-![AI chat assistant for location data questions](images/AI_Chat.png)
-*Natural-language queries for your data.*
-
-</details>
+<table>
+<tr>
+<td colspan="2" width="100%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/timeline_trip_selected.webp">
+  <img src="docs-website/static/img/screenshots/light/timeline_trip_selected.webp" alt="Timeline with a selected car trip being replayed on the map" width="100%">
+</picture>
+<p align="center"><b>Timeline & route replay</b><br><sub>Stays, trips, and data gaps with travel modes, weather, and step-by-step trip replay.</sub></p>
+</td>
+</tr>
+<tr>
+<td colspan="2" width="100%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/location_analytics.webp">
+  <img src="docs-website/static/img/screenshots/light/location_analytics.webp" alt="Location Analytics map with visited places" width="100%">
+</picture>
+<p align="center"><b>Location Analytics</b><br><sub>Explore every visit by map, city, and country.</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/dashboard-card.webp">
+  <img src="docs-website/static/img/screenshots/light/dashboard-card.webp" alt="Dashboard with distance activity charts" width="100%">
+</picture>
+<p align="center"><b>Dashboard</b><br><sub>Selected period, 7-day, and 30-day overviews with charts, top places, and route stats.</sub></p>
+</td>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/rewind-card.webp">
+  <img src="docs-website/static/img/screenshots/light/rewind-card.webp" alt="Rewind monthly summary" width="100%">
+</picture>
+<p align="center"><b>Rewind</b><br><sub>Monthly and yearly summaries of distance, trips, highlights, and heatmaps.</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/journey_insight-card.webp">
+  <img src="docs-website/static/img/screenshots/light/journey_insight-card.webp" alt="Journey Insights with travel statistics" width="100%">
+</picture>
+<p align="center"><b>Journey Insights</b><br><sub>Countries, cities, time patterns, weather, milestones, and badges.</sub></p>
+</td>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/city_page-card.webp">
+  <img src="docs-website/static/img/screenshots/light/city_page-card.webp" alt="City details page for Boston" width="100%">
+</picture>
+<p align="center"><b>City details</b><br><sub>Visit overview, top places, and every visit in a city.</sub></p>
+</td>
+</tr>
+<tr>
+<td colspan="2" width="100%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/trip_workspace.webp">
+  <img src="docs-website/static/img/screenshots/light/trip_workspace.webp" alt="Trip Workspace with planned stops on the map" width="100%">
+</picture>
+<p align="center"><b>Trip Plans</b><br><sub>Plan stops with travel modes and routed legs, then compare the plan with what you actually visited.</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/location_sources.webp">
+  <img src="docs-website/static/img/screenshots/light/location_sources.webp" alt="Location Sources page with setup instructions" width="100%">
+</picture>
+<p align="center"><b>Location Sources</b><br><sub>Connect OwnTracks, Overland, GPSLogger, Home Assistant, Traccar, Dawarich, or Colota.</sub></p>
+</td>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/gps_data-card.webp">
+  <img src="docs-website/static/img/screenshots/light/gps_data-card.webp" alt="GPS Data page with raw location points" width="100%">
+</picture>
+<p align="center"><b>GPS Data</b><br><sub>Inspect, filter, and export raw location points.</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/export-card.webp">
+  <img src="docs-website/static/img/screenshots/light/export-card.webp" alt="Data export with formats and data types" width="100%">
+</picture>
+<p align="center"><b>Export & Import</b><br><sub>Full backups and GPX, GeoJSON, OwnTracks, or CSV exports with a date range.</sub></p>
+</td>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/profile.webp">
+  <img src="docs-website/static/img/screenshots/light/profile.webp" alt="Personal Settings page" width="100%">
+</picture>
+<p align="center"><b>Personal Settings</b><br><sub>Language, time zone, units, map appearance, and connected apps.</sub></p>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/admin_overview-card.webp">
+  <img src="docs-website/static/img/screenshots/light/admin_overview-card.webp" alt="Administration overview with instance health" width="100%">
+</picture>
+<p align="center"><b>Administration</b><br><sub>Instance health, usage, users, backups, and audit logs.</sub></p>
+</td>
+<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/admin_settings-card.webp">
+  <img src="docs-website/static/img/screenshots/light/admin_settings-card.webp" alt="System Settings with authentication options" width="100%">
+</picture>
+<p align="center"><b>System Settings</b><br><sub>Authentication, geocoding, weather, map matching, and more without restarts.</sub></p>
+</td>
+</tr>
+<tr>
+<td colspan="2" width="100%" align="center" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs-website/static/img/screenshots/dark/mobile_timeline.webp">
+  <img src="docs-website/static/img/screenshots/light/mobile_timeline.webp" alt="GeoPulse Timeline on a phone" width="320">
+</picture>
+<p align="center"><b>Mobile</b><br><sub>The web app works on phones and installs as a PWA.</sub></p>
+</td>
+</tr>
+</table>
 
 
 ## Deployment Options

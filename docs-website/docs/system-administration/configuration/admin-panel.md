@@ -1,3 +1,5 @@
+import Screenshot from '@site/src/components/Screenshot';
+
 # Admin Panel
 
 GeoPulse includes a built-in Admin Panel for managing users, user invitations, OIDC providers, and system settings through a web interface. This guide covers how to promote the first administrator and use the available admin features.
@@ -128,6 +130,8 @@ The Admin Panel is only visible to users with the `ADMIN` role.
 ## Admin Dashboard
 
 The Admin Dashboard (`/app/admin`) provides a system overview with quick statistics:
+
+<Screenshot name="admin_overview" alt="Administration overview with instance health, usage, and admin shortcuts" width={1600} height={1454} />
 
 | Metric              | Description                                          |
 |---------------------|------------------------------------------------------|
@@ -332,6 +336,8 @@ For initial OIDC setup via environment variables, see [OIDC / SSO Configuration]
 Navigate to **Admin Dashboard > System Settings** or `/app/admin/settings`.
 
 The System Settings page provides UI-based configuration for various system options, organized into tabs.
+
+<Screenshot name="admin_settings" alt="System Settings with authentication options" width={1600} height={1117} />
 
 ### Application Logging
 

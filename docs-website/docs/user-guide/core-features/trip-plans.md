@@ -1,8 +1,12 @@
+import Screenshot from '@site/src/components/Screenshot';
+
 # Trip Plans Management
 
 Trip Plans are planning workspaces connected to your timeline data. They combine planned stops with actual visits detected from timeline stays.
 
 Open **Trip Plans** from the main menu (`/app/trips`).
+
+<Screenshot name="trip_plans" alt="Trip Plans list with search, filters, and row actions" width={1600} height={377} />
 
 ## What you can do on Trip Plans page
 

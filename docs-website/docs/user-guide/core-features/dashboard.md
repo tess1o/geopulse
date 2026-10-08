@@ -2,11 +2,13 @@
 title: The Dashboard
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # The Dashboard
 
 The GeoPulse Dashboard provides a high-level, visual overview of your movement patterns and location history. It's designed to give you quick insights into your activity at a glance, summarizing data into easily digestible cards and charts.
 
-![Dashboard Overview](/img/dashboard.png)
+<Screenshot name="dashboard" alt="Dashboard with period summaries, distance charts, top places, and route stats" width={1600} height={1476} />
 
 The dashboard is organized into columns that allow you to compare your activity across different time frames:
 

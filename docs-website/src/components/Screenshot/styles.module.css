@@ -1,0 +1,8 @@
+/* ThemedImage hides the inactive color mode's <img> with display: none, so this class never sets display. */
+.screenshot {
+  max-width: 100%;
+  height: auto;
+  vertical-align: top;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+}

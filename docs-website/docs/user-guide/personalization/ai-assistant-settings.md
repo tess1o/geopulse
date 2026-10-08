@@ -17,8 +17,6 @@ Open the settings page by navigating to:
 
 **Menu → Profile → AI Assistant** or go directly to `https://geopulse.mydomain.com/app/profile`
 
-![AI Assistant Settings Page](/img/ai-settings.png)
-
 ---
 
 ## Enabling or Disabling the AI Assistant

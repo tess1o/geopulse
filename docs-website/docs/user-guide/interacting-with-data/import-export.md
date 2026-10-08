@@ -3,6 +3,8 @@ title: Importing & Exporting Data
 description: Import location data from various sources and export your GeoPulse data.
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # Importing & Exporting Data
 
 GeoPulse provides powerful import and export capabilities to help you migrate data from other tracking platforms, back up your location history, and analyze your data in external tools. The system uses efficient streaming parsers to handle files of any size with minimal memory usage.
@@ -15,7 +17,7 @@ Navigate to **Menu → Import/Export Data** to access both import and export fun
 
 Export your GeoPulse data in various formats for backup, migration, or analysis in external tools.
 
-![Export Tab](/img/export-tab.png)
+<Screenshot name="export" alt="Export tab with export formats, data types, and date range" width={1600} height={1406} />
 
 ### Supported Export Formats
 
@@ -125,8 +127,6 @@ Click the **Delete** button to remove an export job and free up server storage. 
 
 Import location data from other tracking platforms or restore GeoPulse backups.
 
-![Import Tab](/img/import-tab.png)
-
 ### Supported Import Formats
 
 GeoPulse can import data from six different formats:
@@ -135,7 +135,7 @@ GeoPulse can import data from six different formats:
 |--------|-------------|------------|----------|
 | **GeoPulse** | Native GeoPulse exports | `.zip` | Restoring backups, migrating between servers |
 | **OwnTracks** | OwnTracks export files | `.json` | Migrating from OwnTracks |
-| **Google Timeline** | Google Takeout exports | `.json` | Importing Google Location History |
+| **Google Timeline** | Google Takeout exports and the Timeline export from your phone | `.json` | Importing Google Location History |
 | **GPX** | GPS Exchange Format | `.gpx`, `.zip` | Garmin devices, fitness trackers, GPX files |
 | **GeoJSON** | GeoJSON Point/LineString | `.json`, `.geojson` | GIS data, custom exports |
 | **CSV** | Structured CSV format | `.csv` | Custom data sources, spreadsheets |

@@ -2,11 +2,13 @@
 title: Rewind
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # Rewind: Your Location Story Through Time
 
 The Rewind page offers a captivating journey through your past location data, transforming it into insightful summaries and visualizations. Discover patterns, revisit significant places, and understand your activity trends over different periods.
 
-![Rewind Page](/img/rewind.png)
+<Screenshot name="rewind" alt="Rewind page with a monthly summary, highlights, activity trends, and a location heatmap" width={1600} height={1707} />
 
 ## Accessing Rewind
 

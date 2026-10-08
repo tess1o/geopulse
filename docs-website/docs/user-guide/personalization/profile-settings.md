@@ -3,11 +3,13 @@ title: User Profile Settings
 description: Manage your user profile, preferences, and account settings.
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # User Profile Settings
 
 Customize your GeoPulse experience by configuring your profile information, preferences, and display settings. Your profile settings control how you see data, how maps are displayed, and what page you land on after login.
 
-![User Profile Settings](/img/user-profile.png)
+<Screenshot name="profile" alt="Personal Settings with profile and regional preferences" width={1600} height={989} />
 
 ## Accessing Profile Settings
 

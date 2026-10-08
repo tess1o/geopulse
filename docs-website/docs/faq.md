@@ -26,15 +26,61 @@ GeoPulse supports multiple GPS data sources:
 - **Dawarich** (HTTP)
 - **GPSLogger** (HTTP)
 - **HomeAssistant** (HTTP)
+- **Traccar** (Position Forwarding, HTTP)
 - **Colota** (HTTP with Basic Auth)
 - **File imports** (GPX, GeoJSON, Google Timeline, CSV, OwnTracks)
 
 Each source can be configured with custom endpoints and authentication in the Location Sources page.
 
-### Is GeoPulse free and open source?
+### Can I try GeoPulse without giving up my current setup?
 
-Yes! GeoPulse is released under the BSL 1.1 License and is completely free for personal use. The source code is
-available on [GitHub](https://github.com/tess1o/geopulse).
+Yes. Import your existing history, and use a reverse proxy to mirror live OwnTracks traffic so the same points reach
+both GeoPulse and your current service, such as Dawarich. Switch over when you are ready.
+See [Data Mirroring](/docs/user-guide/gps-sources/data-mirroring).
+
+### Can I import my Google Timeline history?
+
+Yes. GeoPulse reads both the Google Takeout Location History export and the newer Timeline export from your phone.
+Large files are processed in the background, and you can import only a date range.
+See [Import & Export](/docs/user-guide/interacting-with-data/import-export).
+
+### Is there a mobile app?
+
+The GeoPulse web app is built for phones and can be installed as a PWA from your browser. Location tracking comes from
+an existing tracker app:
+
+- **iPhone**: OwnTracks, Overland, or the Home Assistant companion app
+- **Android**: OwnTracks, GPSLogger, Colota, or the Home Assistant companion app
+- **Other**: Traccar and Dawarich
+
+### Which integrations are available?
+
+- **Immich**: photos on the timeline map
+- **Memos**: timestamped notes next to your stays and trips
+- **Weather**: Open-Meteo by default, Pirate Weather optional
+- **Valhalla**: map matching for trip paths
+- **Panoramax**: street-level imagery on Timeline maps
+- **Apprise**: geofence notifications to external channels
+- **OIDC / SSO**: Authelia, Keycloak, Google, Microsoft, and other OIDC providers
+- **Prometheus & Grafana**: metrics and a pre-built dashboard
+- **AI Assistant** and **MCP server**: optional natural-language access to your own data
+- **REST API**: documented `/api/v1` endpoints
+
+### Can my family use one server?
+
+Yes. One instance supports many users with invitations and roles. Friends can share live location and timeline history
+with each other, and each permission is granted separately.
+
+### Is GeoPulse free?
+
+GeoPulse is source-available under the Business Source License 1.1 and free for personal, non-commercial use.
+Commercial use, including running it as a service for others, needs a separate license. The source code is available
+on [GitHub](https://github.com/tess1o/geopulse).
+
+### Do I need AI?
+
+No. Timeline generation, maps, and insights work without it. The AI Assistant is optional and uses your own
+OpenAI-compatible key, which can point to a local model such as Ollama.
 
 ### Can I self-host GeoPulse?
 
@@ -210,13 +256,18 @@ Follow these steps to report a bug:
 
 ### Who can see my location data?
 
-Your location data is stored **only on your self-hosted server**. GeoPulse doesn't send data to external services
-except:
+Your location data is stored **only on your self-hosted server**. GeoPulse has no telemetry and contacts external
+services only for these purposes:
 
 - **Map tiles**: Loaded from OpenStreetMap or your configured tile provider
 - **Geocoding**: Reverse geocoding uses Nominatim by default (can be self-hosted). You can change it to Photon (
   including self hosted version), Google Maps
-- **AI features**: If enabled, queries are sent to your configured OpenAI-compatible API
+- **Weather**: Open-Meteo by default (Pirate Weather optional). Weather can be turned off in Admin Settings
+- **Panoramax**: Street-level imagery coverage on Timeline maps. It can be turned off in Admin Settings
+- **Release check**: The latest GeoPulse version is read from the GitHub API
+- **Trip Plans place discovery**: Nearby places come from Wikidata, with photos from Wikimedia Commons
+- **Services you connect yourself**: Immich, Memos, Valhalla, Apprise, and your configured OpenAI-compatible API for AI
+  features
 
 You control all data access through user accounts and permissions.
 

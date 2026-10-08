@@ -2,11 +2,13 @@
 title: Journey Insights
 ---
 
+import Screenshot from '@site/src/components/Screenshot';
+
 # Journey Insights
 
 The Journey Insights page is your personal dashboard for discovering fascinating patterns, statistics, and achievements based on your tracked location data. It transforms your raw GPS data into a compelling story of your travels and daily life.
 
-![Journey Insights Page](/img/journey_insights.png)
+<Screenshot name="journey_insight" alt="Journey Insights with total distance, places visited, time patterns, weather, and milestones" width={1600} height={2684} />
 
 ## Accessing Journey Insights
 
