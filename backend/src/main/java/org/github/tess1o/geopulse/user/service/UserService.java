@@ -312,6 +312,18 @@ public class UserService {
         };
     }
 
+    private String validateTimeDisplayMode(String timeDisplayMode) {
+        if (timeDisplayMode == null || timeDisplayMode.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = timeDisplayMode.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "profile", "location" -> normalized;
+            default -> throw new IllegalArgumentException("Invalid time display mode. Allowed values: profile, location");
+        };
+    }
+
     /**
      * Validate a UI language against {@link SupportedLanguages}, the authoritative list.
      *
@@ -671,6 +683,7 @@ public class UserService {
             validateDefaultRedirectUrl(merged.getDefaultRedirectUrl());
             merged.setDateFormat(validateDateFormat(merged.getDateFormat()));
             merged.setTimeFormat(validateTimeFormat(merged.getTimeFormat()));
+            merged.setTimeDisplayMode(validateTimeDisplayMode(merged.getTimeDisplayMode()));
             merged.setLanguage(validateLanguage(merged.getLanguage()));
             user.setUiPreferences(merged);
             log.debug("Updated UI preferences for user {}", user.getId());

@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(dataGapItem.startLocationTimezone) || undefined">
           🕐 {{ formattedStartTime }}
         </p>
         <div class="timeline-title-actions">
@@ -88,6 +88,10 @@ const props = defineProps({
   dataGapItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   notes: {
     type: Array,
@@ -206,12 +210,16 @@ const handleNoteSaved = (note) => {
 
 const formattedStartTime = computed(() => {
   if (!props.dataGapItem.startTime) return '';
-  return `${timezone.formatDateDisplay(props.dataGapItem.startTime)} ${timezone.formatTime(props.dataGapItem.startTime)}`
+  return timezone.formatDateTimeDisplayAt(props.dataGapItem.startTime, props.dataGapItem.startLocationTimezone, {
+    forceLabel: props.forceZoneLabel
+  })
 })
 
 const formattedEndTime = computed(() => {
   if (!props.dataGapItem.endTime) return '';
-  return `${timezone.formatDateDisplay(props.dataGapItem.endTime)} ${timezone.formatTime(props.dataGapItem.endTime)}`
+  return timezone.formatDateTimeDisplayAt(props.dataGapItem.endTime, props.dataGapItem.endLocationTimezone, {
+    forceLabel: props.forceZoneLabel
+  })
 })
 </script>
 

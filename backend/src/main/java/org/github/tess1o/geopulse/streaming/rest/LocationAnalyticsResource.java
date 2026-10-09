@@ -22,6 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.CityDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.CityInCountryDTO;
@@ -70,6 +71,9 @@ public class LocationAnalyticsResource {
 
     @Inject
     CurrentUserService currentUserService;
+
+    @Inject
+    LocationTimezoneService locationTimezoneService;
 
     @GET
     @Path("/search")
@@ -181,10 +185,14 @@ public class LocationAnalyticsResource {
             @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
-            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection,
+            @Parameter(description = "Add the local timezone of each visit (`locationTimezone`), resolved from the "
+                    + "nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         validatePage(page);
-        return analyticsService.getCityVisits(
-                currentUserService.getCurrentUserId(), cityName, page, size, sortBy, sortDirection);
+        return withLocationTimezones(analyticsService.getCityVisits(
+                currentUserService.getCurrentUserId(), cityName, page, size, sortBy, sortDirection),
+                includeLocationTimezones);
     }
 
     @GET
@@ -202,10 +210,14 @@ public class LocationAnalyticsResource {
             @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
-            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection,
+            @Parameter(description = "Add the local timezone of each visit (`locationTimezone`), resolved from the "
+                    + "nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         validatePage(page);
-        return analyticsService.getCountryVisits(
-                currentUserService.getCurrentUserId(), countryName, page, size, sortBy, sortDirection);
+        return withLocationTimezones(analyticsService.getCountryVisits(
+                currentUserService.getCurrentUserId(), countryName, page, size, sortBy, sortDirection),
+                includeLocationTimezones);
     }
 
     @GET
@@ -286,29 +298,38 @@ public class LocationAnalyticsResource {
         }
     }
 
+    private PageResponse<PlaceVisitDTO> withLocationTimezones(PageResponse<PlaceVisitDTO> visits, boolean include) {
+        if (include) {
+            locationTimezoneService.assign(visits.items(), PlaceVisitDTO::getLatitude, PlaceVisitDTO::getLongitude,
+                    PlaceVisitDTO::setLocationTimezone, "location_analytics_visits");
+        }
+        return visits;
+    }
+
     private void validatePage(int page) {
         if (page < 0) throw new GeoPulseException(INVALID_PAGE, "Page number must be non-negative");
     }
 
     private Response csvResponse(List<PlaceVisitDTO> visits, String namePrefix) {
+        // The user's profile timezone, like the rest of the app (not the server's).
+        ZoneId zoneId = ZoneId.of(currentUserService.getCurrentUser().getTimezone());
         StreamingOutput stream = output -> {
             try (BufferedWriter writer = new BufferedWriter(
                     new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
                 writer.write("Location Name,Latitude,Longitude,Visit Date,Visit Time," +
                         "End Date,End Time,Duration (hours),Duration (formatted),Day of Week");
                 writer.newLine();
-                for (PlaceVisitDTO visit : visits) writeVisitCsvRow(writer, visit);
+                for (PlaceVisitDTO visit : visits) writeVisitCsvRow(writer, visit, zoneId);
             }
         };
         String filename = namePrefix + "_visits_" +
-                DATE_FORMATTER.format(Instant.now().atZone(ZoneId.systemDefault())) + ".csv";
+                DATE_FORMATTER.format(Instant.now().atZone(zoneId)) + ".csv";
         return Response.ok(stream)
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .build();
     }
 
-    private void writeVisitCsvRow(BufferedWriter writer, PlaceVisitDTO visit) throws IOException {
-        ZoneId zoneId = ZoneId.systemDefault();
+    private void writeVisitCsvRow(BufferedWriter writer, PlaceVisitDTO visit, ZoneId zoneId) throws IOException {
         var start = visit.getTimestamp().atZone(zoneId);
         var end = visit.getTimestamp().plusSeconds(visit.getStayDuration()).atZone(zoneId);
         long hours = visit.getStayDuration() / 3600;

@@ -117,7 +117,7 @@ Notes:
 | `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_MAX_ENTRIES` | `200` | Memos notes search cache maximum entries. Property: \`geopulse.memos.notes.search-cache-max-entries\`. | Positive integer value. | Backend restart |
 | `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_TTL_SECONDS` | `300` | Memos notes search cache TTL in seconds. Property: \`geopulse.memos.notes.search-cache-ttl-seconds\`. | Positive integer seconds. | Backend restart |
 
-### Geocoding and GeoNames (49)
+### Geocoding and GeoNames (51)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -170,6 +170,8 @@ Notes:
 | `GEOPULSE_GEONAMES_IMPORT_MIN_ROW_THRESHOLD` | `100000` | GeoNames cities dataset import (used for city normalization) Property: \`geopulse.geonames.import.min-row-threshold\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GEONAMES_IMPORT_READ_TIMEOUT_SECONDS` | `300` | GeoNames cities dataset import (used for city normalization) Property: \`geopulse.geonames.import.read-timeout-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEONAMES_IMPORT_URL` | `https://download.geonames.org/export/dump/cities500.zip` | GeoNames cities dataset import (used for city normalization) Property: \`geopulse.geonames.import.url\`. | Valid URL. | Backend restart |
+| `GEOPULSE_TIMEZONE_LOCATION_ENABLED` | `true` | Location-local times: lets users show timeline and GPS data times in the timezone of the nearest GeoNames city. Set to \`false\` to switch the feature off for everyone; users then see profile-timezone times. Property: \`geopulse.timezone.location.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_TIMEZONE_LOCATION_MAX_DISTANCE_KM` | `200` | Location-local times: cities farther than this are ignored (open sea, polar regions) and the profile timezone is used. Property: \`geopulse.timezone.location.max-distance-km\`. | Positive numeric value. | Backend restart |
 
 ### Import (18)
 

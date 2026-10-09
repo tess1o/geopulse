@@ -247,11 +247,15 @@ public class GpsPointResource {
                     + "reverse-geocoded address, with the ID of the matching favorite or geocoding result.")
     public RawGpsPointLocationDTO resolveRawGpsPointLocation(
             @Parameter(description = "GPS point ID.")
-            @PathParam("pointId") Long pointId) {
+            @PathParam("pointId") Long pointId,
+            @Parameter(description = "Add the local timezone (`locationTimezone`), resolved from the nearest GeoNames "
+                    + "city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
-            RawGpsPointLocationDTO result = gpsPointService.resolveRawGpsPointLocation(userId, pointId);
+            RawGpsPointLocationDTO result = gpsPointService.resolveRawGpsPointLocation(userId, pointId,
+                    includeLocationTimezones);
             return result;
         } catch (NotFoundException e) {
             throw new GeoPulseException(GPS_POINT_NOT_FOUND, GPS_POINT_NOT_FOUND.title(), e);
@@ -403,7 +407,10 @@ public class GpsPointResource {
             @Parameter(description = "Comma-separated source types to include: `OWNTRACKS`, `GPSLOGGER`, `OVERLAND`, "
                     + "`TRACCAR`, `GOOGLE_TIMELINE`, `GPX`, `DAWARICH`, `HOME_ASSISTANT`, `GEOJSON`, `CSV`, "
                     + "`COLOTA`, `MANUAL`, `MOBILE_APP`.", example = "OWNTRACKS,GPX")
-            @QueryParam("sourceTypes") String sourceTypes) {
+            @QueryParam("sourceTypes") String sourceTypes,
+            @Parameter(description = "Add the local timezone of each point (`locationTimezone`), resolved from the "
+                    + "nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get GPS points for user {} - page: {}, limit: {}, filters: accuracyMin: {}, accuracyMax: {}, speedMin: {}, speedMax: {}",
                 userId, page, limit, accuracyMin, accuracyMax, speedMin, speedMax);
@@ -427,7 +434,8 @@ public class GpsPointResource {
             GpsPointFilterDTO filters = buildFilters(startTime, endTime,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
-            return gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
+            return gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder,
+                    includeLocationTimezones);
         } catch (DateTimeParseException e) {
             throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid date/time format", e);
         }

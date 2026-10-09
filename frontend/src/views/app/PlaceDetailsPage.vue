@@ -119,6 +119,7 @@
       <PlaceStatsCard
         v-if="placeDetails.statistics && !placeDetails.relatedFavorite"
         :statistics="placeDetails.statistics"
+        :location-timezone="placeDetails.locationTimezone"
       />
 
       <!-- Map -->

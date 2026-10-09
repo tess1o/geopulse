@@ -91,7 +91,7 @@ registerPrimeVueConfig(app.config.globalProperties.$primevue?.config)
 registerDocumentTitleRefresher(() => applyDocumentTitle(router.currentRoute.value?.meta))
 
 watch(
-    [timezone.userDateFormat, timezone.userTimeFormat, timezone.userTimezone],
+    [timezone.userDateFormat, timezone.userTimeFormat, timezone.userTimezone, timezone.userTimeDisplayMode, timezone.locationTimeHomeCountry],
     () => {
         const primevueConfig = app.config.globalProperties.$primevue?.config
         if (!primevueConfig) {

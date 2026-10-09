@@ -159,8 +159,9 @@ const internalVisible = computed({
   }
 })
 
-const formatDate = (value) => timezone.formatDateDisplay(value)
-const formatDateTime = (value) => `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
+// Every visit here is at (or near) the looked-up point, so they share its zone in the "location" time mode.
+const formatDate = (value) => timezone.formatDateDisplayAt(value, props.result?.locationTimezone)
+const formatDateTime = (value) => timezone.formatDateTimeDisplayAt(value, props.result?.locationTimezone)
 const matchKey = (match) => `${match.sourceType}:${match.favoriteId || match.geocodingId || match.name || 'unknown'}`
 
 const placeDetailsRoute = (match) => getStayPlaceDetailsRoute({

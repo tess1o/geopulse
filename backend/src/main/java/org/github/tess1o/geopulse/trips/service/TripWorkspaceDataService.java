@@ -44,6 +44,11 @@ public class TripWorkspaceDataService {
     }
 
     public MovementTimelineDTO getTripTimeline(UUID userId, Long tripId, Instant requestedStart, Instant requestedEnd) {
+        return getTripTimeline(userId, tripId, requestedStart, requestedEnd, false);
+    }
+
+    public MovementTimelineDTO getTripTimeline(UUID userId, Long tripId, Instant requestedStart, Instant requestedEnd,
+                                               boolean includeLocationTimezones) {
         TripAccessContext access = tripAccessService.requireReadAccess(userId, tripId);
         TripEntity trip = access.trip();
         UUID ownerUserId = access.ownerUserId();
@@ -55,7 +60,7 @@ public class TripWorkspaceDataService {
         Instant end = resolveEnd(trip, requestedEnd);
         validateRequestedRange(trip, start, end);
 
-        return timelineAggregator.getTimelineFromDb(ownerUserId, start, end);
+        return timelineAggregator.getTimelineFromDb(ownerUserId, start, end, includeLocationTimezones);
     }
 
     @SuppressWarnings("unchecked")

@@ -375,7 +375,7 @@ export const useTripsStore = defineStore('trips', {
         if (endTime) {
           params.to = endTime
         }
-        const response = await apiService.get(`/trips/${tripId}/timeline`, params)
+        const response = await apiService.get(`/trips/${tripId}/timeline`, timezone.withLocationTimezoneParams(params))
         this.workspaceTimeline = normalizeTimelineData(response)
         return this.workspaceTimeline
       } catch (error) {

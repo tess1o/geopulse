@@ -60,7 +60,7 @@
                 <article v-for="badge in group.badges" :key="badge.id" class="milestone-card" :class="{ earned: badge.earned }">
                   <div class="milestone-header"><span class="badge-icon">{{ badge.icon }}</span><span class="milestone-status">{{ badge.earned ? t('insights.milestones.earned') : `${badge.progress}%` }}</span></div>
                   <h5>{{ badgeTitle(badge) }}</h5><p>{{ badgeDescription(badge) }}</p>
-                  <template v-if="badge.earned"><small v-if="badge.earnedDate">{{ t('insights.milestones.earnedOn', { date: timezone.formatDate(badge.earnedDate) }) }}</small></template>
+                  <template v-if="badge.earned"><small v-if="badge.earnedDate">{{ t('insights.milestones.earnedOn', { date: timezone.formatCalendarDateDisplay(badge.earnedDate) }) }}</small></template>
                   <template v-else><div class="progress-bar"><span :style="{ width: `${badge.progress}%` }"></span></div><small>{{ badge.progressText }}</small></template>
                 </article>
               </div>

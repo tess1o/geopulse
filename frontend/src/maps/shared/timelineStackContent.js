@@ -75,11 +75,14 @@ export const getStackItemMeta = (item, deps = {}) => {
 export const buildTimelineStackItems = (items, deps = {}) => {
   const formatDateDisplay = deps.formatDateDisplay || (() => '')
   const formatTime = deps.formatTime || (() => '')
+  // Optional (timestamp, item) formatter, so a row can be shown in the item's own (location) timezone.
+  const formatItemDateTime = deps.formatItemDateTime
+    || ((timestamp) => `${formatDateDisplay(timestamp)} ${formatTime(timestamp)}`)
 
   return (Array.isArray(items) ? items : []).map((item, index) => {
     const timestamp = item?.timestamp || item?.startTime
     const dateStr = timestamp
-      ? `${formatDateDisplay(timestamp)} ${formatTime(timestamp)}`
+      ? formatItemDateTime(timestamp, item)
       : t('maps.popups.common.unknownTime')
 
     return {

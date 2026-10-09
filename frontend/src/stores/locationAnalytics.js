@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const emptyPage = () => ({ currentPage: 0, pageSize: 50, totalCount: 0, totalPages: 0 })
 
@@ -131,9 +134,9 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
       this.loading = true
       this.error = null
       try {
-        const data = await apiService.get(`/location-analytics/${kind === 'city' ? 'cities' : 'countries'}/${encodeURIComponent(name)}/visits`, {
+        const data = await apiService.get(`/location-analytics/${kind === 'city' ? 'cities' : 'countries'}/${encodeURIComponent(name)}/visits`, timezone.withLocationTimezoneParams({
           page, size: pageSize, sortBy, sortDirection
-        })
+        }))
         this[`${kind}Visits`] = data.items || []
         this[`${kind}Pagination`] = {
           currentPage: data.page ?? 0,

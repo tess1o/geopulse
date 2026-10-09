@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.Dawarich
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
+import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEvaluationService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
@@ -40,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -91,6 +91,9 @@ public class GpsPointService {
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
+
+    @Inject
+    LocationTimezoneService locationTimezoneService;
 
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
@@ -522,6 +525,11 @@ public class GpsPointService {
     }
 
     public RawGpsPointLocationDTO resolveRawGpsPointLocation(UUID userId, Long pointId) {
+        return resolveRawGpsPointLocation(userId, pointId, false);
+    }
+
+    public RawGpsPointLocationDTO resolveRawGpsPointLocation(UUID userId, Long pointId,
+                                                             boolean includeLocationTimezones) {
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
             throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found");
@@ -548,6 +556,10 @@ public class GpsPointService {
                 .geocodingId(result.getGeocodingId())
                 .anchorLatitude(result.getAnchorLatitude())
                 .anchorLongitude(result.getAnchorLongitude())
+                .locationTimezone(includeLocationTimezones
+                        ? locationTimezoneService.resolve(gpsPoint.getCoordinates().getY(),
+                                gpsPoint.getCoordinates().getX(), "gps_point_location")
+                        : null)
                 .build();
     }
 
@@ -782,6 +794,12 @@ public class GpsPointService {
      */
     public PageResponse<GpsPointDTO> getGpsPointsPageWithFilters(UUID userId, GpsPointFilterDTO filters,
                                                         int page, int limit, String sortBy, String sortOrder) {
+        return getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder, false);
+    }
+
+    public PageResponse<GpsPointDTO> getGpsPointsPageWithFilters(UUID userId, GpsPointFilterDTO filters,
+                                                        int page, int limit, String sortBy, String sortOrder,
+                                                        boolean includeLocationTimezones) {
         int pageIndex = page - 1; // Convert to 0-based for repository
 
         List<GpsPointEntity> points = gpsPointRepository.findByUserAndFilters(userId, filters,
@@ -790,8 +808,22 @@ public class GpsPointService {
 
         List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
         applyTelemetryToGpsPoints(userId, points, pointDTOs);
+        if (includeLocationTimezones) {
+            applyLocationTimezones(pointDTOs);
+        }
 
         return new PageResponse<>(pointDTOs, page, limit, total, (int) ((total + limit - 1) / limit));
+    }
+
+    private void applyLocationTimezones(List<GpsPointDTO> pointDTOs) {
+        List<GpsPointDTO> withCoordinates = pointDTOs.stream()
+                .filter(point -> point != null && point.getCoordinates() != null)
+                .toList();
+        locationTimezoneService.assign(withCoordinates,
+                point -> point.getCoordinates().getLat(),
+                point -> point.getCoordinates().getLng(),
+                GpsPointDTO::setLocationTimezone,
+                "gps_points");
     }
 
     /**
@@ -842,7 +874,7 @@ public class GpsPointService {
         log.info("Deleting ALL GPS and timeline data for user {}", userId);
 
         // Delete timeline data first (before GPS points)
-        em.createNativeQuery("DELETE FROM timeline_stays WHERE user_id = :userId")
+            em.createNativeQuery("DELETE FROM timeline_stays WHERE user_id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 

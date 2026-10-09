@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCityRecord;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCountryRecord;
+import org.github.tess1o.geopulse.geocoding.model.GeonamesNearestCity;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
 import org.github.tess1o.geopulse.geocoding.model.NormalizationRuleType;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
@@ -85,6 +86,12 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         GeonamesCityRecord.class,
         GeonamesCountryRecord.class,
         GeonamesNormalizedLocation.class,
+        GeonamesNearestCity.class,
+
+        // Location-local times (geocoding.dto.* is imported above)
+        LocationTimezoneDTO.class,
+        LocationTimezoneDTO.Status.class,
+        LocationTimezoneStatusDTO.class,
 
         BulkUpdateGeocodingDto.class,
         BulkUpdateGeocodingResult.class,

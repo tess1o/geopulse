@@ -98,6 +98,7 @@
             <OvernightStayCard
               v-if="slotProps.item.type === 'stay' && isOvernightItem(slotProps.item)"
               :stay-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
@@ -117,6 +118,7 @@
             <StayCard
               v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
@@ -136,6 +138,7 @@
             <OvernightTripCard
               v-if="slotProps.item.type === 'trip' && isOvernightItem(slotProps.item)"
               :trip-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
@@ -157,6 +160,7 @@
             <TripCard
               v-else-if="slotProps.item.type === 'trip'"
               :trip-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
@@ -179,6 +183,7 @@
             <OvernightDataGapCard
               v-if="slotProps.item.type === 'dataGap' && isOvernightItem(slotProps.item)"
               :data-gap-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
@@ -193,6 +198,7 @@
             <DataGapCard
               v-else-if="slotProps.item.type === 'dataGap'"
               :data-gap-item="slotProps.item"
+              :force-zone-label="dateGroup.showZoneLabels"
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
@@ -494,6 +500,12 @@ const groupedTimelineData = computed(() => {
 
   return Array.from(dateGroups.values())
     .filter(group => group.items.length > 0)
+    .map(group => ({
+      ...group,
+      // Location-time mode: on a day that mixes zones (any item abroad or in another UTC offset), every card
+      // shows its zone label so the day reads consistently. Always false in profile mode.
+      showZoneLabels: group.items.some(item => timezone.isItemForeign(item))
+    }))
     .sort((a, b) => timezone.diff(a.date, b.date, 'day'));
 })
 

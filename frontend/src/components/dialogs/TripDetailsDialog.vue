@@ -298,7 +298,7 @@ const getTripTitle = () => {
 
 const getStartDateTime = () => {
   if (!props.trip?.timestamp) return t('tripDialogs.tripDetails.notAvailable')
-  return `${timezone.formatDateDisplay(props.trip.timestamp)} ${timezone.formatTime(props.trip.timestamp, { withSeconds: true })}`
+  return timezone.formatDateTimeDisplayAt(props.trip.timestamp, props.trip.startLocationTimezone, { withSeconds: true })
 }
 
 const getEndDateTime = () => {
@@ -307,7 +307,7 @@ const getEndDateTime = () => {
   const startTime = timezone.fromUtc(props.trip.timestamp)
   const endTime = startTime.clone().add(props.trip.tripDuration, 'seconds')
   
-  return `${timezone.formatDateDisplay(endTime.toISOString())} ${timezone.formatTime(endTime.toISOString(), { withSeconds: true })}`
+  return timezone.formatDateTimeDisplayAt(endTime.toISOString(), props.trip.endLocationTimezone, { withSeconds: true })
 }
 
 const formatDuration = (seconds) => {

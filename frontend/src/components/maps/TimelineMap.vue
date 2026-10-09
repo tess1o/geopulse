@@ -1115,6 +1115,18 @@ const formatTripTimeRange = (trip) => {
 
   const start = new Date(startMs).toISOString()
   const end = new Date(startMs + Math.max(Number(trip.tripDuration) || 0, 0) * 1000).toISOString()
+
+  if (timezone.isLocationTimeMode()) {
+    // Start in the origin's zone, end in the destination's; "same day" compares the dates as displayed.
+    const startZone = trip.startLocationTimezone
+    const endZone = trip.endLocationTimezone
+    const sameDay = timezone.formatDateDisplayAt(start, startZone) === timezone.formatDateDisplayAt(end, endZone)
+    const localEndText = sameDay
+      ? timezone.formatTimeAt(end, endZone)
+      : `${timezone.formatDateDisplayAt(end, endZone)} ${timezone.formatTimeAt(end, endZone)}`
+    return `${timezone.formatTimeAt(start, startZone)} → ${localEndText}`
+  }
+
   const endText = timezone.isSameDay(start, end)
     ? timezone.formatTime(end)
     : `${timezone.formatDateDisplay(end)} ${timezone.formatTime(end)}`

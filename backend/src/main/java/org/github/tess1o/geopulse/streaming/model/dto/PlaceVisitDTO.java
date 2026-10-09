@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.streaming.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.geocoding.dto.LocationTimezoneDTO;
 
 import java.time.Instant;
 
@@ -23,4 +25,8 @@ public class PlaceVisitDTO {
     private double longitude;
     private String locationName;        // Cached location name
     private String city;                // City name (from geocoding or favorite)
+
+    /** Local timezone of the visit. Only set when the client requests location timezones. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocationTimezoneDTO locationTimezone;
 }

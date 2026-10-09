@@ -10,6 +10,7 @@ const isolatedSpecs = [
   '**/data-export-import.spec.js',
   '**/timeline.spec.js',
   '**/timeline-notes.spec.js',
+  '**/location-time-display.spec.js',
   '**/user-registration.spec.js',
   '**/user-validation.spec.js',
   '**/geocoding-management-visibility.spec.js',

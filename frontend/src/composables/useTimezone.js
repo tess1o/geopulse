@@ -21,6 +21,8 @@ dayjs.extend(customParseFormat)
 
 const DEFAULT_DATE_FORMAT = 'MDY'
 const DEFAULT_TIME_FORMAT = '24h'
+const DEFAULT_TIME_DISPLAY_MODE = 'profile'
+const LOCATION_TIME_DISPLAY_MODE = 'location'
 const DATE_FORMAT_PATTERNS = {
     MDY: 'MM/DD/YYYY',
     DMY: 'DD/MM/YYYY',
@@ -47,6 +49,11 @@ const normalizeDateFormat = (value) => {
 const normalizeTimeFormat = (value) => {
     const normalized = String(value || '').trim().toLowerCase()
     return normalized === '12h' ? '12h' : DEFAULT_TIME_FORMAT
+}
+
+const normalizeTimeDisplayMode = (value) => {
+    const normalized = String(value || '').trim().toLowerCase()
+    return normalized === LOCATION_TIME_DISPLAY_MODE ? LOCATION_TIME_DISPLAY_MODE : DEFAULT_TIME_DISPLAY_MODE
 }
 
 const getUserTimezoneFromStorage = () => {
@@ -76,9 +83,38 @@ const getUserTimeFormatFromStorage = () => {
     }
 }
 
+const getUserTimeDisplayModeFromStorage = () => {
+    try {
+        return normalizeTimeDisplayMode(readCachedUserProfile().timeDisplayMode)
+    } catch (error) {
+        console.warn('Failed to get user time display mode from cached profile:', error)
+        return DEFAULT_TIME_DISPLAY_MODE
+    }
+}
+
 const userTimezone = ref(getUserTimezoneFromStorage())
 const userDateFormat = ref(getUserDateFormatFromStorage())
 const userTimeFormat = ref(getUserTimeFormatFromStorage())
+const userTimeDisplayMode = ref(getUserTimeDisplayModeFromStorage())
+// ISO country of the profile timezone (e.g. UA for Europe/Kyiv), loaded from the server in "location" mode.
+// Null means unknown: only UTC offsets then decide which items are labelled.
+const locationTimeHomeCountry = ref(null)
+
+// Intl formatters are expensive to create; one per IANA zone is enough.
+const zoneNameFormatters = new Map()
+
+const getShortZoneName = (date, zone) => {
+    try {
+        let formatter = zoneNameFormatters.get(zone)
+        if (!formatter) {
+            formatter = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'short' })
+            zoneNameFormatters.set(zone, formatter)
+        }
+        return formatter.formatToParts(date).find((part) => part.type === 'timeZoneName')?.value || zone
+    } catch {
+        return zone
+    }
+}
 
 export function useTimezone() {
     // --- Core Timezone Management ---
@@ -100,6 +136,26 @@ export function useTimezone() {
     }
 
     const getTimeFormat = () => userTimeFormat.value
+
+    const setTimeDisplayMode = (mode) => {
+        userTimeDisplayMode.value = normalizeTimeDisplayMode(mode)
+    }
+
+    const getTimeDisplayMode = () => userTimeDisplayMode.value
+
+    const isLocationTimeMode = () => userTimeDisplayMode.value === LOCATION_TIME_DISPLAY_MODE
+
+    /**
+     * Request params plus `includeLocationTimezones=true` in "location" mode. In profile mode the params are
+     * returned untouched (possibly undefined), so default requests stay exactly as they were.
+     */
+    const withLocationTimezoneParams = (params) => (
+        isLocationTimeMode() ? { ...(params || {}), includeLocationTimezones: true } : params
+    )
+
+    const setLocationTimeHomeCountry = (countryCode) => {
+        locationTimeHomeCountry.value = countryCode ? String(countryCode).trim().toUpperCase() : null
+    }
 
     const now = () => {
         // Use explicit Date object to avoid browser timezone detection issues (LibreWolf, etc.)
@@ -291,6 +347,131 @@ export function useTimezone() {
     }
 
     const formatUrlDate = (date) => format(date, 'YYYY-MM-DD')
+
+    // --- Location-local time (opt-in "location" display mode) ---
+    // Every *At helper returns exactly the same string as its profile-timezone counterpart unless the user chose
+    // the "location" mode AND the item carries a resolved zone.
+    //
+    // Labels: an item is "foreign" when its zone has a different UTC offset than the profile timezone, or it lies
+    // in a different country than the profile timezone (when that country is known). Foreign items always get a
+    // zone label; callers with day context (timeline cards) pass forceLabel to label every item of a mixed day.
+
+    const resolvedZoneOf = (locationTimezone) => (
+        isLocationTimeMode() && locationTimezone?.timezone ? locationTimezone.timezone : null
+    )
+
+    const isLocationTimezoneForeign = (date, locationTimezone) => {
+        const zone = resolvedZoneOf(locationTimezone)
+        if (!zone || !date) return false
+        const instant = dayjs.utc(date)
+        if (instant.tz(zone).utcOffset() !== instant.tz(userTimezone.value).utcOffset()) return true
+        const homeCountry = locationTimeHomeCountry.value
+        const countryCode = locationTimezone.countryCode?.trim().toUpperCase()
+        return !!(homeCountry && countryCode && countryCode !== homeCountry)
+    }
+
+    /** True when any zone of a stay, trip or data gap is foreign (see above). */
+    const isItemForeign = (item) => {
+        if (!isLocationTimeMode() || !item) return false
+        const start = item.timestamp || item.startTime
+        if (!start) return false
+        const end = item.endTime
+            || dayjs.utc(start).add(item.stayDuration ?? item.tripDuration ?? 0, 'second').toISOString()
+        return isLocationTimezoneForeign(start, item.locationTimezone)
+            || isLocationTimezoneForeign(start, item.startLocationTimezone)
+            || isLocationTimezoneForeign(end, item.endLocationTimezone)
+    }
+
+    /** Zone and label to display an instant with, or null to use the profile-timezone formatter unchanged. */
+    const resolveDisplay = (date, locationTimezone, forceLabel = false) => {
+        const zone = resolvedZoneOf(locationTimezone)
+        if (!zone) return null
+        const showLabel = forceLabel || isLocationTimezoneForeign(date, locationTimezone)
+        if (!showLabel && zone === userTimezone.value) return null
+        return { zone, label: showLabel ? getShortZoneName(dayjs.utc(date).toDate(), zone) : '' }
+    }
+
+    const formatWithDisplay = (date, display, pattern) => {
+        const text = dayjs.utc(date).tz(display.zone).format(pattern)
+        return display.label ? `${text} ${display.label}` : text
+    }
+
+    const formatTimeAt = (date, locationTimezone, options = {}) => {
+        const display = resolveDisplay(date, locationTimezone, options?.forceLabel === true)
+        if (!display) return formatTime(date, options)
+        return formatWithDisplay(date, display, getTimeFormatPattern(options?.withSeconds === true))
+    }
+
+    /** Date only, in the item's zone; no zone label (pair it with formatTimeAt). */
+    const formatDateDisplayAt = (date, locationTimezone) => {
+        const display = resolveDisplay(date, locationTimezone)
+        if (!display) return formatDateDisplay(date)
+        return dayjs.utc(date).tz(display.zone).format(DATE_FORMAT_PATTERNS[getDateFormat()])
+    }
+
+    const formatDateTimeDisplayAt = (date, locationTimezone, options = {}) => {
+        const display = resolveDisplay(date, locationTimezone, options?.forceLabel === true)
+        if (!display) return formatDateTimeDisplay(date, options)
+        const pattern = `${DATE_FORMAT_PATTERNS[getDateFormat()]} ${getTimeFormatPattern(options?.withSeconds === true)}`
+        return formatWithDisplay(date, display, pattern)
+    }
+
+    /** Any pattern in the item's zone (no label), e.g. for CSV; profile timezone when there is no zone. */
+    const formatInLocationZone = (date, locationTimezone, pattern) => {
+        const zone = resolvedZoneOf(locationTimezone)
+        return zone ? dayjs.utc(date).tz(zone).format(pattern) : format(date, pattern)
+    }
+
+    /** IANA zone an item's times are shown in: its own zone in location mode, else the profile timezone. */
+    const getDisplayZoneId = (locationTimezone) => resolvedZoneOf(locationTimezone) || userTimezone.value
+
+    /** Day of week (e.g. "Monday") in the item's zone. */
+    const formatWeekdayAt = (date, locationTimezone) => {
+        const display = resolveDisplay(date, locationTimezone)
+        if (!display) return format(date, 'dddd')
+        return dayjs.utc(date).tz(display.zone).format('dddd')
+    }
+
+    /**
+     * A calendar date (`YYYY-MM-DD`, or a midnight-UTC instant standing for one) in the user's date format,
+     * without timezone conversion -- converting would show the previous day west of UTC.
+     */
+    const formatCalendarDateDisplay = (value) => {
+        if (!value) return ''
+        const parsed = dayjs.utc(String(value))
+        return parsed.isValid() ? parsed.format(DATE_FORMAT_PATTERNS[getDateFormat()]) : String(value)
+    }
+
+    /**
+     * Hover text explaining where a location-local time came from, so users can include it in bug reports.
+     * Empty in profile mode.
+     */
+    const getLocationTimezoneHint = (locationTimezone) => {
+        if (!isLocationTimeMode()) return ''
+        if (!locationTimezone) return t('timeline.localTime.notProvided')
+
+        const details = {
+            zone: locationTimezone.timezone,
+            city: locationTimezone.nearestCity || '?',
+            country: locationTimezone.countryCode || '?',
+            distance: locationTimezone.distanceKm ?? '?'
+        }
+        switch (locationTimezone.status) {
+            case 'RESOLVED':
+                return t('timeline.localTime.resolved', details)
+            case 'BEYOND_MAX_DISTANCE':
+                return t('timeline.localTime.beyondMaxDistance', details)
+            case 'NO_GEONAMES_DATA':
+                return t('timeline.localTime.noGeonamesData')
+            case 'INVALID_TIMEZONE':
+                return t('timeline.localTime.invalidTimezone', details)
+            default:
+                return t('timeline.localTime.notProvided')
+        }
+    }
+
+    /** Zone in effect when a timeline item starts (stay location, trip origin, or the place before a data gap). */
+    const getItemStartLocationTimezone = (item) => item?.locationTimezone || item?.startLocationTimezone || null
 
     const getPrimeVueDatePickerFormat = () => DATE_FORMAT_PRIMEVUE[getDateFormat()]
     const getPrimeVueFirstDayOfWeek = () => DATE_FORMAT_FIRST_DAY_OF_WEEK[getDateFormat()]
@@ -552,19 +733,26 @@ export function useTimezone() {
 
     // --- Overnight Timeline Helpers ---
 
-    const getOvernightTimestampText = (item, currentDate) => {
+    const getOvernightTimestampText = (item, currentDate, options = {}) => {
         const utcTimestamp = item.timestamp || item.startTime
         const convertedTime = fromUtc(utcTimestamp)
         const itemStartDate = convertedTime.format('YYYY-MM-DD')
         const isStartDay = itemStartDate === currentDate
 
+        // Day matching stays in the profile timezone; only the displayed start time may use the location zone.
+        const display = resolveDisplay(utcTimestamp, getItemStartLocationTimezone(item), options?.forceLabel === true)
+
         if (isStartDay) {
             // Show actual start time on start day
-            return format(utcTimestamp, `${DATE_FORMAT_PATTERNS[getDateFormat()]}, ${getTimeFormatPattern(false)}`)
+            const pattern = `${DATE_FORMAT_PATTERNS[getDateFormat()]}, ${getTimeFormatPattern(false)}`
+            return display ? formatWithDisplay(utcTimestamp, display, pattern) : format(utcTimestamp, pattern)
         } else {
             // Show "Continued from" on other days
-            const startDate = fromUtc(utcTimestamp)
-            return t('timeline.overnight.continuedFrom', { time: startDate.format(`MMM D, ${getTimeFormatPattern(false)}`) })
+            const pattern = `MMM D, ${getTimeFormatPattern(false)}`
+            const time = display
+                ? formatWithDisplay(utcTimestamp, display, pattern)
+                : fromUtc(utcTimestamp).format(pattern)
+            return t('timeline.overnight.continuedFrom', { time })
         }
     }
 
@@ -585,12 +773,19 @@ export function useTimezone() {
         userTimezone,
         userDateFormat,
         userTimeFormat,
+        userTimeDisplayMode,
+        locationTimeHomeCountry,
         setTimezone,
         getTimezone,
         setDateFormat,
         getDateFormat,
         setTimeFormat,
         getTimeFormat,
+        setTimeDisplayMode,
+        getTimeDisplayMode,
+        isLocationTimeMode,
+        setLocationTimeHomeCountry,
+        withLocationTimezoneParams,
         now,
         fromUtc,
         toUtc,
@@ -644,6 +839,19 @@ export function useTimezone() {
         getPrimeVueDatePickerFormat,
         getPrimeVueFirstDayOfWeek,
         timeAgo,
+
+        // Location-local time
+        isLocationTimezoneForeign,
+        isItemForeign,
+        formatTimeAt,
+        formatDateDisplayAt,
+        formatDateTimeDisplayAt,
+        formatWeekdayAt,
+        formatInLocationZone,
+        getDisplayZoneId,
+        formatCalendarDateDisplay,
+        getLocationTimezoneHint,
+        getItemStartLocationTimezone,
 
         // Timeline Specific
         isOvernight,

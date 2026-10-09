@@ -18,7 +18,9 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.PageResponse;
+import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceDetailsDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.PlaceGeometryDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlacePhotoSearchWindowDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceVisitDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.UpdatePlaceNameRequest;
@@ -65,6 +67,9 @@ public class PlaceDetailsResource {
     @Inject
     CurrentUserService currentUserService;
 
+    @Inject
+    LocationTimezoneService locationTimezoneService;
+
     /**
      * Get comprehensive details for a specific place including statistics.
      *
@@ -83,13 +88,39 @@ public class PlaceDetailsResource {
                     + "location.", example = "favorite")
             @PathParam("type") String type,
             @Parameter(description = "ID of the favorite or geocoding result.")
-            @PathParam("id") Long id) {
+            @PathParam("id") Long id,
+            @Parameter(description = "Add the local timezone of the place (`locationTimezone`), resolved from the "
+                    + "nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         UserEntity user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         log.info("Place details request from user {} for {}:{}", userId, type, id);
 
-        return placeDetailsService.getPlaceDetails(type, id, userId, user.getTimezone())
+        PlaceDetailsDTO details = placeDetailsService.getPlaceDetails(type, id, userId, user.getTimezone())
                 .orElseThrow(() -> new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied"));
+        if (includeLocationTimezones) {
+            double[] center = geometryCenter(details.getGeometry());
+            if (center != null) {
+                details.setLocationTimezone(locationTimezoneService.resolve(center[0], center[1], "places"));
+            }
+        }
+        return details;
+    }
+
+    /** [lat, lon] of a point place, or the middle of an area's bounding box. */
+    private static double[] geometryCenter(PlaceGeometryDTO geometry) {
+        if (geometry == null) {
+            return null;
+        }
+        if (geometry.getLatitude() != null && geometry.getLongitude() != null) {
+            return new double[]{geometry.getLatitude(), geometry.getLongitude()};
+        }
+        if (geometry.getNorthEast() != null && geometry.getSouthWest() != null) {
+            return new double[]{
+                    (geometry.getNorthEast()[0] + geometry.getSouthWest()[0]) / 2,
+                    (geometry.getNorthEast()[1] + geometry.getSouthWest()[1]) / 2};
+        }
+        return null;
     }
 
     /**
@@ -159,7 +190,10 @@ public class PlaceDetailsResource {
             @Parameter(description = "Sort field: `timestamp` or `stayDuration`. Defaults to `timestamp`.")
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @Parameter(description = "Sort direction: `asc` or `desc`. Defaults to `desc`.")
-            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection,
+            @Parameter(description = "Add the local timezone of each visit (`locationTimezone`), resolved from the "
+                    + "nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
 
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Place visits request from user {} for {}:{} (page={}, size={}, sortBy={}, dir={})",
@@ -168,7 +202,13 @@ public class PlaceDetailsResource {
         if (page < 0) {
             throw new GeoPulseException(INVALID_PAGE, "Page number must be non-negative");
         }
-        return placeDetailsService.getPlaceVisits(type, id, userId, page, size, sortBy, sortDirection);
+        PageResponse<PlaceVisitDTO> visits =
+                placeDetailsService.getPlaceVisits(type, id, userId, page, size, sortBy, sortDirection);
+        if (includeLocationTimezones) {
+            locationTimezoneService.assign(visits.items(), PlaceVisitDTO::getLatitude, PlaceVisitDTO::getLongitude,
+                    PlaceVisitDTO::setLocationTimezone, "place_visits");
+        }
+        return visits;
     }
 
     /**
@@ -247,6 +287,8 @@ public class PlaceDetailsResource {
 
             PlaceDetailsDTO placeDetails = placeDetailsOpt.get();
 
+            ZoneId userZone = ZoneId.of(user.getTimezone());
+
             // Get all visits
             List<PlaceVisitDTO> visits = placeDetailsService.getAllPlaceVisits(
                     type, id, userId, sortBy, sortDirection);
@@ -260,13 +302,13 @@ public class PlaceDetailsResource {
                     writer.write("Location Name,Latitude,Longitude,Visit Date,Visit Time,End Date,End Time,Duration (hours),Duration (formatted),Day of Week");
                     writer.newLine();
 
-                    // Date formatters
+                    // Date formatters, in the user's profile timezone like the rest of the app
                     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                            .withZone(ZoneId.systemDefault());
+                            .withZone(userZone);
                     DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
-                            .withZone(ZoneId.systemDefault());
+                            .withZone(userZone);
                     DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE")
-                            .withZone(ZoneId.systemDefault());
+                            .withZone(userZone);
 
                     // Write data rows
                     for (PlaceVisitDTO visit : visits) {
@@ -310,7 +352,7 @@ public class PlaceDetailsResource {
                     .toLowerCase();
             String filename = String.format("%s_visits_%s.csv",
                     sanitizedName,
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Instant.now().atZone(ZoneId.systemDefault())));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Instant.now().atZone(userZone)));
 
             return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")

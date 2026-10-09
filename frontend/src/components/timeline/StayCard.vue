@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(stayItem.locationTimezone) || undefined">
           🕐 {{ formattedTimestamp }}
         </p>
         <div class="timeline-title-actions">
@@ -113,6 +113,10 @@ const props = defineProps({
   stayItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   immichPhotos: {
     type: Array,
@@ -398,7 +402,9 @@ const formatOnThisDayDuration = (stayItem) => {
 
 const formattedTimestamp = computed(() => {
   if (!props.stayItem.timestamp) return '';
-  return `${timezone.formatDateDisplay(props.stayItem.timestamp)} ${timezone.formatTime(props.stayItem.timestamp)}`
+  return timezone.formatDateTimeDisplayAt(props.stayItem.timestamp, props.stayItem.locationTimezone, {
+    forceLabel: props.forceZoneLabel
+  })
 })
 </script>
 

@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(timezone.getItemStartLocationTimezone(tripItem)) || undefined">
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
@@ -113,6 +113,10 @@ const props = defineProps({
   tripItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   currentDate: {
     type: String,
@@ -265,7 +269,7 @@ const { matchingNotes } = useTimelineCardNoteMatching({
 
 // Methods
 const getTimestampText = () => {
-  return timezone.getOvernightTimestampText(props.tripItem, props.currentDate)
+  return timezone.getOvernightTimestampText(props.tripItem, props.currentDate, { forceLabel: props.forceZoneLabel })
 }
 
 const getMovementIcon = () => {

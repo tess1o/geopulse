@@ -8,16 +8,20 @@ const translateMovementType = (type, fallback) => {
   return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
 }
 
-const defaultFormatDateTimeDisplay = (value, timezone) => (
-  `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
-)
+const defaultFormatDateTimeDisplay = (value, timezone, locationTimezone) => {
+  if (locationTimezone && typeof timezone.formatDateTimeDisplayAt === 'function') {
+    return timezone.formatDateTimeDisplayAt(value, locationTimezone, { withSeconds: true })
+  }
+  return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
+}
 
+// The formatter takes (value, locationTimezone); the zone only changes the output in the "location" display mode.
 const resolveFormatDateTimeDisplay = (deps = {}) => {
   if (typeof deps.formatDateTimeDisplay === 'function') {
     return deps.formatDateTimeDisplay
   }
 
-  return (value) => defaultFormatDateTimeDisplay(value, deps.timezone)
+  return (value, locationTimezone) => defaultFormatDateTimeDisplay(value, deps.timezone, locationTimezone)
 }
 
 const formatTelemetryValue = (item) => {
@@ -49,7 +53,9 @@ const getTimelineTimestamp = (item) => item?.timestamp || item?.startTime
 export const buildStayPopupModel = (stay, deps = {}) => {
   const timestamp = getTimelineTimestamp(stay)
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
-  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime')
+  const dateText = timestamp
+    ? formatDateTimeDisplay(timestamp, stay?.locationTimezone)
+    : t('maps.popups.common.unknownTime')
   const durationText = stay?.stayDuration ? formatDuration(stay.stayDuration) : ''
   const locationName = stay?.locationName || stay?.address || t('maps.popups.common.unknownLocation')
 
@@ -73,7 +79,9 @@ export const buildStayPopupModel = (stay, deps = {}) => {
 export const buildTimelineTripPopupModel = (item, deps = {}) => {
   const timestamp = getTimelineTimestamp(item)
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
-  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime')
+  const dateText = timestamp
+    ? formatDateTimeDisplay(timestamp, item?.startLocationTimezone)
+    : t('maps.popups.common.unknownTime')
   const durationText = item?.tripDuration ? formatDuration(item.tripDuration) : ''
   const distanceText = item?.totalDistanceMeters
     ? formatDistanceForUnit(item.totalDistanceMeters, { unit: deps.unit })
@@ -108,7 +116,9 @@ export const buildDataGapPopupModel = (item, deps = {}) => {
 
   return {
     title: t('maps.popups.timeline.dataGap'),
-    subtitle: timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime'),
+    subtitle: timestamp
+      ? formatDateTimeDisplay(timestamp, item?.startLocationTimezone)
+      : t('maps.popups.common.unknownTime'),
     iconClass: 'pi pi-exclamation-triangle',
     variant: 'compact'
   }
@@ -151,10 +161,10 @@ export const buildHighlightedTripPopupModel = (trip, deps = {}) => {
   const endMs = Number.isFinite(startMs) ? startMs + Math.max(0, durationSeconds) * 1000 : null
   const movementType = translateMovementType(trip?.movementType, t('maps.popups.timeline.unknownMovement'))
   const startText = Number.isFinite(startMs)
-    ? formatDateTimeDisplay(new Date(startMs).toISOString())
+    ? formatDateTimeDisplay(new Date(startMs).toISOString(), trip?.startLocationTimezone)
     : t('maps.popups.common.unknown')
   const endText = Number.isFinite(endMs)
-    ? formatDateTimeDisplay(new Date(endMs).toISOString())
+    ? formatDateTimeDisplay(new Date(endMs).toISOString(), trip?.endLocationTimezone)
     : t('maps.popups.common.unknown')
   const averageSpeedKmh = resolveAverageTripSpeedKmh(trip)
   const averageSpeedText = formatSpeedForUnit(averageSpeedKmh, { unit: deps.unit, fallback: '' })
@@ -199,7 +209,10 @@ export const buildTripEndpointPopupModel = (trip, markerType, deps = {}) => {
   const isStart = markerType === 'start'
   const pointTime = isStart ? startMs : endMs
   const timeText = Number.isFinite(pointTime)
-    ? formatDateTimeDisplay(new Date(pointTime).toISOString())
+    ? formatDateTimeDisplay(
+      new Date(pointTime).toISOString(),
+      isStart ? trip?.startLocationTimezone : trip?.endLocationTimezone
+    )
     : t('maps.popups.common.unknown')
 
   return {

@@ -132,7 +132,7 @@ const mapCenter = computed(() => {
 // Methods
 const getStartDateTime = () => {
   if (!props.stay?.timestamp) return t('miscDialogs.stayDetails.notAvailable')
-  return `${timezone.formatDateDisplay(props.stay.timestamp)} ${timezone.formatTime(props.stay.timestamp, { withSeconds: true })}`
+  return timezone.formatDateTimeDisplayAt(props.stay.timestamp, props.stay.locationTimezone, { withSeconds: true })
 }
 
 const getEndDateTime = () => {
@@ -142,7 +142,7 @@ const getEndDateTime = () => {
   const startTime = timezone.fromUtc(props.stay.timestamp)
   const endTime = startTime.clone().add(props.stay.stayDuration, 'seconds')
   
-  return `${timezone.formatDateDisplay(endTime.toISOString())} ${timezone.formatTime(endTime.toISOString(), { withSeconds: true })}`
+  return timezone.formatDateTimeDisplayAt(endTime.toISOString(), props.stay.locationTimezone, { withSeconds: true })
 }
 
 const formatDuration = (seconds) => {

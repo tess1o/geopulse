@@ -12,8 +12,10 @@ const formatPlannedDay = (plannedDay, timezone) => {
   if (!plannedDay) {
     return t('maps.popups.tripPlan.noDaySet')
   }
-  if (timezone?.formatDateDisplay) {
-    return timezone.formatDateDisplay(plannedDay)
+  // plannedDay is a calendar date (YYYY-MM-DD): format it without timezone conversion, which would show the
+  // previous day for users west of UTC.
+  if (timezone?.formatCalendarDateDisplay) {
+    return timezone.formatCalendarDateDisplay(plannedDay)
   }
   return String(plannedDay)
 }

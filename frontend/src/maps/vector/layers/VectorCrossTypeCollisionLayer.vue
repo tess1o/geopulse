@@ -110,6 +110,9 @@ const createPopupElement = (collision, onSelect) => {
   const rows = buildCrossTypeStackItems(collision.members, {
     formatDateDisplay: (value) => timezone.formatDateDisplay(value),
     formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
+    formatItemDateTime: (value, item) => timezone.formatDateTimeDisplayAt(
+      value, timezone.getItemStartLocationTimezone(item), { withSeconds: true }
+    ),
     unit: distanceUnit.value,
     getItemWeather: (item) => getTimelineItemWeatherDisplay(props.itemWeather, item, {
       temperatureUnit: temperatureUnit.value || 'CELSIUS',

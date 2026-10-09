@@ -26,6 +26,9 @@ export class UserProfilePage {
         timeFormatDropdown: '#timeFormat',
         timeFormatLabel: '#timeFormat [role="combobox"]',
         timeFormatOptions: '[role="option"], .p-select-option',
+        timeDisplayModeDropdown: '#timeDisplayMode',
+        timeDisplayModeLabel: '#timeDisplayMode [role="combobox"]',
+        timeDisplayModeOptions: '[role="option"], .p-select-option',
         defaultRedirectUrlDropdown: '#defaultRedirectUrl',
         defaultRedirectUrlLabel: '#defaultRedirectUrl [role="combobox"]',
         defaultRedirectUrlOptions: '[role="option"], .p-select-option',
@@ -446,6 +449,37 @@ export class UserProfilePage {
       return userInfoStr ? JSON.parse(userInfoStr) : null;
     });
     return userInfo?.timeFormat || null;
+  }
+
+  /**
+   * Select timeline time zone mode ("Profile timezone" / "Local time at each place")
+   */
+  async selectTimeDisplayMode(modeLabel) {
+    await this.page.click(this.selectors.profile.timeDisplayModeLabel);
+    await this.page.waitForSelector(this.selectors.profile.timeDisplayModeOptions, { timeout: 10000 });
+
+    const optionSelector = this.page.locator(this.selectors.profile.timeDisplayModeOptions).filter({ hasText: modeLabel });
+    await optionSelector.first().click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Get currently selected timeline time zone mode label
+   */
+  async getSelectedTimeDisplayMode() {
+    const text = await this.page.locator(this.selectors.profile.timeDisplayModeLabel).textContent();
+    return text?.trim() || null;
+  }
+
+  /**
+   * Get timeline time zone mode from localStorage
+   */
+  async getTimeDisplayModeFromLocalStorage() {
+    const userInfo = await this.page.evaluate(() => {
+      const userInfoStr = localStorage.getItem('userInfo');
+      return userInfoStr ? JSON.parse(userInfoStr) : null;
+    });
+    return userInfo?.timeDisplayMode || null;
   }
 
   /**

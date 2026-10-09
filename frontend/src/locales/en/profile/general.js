@@ -51,6 +51,12 @@ export default {
             description: 'Choose whether times use a 12- or 24-hour clock.',
             placeholder: 'Select your preferred time format'
         },
+        timeDisplayMode: {
+            title: 'Timeline time zone',
+            description: 'Show timeline and GPS data times in your profile timezone, or in the local time where each place was visited.',
+            details: 'Days are still grouped by your profile timezone. The local timezone comes from the nearest city, so times near timezone borders may be approximate. Hover a time to see where its timezone came from.',
+            unavailable: 'Local time is unavailable because GeoNames city data is not loaded on this server. Times are shown in your profile timezone.'
+        },
         distanceUnit: {
             title: 'Distance unit',
             description: 'Controls displayed distances and speeds.',
@@ -83,6 +89,10 @@ export default {
     timeFormatOptions: {
         h24: '24-hour (13:45)',
         h12: '12-hour (1:45 PM)'
+    },
+    timeDisplayModeOptions: {
+        profile: 'Profile timezone',
+        location: 'Local time at each place'
     },
     distanceUnitOptions: {
         kilometers: 'Kilometers (km, m)',

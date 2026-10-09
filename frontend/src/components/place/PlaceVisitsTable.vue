@@ -55,8 +55,8 @@
       >
         <template #body="slotProps">
           <div class="datetime-display">
-            <div class="date-part">{{ formatDate(slotProps.data.timestamp) }}</div>
-            <div class="time-part">{{ formatTime(slotProps.data.timestamp) }}</div>
+            <div class="date-part">{{ formatDate(slotProps.data.timestamp, slotProps.data.locationTimezone) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.timestamp, slotProps.data.locationTimezone) }}</div>
           </div>
         </template>
       </Column>
@@ -172,7 +172,7 @@
       >
         <template #body="slotProps">
           <div class="day-of-week">
-            {{ getDayOfWeek(slotProps.data.timestamp) }}
+            {{ getDayOfWeek(slotProps.data.timestamp, slotProps.data.locationTimezone) }}
           </div>
         </template>
       </Column>
@@ -297,13 +297,17 @@ const hasAnyVisitTripTag = computed(() => {
   return false
 })
 
-const formatDate = (timestamp) => {
-  return timezone.formatDateDisplay(timestamp)
+// locationTimezone only matters in the "location" time mode; otherwise these are profile-timezone formats.
+const formatDate = (timestamp, locationTimezone) => {
+  return timezone.formatDateDisplayAt(timestamp, locationTimezone)
 }
 
-const formatTime = (timestamp) => {
-  return timezone.formatTime(timestamp)
+const formatTime = (timestamp, locationTimezone) => {
+  return timezone.formatTimeAt(timestamp, locationTimezone)
 }
+
+const visitEndInstant = (visit) =>
+  new Date(Date.parse(visit.timestamp) + visit.stayDuration * 1000).toISOString()
 
 const formatDuration = (seconds) => {
   return formatDurationSmart(seconds || 0)
@@ -332,24 +336,18 @@ const getVisitTripLabel = (visit) => {
 const getEndDate = (visit) => {
   if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
-  const startTime = timezone.fromUtc(visit.timestamp)
-  const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
-
-  return timezone.formatDateDisplay(endTime.toISOString())
+  return timezone.formatDateDisplayAt(visitEndInstant(visit), visit.locationTimezone)
 }
 
 const getEndTime = (visit) => {
   if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
-  const startTime = timezone.fromUtc(visit.timestamp)
-  const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
-
-  return timezone.formatTime(endTime.toISOString())
+  return timezone.formatTimeAt(visitEndInstant(visit), visit.locationTimezone)
 }
 
-const getDayOfWeek = (timestamp) => {
+const getDayOfWeek = (timestamp, locationTimezone) => {
   if (!timestamp) return t('place.visitsTable.notAvailable')
-  return timezone.format(timestamp, 'dddd') // Full day name (Monday, Tuesday, etc.)
+  return timezone.formatWeekdayAt(timestamp, locationTimezone) // Full day name (Monday, Tuesday, etc.)
 }
 
 const handlePageChange = (event) => {

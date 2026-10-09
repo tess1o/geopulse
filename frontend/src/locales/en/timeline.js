@@ -29,6 +29,13 @@ export default {
     overnight: {
         continuedFrom: 'Continued from {time}'
     },
+    localTime: {
+        resolved: 'Local time in {zone}, from the nearest city {city} ({country}, {distance} km away)',
+        beyondMaxDistance: 'Local timezone unknown: the nearest city {city} ({country}) is {distance} km away. Showing your profile timezone.',
+        noGeonamesData: 'Local timezone unknown: GeoNames city data is not loaded on this server. Showing your profile timezone.',
+        invalidTimezone: 'Local timezone unknown: the nearest city {city} ({country}) has an unrecognised timezone. Showing your profile timezone.',
+        notProvided: 'Local timezone not available for this item. Showing your profile timezone.'
+    },
     card: {
         showGpsPoints: 'Show GPS points',
         viewAllVisits: 'View all visits to this place',

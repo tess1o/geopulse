@@ -67,8 +67,8 @@
       >
         <template #body="slotProps">
           <div class="datetime-display">
-            <div class="date-part">{{ formatDate(slotProps.data.timestamp) }}</div>
-            <div class="time-part">{{ formatTime(slotProps.data.timestamp) }}</div>
+            <div class="date-part">{{ formatDate(slotProps.data.timestamp, slotProps.data.locationTimezone) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.timestamp, slotProps.data.locationTimezone) }}</div>
           </div>
         </template>
       </Column>
@@ -201,7 +201,7 @@
         <div class="mobile-stay-meta">
           <div class="mobile-meta-row">
             <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
-            <span class="mobile-meta-value">{{ formatDate(stay.timestamp) }} {{ formatTime(stay.timestamp) }}</span>
+            <span class="mobile-meta-value">{{ formatDate(stay.timestamp, stay.locationTimezone) }} {{ formatTime(stay.timestamp, stay.locationTimezone) }}</span>
           </div>
           <div class="mobile-meta-row">
             <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
@@ -307,12 +307,20 @@ const isMobile = ref(false)
 const filteredStaysData = useStaysFilter(computed(() => props.stays))
 
 // Methods - Using memoized formatters for better performance
-const formatDate = (timestamp) => {
+// Location-time mode with a resolved zone: format in the item's zone (not memoized -- the memo key has no zone).
+const hasLocationZone = (locationTimezone) => timezone.isLocationTimeMode() && !!locationTimezone?.timezone
+
+const endInstant = (startTime, durationSeconds) =>
+  new Date(Date.parse(startTime) + durationSeconds * 1000).toISOString()
+
+const formatDate = (timestamp, locationTimezone) => {
+  if (hasLocationZone(locationTimezone)) return timezone.formatDateDisplayAt(timestamp, locationTimezone)
   const cacheKeyFormat = `DATE_DISPLAY:${timezone.getDateFormat()}`
   return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatDateDisplay(ts))
 }
 
-const formatTime = (timestamp) => {
+const formatTime = (timestamp, locationTimezone) => {
+  if (hasLocationZone(locationTimezone)) return timezone.formatTimeAt(timestamp, locationTimezone)
   const cacheKeyFormat = `TIME:${timezone.getTimeFormat()}:m`
   return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatTime(ts))
 }
@@ -348,6 +356,9 @@ const getEndDateTime = (stay) => {
 
 const getEndDate = (stay) => {
   if (!stay?.timestamp || !stay?.stayDuration) return t('data.tables.notAvailable')
+  if (hasLocationZone(stay.locationTimezone)) {
+    return timezone.formatDateDisplayAt(endInstant(stay.timestamp, stay.stayDuration), stay.locationTimezone)
+  }
 
   return memoizedEndTimeFormat(
     stay.timestamp,
@@ -363,6 +374,9 @@ const getEndDate = (stay) => {
 
 const getEndTime = (stay) => {
   if (!stay?.timestamp || !stay?.stayDuration) return t('data.tables.notAvailable')
+  if (hasLocationZone(stay.locationTimezone)) {
+    return timezone.formatTimeAt(endInstant(stay.timestamp, stay.stayDuration), stay.locationTimezone)
+  }
 
   return memoizedEndTimeFormat(
     stay.timestamp,
