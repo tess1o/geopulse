@@ -12,6 +12,7 @@ import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
+import { buildLoginUrl } from '@/utils/loginRedirect';
 import { createAuthExpiredError, getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
 import { t } from '@/locales';
 
@@ -531,7 +532,7 @@ const apiService = {
 
             // 401 means cookies expired - redirect to login if we had a cached profile
             if (hadCachedUserProfile) {
-                window.location.href = '/login';
+                this.redirectToLogin();
             }
         }
 
@@ -548,6 +549,13 @@ const apiService = {
         }
 
         console.error('API request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
+    },
+
+    /**
+     * Redirect to login after the session expired, returning to the current app page after sign-in
+     */
+    redirectToLogin() {
+        window.location.href = buildLoginUrl(window.location.pathname + window.location.search);
     },
 
     /**

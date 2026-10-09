@@ -226,6 +226,7 @@ import { useAuthStore } from '@/stores/auth'
 import { formatError } from '@/utils/errorHandler'
 import { getErrorReferenceId, hasErrorReference } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
+import { getSafeLoginRedirect } from '@/utils/loginRedirect'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
@@ -234,6 +235,8 @@ import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
+// Page the guest was sent here from (set by the router auth guard), restored after sign-in.
+const loginRedirect = computed(() => getSafeLoginRedirect(route.query.redirect))
 const toast = useToast()
 const authStore = useAuthStore()
 
@@ -380,7 +383,7 @@ const handleSubmit = async () => {
     })
 
     // Navigate to default redirect URL or fallback to timeline
-    const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+    const redirectUrl = loginRedirect.value || authStore.defaultRedirectUrl || '/app/timeline'
     await router.push(redirectUrl)
     
   } catch (error) {
@@ -415,7 +418,7 @@ const handleDemoLogin = async (persona) => {
       life: 3000
     })
 
-    const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+    const redirectUrl = loginRedirect.value || authStore.defaultRedirectUrl || '/app/timeline'
     await router.push(redirectUrl)
   } catch (error) {
     console.error('Demo login error:', error)
@@ -479,7 +482,7 @@ const getDemoLoginErrorMessage = (error, formattedError) => {
 const handleOidcLogin = async (providerName) => {
   isLoading.value = true;
   try {
-    await authStore.initiateOidcLogin(providerName);
+    await authStore.initiateOidcLogin(providerName, loginRedirect.value);
     // The browser will be redirected, so no need to set isLoading to false here.
   } catch (error) {
     toast.add({

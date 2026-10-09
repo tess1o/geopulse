@@ -14,9 +14,11 @@ vi.hoisted(() => {
   Object.defineProperty(window, 'localStorage', { configurable: true, value: shim })
 })
 
+const routerState = vi.hoisted(() => ({ query: {}, push: null }))
+
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {} }),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() })
+  useRoute: () => ({ query: routerState.query }),
+  useRouter: () => ({ push: routerState.push || vi.fn(), replace: vi.fn() })
 }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
 
@@ -148,5 +150,53 @@ describe('LoginPage credential errors', () => {
     const text = wrapper.text()
     expect(text).toContain('Invalid email or password. Please check your credentials and try again.')
     expect(text).not.toContain('Your session has expired')
+  })
+})
+
+/**
+ * A guest sent to sign-in from an app link (e.g. a Home tip) returns to that page, not the default one.
+ */
+describe('LoginPage return-to redirect', () => {
+  const signInWith = async (query) => {
+    setActivePinia(createPinia())
+    routerState.query = query
+    routerState.push = vi.fn()
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+    vi.spyOn(authStore, 'getAuthStatus').mockResolvedValue({
+      passwordLoginEnabled: true,
+      oidcLoginEnabled: false,
+      passwordRegistrationEnabled: true,
+      oidcRegistrationEnabled: false
+    })
+    vi.spyOn(authStore, 'getOidcProviders').mockResolvedValue([])
+    vi.spyOn(authStore, 'login').mockResolvedValue({})
+
+    const LoginPage = (await import('./LoginPage.vue')).default
+    const wrapper = mount(LoginPage, { global: globalOptions })
+    await flushPromises()
+
+    const [email, password] = wrapper.findAll('input')
+    await email.setValue('user@example.com')
+    await password.setValue('secret-password')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const push = routerState.push
+    routerState.query = {}
+    routerState.push = null
+    return push
+  }
+
+  it('opens the requested app page after password sign-in', async () => {
+    const push = await signInWith({ redirect: '/app/profile?tab=appearance' })
+
+    expect(push).toHaveBeenCalledWith('/app/profile?tab=appearance')
+  })
+
+  it('ignores a redirect that leaves the app', async () => {
+    const push = await signInWith({ redirect: 'https://example.com/app/timeline' })
+
+    expect(push).toHaveBeenCalledWith('/app/timeline')
   })
 })

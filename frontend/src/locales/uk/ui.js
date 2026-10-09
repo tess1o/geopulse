@@ -82,7 +82,7 @@ export default {
             releaseNotesLink: 'Повні нотатки про випуск на GitHub'
         },
         hero: {
-            eyebrow: 'Приватний аналог Google Timeline',
+            eyebrow: 'Self-hosted альтернатива Google Timeline',
             titleWelcomeBack: 'З поверненням',
             titleDefault: 'Керуйте власним таймлайном місцеположень',
             subtitle: 'GeoPulse перетворює необроблені GPS-точки на приватний таймлайн місцеположень із зупинками, поїздками, картами й аналітикою — усе під вашим контролем.',
@@ -92,7 +92,7 @@ export default {
             startJourney: 'Розпочати подорож',
             goToTimeline: 'Перейти до хронології',
             loadingWorkspace: 'Завантаження робочого простору...',
-            socialProofText: 'Приватний, відкритий вихідний код — альтернатива Google Timeline.',
+            socialProofText: 'Вихідний код доступний на GitHub · Безкоштовно для особистого використання',
             stars: 'зірок',
             forks: 'форків'
         },

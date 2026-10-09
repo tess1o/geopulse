@@ -83,7 +83,7 @@ export default {
             releaseNotesLink: 'Full release notes on GitHub'
         },
         hero: {
-            eyebrow: 'Privacy-first Google Timeline alternative',
+            eyebrow: 'Self-hosted Google Timeline alternative',
             titleWelcomeBack: 'Welcome back',
             titleDefault: 'Own Your Location Timeline',
             subtitle: 'GeoPulse turns raw GPS points into a private location timeline with stays, trips, maps, and insights, all under your control.',
@@ -93,7 +93,7 @@ export default {
             startJourney: 'Start Your Journey',
             goToTimeline: 'Go to Timeline',
             loadingWorkspace: 'Loading workspace...',
-            socialProofText: 'The privacy-first, open-source alternative to Google Timeline.',
+            socialProofText: 'Source available on GitHub · Free for personal use',
             stars: 'Stars',
             forks: 'Forks'
         },

@@ -8,13 +8,16 @@
       "Refreshed UI across almost every page, backed by a global CSS and theming cleanup with consistent dark mode",
       "New account menu behind your avatar in the top bar: profile, timeline preferences, theme, language and logout now live there, and the side menu is shorter",
       "Timeline map: 3D map support and customizable map appearance, including path and highlighted path colors",
+      "New Timeline time zone setting: show times in your profile timezone or in the local time at each place you visited",
       "Trip Plans: place discovery with photos, per-stop travel mode with routed legs, and a reworked Trip Workspace",
       "Added Public Transport trip type and the option to disable map matching for specific trip types",
       "New notifications for new releases, missing GPS data, ready Rewinds and backups",
       "Shared links: auto-refresh and auto-follow, Immich photos with album restriction",
       "Period Tags are renamed to Timeline Labels",
       "Better observability: structured JSON logs, request IDs and log level changes from the Admin panel",
-      "Upgraded to Quarkus 3.40 LTS, with many internal fixes and improvements"
+      "Upgraded to Quarkus 3.40 LTS, with many internal fixes and improvements",
+      "Upgraded nginx, Vite and many frontend libraries to latest stable versions",
+      "Added optional upgrade to Postgres 18"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.0.0"
   },

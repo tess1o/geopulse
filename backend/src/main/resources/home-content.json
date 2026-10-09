@@ -338,6 +338,58 @@
           "url": "https://geopulse.cc/docs/system-administration/configuration/weather"
         }
       ]
+    },
+    {
+      "id": "timeline-local-time-zone",
+      "title": "See times in the local time zone while traveling",
+      "description": "Set \"Timeline time zone\" in Profile → General to show timeline and GPS data times in the local time where each place was visited, instead of your profile time zone. Useful for trips abroad. Days are still grouped by your profile time zone, and the option appears only when the server has GeoNames city data loaded.",
+      "icon": "pi pi-clock",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Timeline time zone",
+          "url": "/app/profile?tab=general&setting=timeDisplayMode"
+        }
+      ]
+    },
+    {
+      "id": "enable-3d-buildings",
+      "title": "Turn on 3D buildings",
+      "description": "Enable \"3D buildings\" in Profile → Timeline & Map to show building shapes when you zoom in to street level. It works only with the Vector (MapLibre) map render mode and styles that include building height data.",
+      "icon": "pi pi-building",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "3D buildings setting",
+          "url": "/app/profile?tab=timeline&setting=enable3dBuildingsByDefault"
+        }
+      ]
+    },
+    {
+      "id": "profile-appearance-colors",
+      "title": "Customize timeline colors in Appearance",
+      "description": "The Profile → Appearance tab lets you change path, speed and heatmap colors and line styles. Color vision presets set everything in one step, and a live preview shows the result on light, dark and satellite maps.",
+      "icon": "pi pi-palette",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open Appearance",
+          "url": "/app/profile?tab=appearance"
+        }
+      ]
+    },
+    {
+      "id": "profile-notification-settings",
+      "title": "Choose which notifications you get",
+      "description": "The Profile → Notifications tab controls GPS health alerts, the monthly Rewind reminder and release highlights. GPS health and Rewind alerts can go to the in-app inbox, be sent through Apprise, or both.",
+      "icon": "pi pi-bell",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open Notifications",
+          "url": "/app/profile?tab=notifications"
+        }
+      ]
     }
   ]
 }

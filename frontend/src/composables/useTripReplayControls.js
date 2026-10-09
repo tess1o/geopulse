@@ -175,10 +175,6 @@ export const useTripReplayControls = ({
     replayControlsDismissed.value = true
   }
 
-  const restoreTripReplayControls = () => {
-    replayControlsDismissed.value = false
-  }
-
   const startTripReplay = () => {
     if (!showTripReplayBar.value || !replayTimeline.value) {
       return
@@ -198,6 +194,12 @@ export const useTripReplayControls = ({
     if (typeof window !== 'undefined') {
       replayAnimationFrameId = window.requestAnimationFrame(replayTick)
     }
+  }
+
+  // Backs the "Replay" button, so it starts playback too; auto-shown controls still open paused.
+  const restoreTripReplayControls = () => {
+    replayControlsDismissed.value = false
+    startTripReplay()
   }
 
   const toggleReplayPlayback = () => {

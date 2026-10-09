@@ -2,6 +2,7 @@ import {createRouter, createWebHistory} from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { maintenance, refreshMaintenance } from '@/stores/maintenance'
 import { applyDocumentTitle } from '@/utils/documentTitle'
+import { buildLoginLocation, getSafeLoginRedirect } from '@/utils/loginRedirect'
 
 // Auth guard function
 const requireAuth = async (to, from, next) => {
@@ -15,7 +16,7 @@ const requireAuth = async (to, from, next) => {
 
         // If still not authenticated after check, redirect to login
         if (!authStore.isAuthenticated) {
-            next('/login')
+            next(buildLoginLocation(to))
         } else {
             next()
         }
@@ -23,7 +24,7 @@ const requireAuth = async (to, from, next) => {
         // If authentication check fails, clear auth data and redirect to login
         console.log('Authentication check failed, redirecting to login')
         authStore.clearUser()
-        next('/login')
+        next(buildLoginLocation(to))
     }
 }
 
@@ -39,7 +40,7 @@ const requireGuest = async (to, from, next) => {
 
         // If authenticated, redirect away from login/register
         if (authStore.isAuthenticated) {
-            const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+            const redirectUrl = getSafeLoginRedirect(to.query.redirect) || authStore.defaultRedirectUrl || '/app/timeline'
             next(redirectUrl)
         } else {
             next()
@@ -63,7 +64,7 @@ const requireAdmin = async (to, from, next) => {
 
         // If not authenticated, redirect to login
         if (!authStore.isAuthenticated) {
-            next('/login')
+            next(buildLoginLocation(to))
         } else if (to.meta.requiresRealAdmin && !authStore.isAdmin) {
             next('/app/admin')
         } else if (!authStore.canViewAdmin) {
@@ -75,7 +76,7 @@ const requireAdmin = async (to, from, next) => {
     } catch (error) {
         console.log('Admin check failed, redirecting to login')
         authStore.clearUser()
-        next('/login')
+        next(buildLoginLocation(to))
     }
 }
 

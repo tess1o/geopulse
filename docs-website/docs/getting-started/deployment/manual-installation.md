@@ -835,6 +835,16 @@ server {
         add_header Cache-Control "public, max-age=31536000";
     }
 
+    # ES module assets (the MapLibre map worker). The stock mime.types has no mjs entry, and browsers refuse to
+    # start a module worker served as application/octet-stream.
+    location ~* ^/(?!osm/).*\.mjs$ {
+        types {
+            application/javascript mjs;
+        }
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000";
+    }
+
     # OSM tiles proxy with caching
     location ^~ /osm/tiles/ {
         resolver 8.8.8.8 valid=300s;
@@ -988,6 +998,16 @@ server {
 
     # Cache static assets (but exclude OSM tiles path)
     location ~* ^/(?!osm/).*\.(jpg|jpeg|png|gif|ico|css|js)$ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000";
+    }
+
+    # ES module assets (the MapLibre map worker). The stock mime.types has no mjs entry, and browsers refuse to
+    # start a module worker served as application/octet-stream.
+    location ~* ^/(?!osm/).*\.mjs$ {
+        types {
+            application/javascript mjs;
+        }
         expires 1y;
         add_header Cache-Control "public, max-age=31536000";
     }
@@ -1316,6 +1336,14 @@ sudo chown -R www-data:www-data /var/www/geopulse  # Ubuntu/Debian
 # OR
 sudo chown -R nginx:nginx /var/www/geopulse  # RHEL/Rocky/Fedora
 ```
+
+:::warning Upgrading from 1.x: add the `.mjs` location to nginx
+GeoPulse 2.0 loads the map worker from a `.mjs` file. The stock nginx `mime.types` has no entry for it, so nginx serves it as `application/octet-stream` and browsers refuse to start the worker: vector and 3D maps do not load. If your nginx configuration was created before 2.0, add the `location ~* ^/(?!osm/).*\.mjs$` block from [Configure Nginx Web Server](#13-configure-nginx-web-server) next to the static assets location, then reload nginx:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+:::
 
 #### 5. Start Services
 
