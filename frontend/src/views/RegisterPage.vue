@@ -159,6 +159,7 @@ import {useToast} from 'primevue/usetoast'
 import {useAuthStore} from '@/stores/auth'
 import {useLocale} from '@/composables/useLocale'
 import {getBrowserTimezone} from '@/utils/timezoneUtils'
+import {getRegistrationErrorMessage} from '@/utils/registrationErrors'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
@@ -274,28 +275,19 @@ const handleSubmit = async () => {
 
   } catch (error) {
     console.error('Registration error:', error)
-    registerError.value = getErrorMessage(error)
+    if (error.accountCreated) {
+      toast.add({
+        severity: 'info',
+        summary: t('auth.register.toasts.signInRequired.title'),
+        detail: t('auth.register.toasts.signInRequired.detail'),
+        life: 5000
+      })
+      await router.push('/login')
+      return
+    }
+    registerError.value = getRegistrationErrorMessage(error)
   } finally {
     isLoading.value = false
-  }
-}
-
-const getErrorMessage = (error) => {
-  if (error.response?.data?.message) {
-    return error.response.data.message
-  }
-
-  switch (error.response?.status) {
-    case 409:
-      return t('auth.register.errors.emailExists')
-    case 400:
-      return t('auth.register.errors.checkInformation')
-    case 422:
-      return t('auth.register.errors.invalidData')
-    case 500:
-      return t('auth.register.errors.serverError')
-    default:
-      return error.message || t('errors.generic.message')
   }
 }
 

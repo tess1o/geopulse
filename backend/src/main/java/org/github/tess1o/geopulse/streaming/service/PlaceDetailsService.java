@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.locationtech.jts.geom.*;
+import org.locationtech.jts.operation.distance.DistanceOp;
 
 import java.time.DateTimeException;
 import java.time.DayOfWeek;
@@ -555,7 +556,7 @@ public class PlaceDetailsService {
     /**
      * Calculate distance between a point and a favorite location.
      */
-    private double calculateDistance(Point point, FavoritesEntity favorite) {
+    double calculateDistance(Point point, FavoritesEntity favorite) {
         Geometry favoriteGeom = favorite.getGeometry();
 
         if (favorite.getType() == org.github.tess1o.geopulse.favorites.model.FavoriteLocationType.POINT) {
@@ -570,8 +571,10 @@ public class PlaceDetailsService {
             if (favoriteGeom.contains(point)) {
                 return 0.0;
             }
-            // Calculate distance to nearest point on boundary
-            return favoriteGeom.distance(point) * 111320; // Convert degrees to meters (approximate)
+            // Find the nearest point on the area, then measure on the sphere: a planar degree distance
+            // overstates east-west gaps by 1/cos(latitude).
+            Coordinate[] nearest = DistanceOp.nearestPoints(favoriteGeom, point);
+            return calculateHaversineDistance(nearest[0].y, nearest[0].x, nearest[1].y, nearest[1].x);
         }
     }
 

@@ -298,7 +298,13 @@ export const useAuthStore = defineStore('auth', {
                 timezone,
                 language
             })
-            await this.login(email, password)
+            try {
+                await this.login(email, password)
+            } catch (error) {
+                // The account exists at this point; only the automatic sign-in failed. Callers send the
+                // user to sign in rather than reporting a failed registration they cannot retry.
+                throw Object.assign(error, { accountCreated: true })
+            }
         },
 
         async logout() {

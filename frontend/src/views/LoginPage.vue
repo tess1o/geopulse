@@ -442,8 +442,9 @@ const getLoginErrorMessage = (error, formattedError) => {
     return error.response.data.message
   }
   
-  // Login-specific error messages
-  switch (error.response?.status) {
+  // Login-specific error messages. The auth store rethrows a normalized error with no `response`,
+  // so the status comes from formatError, which reads it from either shape.
+  switch (formattedError.status) {
     case 401:
       return t('auth.login.errors.invalidCredentials')
     case 403:
@@ -463,7 +464,7 @@ const getDemoLoginErrorMessage = (error, formattedError) => {
     return error.response.data.message
   }
 
-  switch (error.response?.status) {
+  switch (formattedError.status) {
     case 400:
       return t('auth.login.errors.chooseProfile')
     case 403:

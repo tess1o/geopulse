@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.trips.service;
 
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.service.simplification.GpsPathSimplifier;
@@ -11,10 +12,14 @@ import org.github.tess1o.geopulse.mapmatching.client.ValhallaRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaShapeDecoder;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ROUTING_UNAVAILABLE;
 
 /**
  * Routes a single plan leg through Valhalla's {@code /route}, the server already configured for
@@ -39,7 +44,8 @@ public class TripPlanLegRouter {
     /**
      * @return the routed leg, or {@link RoutedLeg#UNROUTABLE} when Valhalla answers that no route
      * exists (an ocean between the stops, a leg beyond the costing's distance limit). That answer is
-     * cached like a route. Transient failures throw instead, so they are retried on the next read.
+     * cached like a route. Transient failures throw {@link GeoPulseException} ({@code ROUTING_UNAVAILABLE})
+     * instead, and an exception is never cached, so they are retried on the next read.
      */
     @CacheResult(cacheName = CACHE_NAME)
     public RoutedLeg route(LegKey key) {
@@ -61,7 +67,10 @@ public class TripPlanLegRouter {
                 log.debug("Valhalla found no {} route for plan leg {}", key.costing(), key);
                 return RoutedLeg.UNROUTABLE;
             }
-            throw e;
+            throw new GeoPulseException(ROUTING_UNAVAILABLE, "Valhalla routing failed",
+                    Map.of("upstreamStatus", status), e);
+        } catch (ProcessingException e) {
+            throw new GeoPulseException(ROUTING_UNAVAILABLE, "Valhalla is unreachable", e);
         }
 
         ValhallaRouteResponse.Leg leg = response != null && response.getTrip() != null

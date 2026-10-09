@@ -25,8 +25,14 @@ const globalOptions = {
   stubs: {
     Card: { template: '<div><slot name="content" /><slot /></div>' },
     Button: { props: ['label'], template: '<button>{{ label }}</button>' },
-    InputText: { props: ['modelValue', 'placeholder'], template: '<input :placeholder="placeholder" />' },
-    Password: { props: ['modelValue', 'placeholder'], template: '<input :placeholder="placeholder" />' },
+    InputText: {
+      props: ['modelValue', 'placeholder'],
+      template: '<input :placeholder="placeholder" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />'
+    },
+    Password: {
+      props: ['modelValue', 'placeholder'],
+      template: '<input :placeholder="placeholder" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />'
+    },
     Message: { props: ['content'], template: '<div>{{ content }}</div>' },
     Toast: Inert,
     ErrorReferenceToast: Inert,
@@ -93,5 +99,54 @@ describe('LoginPage localization', () => {
     expect(text).toContain('Немає облікового запису?')
     expect(text).toContain('Створити обліковий запис')
     expect(text).not.toMatch(/\bauth\.[a-z]/)
+  })
+})
+
+/**
+ * A rejected password must read as a rejected password.
+ *
+ * The regression this guards: the auth store rethrows a normalized error (no axios `response`), so the
+ * page's status switch never matched and the 401 fell through to the generic "Session Expired" copy.
+ */
+describe('LoginPage credential errors', () => {
+  it('shows the invalid-credentials message for a 401 from the backend', async () => {
+    setActivePinia(createPinia())
+    const { useAuthStore } = await import('@/stores/auth')
+    const apiService = (await import('@/utils/apiService')).default
+    vi.spyOn(useAuthStore(), 'getAuthStatus').mockResolvedValue({
+      passwordLoginEnabled: true,
+      oidcLoginEnabled: false,
+      passwordRegistrationEnabled: true,
+      oidcRegistrationEnabled: false
+    })
+    vi.spyOn(useAuthStore(), 'getOidcProviders').mockResolvedValue([])
+    vi.spyOn(apiService, 'login').mockRejectedValue(Object.assign(new Error('Request failed with status code 401'), {
+      response: {
+        status: 401,
+        data: {
+          type: 'urn:geopulse:error:INVALID_CREDENTIALS',
+          status: 401,
+          code: 'INVALID_CREDENTIALS',
+          detail: 'Invalid email or password',
+          errorId: 'e-1'
+        }
+      },
+      config: { url: '/auth/sessions' }
+    }))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const LoginPage = (await import('./LoginPage.vue')).default
+    const wrapper = mount(LoginPage, { global: globalOptions })
+    await flushPromises()
+
+    const [email, password] = wrapper.findAll('input')
+    await email.setValue('user@example.com')
+    await password.setValue('wrong-password')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Invalid email or password. Please check your credentials and try again.')
+    expect(text).not.toContain('Your session has expired')
   })
 })

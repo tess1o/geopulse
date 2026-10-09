@@ -267,18 +267,20 @@ backend-test-integration-tz-matrix:
 # Variables for E2E testing
 E2E_COMPOSE_FILE := tests/docker-compose.e2e.yml
 E2E_PLAYWRIGHT_PROJECTS ?= --project=chromium --project=chromium-vector
+E2E_SERVICES := geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e geopulse-demo-integrations-e2e
 
-# Start E2E test environment (UI + Backend + DB)
+# Start E2E test environment (UI + Backend + DB + fake Immich/Memos)
 .PHONY: e2e-start
 e2e-start:
 	@echo "🚀 Starting E2E test environment..."
 	@echo "  Backend: http://localhost:8081"
 	@echo "  Frontend: http://localhost:5556"
 	@echo "  Database: localhost:5433"
-	docker-compose -f $(E2E_COMPOSE_FILE) up -d geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e
+	@echo "  Fake Immich/Memos: geopulse-demo-integrations-e2e:2283/5230 (Docker network only)"
+	docker-compose -f $(E2E_COMPOSE_FILE) up -d $(E2E_SERVICES)
 	@echo "✅ E2E environment started"
 
-# Stop E2E test environment
+# Stop E2E test environment (down removes every service in the compose file, demo-integrations included)
 .PHONY: e2e-stop
 e2e-stop:
 	@echo "🛑 Stopping E2E test environment..."
@@ -290,7 +292,7 @@ e2e-stop:
 e2e-restart:
 	@echo "🔄 Restarting E2E test environment..."
 	docker-compose -f $(E2E_COMPOSE_FILE) down
-	docker-compose -f $(E2E_COMPOSE_FILE) up -d geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e
+	docker-compose -f $(E2E_COMPOSE_FILE) up -d $(E2E_SERVICES)
 	@echo "✅ E2E environment restarted"
 
 # Show E2E environment status
@@ -366,12 +368,24 @@ e2e-rebuild-frontend:
 	docker-compose -f $(E2E_COMPOSE_FILE) up -d geopulse-ui-e2e
 	@echo "✅ E2E frontend rebuilt and restarted"
 
-# Rebuild both E2E containers
+# Rebuild E2E demo integrations (fake Immich/Memos) and restart
+.PHONY: e2e-rebuild-integrations
+e2e-rebuild-integrations:
+	@echo "🔧 Rebuilding E2E demo integrations..."
+	docker-compose -f $(E2E_COMPOSE_FILE) build geopulse-demo-integrations-e2e
+	docker-compose -f $(E2E_COMPOSE_FILE) stop geopulse-demo-integrations-e2e
+	docker-compose -f $(E2E_COMPOSE_FILE) rm -f geopulse-demo-integrations-e2e
+	docker-compose -f $(E2E_COMPOSE_FILE) up -d geopulse-demo-integrations-e2e
+	@echo "✅ E2E demo integrations rebuilt and restarted"
+
+# Rebuild all E2E images and start the whole E2E environment
 .PHONY: e2e-rebuild-all
 e2e-rebuild-all:
 	@echo "🔧 Rebuilding all E2E containers..."
 	$(MAKE) e2e-rebuild-backend
 	$(MAKE) e2e-rebuild-frontend
+	$(MAKE) e2e-rebuild-integrations
+	docker-compose -f $(E2E_COMPOSE_FILE) up -d $(E2E_SERVICES)
 	@echo "✅ All E2E containers rebuilt"
 
 # Clean E2E environment (remove containers and volumes)
@@ -387,11 +401,13 @@ e2e-clean:
 e2e-health:
 	@echo "🏥 Checking E2E environment health..."
 	@echo "Backend health:"
-	@curl -f http://localhost:8081/health 2>/dev/null && echo "✅ Backend OK" || echo "❌ Backend DOWN"
+	@curl -fs http://localhost:8081/api/v1/system/health >/dev/null && echo "✅ Backend OK" || echo "❌ Backend DOWN"
 	@echo "Frontend health:"
 	@curl -f http://localhost:5556 2>/dev/null >/dev/null && echo "✅ Frontend OK" || echo "❌ Frontend DOWN"
 	@echo "Database health:"
 	@docker exec geopulse-postgres-e2e pg_isready -U geopulse_test -d geopulse_test 2>/dev/null && echo "✅ Database OK" || echo "❌ Database DOWN"
+	@echo "Demo integrations (fake Immich/Memos) health:"
+	@[ "$$(docker inspect -f '{{.State.Health.Status}}' geopulse-demo-integrations-e2e 2>/dev/null)" = "healthy" ] && echo "✅ Demo integrations OK" || echo "❌ Demo integrations DOWN"
 
 #==============================================================================
 # DEVELOPMENT ENVIRONMENT TARGETS

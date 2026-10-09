@@ -178,4 +178,56 @@ describe('online restore maintenance lifecycle', () => {
     expect(module.maintenanceScreenVisible()).toBe(true)
     expect(module.interruptsApplicationRequests()).toBe(true)
   })
+  describe('status polling', () => {
+    let module
+    let hidden
+    const setHidden = value => {
+      hidden = value
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+
+    beforeEach(async () => {
+      vi.useFakeTimers()
+      hidden = false
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden })
+      respond({ state: 'IDLE', blocked: false, warning: false, message: 'GeoPulse is available.' })
+      module = await import('./maintenance')
+    })
+
+    afterEach(() => {
+      module.stopMaintenancePolling()
+      delete document.hidden
+    })
+
+    it('polls an idle server at the slow interval', async () => {
+      module.startMaintenancePolling()
+      await vi.advanceTimersByTimeAsync(module.ACTIVE_POLL_INTERVAL_MS)
+      expect(fetch).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(module.IDLE_POLL_INTERVAL_MS - module.ACTIVE_POLL_INTERVAL_MS)
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('switches to the fast interval once a restore is known', async () => {
+      module.startMaintenancePolling()
+      respond(preparing)
+      module.applyMaintenanceStatus(preparing, { broadcast: false })
+      await vi.advanceTimersByTimeAsync(module.ACTIVE_POLL_INTERVAL_MS)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(module.ACTIVE_POLL_INTERVAL_MS)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('pauses while the page is hidden and checks immediately when it becomes visible', async () => {
+      module.startMaintenancePolling()
+      setHidden(true)
+      await vi.advanceTimersByTimeAsync(module.IDLE_POLL_INTERVAL_MS * 3)
+      expect(fetch).not.toHaveBeenCalled()
+
+      setHidden(false)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(module.IDLE_POLL_INTERVAL_MS)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+  })
 })

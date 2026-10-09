@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.geofencing.service.DefaultNotificationTemplateService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
@@ -32,6 +33,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PASSWORD_REGISTRATION_DISABLED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.USER_REGISTRATION_CONFLICT;
 
 /**
  * Service for user management operations.
@@ -120,7 +124,8 @@ public class UserService {
      * @param fullName The user's full name
      * @param timezone The user's timezone (IANA format)
      * @return The created user entity
-     * @throws IllegalArgumentException if the user already exists
+     * @throws GeoPulseException {@code PASSWORD_REGISTRATION_DISABLED} when password registration is off, or
+     *                            {@code USER_REGISTRATION_CONFLICT} when the email is already registered
      */
     @Transactional
     public UserEntity registerUser(String email, String password, String fullName, String timezone) {
@@ -130,12 +135,9 @@ public class UserService {
     @Transactional
     public UserEntity registerUser(String email, String password, String fullName, String timezone, String language) {
         if (!authConfigurationService.isPasswordRegistrationEnabled()) {
-            throw new IllegalArgumentException("Registration is disabled");
+            throw new GeoPulseException(PASSWORD_REGISTRATION_DISABLED, "Password registration is disabled");
         }
-        // Check if the user already exists
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("User with email " + email + " already exists");
-        }
+        requireEmailAvailable(email);
 
         // Validate and set timezone (defaults to UTC if null/invalid)
         String validatedTimezone = validateTimezone(timezone);
@@ -170,7 +172,7 @@ public class UserService {
      * @param fullName        The user's full name
      * @param timezone        The user's timezone (IANA format)
      * @return The created user entity
-     * @throws IllegalArgumentException if the user already exists
+     * @throws GeoPulseException {@code USER_REGISTRATION_CONFLICT} when the email is already registered
      */
     @Transactional
     public UserEntity registerUserViaInvitation(String invitationToken, String email, String password, String fullName, String timezone) {
@@ -182,10 +184,7 @@ public class UserService {
         // NOTE: This method intentionally bypasses the isPasswordRegistrationEnabled() check
         // to allow invited users to register even when public registration is disabled.
 
-        // Check if the user already exists
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("User with email " + email + " already exists");
-        }
+        requireEmailAvailable(email);
 
         // Validate and set timezone (defaults to UTC if null/invalid)
         String validatedTimezone = validateTimezone(timezone);
@@ -208,6 +207,13 @@ public class UserService {
         persist(user);
         log.info("User {} registered via invitation", user.getId());
         return user;
+    }
+
+    private void requireEmailAvailable(String email) {
+        if (userRepository.existsByEmail(email)) {
+            // The detail never echoes the email: this endpoint is public.
+            throw new GeoPulseException(USER_REGISTRATION_CONFLICT, "An account with this email already exists");
+        }
     }
 
     public Optional<UserEntity> findByEmail(String email) {

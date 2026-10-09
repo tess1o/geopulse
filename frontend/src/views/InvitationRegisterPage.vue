@@ -141,8 +141,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { useLocale } from '@/composables/useLocale'
-import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
-import { formatMessageDescriptor } from '@/utils/messageDescriptor'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { getRegistrationErrorMessage, invitationStatusMessage } from '@/utils/registrationErrors'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -243,11 +243,13 @@ const validateInvitation = async () => {
   try {
     const response = await authStore.validateInvitation(token.value)
     invitationValid.value = response.valid
-    validationMessage.value = formatMessageDescriptor(response.message) || t('auth.invitation.invalidMessage')
+    validationMessage.value = invitationStatusMessage(response.status)
   } catch (error) {
     console.error('Failed to validate invitation:', error)
     invitationValid.value = false
-    validationMessage.value = t('auth.invitation.errors.validateFailed')
+    validationMessage.value = normalizeApiError(error).code === 'INVITATION_NOT_FOUND'
+      ? t('auth.invitation.errors.notFound')
+      : t('auth.invitation.errors.validateFailed')
   } finally {
     validating.value = false
   }
@@ -306,26 +308,40 @@ const handleSubmit = async () => {
 
     // Register user via invitation
     await authStore.registerInvitation(token.value, payload)
-
-    // Log in the user automatically after successful registration
-    await authStore.login(form.value.email, form.value.password)
-
-    toast.add({
-      severity: 'success',
-      summary: t('auth.invitation.toasts.created.title'),
-      detail: t('auth.invitation.toasts.created.detail'),
-      life: 3000
-    })
-
-    // Navigate to location sources for onboarding
-    await router.push('/app/location-sources')
-
   } catch (error) {
     console.error('Registration failed:', error)
-    errorMessage.value = formatApiErrorDetail(error, t('auth.invitation.errors.registrationFailed'))
-  } finally {
+    errorMessage.value = getRegistrationErrorMessage(error)
     submitting.value = false
+    return
   }
+
+  try {
+    // Log in the user automatically after successful registration
+    await authStore.login(form.value.email, form.value.password)
+  } catch (error) {
+    // The account exists; only the automatic sign-in failed, so send the user to sign in.
+    console.error('Sign-in after registration failed:', error)
+    toast.add({
+      severity: 'info',
+      summary: t('auth.register.toasts.signInRequired.title'),
+      detail: t('auth.register.toasts.signInRequired.detail'),
+      life: 5000
+    })
+    submitting.value = false
+    await router.push('/login')
+    return
+  }
+
+  toast.add({
+    severity: 'success',
+    summary: t('auth.invitation.toasts.created.title'),
+    detail: t('auth.invitation.toasts.created.detail'),
+    life: 3000
+  })
+  submitting.value = false
+
+  // Navigate to location sources for onboarding
+  await router.push('/app/location-sources')
 }
 
 onMounted(() => {

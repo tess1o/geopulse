@@ -5,7 +5,8 @@ import {
     isKnownRestoreActive,
     isMaintenanceInterruption,
     maintenance,
-    markMaintenanceUnavailable
+    markMaintenanceUnavailable,
+    refreshMaintenance
 } from '@/stores/maintenance';
 import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
@@ -46,6 +47,13 @@ axios.interceptors.request.use(config => {
     // request allowed afterward, so it must use an independent transport signal.
     if (!config.signal && !isCompletionLogout(config.url)) config.signal = maintenanceAbortController.signal;
     return config;
+});
+
+// The maintenance poller runs slowly while idle; a request rejected by the restore guard
+// means a restore started elsewhere, so pick up the new state right away.
+axios.interceptors.response.use(undefined, error => {
+    if (error?.response?.headers?.['x-geopulse-restore-blocked'] === 'true') void refreshMaintenance();
+    return Promise.reject(error);
 });
 
 if (typeof window !== 'undefined') {

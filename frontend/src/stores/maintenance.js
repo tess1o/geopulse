@@ -156,8 +156,63 @@ export async function refreshMaintenance() {
   return pending
 }
 
+// Restore progress needs a fast reaction; an idle server is checked rarely because blocked API
+// responses (X-GeoPulse-Restore-Blocked) trigger an immediate refresh through apiService.
+export const ACTIVE_POLL_INTERVAL_MS = 5000
+export const IDLE_POLL_INTERVAL_MS = 30000
+
+let polling = false
+let pollDueAt = 0
+
+const pageHidden = () => typeof document !== 'undefined' && document.hidden
+const nextPollDelay = () => (isKnownRestoreActive() || maintenance.unavailable || maintenance.blocked)
+  ? ACTIVE_POLL_INTERVAL_MS
+  : IDLE_POLL_INTERVAL_MS
+
+function clearPoll() {
+  if (poller) window.clearTimeout(poller)
+  poller = null
+  pollDueAt = 0
+}
+
+function schedulePoll(delay = nextPollDelay()) {
+  clearPoll()
+  if (!polling || pageHidden()) return
+  pollDueAt = Date.now() + delay
+  poller = window.setTimeout(async () => {
+    poller = null
+    pollDueAt = 0
+    await refreshMaintenance()
+    schedulePoll()
+  }, delay)
+}
+
+function onVisibilityChange() {
+  if (pageHidden()) {
+    clearPoll()
+    return
+  }
+  refreshMaintenance().finally(() => schedulePoll())
+}
+
+function onMaintenanceChange() {
+  // Entering a restore state must not wait out the remainder of an idle delay.
+  if (polling && !pageHidden() && (!poller || Date.now() + nextPollDelay() < pollDueAt)) schedulePoll()
+}
+
 export function startMaintenancePolling() {
-  if (!poller) poller = window.setInterval(refreshMaintenance, 5000)
+  if (polling) return
+  polling = true
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('geopulse:maintenance-change', onMaintenanceChange)
+  schedulePoll()
+}
+
+export function stopMaintenancePolling() {
+  polling = false
+  clearPoll()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('geopulse:maintenance-change', onMaintenanceChange)
 }
 
 export function acknowledgeActivation() {

@@ -80,19 +80,15 @@ public class UserResource {
                     + "enabled by the administrator; otherwise use an invitation link. The new user signs in "
                     + "afterwards.")
     public RestResponse<UserResponse> registerUser(@Valid UserRegistrationRequest request) {
-        try {
-            UserEntity user = userService.registerUser(
-                    request.getEmail(),
-                    request.getPassword(),
-                    request.getFullName(),
-                    request.getTimezone(),
-                    request.getLanguage()
-            );
-            UserResponse response = userMapper.toResponse(user);
-            return RestResponse.status(Response.Status.CREATED, response);
-        } catch (IllegalArgumentException e) {
-            throw new GeoPulseException(USER_REGISTRATION_CONFLICT, USER_REGISTRATION_CONFLICT.title(), e);
-        }
+        UserEntity user = userService.registerUser(
+                request.getEmail(),
+                request.getPassword(),
+                request.getFullName(),
+                request.getTimezone(),
+                request.getLanguage()
+        );
+        UserResponse response = userMapper.toResponse(user);
+        return RestResponse.status(Response.Status.CREATED, response);
     }
 
 

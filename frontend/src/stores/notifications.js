@@ -29,6 +29,7 @@ export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
     items: [],
     unreadCount: 0,
+    latestUnreadId: null,
     isPolling: false,
     initialized: false,
     knownIds: [],
@@ -197,10 +198,16 @@ export const useNotificationsStore = defineStore('notifications', {
 
       this.items = []
       this.unreadCount = 0
+      this.latestUnreadId = null
       this.initialized = false
       this.knownIds = []
       this.pollBackoffMs = POLL_INTERVAL_MS
       this.browserNotificationWarningShown = false
+    },
+
+    // Background tabs only need to keep polling when they can raise browser notifications.
+    shouldPauseWhileHidden() {
+      return typeof document !== 'undefined' && document.hidden && !this.browserNotificationsEnabled
     },
 
     scheduleNextPoll(delayMs = POLL_INTERVAL_MS) {
@@ -210,15 +217,22 @@ export const useNotificationsStore = defineStore('notifications', {
 
       if (this.pollTimerId) {
         window.clearTimeout(this.pollTimerId)
+        this.pollTimerId = null
+      }
+
+      if (this.shouldPauseWhileHidden()) {
+        return
       }
 
       this.pollTimerId = window.setTimeout(async () => {
+        this.pollTimerId = null
+        if (this.shouldPauseWhileHidden()) {
+          return
+        }
         try {
-          const emitToasts = shouldEmitInAppToasts()
-          await this.refresh({
-            emitToasts,
-            emitBrowser: true,
-            emitStartupSummary: false
+          await this.poll({
+            emitToasts: shouldEmitInAppToasts(),
+            emitBrowser: true
           })
           this.pollBackoffMs = POLL_INTERVAL_MS
           this.scheduleNextPoll(POLL_INTERVAL_MS)
@@ -245,6 +259,12 @@ export const useNotificationsStore = defineStore('notifications', {
             emitBrowser: false,
             emitStartupSummary: false
           }).catch(() => {})
+          if (this.isPolling && !this.pollTimerId) {
+            this.scheduleNextPoll(this.pollBackoffMs)
+          }
+        } else if (this.shouldPauseWhileHidden() && this.pollTimerId) {
+          window.clearTimeout(this.pollTimerId)
+          this.pollTimerId = null
         }
       }
 
@@ -362,14 +382,29 @@ export const useNotificationsStore = defineStore('notifications', {
       }
     },
 
+    // Cheap periodic check: the notification list is only reloaded when the unread state moved.
+    async poll({ emitToasts = false, emitBrowser = false } = {}) {
+      const countInfo = await this.fetchUnreadCount()
+      const latestUnreadId = Number.isFinite(Number(countInfo?.latestUnreadId))
+        ? Number(countInfo.latestUnreadId)
+        : null
+      if (this.initialized
+        && Number(countInfo?.count || 0) === this.unreadCount
+        && latestUnreadId === this.latestUnreadId) {
+        return
+      }
+      await this.refresh({ emitToasts, emitBrowser, emitStartupSummary: false, countInfo })
+    },
+
     async refresh({
       emitToasts = false,
       emitBrowser = false,
-      emitStartupSummary = false
+      emitStartupSummary = false,
+      countInfo: knownCountInfo = null
     } = {}) {
       const [events, countInfo] = await Promise.all([
         this.fetchNotifications({ limit: 100 }),
-        this.fetchUnreadCount()
+        knownCountInfo ? Promise.resolve(knownCountInfo) : this.fetchUnreadCount()
       ])
 
       const unreadCount = Number(countInfo?.count || 0)
@@ -384,6 +419,7 @@ export const useNotificationsStore = defineStore('notifications', {
       const knownIdsSet = new Set(this.knownIds)
       const nextKnownIdsSet = new Set(knownIdsSet)
       incomingIds.forEach(id => nextKnownIdsSet.add(id))
+      this.latestUnreadId = latestUnreadId
 
       if (!this.initialized) {
         this.initialized = true

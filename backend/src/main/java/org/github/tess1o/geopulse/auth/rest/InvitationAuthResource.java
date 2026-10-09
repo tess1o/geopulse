@@ -56,19 +56,12 @@ public class InvitationAuthResource {
     public ValidateInvitationResponse validateToken(
             @Parameter(description = "Invitation token from the invitation link.")
             @PathParam("token") String token) {
-        try {
-            UserInvitationEntity invitation = invitationService.validateToken(token);
-
-            ValidateInvitationResponse response = ValidateInvitationResponse.builder()
-                    .valid(invitation.isValid())
-                    .status(invitation.getStatus())
-                    .message(getStatusMessage(invitation))
-                    .build();
-
-            return response;
-        } catch (IllegalArgumentException e) {
-            throw new GeoPulseException(INVITATION_NOT_FOUND, "Invalid invitation token", e);
-        }
+        UserInvitationEntity invitation = findInvitation(token);
+        return ValidateInvitationResponse.builder()
+                .valid(invitation.isValid())
+                .status(invitation.getStatus())
+                .message(getStatusMessage(invitation))
+                .build();
     }
 
     /**
@@ -83,32 +76,40 @@ public class InvitationAuthResource {
             @Parameter(description = "Invitation token from the invitation link.")
             @PathParam("token") String token,
             @Valid InvitationRegisterRequest request) {
+        UserInvitationEntity invitation = findInvitation(token);
+        if (!invitation.isValid()) {
+            // The status lets the client say why: used, expired or revoked.
+            throw new GeoPulseException(INVALID_INVITATION, getStatusMessage(invitation).fallback(),
+                    Map.of("status", invitation.getStatus().name()));
+        }
+
+        // Register the user (this bypasses registration enabled checks). An email that is already
+        // registered fails here with USER_REGISTRATION_CONFLICT.
+        UserEntity user = userService.registerUserViaInvitation(
+                token,
+                request.getEmail(),
+                request.getPassword(),
+                request.getFullName(),
+                request.getTimezone(),
+                request.getLanguage()
+        );
+
         try {
-            // Validate the invitation token first
-            UserInvitationEntity invitation = invitationService.validateToken(token);
-
-            if (!invitation.isValid()) {
-                throw new GeoPulseException(INVALID_INVITATION, getStatusMessage(invitation).fallback());
-            }
-
-            // Register the user (this bypasses registration enabled checks)
-            UserEntity user = userService.registerUserViaInvitation(
-                    token,
-                    request.getEmail(),
-                    request.getPassword(),
-                    request.getFullName(),
-                    request.getTimezone(),
-                    request.getLanguage()
-            );
-
-            // Mark invitation as used
             invitationService.markAsUsed(token, user.getId());
-
-            UserResponse response = userMapper.toResponse(user);
-            return RestResponse.status(Response.Status.CREATED, response);
-
         } catch (IllegalArgumentException e) {
+            // Another registration consumed the invitation between the check above and now.
             throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
+        }
+
+        UserResponse response = userMapper.toResponse(user);
+        return RestResponse.status(Response.Status.CREATED, response);
+    }
+
+    private UserInvitationEntity findInvitation(String token) {
+        try {
+            return invitationService.validateToken(token);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVITATION_NOT_FOUND, "Invalid invitation token", e);
         }
     }
 

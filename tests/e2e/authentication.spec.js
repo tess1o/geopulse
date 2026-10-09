@@ -4,7 +4,6 @@ import { TimelinePage } from '../pages/TimelinePage.js';
 import { AppNavigation } from '../pages/AppNavigation.js';
 import { TestHelpers } from '../utils/test-helpers.js';
 import { TestConfig } from '../config/test-config.js';
-import { ValidationHelpers } from '../utils/validation-helpers.js';
 
 test.describe('Authentication Flow', () => {
   test.describe('Session Management', () => {
@@ -68,23 +67,43 @@ test.describe('Authentication Flow', () => {
       expect(await TestHelpers.isAuthenticated(page)).toBe(false);
     });
 
-    test('should handle invalid login attempts', async ({ page, isolatedUsers }) => {
+    // A rejected credential must read as one. The frontend once let this 401 fall through to the
+    // generic "session expired" copy, which the old version of this test never asserted on.
+    const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password. Please check your credentials and try again.';
+
+    const expectInvalidCredentialsRejection = async (page, loginPage, email, password) => {
+      const responsePromise = page.waitForResponse(
+        response => new URL(response.url()).pathname.endsWith('/auth/sessions') && response.request().method() === 'POST'
+      );
+      await loginPage.login(email, password);
+
+      const response = await responsePromise;
+      expect(response.status()).toBe(401);
+      expect((await response.json()).code).toBe('INVALID_CREDENTIALS');
+
+      const error = page.locator(loginPage.getErrorSelector());
+      await expect(error).toBeVisible();
+      await expect(error).toContainText(INVALID_CREDENTIALS_MESSAGE);
+      await expect(error).not.toContainText('Your session has expired');
+
+      expect(await loginPage.isOnLoginPage()).toBe(true);
+      expect(await TestHelpers.isAuthenticated(page)).toBe(false);
+    };
+
+    test('should show invalid credentials message for a wrong password', async ({ page, isolatedUsers }) => {
       const loginPage = new LoginPage(page);
-      const invalidUser = isolatedUsers.build();
+      const testUser = await isolatedUsers.create(page);
 
       await loginPage.navigate();
-      await loginPage.login(invalidUser.email, 'wrongpassword');
+      await expectInvalidCredentialsRejection(page, loginPage, testUser.email, `${testUser.password}-wrong`);
+    });
 
-      // Should show error message and stay on login page
-      expect(await loginPage.isOnLoginPage()).toBe(true);
+    test('should show invalid credentials message for an unknown email', async ({ page, isolatedUsers }) => {
+      const loginPage = new LoginPage(page);
+      const unknownUser = isolatedUsers.build();
 
-      // Check for error message if login page has error handling
-      try {
-        await ValidationHelpers.waitForPageErrorMessage(page, loginPage.getErrorSelector());
-        const errorMessage = await ValidationHelpers.getPageErrorMessage(page, loginPage.getErrorSelector());
-        expect(errorMessage).toBeTruthy();
-      } catch {
-      }
+      await loginPage.navigate();
+      await expectInvalidCredentialsRejection(page, loginPage, unknownUser.email, unknownUser.password);
     });
 
     test('should handle session timeout', async ({ page, isolatedUsers }) => {

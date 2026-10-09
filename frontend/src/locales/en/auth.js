@@ -127,13 +127,21 @@ export default {
             failed: 'Registration Failed',
             optionsLoadFailed: 'Could not load registration options',
             optionsLoadFailedDetail: 'Failed to retrieve registration configuration.',
-            oidcInitFailed: 'Failed to initialize registration with {provider}. Please try again.'
+            oidcInitFailed: 'Failed to initialize registration with {provider}. Please try again.',
+            // The account exists but the automatic sign-in after it did not go through.
+            signInRequired: {
+                title: 'Account created',
+                detail: 'Your account is ready. Please sign in to continue.'
+            }
         },
         errors: {
             emailExists: 'An account with this email already exists',
             checkInformation: 'Please check your information and try again',
-            invalidData: 'Invalid registration data provided',
-            serverError: 'Server error. Please try again later'
+            serverError: 'Server error. Please try again later',
+            failed: 'Registration failed. Please try again.',
+            emailTooLong: 'Email is too long (maximum {max} characters)',
+            fullNameLength: 'Full name must be between {min} and {max} characters',
+            passwordLength: 'Password must be between {min} and {max} characters'
         }
     },
     invitation: {
@@ -165,9 +173,15 @@ export default {
                 detail: 'Your account has been created successfully'
             }
         },
+        // Why an invitation can no longer be used, keyed by the backend's invitation status.
+        status: {
+            used: 'This invitation has already been used',
+            expired: 'This invitation has expired',
+            revoked: 'This invitation has been revoked'
+        },
         errors: {
             validateFailed: 'Failed to validate invitation',
-            registrationFailed: 'Registration failed. Please try again.'
+            notFound: 'This invitation link is not valid. Please ask your administrator for a new one.'
         }
     }
 }

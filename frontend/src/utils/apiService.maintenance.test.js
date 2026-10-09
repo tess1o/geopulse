@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const axiosMock = vi.hoisted(() => ({
   get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(),
   requestInterceptor: vi.fn(),
+  responseInterceptor: vi.fn(),
   isCancel: vi.fn(error => error?.code === 'ERR_CANCELED')
 }))
 
@@ -14,7 +15,7 @@ vi.mock('axios', () => ({
     patch: axiosMock.patch,
     delete: axiosMock.delete,
     isCancel: axiosMock.isCancel,
-    interceptors: { request: { use: axiosMock.requestInterceptor } }
+    interceptors: { request: { use: axiosMock.requestInterceptor }, response: { use: axiosMock.responseInterceptor } }
   }
 }))
 
@@ -76,5 +77,25 @@ describe('api transport during restore activation', () => {
     const requestInterceptor = axiosMock.requestInterceptor.mock.calls[0][0]
     const config = requestInterceptor({ url: '/api/v1/auth/sessions/current' })
     expect(config.signal).toBeUndefined()
+  })
+
+  it('refreshes maintenance status when the restore guard rejects a request', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ state: 'ACTIVATING', blocked: true, message: 'Activating' }) }))
+    const state = await import('@/stores/maintenance')
+    await import('./apiService')
+    const onRejected = axiosMock.responseInterceptor.mock.calls.at(-1)[1]
+    const blocked = { response: { status: 503, headers: { 'x-geopulse-restore-blocked': 'true' } } }
+    await expect(onRejected(blocked)).rejects.toBe(blocked)
+    await vi.waitFor(() => expect(state.maintenance.state).toBe('ACTIVATING'))
+    expect(fetch).toHaveBeenCalledWith('/api/system/maintenance', expect.anything())
+  })
+
+  it('does not refresh maintenance status for ordinary failures', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    await import('./apiService')
+    const onRejected = axiosMock.responseInterceptor.mock.calls.at(-1)[1]
+    const failure = { response: { status: 500, headers: {} } }
+    await expect(onRejected(failure)).rejects.toBe(failure)
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

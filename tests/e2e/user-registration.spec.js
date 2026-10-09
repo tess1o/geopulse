@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { test, expect } from '../fixtures/isolated-fixture.js';
 import {RegisterPage} from '../pages/RegisterPage.js';
 import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
@@ -61,6 +62,24 @@ test.describe('User Registration', () => {
         await ValidationHelpers.waitForPageErrorMessage(page, registerPage.getErrorSelector());
         const errorMessage = await ValidationHelpers.getPageErrorMessage(page, registerPage.getErrorSelector());
         expect(errorMessage).toContain('An account with this email already exists');
+        expect(errorMessage).not.toContain('Request failed');
+    });
+
+    test('should explain a validation failure only the backend catches', async ({ page, isolatedUsers, dbManager }) => {
+        const registerPage = new RegisterPage(page);
+        const newUser = buildRegistrableUser(isolatedUsers);
+
+        await registerPage.navigate();
+        await registerPage.waitForPageLoad();
+
+        // The form only checks a minimum length; the backend caps a full name at 100 characters.
+        await registerPage.register(newUser.email, 'N'.repeat(101), newUser.password);
+
+        const error = page.locator(registerPage.getErrorSelector());
+        await expect(error).toContainText('Full name must be between 1 and 100 characters');
+        await expect(error).not.toContainText('check your information');
+        expect(await registerPage.isOnRegisterPage()).toBe(true);
+        expect(await dbManager.getUserByEmail(newUser.email)).toBeFalsy();
     });
 
     test('should navigate to login page from register page', async ({page}) => {
@@ -289,6 +308,96 @@ test.describe('User Registration', () => {
             const createdUser = await dbManager.getUserByEmail(newUser.email);
             expect(createdUser).toBeTruthy();
             expect(createdUser.timezone).toBe('UTC');
+        });
+    });
+
+    // Registration through an admin invitation link. Each test seeds its own invitation, so nothing here
+    // touches the global registration settings other specs depend on.
+    test.describe('Invitation Registration', () => {
+        const selectors = {
+            email: '#email',
+            fullName: '#fullName',
+            password: '#password input',
+            confirmPassword: '#confirmPassword input',
+            submit: 'button[type="submit"]',
+            error: '.register-form .p-message'
+        };
+
+        const seedInvitation = async (page, isolatedUsers, dbManager, { used = false } = {}) => {
+            const inviter = await isolatedUsers.create(page);
+            const inviterDbUser = await dbManager.getUserByEmail(inviter.email);
+            const token = `e2e-invite-${randomUUID().replace(/-/g, '')}`;
+            await dbManager.client.query(
+                `INSERT INTO user_invitations (id, token, created_by, created_at, expires_at, used, used_at, revoked)
+                 VALUES ($1, $2, $3, NOW(), NOW() + interval '7 days', $4, CASE WHEN $4 THEN NOW() END, false)`,
+                [randomUUID(), token, inviterDbUser.id, used]
+            );
+            return { token, inviter };
+        };
+
+        const openInvitation = async (page, token) => {
+            await page.goto(`/register/invite/${token}`);
+            await page.waitForLoadState('networkidle');
+        };
+
+        const submitInvitation = async (page, email, password) => {
+            await page.fill(selectors.email, email);
+            await page.fill(selectors.fullName, 'Invited User');
+            await page.fill(selectors.password, password);
+            await page.fill(selectors.confirmPassword, password);
+            await page.click(selectors.submit);
+        };
+
+        test('should report an email that is already registered', async ({ page, isolatedUsers, dbManager }) => {
+            const { token, inviter } = await seedInvitation(page, isolatedUsers, dbManager);
+
+            await openInvitation(page, token);
+            const responsePromise = page.waitForResponse(
+                response => response.url().includes(`/registration-invitations/${token}/registrations`)
+            );
+            await submitInvitation(page, inviter.email, 'Password123!');
+
+            const response = await responsePromise;
+            expect(response.status()).toBe(409);
+            expect((await response.json()).code).toBe('USER_REGISTRATION_CONFLICT');
+
+            const error = page.locator(selectors.error);
+            await expect(error).toContainText('An account with this email already exists');
+            await expect(error).not.toContainText('Bad Request');
+        });
+
+        test('should explain an invitation revoked while the form was open', async ({ page, isolatedUsers, dbManager }) => {
+            const { token } = await seedInvitation(page, isolatedUsers, dbManager);
+            const newUser = buildRegistrableUser(isolatedUsers);
+
+            await openInvitation(page, token);
+            await expect(page.locator(selectors.email)).toBeVisible();
+
+            await dbManager.client.query(
+                'UPDATE user_invitations SET revoked = true, revoked_at = NOW() WHERE token = $1',
+                [token]
+            );
+            await submitInvitation(page, newUser.email, newUser.password);
+
+            await expect(page.locator(selectors.error)).toContainText('This invitation has been revoked');
+            expect(await dbManager.getUserByEmail(newUser.email)).toBeFalsy();
+        });
+
+        test('should explain an invitation that was already used', async ({ page, isolatedUsers, dbManager }) => {
+            const { token } = await seedInvitation(page, isolatedUsers, dbManager, { used: true });
+
+            await openInvitation(page, token);
+
+            await expect(page.getByText('This invitation has already been used')).toBeVisible();
+            await expect(page.locator(selectors.email)).toHaveCount(0);
+        });
+
+        test('should explain an invitation link that does not exist', async ({ page }) => {
+            await openInvitation(page, `e2e-missing-${randomUUID().replace(/-/g, '')}`);
+
+            await expect(page.getByText('This invitation link is not valid. Please ask your administrator for a new one.'))
+                .toBeVisible();
+            await expect(page.getByText('Failed to validate invitation')).toHaveCount(0);
         });
     });
 });
