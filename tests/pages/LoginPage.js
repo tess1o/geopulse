@@ -41,7 +41,8 @@ export class LoginPage {
    */
   async isOnLoginPage() {
     try {
-      await this.page.waitForURL('**/login', { timeout: 5000 });
+      // Match on the path only: guarded routes redirect to /login?redirect=<original path>
+      await this.page.waitForURL(url => url.pathname === '/login', { timeout: 5000 });
       return true;
     } catch {
       return false;

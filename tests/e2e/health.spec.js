@@ -20,7 +20,7 @@ test.describe('Health Check', () => {
 
     const heroContent = page.locator('.hero-content');
     await expect(heroContent).toBeVisible();
-    await expect(heroContent).toContainText('Privacy-first Google Timeline alternative');
+    await expect(heroContent).toContainText('Self-hosted Google Timeline alternative');
     await expect(heroContent).toContainText('Own Your Location Timeline');
     await expect(heroContent).toContainText('Start Your Journey');
     await expect(heroContent).toContainText('Sign In');

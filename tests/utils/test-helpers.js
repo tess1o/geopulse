@@ -24,7 +24,7 @@ export class TestHelpers {
   /**
    * Wait for navigation to complete
    * @param {import('@playwright/test').Page} page 
-   * @param {string} expectedUrl 
+   * @param {string|RegExp|((url: URL) => boolean)} expectedUrl
    * @param {number} timeout 
    */
   static async waitForNavigation(page, expectedUrl, timeout = 10000) {

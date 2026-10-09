@@ -37,7 +37,8 @@ test.describe('Authentication Flow', () => {
       await page.goto('/app/timeline');
 
       // Should be redirected to login page
-      await TestHelpers.waitForNavigation(page, '**/login', TestConfig.TIMEOUTS.navigation);
+      await TestHelpers.waitForNavigation(page, url => url.pathname === '/login', TestConfig.TIMEOUTS.navigation);
+      expect(new URL(page.url()).searchParams.get('redirect')).toBe('/app/timeline');
 
       const loginPage = new LoginPage(page);
       expect(await loginPage.isOnLoginPage()).toBe(true);
@@ -125,7 +126,8 @@ test.describe('Authentication Flow', () => {
       await page.goto('/app/timeline');
 
       // Should be redirected to login
-      await TestHelpers.waitForNavigation(page, '**/login', TestConfig.TIMEOUTS.navigation);
+      await TestHelpers.waitForNavigation(page, url => url.pathname === '/login', TestConfig.TIMEOUTS.navigation);
+      expect(new URL(page.url()).searchParams.get('redirect')).toBe('/app/timeline');
       expect(await loginPage.isOnLoginPage()).toBe(true);
     });
   });

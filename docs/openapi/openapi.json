@@ -377,7 +377,7 @@
         }
       },
       "ApiErrorCode" : {
-        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
+        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "PASSWORD_REGISTRATION_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "ROUTING_UNAVAILABLE", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
         "type" : "string"
       },
       "ApiProblemResponse" : {
@@ -835,7 +835,7 @@
             "$ref" : "#/components/schemas/UUID"
           },
           "status" : {
-            "$ref" : "#/components/schemas/Status2"
+            "$ref" : "#/components/schemas/Status3"
           },
           "datasetStatus" : {
             "$ref" : "#/components/schemas/DatasetStatus"
@@ -3582,7 +3582,7 @@
         "type" : "object",
         "properties" : {
           "status" : {
-            "$ref" : "#/components/schemas/Status"
+            "$ref" : "#/components/schemas/Status1"
           },
           "providers" : {
             "type" : "array",
@@ -3631,7 +3631,7 @@
             "type" : "boolean"
           },
           "status" : {
-            "$ref" : "#/components/schemas/Status1"
+            "$ref" : "#/components/schemas/Status2"
           },
           "lastSuccessAt" : {
             "$ref" : "#/components/schemas/Instant"
@@ -3924,6 +3924,9 @@
             "items" : {
               "$ref" : "#/components/schemas/GpsTelemetryDisplayDTO"
             }
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -5045,6 +5048,9 @@
             "items" : {
               "$ref" : "#/components/schemas/LocationLookupVisitDTO"
             }
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -5163,6 +5169,59 @@
           "totalDistanceTraveled" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }
+      },
+      "LocationTimezoneDTO" : {
+        "description" : "Local timezone of a location, resolved from the nearest GeoNames city.",
+        "type" : "object",
+        "properties" : {
+          "timezone" : {
+            "description" : "IANA timezone id. Absent when the timezone could not be resolved; clients then fall back to the profile timezone.",
+            "type" : "string",
+            "example" : "Europe/Warsaw"
+          },
+          "status" : {
+            "description" : "Whether the timezone was resolved, and why not if it wasn't.",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Status"
+            } ]
+          },
+          "nearestCity" : {
+            "description" : "Nearest GeoNames city the timezone was taken from.",
+            "type" : "string",
+            "example" : "Przemyśl"
+          },
+          "countryCode" : {
+            "description" : "ISO 3166-1 alpha-2 country code of the nearest city.",
+            "type" : "string",
+            "example" : "PL"
+          },
+          "distanceKm" : {
+            "format" : "double",
+            "description" : "Approximate distance to the nearest city, in kilometers.",
+            "type" : "number",
+            "example" : 12.4
+          }
+        }
+      },
+      "LocationTimezoneStatusDTO" : {
+        "description" : "Whether location-local times are available on this server.",
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "description" : "The feature is enabled on this server (`geopulse.timezone.location.enabled`).",
+            "type" : "boolean"
+          },
+          "available" : {
+            "description" : "Enabled, and GeoNames cities are loaded so timezones can be resolved.",
+            "type" : "boolean"
+          },
+          "profileCountryCode" : {
+            "description" : "ISO 3166-1 alpha-2 country of your profile timezone, used to tell places abroad from home. Absent when it can't be determined (for example a UTC profile timezone).",
+            "type" : "string",
+            "example" : "UA"
           }
         }
       },
@@ -6497,6 +6556,9 @@
           },
           "relatedFavorite" : {
             "$ref" : "#/components/schemas/FavoriteRelationDTO"
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -6644,6 +6706,9 @@
           },
           "city" : {
             "type" : "string"
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -6945,6 +7010,9 @@
           "anchorLongitude" : {
             "format" : "double",
             "type" : "number"
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -7625,14 +7693,18 @@
         "type" : "string"
       },
       "Status" : {
-        "enum" : [ "HEALTHY", "DEGRADED", "CIRCUIT_OPEN", "UNKNOWN", "NOT_CONFIGURED" ],
+        "enum" : [ "RESOLVED", "BEYOND_MAX_DISTANCE", "NO_GEONAMES_DATA", "INVALID_TIMEZONE" ],
         "type" : "string"
       },
       "Status1" : {
-        "enum" : [ "HEALTHY", "DEGRADED", "CIRCUIT_OPEN", "UNKNOWN" ],
+        "enum" : [ "HEALTHY", "DEGRADED", "CIRCUIT_OPEN", "UNKNOWN", "NOT_CONFIGURED" ],
         "type" : "string"
       },
       "Status2" : {
+        "enum" : [ "HEALTHY", "DEGRADED", "CIRCUIT_OPEN", "UNKNOWN" ],
+        "type" : "string"
+      },
+      "Status3" : {
         "enum" : [ "PENDING", "QUEUED", "RUNNING", "READY", "FAILED", "UNKNOWN" ],
         "type" : "string"
       },
@@ -8104,6 +8176,12 @@
           },
           "ongoing" : {
             "type" : "boolean"
+          },
+          "startLocationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
+          },
+          "endLocationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           },
           "durationMinutes" : {
             "format" : "int64",
@@ -8577,6 +8655,9 @@
           "longitude" : {
             "format" : "double",
             "type" : "number"
+          },
+          "locationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -8625,6 +8706,12 @@
             "items" : {
               "$ref" : "#/components/schemas/GpsPoint"
             }
+          },
+          "startLocationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
+          },
+          "endLocationTimezone" : {
+            "$ref" : "#/components/schemas/LocationTimezoneDTO"
           }
         }
       },
@@ -10905,6 +10992,9 @@
           "hasPassword" : {
             "type" : "boolean"
           },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
           "uiPreferences" : {
             "$ref" : "#/components/schemas/UserUiPreferences"
           },
@@ -11040,6 +11130,11 @@
             "pattern" : "^(en|uk)$",
             "type" : "string",
             "example" : "en"
+          },
+          "timeDisplayMode" : {
+            "pattern" : "^(profile|location)$",
+            "type" : "string",
+            "example" : "profile"
           },
           "defaultRedirectUrl" : {
             "maxLength" : 1000,
@@ -19170,6 +19265,14 @@
             "type" : "string"
           }
         }, {
+          "description" : "Add the local timezone of each point (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
           "description" : "Page number, starting at 1.",
           "name" : "page",
           "in" : "query",
@@ -19794,6 +19897,14 @@
           "schema" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }, {
+          "description" : "Add the local timezone (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -21540,6 +21651,14 @@
             "type" : "string"
           }
         }, {
+          "description" : "Add the local timezone of each visit (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
           "description" : "Page number, starting at 0.",
           "name" : "page",
           "in" : "query",
@@ -21787,6 +21906,14 @@
           "required" : true,
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "description" : "Add the local timezone of each visit (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         }, {
           "description" : "Page number, starting at 0.",
@@ -22037,6 +22164,38 @@
                   "items" : {
                     "$ref" : "#/components/schemas/LocationSearchResultDTO"
                   }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/location-timezones/status" : {
+      "get" : {
+        "summary" : "Get location timezone availability",
+        "description" : "Whether this server can show times in the local timezone of each location: the feature is enabled and GeoNames cities are loaded.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "x-internal" : true,
+        "operationId" : "LocationTimezoneResource_getStatus",
+        "tags" : [ "Geocoding" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LocationTimezoneStatusDTO"
                 }
               }
             }
@@ -22781,6 +22940,14 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "description" : "Add the local timezone of the place (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -22890,6 +23057,14 @@
           "required" : true,
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "description" : "Add the local timezone of each visit (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         }, {
           "description" : "Page number, starting at 0.",
@@ -24230,6 +24405,14 @@
             "type" : "string"
           }
         }, {
+          "description" : "Add the local timezone of each stay, trip endpoint, and data gap (`locationTimezone`, `startLocationTimezone`, `endLocationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
           "description" : "End of the time range, as an ISO-8601 instant. Defaults to now.",
           "example" : "2025-06-07T23:59:59Z",
           "name" : "to",
@@ -24855,6 +25038,14 @@
         "operationId" : "StreamingTimelineResource_lookupLocation",
         "tags" : [ "Timeline" ],
         "parameters" : [ {
+          "description" : "Add the local timezone (`locationTimezone`), resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
           "description" : "Latitude in decimal degrees.",
           "example" : 50.4501,
           "name" : "latitude",
@@ -26255,6 +26446,14 @@
           "in" : "query",
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "description" : "Add the local timezone of each stay, trip endpoint, and data gap, resolved from the nearest GeoNames city. Defaults to `false`.",
+          "name" : "includeLocationTimezones",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         }, {
           "description" : "End of the range, as an ISO-8601 instant. Defaults to the trip end; must be within the trip.",
