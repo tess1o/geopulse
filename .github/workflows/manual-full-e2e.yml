@@ -24,7 +24,7 @@ jobs:
 
       - name: Start E2E environment
         run: |
-          docker compose -f tests/docker-compose.e2e.yml up -d geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e
+          docker compose -f tests/docker-compose.e2e.yml up -d geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e geopulse-demo-integrations-e2e
 
       - name: Wait for services to be healthy
         run: |
@@ -101,6 +101,9 @@ jobs:
           echo ""
           echo "=== Database logs ==="
           docker logs geopulse-postgres-e2e || true
+          echo ""
+          echo "=== Fake Immich logs ==="
+          docker logs geopulse-demo-integrations-e2e || true
 
       - name: Cleanup
         if: always()

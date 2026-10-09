@@ -7,7 +7,6 @@ import {DateFactory} from '../utils/date-factory.js';
 import {ShareLinkFactory} from '../utils/share-link-factory.js';
 import {GpsDataFactory} from '../utils/gps-data-factory.js';
 import {TestConstants} from '../fixtures/test-constants.js';
-import {insertVerifiableStaysTestData} from '../utils/timeline-test-data.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import * as TimelineTestData from "../utils/timeline-test-data.js";
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
@@ -900,73 +899,6 @@ test.describe('Shared Links Public Access', () => {
 
       // Either shows error page or redirects (both are acceptable)
       expect(isError || url.includes('/login') || url.includes('/error')).toBe(true);
-    });
-  });
-
-  test.describe('Photo Display Verification', () => {
-    test('should display photos when timeline share has show_photos enabled', async ({page, isolatedUsers, dbManager, context}) => {
-      const sharedTimelinePage = new SharedTimelinePage(page);
-
-      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0, createManagedUser(isolatedUsers));
-
-      // Insert test data with stays
-      await insertVerifiableStaysTestData(dbManager, user.id);
-
-      // Create timeline with photos ENABLED
-      const link = await ShareLinkFactory.createTimelineWithPhotos(dbManager, user.id, {
-        id: 'a0a0a0a0-1111-1111-1111-111111111111',
-        name: 'Timeline With Photos',
-        dateRange: {
-          startDate: new Date('2025-09-20T00:00:00Z'),
-          endDate: new Date('2025-09-22T23:59:59Z'),
-          expiresAt: DateFactory.futureDate(30)
-        }
-      });
-
-      // Access as guest
-      await sharedTimelinePage.navigateToSharedTimeline(link.id);
-      await sharedTimelinePage.waitForPageLoad();
-      await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
-
-      // Verify timeline is displayed
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
-
-      // Verify link in database has show_photos enabled
-      const result = await dbManager.client.query('SELECT show_photos FROM shared_link WHERE id = $1', [link.id]);
-      expect(result.rows[0].show_photos).toBe(true);
-    });
-
-    test('should not display photos when timeline share has show_photos disabled', async ({page, isolatedUsers, dbManager, context}) => {
-      const sharedTimelinePage = new SharedTimelinePage(page);
-
-      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0, createManagedUser(isolatedUsers));
-      await insertVerifiableStaysTestData(dbManager, user.id);
-
-      // Create timeline with photos DISABLED
-      const link = await ShareLinkFactory.createTimeline(dbManager, user.id, {
-        id: 'b0b0b0b0-2222-2222-2222-222222222222',
-        name: 'Timeline Without Photos',
-        dateRange: {
-          startDate: new Date('2025-09-20T00:00:00Z'),
-          endDate: new Date('2025-09-22T23:59:59Z'),
-          expiresAt: DateFactory.futureDate(30)
-        },
-        show_photos: false
-      });
-
-      // Access as guest
-      await sharedTimelinePage.navigateToSharedTimeline(link.id);
-      await sharedTimelinePage.waitForPageLoad();
-      await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
-
-      // Verify timeline is displayed
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
-
-      // Verify no photo markers appear (if we had photo test data)
-      const photoMarkerCount = await sharedTimelinePage.getPhotoMarkerCount();
-      expect(photoMarkerCount).toBe(0);
     });
   });
 

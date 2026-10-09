@@ -89,6 +89,8 @@ export class UserProfilePage {
         apiKeyInput: '#immichApiKey input',
         saveButton: 'button[type="submit"]:has-text("Save Settings")',
         resetButton: 'button:has-text("Reset")',
+        testConnectionButton: 'button:has-text("Test Connection")',
+        connectionMessage: '.integration-settings .p-message',
         connectionStatus: '.connection-status',
         statusIndicator: '.status-indicator',
         errorMessage: '.error-message'
@@ -807,6 +809,20 @@ export class UserProfilePage {
    */
   async saveImmichSettings() {
     await this.page.click(this.selectors.immich.saveButton);
+  }
+
+  /**
+   * Run the Immich connection test with the values in the form
+   */
+  async testImmichConnection() {
+    await this.page.click(this.selectors.immich.testConnectionButton);
+  }
+
+  /**
+   * Result message of the last Immich connection test
+   */
+  getImmichConnectionMessage() {
+    return this.page.locator(this.selectors.immich.connectionMessage);
   }
 
   /**

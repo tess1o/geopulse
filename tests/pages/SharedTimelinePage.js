@@ -72,7 +72,7 @@ export class SharedTimelinePage {
             mapMarkers: '.leaflet-marker-pane',
             mapPaths: '.leaflet-overlay-pane path',
             currentLocationMarker: '.current-location-marker',
-            photoMarkers: '.photo-marker',
+            photoMarkers: '.gp-photo-map-marker',
 
             // Timeline sidebar
             timelineSidebar: '.timeline-sidebar',

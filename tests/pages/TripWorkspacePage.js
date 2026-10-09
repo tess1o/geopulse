@@ -6,7 +6,8 @@ export class TripWorkspacePage {
 
     this.selectors = {
       pageTitle: '.workspace-page-title',
-      map: '.leaflet-container',
+      // The map host of either engine (Leaflet adds .leaflet-container to the raster host).
+      map: '[data-testid="map-host-raster"], [data-testid="map-host-vector"]',
       contextMenu: '.p-contextmenu:visible',
       stopRows: '.trip-rail .trip-stop',
       confirmAccept: '.p-confirmdialog-accept-button',

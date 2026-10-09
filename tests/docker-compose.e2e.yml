@@ -63,6 +63,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # Fake Immich (and Memos) from demo-integrations. It builds each user's photo library from their
+  # timeline_stays and resolves users by the API key stored in users.immich_preferences.
+  geopulse-demo-integrations-e2e:
+    build:
+      context: ../demo-integrations
+    container_name: geopulse-demo-integrations-e2e
+    restart: "no"
+    env_file:
+      - .env.e2e
+    depends_on:
+      geopulse-postgres-e2e:
+        condition: service_healthy
+
   playwright-tests:
     build:
       context: .
@@ -82,6 +95,8 @@ services:
         condition: service_started
       geopulse-postgres-e2e:
         condition: service_healthy
+      geopulse-demo-integrations-e2e:
+        condition: service_started
     volumes:
       - .:/app/tests
       - ./test-results:/app/test-results

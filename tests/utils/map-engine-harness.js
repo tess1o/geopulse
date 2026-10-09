@@ -26,7 +26,9 @@ export class MapEngineHarness {
     }
 
     if (rootSelector) {
-      return this.page.locator(`${rootSelector} ${MAP_HOST_SELECTOR}`).first()
+      return this.page
+        .locator(`${rootSelector} [data-testid="map-host-raster"], ${rootSelector} [data-testid="map-host-vector"]`)
+        .first()
     }
 
     return this.page.locator(MAP_HOST_SELECTOR).first()

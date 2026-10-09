@@ -36,10 +36,11 @@ const isolatedSpecs = [
   '**/error-handling.spec.js',
   '**/notifications.spec.js',
   '**/admin-invitations.spec.js',
+  '**/immich-integration.spec.js',
 ];
 
 const parallelWorkers = Number.parseInt(
-  process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '6'),
+  process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '4'),
   10
 );
 
@@ -103,6 +104,7 @@ export default defineConfig({
         '**/timeline-map-interactions.spec.js',
         '**/favorites-management.spec.js',
         '**/friends-map.spec.js',
+        '**/immich-integration.spec.js',
       ],
       use: {
         ...devices['Desktop Chrome'],
