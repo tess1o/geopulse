@@ -46,8 +46,24 @@ public class StreamingTimelineAggregator {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    TimelineLocationTimezoneEnricher locationTimezoneEnricher;
+
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime) {
         return getExistingTimelineEvents(userId, startTime, endTime);
+    }
+
+    /**
+     * Same as {@link #getTimelineFromDb(UUID, Instant, Instant)}, optionally adding the local timezone of every item.
+     * Without location timezones the result is exactly the same as the three-argument variant.
+     */
+    public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime,
+                                                 boolean includeLocationTimezones) {
+        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime);
+        if (includeLocationTimezones) {
+            locationTimezoneEnricher.enrich(timeline);
+        }
+        return timeline;
     }
 
     /**

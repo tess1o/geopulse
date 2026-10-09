@@ -316,7 +316,7 @@ const formatGapRange = (gap) => {
   if (!gap?.startTime || !gap?.endTime) {
     return t('tripDialogs.dataGapToStay.unknownTimeRange')
   }
-  return `${timezone.formatDateDisplay(gap.startTime)} ${timezone.formatTime(gap.startTime)} - ${timezone.formatDateDisplay(gap.endTime)} ${timezone.formatTime(gap.endTime)}`
+  return `${timezone.formatDateTimeDisplayAt(gap.startTime, gap.startLocationTimezone)} - ${timezone.formatDateTimeDisplayAt(gap.endTime, gap.endLocationTimezone)}`
 }
 </script>
 

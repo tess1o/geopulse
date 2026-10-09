@@ -506,9 +506,9 @@
 
         <Column field="timestamp" :header="t('technicalData.page.table.columns.date')" sortable class="timestamp-col">
           <template #body="slotProps">
-            <div class="timestamp-cell">
-              <span class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</span>
-              <span class="timestamp-time">{{ formatTimestamp(slotProps.data.timestamp).time }}</span>
+            <div class="timestamp-cell" :title="timezone.getLocationTimezoneHint(slotProps.data.locationTimezone) || undefined">
+              <span class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp, slotProps.data.locationTimezone).date }}</span>
+              <span class="timestamp-time">{{ formatTimestamp(slotProps.data.timestamp, slotProps.data.locationTimezone).time }}</span>
             </div>
           </template>
         </Column>
@@ -693,12 +693,12 @@
                 @change="handleCheckboxChange($event, point)"
                 binary
                 class="mobile-gps-checkbox"
-                :aria-label="t('technicalData.page.mobile.selectPointAriaLabel', { date: formatTimestamp(point.timestamp).date, time: formatTimestamp(point.timestamp).time })"
+                :aria-label="t('technicalData.page.mobile.selectPointAriaLabel', { date: formatTimestamp(point.timestamp, point.locationTimezone).date, time: formatTimestamp(point.timestamp, point.locationTimezone).time })"
               />
               <div class="mobile-gps-main">
-                <div class="mobile-gps-primary">
-                  <span class="mobile-gps-date">{{ formatTimestamp(point.timestamp).date }}</span>
-                  <span class="mobile-gps-time">{{ formatTimestamp(point.timestamp).time }}</span>
+                <div class="mobile-gps-primary" :title="timezone.getLocationTimezoneHint(point.locationTimezone) || undefined">
+                  <span class="mobile-gps-date">{{ formatTimestamp(point.timestamp, point.locationTimezone).date }}</span>
+                  <span class="mobile-gps-time">{{ formatTimestamp(point.timestamp, point.locationTimezone).time }}</span>
                 </div>
                 <div class="mobile-gps-coordinates">
                   {{ point.coordinates.lat.toFixed(6) }}, {{ point.coordinates.lng.toFixed(6) }}
@@ -738,7 +738,7 @@
                 v-tooltip.left="t('technicalData.page.mobile.actionsTooltip')"
                 aria-haspopup="true"
                 aria-controls="mobile-gps-action-menu"
-                :aria-label="t('technicalData.page.mobile.actionsAriaLabel', { date: formatTimestamp(point.timestamp).date, time: formatTimestamp(point.timestamp).time })"
+                :aria-label="t('technicalData.page.mobile.actionsAriaLabel', { date: formatTimestamp(point.timestamp, point.locationTimezone).date, time: formatTimestamp(point.timestamp, point.locationTimezone).time })"
               />
             </div>
           </div>
@@ -1185,11 +1185,11 @@ const formatDate = (value) => {
   return timezone.formatDateDisplay(value)
 }
 
-const formatTimestamp = (timestamp) => {
+const formatTimestamp = (timestamp, locationTimezone) => {
   if (!timestamp) return { date: '-', time: '-' }
   return {
-    date: timezone.formatDateDisplay(timestamp),
-    time: timezone.formatTime(timestamp, { withSeconds: true })
+    date: timezone.formatDateDisplayAt(timestamp, locationTimezone),
+    time: timezone.formatTimeAt(timestamp, locationTimezone, { withSeconds: true })
   }
 }
 
@@ -1632,6 +1632,11 @@ const loadGPSPoints = async () => {
 
     // Merge with filter params
     Object.assign(params, buildFilterParams())
+
+    // Only ask for per-point timezones in the opt-in "location" mode; the default request is unchanged.
+    if (timezone.isLocationTimeMode()) {
+      params.includeLocationTimezones = true
+    }
 
     await technicalDataStore.fetchGPSPoints(params)
   } catch (error) {

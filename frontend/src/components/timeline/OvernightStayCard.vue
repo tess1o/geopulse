@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(timezone.getItemStartLocationTimezone(stayItem)) || undefined">
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
@@ -106,6 +106,10 @@ const props = defineProps({
   stayItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   currentDate: {
     type: String,
@@ -315,7 +319,7 @@ const canManageMatchingNotes = computed(() => {
 
 // Methods
 const getTimestampText = () => {
-  return timezone.getOvernightTimestampText(props.stayItem, props.currentDate)
+  return timezone.getOvernightTimestampText(props.stayItem, props.currentDate, { forceLabel: props.forceZoneLabel })
 }
 
 const getOnThisDayText = () => {

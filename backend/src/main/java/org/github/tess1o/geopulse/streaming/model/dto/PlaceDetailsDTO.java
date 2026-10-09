@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.streaming.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.geocoding.dto.LocationTimezoneDTO;
 
 /**
  * DTO containing comprehensive information about a specific place.
@@ -33,4 +35,8 @@ public class PlaceDetailsDTO {
 
     // Related favorite (for geocoding points with no visits due to favorite priority)
     private FavoriteRelationDTO relatedFavorite;
+
+    /** Local timezone of the place. Only set when the client requests location timezones. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocationTimezoneDTO locationTimezone;
 }

@@ -38,6 +38,13 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['time', 'format', '12h', '24h']
   },
   {
+    id: 'timeDisplayMode',
+    title: 'Timeline Time Zone',
+    tab: 'profile',
+    subtitle: 'Profile',
+    keywords: ['time', 'timezone', 'time zone', 'local time', 'travel', 'location']
+  },
+  {
     id: 'distanceUnit',
     title: 'Distance Unit',
     tab: 'profile',

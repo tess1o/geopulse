@@ -155,6 +155,23 @@
             </SettingCard>
 
             <SettingCard
+              v-if="locationTimeStatus.enabled"
+              :title="t('profile.general.regional.timeDisplayMode.title')"
+              :description="t('profile.general.regional.timeDisplayMode.description')"
+              :details="t('profile.general.regional.timeDisplayMode.details')"
+              setting-id="timeDisplayMode"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown id="timeDisplayMode" v-model="form.timeDisplayMode" :options="timeDisplayModeOptions" optionLabel="label" optionValue="value" :disabled="readOnly" class="w-full" :aria-label="t('profile.general.regional.timeDisplayMode.title')" />
+                  <small v-if="form.timeDisplayMode === 'location' && !locationTimeStatus.available" class="help-text">
+                    {{ t('profile.general.regional.timeDisplayMode.unavailable') }}
+                  </small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
               :title="t('profile.general.regional.distanceUnit.title')"
               :description="t('profile.general.regional.distanceUnit.description')"
               setting-id="distanceUnit"
@@ -249,6 +266,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import { LOCALE_OPTIONS } from '@/composables/useLocale'
+import apiService from '@/utils/apiService'
 
 const { t } = useI18n()
 
@@ -294,6 +312,10 @@ const props = defineProps({
     type: String,
     default: '24h'
   },
+  userTimeDisplayMode: {
+    type: String,
+    default: 'profile'
+  },
   userLanguage: {
     type: String,
     default: 'en'
@@ -315,12 +337,15 @@ const form = ref({
   language: 'en',
   dateFormat: 'MDY',
   timeFormat: '24h',
+  timeDisplayMode: 'profile',
   distanceUnit: 'KILOMETERS', // Default value
   temperatureUnit: 'CELSIUS',
   defaultRedirectUrl: '',
   customRedirectUrl: ''
 })
 const errors = ref({})
+// Hidden until the server confirms the feature is enabled (geopulse.timezone.location.enabled).
+const locationTimeStatus = ref({ enabled: false, available: false })
 const AVATAR_TARGET_SIZE = 96
 const AVATAR_MAX_BYTES = 1024 * 1024
 const SUPPORTED_AVATAR_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
@@ -433,6 +458,11 @@ const dateFormatOptions = computed(() => [
   { label: t('profile.general.dateFormatOptions.ymd'), value: 'YMD' }
 ])
 
+const timeDisplayModeOptions = computed(() => [
+  { label: t('profile.general.timeDisplayModeOptions.profile'), value: 'profile' },
+  { label: t('profile.general.timeDisplayModeOptions.location'), value: 'location' }
+])
+
 const timeFormatOptions = computed(() => [
   { label: t('profile.general.timeFormatOptions.h24'), value: '24h' },
   { label: t('profile.general.timeFormatOptions.h12'), value: '12h' }
@@ -462,6 +492,7 @@ const hasChanges = computed(() => {
   const accountChanged = selectedAvatarFile.value !== null || form.value.fullName !== props.userName || localAvatar.value !== props.userAvatar
   const preferencesChanged = form.value.timezone !== props.userTimezone ||
     form.value.dateFormat !== props.userDateFormat || form.value.timeFormat !== props.userTimeFormat ||
+    form.value.timeDisplayMode !== props.userTimeDisplayMode ||
     form.value.language !== props.userLanguage ||
     form.value.distanceUnit !== props.userDistanceUnit || form.value.temperatureUnit !== props.userTemperatureUnit ||
     effectiveRedirectUrl !== props.userDefaultRedirectUrl
@@ -648,6 +679,7 @@ const handleSubmit = async () => {
       language: form.value.language,
       dateFormat: form.value.dateFormat,
       timeFormat: form.value.timeFormat,
+      timeDisplayMode: form.value.timeDisplayMode,
       distanceUnit: form.value.distanceUnit,
       temperatureUnit: form.value.temperatureUnit,
       defaultRedirectUrl: effectiveRedirectUrl
@@ -664,6 +696,7 @@ const handleReset = () => {
   form.value.language = props.userLanguage || 'en'
   form.value.dateFormat = props.userDateFormat || 'MDY'
   form.value.timeFormat = props.userTimeFormat || '24h'
+  form.value.timeDisplayMode = props.userTimeDisplayMode || 'profile'
   form.value.distanceUnit = props.userDistanceUnit || 'KILOMETERS'
   form.value.temperatureUnit = props.userTemperatureUnit || 'CELSIUS'
 
@@ -700,10 +733,20 @@ watch(() => form.value.fullName, () => {
 // Initialize form
 onMounted(() => {
   handleReset()
+  loadLocationTimeStatus()
 })
 
+const loadLocationTimeStatus = async () => {
+  try {
+    const status = await apiService.get('/location-timezones/status')
+    locationTimeStatus.value = { enabled: !!status?.enabled, available: !!status?.available }
+  } catch (error) {
+    console.warn('Failed to load location timezone status:', error)
+  }
+}
+
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userLanguage, props.userDistanceUnit, props.userTemperatureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userTimeDisplayMode, props.userLanguage, props.userDistanceUnit, props.userTemperatureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 

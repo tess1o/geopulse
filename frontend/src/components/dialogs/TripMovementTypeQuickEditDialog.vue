@@ -13,7 +13,7 @@
           :value="trip.movementTypeSource || 'AUTO'"
           :severity="(trip.movementTypeSource || 'AUTO') === 'MANUAL' ? 'warn' : 'success'"
         />
-        <span class="trip-time">{{ formatDateTime(trip.timestamp) }}</span>
+        <span class="trip-time">{{ formatDateTime(trip.timestamp, trip.startLocationTimezone) }}</span>
       </div>
 
       <Message v-if="(trip.movementType || 'UNKNOWN') === 'UNKNOWN'" severity="warn" :closable="false">
@@ -219,9 +219,9 @@ const getTransportSeverity = (transportMode) => {
   return severityMap[transportMode?.toUpperCase()] || 'secondary'
 }
 
-const formatDateTime = (timestamp) => {
+const formatDateTime = (timestamp, locationTimezone) => {
   if (!timestamp) return t('tripDialogs.movementTypeQuickEdit.unknownTime')
-  return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp)}`
+  return timezone.formatDateTimeDisplayAt(timestamp, locationTimezone)
 }
 </script>
 

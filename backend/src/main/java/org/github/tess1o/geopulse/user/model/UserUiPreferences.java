@@ -50,6 +50,15 @@ public class UserUiPreferences implements Serializable {
     @Schema(examples = "en")
     private String language;
 
+    /**
+     * Which timezone timeline and GPS data times are shown in: {@code profile} (the profile timezone, default) or
+     * {@code location} (the local timezone where each item was recorded). Display only; days are always grouped by
+     * the profile timezone.
+     */
+    @Pattern(regexp = "^(profile|location)$", message = "Time display mode must be one of: profile, location")
+    @Schema(examples = "profile")
+    private String timeDisplayMode;
+
     /** Internal path to open after login or when navigating to {@code /}. Empty string resets it. */
     @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
     @Schema(examples = "/app/timeline")

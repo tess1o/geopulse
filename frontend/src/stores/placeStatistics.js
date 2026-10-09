@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const emptyPagination = () => ({
   currentPage: 0,
@@ -37,7 +40,10 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
       this.loading = true
       this.error = null
       try {
-        this.placeDetails = await apiService.get(`/places/${type}/${id}`)
+        const params = timezone.withLocationTimezoneParams(undefined)
+        this.placeDetails = params
+          ? await apiService.get(`/places/${type}/${id}`, params)
+          : await apiService.get(`/places/${type}/${id}`)
         return this.placeDetails
       } catch (error) {
         throw this.fail(error, 'Failed to fetch place details')
@@ -62,12 +68,12 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
       this.loading = true
       this.error = null
       try {
-        const data = await apiService.get(`/places/${type}/${id}/visits`, {
+        const data = await apiService.get(`/places/${type}/${id}/visits`, timezone.withLocationTimezoneParams({
           page,
           size: pageSize,
           sortBy,
           sortDirection
-        })
+        }))
         this.placeVisits = data.items || []
         this.pagination = {
           currentPage: data.page ?? 0,

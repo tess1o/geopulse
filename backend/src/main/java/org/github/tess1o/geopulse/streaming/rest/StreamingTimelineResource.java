@@ -7,6 +7,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -30,6 +31,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
+import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
@@ -79,6 +81,7 @@ public class StreamingTimelineResource {
     @Inject StreamingTimelineGenerationService timelineGenerationService;
     @Inject MultiUserTimelineService multiUserTimelineService;
     @Inject TimelineLocationLookupService timelineLocationLookupService;
+    @Inject LocationTimezoneService locationTimezoneService;
 
     @GET
     @Operation(summary = "Get the timeline",
@@ -91,10 +94,14 @@ public class StreamingTimelineResource {
             @QueryParam("from") String startTime,
             @Parameter(description = "End of the time range, as an ISO-8601 instant. Defaults to now.",
                     example = "2025-06-07T23:59:59Z")
-            @QueryParam("to") String endTime) {
+            @QueryParam("to") String endTime,
+            @Parameter(description = "Add the local timezone of each stay, trip endpoint, and data gap "
+                    + "(`locationTimezone`, `startLocationTimezone`, `endLocationTimezone`), resolved from the nearest "
+                    + "GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         TimeRange range = parseTimeRange(startTime, endTime);
         return streamingTimelineAggregator.getTimelineFromDb(
-                currentUserService.getCurrentUserId(), range.start(), range.end());
+                currentUserService.getCurrentUserId(), range.start(), range.end(), includeLocationTimezones);
     }
 
     @GET
@@ -107,13 +114,20 @@ public class StreamingTimelineResource {
             @Parameter(description = "Latitude in decimal degrees.", example = "50.4501")
             @QueryParam("latitude") Double latitude,
             @Parameter(description = "Longitude in decimal degrees.", example = "30.5234")
-            @QueryParam("longitude") Double longitude) {
+            @QueryParam("longitude") Double longitude,
+            @Parameter(description = "Add the local timezone (`locationTimezone`), resolved from the nearest GeoNames "
+                    + "city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         if (latitude == null || longitude == null) {
             throw new GeoPulseException(INVALID_LOCATION_LOOKUP, "latitude and longitude are required");
         }
         try {
-            return timelineLocationLookupService.lookup(
+            LocationLookupResponseDTO lookup = timelineLocationLookupService.lookup(
                     currentUserService.getCurrentUserId(), latitude, longitude);
+            if (includeLocationTimezones) {
+                lookup.setLocationTimezone(locationTimezoneService.resolve(latitude, longitude, "location_lookup"));
+            }
+            return lookup;
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(INVALID_LOCATION_LOOKUP, "Invalid location",
                     Map.of("latitude", latitude, "longitude", longitude), e);

@@ -152,9 +152,9 @@ state.highlightedLineLayerId = `${state.token}-highlighted-line`
 state.highlightedCasingLayerId = `${state.token}-highlighted-casing`
 state.highlightedHitLayerId = `${state.token}-highlighted-hit`
 
-const formatDateTimeDisplay = (dateValue) => (
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
-)
+// (value, locationTimezone): identical to the profile-timezone format unless "location" time mode is on.
+const formatDateTimeDisplay = (dateValue, locationTimezone) =>
+  timezone.formatDateTimeDisplayAt(dateValue, locationTimezone, { withSeconds: true })
 
 const hoverController = createVectorPathHoverController({
   getMap: () => props.map,

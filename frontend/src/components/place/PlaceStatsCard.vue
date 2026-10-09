@@ -48,7 +48,9 @@ import { useTimezone } from '@/composables/useTimezone'
 const { t } = useI18n()
 const timezone = useTimezone()
 const props = defineProps({
-  statistics: { type: Object, required: true }
+  statistics: { type: Object, required: true },
+  // Zone of the place (single-place pages only); used in the "location" time mode.
+  locationTimezone: { type: Object, default: null }
 })
 
 const visitPatterns = computed(() => props.statistics?.visitPatterns || null)
@@ -61,7 +63,9 @@ const formatDuration = (seconds) => {
   return formatDurationSmart(seconds)
 }
 
-const formatDate = (timestamp) => timestamp ? timezone.format(timestamp, 'MMMM DD, YYYY') : t('place.stats.notAvailable')
+const formatDate = (timestamp) => timestamp
+  ? timezone.formatInLocationZone(timestamp, props.locationTimezone, 'MMMM DD, YYYY')
+  : t('place.stats.notAvailable')
 
 const formatCadence = (days) => {
   if (days === null || days === undefined || Number.isNaN(Number(days))) return t('place.stats.notAvailable')

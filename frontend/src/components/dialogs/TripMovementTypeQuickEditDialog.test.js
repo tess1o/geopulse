@@ -4,7 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
 vi.mock('@/stores/timeline', () => ({ useTimelineStore: () => ({}) }))
 vi.mock('@/composables/useTimezone', () => ({
-  useTimezone: () => ({ formatDateDisplay: () => '2026-01-01', formatTime: () => '12:00' })
+  useTimezone: () => ({
+    formatDateDisplay: () => '2026-01-01',
+    formatTime: () => '12:00',
+    formatDateTimeDisplayAt: () => '2026-01-01 12:00'
+  })
 }))
 
 import TripMovementTypeQuickEditDialog from './TripMovementTypeQuickEditDialog.vue'

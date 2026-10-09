@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(timezone.getItemStartLocationTimezone(dataGapItem)) || undefined">
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
@@ -87,6 +87,10 @@ const props = defineProps({
   dataGapItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   currentDate: {
     type: String,
@@ -203,7 +207,7 @@ const gapDurationSeconds = computed(() => {
 
 // Methods
 const getTimestampText = () => {
-  return timezone.getOvernightTimestampText(props.dataGapItem, props.currentDate)
+  return timezone.getOvernightTimestampText(props.dataGapItem, props.currentDate, { forceLabel: props.forceZoneLabel })
 }
 
 const getGapDuration = () => {

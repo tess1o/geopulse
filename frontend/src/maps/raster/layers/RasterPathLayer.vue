@@ -277,8 +277,9 @@ const unhighlightAllPaths = () => {
   })
 }
 
-const formatDateTimeDisplay = (dateValue) =>
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
+// (value, locationTimezone): identical to the profile-timezone format unless "location" time mode is on.
+const formatDateTimeDisplay = (dateValue, locationTimezone) =>
+  timezone.formatDateTimeDisplayAt(dateValue, locationTimezone, { withSeconds: true })
 
 const buildTripHoverContext = (tripPath, map) => {
   if (!Array.isArray(tripPath) || tripPath.length < 2 || !map?.distance) {

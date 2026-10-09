@@ -136,10 +136,15 @@ export const useTimelineStore = defineStore('timeline', {
         async fetchMovementTimeline(startTime, endTime) {
             this.error = null
             try {
-                const timeline = await apiService.get('/timeline', {
+                const params = {
                     from: startTime,
                     to: endTime
-                })
+                }
+                // Only ask for per-item timezones in the opt-in "location" mode; the default request is unchanged.
+                if (timezone.isLocationTimeMode()) {
+                    params.includeLocationTimezones = true
+                }
+                const timeline = await apiService.get('/timeline', params)
 
                 const normalizedStays = timeline.stays.map(stay => ({
                     ...stay,
@@ -371,7 +376,8 @@ export const useTimelineStore = defineStore('timeline', {
 
         async lookupLocation(latitude, longitude) {
             try {
-                return await apiService.get('/timeline/location-lookup', { latitude, longitude })
+                return await apiService.get('/timeline/location-lookup',
+                    timezone.withLocationTimezoneParams({ latitude, longitude }))
             } catch (error) {
                 this.error = normalizeApiError(error, 'Could not check visits at this location')
                 throw this.error

@@ -28,12 +28,36 @@ function shouldPreserveCachedProfile(error) {
 // Preference values mirrored flat onto the in-memory user and the cached profile. The API nests them
 // (uiPreferences, timelineDisplay.preferences, timelineDisplay.capabilities) and already applies defaults;
 // these defaults cover partial payloads and cached profiles written by older builds.
+// Country of the profile timezone, used in the "location" time mode to label places abroad. Fetched once per
+// profile timezone; profile mode never asks for it.
+let locationTimeHomeCountryZone = null
+
+const loadLocationTimeHomeCountry = async (profileTimezone) => {
+    if (locationTimeHomeCountryZone === profileTimezone) {
+        return
+    }
+    locationTimeHomeCountryZone = profileTimezone
+    try {
+        const status = await apiService.get('/location-timezones/status')
+        useTimezone().setLocationTimeHomeCountry(status?.profileCountryCode || null)
+    } catch (error) {
+        locationTimeHomeCountryZone = null
+        console.warn('Failed to load location timezone status:', error)
+    }
+}
+
+const resetLocationTimeHomeCountry = () => {
+    locationTimeHomeCountryZone = null
+    useTimezone().setLocationTimeHomeCountry(null)
+}
+
 const UI_PREFERENCE_DEFAULTS = {
     distanceUnit: 'KILOMETERS',
     temperatureUnit: 'CELSIUS',
     defaultRedirectUrl: '',
     dateFormat: 'MDY',
     timeFormat: '24h',
+    timeDisplayMode: 'profile',
     language: 'en'
 }
 
@@ -134,6 +158,7 @@ export const useAuthStore = defineStore('auth', {
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
         timeFormat: (state) => state.user?.timeFormat || '24h',
+        timeDisplayMode: (state) => state.user?.timeDisplayMode || 'profile',
         language: (state) => state.user?.language || 'en',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
@@ -170,6 +195,10 @@ export const useAuthStore = defineStore('auth', {
                 timezone.setTimezone(user.timezone || 'UTC')
                 timezone.setDateFormat(user.dateFormat || 'MDY')
                 timezone.setTimeFormat(user.timeFormat || '24h')
+                timezone.setTimeDisplayMode(user.timeDisplayMode || 'profile')
+                if (user.timeDisplayMode === 'location') {
+                    void loadLocationTimeHomeCountry(user.timezone || 'UTC')
+                }
                 // The profile is the authority for language, so persist:false -- writing it back would
                 // be a pointless round trip. Not awaited: setUser stays synchronous for its callers,
                 // and the locale ref is reactive, so the UI re-renders once the catalog resolves.
@@ -184,6 +213,8 @@ export const useAuthStore = defineStore('auth', {
                 clearCachedUserProfile()
                 timezone.setDateFormat('MDY')
                 timezone.setTimeFormat('24h')
+                timezone.setTimeDisplayMode('profile')
+                resetLocationTimeHomeCountry()
                 void locale.setLocale('en', { persist: false })
             }
 
@@ -227,6 +258,8 @@ export const useAuthStore = defineStore('auth', {
             timezone.setTimezone('UTC')
             timezone.setDateFormat('MDY')
             timezone.setTimeFormat('24h')
+            timezone.setTimeDisplayMode('profile')
+            resetLocationTimeHomeCountry()
             // Falls back to the guest's own choice or browser language, not a hardcoded 'en' --
             // otherwise a Ukrainian-speaking user loses their language on every public page on sign-out.
             void useLocale().setLocale(resolvePreferredLocale(), { persist: false })

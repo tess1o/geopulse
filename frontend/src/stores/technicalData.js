@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { useTimezone } from '@/composables/useTimezone'
 
 export const useTechnicalDataStore = defineStore('technicalData', {
     state: () => ({
@@ -156,7 +157,10 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async resolveRawPointLocation(pointId) {
             try {
-                return await apiService.get(`/gps/points/${pointId}/location`)
+                const params = useTimezone().withLocationTimezoneParams(undefined)
+                return params
+                    ? await apiService.get(`/gps/points/${pointId}/location`, params)
+                    : await apiService.get(`/gps/points/${pointId}/location`)
             } catch (error) {
                 throw this.fail(error, 'Failed to resolve GPS point location')
             }

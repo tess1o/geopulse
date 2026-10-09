@@ -14,7 +14,10 @@ vi.hoisted(() => {
 })
 
 vi.mock('@/composables/useTimezone', () => ({
-  useTimezone: () => ({ format: (value) => `date:${value}` })
+  useTimezone: () => ({
+    format: (value) => `date:${value}`,
+    formatInLocationZone: (value) => `date:${value}`
+  })
 }))
 
 const MetricItem = {

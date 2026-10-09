@@ -110,8 +110,9 @@ const createStackTimelineIcon = (count, isHighlighted = false, isDimmed = false)
   })
 }
 
-const formatDateTimeDisplay = (dateValue) =>
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
+// (value, locationTimezone): identical to the profile-timezone format unless "location" time mode is on.
+const formatDateTimeDisplay = (dateValue, locationTimezone) =>
+  timezone.formatDateTimeDisplayAt(dateValue, locationTimezone, { withSeconds: true })
 
 const createStackPopupElement = (marker, markerItems) => {
   const popupRoot = document.createElement('div')
@@ -131,6 +132,7 @@ const createStackPopupElement = (marker, markerItems) => {
     {
       formatDateDisplay: (value) => timezone.formatDateDisplay(value),
       formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
+      formatItemDateTime: (value, item) => formatDateTimeDisplay(value, timezone.getItemStartLocationTimezone(item)),
       unit: distanceUnit.value
     }
   )

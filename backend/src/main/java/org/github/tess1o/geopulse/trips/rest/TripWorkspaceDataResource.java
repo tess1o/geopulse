@@ -52,12 +52,15 @@ public class TripWorkspaceDataResource {
             @QueryParam("from") String startTime,
             @Parameter(description = "End of the range, as an ISO-8601 instant. Defaults to the trip end; must be "
                     + "within the trip.")
-            @QueryParam("to") String endTime) {
+            @QueryParam("to") String endTime,
+            @Parameter(description = "Add the local timezone of each stay, trip endpoint, and data gap, resolved from "
+                    + "the nearest GeoNames city. Defaults to `false`.")
+            @QueryParam("includeLocationTimezones") @DefaultValue("false") boolean includeLocationTimezones) {
         try {
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);
             return tripWorkspaceDataService.getTripTimeline(
-                    currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd);
+                    currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd, includeLocationTimezones);
         } catch (NotFoundException e) {
             throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), e);
         } catch (IllegalArgumentException | DateTimeParseException e) {

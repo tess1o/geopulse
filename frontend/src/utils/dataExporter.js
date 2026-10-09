@@ -27,21 +27,25 @@ export class DataExporter {
             'Latitude',
             'Longitude'
         ]
+        const locationMode = timezone.isLocationTimeMode()
+        if (locationMode) headers.push('Timezone')
 
         const rows = stays.map(stay => {
             // Calculate end time from start time + duration (in seconds)
             const startTime = timezone.fromUtc(stay.timestamp)
             const endTime = startTime.clone().add(stay.stayDuration || 0, 'seconds')
 
-            return [
-                this.formatDateTime(stay.timestamp),
-                this.formatDateTime(endTime),
+            const row = [
+                this.formatDateTime(stay.timestamp, stay.locationTimezone),
+                this.formatDateTime(endTime, stay.locationTimezone),
                 formatDurationSmart(stay.stayDuration),
                 Math.round(stay.stayDuration / 60),
                 this.sanitizeForCSV(stay.locationName || 'Unknown Location'),
                 stay.latitude?.toFixed(6) || '',
                 stay.longitude?.toFixed(6) || ''
             ]
+            if (locationMode) row.push(timezone.getDisplayZoneId(stay.locationTimezone))
+            return row
         })
 
         const filename = this.generateFilename('stays', dateRange)
@@ -73,6 +77,8 @@ export class DataExporter {
             'Destination Longitude',
             'Transport Mode',
         ]
+        const locationMode = timezone.isLocationTimeMode()
+        if (locationMode) headers.push('Start Timezone', 'End Timezone')
 
         const rows = trips.map(trip => {
             const startTime = timezone.fromUtc(trip.timestamp)
@@ -87,9 +93,9 @@ export class DataExporter {
                 distance = Math.round(trip.distanceMeters);
             }
 
-            return [
-                this.formatDateTime(startTime),
-                this.formatDateTime(endTime),
+            const row = [
+                this.formatDateTime(startTime, trip.startLocationTimezone),
+                this.formatDateTime(endTime, trip.endLocationTimezone),
                 formatDurationSmart(trip.tripDuration),
                 Math.round(trip.tripDuration / 60),
                 distance,
@@ -101,6 +107,13 @@ export class DataExporter {
                 trip.endLongitude?.toFixed(6) || '',
                 this.sanitizeForCSV(trip.movementType || ''),
             ]
+            if (locationMode) {
+                row.push(
+                    timezone.getDisplayZoneId(trip.startLocationTimezone),
+                    timezone.getDisplayZoneId(trip.endLocationTimezone)
+                )
+            }
+            return row
         })
 
         const filename = this.generateFilename('trips', dateRange)
@@ -120,13 +133,24 @@ export class DataExporter {
             'Duration (minutes)',
             'Duration'
         ]
+        const locationMode = timezone.isLocationTimeMode()
+        if (locationMode) headers.push('Start Timezone', 'End Timezone')
 
-        const rows = dataGaps.map(gap => [
-            this.formatDateTime(gap.startTime),
-            this.formatDateTime(gap.endTime),
-            gap.durationMinutes,
-            formatDurationSmart(gap.durationSeconds),
-        ])
+        const rows = dataGaps.map(gap => {
+            const row = [
+                this.formatDateTime(gap.startTime, gap.startLocationTimezone),
+                this.formatDateTime(gap.endTime, gap.endLocationTimezone),
+                gap.durationMinutes,
+                formatDurationSmart(gap.durationSeconds),
+            ]
+            if (locationMode) {
+                row.push(
+                    timezone.getDisplayZoneId(gap.startLocationTimezone),
+                    timezone.getDisplayZoneId(gap.endLocationTimezone)
+                )
+            }
+            return row
+        })
 
         const filename = this.generateFilename('data_gaps', dateRange)
         return this.downloadCSV(headers, rows, filename)
@@ -150,9 +174,10 @@ export class DataExporter {
         }
     }
 
-    static formatDateTime(timestamp) {
+    // locationTimezone only matters in the "location" time mode; otherwise this is the profile timezone.
+    static formatDateTime(timestamp, locationTimezone) {
         try {
-            return timezone.format(timestamp, 'YYYY-MM-DD HH:mm')
+            return timezone.formatInLocationZone(timestamp, locationTimezone, 'YYYY-MM-DD HH:mm')
         } catch (error) {
             console.warn('Error formatting time:', error)
             return ''

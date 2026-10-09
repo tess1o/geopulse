@@ -22,7 +22,7 @@
       <div class="section">
         <h3 class="section-title">{{ t('classification.overview.title') }}</h3>
         <div class="details-grid">
-          <DetailItem :label="t('classification.overview.startTime')" :value="formatDateTime(details.timestamp)" />
+          <DetailItem :label="t('classification.overview.startTime')" :value="formatDateTime(details.timestamp, props.trip?.startLocationTimezone)" />
           <DetailItem :label="t('classification.overview.duration')" :value="formatDuration(details.tripDurationSeconds)" />
           <DetailItem :label="t('classification.overview.distance')" :value="formatDistance(details.distanceMeters)" />
           <DetailItem :label="t('classification.overview.effectiveClassification')">
@@ -403,9 +403,9 @@ const resetToAutomaticMovementType = async () => {
 }
 
 // Formatting helpers
-const formatDateTime = (timestamp) => {
+const formatDateTime = (timestamp, locationTimezone) => {
   if (!timestamp) return t('classification.na')
-  return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
+  return timezone.formatDateTimeDisplayAt(timestamp, locationTimezone, { withSeconds: true })
 }
 
 const formatDuration = (seconds) => {

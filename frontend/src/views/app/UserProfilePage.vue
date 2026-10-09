@@ -111,7 +111,7 @@ const notesStore = useNotesStore()
 const aiStore = useAIStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, language, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, timeDisplayMode, language, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -214,6 +214,7 @@ const currentTabProps = computed(() => {
       userDefaultRedirectUrl: defaultRedirectUrl.value || '',
       userDateFormat: dateFormat.value || 'MDY',
       userTimeFormat: timeFormat.value || '24h',
+      userTimeDisplayMode: timeDisplayMode.value || 'profile',
       userLanguage: language.value || 'en'
     },
     security: {
@@ -351,6 +352,7 @@ const handleProfileSave = async (data) => {
       defaultRedirectUrl: data.defaultRedirectUrl,
       dateFormat: data.dateFormat,
       timeFormat: data.timeFormat,
+      timeDisplayMode: data.timeDisplayMode,
       language: data.language
     })
 

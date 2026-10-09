@@ -117,7 +117,7 @@ const detailCaption = computed(() => (isProblem.value ? t('tripDialogs.mapMatchi
 const tripDuration = computed(() => props.trip?.tripDuration || 0)
 const tripTimestamp = computed(() => {
   if (!props.trip?.timestamp) return ''
-  return `${timezone.formatDateDisplay(props.trip.timestamp)} ${timezone.formatTime(props.trip.timestamp)}`
+  return timezone.formatDateTimeDisplayAt(props.trip.timestamp, props.trip.startLocationTimezone)
 })
 const completedLabel = computed(() => {
   if (!props.info?.completedAt) return null

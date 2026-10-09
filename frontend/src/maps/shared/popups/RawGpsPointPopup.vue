@@ -44,7 +44,7 @@
         :class="['raw-gps-stack-row', pointIndex === selectedPointIndex ? 'is-selected' : '']"
         @click.stop.prevent="selectPoint(pointIndex)"
       >
-        <span class="raw-gps-stack-time">{{ formatRawGpsDateTime(timezone, point.timestamp) }}</span>
+        <span class="raw-gps-stack-time">{{ formatRawGpsDateTime(timezone, point.timestamp, pointLocationTimezone) }}</span>
         <span class="raw-gps-stack-telemetry">
           <span class="raw-gps-stack-telemetry-item">
             <span class="raw-gps-stack-telemetry-label">{{ t('maps.popups.common.speed') }}</span>
@@ -102,14 +102,16 @@ const overflowCount = computed(() => Math.max(0, points.value.length - visiblePo
 const title = computed(() => (
   isStack.value
     ? t('maps.popups.rawGps.pointsHere', { count: props.group.count })
-    : formatRawGpsDateTime(props.timezone, selectedPoint.value?.timestamp)
+    : formatRawGpsDateTime(props.timezone, selectedPoint.value?.timestamp, pointLocationTimezone.value)
 ))
 const subtitle = computed(() => (
   isStack.value
-    ? `${formatRawGpsDateTime(props.timezone, props.group.firstTimestamp)} - ${formatRawGpsDateTime(props.timezone, props.group.lastTimestamp)}`
+    ? `${formatRawGpsDateTime(props.timezone, props.group.firstTimestamp, pointLocationTimezone.value)} - ${formatRawGpsDateTime(props.timezone, props.group.lastTimestamp, pointLocationTimezone.value)}`
     : selectedPoint.value?.sourceType || t('maps.popups.rawGps.rawGpsPoint')
 ))
 const locationName = computed(() => resolvedLocation.value?.locationName || '')
+// Points in one popup share a location, so they share its zone (set once the location has loaded).
+const pointLocationTimezone = computed(() => resolvedLocation.value?.locationTimezone || null)
 const locationSource = computed(() => (
   resolvedLocation.value?.sourceType === 'favorite' ? t('maps.popups.rawGps.favoriteSource') : t('maps.popups.rawGps.geocodingSource')
 ))
@@ -146,9 +148,12 @@ onMounted(() => {
   loadLocation()
 })
 
-const formatRawGpsDateTime = (timezone, value) => {
+const formatRawGpsDateTime = (timezone, value, locationTimezone = null) => {
   if (!value) return t('maps.popups.common.unknownTime')
   try {
+    if (locationTimezone && typeof timezone.formatDateTimeDisplayAt === 'function') {
+      return timezone.formatDateTimeDisplayAt(value, locationTimezone, { withSeconds: true })
+    }
     return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
   } catch {
     return t('maps.popups.common.unknownTime')

@@ -7,7 +7,7 @@
   >
     <template #title>
       <div class="timeline-title-row">
-        <p class="timeline-timestamp">
+        <p class="timeline-timestamp" :title="timezone.getLocationTimezoneHint(tripItem.startLocationTimezone) || undefined">
           🕐 {{ formattedTimestamp }}
         </p>
         <div class="timeline-title-actions">
@@ -116,6 +116,10 @@ const props = defineProps({
   tripItem: {
     type: Object,
     required: true
+  },
+  forceZoneLabel: {
+    type: Boolean,
+    default: false
   },
   nextItem: {
     type: Object,
@@ -340,7 +344,9 @@ const handleEditMovementType = () => {
 
 const formattedTimestamp = computed(() => {
   if (!props.tripItem.timestamp) return '';
-  return `${timezone.formatDateDisplay(props.tripItem.timestamp)} ${timezone.formatTime(props.tripItem.timestamp)}`
+  return timezone.formatDateTimeDisplayAt(props.tripItem.timestamp, props.tripItem.startLocationTimezone, {
+    forceLabel: props.forceZoneLabel
+  })
 })
 </script>
 

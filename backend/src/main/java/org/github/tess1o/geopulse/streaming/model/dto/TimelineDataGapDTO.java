@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.streaming.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.geocoding.dto.LocationTimezoneDTO;
 
 import java.time.Instant;
 
@@ -41,7 +43,16 @@ public class TimelineDataGapDTO {
      * Ongoing gaps are not convertible to manual stays.
      */
     private boolean ongoing;
-    
+
+    /**
+     * Local timezones at the gap start and end, taken from the timeline items right before and after the gap
+     * (absent at the edges of the requested range). Only set when the client requests location timezones.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocationTimezoneDTO startLocationTimezone;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocationTimezoneDTO endLocationTimezone;
+
     /**
      * Constructor that automatically calculates duration
      */

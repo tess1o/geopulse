@@ -60,8 +60,8 @@
       >
         <template #body="slotProps">
           <div class="datetime-display">
-            <div class="date-part">{{ formatDate(slotProps.data.startTime) }}</div>
-            <div class="time-part">{{ formatTime(slotProps.data.startTime) }}</div>
+            <div class="date-part">{{ formatDate(slotProps.data.startTime, slotProps.data.startLocationTimezone) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.startTime, slotProps.data.startLocationTimezone) }}</div>
           </div>
         </template>
       </Column>
@@ -74,10 +74,10 @@
       >
         <template #body="slotProps">
           <div class="datetime-display">
-            <div class="date-part" v-if="!isSameDay(slotProps.data.startTime, slotProps.data.endTime)">
-              {{ formatDate(slotProps.data.endTime) }}
+            <div class="date-part" v-if="!isSameDay(slotProps.data.startTime, slotProps.data.endTime, slotProps.data.startLocationTimezone, slotProps.data.endLocationTimezone)">
+              {{ formatDate(slotProps.data.endTime, slotProps.data.endLocationTimezone) }}
             </div>
-            <div class="time-part">{{ formatTime(slotProps.data.endTime) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.endTime, slotProps.data.endLocationTimezone) }}</div>
           </div>
         </template>
       </Column>
@@ -114,12 +114,12 @@
         <div class="mobile-gap-meta">
           <div class="mobile-meta-row">
             <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
-            <span class="mobile-meta-value">{{ formatDate(gap.startTime) }} {{ formatTime(gap.startTime) }}</span>
+            <span class="mobile-meta-value">{{ formatDate(gap.startTime, gap.startLocationTimezone) }} {{ formatTime(gap.startTime, gap.startLocationTimezone) }}</span>
           </div>
           <div class="mobile-meta-row">
             <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
             <span class="mobile-meta-value">
-              <template v-if="!isSameDay(gap.startTime, gap.endTime)">{{ formatDate(gap.endTime) }} </template>{{ formatTime(gap.endTime) }}
+              <template v-if="!isSameDay(gap.startTime, gap.endTime, gap.startLocationTimezone, gap.endLocationTimezone)">{{ formatDate(gap.endTime, gap.endLocationTimezone) }} </template>{{ formatTime(gap.endTime, gap.endLocationTimezone) }}
             </span>
           </div>
         </div>
@@ -187,17 +187,26 @@ const filteredDataGapsData = useDataGapsFilter(computed(() => props.dataGaps))
 const isMobile = ref(false)
 
 // Methods - Using memoized formatters for better performance
-const formatDate = (timestamp) => {
+// Location-time mode with a resolved zone: format in the item's zone (not memoized -- the memo key has no zone).
+const hasLocationZone = (locationTimezone) => timezone.isLocationTimeMode() && !!locationTimezone?.timezone
+
+const formatDate = (timestamp, locationTimezone) => {
+  if (hasLocationZone(locationTimezone)) return timezone.formatDateDisplayAt(timestamp, locationTimezone)
   const cacheKeyFormat = `DATE_DISPLAY:${timezone.getDateFormat()}`
   return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatDateDisplay(ts))
 }
 
-const formatTime = (timestamp) => {
+const formatTime = (timestamp, locationTimezone) => {
+  if (hasLocationZone(locationTimezone)) return timezone.formatTimeAt(timestamp, locationTimezone)
   const cacheKeyFormat = `TIME:${timezone.getTimeFormat()}:m`
   return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatTime(ts))
 }
 
-const isSameDay = (startTime, endTime) => {
+const isSameDay = (startTime, endTime, startLocationTimezone, endLocationTimezone) => {
+  if (hasLocationZone(startLocationTimezone) || hasLocationZone(endLocationTimezone)) {
+    // Compare the dates as they are displayed, each in its own zone.
+    return formatDate(startTime, startLocationTimezone) === formatDate(endTime, endLocationTimezone)
+  }
   const start = timezone.fromUtc(startTime)
   const end = timezone.fromUtc(endTime)
   return start.format('YYYY-MM-DD') === end.format('YYYY-MM-DD')
