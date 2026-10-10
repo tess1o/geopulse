@@ -493,6 +493,64 @@ class StreamingSingleTripAlgorithmTest {
     }
 
     @Test
+    void shouldNotCreateContinuityTripAcrossDataGapAfterTrip_SingleAlgorithm() {
+        assertNoContinuityTripAcrossDataGapAfterTrip(singleTripAlgorithm);
+    }
+
+    @Test
+    void shouldNotCreateContinuityTripAcrossDataGapAfterTrip_MultiAlgorithm() {
+        assertNoContinuityTripAcrossDataGapAfterTrip(multipleTripAlgorithm);
+    }
+
+    @Test
+    void shouldNotCreateContinuityTripAcrossDataGapBetweenStays_SingleAlgorithm() {
+        assertNoContinuityTripAcrossDataGapBetweenStays(singleTripAlgorithm);
+    }
+
+    @Test
+    void shouldNotCreateContinuityTripAcrossDataGapBetweenStays_MultiAlgorithm() {
+        assertNoContinuityTripAcrossDataGapBetweenStays(multipleTripAlgorithm);
+    }
+
+    // Issue #627: Office -> drive home -> data gap -> Home produced an extra Office -> Home trip spanning the gap.
+    private void assertNoContinuityTripAcrossDataGapAfterTrip(StreamTripAlgorithm algorithm) {
+        Stay office = createStay("2026-10-08T06:07:15Z", "Office");
+        Trip driveHome = createTrip("2026-10-08T11:48:07Z", Duration.ofSeconds(653), 6610.0, TripType.CAR);
+        DataGap dataGap = DataGap.fromTimeRange(
+                Instant.parse("2026-10-08T11:59:00Z"),
+                Instant.parse("2026-10-08T18:51:15Z")
+        );
+        Stay home = createStay("2026-10-08T18:51:15Z", "Home");
+
+        List<TimelineEvent> result = algorithm.apply(
+                UUID.randomUUID(), Arrays.asList(office, driveHome, dataGap, home), config, null);
+
+        assertEquals(4, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof DataGap);
+        assertTrue(result.get(3) instanceof Stay);
+        assertEquals(Instant.parse("2026-10-08T11:48:07Z"), ((Trip) result.get(1)).getStartTime());
+    }
+
+    private void assertNoContinuityTripAcrossDataGapBetweenStays(StreamTripAlgorithm algorithm) {
+        Stay office = createStay("2026-10-08T06:07:15Z", "Office");
+        DataGap dataGap = DataGap.fromTimeRange(
+                Instant.parse("2026-10-08T06:17:15Z"),
+                Instant.parse("2026-10-08T18:51:15Z")
+        );
+        Stay home = createStay("2026-10-08T18:51:15Z", "Home");
+
+        List<TimelineEvent> result = algorithm.apply(
+                UUID.randomUUID(), Arrays.asList(office, dataGap, home), config, null);
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof DataGap);
+        assertTrue(result.get(2) instanceof Stay);
+    }
+
+    @Test
     void shouldMergeSameModeFragmentsFromShortTrafficStop_MultiAlgorithm() {
         Stay start = createStay("2026-07-02T06:30:00Z", "Start");
         Trip carBeforeStop = createTrip("2026-07-02T06:36:00Z", Duration.ofMinutes(8), 5000.0, TripType.CAR);

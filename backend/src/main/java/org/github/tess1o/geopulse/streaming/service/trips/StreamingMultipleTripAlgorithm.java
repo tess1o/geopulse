@@ -39,6 +39,9 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         List<TimelineEvent> processedEvents = new ArrayList<>();
 
         Stay currentStay = null;
+        // A data gap breaks adjacency: the stays on either side are not "consecutive", so no
+        // continuity trip may be synthesized across it (it would overlap the gap and any trip before it).
+        boolean dataGapSinceCurrentStay = false;
         List<Trip> tripSegment = new ArrayList<>();
 
         for (TimelineEvent event : events) {
@@ -67,7 +70,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                                     processedTrips.size());
                         }
                     }
-                } else if (currentStay != null && tripSegment.isEmpty()) {
+                } else if (currentStay != null && tripSegment.isEmpty() && !dataGapSinceCurrentStay) {
                     // No detected trip between consecutive stays:
                     // - same location -> keep as-is for optional downstream merge pass
                     // - different location -> synthesize continuity trip here
@@ -91,6 +94,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
                 tripSegment.clear();
                 currentStay = stay;
+                dataGapSinceCurrentStay = false;
                 processedEvents.add(stay);
 
             } else if (event instanceof Trip) {
@@ -112,6 +116,9 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                         processedEvents.add(bestTrip);
                     }
                     tripSegment.clear();
+                }
+                if (event instanceof DataGap) {
+                    dataGapSinceCurrentStay = true;
                 }
                 processedEvents.add(event);
             }
