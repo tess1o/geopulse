@@ -83,7 +83,7 @@
               <Button icon="pi pi-sign-out" severity="secondary" text @click="handleSignOut" />
             </template>
             <template v-else>
-              <Button v-if="isLoginAvailable" :label="t('auth.login.signIn')" icon="pi pi-sign-in" as="router-link" to="/login" severity="secondary" text class="nav-signin" />
+              <Button v-if="isLoginAvailable" :label="t('auth.login.signIn')" icon="pi pi-sign-in" as="router-link" :to="SIGN_IN_LOCATION" severity="secondary" text class="nav-signin" />
             </template>
           </div>
         </div>
@@ -130,7 +130,7 @@
                   <div class="hero-actions">
                     <Button v-if="isDemoModeEnabled" :label="t('ui.home.hero.tryDemo')" icon="pi pi-play" iconPos="right" as="router-link" to="/login" size="large" class="btn-hero-primary btn-hero-static" />
                     <Button v-if="!isDemoModeEnabled && isRegistrationAvailable" :label="t('ui.home.hero.startJourney')" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
-                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" :label="t('auth.login.signIn')" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" :label="t('auth.login.signIn')" as="router-link" :to="SIGN_IN_LOCATION" size="large" class="btn-hero-secondary" />
                   </div>
                 </template>
 
@@ -252,6 +252,7 @@ import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { SIGN_IN_LOCATION } from '@/utils/oidcAutoLaunch'
 import { useHomeStore } from '@/stores/home'
 import { storeToRefs } from 'pinia'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
@@ -363,7 +364,12 @@ const githubStarsLabel = computed(() => formatSocialCount(githubStars.value) || 
 const githubForksLabel = computed(() => formatSocialCount(githubForks.value) || DEFAULT_GITHUB_FORKS_LABEL)
 
 const handleSignOut = async () => {
-  await authStore.logout()
+  const idpLogoutUrl = await authStore.logout()
+  // Also end the OIDC provider session when the provider supports it; GeoPulse is already signed out.
+  if (idpLogoutUrl) {
+    window.location.assign(idpLogoutUrl)
+    return
+  }
   router.push('/')
 }
 

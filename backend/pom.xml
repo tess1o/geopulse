@@ -25,7 +25,6 @@
         <lombok.mapstruct-binding.version>0.2.0</lombok.mapstruct-binding.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <mockito.version>5.19.0</mockito.version>
-        <jjwt-api.version>0.13.0</jjwt-api.version>
         <pmd.version>7.17.0</pmd.version>
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
@@ -117,32 +116,11 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-jwt</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-jwt-build</artifactId>
+            <artifactId>quarkus-security</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt-api.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt-api.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt-api.version}</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -520,6 +498,7 @@
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.AdminPasswordRecoveryService,
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
                     --initialize-at-run-time=org.github.tess1o.geopulse.auth.service.ApiTokenSecretService,
+                    --initialize-at-run-time=org.github.tess1o.geopulse.shared.security.CryptoUtils,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,

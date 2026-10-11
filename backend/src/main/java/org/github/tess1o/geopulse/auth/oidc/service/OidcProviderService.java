@@ -33,7 +33,8 @@ public class OidcProviderService {
 
     // Cache for actual discovered metadata (for env-configured providers)
     private record CachedMetadata(String authorizationEndpoint, String tokenEndpoint,
-                                   String userinfoEndpoint, String jwksUri, String issuer) {}
+                                   String userinfoEndpoint, String jwksUri, String issuer,
+                                   String endSessionEndpoint) {}
     private final Map<String, CachedMetadata> discoveryCache = new ConcurrentHashMap<>();
 
     @Inject
@@ -116,6 +117,7 @@ public class OidcProviderService {
             provider.setUserinfoEndpoint(cached.userinfoEndpoint());
             provider.setJwksUri(cached.jwksUri());
             provider.setIssuer(cached.issuer());
+            provider.setEndSessionEndpoint(cached.endSessionEndpoint());
             provider.setMetadataValid(true);
             log.debug("Loaded cached metadata from memory for provider: {}", provider.getName());
             return;
@@ -130,6 +132,7 @@ public class OidcProviderService {
                     provider.setUserinfoEndpoint(dbProvider.getUserinfoEndpoint());
                     provider.setJwksUri(dbProvider.getJwksUri());
                     provider.setIssuer(dbProvider.getIssuer());
+                    provider.setEndSessionEndpoint(dbProvider.getEndSessionEndpoint());
                     provider.setMetadataValid(true);
                     log.debug("Loaded cached metadata from database for provider: {}", provider.getName());
                 }
@@ -150,6 +153,7 @@ public class OidcProviderService {
                     provider.setUserinfoEndpoint(recheck.userinfoEndpoint());
                     provider.setJwksUri(recheck.jwksUri());
                     provider.setIssuer(recheck.issuer());
+                    provider.setEndSessionEndpoint(recheck.endSessionEndpoint());
                     provider.setMetadataValid(true);
                 } else {
                     populateMetadataFromDiscovery(provider);
@@ -181,6 +185,7 @@ public class OidcProviderService {
             provider.setUserinfoEndpoint(discovery.getUserinfoEndpoint());
             provider.setJwksUri(discovery.getJwksUri());
             provider.setIssuer(discovery.getIssuer());
+            provider.setEndSessionEndpoint(discovery.getEndSessionEndpoint());
             provider.setMetadataCachedAt(Instant.now());
             provider.setMetadataValid(true);
 
@@ -190,7 +195,8 @@ public class OidcProviderService {
                     discovery.getTokenEndpoint(),
                     discovery.getUserinfoEndpoint(),
                     discovery.getJwksUri(),
-                    discovery.getIssuer()
+                    discovery.getIssuer(),
+                    discovery.getEndSessionEndpoint()
             ));
             metadataCache.put(provider.getName(), Instant.now());
 
@@ -199,7 +205,10 @@ public class OidcProviderService {
                 configurationService.updateMetadata(provider.getName(), provider);
             }
 
-            log.debug("Successfully cached OIDC metadata for provider: {}", provider.getName());
+            log.debug("Successfully cached OIDC metadata for provider: {} (end_session_endpoint: {}, "
+                            + "back-channel logout supported: {})",
+                    provider.getName(), discovery.getEndSessionEndpoint() != null,
+                    Boolean.TRUE.equals(discovery.getBackchannelLogoutSupported()));
 
         } catch (Exception e) {
             log.error("Failed to fetch OIDC metadata for provider: {}", provider.getName(), e);

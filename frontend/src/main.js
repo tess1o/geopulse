@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import GeopulsePreset from "@/presets/GeopulsePreset";
 import {autocompleteEscapePassThrough} from '@/utils/autocompleteEscape'
 import { initializeThemeMode } from "@/utils/themeMode";
-import router from "./router";
+import router, { routeRequiresSession } from "./router";
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import Tooltip from 'primevue/tooltip'
@@ -23,6 +23,7 @@ import { i18n } from '@/locales'
 import { applyDocumentTitle } from '@/utils/documentTitle'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 import { installProductionConsoleSanitizer } from '@/utils/productionConsoleSanitizer'
+import { markSignedOut } from '@/utils/oidcAutoLaunch'
 
 installProductionConsoleSanitizer()
 initializeThemeMode()
@@ -89,6 +90,8 @@ app.directive('tooltip', Tooltip)
 // wired here because useLocale deliberately imports neither.
 registerPrimeVueConfig(app.config.globalProperties.$primevue?.config)
 registerDocumentTitleRefresher(() => applyDocumentTitle(router.currentRoute.value?.meta))
+// A 401 on a public page (shared links, home) must not bounce a visitor whose old session expired to login.
+apiService.registerSessionRequiredCheck(() => routeRequiresSession(router.currentRoute.value))
 
 watch(
     [timezone.userDateFormat, timezone.userTimeFormat, timezone.userTimezone, timezone.userTimeDisplayMode, timezone.locationTimeHomeCountry],
@@ -123,6 +126,8 @@ watch(() => [maintenance.blocked, maintenance.unavailable, maintenance.activated
         signingOut = true
         try {
             // HttpOnly cookies require a server-confirmed logout, not just local cache removal.
+            // Marked signed out so OIDC auto-launch on /login does not sign the user straight back in.
+            markSignedOut()
             await apiService.logoutStrict()
             useAuthStore().clearUser()
             acknowledgeActivation()

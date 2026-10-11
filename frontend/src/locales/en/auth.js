@@ -60,6 +60,7 @@ export default {
     login: {
         disabledMessage: 'Login is currently disabled. Please contact your administrator.',
         emailDisabledMessage: 'Email/password login is disabled. Please use OIDC providers below.',
+        autoLaunchRedirecting: 'Redirecting to {provider}…',
         adminAccess: 'Administrator Access',
         adminBypassNotice: 'Administrator access - login restrictions bypassed',
         demoTitle: 'Try GeoPulse',

@@ -266,10 +266,11 @@ backend-test-integration-tz-matrix:
 
 # Variables for E2E testing
 E2E_COMPOSE_FILE := tests/docker-compose.e2e.yml
-E2E_PLAYWRIGHT_PROJECTS ?= --project=chromium --project=chromium-vector
+# chromium-oidc runs after the other two (it switches global auth settings); see tests/playwright.config.js
+E2E_PLAYWRIGHT_PROJECTS ?= --project=chromium --project=chromium-vector --project=chromium-oidc
 E2E_SERVICES := geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e geopulse-demo-integrations-e2e
 
-# Start E2E test environment (UI + Backend + DB + fake Immich/Memos)
+# Start E2E test environment (UI + Backend + DB + fake Immich/Memos/OIDC)
 .PHONY: e2e-start
 e2e-start:
 	@echo "🚀 Starting E2E test environment..."
@@ -277,6 +278,7 @@ e2e-start:
 	@echo "  Frontend: http://localhost:5556"
 	@echo "  Database: localhost:5433"
 	@echo "  Fake Immich/Memos: geopulse-demo-integrations-e2e:2283/5230 (Docker network only)"
+	@echo "  Fake OIDC provider: http://localhost:9400 (geopulse-demo-integrations-e2e:9400)"
 	docker-compose -f $(E2E_COMPOSE_FILE) up -d $(E2E_SERVICES)
 	@echo "✅ E2E environment started"
 
@@ -310,25 +312,25 @@ e2e-logs:
 # Run E2E tests (requires environment to be running)
 .PHONY: test-e2e
 test-e2e:
-	@echo "🧪 Running E2E tests (RASTER + VECTOR)..."
+	@echo "🧪 Running E2E tests (RASTER + VECTOR + OIDC)..."
 	cd tests && npx playwright test $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Run E2E tests with UI (interactive)
 .PHONY: test-e2e-ui
 test-e2e-ui:
-	@echo "🧪 Running E2E tests in UI mode (RASTER + VECTOR)..."
+	@echo "🧪 Running E2E tests in UI mode (RASTER + VECTOR + OIDC)..."
 	cd tests && npx playwright test --ui $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Run E2E tests in headed mode (visible browser)
 .PHONY: test-e2e-headed
 test-e2e-headed:
-	@echo "🧪 Running E2E tests in headed mode (RASTER + VECTOR)..."
+	@echo "🧪 Running E2E tests in headed mode (RASTER + VECTOR + OIDC)..."
 	cd tests && npx playwright test --headed $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Debug E2E tests
 .PHONY: test-e2e-debug
 test-e2e-debug:
-	@echo "🐛 Running E2E tests in debug mode (RASTER + VECTOR)..."
+	@echo "🐛 Running E2E tests in debug mode (RASTER + VECTOR + OIDC)..."
 	cd tests && npx playwright test --debug $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Show E2E test report
@@ -368,7 +370,7 @@ e2e-rebuild-frontend:
 	docker-compose -f $(E2E_COMPOSE_FILE) up -d geopulse-ui-e2e
 	@echo "✅ E2E frontend rebuilt and restarted"
 
-# Rebuild E2E demo integrations (fake Immich/Memos) and restart
+# Rebuild E2E demo integrations (fake Immich/Memos/OIDC) and restart
 .PHONY: e2e-rebuild-integrations
 e2e-rebuild-integrations:
 	@echo "🔧 Rebuilding E2E demo integrations..."
@@ -408,6 +410,8 @@ e2e-health:
 	@docker exec geopulse-postgres-e2e pg_isready -U geopulse_test -d geopulse_test 2>/dev/null && echo "✅ Database OK" || echo "❌ Database DOWN"
 	@echo "Demo integrations (fake Immich/Memos) health:"
 	@[ "$$(docker inspect -f '{{.State.Health.Status}}' geopulse-demo-integrations-e2e 2>/dev/null)" = "healthy" ] && echo "✅ Demo integrations OK" || echo "❌ Demo integrations DOWN"
+	@echo "Fake OIDC provider health:"
+	@curl -fs http://localhost:9400/healthz >/dev/null && echo "✅ Fake OIDC OK" || echo "❌ Fake OIDC DOWN"
 
 #==============================================================================
 # DEVELOPMENT ENVIRONMENT TARGETS
@@ -487,15 +491,15 @@ help:
 	@echo "  backend-test-integration Run backend integration tests"
 	@echo "  backend-test-all       Run all backend tests (unit + integration)"
 	@echo "  frontend-test          Run frontend vitest tests (optional TEST=<file filter>)"
-	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR, requires E2E environment)"
-	@echo "  test-e2e-ui            Run E2E tests in UI mode (RASTER + VECTOR)"
-	@echo "  test-e2e-headed        Run E2E tests in headed mode (RASTER + VECTOR)"
-	@echo "  test-e2e-debug         Debug E2E tests (RASTER + VECTOR)"
+	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR + OIDC, requires E2E environment)"
+	@echo "  test-e2e-ui            Run E2E tests in UI mode (RASTER + VECTOR + OIDC)"
+	@echo "  test-e2e-headed        Run E2E tests in headed mode (RASTER + VECTOR + OIDC)"
+	@echo "  test-e2e-debug         Debug E2E tests (RASTER + VECTOR + OIDC)"
 	@echo "  test-e2e-report        Show E2E test report"
 	@echo "  test-e2e-full          Complete E2E workflow: start → test → report"
 	@echo ""
 	@echo "🧪 E2E ENVIRONMENT MANAGEMENT:"
-	@echo "  e2e-start              Start E2E test environment (UI + Backend + DB)"
+	@echo "  e2e-start              Start E2E test environment (UI + Backend + DB + fake Immich/Memos/OIDC)"
 	@echo "  e2e-stop               Stop E2E test environment"
 	@echo "  e2e-restart            Restart E2E test environment"
 	@echo "  e2e-status             Show E2E environment status"
@@ -506,6 +510,7 @@ help:
 	@echo "🔧 E2E REBUILD TARGETS:"
 	@echo "  e2e-rebuild-backend    Rebuild E2E backend container"
 	@echo "  e2e-rebuild-frontend   Rebuild E2E frontend container"
+	@echo "  e2e-rebuild-integrations Rebuild E2E demo integrations (fake Immich/Memos/OIDC)"
 	@echo "  e2e-rebuild-all        Rebuild all E2E containers"
 	@echo ""
 	@echo "🚀 DEVELOPMENT ENVIRONMENT:"

@@ -1,16 +1,14 @@
 package org.github.tess1o.geopulse.auth.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.jwt.auth.principal.JWTParser;
-import io.smallrye.jwt.auth.principal.ParseException;
-import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import lombok.Getter;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
+import org.github.tess1o.geopulse.auth.session.model.IssuedApiSession;
+import org.github.tess1o.geopulse.auth.session.model.IssuedBrowserSession;
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionContext;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.RefreshTokenResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -18,80 +16,38 @@ import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_CREDENTIALS;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_REFRESH_TOKEN;
 
 @ApplicationScoped
 public class AuthenticationService {
-
-    @Inject
-    JWTParser jwtParser;
-
-    @Inject
-    @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
-    @StaticInitSafe
-    String issuer;
-
-    @Inject
-    @ConfigProperty(name = "smallrye.jwt.new-token.lifespan", defaultValue = "1800")
-    @Getter
-    @StaticInitSafe
-    Long accessTokenLifespan;
-
-    @Inject
-    @ConfigProperty(name = "jwt.refresh-token.lifespan", defaultValue = "604800") // 7 days
-    @Getter
-    @StaticInitSafe
-    Long refreshTokenLifespan;
 
     private final UserService userService;
     private final SecurePasswordUtils securePasswordUtils;
     private final AdminBootstrapService adminBootstrapService;
     private final DemoModeService demoModeService;
+    private final UserSessionService userSessionService;
 
     @Inject
     public AuthenticationService(UserService userService,
                                  SecurePasswordUtils securePasswordUtils,
                                  AdminBootstrapService adminBootstrapService,
-                                 DemoModeService demoModeService) {
+                                 DemoModeService demoModeService,
+                                 UserSessionService userSessionService) {
         this.userService = userService;
         this.securePasswordUtils = securePasswordUtils;
         this.adminBootstrapService = adminBootstrapService;
         this.demoModeService = demoModeService;
+        this.userSessionService = userSessionService;
     }
 
-    public String createAccessToken(UserEntity user) {
-        return Jwt.issuer(issuer)
-                .upn(user.getEmail()) // UserPrincipalName, often email
-                .subject(user.getId().toString()) // Subject, typically user ID
-                .groups(Set.of(user.getRole().name()))
-                .claim("type", "access")
-                .claim("userId", user.getId().toString())
-                .claim("createdAt", user.getCreatedAt().toString() + "Z")
-                .expiresIn(Duration.ofSeconds(accessTokenLifespan))
-                .sign();
-    }
-
-    public String createRefreshToken(UserEntity user) {
-        return Jwt.issuer(issuer)
-                .upn(user.getEmail()) // UserPrincipalName, often email
-                .subject(user.getId().toString()) // Subject, typically user ID
-                .groups(Set.of(user.getRole().name()))
-                .claim("type", "refresh")
-                .claim("userId", user.getId().toString())
-                .expiresIn(Duration.ofSeconds(refreshTokenLifespan))
-                .sign();
-    }
-
-    public AuthResponse authenticate(String email, String password) {
+    /**
+     * Verify an email and password. Session creation then checks the user may sign in.
+     */
+    public UserEntity verifyCredentials(String email, String password) {
         Optional<UserEntity> userOpt = userService.findByEmail(email);
         String storedHash = userOpt.map(UserEntity::getPasswordHash)
                 .filter(hash -> !hash.isBlank())
@@ -100,37 +56,62 @@ public class AuthenticationService {
         if (userOpt.isEmpty() || !passwordValid) {
             throw new GeoPulseException(INVALID_CREDENTIALS, "Invalid email or password");
         }
-
-        UserEntity user = userOpt.get();
-        requireActive(user);
-        adminBootstrapService.ensureAdminForAuthenticatedUser(user);
-        return getAuthResponse(user);
+        return userOpt.get();
     }
 
     /**
-     * Create an AuthResponse for an already authenticated user (e.g., via OIDC).
-     * This bypasses password validation since the user has already been authenticated by external provider.
+     * Checks an authenticated user may sign in: the account is enabled, and the bootstrap admin
+     * gets its role. Every session creation goes through here.
      */
-    public AuthResponse createAuthResponse(UserEntity user) {
-        requireActive(user);
-        adminBootstrapService.ensureAdminForAuthenticatedUser(user);
-        return getAuthResponse(user);
-    }
-
-    private static void requireActive(UserEntity user) {
+    private UserEntity prepareSignIn(UserEntity user) {
         if (!user.isActive()) {
             throw new GeoPulseException(ACCESS_DENIED, "User account is disabled");
         }
+        adminBootstrapService.ensureAdminForAuthenticatedUser(user);
+        return user;
     }
 
-    private AuthResponse getAuthResponse(UserEntity user) {
-        String accessToken = createAccessToken(user);
-        String refreshToken = createRefreshToken(user);
+    /**
+     * Password sign-in for API clients: returns an API session (access and refresh token).
+     */
+    public AuthResponse authenticate(String email, String password) {
+        return createApiSession(verifyCredentials(email, password),
+                SessionContext.of(SessionAuthMethod.PASSWORD, null, null));
+    }
 
+    /**
+     * Start an API session (bearer access token plus rotating refresh token) for a signed-in user.
+     */
+    public AuthResponse createApiSession(UserEntity user, SessionContext context) {
+        IssuedApiSession session = userSessionService.createApiSession(prepareSignIn(user), context);
+        AuthResponse response = buildProfile(user);
+        response.setAccessToken(session.accessToken());
+        response.setRefreshToken(session.refreshToken());
+        response.setExpiresIn(session.accessTokenExpiresIn());
+        return response;
+    }
+
+    /**
+     * Start a browser session (opaque session cookie) for a signed-in user.
+     */
+    public BrowserSignIn createBrowserSession(UserEntity user, SessionContext context) {
+        IssuedBrowserSession session = userSessionService.createBrowserSession(prepareSignIn(user), context);
+        return new BrowserSignIn(buildProfile(user), session);
+    }
+
+    public RefreshTokenResponse refreshToken(String refreshToken) {
+        IssuedApiSession session = userSessionService.refresh(refreshToken);
+        return new RefreshTokenResponse(
+                session.accessToken(),
+                session.refreshToken(),
+                null, // CSRF token not needed - handled by CsrfProtectionFilter
+                session.accessTokenExpiresIn()
+        );
+    }
+
+    private AuthResponse buildProfile(UserEntity user) {
         return AuthResponse.builder()
                 .id(user.getId().toString())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .demoMode(demoModeService.isEnabled())
@@ -140,57 +121,10 @@ public class AuthenticationService {
                 .fullName(user.getFullName())
                 .timezone(user.getTimezone())
                 .createdAt(user.getCreatedAt())
-                .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
                 .uiPreferences(user.getUiPreferences().withDefaults())
                 .timelineDisplay(userService.getTimelineDisplaySettings(user))
                 .build();
-    }
-
-    public RefreshTokenResponse refreshToken(String refreshToken) {
-        JsonWebToken jwt;
-        try {
-            jwt = jwtParser.parse(refreshToken);
-        } catch (ParseException e) {
-            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token", e);
-        }
-
-        // Validate it's a refresh token
-        String tokenType = jwt.getClaim("type");
-        if (!"refresh".equals(tokenType)) {
-            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token");
-        }
-
-        // Get user ID from token
-        String userIdStr = jwt.getSubject();
-        if (userIdStr == null) {
-            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token");
-        }
-
-        UUID userId;
-        try {
-            userId = UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
-            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token", e);
-        }
-        Optional<UserEntity> userOpt = userService.findById(userId);
-        if (userOpt.isEmpty()) {
-            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
-        }
-
-        UserEntity user = userOpt.get();
-
-        // Check if user is still active (optional security check)
-        if (!user.isActive()) {
-            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
-        }
-
-        return new RefreshTokenResponse(
-                createAccessToken(user),
-                createRefreshToken(user),
-                null, // CSRF token not needed - handled by CsrfProtectionFilter
-                accessTokenLifespan
-        );
     }
 
     public String[] extractUsernameAndPassword(String authHeader) {
@@ -215,5 +149,9 @@ public class AuthenticationService {
         String password = credentials.substring(colonIndex + 1);
 
         return new String[]{username, password};
+    }
+
+    /** A new browser session and the profile of the user it belongs to. */
+    public record BrowserSignIn(AuthResponse profile, IssuedBrowserSession session) {
     }
 }

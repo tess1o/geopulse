@@ -35,4 +35,14 @@ public class OidcDiscoveryDocument {
     
     @JsonProperty("id_token_signing_alg_values_supported")
     private String[] idTokenSigningAlgValuesSupported;
+
+    /** RP-initiated logout endpoint; optional, many providers do not publish one. */
+    @JsonProperty("end_session_endpoint")
+    private String endSessionEndpoint;
+
+    @JsonProperty("backchannel_logout_supported")
+    private Boolean backchannelLogoutSupported;
+
+    @JsonProperty("backchannel_logout_session_supported")
+    private Boolean backchannelLogoutSessionSupported;
 }

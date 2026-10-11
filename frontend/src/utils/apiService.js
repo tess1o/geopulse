@@ -13,11 +13,13 @@ import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
 import { buildLoginUrl } from '@/utils/loginRedirect';
-import { createAuthExpiredError, getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
+import { getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
 import { t } from '@/locales';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
 let maintenanceAbortController = new AbortController();
+// Until the router registers a check, treat every page as needing a session
+let sessionRequiredCheck = () => true;
 
 async function parseBlobProblem(error) {
     const data = error?.response?.data;
@@ -70,12 +72,6 @@ if (typeof window !== 'undefined') {
  * API Service for handling HTTP requests
  */
 const apiService = {
-    // Flag to track if a token refresh is in progress
-    _refreshingToken: false,
-
-    // Promise that resolves when token refresh completes
-    _refreshTokenPromise: null,
-
     // Prevent duplicate redirects when multiple requests fail at once
     _redirectingToErrorPage: false,
 
@@ -120,173 +116,33 @@ const apiService = {
 
 
     /**
-     * Check if the access token is expired or about to expire
-     * @returns {boolean} True if token needs refresh
-     */
-    isTokenExpired() {
-        try {
-            // Check expiration cookie
-            const expiresAt = this.getTokenExpirationFromCookie();
-            // If expiration cookie is missing, assume token is expired (needs refresh)
-            if (expiresAt === null) {
-                // Only consider expired if we have a cached user profile.
-                return this.hasCachedUserProfile();
-            }
-            const timezone = useTimezone()
-            return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
-        } catch (error) {
-            console.error('Error checking token expiration:', import.meta.env.DEV ? error : productionErrorContext(error));
-            return false;
-        }
-    },
-
-    /**
-     * Get token expiration timestamp from cookie (for cookie mode)
-     * @returns {number|null} Expiration timestamp or null
-     */
-    getTokenExpirationFromCookie() {
-        try {
-            const value = document.cookie.replace(
-                /(?:(?:^|.*;\s*)token_expires_at\s*\=\s*([^;]*).*$)|^.*$/, 
-                "$1"
-            );
-            return value ? parseInt(value) : null;
-        } catch (error) {
-            console.error('Error getting token expiration from cookie:', import.meta.env.DEV ? error : productionErrorContext(error));
-            return null;
-        }
-    },
-
-    /**
-     * Refresh the access token using the refresh token
-     * @returns {Promise<boolean>} True if refresh was successful
-     */
-    async refreshToken() {
-        assertApplicationTransportAvailable('/auth/sessions/current/refresh');
-        // If a refresh is already in progress, return the existing promise
-        if (this._refreshingToken) {
-            return this._refreshTokenPromise;
-        }
-
-        // Set the refreshing flag and create a new promise
-        this._refreshingToken = true;
-        this._refreshTokenPromise = (async () => {
-            try {
-                // Cookie-based refresh is handled server-side.
-                // Include CSRF header when csrf-token cookie exists.
-                await this._performSecureRequest('post', '/auth/sessions/current/refresh', {});
-                return true;
-            } catch (refreshError) {
-                if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
-                    throw new MaintenanceInterruption();
-                }
-                const status = refreshError.response?.status;
-
-                // Invalid/expired refresh cookie -> treat as auth expiration
-                if (status === 401 || status === 403) {
-                    this.clearAuthData();
-                    return false;
-                }
-
-                // Backend outage / server failure should bubble up so the normal
-                // error handling path can redirect to the error page.
-                throw refreshError;
-            } finally {
-                // Reset the refreshing flag when done
-                this._refreshingToken = false;
-                this._refreshTokenPromise = null;
-            }
-        })();
-
-        return this._refreshTokenPromise;
-    },
-
-    /**
-     * Execute a request with automatic retry on 401
+     * Run a request and route failures through the shared error handling.
+     * Sessions live on the server: there is nothing to refresh, and a 401 means the session ended
+     * (signed out elsewhere, expired, or revoked), which handleError turns into a redirect to login.
      * @param {Function} requestFn - Function that performs the actual request
-     * @param {number} maxRetries - Maximum number of retries (default: 1)
      * @returns {Promise} - Request result
      */
-    async _requestWithRetry(requestFn, maxRetries = 1) {
-        let attempt = 0;
-        
-        while (attempt <= maxRetries) {
-            try {
-                return await requestFn();
-            } catch (error) {
-                if (interruptsApplicationRequests() || isMaintenanceInterruption(error)) {
-                    throw new MaintenanceInterruption();
-                }
-                // Retry on 401 with token refresh
-                if (error.response?.status === 401 && attempt < maxRetries) {
-                    if (this.hasCachedUserProfile()) {
-                        try {
-                            const refreshSuccessful = await this.refreshToken();
-                            if (refreshSuccessful) {
-                                attempt++;
-                                // Small delay to ensure cookies are properly set
-                                await new Promise(resolve => setTimeout(resolve, 500));
-                                continue; // Retry the request
-                            }
-                        } catch (refreshError) {
-                            if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
-                                throw new MaintenanceInterruption();
-                            }
-                            console.error('Token refresh failed:', import.meta.env.DEV ? refreshError : productionErrorContext(refreshError));
-                            await this.handleError(refreshError);
-                            throw refreshError;
-                        }
-                    }
-                }
-                
-                // If not retrying, handle error normally
-                await this.handleError(error);
-                throw error;
+    async _request(requestFn) {
+        try {
+            return await requestFn();
+        } catch (error) {
+            if (interruptsApplicationRequests() || isMaintenanceInterruption(error)) {
+                throw new MaintenanceInterruption();
             }
-        }
-    },
-
-    async checkAuthExpired(endpoint) {
-        assertApplicationTransportAvailable(endpoint);
-        // Skip auth check for public endpoints
-        const publicEndpoints = [
-            '/auth/sessions',
-            '/auth/demo-sessions',
-            '/auth/sessions/current',
-            '/registrations',
-            '/auth/api-sessions/current/refresh',
-            '/auth/sessions/current/refresh',
-            '/auth/oidc/providers',
-            '/auth/oidc/callbacks',
-            '/home-content'
-        ];
-
-        // Skip auth check for shared location endpoints (they use their own temporary tokens)
-        const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
-
-        if (publicEndpoints.includes(endpoint) || isSharedEndpoint) {
-            return; // No auth check needed
-        }
-
-        // Check expiration for BOTH modes now
-        if (this.isTokenExpired()) {
-            const refreshed = await this.refreshToken();
-            if (!refreshed) {
-                this.clearAuthData();
-                throw createAuthExpiredError();
-            }
+            await this.handleError(error);
+            throw error;
         }
     },
 
     /**
-     * Perform a GET request with token refresh if needed
+     * Perform a GET request
      * @param {string} endpoint - API endpoint
      * @param {Object} params - URL parameters
      * @returns {Promise} - Axios response promise
      */
     async get(endpoint, params = {}) {
-        return this._requestWithRetry(async () => {
-            await this.checkAuthExpired(endpoint);
+        return this._request(async () => {
+            assertApplicationTransportAvailable(endpoint);
 
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
@@ -320,7 +176,7 @@ const apiService = {
 
     async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
         try {
-            await this.checkAuthExpired(endpoint);
+            assertApplicationTransportAvailable(endpoint);
             const headers = {
                 ...customHeaders
             };
@@ -339,35 +195,35 @@ const apiService = {
     },
 
     async delete(endpoint, data = {}) {
-        return this._requestWithRetry(async () => {
-            await this.checkAuthExpired(endpoint);
+        return this._request(async () => {
+            assertApplicationTransportAvailable(endpoint);
             return await this._performSecureRequest('delete', endpoint, data);
         });
     },
 
     async put(endpoint, data = {}) {
-        return this._requestWithRetry(async () => {
-            await this.checkAuthExpired(endpoint);
+        return this._request(async () => {
+            assertApplicationTransportAvailable(endpoint);
             return await this._performSecureRequest('put', endpoint, data);
         });
     },
 
     async patch(endpoint, data = {}) {
-        return this._requestWithRetry(async () => {
-            await this.checkAuthExpired(endpoint);
+        return this._request(async () => {
+            assertApplicationTransportAvailable(endpoint);
             return await this._performSecureRequest('patch', endpoint, data);
         });
     },
 
     /**
-     * Perform a POST request with token refresh if needed
+     * Perform a POST request
      * @param {string} endpoint - API endpoint
      * @param {Object} data - Request body
      * @returns {Promise} - Axios response promise
      */
     async post(endpoint, data = {}, options = {}) {
-        return this._requestWithRetry(async () => {
-            await this.checkAuthExpired(endpoint);
+        return this._request(async () => {
+            assertApplicationTransportAvailable(endpoint);
 
             // Don't send auth headers for shared endpoints (they're public or use custom tokens)
             const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
@@ -464,7 +320,7 @@ const apiService = {
      */
     async download(endpoint, paramsOrFilename = null, filename = null) {
         try {
-            await this.checkAuthExpired(endpoint);
+            assertApplicationTransportAvailable(endpoint);
 
             let params = {};
             let filenameOverride = filename;
@@ -525,13 +381,14 @@ const apiService = {
         }
         if (maintenance.blocked) return;
 
-        // If unauthorized, clear auth data and redirect to login if logged in
+        // A 401 means the session ended (or never existed): drop the cached profile either way
         if (error.response && error.response.status === 401) {
             const hadCachedUserProfile = this.hasCachedUserProfile();
             this.clearAuthData();
 
-            // 401 means cookies expired - redirect to login if we had a cached profile
-            if (hadCachedUserProfile) {
+            // Send the user back to sign in only when the page on screen needs a session.
+            // Public pages (shared links, home) stay put for a visitor whose old session expired.
+            if (hadCachedUserProfile && sessionRequiredCheck()) {
                 this.redirectToLogin();
             }
         }
@@ -549,6 +406,15 @@ const apiService = {
         }
 
         console.error('API request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
+    },
+
+    /**
+     * Register how to tell whether the page on screen needs a session. main.js owns the router, so it
+     * supplies the closure; this keeps apiService free of a router import and the cycle that comes with it.
+     * @param {Function} check - Returns true when a 401 should send the user to login
+     */
+    registerSessionRequiredCheck(check) {
+        sessionRequiredCheck = check;
     },
 
     /**
@@ -629,14 +495,18 @@ const apiService = {
     },
 
     /**
-     * Logout user by calling logout endpoint and clearing local storage
+     * Logout user by calling logout endpoint and clearing local storage.
+     * @returns {Promise<string|null>} URL that also signs the user out of the OIDC provider, when the
+     * session came from a provider that supports it; null otherwise or when the request failed.
      */
     async logout() {
         try {
-            await this._performSecureRequest('delete', '/auth/sessions/current');
+            const response = await this._performSecureRequest('delete', '/auth/sessions/current');
+            return response?.idpLogoutUrl || null;
         } catch (error) {
             // Even if logout fails on server, clear local data
             console.error('Logout request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
+            return null;
         } finally {
             this.clearAuthData();
         }

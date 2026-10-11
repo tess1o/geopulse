@@ -26,7 +26,7 @@
             :label="t('auth.invitation.goToLogin')"
             icon="pi pi-sign-in"
             class="mt-3"
-            @click="router.push('/login')"
+            @click="router.push(SIGN_IN_LOCATION)"
           />
         </div>
 
@@ -112,7 +112,7 @@
           />
 
           <div class="text-center mt-3">
-            <router-link to="/login" class="text-primary">
+            <router-link :to="SIGN_IN_LOCATION" class="text-primary">
               {{ t('auth.invitation.loginLink') }}
             </router-link>
           </div>
@@ -140,6 +140,7 @@ import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import { SIGN_IN_LOCATION } from '@/utils/oidcAutoLaunch'
 import { useLocale } from '@/composables/useLocale'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
 import { getRegistrationErrorMessage, invitationStatusMessage } from '@/utils/registrationErrors'

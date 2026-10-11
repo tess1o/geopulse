@@ -12,9 +12,15 @@
           <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo" />
         </div>
 
+        <!-- OIDC auto-launch: leaving for the only provider -->
+        <div v-if="autoLaunchProvider" class="auto-launch-notice" role="status">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>{{ t('auth.login.autoLaunchRedirecting', { provider: autoLaunchProvider.displayName }) }}</span>
+        </div>
+
         <!-- Login Disabled Message -->
         <!-- Case 1: No login methods available at all -->
-        <div v-if="!hasAnyLoginMethodAvailable && !showAdminLogin"
+        <div v-else-if="!hasAnyLoginMethodAvailable && !showAdminLogin"
              class="login-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
           <div class="message-content">
@@ -52,7 +58,7 @@
         </div>
 
         <!-- Login Form -->
-        <Card class="login-card">
+        <Card v-if="!autoLaunchProvider" class="login-card">
           <template #content>
             <div class="login-form-content">
               <!-- Form Header -->
@@ -218,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -227,6 +233,7 @@ import { formatError } from '@/utils/errorHandler'
 import { getErrorReferenceId, hasErrorReference } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 import { getSafeLoginRedirect } from '@/utils/loginRedirect'
+import { markAutoLaunchAttempted, resolveAutoLaunchProvider } from '@/utils/oidcAutoLaunch'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
@@ -251,6 +258,8 @@ const oidcProviders = ref([])
 const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
 const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true, demoModeEnabled: false });
 const showAdminLogin = ref(false);
+// The provider the page is leaving for on its own (OIDC auto-launch); null shows the normal page.
+const autoLaunchProvider = ref(null)
 
 // Form data
 const formData = ref({
@@ -495,9 +504,35 @@ const handleOidcLogin = async (providerName) => {
   }
 };
 
+// Recorded before leaving so coming back without signing in (Back button, provider error page)
+// shows the page instead of launching again. If the launch itself fails, the page stays.
+const startAutoLaunch = async (provider) => {
+  autoLaunchProvider.value = provider
+  markAutoLaunchAttempted()
+  await handleOidcLogin(provider.name)
+  if (!isLoading.value) {
+    autoLaunchProvider.value = null
+  }
+}
+
+
+// Coming back from the provider (Back button) can restore this page from the back/forward cache
+// mid-redirect; without this it would keep its spinner and disabled buttons.
+const handlePageShow = (event) => {
+  if (event.persisted) {
+    autoLaunchProvider.value = null
+    isLoading.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pageshow', handlePageShow)
+})
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  window.addEventListener('pageshow', handlePageShow)
+
   if (route.query.reason === 'registration_disabled') {
     toast.add({
       severity: 'warn',
@@ -512,7 +547,7 @@ onMounted(() => {
     router.push('/app/timeline')
   }
 
-  authStore.getAuthStatus().then(status => {
+  const statusLoaded = authStore.getAuthStatus().then(status => {
     registrationStatus.value = {
       passwordRegistrationEnabled: status.passwordRegistrationEnabled,
       oidcRegistrationEnabled: status.oidcRegistrationEnabled
@@ -523,14 +558,17 @@ onMounted(() => {
       adminLoginBypassEnabled: status.adminLoginBypassEnabled,
       demoModeEnabled: status.demoModeEnabled
     };
+    return status;
   }).catch(err => {
     console.error("Failed to load auth status", err);
     // Default to enabled if fetch fails
+    return null;
   });
 
   // Load available OIDC providers
-  authStore.getOidcProviders().then(providers => {
+  const providersLoaded = authStore.getOidcProviders().then(providers => {
       oidcProviders.value = providers;
+      return providers;
   }).catch(err => {
       console.error("Failed to load OIDC providers", err);
       toast.add({
@@ -539,7 +577,14 @@ onMounted(() => {
           detail: t('auth.login.toasts.optionsLoadFailedDetail'),
           life: 5000
       });
+      return [];
   });
+
+  const [status, providers] = await Promise.all([statusLoaded, providersLoaded])
+  const provider = authStore.isAuthenticated ? null : resolveAutoLaunchProvider(status, providers, route.query)
+  if (provider) {
+    await startAutoLaunch(provider)
+  }
 })
 </script>
 
@@ -654,6 +699,19 @@ onMounted(() => {
 .login-disabled-message .admin-login-button {
   align-self: flex-start;
   margin-top: 0.25rem;
+}
+
+/* OIDC auto-launch notice */
+.auto-launch-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.25rem;
+  color: var(--gp-text-primary);
+  font-size: 1rem;
+  max-width: 420px;
+  margin: 0 auto;
 }
 
 /* Admin Override Notice */

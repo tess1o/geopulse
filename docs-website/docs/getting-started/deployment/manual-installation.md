@@ -357,21 +357,17 @@ You should see PostGIS version information.
 
 ## 7. Generate Security Keys
 
-GeoPulse requires two types of cryptographic keys:
-1. **JWT RSA Key Pair** - For user authentication tokens
-2. **AI Encryption Key** - For encrypting AI provider API keys
+GeoPulse requires one cryptographic key: the **encryption key** that protects stored secrets (OIDC client secrets,
+GPS source and integration credentials, AI provider API keys, backups). Sign-in sessions are stored in the database
+and need no keys.
 
 ```bash
-# Generate JWT RSA key pair (2048-bit)
-sudo openssl genpkey -algorithm RSA -out /opt/geopulse/keys/jwt-private-key.pem
-sudo openssl rsa -pubout -in /opt/geopulse/keys/jwt-private-key.pem -out /opt/geopulse/keys/jwt-public-key.pem
-
-# Generate AI encryption key (256-bit)
+# Generate the encryption key (256-bit)
 sudo bash -c 'openssl rand -base64 32 > /opt/geopulse/keys/ai-encryption-key.txt'
 
 # Set secure permissions
-sudo chmod 640 /opt/geopulse/keys/jwt-private-key.pem /opt/geopulse/keys/jwt-public-key.pem /opt/geopulse/keys/ai-encryption-key.txt
-sudo chown geopulse:geopulse /opt/geopulse/keys/jwt-private-key.pem /opt/geopulse/keys/jwt-public-key.pem /opt/geopulse/keys/ai-encryption-key.txt
+sudo chmod 640 /opt/geopulse/keys/ai-encryption-key.txt
+sudo chown geopulse:geopulse /opt/geopulse/keys/ai-encryption-key.txt
 
 # Verify files were created
 sudo ls -lh /opt/geopulse/keys/
@@ -596,10 +592,6 @@ GEOPULSE_POSTGRES_PORT=5432
 GEOPULSE_POSTGRES_DB=geopulse
 GEOPULSE_POSTGRES_USERNAME=geopulse
 GEOPULSE_POSTGRES_PASSWORD=your_secure_password_here
-
-# JWT Keys (must use file: URI scheme)
-GEOPULSE_JWT_PRIVATE_KEY_LOCATION=file:/opt/geopulse/keys/jwt-private-key.pem
-GEOPULSE_JWT_PUBLIC_KEY_LOCATION=file:/opt/geopulse/keys/jwt-public-key.pem
 
 # AI Encryption (must use file: URI scheme)
 GEOPULSE_AI_ENCRYPTION_KEY_LOCATION=file:/opt/geopulse/keys/ai-encryption-key.txt

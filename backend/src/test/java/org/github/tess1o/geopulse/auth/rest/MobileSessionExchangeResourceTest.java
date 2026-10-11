@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.auth.service.SessionContextFactory;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
@@ -19,6 +20,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,12 +34,16 @@ class MobileSessionExchangeResourceTest {
     @Mock
     AuthenticationService authenticationService;
 
+    @Mock
+    SessionContextFactory sessionContextFactory;
+
     MobileSessionExchangeResource resource;
 
     @BeforeEach
     void setUp() {
         resource = new MobileSessionExchangeResource();
         resource.mobileDeepLinkService = mobileDeepLinkService;
+        resource.sessionContextFactory = sessionContextFactory;
     }
 
     @Test
@@ -53,7 +60,7 @@ class MobileSessionExchangeResourceTest {
                 .expiresIn(expirationTime)
                 .build();
 
-        when(mobileDeepLinkService.exchangeSessionCode("valid-code")).thenReturn(Optional.of(authResponse));
+        when(mobileDeepLinkService.exchangeSessionCode(eq("valid-code"), any())).thenReturn(Optional.of(authResponse));
 
         Response response = resource.exchangeSessionCode(request);
 
@@ -70,7 +77,7 @@ class MobileSessionExchangeResourceTest {
     @Test
     void exchangeSessionCode_returnsGoneWhenSessionCodeInvalid() {
         MobileSessionExchangeRequest request = new MobileSessionExchangeRequest("missing-code");
-        when(mobileDeepLinkService.exchangeSessionCode("missing-code")).thenReturn(Optional.empty());
+        when(mobileDeepLinkService.exchangeSessionCode(eq("missing-code"), any())).thenReturn(Optional.empty());
 
         GeoPulseException problem = assertThrows(GeoPulseException.class, () -> resource.exchangeSessionCode(request));
         assertEquals(410, problem.code().statusCode());

@@ -153,6 +153,12 @@ export default {
                     label: 'Базова URL-адреса зворотного виклику OIDC',
                     description: 'Необов\'язкова публічна базова URL-адреса для побудови переспрямувань зворотного виклику OIDC'
                 },
+                'rp-logout': {
+                    enabled: {
+                        label: 'Вихід із провайдера OIDC',
+                        description: 'Під час виходу з GeoPulse також виходити з провайдера OIDC, якщо він це підтримує'
+                    }
+                },
                 'jwks-cache': {
                     'ttl-hours': {
                         label: 'TTL кешу JWKS',
@@ -171,6 +177,12 @@ export default {
                     enabled: {
                         label: 'Вхід через OIDC',
                         description: 'Дозволити вхід через провайдерів OIDC'
+                    }
+                },
+                'auto-launch': {
+                    enabled: {
+                        label: 'Автоматичний вхід через OIDC',
+                        description: 'Якщо вхід за паролем вимкнено і налаштовано лише одного провайдера OIDC, сторінка входу одразу переходить до нього. Відкрийте /login?autoLaunch=0, щоб побачити сторінку входу.'
                     }
                 }
             },

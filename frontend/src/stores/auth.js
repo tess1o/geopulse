@@ -7,6 +7,7 @@ import {resolvePreferredLocale} from '@/locales'
 import {isBackendDown} from '@/utils/errorHandler'
 import {normalizeApiError} from '@/utils/apiErrorDetail'
 import {APPEARANCE_PREFERENCE_DEFAULTS} from '@/maps/shared/mapAppearance'
+import {clearAutoLaunchSuppression, markSignedOut} from '@/utils/oidcAutoLaunch'
 
 let authReconcilePromise = null
 
@@ -238,6 +239,9 @@ export const useAuthStore = defineStore('auth', {
 
         consumeBrowserAuthResponse(browserAuthPayload) {
             const normalizedUser = this.setUser(browserAuthPayload?.user || browserAuthPayload)
+            if (normalizedUser) {
+                clearAutoLaunchSuppression()
+            }
             return {
                 ...(browserAuthPayload || {}),
                 user: normalizedUser,
@@ -307,12 +311,20 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
+        /**
+         * Sign out of GeoPulse. Resolves to the OIDC provider logout URL when the session came from a
+         * provider that supports RP-initiated logout (the caller sends the browser there), else null.
+         */
         async logout() {
-            await apiService.logout()
+            // Before the request: the login page must not sign the user back in even if logout fails.
+            markSignedOut()
+            const idpLogoutUrl = await apiService.logout()
             this.clearUser()
+            return idpLogoutUrl
         },
 
         async logoutStrict() {
+            markSignedOut()
             await apiService.logoutStrict()
             this.clearUser()
         },
@@ -415,14 +427,6 @@ export const useAuthStore = defineStore('auth', {
 
             authReconcilePromise = (async () => {
                 try {
-                    if (apiService.isTokenExpired()) {
-                        const refreshed = await apiService.refreshToken()
-                        if (!refreshed) {
-                            this.clearUser()
-                            return null
-                        }
-                    }
-
                     return await this.fetchCurrentUserProfile()
                 } catch (error) {
                     if (error && !error.userMessage && !error.userTitle) {
@@ -446,13 +450,6 @@ export const useAuthStore = defineStore('auth', {
                 if (cachedProfile.id) {
                     if (!this.user) {
                         this.hydrateUserFromCachedProfile(cachedProfile)
-                    }
-                    if (apiService.isTokenExpired()) {
-                        const refreshed = await apiService.refreshToken()
-                        if (!refreshed) {
-                            this.clearUser()
-                            return null
-                        }
                     }
 
                     return await this.fetchCurrentUserProfile()
@@ -563,6 +560,7 @@ export const useAuthStore = defineStore('auth', {
                 passwordLoginEnabled: true,
                 oidcLoginEnabled: true,
                 adminLoginBypassEnabled: true,
+                oidcAutoLaunchEnabled: false,
                 guestRootRedirectToLoginEnabled: false,
                 demoModeEnabled: false,
                 demoAdminReadOnlyEnabled: false,

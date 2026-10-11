@@ -72,5 +72,5 @@ For controlling who can **log in** (not register), see the [Login Control Manage
 ## Related Documentation
 
 - [Login Control Management](/docs/system-administration/configuration/login-control) - Control user login access
-- [Authentication Configuration](/docs/system-administration/configuration/authentication) - Cookie and JWT settings
+- [Authentication Configuration](/docs/system-administration/configuration/authentication) - Cookie and session settings
 - [OIDC/SSO Configuration](/docs/system-administration/configuration/oidc-sso) - Configure external identity providers  

@@ -38,7 +38,7 @@ class AuthenticationErrorContractTest {
     void setUp() {
         email = TestIds.uniqueEmail("authentication-error-contract");
         UserEntity user = userService.registerUser(email, "correct-password", "Error Contract User", "UTC");
-        accessToken = authenticationService.createAccessToken(user);
+        accessToken = authenticationService.authenticate(email, "correct-password").getAccessToken();
     }
 
     @Test

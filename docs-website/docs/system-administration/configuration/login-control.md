@@ -238,12 +238,12 @@ All login attempts (successful and failed) are logged for security auditing.
 
 ### Want to force logout all users
 Login controls only prevent **NEW logins**. To force logout:
-1. Admin Panel → Users → Disable specific users
-2. Or change JWT private key (forces all sessions invalid)
+1. Admin Panel → Users → Disable specific users (their sessions end immediately)
+2. Or reset a user's password in the Admin Panel (signs that user out everywhere)
 
 ## Related Documentation
 
 - [User Registration Management](/docs/system-administration/configuration/user-registration) - Control new account creation
-- [Authentication Configuration](/docs/system-administration/configuration/authentication) - Cookie and JWT settings
+- [Authentication Configuration](/docs/system-administration/configuration/authentication) - Cookie and session settings
 - [OIDC/SSO Configuration](/docs/system-administration/configuration/oidc-sso) - Configure external identity providers
 - [Admin Panel Guide](/docs/system-administration/configuration/admin-panel) - Managing settings via UI

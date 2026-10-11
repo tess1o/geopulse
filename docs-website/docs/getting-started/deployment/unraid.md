@@ -125,7 +125,7 @@ The compose files create these paths:
 | Path | Purpose |
 |------|---------|
 | `postgres/` | PostgreSQL/PostGIS database files. |
-| `keys/` | JWT keys and AI encryption key generated on first start. |
+| `keys/` | Encryption key generated on first start. |
 | `import-drop/` | Optional server-side import drop folder. |
 | `mosquitto/` | MQTT config and data when using the complete compose file. Broker logs use Docker stdout rotation. |
 
@@ -174,7 +174,7 @@ Back up the full appdata directory:
 /mnt/user/appdata/geopulse
 ```
 
-At minimum, keep `postgres/` and `keys/` together. The database and JWT keys must match for existing user sessions and encrypted settings to continue working.
+At minimum, keep `postgres/` and `keys/` together. The database and the encryption key must match for encrypted settings to continue working.
 
 For database-aware backup and restore procedures, see [Backup & Restore](../../system-administration/maintenance/backup-restore).
 

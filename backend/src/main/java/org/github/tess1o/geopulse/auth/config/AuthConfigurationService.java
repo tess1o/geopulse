@@ -55,6 +55,14 @@ public class AuthConfigurationService {
     }
 
     /**
+     * Check if the login page should start the OIDC flow on its own. It only takes effect when password
+     * login is disabled and exactly one provider is enabled; the login page checks those conditions.
+     */
+    public boolean isOidcAutoLaunchEnabled() {
+        return settingsService.getBoolean("auth.oidc.auto-launch.enabled");
+    }
+
+    /**
      * Check if signed-out users should be redirected from "/" to "/login".
      */
     public boolean isGuestRootRedirectToLoginEnabled() {

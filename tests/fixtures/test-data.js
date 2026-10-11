@@ -96,8 +96,7 @@ export const TestData = {
     auth: {
       login: '/api/v1/auth/sessions',
       register: '/api/v1/registrations',
-      logout: '/api/v1/auth/sessions/current',
-      refresh: '/api/v1/auth/sessions/current/refresh'
+      logout: '/api/v1/auth/sessions/current'
     }
   },
 

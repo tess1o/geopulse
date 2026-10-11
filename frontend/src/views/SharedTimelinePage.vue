@@ -24,16 +24,6 @@
             <i class="pi pi-clock"></i>
             {{ t('sharing.sharedTimelinePage.expiresPrefix', { date: formatExpiration() }) }}
           </span>
-          <span v-if="linkedTripWorkspace" class="meta-separator">•</span>
-          <Button
-            v-if="linkedTripWorkspace"
-            :label="getLinkedTripLabel()"
-            icon="pi pi-compass"
-            outlined
-            size="small"
-            class="meta-trip-link"
-            @click="openLinkedTripWorkspace"
-          />
         </div>
 
         <!-- Row 3: Date Filter and Actions -->
@@ -270,18 +260,16 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useNotesStore } from '@/stores/notes'
 import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
-import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
 import { useSharedMapAppearance } from '@/composables/useMapAppearance'
 import MapAppearanceControl from '@/components/maps/MapAppearanceControl.vue'
-import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
@@ -296,13 +284,11 @@ import { productionErrorContext } from '@/utils/apiErrorDetail'
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 const shareLinksStore = useShareLinksStore()
 const notesStore = useNotesStore()
 const immichStore = useImmichStore()
 const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
-const tripsStore = useTripsStore()
 const timezone = useTimezone()
 const viewerLocation = useViewerLocation()
 
@@ -385,11 +371,6 @@ const handleViewerLocationRequest = async () => {
 
   await viewerLocation.enable()
 }
-
-const linkedTripWorkspace = computed(() => {
-  if (!shareInfo.value || shareInfo.value.share_type !== 'TIMELINE') return null
-  return findMatchingTripForShareLink(shareInfo.value, tripsStore.trips)
-})
 
 // Computed properties for share date range
 const shareStartDate = computed(() => {
@@ -483,7 +464,6 @@ async function loadShareInfo() {
   try {
     // Fetch share info (public, no auth required)
     shareInfo.value = await shareLinksStore.fetchSharedLocationInfo(linkId)
-    void preloadTripWorkspaceContext()
 
     console.log('Share info loaded:', {
       has_password: shareInfo.value.has_password,
@@ -528,15 +508,6 @@ async function loadShareInfo() {
     error.value = err.userMessage || err.message || t('sharing.sharedTimelinePage.loadFailed')
   } finally {
     loading.value = false
-  }
-}
-
-async function preloadTripWorkspaceContext() {
-  if (shareInfo.value?.share_type !== 'TIMELINE') return
-  try {
-    await tripsStore.fetchTrips()
-  } catch (err) {
-    console.debug('Trip workspace context unavailable for shared timeline:', err?.message || err)
   }
 }
 
@@ -754,16 +725,6 @@ function getStatusSeverity() {
   return 'secondary'
 }
 
-function getLinkedTripLabel() {
-  if (!linkedTripWorkspace.value) return ''
-  return linkedTripWorkspace.value.name || t('place.visitsTable.tripFallbackLabel', { id: linkedTripWorkspace.value.id })
-}
-
-function openLinkedTripWorkspace() {
-  if (!linkedTripWorkspace.value?.id) return
-  router.push(`/app/trips/${linkedTripWorkspace.value.id}`)
-}
-
 async function resetDateFilter() {
   filterStartDate.value = null
   filterEndDate.value = null
@@ -888,25 +849,6 @@ function handleTimelineItemClick(item) {
   color: var(--gp-text-secondary);
   opacity: 0.5;
   margin: 0 0.25rem;
-}
-
-.meta-trip-link {
-  border-radius: 999px;
-  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border));
-  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-card));
-  color: var(--gp-primary);
-  white-space: nowrap;
-}
-
-.meta-trip-link:hover {
-  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border));
-  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-card));
-  color: var(--gp-primary-hover);
-}
-
-.meta-trip-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
-  outline-offset: 2px;
 }
 
 /* Row 3: Date Filter and Actions (before theme switcher on desktop) */

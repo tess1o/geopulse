@@ -130,6 +130,7 @@ public class OidcProviderConfigurationService {
         entity.setUserinfoEndpoint(provider.getUserinfoEndpoint());
         entity.setJwksUri(provider.getJwksUri());
         entity.setIssuer(provider.getIssuer());
+        entity.setEndSessionEndpoint(provider.getEndSessionEndpoint());
         entity.setMetadataCachedAt(provider.getMetadataCachedAt());
         entity.setMetadataValid(provider.isMetadataValid());
 
@@ -231,6 +232,7 @@ public class OidcProviderConfigurationService {
             entity.setUserinfoEndpoint(provider.getUserinfoEndpoint());
             entity.setJwksUri(provider.getJwksUri());
             entity.setIssuer(provider.getIssuer());
+            entity.setEndSessionEndpoint(provider.getEndSessionEndpoint());
             entity.setMetadataCachedAt(provider.getMetadataCachedAt());
             entity.setMetadataValid(provider.isMetadataValid());
             repository.persist(entity);
@@ -262,6 +264,7 @@ public class OidcProviderConfigurationService {
                 .userinfoEndpoint(entity.getUserinfoEndpoint())
                 .jwksUri(entity.getJwksUri())
                 .issuer(entity.getIssuer())
+                .endSessionEndpoint(entity.getEndSessionEndpoint())
                 .metadataCachedAt(entity.getMetadataCachedAt())
                 .metadataValid(entity.getMetadataValid())
                 .build();

@@ -6,11 +6,11 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
-import java.security.SecureRandom;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -24,7 +24,6 @@ public class AdminPasswordRecoveryService {
 
     private final UserRepository userRepository;
     private final SecurePasswordUtils passwordUtils;
-    private final SecureRandom random = new SecureRandom();
 
     @Inject
     public AdminPasswordRecoveryService(UserRepository userRepository, SecurePasswordUtils passwordUtils) {
@@ -92,10 +91,6 @@ public class AdminPasswordRecoveryService {
     }
 
     private String generateTemporaryPassword() {
-        StringBuilder password = new StringBuilder(TEMP_PASSWORD_LENGTH);
-        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
-            password.append(TEMP_PASSWORD_CHARS.charAt(random.nextInt(TEMP_PASSWORD_CHARS.length())));
-        }
-        return password.toString();
+        return CryptoUtils.randomString(TEMP_PASSWORD_CHARS, TEMP_PASSWORD_LENGTH);
     }
 }

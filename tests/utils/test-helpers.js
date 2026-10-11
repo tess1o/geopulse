@@ -87,12 +87,12 @@ export class TestHelpers {
   }
 
   /**
-   * Check if user is authenticated by checking for auth cookies
+   * Check if user is authenticated by checking for the session cookie
    * @param {import('@playwright/test').Page} page 
    */
   static async isAuthenticated(page) {
-    const accessToken = await this.getCookieValue(page, 'access_token');
-    return accessToken != null;
+    const session = await this.getCookieValue(page, 'gp_session');
+    return session != null;
   }
 
   static async isHomePage(page) {

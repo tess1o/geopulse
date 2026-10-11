@@ -80,6 +80,12 @@ const requireAdmin = async (to, from, next) => {
     }
 }
 
+const SESSION_GUARDS = new Set([requireAuth, requireAdmin])
+
+/** True when the route sits behind a sign-in guard, i.e. the page cannot work without a session. */
+export const routeRequiresSession = (route) =>
+    (route?.matched || []).some(record => SESSION_GUARDS.has(record.beforeEnter))
+
 const routes = [
     {
         path: '/app',

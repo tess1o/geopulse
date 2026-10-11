@@ -135,7 +135,7 @@
               <!-- Login Link -->
               <div class="login-section">
                 <span class="login-text">{{ t('auth.register.alreadyHaveAccount') }}</span>
-                <router-link to="/login" class="login-link">
+                <router-link :to="SIGN_IN_LOCATION" class="login-link">
                   {{ t('auth.register.signIn') }}
                 </router-link>
               </div>
@@ -157,6 +157,7 @@ import {useI18n} from 'vue-i18n'
 import {useRouter} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useAuthStore} from '@/stores/auth'
+import {SIGN_IN_LOCATION} from '@/utils/oidcAutoLaunch'
 import {useLocale} from '@/composables/useLocale'
 import {getBrowserTimezone} from '@/utils/timezoneUtils'
 import {getRegistrationErrorMessage} from '@/utils/registrationErrors'

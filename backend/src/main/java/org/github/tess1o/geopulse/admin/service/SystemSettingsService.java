@@ -60,6 +60,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.oidc.callback-base-url", "", ValueType.STRING, "auth", "Base URL used to build OIDC callback URLs"));
         SETTING_DEFINITIONS.put("auth.oidc.jwks-cache.ttl-hours",
                 new SettingDefinition("geopulse.oidc.jwks-cache.ttl-hours", "24", ValueType.INTEGER, "auth", "Hours to cache OIDC provider signing keys"));
+        SETTING_DEFINITIONS.put("auth.oidc.rp-logout.enabled",
+                new SettingDefinition("geopulse.oidc.rp-logout.enabled", "true", ValueType.BOOLEAN, "auth", "Sign out of the OIDC provider too when signing out of GeoPulse"));
         SETTING_DEFINITIONS.put("auth.oidc.cleanup.session-states.enabled",
                 new SettingDefinition("geopulse.oidc.cleanup.session-states.enabled", "true", ValueType.BOOLEAN, "auth", "Clean up expired OIDC session state records"));
         SETTING_DEFINITIONS.put("auth.login.enabled",
@@ -68,6 +70,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.auth.password-login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable password login"));
         SETTING_DEFINITIONS.put("auth.oidc.login.enabled",
                 new SettingDefinition("geopulse.auth.oidc.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC login"));
+        SETTING_DEFINITIONS.put("auth.oidc.auto-launch.enabled",
+                new SettingDefinition("geopulse.auth.oidc.auto-launch.enabled", "false", ValueType.BOOLEAN, "auth", "Go straight to the only OIDC provider when password login is disabled"));
         SETTING_DEFINITIONS.put("auth.admin-login-bypass.enabled",
                 new SettingDefinition("geopulse.auth.admin-login-bypass.enabled", "true", ValueType.BOOLEAN, "auth", "Allow admins to bypass login restrictions"));
         SETTING_DEFINITIONS.put("auth.guest-root-redirect-to-login.enabled",

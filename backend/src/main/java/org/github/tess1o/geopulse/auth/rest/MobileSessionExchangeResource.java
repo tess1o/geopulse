@@ -15,6 +15,8 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
+import org.github.tess1o.geopulse.auth.service.SessionContextFactory;
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
 
 import java.util.Optional;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -34,19 +36,24 @@ public class MobileSessionExchangeResource {
     @Inject
     MobileDeepLinkService mobileDeepLinkService;
 
+    @Inject
+    SessionContextFactory sessionContextFactory;
+
     @POST
     @APIResponseSchema(value = AuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated mobile session")
     @Operation(summary = "Exchange a mobile sign-in code",
-            description = "Exchanges a code created with `POST /api/v1/auth/mobile-codes` for access and refresh "
-                    + "tokens. Each code works once and expires after a short time.")
+            description = "Exchanges a code created with `POST /api/v1/auth/mobile-codes` for an API session: an "
+                    + "access token and a refresh token, renewed with `POST /api/v1/auth/api-sessions/current/refresh`. "
+                    + "Each code works once and expires after a short time.")
     public Response exchangeSessionCode(@Valid MobileSessionExchangeRequest request) {
         if (request == null) {
             throw new GeoPulseException(BAD_REQUEST, "sessionCode is required");
         }
 
         Optional<AuthResponse> authResponse =
-                mobileDeepLinkService.exchangeSessionCode(request.getSessionCode());
+                mobileDeepLinkService.exchangeSessionCode(request.getSessionCode(),
+                        sessionContextFactory.context(SessionAuthMethod.MOBILE_CODE));
 
         if (authResponse.isEmpty()) {
             throw new GeoPulseException(MOBILE_SESSION_CODE_INVALID, "Mobile session code is expired or invalid");

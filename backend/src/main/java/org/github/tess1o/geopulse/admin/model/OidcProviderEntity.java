@@ -66,6 +66,9 @@ public class OidcProviderEntity extends PanacheEntityBase {
     @Column(name = "issuer", length = 500)
     private String issuer;
 
+    @Column(name = "end_session_endpoint", length = 500)
+    private String endSessionEndpoint;
+
     @Column(name = "metadata_cached_at")
     private Instant metadataCachedAt;
 

@@ -39,6 +39,20 @@ const isolatedSpecs = [
   '**/immich-integration.spec.js',
 ];
 
+// OIDC sign-in specs switch global auth settings (password login off, a single provider), which would
+// break every other spec's password sign-in, so they run in their own project after all the others.
+const oidcSpecs = [
+  '**/oidc-auto-launch.spec.js',
+];
+
+// The backend reaches the fake OIDC provider (demo-integrations) by its compose service name, and so must
+// the browser. Inside the playwright-tests container Docker DNS resolves it; a browser on the host maps it
+// to the published port.
+const MOCK_OIDC_HOST = 'geopulse-demo-integrations-e2e';
+const mockOidcBrowserArgs = (process.env.MOCK_OIDC_CONTROL_URL || '').includes(MOCK_OIDC_HOST)
+  ? []
+  : [`--host-resolver-rules=MAP ${MOCK_OIDC_HOST} 127.0.0.1`];
+
 const parallelWorkers = Number.parseInt(
   process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '4'),
   10
@@ -109,6 +123,20 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         mapMode: 'VECTOR',
+      },
+    },
+
+    {
+      // Runs once the projects above have finished (a failure there skips it), one test at a time:
+      // each test owns the global auth settings while it runs.
+      name: 'chromium-oidc',
+      testMatch: oidcSpecs,
+      dependencies: ['chromium', 'chromium-vector'],
+      fullyParallel: false,
+      use: {
+        ...devices['Desktop Chrome'],
+        mapMode: 'RASTER',
+        launchOptions: { args: mockOidcBrowserArgs },
       },
     },
 

@@ -63,6 +63,22 @@ street and landmark shots.
 
 `geopulse-demo-db.sh` itself needs no changes.
 
+## Fake OIDC provider (e2e tests only)
+
+`cmd/fake-oidc` is a mock OpenID Connect provider for the OIDC sign-in e2e specs
+(`tests/e2e/oidc-auto-launch.spec.js`). It signs an ID token for any email typed into its form,
+so the container only starts it when `FAKE_OIDC_ENABLED=true`; the demo server leaves it off.
+
+| Port | Endpoints |
+|------|-----------|
+| 9400 (`OIDC_PORT`) | per realm under `/realms/{realm}/`: `.well-known/openid-configuration`, `authorize`, `login`, `token`, `jwks`, `logout` (end session); control API `PUT/PATCH/GET/DELETE /__control/realms/{realm}` |
+
+Each test registers its own realm with the control API (client ID and secret, whether it
+advertises `end_session_endpoint`, an injected authorize or token error) and reads the realm's
+request counters. Like a real provider it keeps a browser session, so a second sign-in is silent
+until the session ends. `FAKE_OIDC_BASE_URL` sets the issuer: the GeoPulse backend and the browser
+must both reach the provider under that URL.
+
 ## Development
 
 ```bash
@@ -74,6 +90,8 @@ docker build -t geopulse-demo-integrations .
 
 Environment: `DEMO_DATABASE_URL` or `GEOPULSE_POSTGRES_{HOST,PORT,DB,USERNAME,PASSWORD,SSLMODE}`,
 `IMMICH_PORT` (2283), `MEMOS_PORT` (5230) and `LOG_REQUESTS=true` for fake Immich request logs.
+Fake OIDC: `FAKE_OIDC_ENABLED`, `OIDC_PORT` (9400) and `FAKE_OIDC_BASE_URL`; run it alone with
+`PORT=9400 go run ./cmd/fake-oidc` (it needs no database).
 
 ### Changing the photos
 

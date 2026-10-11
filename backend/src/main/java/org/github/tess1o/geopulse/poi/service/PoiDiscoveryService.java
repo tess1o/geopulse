@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.poi.model.entity.PoiCacheEntity;
 import org.github.tess1o.geopulse.poi.repository.PoiAreaQueryRepository;
 import org.github.tess1o.geopulse.poi.repository.PoiCacheRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -224,18 +225,7 @@ public class PoiDiscoveryService {
     static String hashArea(BoundingBox box) {
         String normalized = String.format(Locale.ROOT, "%.3f,%.3f,%.3f,%.3f",
                 box.south(), box.north(), box.west(), box.east());
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(normalized.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                hex.append(Character.forDigit((b >> 4) & 0xF, 16));
-                hex.append(Character.forDigit(b & 0xF, 16));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
+        return CryptoUtils.sha256Hex(normalized);
     }
 
     /** Signals a provider problem, as opposed to a genuine empty result. */

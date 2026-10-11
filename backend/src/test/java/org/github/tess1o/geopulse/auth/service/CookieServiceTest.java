@@ -13,25 +13,25 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class CookieServiceTest {
 
     @Test
-    void createAccessTokenCookie_omitsDomainWhenCookieDomainIsUnsetOrBlank() {
-        assertNull(createAccessTokenCookie(Optional.empty()).getDomain());
-        assertNull(createAccessTokenCookie(Optional.of("")).getDomain());
-        assertNull(createAccessTokenCookie(Optional.of("   ")).getDomain());
-        assertNull(createAccessTokenCookie(Optional.of("\"\"")).getDomain());
+    void createSessionCookie_omitsDomainWhenCookieDomainIsUnsetOrBlank() {
+        assertNull(createSessionCookie(Optional.empty()).getDomain());
+        assertNull(createSessionCookie(Optional.of("")).getDomain());
+        assertNull(createSessionCookie(Optional.of("   ")).getDomain());
+        assertNull(createSessionCookie(Optional.of("\"\"")).getDomain());
     }
 
     @Test
-    void createAccessTokenCookie_usesTrimmedCookieDomainWhenConfigured() {
-        NewCookie cookie = createAccessTokenCookie(Optional.of("  .example.com  "));
+    void createSessionCookie_usesTrimmedCookieDomainWhenConfigured() {
+        NewCookie cookie = createSessionCookie(Optional.of("  .example.com  "));
 
         assertEquals(".example.com", cookie.getDomain());
     }
 
-    private NewCookie createAccessTokenCookie(Optional<String> cookieDomain) {
+    private NewCookie createSessionCookie(Optional<String> cookieDomain) {
         CookieService service = new CookieService();
         service.cookieDomain = cookieDomain;
         service.secureCookies = true;
 
-        return service.createAccessTokenCookie("token", 1800);
+        return service.createSessionCookie("token", 1800);
     }
 }

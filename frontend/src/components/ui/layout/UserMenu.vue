@@ -237,10 +237,16 @@ const changeLanguage = async (next) => {
 
 const handleLogout = async () => {
   hide()
+  let idpLogoutUrl = null
   try {
-    await authStore.logout()
+    idpLogoutUrl = await authStore.logout()
   } catch (error) {
     console.error('Logout error:', error)
+  }
+  // Also end the OIDC provider session when the provider supports it; GeoPulse is already signed out.
+  if (idpLogoutUrl) {
+    window.location.assign(idpLogoutUrl)
+    return
   }
   await router.push('/')
 }

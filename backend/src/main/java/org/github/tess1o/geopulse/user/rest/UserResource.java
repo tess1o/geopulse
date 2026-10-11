@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.user.rest;
 
+import org.github.tess1o.geopulse.auth.session.model.SessionRevocationReason;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -53,6 +55,9 @@ public class UserResource {
     private final UserMapper userMapper;
     private final CurrentUserService currentUserService;
     private final BoatSetupService boatSetupService;
+
+    @Inject
+    UserSessionService userSessionService;
 
     @Inject
     public UserResource(UserService userService,
@@ -176,11 +181,15 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     @Operation(summary = "Change your password",
             description = "Changes the signed-in user's password. The current password is required when one is set; "
-                    + "accounts created through OIDC can set a first password this way.")
+                    + "accounts created through OIDC can set a first password this way. All other sessions of the "
+                    + "user are signed out.")
     public PasswordStatusResponse changePassword(@Valid UpdateUserPasswordRequest request) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             userService.changePassword(userId, request);
+            // Other devices signed in with the old password are signed out; this session stays.
+            userSessionService.revokeAllForUser(userId, currentUserService.getCurrentSessionId().orElse(null),
+                    SessionRevocationReason.PASSWORD_CHANGED);
             return new PasswordStatusResponse(true);
         } catch (InvalidPasswordException e) {
             throw new GeoPulseException(INVALID_PASSWORD, "Invalid password", e);

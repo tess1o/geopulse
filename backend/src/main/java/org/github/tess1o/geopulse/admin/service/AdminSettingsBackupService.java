@@ -332,6 +332,7 @@ public class AdminSettingsBackupService {
                 .userinfoEndpoint(provider.getUserinfoEndpoint())
                 .jwksUri(provider.getJwksUri())
                 .issuer(provider.getIssuer())
+                .endSessionEndpoint(provider.getEndSessionEndpoint())
                 .metadataCachedAt(provider.getMetadataCachedAt())
                 .metadataValid(provider.isMetadataValid())
                 .build();
@@ -352,6 +353,7 @@ public class AdminSettingsBackupService {
                 .userinfoEndpoint(trimToNull(provider.getUserinfoEndpoint()))
                 .jwksUri(trimToNull(provider.getJwksUri()))
                 .issuer(trimToNull(provider.getIssuer()))
+                .endSessionEndpoint(trimToNull(provider.getEndSessionEndpoint()))
                 .metadataCachedAt(provider.getMetadataCachedAt())
                 .metadataValid(provider.isMetadataValid())
                 .build();

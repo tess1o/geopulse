@@ -11,14 +11,22 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
 import org.github.tess1o.geopulse.auth.dto.DemoLoginRequest;
+import org.github.tess1o.geopulse.auth.dto.LogoutResponse;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
+import org.github.tess1o.geopulse.auth.oidc.service.OidcLogoutService;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
-import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
+import org.github.tess1o.geopulse.auth.service.BrowserSignInResponder;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
+import org.github.tess1o.geopulse.auth.service.SessionContextFactory;
+import org.github.tess1o.geopulse.auth.session.model.RevokedSession;
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionRevocationReason;
+import org.github.tess1o.geopulse.auth.session.service.SessionTokenService;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -42,47 +50,53 @@ public class AuthenticationResource {
 
     private final AuthenticationService authenticationService;
     private final CookieService cookieService;
-    private final BrowserAuthResponseMapper browserAuthResponseMapper;
+    private final BrowserSignInResponder browserSignInResponder;
     private final DemoModeService demoModeService;
     private final UserService userService;
-    private AuthConfigurationService authConfigurationService;
+    private final AuthConfigurationService authConfigurationService;
+    private final UserSessionService userSessionService;
+    private final OidcLogoutService oidcLogoutService;
+    private final SessionContextFactory sessionContextFactory;
 
     @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
                                   CookieService cookieService,
-                                  BrowserAuthResponseMapper browserAuthResponseMapper,
+                                  BrowserSignInResponder browserSignInResponder,
                                   AuthConfigurationService authConfigurationService,
                                   DemoModeService demoModeService,
-                                  UserService userService) {
+                                  UserService userService,
+                                  UserSessionService userSessionService,
+                                  OidcLogoutService oidcLogoutService,
+                                  SessionContextFactory sessionContextFactory) {
         this.authenticationService = authenticationService;
         this.cookieService = cookieService;
-        this.browserAuthResponseMapper = browserAuthResponseMapper;
+        this.browserSignInResponder = browserSignInResponder;
         this.authConfigurationService = authConfigurationService;
         this.demoModeService = demoModeService;
         this.userService = userService;
+        this.userSessionService = userSessionService;
+        this.oidcLogoutService = oidcLogoutService;
+        this.sessionContextFactory = sessionContextFactory;
     }
 
     /**
-     * Login a user and return JWT tokens.
-     * This endpoint uses Basic Auth for authentication.
-     *
-     * @return JWT tokens if authentication is successful
+     * Sign in a browser user and start a session stored in an HttpOnly cookie.
      */
     @POST
     @Path("/sessions")
     @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated browser session")
     @Operation(summary = "Sign in with email and password",
-            description = "Signs in a browser user. On success the session is stored in secure HTTP-only cookies "
-                    + "(access token, refresh token, and expiration time) and the response describes the signed-in "
-                    + "user. Fails when password login is disabled for this user. API clients that cannot use "
-                    + "cookies should call `POST /api/v1/auth/api-sessions` or, better, use an API token.")
+            description = "Signs in a browser user. On success the session is stored in a secure HTTP-only "
+                    + "session cookie and the response describes the signed-in user. Fails when password login is "
+                    + "disabled for this user. API clients that cannot use cookies should call "
+                    + "`POST /api/v1/auth/api-sessions` or, better, use an API token.")
     public Response loginUser(LoginRequest request) {
         if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
             throw new GeoPulseException(PASSWORD_LOGIN_DISABLED, "Password login is currently disabled");
         }
-        AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
-        return createBrowserLoginResponse(authResponse);
+        UserEntity user = authenticationService.verifyCredentials(request.getEmail(), request.getPassword());
+        return browserSignInResponder.signIn(user, sessionContextFactory.context(SessionAuthMethod.PASSWORD), null);
     }
 
     @POST
@@ -110,15 +124,11 @@ public class AuthenticationResource {
 
         UserEntity user = userService.findByEmail(personaEmail.get())
                 .orElseThrow(() -> new GeoPulseException(DEMO_PERSONA_NOT_FOUND, "Demo user is not available"));
-        AuthResponse authResponse = authenticationService.createAuthResponse(user);
-        return createBrowserLoginResponse(authResponse);
+        return browserSignInResponder.signIn(user, sessionContextFactory.context(SessionAuthMethod.DEMO), null);
     }
 
     /**
-     * API Login endpoint that returns JWT tokens directly (for API clients).
-     * Unlike the main /login endpoint which uses cookies, this returns tokens in the response body.
-     *
-     * @return JWT tokens if authentication is successful
+     * API sign-in: returns an access token and a refresh token in the body instead of a cookie.
      */
     @POST
     @Path("/api-sessions")
@@ -131,7 +141,8 @@ public class AuthenticationResource {
         if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
             throw new GeoPulseException(PASSWORD_LOGIN_DISABLED, "Password login is currently disabled");
         }
-        return authenticationService.authenticate(request.getEmail(), request.getPassword());
+        UserEntity user = authenticationService.verifyCredentials(request.getEmail(), request.getPassword());
+        return authenticationService.createApiSession(user, sessionContextFactory.context(SessionAuthMethod.PASSWORD));
     }
 
     /**
@@ -144,71 +155,47 @@ public class AuthenticationResource {
     @POST
     @Path("/api-sessions/current/refresh")
     @Operation(summary = "Refresh tokens",
-            description = "Exchanges a refresh token obtained from `POST /api/v1/auth/api-sessions` for a new access "
-                    + "token and refresh token.")
+            description = "Exchanges a refresh token obtained from `POST /api/v1/auth/api-sessions` (or the mobile "
+                    + "sign-in) for a new access token and refresh token. Each refresh token works once: the "
+                    + "previous one stops working, and presenting an already used refresh token again signs the "
+                    + "session out.")
     public org.github.tess1o.geopulse.user.model.RefreshTokenResponse refreshToken(
             @Valid TokenRefreshRequest request) {
         return authenticationService.refreshToken(request.getRefreshToken());
     }
 
     /**
-     * Refresh tokens using cookies.
-     * Extracts refresh token from httpOnly cookie and returns new tokens as cookies.
-     *
-     * @param refreshTokenCookie The refresh token from httpOnly cookie
-     * @return Success response with new tokens set as cookies
-     */
-    @POST
-    @Path("/sessions/current/refresh")
-    @APIResponse(responseCode = "204", description = "Authentication cookies refreshed")
-    @Operation(summary = "Refresh the browser session",
-            description = "Renews the browser session using the refresh-token cookie and sets new session cookies. "
-                    + "Used by the web app; API clients should use `POST /api/v1/auth/api-sessions/current/refresh`.")
-    public Response refreshTokenCookie(
-            @Parameter(description = "Refresh token cookie set at sign-in. Sent by the browser automatically.")
-            @CookieParam("refresh_token") String refreshTokenCookie) {
-        if (refreshTokenCookie == null || refreshTokenCookie.isEmpty()) {
-            throw new GeoPulseException(REFRESH_TOKEN_REQUIRED, "No refresh token cookie found");
-        }
-        var refreshResponse = authenticationService.refreshToken(refreshTokenCookie);
-
-        var newAccessTokenCookie = cookieService.createAccessTokenCookie(
-                refreshResponse.accessToken(),
-                refreshResponse.expiresIn()
-        );
-        var newRefreshTokenCookie = cookieService.createRefreshTokenCookie(
-                refreshResponse.refreshToken(),
-                authenticationService.getRefreshTokenLifespan()
-        );
-        var newTokenExpirationCookie = cookieService.createTokenExpirationCookie(refreshResponse.expiresIn());
-
-        return Response.noContent()
-                .cookie(newAccessTokenCookie)
-                .cookie(newRefreshTokenCookie)
-                .cookie(newTokenExpirationCookie)
-                .build();
-    }
-
-
-    /**
-     * Logout user by clearing authentication cookies.
-     *
-     * @return Success response
+     * Sign out: end the current session and clear the browser cookies. For OIDC browser sessions the
+     * response may carry the provider's logout URL (best effort, see {@link OidcLogoutService}).
      */
     @DELETE
     @Path("/sessions/current")
-    @APIResponse(responseCode = "204", description = "Authentication cookies cleared")
+    @APIResponseSchema(value = LogoutResponse.class, responseCode = "200",
+            responseDescription = "Session ended and cookies cleared")
     @Operation(summary = "Sign out",
-            description = "Ends the browser session by clearing the session cookies. Access tokens already issued to "
-                    + "API clients stay valid until they expire.")
-    public Response logout() {
-        var logoutCookies = cookieService.createLogoutCookies();
+            description = "Ends the current session: the browser session cookie, or the API session whose access "
+                    + "token is sent as `Authorization: Bearer`. The session stops working immediately and the "
+                    + "session cookies are cleared. When the session was started with an OIDC provider that supports "
+                    + "RP-initiated logout, `idpLogoutUrl` is the provider URL that ends the provider session too; "
+                    + "otherwise it is null.")
+    public Response logout(
+            @Parameter(hidden = true) @HeaderParam("Authorization") String authorization,
+            @Parameter(hidden = true) @CookieParam(CookieService.SESSION_COOKIE) String sessionCookie) {
+        String bearer = authorization != null && authorization.startsWith("Bearer ")
+                ? authorization.substring("Bearer ".length()).trim()
+                : null;
+        // An API session signs out with its access token; a browser with its session cookie.
+        String credential = bearer != null && bearer.startsWith(SessionTokenService.ACCESS_TOKEN_PREFIX)
+                ? bearer
+                : sessionCookie;
+        Optional<RevokedSession> revoked = userSessionService.revokeByToken(credential, SessionRevocationReason.LOGOUT);
+        String idpLogoutUrl = revoked.flatMap(oidcLogoutService::buildRpLogoutUrl).orElse(null);
 
-        var responseBuilder = Response.noContent();
-        for (var cookie : logoutCookies) {
+        var responseBuilder = Response.ok(new LogoutResponse(idpLogoutUrl))
+                .header("Cache-Control", "no-store");
+        for (var cookie : cookieService.createLogoutCookies()) {
             responseBuilder.cookie(cookie);
         }
-
         return responseBuilder.build();
     }
 
@@ -226,6 +213,7 @@ public class AuthenticationResource {
                 .passwordLoginEnabled(authConfigurationService.isPasswordLoginEnabled())
                 .oidcLoginEnabled(authConfigurationService.isOidcLoginEnabled())
                 .adminLoginBypassEnabled(authConfigurationService.isAdminLoginBypassEnabled())
+                .oidcAutoLaunchEnabled(!demoModeEnabled && authConfigurationService.isOidcAutoLaunchEnabled())
                 .guestRootRedirectToLoginEnabled(authConfigurationService.isGuestRootRedirectToLoginEnabled())
                 .demoModeEnabled(demoModeEnabled)
                 .demoAdminReadOnlyEnabled(demoModeService.isAdminReadOnlyEnabled())
@@ -233,17 +221,4 @@ public class AuthenticationResource {
                 .build();
         return status;
     }
-
-    private Response createBrowserLoginResponse(AuthResponse authResponse) {
-        var accessTokenCookie = cookieService.createAccessTokenCookie(authResponse.getAccessToken(), authResponse.getExpiresIn());
-        var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
-        var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
-
-        return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null))
-                .cookie(accessTokenCookie)
-                .cookie(refreshTokenCookie)
-                .cookie(tokenExpirationCookie)
-                .build();
-    }
-
 }

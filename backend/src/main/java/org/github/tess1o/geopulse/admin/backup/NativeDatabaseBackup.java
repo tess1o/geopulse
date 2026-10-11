@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -216,7 +218,7 @@ public final class NativeDatabaseBackup {
         result.migrations = strings(connection, "SELECT version, description, type, script, checksum, success FROM flyway_schema_history ORDER BY installed_rank");
         // Excludes runtime values/sequence positions and extension-owned objects; includes all application columns and constraints.
         result.schema = schemaDescription(connection);
-        result.schemaFingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(JSON.writeValueAsBytes(result.schema)));
+        result.schemaFingerprint = CryptoUtils.sha256Hex(JSON.writeValueAsBytes(result.schema));
         return result;
     }
 

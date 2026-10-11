@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.service;
 
+import org.github.tess1o.geopulse.auth.session.model.SessionRevocationReason;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -8,11 +10,11 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +32,9 @@ public class AdminUserService {
 
     private static final String TEMP_PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
     private static final int TEMP_PASSWORD_LENGTH = 12;
+
+    @Inject
+    UserSessionService userSessionService;
 
     @Inject
     public AdminUserService(UserRepository userRepository,
@@ -140,6 +145,9 @@ public class AdminUserService {
         }
 
         user.setActive(active);
+        if (!active) {
+            userSessionService.revokeAllForUser(userId, null, SessionRevocationReason.USER_DISABLED);
+        }
         log.info("User {} {} by admin", userId, active ? "enabled" : "disabled");
     }
 
@@ -178,6 +186,7 @@ public class AdminUserService {
 
         String tempPassword = generateTemporaryPassword();
         user.setPasswordHash(passwordUtils.hashPassword(tempPassword));
+        userSessionService.revokeAllForUser(userId, null, SessionRevocationReason.PASSWORD_RESET);
 
         log.info("Password reset for user {} by admin", userId);
         return tempPassword;
@@ -279,11 +288,6 @@ public class AdminUserService {
     }
 
     private String generateTemporaryPassword() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder(TEMP_PASSWORD_LENGTH);
-        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
-            password.append(TEMP_PASSWORD_CHARS.charAt(random.nextInt(TEMP_PASSWORD_CHARS.length())));
-        }
-        return password.toString();
+        return CryptoUtils.randomString(TEMP_PASSWORD_CHARS, TEMP_PASSWORD_LENGTH);
     }
 }

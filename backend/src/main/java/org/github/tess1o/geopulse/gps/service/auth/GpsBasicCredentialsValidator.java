@@ -2,26 +2,20 @@ package org.github.tess1o.geopulse.gps.service.auth;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Base64;
 
 @ApplicationScoped
 public class GpsBasicCredentialsValidator {
 
     static final String CACHE_NAME = "gps-basic-auth";
-    private static final String HMAC_ALGORITHM = "HmacSHA256";
 
     private final GpsBasicCredentialsCache credentialsCache;
-    private final byte[] cacheKey = new byte[32];
+    private final byte[] cacheKey = CryptoUtils.randomBytes(32);
 
     public GpsBasicCredentialsValidator(GpsBasicCredentialsCache credentialsCache) {
         this.credentialsCache = credentialsCache;
-        new SecureRandom().nextBytes(cacheKey);
     }
 
     public boolean isValid(String password, String storedHash) {
@@ -36,17 +30,8 @@ public class GpsBasicCredentialsValidator {
     }
 
     private String cacheKey(String password, String storedHash) {
-        try {
-            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            mac.init(new SecretKeySpec(cacheKey, HMAC_ALGORITHM));
-            mac.update(storedHash.getBytes(StandardCharsets.UTF_8));
-            mac.update((byte) 0);
-            return Base64
-                    .getUrlEncoder()
-                    .withoutPadding()
-                    .encodeToString(mac.doFinal(password.getBytes(StandardCharsets.UTF_8)));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Unable to build GPS credential cache key", e);
-        }
+        // storedHash, a zero byte, then the password: the separator keeps (hash, password) pairs unambiguous.
+        return CryptoUtils.toUrlSafe(CryptoUtils.hmacSha256(cacheKey,
+                (storedHash + '\0' + password).getBytes(StandardCharsets.UTF_8)));
     }
 }

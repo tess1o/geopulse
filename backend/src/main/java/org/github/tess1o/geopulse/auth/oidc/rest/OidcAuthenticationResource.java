@@ -2,7 +2,6 @@ package org.github.tess1o.geopulse.auth.oidc.rest;
 
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -10,12 +9,11 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
 import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
-import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
@@ -24,9 +22,10 @@ import org.github.tess1o.geopulse.auth.oidc.service.OidcAuthenticationService;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcProviderService;
 import org.github.tess1o.geopulse.auth.oidc.service.UserOidcConnectionService;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcAccountLinkingService;
-import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
-import org.github.tess1o.geopulse.auth.service.CookieService;
+import org.github.tess1o.geopulse.auth.oidc.service.OidcLogoutService;
+import org.github.tess1o.geopulse.auth.service.BrowserSignInResponder;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.auth.service.SessionContextFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -61,16 +60,14 @@ public class OidcAuthenticationResource {
     CurrentUserService currentUserService;
 
     @Inject
-    CookieService cookieService;
+    BrowserSignInResponder browserSignInResponder;
 
     @Inject
-    BrowserAuthResponseMapper browserAuthResponseMapper;
+    OidcLogoutService oidcLogoutService;
 
     @Inject
-    @ConfigProperty(name = "jwt.refresh-token.lifespan")
-    @StaticInitSafe
-    Long refreshTokenLifespan;
-    
+    SessionContextFactory sessionContextFactory;
+
     @Inject
     OidcAccountLinkingService accountLinkingService;
 
@@ -133,7 +130,7 @@ public class OidcAuthenticationResource {
             responseDescription = "Authenticated browser session")
     @Operation(summary = "Complete OIDC sign-in",
             description = "Completes an OIDC sign-in or account-linking flow with the authorization code and state "
-                    + "the provider returned. On success, sets the session cookies like password sign-in. A new "
+                    + "the provider returned. On success, sets the session cookie like password sign-in. A new "
                     + "account is created on first sign-in when OIDC registration is enabled. If an account with "
                     + "the same email already exists, the request fails with `OIDC_ACCOUNT_LINKING_REQUIRED` and "
                     + "the error contains a linking token for `POST /api/v1/auth/oidc/account-links/password` or "
@@ -142,20 +139,7 @@ public class OidcAuthenticationResource {
     public Response handleCallback(@Valid OidcCallbackRequest request) {
         try {
             OidcCallbackAuthResult callbackResult = oidcAuthService.handleCallback(request);
-            AuthResponse authResponse = callbackResult.authResponse();
-
-            // Create cookies similar to regular login
-            var accessTokenCookie = cookieService.createAccessTokenCookie(
-                    authResponse.getAccessToken(), authResponse.getExpiresIn());
-            var refreshTokenCookie = cookieService.createRefreshTokenCookie(
-                    authResponse.getRefreshToken(), refreshTokenLifespan);
-            var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
-
-            return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, callbackResult.redirectUri()))
-                    .cookie(accessTokenCookie)
-                    .cookie(refreshTokenCookie)
-                    .cookie(tokenExpirationCookie)
-                    .build();
+            return signIn(callbackResult);
         } catch (OidcRegistrationDisabledException e) {
             throw new GeoPulseException(OIDC_REGISTRATION_DISABLED, OIDC_REGISTRATION_DISABLED.title(), e);
         } catch (OidcLoginDisabledException e) {
@@ -250,20 +234,7 @@ public class OidcAuthenticationResource {
     @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
     public Response linkAccountWithPassword(@Valid LinkAccountWithPasswordRequest request) {
         try {
-            AuthResponse authResponse = accountLinkingService.linkAccountWithPassword(request);
-            
-            // Create cookies for successful authentication
-            var accessTokenCookie = cookieService.createAccessTokenCookie(
-                    authResponse.getAccessToken(), authResponse.getExpiresIn());
-            var refreshTokenCookie = cookieService.createRefreshTokenCookie(
-                    authResponse.getRefreshToken(), refreshTokenLifespan);
-            var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
-
-            return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null))
-                    .cookie(accessTokenCookie)
-                    .cookie(refreshTokenCookie)
-                    .cookie(tokenExpirationCookie)
-                    .build();
+            return signIn(accountLinkingService.linkAccountWithPassword(request));
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
@@ -285,5 +256,35 @@ public class OidcAuthenticationResource {
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
+    }
+
+    /**
+     * OpenID Connect Back-Channel Logout: the provider tells GeoPulse a user signed out there.
+     */
+    @POST
+    @Path("/backchannel-logouts/{provider}")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @APIResponse(responseCode = "200", description = "Logout token accepted; matching sessions are signed out")
+    @Operation(summary = "Receive an OIDC back-channel logout",
+            description = "Called by the OIDC provider, not by users: configure this URL as the provider's "
+                    + "back-channel logout URI. The provider posts a signed `logout_token` (OpenID Connect "
+                    + "Back-Channel Logout 1.0); GeoPulse verifies it and signs out the sessions started from that "
+                    + "provider session (`sid`), or all of that user's sessions from the provider (`sub`). Returns "
+                    + "200 even when no session matched, and 400 when the token is invalid.")
+    public Response backchannelLogout(
+            @Parameter(description = "Name of the OIDC provider as configured in GeoPulse.")
+            @PathParam("provider") String providerName,
+            @Parameter(description = "Signed logout token issued by the provider.")
+            @FormParam("logout_token") String logoutToken) {
+        oidcLogoutService.handleBackchannelLogout(providerName, logoutToken);
+        return Response.ok().header("Cache-Control", "no-store").build();
+    }
+
+    private Response signIn(OidcCallbackAuthResult result) {
+        return browserSignInResponder.signIn(
+                result.user(),
+                sessionContextFactory.oidcContext(result.providerName(), result.idpSubject(),
+                        result.idpSessionId(), result.idToken()),
+                result.redirectUri());
     }
 }

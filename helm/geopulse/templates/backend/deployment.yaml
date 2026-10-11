@@ -29,7 +29,7 @@ spec:
       securityContext:
         {{- toYaml .Values.backend.securityContext | nindent 8 }}
       initContainers:
-        # Generate JWT and AI encryption keys
+        # Generate the installation encryption key
         - name: generate-keys
           image: {{ include "geopulse.keygen.image" . }}
           imagePullPolicy: {{ .Values.keygen.image.pullPolicy }}

@@ -7,16 +7,16 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
+import org.github.tess1o.geopulse.auth.session.model.SessionContext;
 import org.github.tess1o.geopulse.auth.model.MobileAuthCodeEntity;
 import org.github.tess1o.geopulse.auth.model.MobileAuthInitResponse;
 import org.github.tess1o.geopulse.auth.repository.MobileAuthCodeRepository;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.time.Instant;
-import java.util.Base64;
-import java.security.SecureRandom;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -88,7 +88,7 @@ public class MobileDeepLinkService {
     }
 
     @Transactional
-    public Optional<AuthResponse> exchangeSessionCode(String sessionCode) {
+    public Optional<AuthResponse> exchangeSessionCode(String sessionCode, SessionContext context) {
         Optional<MobileAuthCodeEntity> consumedCode = consumeAuthenticationCode(sessionCode);
         if (consumedCode.isEmpty()) {
             return Optional.empty();
@@ -98,12 +98,10 @@ public class MobileDeepLinkService {
         UserEntity user = userService.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        return Optional.of(authenticationService.createAuthResponse(user));
+        return Optional.of(authenticationService.createApiSession(user, context));
     }
 
     private String generateRandomCode() {
-        byte[] bytes = new byte[18];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return CryptoUtils.randomUrlSafeToken(18);
     }
 }

@@ -21,10 +21,10 @@ public class CookieService {
     @StaticInitSafe
     Optional<String> cookieDomain;
 
-    static final String ACCESS_TOKEN_COOKIE = "access_token";
-    static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-    private static final String TOKEN_EXPIRATION_COOKIE = "token_expires_at";
+    public static final String SESSION_COOKIE = "gp_session";
     static final String CSRF_COOKIE = "csrf-token";
+    /** Cookies of the JWT-based sessions used before GeoPulse 2.0, cleared on logout. */
+    private static final String[] LEGACY_COOKIES = {"access_token", "refresh_token", "token_expires_at"};
     private static final int CSRF_COOKIE_MAX_AGE_SECONDS = 2 * 60 * 60;
 
     /**
@@ -65,25 +65,11 @@ public class CookieService {
     }
 
     /**
-     * Create secure httpOnly cookie for access token
+     * Create the secure httpOnly cookie carrying the opaque browser session secret.
+     * The server decides when the session ends; the cookie only needs to outlive it.
      */
-    public NewCookie createAccessTokenCookie(String accessToken, long expiresInSeconds) {
-        return createCookie(ACCESS_TOKEN_COOKIE, accessToken, (int) expiresInSeconds, true);
-    }
-
-    /**
-     * Create secure httpOnly cookie for refresh token
-     */
-    public NewCookie createRefreshTokenCookie(String refreshToken, long expiresInSeconds) {
-        return createCookie(REFRESH_TOKEN_COOKIE, refreshToken, (int) expiresInSeconds, true);
-    }
-
-    /**
-     * Create non-httpOnly cookie with token expiration timestamp for frontend
-     */
-    public NewCookie createTokenExpirationCookie(long expiresInSeconds) {
-        long expirationTime = System.currentTimeMillis() + (expiresInSeconds * 1000);
-        return createCookie(TOKEN_EXPIRATION_COOKIE, String.valueOf(expirationTime), (int) expiresInSeconds, false);
+    public NewCookie createSessionCookie(String sessionSecret, long maxAgeSeconds) {
+        return createCookie(SESSION_COOKIE, sessionSecret, (int) Math.min(maxAgeSeconds, Integer.MAX_VALUE), true);
     }
 
     /**
@@ -97,12 +83,13 @@ public class CookieService {
      * Create cookies for clearing tokens on logout
      */
     public NewCookie[] createLogoutCookies() {
-        return new NewCookie[]{
-                createCookie(ACCESS_TOKEN_COOKIE, "", 0, true),
-                createCookie(REFRESH_TOKEN_COOKIE, "", 0, true),
-                createCookie(TOKEN_EXPIRATION_COOKIE, "", 0, false),
-                createCookie(CSRF_COOKIE, "", 0, false)
-        };
+        NewCookie[] cookies = new NewCookie[LEGACY_COOKIES.length + 2];
+        cookies[0] = createCookie(SESSION_COOKIE, "", 0, true);
+        cookies[1] = createCookie(CSRF_COOKIE, "", 0, false);
+        for (int i = 0; i < LEGACY_COOKIES.length; i++) {
+            cookies[i + 2] = createCookie(LEGACY_COOKIES[i], "", 0, true);
+        }
+        return cookies;
     }
 
 }

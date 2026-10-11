@@ -2,8 +2,11 @@ package org.github.tess1o.geopulse.auth.rest;
 
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
+import org.github.tess1o.geopulse.auth.oidc.service.OidcLogoutService;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
-import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
+import org.github.tess1o.geopulse.auth.service.BrowserSignInResponder;
+import org.github.tess1o.geopulse.auth.service.SessionContextFactory;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
@@ -28,10 +31,13 @@ class AuthenticationResourceTest {
         AuthenticationResource resource = new AuthenticationResource(
                 authenticationService,
                 mock(CookieService.class),
-                mock(BrowserAuthResponseMapper.class),
+                mock(BrowserSignInResponder.class),
                 configurationService,
                 mock(DemoModeService.class),
-                mock(UserService.class));
+                mock(UserService.class),
+                mock(UserSessionService.class),
+                mock(OidcLogoutService.class),
+                mock(SessionContextFactory.class));
 
         assertThatThrownBy(() -> resource.loginUser(new LoginRequest("user@example.com", "password")))
                 .isInstanceOfSatisfying(GeoPulseException.class, error -> {

@@ -34,12 +34,10 @@ data:
   GEOPULSE_AUTH_OIDC_LOGIN_ENABLED: {{ .Values.config.auth.oidcLoginEnabled | quote }}
   GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED: {{ .Values.config.auth.adminLoginBypassEnabled | quote }}
 
-  # JWT Configuration
-  GEOPULSE_JWT_ACCESS_TOKEN_LIFESPAN: {{ .Values.config.jwt.accessTokenLifespan | quote }}
-  GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN: {{ .Values.config.jwt.refreshTokenLifespan | quote }}
-  GEOPULSE_JWT_ISSUER: {{ .Values.config.jwt.issuer | quote }}
-  GEOPULSE_JWT_PUBLIC_KEY_LOCATION: {{ .Values.config.jwt.publicKeyLocation | quote }}
-  GEOPULSE_JWT_PRIVATE_KEY_LOCATION: {{ .Values.config.jwt.privateKeyLocation | quote }}
+  # Sign-in sessions
+  GEOPULSE_AUTH_SESSION_IDLE_TIMEOUT: {{ .Values.config.session.idleTimeout | quote }}
+  GEOPULSE_AUTH_SESSION_ABSOLUTE_TIMEOUT: {{ .Values.config.session.absoluteTimeout | quote }}
+  GEOPULSE_AUTH_ACCESS_TOKEN_LIFESPAN: {{ .Values.config.session.accessTokenLifespan | quote }}
 
   # GPS Filtering
   GEOPULSE_GPS_FILTER_NEGATIVE_ACCURACY_ENABLED: {{ .Values.config.gps.filterNegativeAccuracy | quote }}
@@ -114,6 +112,7 @@ data:
   GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS: {{ .Values.config.oidc.autoLinkAccounts | quote }}
   GEOPULSE_OIDC_CLEANUP_ENABLED: {{ .Values.config.oidc.cleanupEnabled | quote }}
   GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS: {{ .Values.config.oidc.jwksCacheTtlHours | default "24" | quote }}
+  GEOPULSE_OIDC_RP_LOGOUT_ENABLED: {{ ne (toString .Values.config.oidc.rpLogoutEnabled) "false" | quote }}
 
   {{- if .Values.config.oidc.google.enabled }}
   GEOPULSE_OIDC_PROVIDER_GOOGLE_ENABLED: "true"

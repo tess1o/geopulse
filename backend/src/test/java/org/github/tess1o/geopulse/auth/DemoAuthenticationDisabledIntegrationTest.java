@@ -4,6 +4,8 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import jakarta.inject.Inject;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTestResource(value = PostgisTestResource.class)
 class DemoAuthenticationDisabledIntegrationTest {
 
+    @Inject
+    SystemSettingsService settingsService;
+
     @Test
     void authStatus_WhenDemoModeDisabled_DoesNotExposePersonas() {
         given()
@@ -25,7 +30,23 @@ class DemoAuthenticationDisabledIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("demoModeEnabled", equalTo(false))
+                .body("oidcAutoLaunchEnabled", equalTo(false))
                 .body("demoPersonas", empty());
+    }
+
+    @Test
+    void authStatus_ReportsOidcAutoLaunchSetting() {
+        settingsService.setValue("auth.oidc.auto-launch.enabled", "true", null);
+        try {
+            given()
+                    .when()
+                    .get("/api/v1/auth/sessions/current")
+                    .then()
+                    .statusCode(200)
+                    .body("oidcAutoLaunchEnabled", equalTo(true));
+        } finally {
+            settingsService.resetToDefault("auth.oidc.auto-launch.enabled");
+        }
     }
 
     @Test

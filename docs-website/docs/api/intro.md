@@ -45,7 +45,7 @@ Every endpoint description ends with an **Access** line:
 
 ## Authentication options
 
-Browser users authenticate through the normal GeoPulse login flow with secure cookies and JWTs.
+Browser users authenticate through the normal GeoPulse login flow with a secure, HTTP-only session cookie.
 
 External API clients should use a user API token. A token acts as the user that created it and can call the same
 authenticated REST endpoints that user can access, including administrator endpoints when the user is an administrator.

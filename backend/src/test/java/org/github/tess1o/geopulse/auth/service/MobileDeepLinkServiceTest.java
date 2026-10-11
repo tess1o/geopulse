@@ -4,6 +4,8 @@ import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileAuthCodeEntity;
 import org.github.tess1o.geopulse.auth.model.MobileAuthInitResponse;
 import org.github.tess1o.geopulse.auth.repository.MobileAuthCodeRepository;
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionContext;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class MobileDeepLinkServiceTest {
+
+    private static final SessionContext CONTEXT = SessionContext.of(SessionAuthMethod.MOBILE_CODE, "GeoPulse/1.0", "127.0.0.1");
 
     @Mock
     MobileAuthCodeRepository mobileAuthCodeRepository;
@@ -190,25 +194,25 @@ class MobileDeepLinkServiceTest {
 
         when(mobileAuthCodeRepository.findByCode("valid-code")).thenReturn(Optional.of(storedCode));
         when(userService.findById(userId)).thenReturn(Optional.of(user));
-        when(authenticationService.createAuthResponse(user)).thenReturn(authResponse);
+        when(authenticationService.createApiSession(user, CONTEXT)).thenReturn(authResponse);
 
         Optional<AuthResponse> exchangedResponse;
         try (MockedStatic<Instant> instantMock = mockStatic(Instant.class)) {
             instantMock.when(Instant::now).thenReturn(now);
-            exchangedResponse = service.exchangeSessionCode("valid-code");
+            exchangedResponse = service.exchangeSessionCode("valid-code", CONTEXT);
         }
 
         assertTrue(exchangedResponse.isPresent());
         assertEquals(authResponse, exchangedResponse.get());
         verify(mobileAuthCodeRepository).delete(storedCode, now);
-        verify(authenticationService).createAuthResponse(user);
+        verify(authenticationService).createApiSession(user, CONTEXT);
     }
 
     @Test
     void exchangeSessionCode_returnsEmptyWhenSessionCodeInvalid() {
         when(mobileAuthCodeRepository.findByCode("missing-code")).thenReturn(Optional.empty());
 
-        Optional<AuthResponse> exchangedResponse = service.exchangeSessionCode("missing-code");
+        Optional<AuthResponse> exchangedResponse = service.exchangeSessionCode("missing-code", CONTEXT);
 
         assertFalse(exchangedResponse.isPresent());
         verifyNoInteractions(authenticationService, userService);

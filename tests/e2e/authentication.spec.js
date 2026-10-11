@@ -119,11 +119,14 @@ test.describe('Authentication Flow', () => {
       // Verify authenticated
       expect(await TestHelpers.isAuthenticated(page)).toBe(true);
 
-      // Clear cookies to simulate session timeout
+      // Clear cookies to simulate session timeout. Leave the app first: the timeline's requests still in
+      // flight would otherwise get a 401 and redirect the old page to /login on their own, racing (and
+      // aborting) the navigation below, with the timeline's date range in the redirect.
+      await page.goto('about:blank');
       await page.context().clearCookies();
 
-      // Try to navigate to a protected page
-      await page.goto('/app/timeline');
+      // Try to navigate to a protected page; the app redirects it to /login, possibly before "load"
+      await page.goto('/app/timeline', { waitUntil: 'commit' });
 
       // Should be redirected to login
       await TestHelpers.waitForNavigation(page, url => url.pathname === '/login', TestConfig.TIMEOUTS.navigation);

@@ -49,10 +49,10 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run full E2E test suite (RASTER + VECTOR)
+      - name: Run full E2E test suite (RASTER + VECTOR + OIDC)
         run: |
           cd tests
-          npx playwright test --project=chromium --project=chromium-vector
+          npx playwright test --project=chromium --project=chromium-vector --project=chromium-oidc
         env:
           BASE_URL: http://localhost:5556
           PLAYWRIGHT_WORKERS: 3
@@ -102,7 +102,7 @@ jobs:
           echo "=== Database logs ==="
           docker logs geopulse-postgres-e2e || true
           echo ""
-          echo "=== Fake Immich logs ==="
+          echo "=== Fake Immich/Memos/OIDC logs ==="
           docker logs geopulse-demo-integrations-e2e || true
 
       - name: Cleanup

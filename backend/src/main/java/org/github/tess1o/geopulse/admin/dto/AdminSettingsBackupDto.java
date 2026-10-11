@@ -57,6 +57,7 @@ public class AdminSettingsBackupDto {
         private String userinfoEndpoint;
         private String jwksUri;
         private String issuer;
+        private String endSessionEndpoint;
         private Instant metadataCachedAt;
         private boolean metadataValid;
     }

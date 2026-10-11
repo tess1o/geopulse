@@ -54,6 +54,48 @@ Callback URL base resolution order:
 
 For stable OIDC behavior, set `GEOPULSE_OIDC_CALLBACK_BASE_URL` explicitly.
 
+## Single Logout
+
+GeoPulse can end sessions together with your identity provider, in both directions.
+
+### Provider → GeoPulse (back-channel logout)
+
+When a user signs out at the identity provider, the provider can tell GeoPulse to end that user's GeoPulse sessions
+right away (OpenID Connect Back-Channel Logout). Configure this URL as the **back-channel logout URI** of the GeoPulse
+client in your provider:
+
+```
+https://geopulse.mydomain.com/api/v1/auth/oidc/backchannel-logouts/<provider-name>
+```
+
+`<provider-name>` is the provider's name in GeoPulse: the `{NAME}` part of `GEOPULSE_OIDC_PROVIDER_{NAME}_*` in
+lowercase (for example `authentik`), or the name shown in Admin → OIDC Providers.
+
+- **Authentik** (2025.10 or newer): in the OAuth2/OpenID provider of GeoPulse, set the back-channel logout URI.
+- **Keycloak**: in the client settings, set **Backchannel logout URL** and keep **Backchannel logout session
+  required** enabled.
+
+The provider calls this URL from its own server, so GeoPulse must be reachable from the provider at that address.
+Only the sessions that were started from the provider session that signed out are ended; if the provider sends only
+the user (`sub`), all of that user's GeoPulse sessions from this provider are ended. Password sessions are not affected.
+
+### GeoPulse → provider (RP-initiated logout)
+
+When a user who signed in with OIDC signs out of GeoPulse, GeoPulse also sends the browser to the provider's logout
+page so the provider session ends too. This is **best effort**:
+
+- It only happens when the provider publishes an `end_session_endpoint` in its discovery document (Authentik and
+  Keycloak do; Google, for example, does not). Otherwise sign-out works exactly as before.
+- GeoPulse is always signed out first, so a provider error can never leave the user signed in to GeoPulse.
+- After the provider signs the user out, it returns to `https://geopulse.mydomain.com/login` (built from
+  `GEOPULSE_OIDC_CALLBACK_BASE_URL`). Most providers only accept this address if it is registered for the client:
+  add it to the client's allowed (post-logout) redirect URIs. If it is not registered, the provider still signs the
+  user out but shows its own page instead of returning to GeoPulse.
+
+Signing out of the provider also signs the user out of every other application that uses it. To turn this off, set
+`GEOPULSE_OIDC_RP_LOGOUT_ENABLED=false` or switch off **Sign Out of OIDC Provider** in Admin → Settings →
+Authentication.
+
 ## Supported Providers
 
 The system supports any OIDC-compliant provider. Here are configuration examples for popular providers:
@@ -250,6 +292,9 @@ GEOPULSE_OIDC_METADATA_CACHE_MAX_SIZE=10
 # JWKS (JSON Web Key Set) cache TTL in hours (default: 24)
 # Controls how often OIDC provider's public keys are refreshed for token validation
 GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS=24
+
+# Also sign out of the provider when signing out of GeoPulse (default: true), see Single Logout
+GEOPULSE_OIDC_RP_LOGOUT_ENABLED=true
 
 # Cleanup settings
 GEOPULSE_OIDC_CLEANUP_ENABLED=true

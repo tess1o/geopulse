@@ -135,7 +135,7 @@ export default {
             registration: {
                 enabled: {
                     label: 'Registration Enabled',
-                    description: 'Allow new users to register'
+                    description: 'Allow new users to register (master switch)'
                 }
             },
             'password-registration': {
@@ -159,6 +159,12 @@ export default {
                     label: 'OIDC Callback Base URL',
                     description: 'Optional public base URL used to build OIDC callback redirects'
                 },
+                'rp-logout': {
+                    enabled: {
+                        label: 'Sign Out of OIDC Provider',
+                        description: 'When signing out of GeoPulse, also sign out of the OIDC provider if it supports it'
+                    }
+                },
                 'jwks-cache': {
                     'ttl-hours': {
                         label: 'JWKS Cache TTL',
@@ -177,6 +183,12 @@ export default {
                     enabled: {
                         label: 'OIDC Login',
                         description: 'Allow login via OIDC providers'
+                    }
+                },
+                'auto-launch': {
+                    enabled: {
+                        label: 'Auto-Launch OIDC Login',
+                        description: 'With password login disabled and exactly one OIDC provider, go straight to that provider from the login page. Open /login?autoLaunch=0 to see the login page.'
                     }
                 }
             },

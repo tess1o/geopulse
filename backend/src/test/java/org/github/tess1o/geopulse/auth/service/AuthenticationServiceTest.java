@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_CREDENTIALS;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @Tag("unit")
@@ -28,12 +30,14 @@ class AuthenticationServiceTest {
     @Mock SecurePasswordUtils securePasswordUtils;
     @Mock AdminBootstrapService adminBootstrapService;
     @Mock DemoModeService demoModeService;
+    @Mock UserSessionService userSessionService;
 
     AuthenticationService service;
 
     @BeforeEach
     void setUp() {
-        service = new AuthenticationService(userService, securePasswordUtils, adminBootstrapService, demoModeService);
+        service = new AuthenticationService(userService, securePasswordUtils, adminBootstrapService, demoModeService,
+                userSessionService);
     }
 
     @Test
@@ -76,5 +80,6 @@ class AuthenticationServiceTest {
                         error -> org.assertj.core.api.Assertions.assertThat(error.code()).isEqualTo(ACCESS_DENIED));
 
         verify(securePasswordUtils).isPasswordValid("correct", "stored-hash");
+        verifyNoInteractions(userSessionService);
     }
 }

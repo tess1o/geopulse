@@ -475,18 +475,14 @@ config:
     # WARNING: Disabling this can result in complete system lockout
     adminLoginBypassEnabled: true
 
-  # JWT Configuration
-  jwt:
-    # Access token lifespan in seconds (default: 1800 = 30 minutes)
-    accessTokenLifespan: 1800
-    # Refresh token lifespan in seconds (default: 604800 = 7 days)
-    refreshTokenLifespan: 604800
-    # JWT issuer URL (should match your backend URL)
-    issuer: "http://localhost:8080"
-    # Public key location for JWT verification
-    publicKeyLocation: "file:/app/keys/jwt-public-key.pem"
-    # Private key location for JWT signing
-    privateKeyLocation: "file:/app/keys/jwt-private-key.pem"
+  # Sign-in sessions (stored server-side; durations accept s, m, h, d suffixes)
+  session:
+    # A session ends after this long without use (default: 7d)
+    idleTimeout: "7d"
+    # ...and at the latest this long after sign-in (default: 90d)
+    absoluteTimeout: "90d"
+    # Access token lifetime for API sessions and the mobile app; refresh rotates it (default: 30m)
+    accessTokenLifespan: "30m"
 
   # GPS Filtering Configuration
   gps:
@@ -611,6 +607,9 @@ config:
     # JWKS (JSON Web Key Set) cache TTL in hours (default: 24)
     # Controls how often OIDC provider's public keys are refreshed for token validation
     jwksCacheTtlHours: 24
+    # Also sign out of the OIDC provider when signing out of GeoPulse, if the provider supports
+    # RP-initiated logout (default: true). Best effort; never blocks GeoPulse logout.
+    rpLogoutEnabled: true
 
     # Google OIDC
     google:

@@ -3,11 +3,10 @@ package org.github.tess1o.geopulse.auth.oidc.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.oidc.dto.OidcUserInfo;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class OidcLinkingTokenService {
 
     private final Map<String, LinkingTokenData> linkingTokens = new ConcurrentHashMap<>();
-    private final SecureRandom secureRandom = new SecureRandom();
     
     // Token expires after 10 minutes
     private static final int TOKEN_EXPIRY_MINUTES = 10;
@@ -30,9 +28,7 @@ public class OidcLinkingTokenService {
      */
     public String generateLinkingToken(String email, String newProvider, String state, OidcUserInfo originalUserInfo) {
         // Generate secure random token
-        byte[] tokenBytes = new byte[32];
-        secureRandom.nextBytes(tokenBytes);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        String token = CryptoUtils.randomUrlSafeToken(32);
         
         // Store token data with expiration
         LinkingTokenData tokenData = new LinkingTokenData(

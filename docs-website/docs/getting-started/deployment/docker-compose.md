@@ -22,7 +22,7 @@ MQTT broker can be deployed if you want to use OwnTracks integration with MQTT p
 want to use OwnTracks with HTTP - you don't need the MQTT broker. This guide provides steps on how to install the system
 with or without MQTT broker.
 
-There is one-time service "geopulse-keygen" that creates JWT keys and AI encryption key in the "keys" folder. It starts
+There is one-time service "geopulse-keygen" that creates the encryption key in the "keys" folder. It starts
 and stops automatically, no manual steps are required.
 
 ---
@@ -585,7 +585,7 @@ curl http://localhost:8080/api/v1/system/health
 - For standard deployments (with nginx proxy): `GEOPULSE_COOKIE_DOMAIN=""` (keep empty)
 - For HTTP deployments: `GEOPULSE_AUTH_SECURE_COOKIES=false`
 - For HTTPS deployments: `GEOPULSE_AUTH_SECURE_COOKIES=true`
-- Verify JWT keys exist in `keys/` directory
+- Verify the encryption key exists in the `keys/` directory
 - For split-subdomain setups, see [Authentication Configuration](../../system-administration/configuration/authentication.md)
 
 **Network/Proxy issues:**
@@ -603,7 +603,7 @@ curl http://localhost:8080/api/v1/system/health
 
 **Key generation issues:**
 
-- JWT keys and AI encryption keys are automatically generated in the `keys/` directory on first startup
+- The encryption key is automatically generated in the `keys/` directory on first startup
 - If you see key-related errors, check that the `geopulse-keygen` service completed successfully:
   `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist

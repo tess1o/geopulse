@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.auth;
 
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionContext;
+import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
@@ -44,8 +47,10 @@ class CsrfProtectionContractTest {
     @Inject UserService userService;
     @Inject AuthenticationService authenticationService;
     @Inject ApiTokenService apiTokenService;
+    @Inject UserSessionService userSessionService;
 
     private String accessToken;
+    private String sessionCookie;
     private String apiToken;
 
     @BeforeEach
@@ -54,27 +59,29 @@ class CsrfProtectionContractTest {
         String email = TestIds.uniqueEmail("csrf-user");
         UserEntity user = userService.registerUser(email, PASSWORD, "CSRF User", "UTC");
         accessToken = authenticationService.authenticate(email, PASSWORD).getAccessToken();
+        sessionCookie = userSessionService.createBrowserSession(user,
+                SessionContext.of(SessionAuthMethod.PASSWORD, null, null)).secret();
         apiToken = apiTokenService.createToken(user.getId(), "CSRF test",
                 Instant.now().plusSeconds(3600), "127.0.0.1").getToken();
     }
 
     @Test
     void cookieSessionMultipartWithoutTokenIsRejected() {
-        assertProblemEnvelope(multipart(given().cookie("access_token", accessToken)).when().post(IMPORTS),
+        assertProblemEnvelope(multipart(given().cookie("gp_session", sessionCookie)).when().post(IMPORTS),
                 400, "CSRF_TOKEN_INVALID");
     }
 
     @Test
     void cookieSessionWithMismatchedTokenIsRejected() {
         assertProblemEnvelope(multipart(given()
-                        .cookie("access_token", accessToken)
+                        .cookie("gp_session", sessionCookie)
                         .cookie("csrf-token", CSRF_TOKEN)
                         .header("X-CSRF-Token", OTHER_CSRF_TOKEN)).when().post(IMPORTS),
                 400, "CSRF_TOKEN_INVALID");
 
         // A token header without the matching cookie is rejected for JSON requests too.
         assertProblemEnvelope(json(given()
-                        .cookie("access_token", accessToken)
+                        .cookie("gp_session", sessionCookie)
                         .header("X-CSRF-Token", CSRF_TOKEN)).when().post(UPLOADS),
                 400, "CSRF_TOKEN_INVALID");
     }
@@ -82,7 +89,7 @@ class CsrfProtectionContractTest {
     @Test
     void cookieSessionWithMatchingTokenReachesTheResource() {
         assertProblemEnvelope(multipart(given()
-                        .cookie("access_token", accessToken)
+                        .cookie("gp_session", sessionCookie)
                         .cookie("csrf-token", CSRF_TOKEN)
                         .header("X-CSRF-Token", CSRF_TOKEN)).when().post(IMPORTS),
                 400, REACHED_RESOURCE);
@@ -91,7 +98,7 @@ class CsrfProtectionContractTest {
     @Test
     void sessionCookieIsCheckedEvenWhenAnApiKeyIsAlsoSent() {
         assertProblemEnvelope(multipart(given()
-                        .cookie("access_token", accessToken)
+                        .cookie("gp_session", sessionCookie)
                         .header("X-API-Key", apiToken)).when().post(IMPORTS),
                 400, "CSRF_TOKEN_INVALID");
     }
@@ -108,7 +115,7 @@ class CsrfProtectionContractTest {
 
     @Test
     void csrfCookieIsStillIssuedOnSafeRequests() {
-        Response response = given().cookie("access_token", accessToken).when().get("/api/v1/users/me");
+        Response response = given().cookie("gp_session", sessionCookie).when().get("/api/v1/users/me");
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.getCookie("csrf-token")).isNotBlank();

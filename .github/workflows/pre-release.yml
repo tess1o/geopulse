@@ -234,7 +234,7 @@ jobs:
           echo "=== Database logs ==="
           docker logs geopulse-postgres-e2e || true
           echo ""
-          echo "=== Fake Immich logs ==="
+          echo "=== Fake Immich/Memos/OIDC logs ==="
           docker logs geopulse-demo-integrations-e2e || true
 
       - name: Cleanup

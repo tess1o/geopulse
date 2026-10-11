@@ -33,6 +33,10 @@ export const SETTING_METADATA = {
     label: 'JWKS Cache TTL',
     description: 'Hours to cache OIDC provider signing keys'
   },
+  'auth.oidc.rp-logout.enabled': {
+    label: 'Sign Out of OIDC Provider',
+    description: 'When signing out of GeoPulse, also sign out of the OIDC provider if it supports it'
+  },
   'auth.oidc.cleanup.session-states.enabled': {
     label: 'OIDC Session Cleanup',
     description: 'Clean up expired OIDC login session state records'
@@ -48,6 +52,10 @@ export const SETTING_METADATA = {
   'auth.oidc.login.enabled': {
     label: 'OIDC Login',
     description: 'Allow login via OIDC providers'
+  },
+  'auth.oidc.auto-launch.enabled': {
+    label: 'Auto-Launch OIDC Login',
+    description: 'With password login disabled and exactly one OIDC provider, go straight to that provider from the login page. Open /login?autoLaunch=0 to see the login page.'
   },
   'auth.admin-login-bypass.enabled': {
     label: 'Admin Login Bypass',

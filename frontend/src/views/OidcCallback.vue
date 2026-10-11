@@ -34,6 +34,7 @@ import {useAuthStore} from '@/stores/auth'
 import {useToast} from 'primevue/usetoast'
 import {useTimezone} from '@/composables/useTimezone'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
+import {AUTO_LAUNCH_OFF_QUERY} from '@/utils/oidcAutoLaunch'
 
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -105,8 +106,9 @@ onMounted(async () => {
   }
 })
 
+// Auto-launch would retry the sign-in that just failed, so the login page shows its buttons instead.
 const returnToLogin = () => {
-  router.push('/login')
+  router.push({path: '/login', query: AUTO_LAUNCH_OFF_QUERY})
 }
 
 const isUserNew = (createdAt) => {

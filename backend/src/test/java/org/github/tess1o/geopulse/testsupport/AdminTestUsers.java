@@ -9,11 +9,8 @@ import org.github.tess1o.geopulse.user.service.UserService;
 /**
  * Creates users holding the {@link Role#ADMIN} role.
  *
- * <p>The order in here matters. Roles reach endpoints through the JWT {@code groups} claim, which
- * {@code AuthenticationService.createAccessToken} reads from {@code user.getRole()} at mint time.
- * A token minted before {@code updateRole} therefore still carries {@code USER} and every
- * {@code @RolesAllowed("ADMIN")} endpoint answers 403. So: register, promote, <em>then</em>
- * authenticate.
+ * <p>Sessions read the role from the user on every request, so the order of promotion and
+ * sign-in does not matter; this helper still promotes first and then signs in.
  *
  * <p>Call within a transaction, as with {@code TestUserFactory}. Admin bootstrap is disabled in
  * tests ({@code geopulse.admin.first-user-admin.enabled=false}), so no user is ever promoted
@@ -27,7 +24,7 @@ public final class AdminTestUsers {
     private AdminTestUsers() {
     }
 
-    /** Registers a user, promotes it to ADMIN, and returns it with a token carrying the ADMIN role. */
+    /** Registers a user, promotes it to ADMIN, and returns it with an API session token. */
     public static TestActor createAdmin(UserService userService,
                                         AuthenticationService authenticationService,
                                         String prefix) {

@@ -84,7 +84,7 @@ To retrieve the MQTT admin password:
 {{- end }}
 {{- end }}
 
-JWT keys have been generated and stored in the persistent volume.
+The encryption key has been generated and stored in the persistent volume. Keep it: it protects stored secrets.
 
 --------------------------------------------------------------------------------
 COMPONENTS DEPLOYED

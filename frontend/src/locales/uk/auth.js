@@ -57,6 +57,7 @@ export default {
     login: {
         disabledMessage: 'Вхід наразі вимкнено. Зверніться до адміністратора.',
         emailDisabledMessage: 'Вхід за електронною поштою та паролем вимкнено. Скористайтеся постачальниками OIDC нижче.',
+        autoLaunchRedirecting: 'Переходимо до {provider}…',
         adminAccess: 'Доступ адміністратора',
         adminBypassNotice: 'Доступ адміністратора — обмеження входу обійдено',
         demoTitle: 'Спробуйте GeoPulse',

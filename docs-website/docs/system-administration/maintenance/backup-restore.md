@@ -23,10 +23,6 @@ GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. 
 - **GPS sources** - source tokens, device IDs, filtering, duplicate detection, and OwnTracks payload encryption settings
 - **Relationships and permissions** - friends, sharing links, and friend location permissions
 
-:::tip JWT Keys Don't Need Backup
-GeoPulse automatically generates JWT keys on first startup if they don't exist. You don't need to back up the keys from `/app/keys` - if lost, new keys will be generated automatically. Existing users will simply need to log in again.
-:::
-
 :::warning Database Backups Need Encryption Keys
 If you back up GeoPulse with `pg_dump`, also back up the AI encryption key configured by `GEOPULSE_AI_ENCRYPTION_KEY_LOCATION` (default: `/app/keys/ai-encryption-key.txt`). Without the same key, encrypted database values such as user AI settings and OwnTracks payload encryption secrets cannot be decrypted after restore.
 :::
@@ -38,7 +34,7 @@ Use **Administration > Settings > Backup** for complete, password-encrypted `.gp
 A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted database-stored settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes.
 
 :::warning Runtime configuration is not backed up
-Full backups do **not** include `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, external files, PostgreSQL roles, JWT keys, or reverse-proxy settings. If a value is configured only through an environment variable, restore will not recreate it. If you changed the same setting in the Admin UI and it was saved to `system_settings`, that database value is backed up and restored.
+Full backups do **not** include `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, external files, PostgreSQL roles, the encryption key file, or reverse-proxy settings. If a value is configured only through an environment variable, restore will not recreate it. If you changed the same setting in the Admin UI and it was saved to `system_settings`, that database value is backed up and restored.
 :::
 
 ### Passwords
@@ -184,8 +180,6 @@ docker exec geopulse-postgres pg_dump \
 
 :::warning Back Up `/app/keys/ai-encryption-key.txt`
 `pg_dump` backs up encrypted database values as encrypted text. To restore those values on another server, copy the AI encryption key from the source server too. With the default Docker Compose setup, this file is mounted from `./keys/ai-encryption-key.txt` on the host to `/app/keys/ai-encryption-key.txt` in the backend container.
-
-JWT private/public keys are different: they are not required for data recovery, and replacing them only signs users out.
 :::
 
 ### Restoring from Backup
@@ -408,7 +402,7 @@ scp -r keys newserver:/opt/geopulse/
 
 Backups restore the database only. They do not restore environment variables or deployment files, so copy your source `.env`, Compose/Helm/Kubernetes/systemd configuration, proxy configuration, and any other runtime settings separately. For example, authentication flags such as `GEOPULSE_AUTH_LOGIN_ENABLED` and `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` are restored only if you saved the corresponding settings in the Admin UI; values that existed only in the source server's `.env` must be copied manually.
 
-At minimum, the copied `keys` folder must include the AI encryption key used by the source database. JWT key files are optional for disaster recovery; preserving them keeps already-issued JWTs valid, while replacing them signs users in again.
+At minimum, the copied `keys` folder must include the AI encryption key used by the source database. Sign-in sessions live in the database, so they are restored together with it.
 
 3. **Start PostgreSQL only**:
 ```bash

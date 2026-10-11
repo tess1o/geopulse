@@ -73,6 +73,27 @@ For local/development deployments with HTTP:
 GEOPULSE_AUTH_SECURE_COOKIES=false
 ```
 
+## Sessions
+
+Every sign-in is a session stored in the database. The browser holds only an opaque, HTTP-only `gp_session`
+cookie; API sessions (`POST /api/v1/auth/api-sessions`) and the mobile app get an access token and a refresh token
+instead. Because the server checks the session on every request, ending a session takes effect immediately:
+
+- **Sign out** ends the current session.
+- **Changing your password** signs out all your other sessions.
+- **Disabling a user** or **resetting a user's password** in the Admin Panel signs that user out everywhere.
+- **OIDC single logout**: signing out at the identity provider can sign the user out of GeoPulse too, see
+  [OIDC Single Logout](/docs/system-administration/configuration/oidc-sso#single-logout).
+
+| Environment Variable                     | Default | Description                                                                  |
+|------------------------------------------|---------|------------------------------------------------------------------------------|
+| `GEOPULSE_AUTH_SESSION_IDLE_TIMEOUT`     | `7d`    | A session ends after this long without use                                   |
+| `GEOPULSE_AUTH_SESSION_ABSOLUTE_TIMEOUT` | `90d`   | A session ends at the latest this long after sign-in                         |
+| `GEOPULSE_AUTH_ACCESS_TOKEN_LIFESPAN`    | `30m`   | Access token lifetime for API sessions and the mobile app (renewed by refresh) |
+
+API refresh tokens work once: every refresh returns a new pair. If an old refresh token is used again, GeoPulse
+treats it as stolen and ends the session.
+
 ## Kubernetes / Helm Configuration
 
 Configure in `values.yaml`:
@@ -108,6 +129,11 @@ GeoPulse provides granular control over login methods to restrict access during 
 - **Default:** `true`
 - **Description:** Controls OIDC provider login
 
+#### OIDC Auto-Launch
+- **Variable:** `GEOPULSE_AUTH_OIDC_AUTO_LAUNCH_ENABLED`
+- **Default:** `false`
+- **Description:** When password login is disabled and exactly one OIDC provider is enabled, `/login` goes straight to that provider instead of showing a single "Continue with" button. After a sign-out the login page waits for a click (so the provider does not sign the user straight back in) until the user presses **Sign in** again. The login page is also shown after a failed sign-in and whenever it is opened as `/login?autoLaunch=0`, which is how administrators reach password login with the admin bypass
+
 #### Admin Login Bypass Control
 - **Variable:** `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED`
 - **Default:** `true`
@@ -142,7 +168,7 @@ Login settings can also be configured via the Admin Panel:
 ### Behavior
 
 - **Existing sessions:** Remain valid when login is disabled. Only NEW logins are blocked.
-- **Token refresh:** Continues to work. Users with valid refresh tokens can extend their sessions.
+- **Session renewal:** Existing sessions keep renewing while they are used, up to the absolute session timeout.
 - **Frontend:** Shows informative messages explaining why login is disabled.
 - **Guest root navigation:** By default, signed-out users see Home on `/`. If guest root redirect is enabled, they are sent to `/login`.
 
@@ -159,7 +185,8 @@ Blocks all new logins while allowing existing users to continue working. Admins 
 GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED=false
 GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=true
 ```
-Requires all users to authenticate via OIDC providers.
+Requires all users to authenticate via OIDC providers. With a single provider, add
+`GEOPULSE_AUTH_OIDC_AUTO_LAUNCH_ENABLED=true` to skip the login page and go straight to it.
 
 **Disable External Authentication:**
 ```bash

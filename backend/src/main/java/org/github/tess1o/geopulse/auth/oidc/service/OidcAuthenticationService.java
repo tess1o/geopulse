@@ -1,13 +1,6 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,24 +22,20 @@ import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
-import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 
-import java.net.URI;
-import java.security.SecureRandom;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -60,7 +49,7 @@ public class OidcAuthenticationService {
     UserService userService;
 
     @Inject
-    AuthenticationService authenticationService;
+    OidcTokenVerifier tokenVerifier;
 
     @Inject
     UserOidcConnectionRepository connectionRepository;
@@ -100,15 +89,7 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     boolean coverageEnabledByDefault;
 
-    // Atomic cache entry to prevent split-brain state between JWKS data and timestamp
-    private record CachedJwks(JWKSet jwkSet, Instant cachedAt) {}
-
     private final Client httpClient = ClientBuilder.newClient();
-    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
-
-    @ConfigProperty(name = "geopulse.oidc.jwks-cache.ttl-hours", defaultValue = "24")
-    @StaticInitSafe
-    int jwksCacheTtlHours;
 
     @ConfigProperty(name = "geopulse.oidc.enabled", defaultValue = "false")
     @StaticInitSafe
@@ -319,10 +300,14 @@ public class OidcAuthenticationService {
             // Find or create user (this method handles all user/connection logic)
             UserEntity user = findOrCreateUser(userInfo, sessionState);
 
-            // Generate JWT tokens
+            // The resource starts the GeoPulse session; keep the provider session it belongs to.
             return new OidcCallbackAuthResult(
-                    authenticationService.createAuthResponse(user),
-                    sessionState.getRedirectUri()
+                    user,
+                    sessionState.getRedirectUri(),
+                    providerName,
+                    userInfo.getSubject(),
+                    userInfo.getSessionId(),
+                    tokenResponse.getIdToken()
             );
 
         } catch (OidcRegistrationDisabledException e) {
@@ -502,10 +487,7 @@ public class OidcAuthenticationService {
     }
 
     private String generateSecureRandomString(int length) {
-        SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[length];
-        random.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return CryptoUtils.randomUrlSafeToken(length);
     }
 
     private String buildAuthorizationUrl(OidcProviderConfiguration provider, String state, String nonce) {
@@ -586,47 +568,13 @@ public class OidcAuthenticationService {
     private OidcUserInfo validateAndExtractUserInfo(OidcTokenResponse tokenResponse, OidcProviderConfiguration provider, OidcSessionStateEntity sessionState) {
         try {
             log.debug("Validating ID token from provider: {}", provider.getName());
-            SignedJWT signedJWT = SignedJWT.parse(tokenResponse.getIdToken());
-
-            // 1. Fetch JWKS and find the correct key
-            JWKSet jwkSet = getJwkSet(provider);
-            String keyID = signedJWT.getHeader().getKeyID();
-            JWK jwk = jwkSet.getKeyByKeyId(keyID);
-            if (jwk == null) {
-                log.warn("Could not find matching JWK for key ID: {} in provider: {}", keyID, provider.getName());
-                throw new SecurityException("Could not find matching JWK for key ID: " + keyID);
-            }
-
-            // 2. Verify the token signature
-            // TODO: This implementation assumes RSA (RS256) keys. To support other algorithms like ECDSA,
-            // a strategy pattern would be needed to select the correct JWSVerifier based on the JWT's "alg" header.
-            JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwk);
-            if (!signedJWT.verify(verifier)) {
-                log.warn("ID token signature validation failed for provider: {}", provider.getName());
-                throw new SecurityException("ID token signature validation failed.");
-            }
-
-            // 3. Validate the claims
-            JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
-
-            // Issuer
-            if (!claims.getIssuer().equals(provider.getIssuer())) {
-                log.error("ID token issuer mismatch. Provider: {}, Expected: {}, Got: {}",
-                        provider.getName(), provider.getIssuer(), claims.getIssuer());
-                throw new SecurityException("ID token issuer mismatch.");
-            }
-
-            // Audience
-            if (!claims.getAudience().contains(provider.getClientId())) {
-                log.error("ID token audience mismatch. Provider: {}, Expected: {}, Got: {}",
-                        provider.getName(), provider.getClientId(), claims.getAudience());
-                throw new SecurityException("ID token audience mismatch.");
-            }
+            // Signature, issuer and audience
+            JWTClaimsSet claims = tokenVerifier.verify(tokenResponse.getIdToken(), provider);
 
             // Expiration
-            if (Instant.now().isAfter(claims.getExpirationTime().toInstant())) {
+            if (claims.getExpirationTime() == null || Instant.now().isAfter(claims.getExpirationTime().toInstant())) {
                 log.error("ID token expired. Provider: {}, Expiration: {}, Now: {}",
-                        provider.getName(), claims.getExpirationTime().toInstant(), Instant.now());
+                        provider.getName(), claims.getExpirationTime(), Instant.now());
                 throw new SecurityException("ID token has expired.");
             }
 
@@ -638,7 +586,7 @@ public class OidcAuthenticationService {
 
             log.debug("ID token validated successfully for provider {}", provider.getName());
 
-            // 4. Extract user info from claims
+            // Extract user info from claims
             String email = claims.getStringClaim("email");
             if (email == null || email.isBlank()) {
                 log.warn("ID token missing required 'email' claim for provider: {}", provider.getName());
@@ -651,43 +599,20 @@ public class OidcAuthenticationService {
                     .name(claims.getStringClaim("name"))
                     .picture(claims.getStringClaim("picture"))
                     .emailVerified(claims.getBooleanClaim("email_verified"))
+                    .sessionId(claims.getStringClaim("sid"))
                     .build();
 
-        } catch (ParseException | JOSEException e) {
-            log.error("Failed to parse or verify ID token: {}", e.getMessage());
-            throw new SecurityException("Failed to parse or verify ID token.", e);
+        } catch (ParseException e) {
+            log.error("Failed to read ID token claims: {}", e.getMessage());
+            throw new SecurityException("Failed to read ID token claims.", e);
         }
     }
 
-    private JWKSet getJwkSet(OidcProviderConfiguration provider) {
-        String jwksUri = provider.getJwksUri();
-        CachedJwks cached = jwksCache.get(jwksUri);
-
-        // Check if cache is expired or missing
-        int ttlHours = settingsService == null
-                ? jwksCacheTtlHours
-                : settingsService.getInteger("auth.oidc.jwks-cache.ttl-hours");
-        boolean needsRefresh = cached == null ||
-                cached.cachedAt.plus(Math.max(1, ttlHours), ChronoUnit.HOURS).isBefore(Instant.now());
-
-        if (needsRefresh) {
-            try {
-                log.debug("Fetching JWKS from: {} (cache expired or missing)", jwksUri);
-                JWKSet jwkSet = JWKSet.load(new URI(jwksUri).toURL());
-                // Store both JWKS and timestamp atomically in single object
-                jwksCache.put(jwksUri, new CachedJwks(jwkSet, Instant.now()));
-                return jwkSet;
-            } catch (Exception e) {
-                log.error("Failed to load JWKS from URI: {}", jwksUri, e);
-                // If we have a stale cached version, use it as fallback
-                if (cached != null) {
-                    log.warn("Using stale JWKS cache for provider: {} due to fetch failure", provider.getName());
-                    return cached.jwkSet;
-                }
-                throw new RuntimeException("Could not load JWKS for provider: " + provider.getName(), e);
-            }
-        }
-
-        return cached.jwkSet;
+    /**
+     * Where the identity provider sends the browser after RP-initiated logout: the GeoPulse login
+     * page on the same base URL as the OIDC callback. Providers usually require it to be registered.
+     */
+    public String getPostLogoutRedirectUrl() {
+        return getEffectiveCallbackBaseUrl() + "/login";
     }
 }

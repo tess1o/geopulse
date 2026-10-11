@@ -1,7 +1,5 @@
 package org.github.tess1o.geopulse.sharing.service;
 
-import io.smallrye.jwt.auth.principal.JWTParser;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
@@ -49,10 +47,7 @@ class SharedLinkServiceLiveLocationTest {
     SharedLinkMapper mapper;
 
     @Mock
-    JWTParser jwtParser;
-
-    @Mock
-    JsonWebToken jwt;
+    SharedLinkAccessTokenService accessTokenService;
 
     private SharedLinkService service;
     private UUID linkId;
@@ -64,14 +59,12 @@ class SharedLinkServiceLiveLocationTest {
         service.sharedLinkRepository = sharedLinkRepository;
         service.gpsPointRepository = gpsPointRepository;
         service.mapper = mapper;
-        service.jwtParser = jwtParser;
+        service.accessTokenService = accessTokenService;
 
         linkId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
 
-        when(jwtParser.parse(TOKEN)).thenReturn(jwt);
-        when(jwt.<String>getClaim("type")).thenReturn("temp");
-        when(jwt.<String>getClaim("linkId")).thenReturn(linkId.toString());
+        when(accessTokenService.isValid(TOKEN, linkId)).thenReturn(true);
     }
 
     @Test

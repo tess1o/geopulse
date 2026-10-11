@@ -38,24 +38,16 @@ describe('api transport during restore activation', () => {
     vi.unstubAllGlobals()
   })
 
-  it('does not start refresh-cookie after activation is known', async () => {
+  it('reclassifies a request failure that races with activation', async () => {
+    let rejectRequest
+    axiosMock.get.mockImplementation(() => new Promise((resolve, reject) => { rejectRequest = reject }))
     const state = await import('@/stores/maintenance')
     const { default: apiService } = await import('./apiService')
-    state.applyMaintenanceStatus({ state: 'ACTIVATING', blocked: true, message: 'Activating' })
-    await expect(apiService.refreshToken()).rejects.toBeInstanceOf(state.MaintenanceInterruption)
-    expect(axiosMock.post).not.toHaveBeenCalled()
-  })
-
-  it('reclassifies a refresh failure that races with activation', async () => {
-    let rejectRefresh
-    axiosMock.post.mockImplementation(() => new Promise((resolve, reject) => { rejectRefresh = reject }))
-    const state = await import('@/stores/maintenance')
-    const { default: apiService } = await import('./apiService')
-    const refresh = apiService.refreshToken()
+    const request = apiService.get('/notifications')
     await Promise.resolve()
     state.applyMaintenanceStatus({ state: 'ACTIVATING', blocked: true, message: 'Activating' })
-    rejectRefresh(new Error('backend exited'))
-    await expect(refresh).rejects.toBeInstanceOf(state.MaintenanceInterruption)
+    rejectRequest(new Error('backend exited'))
+    await expect(request).rejects.toBeInstanceOf(state.MaintenanceInterruption)
   })
 
   it('uses restart mode instead of the error page for a proxy outage after preparation was known', async () => {

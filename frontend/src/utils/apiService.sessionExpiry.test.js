@@ -60,4 +60,43 @@ describe('api client on an expired session', () => {
 
     expect(redirect).not.toHaveBeenCalled()
   })
+
+  it('keeps a visitor with an expired session on a public page and drops the stale profile', async () => {
+    const { default: apiService } = await import('./apiService')
+    vi.spyOn(apiService, 'hasCachedUserProfile').mockReturnValue(true)
+    const clearAuthData = vi.spyOn(apiService, 'clearAuthData')
+    const redirect = vi.spyOn(apiService, 'redirectToLogin').mockImplementation(() => {})
+    apiService.registerSessionRequiredCheck(() => false)
+
+    apiService.handleError(unauthorized)
+
+    expect(redirect).not.toHaveBeenCalled()
+    expect(clearAuthData).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not try to refresh a session on a 401', async () => {
+    axiosMock.get.mockRejectedValue(unauthorized)
+    const { default: apiService } = await import('./apiService')
+    vi.spyOn(apiService, 'hasCachedUserProfile').mockReturnValue(true)
+    const redirect = vi.spyOn(apiService, 'redirectToLogin').mockImplementation(() => {})
+
+    await expect(apiService.get('/streaks')).rejects.toBe(unauthorized)
+
+    expect(axiosMock.post).not.toHaveBeenCalled()
+    expect(redirect).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns the identity provider logout URL from logout', async () => {
+    axiosMock.delete.mockResolvedValue({ data: { idpLogoutUrl: 'https://idp.example.com/end-session' } })
+    const { default: apiService } = await import('./apiService')
+
+    await expect(apiService.logout()).resolves.toBe('https://idp.example.com/end-session')
+  })
+
+  it('returns no identity provider logout URL when logout fails', async () => {
+    axiosMock.delete.mockRejectedValue(new Error('network down'))
+    const { default: apiService } = await import('./apiService')
+
+    await expect(apiService.logout()).resolves.toBeNull()
+  })
 })

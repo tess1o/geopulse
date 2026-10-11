@@ -12,11 +12,10 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.ext.Provider;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
 
@@ -82,9 +81,7 @@ public class CsrfProtectionFilter implements ContainerRequestFilter, ContainerRe
     }
 
     private String newToken() {
-        byte[] bytes = new byte[TOKEN_SIZE_BYTES];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return CryptoUtils.randomUrlSafeToken(TOKEN_SIZE_BYTES);
     }
 
     private boolean isSafeMethod(String method) {
@@ -93,8 +90,7 @@ public class CsrfProtectionFilter implements ContainerRequestFilter, ContainerRe
     }
 
     private boolean hasSessionCookie(Map<String, Cookie> cookies) {
-        return cookies.containsKey(CookieService.ACCESS_TOKEN_COOKIE)
-                || cookies.containsKey(CookieService.REFRESH_TOKEN_COOKIE);
+        return cookies.containsKey(CookieService.SESSION_COOKIE);
     }
 
     private boolean isFormRequest(MediaType mediaType) {

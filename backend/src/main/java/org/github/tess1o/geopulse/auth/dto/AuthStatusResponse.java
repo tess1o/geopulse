@@ -16,6 +16,8 @@ public class AuthStatusResponse {
     private boolean passwordLoginEnabled;
     private boolean oidcLoginEnabled;
     private boolean adminLoginBypassEnabled;
+    // Send the login page straight to the only OIDC provider (the frontend checks the other conditions)
+    private boolean oidcAutoLaunchEnabled;
 
     // Guest root navigation
     private boolean guestRootRedirectToLoginEnabled;

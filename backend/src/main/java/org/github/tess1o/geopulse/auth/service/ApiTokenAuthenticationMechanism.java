@@ -9,7 +9,6 @@ import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,32 +16,21 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.model.ApiTokenAuthenticationResult;
-import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
-import org.github.tess1o.geopulse.shared.api.RequestCorrelationHandler;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.security.Principal;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
 @ApplicationScoped
 @Priority(Priorities.AUTHENTICATION - 50)
 @Slf4j
 public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechanism {
-    public static final String ATTR_AUTH_TYPE = "geopulse.auth.type";
-    public static final String ATTR_USER_ID = "geopulse.auth.userId";
-    public static final String ATTR_USER_EMAIL = "geopulse.auth.userEmail";
-
-    private static final String CONTEXT_AUTH_FAILURE_MESSAGE = "geopulse.apiToken.authFailureMessage";
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String INVALID_SERVICE_ACCOUNT_TOKEN = "Invalid service account token";
-    private static final String AUTHENTICATION_REQUIRED_DETAIL = "Authentication is required";
 
     @Inject
     ApiTokenService apiTokenService;
@@ -63,11 +51,11 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
         }
 
         if (apiKeyIsPresent && bearerIsServiceToken && !apiKeyToken.equals(bearerToken)) {
-            context.put(CONTEXT_AUTH_FAILURE_MESSAGE, "Conflicting service account credentials");
+            context.put(AuthenticationChallenge.FAILURE_DETAIL, "Conflicting service account credentials");
             return Uni.createFrom().nullItem();
         }
 
-        context.put(CONTEXT_AUTH_FAILURE_MESSAGE, INVALID_SERVICE_ACCOUNT_TOKEN);
+        context.put(AuthenticationChallenge.FAILURE_DETAIL, INVALID_SERVICE_ACCOUNT_TOKEN);
         String token = apiKeyIsPresent ? apiKeyToken : bearerToken;
         String ipAddress = UserIpAddress.resolve(context.request());
         return Uni.createFrom()
@@ -90,9 +78,9 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
         SecurityIdentity identity = QuarkusSecurityIdentity.builder()
                 .setPrincipal(principal)
                 .addRole(user.getRole().name())
-                .addAttribute(ATTR_AUTH_TYPE, "api-token")
-                .addAttribute(ATTR_USER_ID, user.getId().toString())
-                .addAttribute(ATTR_USER_EMAIL, user.getEmail())
+                .addAttribute(IdentityAttributes.AUTH_TYPE, IdentityAttributes.AUTH_TYPE_API_TOKEN)
+                .addAttribute(IdentityAttributes.USER_ID, user.getId().toString())
+                .addAttribute(IdentityAttributes.USER_EMAIL, user.getEmail())
                 .build();
 
         apiTokenService.recordUsage(auth.apiToken().getId(), ipAddress);
@@ -106,51 +94,10 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
 
     @Override
     public Uni<Boolean> sendChallenge(RoutingContext context) {
-        String authFailureMessage = context.get(CONTEXT_AUTH_FAILURE_MESSAGE);
-        if (authFailureMessage == null && hasServiceTokenCredentials(context)) {
-            authFailureMessage = INVALID_SERVICE_ACCOUNT_TOKEN;
+        if (context.get(AuthenticationChallenge.FAILURE_DETAIL) == null && hasServiceTokenCredentials(context)) {
+            context.put(AuthenticationChallenge.FAILURE_DETAIL, INVALID_SERVICE_ACCOUNT_TOKEN);
         }
-        if (authFailureMessage == null) {
-            authFailureMessage = AUTHENTICATION_REQUIRED_DETAIL;
-        }
-
-        ApiErrorCode code = AUTHENTICATION_REQUIRED;
-        String detail = authFailureMessage;
-        String errorId = UUID.randomUUID().toString();
-        String requestId = context.get(RequestCorrelationHandler.REQUEST_ID);
-        if (requestId == null) {
-            requestId = UUID.randomUUID().toString();
-            RequestCorrelationHandler.attachRequestId(context, requestId);
-        }
-        RequestCorrelationHandler.attachErrorId(context, errorId);
-        String instance = context.request().path();
-        String type = code.typeUri().toString();
-        String responseBody = new JsonObject()
-                .put("type", type)
-                .put("title", code.title())
-                .put("status", code.statusCode())
-                .put("detail", detail)
-                .put("instance", instance)
-                .put("code", code.name())
-                .put("errorId", errorId)
-                .put("requestId", requestId)
-                .encode();
-
-        String finalRequestId = requestId;
-        return Uni.createFrom().emitter(emitter -> context.response()
-                .setStatusCode(401)
-                .putHeader("WWW-Authenticate", "Bearer")
-                .putHeader("Content-Type", "application/problem+json")
-                .putHeader(RequestCorrelationHandler.REQUEST_ID_HEADER, finalRequestId)
-                .putHeader(RequestCorrelationHandler.ERROR_ID_HEADER, errorId)
-                .end(responseBody)
-                .onComplete(result -> {
-                    if (result.succeeded()) {
-                        emitter.complete(true);
-                    } else {
-                        emitter.fail(result.cause());
-                    }
-                }));
+        return AuthenticationChallenge.send(context);
     }
 
     @Override

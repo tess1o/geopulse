@@ -1,8 +1,6 @@
 package org.github.tess1o.geopulse.sharing.service;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.jwt.build.Jwt;
-import io.smallrye.jwt.auth.principal.ParseException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -89,11 +87,6 @@ public class SharedLinkService {
     SecurePasswordUtils passwordUtils;
 
     @Inject
-    @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
-    @StaticInitSafe
-    String issuer;
-
-    @Inject
     @ConfigProperty(name = "geopulse.sharing.temp-token.lifespan", defaultValue = "1800")
     @StaticInitSafe
     Long tempTokenLifespan;
@@ -104,7 +97,7 @@ public class SharedLinkService {
     Long timelineTokenLifespan;
 
     @Inject
-    io.smallrye.jwt.auth.principal.JWTParser jwtParser;
+    SharedLinkAccessTokenService accessTokenService;
 
     @Transactional
     public CreateShareLinkResponse createShareLink(CreateShareLinkRequest request, UserEntity user) {
@@ -365,26 +358,12 @@ public class SharedLinkService {
     }
 
     private String createTemporaryAccessToken(UUID linkId, Long lifespan) {
-        return Jwt.issuer(issuer)
-                .subject("shared-link")
-                .claim("linkId", linkId.toString())
-                .claim("type", "temp")
-                .expiresIn(Duration.ofSeconds(lifespan))
-                .sign();
+        return accessTokenService.create(linkId, lifespan);
     }
 
     private void validateTemporaryToken(String token, UUID expectedLinkId) {
-        org.eclipse.microprofile.jwt.JsonWebToken jwt;
-        try {
-            log.debug("Validating temporary token for linkId: {}", expectedLinkId);
-            jwt = jwtParser.parse(token);
-        } catch (ParseException e) {
-            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
-        }
-
-        String tokenType = jwt.getClaim("type");
-        String tokenLinkId = jwt.getClaim("linkId");
-        if (!"temp".equals(tokenType) || !expectedLinkId.toString().equals(tokenLinkId)) {
+        log.debug("Validating temporary token for linkId: {}", expectedLinkId);
+        if (!accessTokenService.isValid(token, expectedLinkId)) {
             throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied");
         }
     }

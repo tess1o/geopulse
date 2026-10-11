@@ -87,7 +87,7 @@ backend:
 
 `backend`, `frontend` and `mosquitto` each accept `extraVolumes` and `extraVolumeMounts`, which are appended to the volumes the chart already defines.
 
-The backend only mounts the generated JWT / AI keys, so any other storage it has to read or write has to be attached this way. A common case is a directory of GPX or Google Takeout files produced elsewhere, made available to the backend for import:
+The backend only mounts the generated encryption key, so any other storage it has to read or write has to be attached this way. A common case is a directory of GPX or Google Takeout files produced elsewhere, made available to the backend for import:
 
 ```yaml
 backend:
@@ -139,7 +139,7 @@ For the complete list of parameters, see the [values.yaml](values.yaml) file or 
 - Optional MQTT broker (Mosquitto)
 - Production-ready with health checks and resource limits
 - Flexible configuration via values.yaml
-- Automatic JWT key generation
+- Automatic encryption key generation
 - Ingress support with TLS
 - Gateway API HTTPRoute support
 - High availability ready

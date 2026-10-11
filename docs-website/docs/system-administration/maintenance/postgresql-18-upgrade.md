@@ -56,7 +56,7 @@ If the script is interrupted, run it again. It reads where the previous run stop
 - **Downtime**: GeoPulse is offline during the upgrade. A few GB usually take minutes; the counts and the restore grow with the database size.
 - **Other tools**: stop anything else that connects to the database, such as Grafana or a database client.
 - **Optional extra safety**: create a full backup in **Administration > Settings > Backup**. Backups made on PostgreSQL 17 can be restored after the upgrade.
-- Your `keys/` folder (JWT keys and the AI encryption key) is not touched.
+- Your `keys/` folder (the encryption key) is not touched.
 
 ## Docker Compose
 

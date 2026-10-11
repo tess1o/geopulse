@@ -5,13 +5,12 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
-import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.InitiateOidcLinkingRequest;
 import org.github.tess1o.geopulse.auth.oidc.dto.LinkAccountWithPasswordRequest;
+import org.github.tess1o.geopulse.auth.oidc.dto.OidcCallbackAuthResult;
 import org.github.tess1o.geopulse.auth.oidc.dto.OidcLoginInitResponse;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
-import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -33,8 +32,6 @@ public class OidcAccountLinkingService {
     @Inject
     SecurePasswordUtils securePasswordUtils;
     
-    @Inject
-    AuthenticationService authenticationService;
     
     @Inject
     OidcLinkingTokenService linkingTokenService;
@@ -49,7 +46,7 @@ public class OidcAccountLinkingService {
      * Link OIDC account using password verification.
      */
     @Transactional
-    public AuthResponse linkAccountWithPassword(LinkAccountWithPasswordRequest request) {
+    public OidcCallbackAuthResult linkAccountWithPassword(LinkAccountWithPasswordRequest request) {
         // Validate and consume linking token
         OidcLinkingTokenService.LinkingTokenData tokenData = linkingTokenService.validateAndConsumeToken(request.getLinkingToken());
         if (tokenData == null) {
@@ -90,8 +87,15 @@ public class OidcAccountLinkingService {
         log.info("Successfully linked {} provider to user {} after password verification", 
                 tokenData.newProvider(), user.getEmail());
         
-        // Generate auth response
-        return authenticationService.createAuthResponse(user);
+        // The resource signs the user in; the session belongs to the provider session that started linking.
+        return new OidcCallbackAuthResult(
+                user,
+                null,
+                tokenData.newProvider(),
+                tokenData.originalUserInfo().getSubject(),
+                tokenData.originalUserInfo().getSessionId(),
+                null
+        );
     }
 
     /**

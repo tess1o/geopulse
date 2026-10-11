@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth;
 
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionContext;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -71,7 +73,8 @@ class DemoAuthenticationEnabledIntegrationTest {
         );
 
         UserEntity demoUser = userService.findByEmail("new-york@demo.geopulse.cc").orElseThrow();
-        demoAccessToken = authenticationService.createAuthResponse(demoUser).getAccessToken();
+        demoAccessToken = authenticationService.createApiSession(demoUser,
+                SessionContext.of(SessionAuthMethod.DEMO, null, null)).getAccessToken();
     }
 
     @Test
@@ -85,6 +88,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .body("demoModeEnabled", equalTo(true))
                 .body("passwordRegistrationEnabled", equalTo(false))
                 .body("oidcRegistrationEnabled", equalTo(false))
+                .body("oidcAutoLaunchEnabled", equalTo(false))
                 .body("demoPersonas.id", contains("kyiv", "new-york", "london"))
                 .body("demoPersonas[1].label", equalTo("🗽 Login as New York"))
                 .body("demoPersonas[1].detail", equalTo("(Miles, 12-hour clock, US date format)"))
@@ -110,9 +114,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .body("user.uiPreferences.temperatureUnit", equalTo("FAHRENHEIT"))
                 .body("user.uiPreferences.dateFormat", equalTo("MDY"))
                 .body("user.uiPreferences.timeFormat", equalTo("12h"))
-                .cookie("access_token", notNullValue())
-                .cookie("refresh_token", notNullValue())
-                .cookie("token_expires_at", notNullValue());
+                .cookie("gp_session", notNullValue());
     }
 
     @Test
@@ -134,9 +136,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .body("user.uiPreferences.temperatureUnit", equalTo("CELSIUS"))
                 .body("user.uiPreferences.dateFormat", equalTo("DMY"))
                 .body("user.uiPreferences.timeFormat", equalTo("24h"))
-                .cookie("access_token", notNullValue())
-                .cookie("refresh_token", notNullValue())
-                .cookie("token_expires_at", notNullValue());
+                .cookie("gp_session", notNullValue());
     }
 
     @Test
@@ -280,7 +280,9 @@ class DemoAuthenticationEnabledIntegrationTest {
     public static class DemoEnabledProfile implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("geopulse.demo.enabled", "true");
+            // Auto-launch is on to prove demo mode overrides it: the demo login page offers personas.
+            return Map.of("geopulse.demo.enabled", "true",
+                    "geopulse.auth.oidc.auto-launch.enabled", "true");
         }
     }
 }

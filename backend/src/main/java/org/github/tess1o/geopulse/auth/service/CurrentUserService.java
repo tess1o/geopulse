@@ -1,9 +1,8 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import io.quarkus.security.identity.SecurityIdentity;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 
@@ -14,69 +13,42 @@ import java.util.UUID;
 public class CurrentUserService {
 
     @Inject
-    JsonWebToken jwt;
-
-    @Inject
     SecurityIdentity securityIdentity;
 
     @Inject
     UserService userService;
 
     /**
-     * Get the current user's ID from JWT token
+     * Get the current user's ID from the authenticated session or API token
      */
     public UUID getCurrentUserId() {
-        UUID apiTokenUserId = getApiTokenUserId();
-        if (apiTokenUserId != null) {
-            return apiTokenUserId;
+        String userId = attribute(IdentityAttributes.USER_ID);
+        if (userId == null) {
+            throw new SecurityException("No authenticated user");
         }
-
-        if (jwt == null) {
-            throw new SecurityException("No JWT token found");
+        try {
+            return UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            throw new SecurityException("Invalid user ID in security identity", e);
         }
-
-        // Try userId claim first (recommended)
-        String userIdStr = jwt.getClaim("userId");
-        if (userIdStr != null) {
-            try {
-                return UUID.fromString(userIdStr);
-            } catch (IllegalArgumentException e) {
-                throw new SecurityException("Invalid userId in token", e);
-            }
-        }
-
-        // Fallback to subject claim
-        String subject = jwt.getSubject();
-        if (subject != null) {
-            try {
-                return UUID.fromString(subject);
-            } catch (IllegalArgumentException e) {
-                throw new SecurityException("Invalid subject in token", e);
-            }
-        }
-
-        throw new SecurityException("No user ID found in token");
     }
 
     /**
-     * Get the current user's email from JWT token
+     * Get the current user's email from the authenticated session or API token
      */
     public String getCurrentUserEmail() {
-        String apiTokenEmail = getApiTokenUserEmail();
-        if (apiTokenEmail != null) {
-            return apiTokenEmail;
-        }
-
-        if (jwt == null) {
-            throw new SecurityException("No JWT token found");
-        }
-
-        String email = jwt.getClaim("upn");
+        String email = attribute(IdentityAttributes.USER_EMAIL);
         if (email == null) {
-            throw new SecurityException("No email found in token");
+            throw new SecurityException("No authenticated user");
         }
-
         return email;
+    }
+
+    /**
+     * The session making this request, or empty for API-token and anonymous requests.
+     */
+    public Optional<UUID> getCurrentSessionId() {
+        return Optional.ofNullable(attribute(IdentityAttributes.SESSION_ID)).map(UUID::fromString);
     }
 
     /**
@@ -93,25 +65,11 @@ public class CurrentUserService {
         return user.get();
     }
 
-    private UUID getApiTokenUserId() {
-        if (securityIdentity == null) {
+    private String attribute(String name) {
+        if (securityIdentity == null || securityIdentity.isAnonymous()) {
             return null;
         }
-        String userId = securityIdentity.getAttribute(ApiTokenAuthenticationMechanism.ATTR_USER_ID);
-        if (userId == null || userId.isBlank()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(userId);
-        } catch (IllegalArgumentException e) {
-            throw new SecurityException("Invalid user ID in API token identity", e);
-        }
-    }
-
-    private String getApiTokenUserEmail() {
-        if (securityIdentity == null) {
-            return null;
-        }
-        return securityIdentity.getAttribute(ApiTokenAuthenticationMechanism.ATTR_USER_EMAIL);
+        String value = securityIdentity.getAttribute(name);
+        return value == null || value.isBlank() ? null : value;
     }
 }

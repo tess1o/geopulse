@@ -189,9 +189,7 @@ public class AuthorizationIntegrationTest {
                 .post("/api/v1/auth/sessions")
                 .then()
                 .statusCode(200)
-                .cookie("access_token", notNullValue())
-                .cookie("refresh_token", notNullValue())
-                .cookie("token_expires_at", notNullValue());
+                .cookie("gp_session", notNullValue());
     }
     /**
      * Test DELETE operations require authentication.

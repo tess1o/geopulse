@@ -65,6 +65,9 @@ services:
 
   # Fake Immich (and Memos) from demo-integrations. It builds each user's photo library from their
   # timeline_stays and resolves users by the API key stored in users.immich_preferences.
+  # Also the fake OIDC provider for the OIDC sign-in specs. The backend reaches it by this name; a
+  # browser on the host resolves the same name to the published port (see the chromium-oidc project
+  # in playwright.config.js).
   geopulse-demo-integrations-e2e:
     build:
       context: ../demo-integrations
@@ -72,6 +75,11 @@ services:
     restart: "no"
     env_file:
       - .env.e2e
+    environment:
+      - FAKE_OIDC_ENABLED=true
+      - FAKE_OIDC_BASE_URL=http://geopulse-demo-integrations-e2e:9400
+    ports:
+      - "9400:9400"
     depends_on:
       geopulse-postgres-e2e:
         condition: service_healthy
@@ -88,6 +96,7 @@ services:
       - DATABASE_URL=postgresql://geopulse_test:testpassword@geopulse-postgres-e2e:5432/geopulse_test
       - NODE_ENV=test
       - CI=true
+      - MOCK_OIDC_CONTROL_URL=http://geopulse-demo-integrations-e2e:9400
     depends_on:
       geopulse-ui-e2e:
         condition: service_healthy

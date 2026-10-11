@@ -75,6 +75,7 @@ Notes:
 | `GEOPULSE_AUTH_MOBILE_DEEPLINK_CLEANUP_CRON` | `0 0 3 1 * ?` | Cron expression for cleanup of expired mobile deep-link auth codes (default: day 1 of month at 03:00). Property: \`geopulse.auth.mobile.deeplink.cleanup.cron\`. | Valid Quarkus cron expression. | Backend restart |
 | `GEOPULSE_AUTH_MOBILE_DEEPLINK_CLEANUP_ENABLED` | `true` | Enables/disables scheduled cleanup of expired mobile deep-link auth codes. Property: \`geopulse.auth.mobile.deeplink.cleanup.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_AUTH_OIDC_AUTO_LAUNCH_ENABLED` | `false` | With password login disabled and exactly one OIDC provider, `/login` goes straight to that provider (after a sign-out only once the user presses Sign in, never after a failed sign-in; `/login?autoLaunch=0` always shows the page). Property: \`geopulse.auth.oidc.auto-launch.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.oidc.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED` | `true` | Property: \`geopulse.auth.oidc.registration.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.password-login.enabled\`. | \`true\` or \`false\`. | Backend restart |
@@ -84,15 +85,14 @@ Notes:
 | `GEOPULSE_AUTH_SIGN_UP_ENABLED` | `true` | Deprecated property, replaced by geopulse.auth.password-registration.enabled Property: \`geoupuse.auth.sign-up-enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_COOKIE_DOMAIN` | `(empty)` | Property: \`geopulse.auth.cookie-domain\`. | Optional; empty value uses fallback behavior. | Backend restart |
 | `GEOPULSE_INVITATION_BASE_URL` | `(empty)` | User invitation configuration Base URL for generating invitation links (e.g., https://geopulse.example.com) If empty, frontend will use window.location.origin Property: \`geopulse.invitation.base-url\`. | Valid URL. | Backend restart |
-| `GEOPULSE_JWT_ACCESS_TOKEN_LIFESPAN` | `1800` | JWT Property: \`smallrye.jwt.new-token.lifespan\`. | Integer seconds. | Backend restart |
-| `GEOPULSE_JWT_ISSUER` | `http://localhost:8080` | Property: \`smallrye.jwt.new-token.issuer\`. | String value. Follow subsystem documentation. | Backend restart |
-| `GEOPULSE_JWT_PRIVATE_KEY_LOCATION` | `file:/app/keys/jwt-private-key.pem` | Property: \`smallrye.jwt.sign.key.location\`. | Readable path/URI to private key file. | Backend restart |
-| `GEOPULSE_JWT_PUBLIC_KEY_LOCATION` | `file:/app/keys/jwt-public-key.pem` | Property: \`mp.jwt.verify.publickey.location\`. | Readable path/URI in container filesystem. | Backend restart |
-| `GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN` | `604800` | JWT Property: \`jwt.refresh-token.lifespan\`. | Integer value. | Backend restart |
+| `GEOPULSE_AUTH_SESSION_IDLE_TIMEOUT` | `7d` | A sign-in session ends after this long without use. Property: \`geopulse.auth.session.idle-timeout\`. | Duration, e.g. \`12h\`, \`7d\`. | Backend restart |
+| `GEOPULSE_AUTH_SESSION_ABSOLUTE_TIMEOUT` | `90d` | A sign-in session ends at the latest this long after sign-in, even when in use. Property: \`geopulse.auth.session.absolute-timeout\`. | Duration, e.g. \`30d\`. | Backend restart |
+| `GEOPULSE_AUTH_ACCESS_TOKEN_LIFESPAN` | `30m` | Access token lifetime for API sessions and the mobile app; renewed with the refresh token. Property: \`geopulse.auth.session.access-token-lifespan\`. | Duration, e.g. \`15m\`. | Backend restart |
+| `GEOPULSE_AUTH_SESSION_CLEANUP_RETENTION` | `7d` | How long ended sessions are kept before they are deleted. Property: \`geopulse.auth.session.cleanup.retention\`. | Duration. | Backend restart |
 | `GEOPULSE_USER_DEFAULT_DISTANCE_UNIT` | `KILOMETERS` | Default distance unit for newly created users. Property: \`geopulse.user.default-distance-unit\`. Existing users keep their profile preference. | `KILOMETERS` or `MILES`. | Backend restart |
 | `GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT` | `CELSIUS` | Default temperature unit for newly created users. Property: \`geopulse.user.default-temperature-unit\`. Existing users keep their profile preference. | `CELSIUS` or `FAHRENHEIT`. | Backend restart |
 
-### OIDC Core (5)
+### OIDC Core (6)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -100,6 +100,7 @@ Notes:
 | `GEOPULSE_OIDC_CALLBACK_BASE_URL` | `(empty)` | OIDC callback base URL. Fallback order: `GEOPULSE_PUBLIC_BASE_URL`, then legacy `GEOPULSE_UI_URL`. Property: `geopulse.oidc.callback-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_OIDC_CLEANUP_ENABLED` | `true` | OIDC Cleanup Configuration Property: \`geopulse.oidc.cleanup.session-states.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_ENABLED` | `false` | OIDC Configuration Property: \`geopulse.oidc.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_OIDC_RP_LOGOUT_ENABLED` | `true` | When signing out of GeoPulse, also sign out of the OIDC provider if it publishes an \`end_session_endpoint\` (RP-initiated logout). Best effort. Property: \`geopulse.oidc.rp-logout.enabled\`. Also in Admin → Settings → Authentication. | \`true\` or \`false\`. | Immediate (Admin UI) / Backend restart |
 | `GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS` | `24` | JWKS (signing keys) caching Lower TTL recommended to handle provider key rotation Property: \`geopulse.oidc.jwks-cache.ttl-hours\`. | Non-negative numeric value. | Backend restart |
 
 ### AI, Immich, and Memos (10)

@@ -10,10 +10,10 @@ import org.github.tess1o.geopulse.admin.model.InvitationStatus;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.model.UserInvitationEntity;
 import org.github.tess1o.geopulse.admin.repository.UserInvitationRepository;
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -31,17 +31,13 @@ public class UserInvitationService {
     @Inject
     AuditLogService auditLogService;
 
-    private final SecureRandom secureRandom = new SecureRandom();
-    private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final int TOKEN_BYTES = 48; // 48 bytes = 64 characters in base64
 
     /**
      * Generate a cryptographically secure token
      */
     private String generateSecureToken() {
-        byte[] randomBytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(randomBytes);
-        return BASE64_ENCODER.encodeToString(randomBytes);
+        return CryptoUtils.randomUrlSafeToken(TOKEN_BYTES);
     }
 
     /**

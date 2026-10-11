@@ -49,7 +49,7 @@
             </router-link>
 
             <!-- Login (if not authenticated) -->
-            <router-link v-if="!authStore.isAuthenticated" to="/login" class="option-card">
+            <router-link v-if="!authStore.isAuthenticated" :to="SIGN_IN_LOCATION" class="option-card">
               <div class="option-icon">
                 <i class="pi pi-sign-in"></i>
               </div>
@@ -106,7 +106,7 @@
                 <li><router-link to="/app/dashboard">{{ t('ui.notFound.helpLinks.dashboard') }}</router-link> - {{ t('ui.notFound.helpLinks.dashboardDesc') }}</li>
                 <li><router-link to="/app/journey-insights">{{ t('ui.notFound.helpLinks.journeyInsights') }}</router-link> - {{ t('ui.notFound.helpLinks.journeyInsightsDesc') }}</li>
                 <li><router-link to="/app/friends">{{ t('ui.notFound.helpLinks.friends') }}</router-link> - {{ t('ui.notFound.helpLinks.friendsDesc') }}</li>
-                <li v-if="!authStore.isAuthenticated"><router-link to="/login">{{ t('ui.notFound.helpLinks.signIn') }}</router-link> - {{ t('ui.notFound.helpLinks.signInDesc') }}</li>
+                <li v-if="!authStore.isAuthenticated"><router-link :to="SIGN_IN_LOCATION">{{ t('ui.notFound.helpLinks.signIn') }}</router-link> - {{ t('ui.notFound.helpLinks.signInDesc') }}</li>
               </ul>
               <p class="help-note">
                 {{ t('ui.notFound.helpNote') }}
@@ -124,6 +124,7 @@ import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { SIGN_IN_LOCATION } from '@/utils/oidcAutoLaunch'
 import Button from 'primevue/button'
 
 const { t } = useI18n()

@@ -92,8 +92,9 @@ test.describe('User Registration', () => {
         // Click login link
         await registerPage.clickLoginLink();
 
-        // Should be redirected to login page
-        await TestHelpers.waitForNavigation(page, '**/login');
+        // Should be redirected to login page (the link adds ?autoLaunch=1, so match the path only)
+        await TestHelpers.waitForNavigation(page, url => url.pathname === '/login');
+        expect(new URL(page.url()).searchParams.get('autoLaunch')).toBe('1');
         expect(await loginPage.isOnLoginPage()).toBe(true);
     });
 

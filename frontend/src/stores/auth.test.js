@@ -31,9 +31,8 @@ import { useAuthStore } from './auth'
 
 vi.mock('../utils/apiService', () => ({
   default: {
-    isTokenExpired: vi.fn(),
-    refreshToken: vi.fn(),
     get: vi.fn(),
+    logout: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),
     clearAuthData: vi.fn(),
@@ -98,8 +97,6 @@ describe('auth store cached profile reconciliation', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.clearAllMocks()
-    apiService.isTokenExpired.mockReturnValue(false)
-    apiService.refreshToken.mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -262,18 +259,45 @@ describe('auth store cached profile reconciliation', () => {
     })
   })
 
-  it('refreshes an expired cookie session before reconciling the cached profile', async () => {
+  it('reconciles the cached profile with the server session', async () => {
     storeCachedProfile(user({ demoMode: true }))
-    apiService.isTokenExpired.mockReturnValue(true)
-    apiService.refreshToken.mockResolvedValue(true)
     apiService.get.mockResolvedValue(user({ demoMode: false }))
 
     const authStore = useAuthStore()
     await authStore.checkAuth()
 
-    expect(apiService.refreshToken).toHaveBeenCalledTimes(1)
     expect(apiService.get).toHaveBeenCalledWith('/users/me')
     expect(authStore.demoModeEnabled).toBe(false)
+  })
+
+  it('returns the identity provider logout URL from logout and clears the user', async () => {
+    storeCachedProfile(user())
+    apiService.logout.mockResolvedValue('https://idp.example.com/end-session?client_id=geopulse')
+
+    const authStore = useAuthStore()
+    authStore.hydrateUserFromCachedProfile(readCachedProfile())
+    const idpLogoutUrl = await authStore.logout()
+
+    expect(idpLogoutUrl).toBe('https://idp.example.com/end-session?client_id=geopulse')
+    expect(authStore.isAuthenticated).toBe(false)
+  })
+
+  it('marks a logout as deliberate even when the request fails, and a sign-in clears it', async () => {
+    apiService.logout.mockRejectedValue(new Error('network down'))
+
+    const authStore = useAuthStore()
+    await expect(authStore.logout()).rejects.toThrow('network down')
+    expect(localStorage.getItem('oidcAutoLaunchSignedOut')).toBe('1')
+
+    authStore.consumeBrowserAuthResponse({ user: user() })
+    expect(localStorage.getItem('oidcAutoLaunchSignedOut')).toBeNull()
+  })
+
+  it('returns null from logout when there is nothing to do at a provider', async () => {
+    apiService.logout.mockResolvedValue(null)
+
+    const authStore = useAuthStore()
+    await expect(authStore.logout()).resolves.toBeNull()
   })
 
   it('clears stale browser auth state when backend rejects the session', async () => {

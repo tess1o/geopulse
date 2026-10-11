@@ -12,6 +12,15 @@ vi.hoisted(() => {
   }
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: shim })
   Object.defineProperty(window, 'localStorage', { configurable: true, value: shim })
+  const sessionValues = new Map()
+  const sessionShim = {
+    getItem: (key) => sessionValues.get(key) || null,
+    setItem: (key, value) => sessionValues.set(key, String(value)),
+    removeItem: (key) => sessionValues.delete(key),
+    clear: () => sessionValues.clear()
+  }
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: sessionShim })
+  Object.defineProperty(window, 'sessionStorage', { configurable: true, value: sessionShim })
 })
 
 const routerState = vi.hoisted(() => ({ query: {}, push: null }))
@@ -198,5 +207,87 @@ describe('LoginPage return-to redirect', () => {
     const push = await signInWith({ redirect: 'https://example.com/app/timeline' })
 
     expect(push).toHaveBeenCalledWith('/app/timeline')
+  })
+})
+
+/**
+ * OIDC auto-launch: with password login off and one provider, the page leaves for that provider on its
+ * own, except after a deliberate sign-out or when the launch fails.
+ */
+describe('LoginPage OIDC auto-launch', () => {
+  const provider = { name: 'authentik', displayName: 'Authentik' }
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  const mountWith = async ({ query = {}, initiate = vi.fn().mockReturnValue(new Promise(() => {})) } = {}) => {
+    setActivePinia(createPinia())
+    routerState.query = query
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+    vi.spyOn(authStore, 'getAuthStatus').mockResolvedValue({
+      passwordLoginEnabled: false,
+      oidcLoginEnabled: true,
+      oidcAutoLaunchEnabled: true,
+      adminLoginBypassEnabled: true,
+      passwordRegistrationEnabled: false,
+      oidcRegistrationEnabled: false
+    })
+    vi.spyOn(authStore, 'getOidcProviders').mockResolvedValue([provider])
+    vi.spyOn(authStore, 'initiateOidcLogin').mockImplementation(initiate)
+
+    const LoginPage = (await import('./LoginPage.vue')).default
+    const wrapper = mount(LoginPage, { global: globalOptions })
+    await flushPromises()
+    routerState.query = {}
+    return { wrapper, initiate }
+  }
+
+  it('leaves for the only provider and keeps the return-to page', async () => {
+    const { wrapper, initiate } = await mountWith({ query: { redirect: '/app/trips' } })
+
+    expect(initiate).toHaveBeenCalledWith('authentik', '/app/trips')
+    expect(wrapper.text()).toContain('Redirecting to Authentik…')
+    expect(wrapper.find('.login-card').exists()).toBe(false)
+    expect(sessionStorage.getItem('oidcAutoLaunchAttempted')).toBe('1')
+  })
+
+  it('shows the page after a deliberate sign-out', async () => {
+    localStorage.setItem('oidcAutoLaunchSignedOut', '1')
+
+    const { wrapper, initiate } = await mountWith()
+
+    expect(initiate).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Email/password login is disabled')
+  })
+
+  it('shows the page with autoLaunch=0', async () => {
+    const { initiate } = await mountWith({ query: { autoLaunch: '0' } })
+
+    expect(initiate).not.toHaveBeenCalled()
+  })
+
+  it('shows the page again when the browser restores it from the back/forward cache', async () => {
+    const { wrapper } = await mountWith()
+    expect(wrapper.find('.login-card').exists()).toBe(false)
+
+    const pageShow = new Event('pageshow')
+    Object.defineProperty(pageShow, 'persisted', { value: true })
+    window.dispatchEvent(pageShow)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Redirecting to Authentik…')
+    expect(wrapper.find('.login-card').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('stays on the page when the launch fails', async () => {
+    const { wrapper, initiate } = await mountWith({ initiate: vi.fn().mockRejectedValue(new Error('down')) })
+
+    expect(initiate).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).not.toContain('Redirecting to Authentik…')
+    expect(wrapper.find('.login-card').exists()).toBe(true)
   })
 })

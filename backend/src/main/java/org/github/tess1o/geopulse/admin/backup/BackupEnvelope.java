@@ -6,6 +6,8 @@ import com.google.crypto.tink.streamingaead.PredefinedStreamingAeadParameters;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
+import org.github.tess1o.geopulse.shared.security.CryptoUtils;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -13,7 +15,6 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
 import java.util.Arrays;
 
 /** Versioned, password-wrapped Tink streaming keyset. No keys are written unencrypted. */
@@ -80,7 +81,7 @@ public final class BackupEnvelope {
             return cipher.doFinal(input);
         } finally { Arrays.fill(key, (byte) 0); }
     }
-    private static byte[] random(int size) { byte[] value = new byte[size]; new SecureRandom().nextBytes(value); return value; }
+    private static byte[] random(int size) { return CryptoUtils.randomBytes(size); }
     private static void requirePassword(char[] password) {
         if (password == null || password.length == 0) throw new IllegalArgumentException("A backup password is required");
     }

@@ -1,5 +1,10 @@
 package org.github.tess1o.geopulse.auth;
 
+import org.github.tess1o.geopulse.auth.dto.LogoutResponse;
+import org.github.tess1o.geopulse.auth.session.model.SessionAuthMethod;
+import org.github.tess1o.geopulse.auth.session.model.SessionClientType;
+import org.github.tess1o.geopulse.auth.session.model.SessionRevocationReason;
+import org.github.tess1o.geopulse.auth.session.model.UserSessionEntity;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.auth.dto.*;
 import org.github.tess1o.geopulse.auth.model.ApiTokenStatus;
@@ -12,6 +17,7 @@ import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
 import org.github.tess1o.geopulse.auth.model.UserApiTokenEntity;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
+import org.github.tess1o.geopulse.auth.oidc.model.OidcDiscoveryDocument;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 
@@ -27,6 +33,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 OidcLoginInitResponse.class,
                 OidcProviderResponse.class,
                 OidcUserInfo.class,
+                OidcDiscoveryDocument.class,
                 OidcTokenResponse.class,
                 UserOidcConnectionResponse.class,
                 AuthResponse.class,
@@ -45,6 +52,11 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 UpdateApiTokenRequest.class,
                 DemoPersonaResponse.class,
                 DemoLoginRequest.class,
+                LogoutResponse.class,
+                UserSessionEntity.class,
+                SessionClientType.class,
+                SessionAuthMethod.class,
+                SessionRevocationReason.class,
         }
 )
 public class AuthNativeConfig {

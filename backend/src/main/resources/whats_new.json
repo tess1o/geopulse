@@ -14,6 +14,8 @@
       "New notifications for new releases, missing GPS data, ready Rewinds and backups",
       "Shared links: auto-refresh and auto-follow, Immich photos with album restriction",
       "Period Tags are renamed to Timeline Labels",
+      "Sign-in sessions are now stored on the server: signing out, changing your password or disabling a user ends sessions right away. Everyone signs in once after the upgrade",
+      "OIDC single logout: signing out of your identity provider (for example Authentik or Keycloak) also signs you out of GeoPulse, and signing out of GeoPulse can sign you out of the provider",
       "Better observability: structured JSON logs, request IDs and log level changes from the Admin panel",
       "Upgraded to Quarkus 3.40 LTS, with many internal fixes and improvements",
       "Upgraded nginx, Vite and many frontend libraries to latest stable versions",

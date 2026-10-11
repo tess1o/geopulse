@@ -32,4 +32,7 @@ public class OidcUserInfo {
     private String picture;        // Avatar URL
     
     private String locale;
+
+    /** The provider's session ({@code sid} claim), used to match back-channel logout requests. */
+    private String sessionId;
 }

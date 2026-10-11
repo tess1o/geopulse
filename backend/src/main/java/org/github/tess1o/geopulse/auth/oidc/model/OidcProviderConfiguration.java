@@ -24,6 +24,7 @@ public class OidcProviderConfiguration {
     private String userinfoEndpoint;
     private String jwksUri;
     private String issuer;
+    private String endSessionEndpoint;  // Optional: RP-initiated logout
     
     @Builder.Default
     private String scopes = "openid profile email";
