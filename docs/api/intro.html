@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.122776b4.js" defer="defer"></script>
-<script src="/assets/js/main.0d9c062b.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.f297ce88.js" defer="defer"></script>
+<script src="/assets/js/main.03a7dc04.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -29,7 +29,7 @@ with <code>x-internal: true</code>, are not shown here, and can change without n
 <p>Every endpoint description ends with an <strong>Access</strong> line:</p>
 <table><thead><tr><th>Access</th><th>Meaning</th></tr></thead><tbody><tr><td>Public</td><td>No authentication. For example sign-in, registration, health, and version.</td></tr><tr><td>Any signed-in user</td><td>A browser session or a user API token. The request acts as that user.</td></tr><tr><td>Administrators only</td><td>A session or API token of a user with the <code>ADMIN</code> role.</td></tr><tr><td>GPS source credentials</td><td>The username and password, or token, of a GPS source configured in GeoPulse.</td></tr><tr><td>Anyone with the share link</td><td>A short-lived access token issued for a share link. No GeoPulse account needed.</td></tr></tbody></table>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="authentication-options">Authentication options<a href="#authentication-options" class="hash-link" aria-label="Direct link to Authentication options" title="Direct link to Authentication options" translate="no">​</a></h2>
-<p>Browser users authenticate through the normal GeoPulse login flow with secure cookies and JWTs.</p>
+<p>Browser users authenticate through the normal GeoPulse login flow with a secure, HTTP-only session cookie.</p>
 <p>External API clients should use a user API token. A token acts as the user that created it and can call the same
 authenticated REST endpoints that user can access, including administrator endpoints when the user is an administrator.
 See <a class="" href="/docs/api/api-tokens">API Tokens</a> for creation and usage details.</p>

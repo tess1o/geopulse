@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.122776b4.js" defer="defer"></script>
-<script src="/assets/js/main.0d9c062b.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.f297ce88.js" defer="defer"></script>
+<script src="/assets/js/main.03a7dc04.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -60,6 +60,20 @@ architecture is important for proper deployment.</p>
 <p>This ensures authentication cookies are only transmitted over secure HTTPS connections.</p>
 <p>For local/development deployments with HTTP:</p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_SECURE_COOKIES=false</span><br></span></code></pre></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="sessions">Sessions<a href="#sessions" class="hash-link" aria-label="Direct link to Sessions" title="Direct link to Sessions" translate="no">​</a></h2>
+<p>Every sign-in is a session stored in the database. The browser holds only an opaque, HTTP-only <code>gp_session</code>
+cookie; API sessions (<code>POST /api/v1/auth/api-sessions</code>) and the mobile app get an access token and a refresh token
+instead. Because the server checks the session on every request, ending a session takes effect immediately:</p>
+<ul>
+<li class=""><strong>Sign out</strong> ends the current session.</li>
+<li class=""><strong>Changing your password</strong> signs out all your other sessions.</li>
+<li class=""><strong>Disabling a user</strong> or <strong>resetting a user&#x27;s password</strong> in the Admin Panel signs that user out everywhere.</li>
+<li class=""><strong>OIDC single logout</strong>: signing out at the identity provider can sign the user out of GeoPulse too, see
+<a class="" href="/docs/system-administration/configuration/oidc-sso#single-logout">OIDC Single Logout</a>.</li>
+</ul>
+<table><thead><tr><th>Environment Variable</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>GEOPULSE_AUTH_SESSION_IDLE_TIMEOUT</code></td><td><code>7d</code></td><td>A session ends after this long without use</td></tr><tr><td><code>GEOPULSE_AUTH_SESSION_ABSOLUTE_TIMEOUT</code></td><td><code>90d</code></td><td>A session ends at the latest this long after sign-in</td></tr><tr><td><code>GEOPULSE_AUTH_ACCESS_TOKEN_LIFESPAN</code></td><td><code>30m</code></td><td>Access token lifetime for API sessions and the mobile app (renewed by refresh)</td></tr></tbody></table>
+<p>API refresh tokens work once: every refresh returns a new pair. If an old refresh token is used again, GeoPulse
+treats it as stolen and ends the session.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="kubernetes--helm-configuration">Kubernetes / Helm Configuration<a href="#kubernetes--helm-configuration" class="hash-link" aria-label="Direct link to Kubernetes / Helm Configuration" title="Direct link to Kubernetes / Helm Configuration" translate="no">​</a></h2>
 <p>Configure in <code>values.yaml</code>:</p>
 <div class="language-yaml codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-yaml codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token key atrule" style="color:#00a4db">config</span><span class="token punctuation" style="color:#393A34">:</span><span class="token plain"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  </span><span class="token key atrule" style="color:#00a4db">cookieDomain</span><span class="token punctuation" style="color:#393A34">:</span><span class="token plain"> </span><span class="token string" style="color:#e3116c">&quot;&quot;</span><span class="token plain">  </span><span class="token comment" style="color:#999988;font-style:italic"># Keep empty for standard nginx deployments</span><span class="token plain"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  </span><span class="token key atrule" style="color:#00a4db">authSecureCookies</span><span class="token punctuation" style="color:#393A34">:</span><span class="token plain"> </span><span class="token boolean important" style="color:#36acaa">true</span><span class="token plain">  </span><span class="token comment" style="color:#999988;font-style:italic"># Set to true for HTTPS/production</span><br></span></code></pre></div></div>
@@ -85,6 +99,12 @@ architecture is important for proper deployment.</p>
 <li class=""><strong>Variable:</strong> <code>GEOPULSE_AUTH_OIDC_LOGIN_ENABLED</code></li>
 <li class=""><strong>Default:</strong> <code>true</code></li>
 <li class=""><strong>Description:</strong> Controls OIDC provider login</li>
+</ul>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="oidc-auto-launch">OIDC Auto-Launch<a href="#oidc-auto-launch" class="hash-link" aria-label="Direct link to OIDC Auto-Launch" title="Direct link to OIDC Auto-Launch" translate="no">​</a></h4>
+<ul>
+<li class=""><strong>Variable:</strong> <code>GEOPULSE_AUTH_OIDC_AUTO_LAUNCH_ENABLED</code></li>
+<li class=""><strong>Default:</strong> <code>false</code></li>
+<li class=""><strong>Description:</strong> When password login is disabled and exactly one OIDC provider is enabled, <code>/login</code> goes straight to that provider instead of showing a single &quot;Continue with&quot; button. After a sign-out the login page waits for a click (so the provider does not sign the user straight back in) until the user presses <strong>Sign in</strong> again. The login page is also shown after a failed sign-in and whenever it is opened as <code>/login?autoLaunch=0</code>, which is how administrators reach password login with the admin bypass</li>
 </ul>
 <h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="admin-login-bypass-control">Admin Login Bypass Control<a href="#admin-login-bypass-control" class="hash-link" aria-label="Direct link to Admin Login Bypass Control" title="Direct link to Admin Login Bypass Control" translate="no">​</a></h4>
 <ul>
@@ -118,7 +138,7 @@ architecture is important for proper deployment.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="behavior">Behavior<a href="#behavior" class="hash-link" aria-label="Direct link to Behavior" title="Direct link to Behavior" translate="no">​</a></h3>
 <ul>
 <li class=""><strong>Existing sessions:</strong> Remain valid when login is disabled. Only NEW logins are blocked.</li>
-<li class=""><strong>Token refresh:</strong> Continues to work. Users with valid refresh tokens can extend their sessions.</li>
+<li class=""><strong>Session renewal:</strong> Existing sessions keep renewing while they are used, up to the absolute session timeout.</li>
 <li class=""><strong>Frontend:</strong> Shows informative messages explaining why login is disabled.</li>
 <li class=""><strong>Guest root navigation:</strong> By default, signed-out users see Home on <code>/</code>. If guest root redirect is enabled, they are sent to <code>/login</code>.</li>
 </ul>
@@ -128,12 +148,13 @@ architecture is important for proper deployment.</p>
 <p>Blocks all new logins while allowing existing users to continue working. Admins can still log in.</p>
 <p><strong>Force OIDC Authentication:</strong></p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED=false</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=true</span><br></span></code></pre></div></div>
-<p>Requires all users to authenticate via OIDC providers.</p>
+<p>Requires all users to authenticate via OIDC providers. With a single provider, add
+<code>GEOPULSE_AUTH_OIDC_AUTO_LAUNCH_ENABLED=true</code> to skip the login page and go straight to it.</p>
 <p><strong>Disable External Authentication:</strong></p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=false</span><br></span></code></pre></div></div>
 <p>Only allows password-based login for internal users.</p>
 <p><strong>Login-First Guest Entry:</strong></p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED=true</span><br></span></code></pre></div></div>
-<p>Signed-out users opening <code>/</code> are redirected directly to <code>/login</code>.</p></div></div></div><div class="row"><div class="col col--12"></div></div></article><div class="row"><div class="col col--12"><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/system-administration/initial-setup"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Initial Setup</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/system-administration/configuration/user-registration"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">User Registration Management</div></a></nav></div></div></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#authentication-cookies" class="table-of-contents__link toc-highlight">Authentication Cookies</a></li><li><a href="#kubernetes--helm-configuration" class="table-of-contents__link toc-highlight">Kubernetes / Helm Configuration</a></li><li><a href="#login-controls" class="table-of-contents__link toc-highlight">Login Controls</a><ul><li><a href="#environment-variables" class="table-of-contents__link toc-highlight">Environment Variables</a></li><li><a href="#hierarchical-structure" class="table-of-contents__link toc-highlight">Hierarchical Structure</a></li><li><a href="#admin-bypass" class="table-of-contents__link toc-highlight">Admin Bypass</a></li><li><a href="#admin-panel-configuration" class="table-of-contents__link toc-highlight">Admin Panel Configuration</a></li><li><a href="#behavior" class="table-of-contents__link toc-highlight">Behavior</a></li><li><a href="#use-cases" class="table-of-contents__link toc-highlight">Use Cases</a></li></ul></li></ul></div></div></div></div></main></div></div></div></div>
+<p>Signed-out users opening <code>/</code> are redirected directly to <code>/login</code>.</p></div></div></div><div class="row"><div class="col col--12"></div></div></article><div class="row"><div class="col col--12"><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/docs/system-administration/initial-setup"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Initial Setup</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/docs/system-administration/configuration/user-registration"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">User Registration Management</div></a></nav></div></div></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#authentication-cookies" class="table-of-contents__link toc-highlight">Authentication Cookies</a></li><li><a href="#sessions" class="table-of-contents__link toc-highlight">Sessions</a></li><li><a href="#kubernetes--helm-configuration" class="table-of-contents__link toc-highlight">Kubernetes / Helm Configuration</a></li><li><a href="#login-controls" class="table-of-contents__link toc-highlight">Login Controls</a><ul><li><a href="#environment-variables" class="table-of-contents__link toc-highlight">Environment Variables</a></li><li><a href="#hierarchical-structure" class="table-of-contents__link toc-highlight">Hierarchical Structure</a></li><li><a href="#admin-bypass" class="table-of-contents__link toc-highlight">Admin Bypass</a></li><li><a href="#admin-panel-configuration" class="table-of-contents__link toc-highlight">Admin Panel Configuration</a></li><li><a href="#behavior" class="table-of-contents__link toc-highlight">Behavior</a></li><li><a href="#use-cases" class="table-of-contents__link toc-highlight">Use Cases</a></li></ul></li></ul></div></div></div></div></main></div></div></div></div>
 </body>
 </html>

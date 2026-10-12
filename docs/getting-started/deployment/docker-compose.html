@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.122776b4.js" defer="defer"></script>
-<script src="/assets/js/main.0d9c062b.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.f297ce88.js" defer="defer"></script>
+<script src="/assets/js/main.03a7dc04.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -36,7 +36,7 @@
 <p>MQTT broker can be deployed if you want to use OwnTracks integration with MQTT protocol. If you don&#x27;t use OwnTracks or
 want to use OwnTracks with HTTP - you don&#x27;t need the MQTT broker. This guide provides steps on how to install the system
 with or without MQTT broker.</p>
-<p>There is one-time service &quot;geopulse-keygen&quot; that creates JWT keys and AI encryption key in the &quot;keys&quot; folder. It starts
+<p>There is one-time service &quot;geopulse-keygen&quot; that creates the encryption key in the &quot;keys&quot; folder. It starts
 and stops automatically, no manual steps are required.</p>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="docker-compose-deployment">Docker Compose Deployment<a href="#docker-compose-deployment" class="hash-link" aria-label="Direct link to Docker Compose Deployment" title="Direct link to Docker Compose Deployment" translate="no">​</a></h2>
@@ -282,7 +282,7 @@ sizes use appropriate memory allocations and query optimization settings.</p><h4
 <li class="">For standard deployments (with nginx proxy): <code>GEOPULSE_COOKIE_DOMAIN=&quot;&quot;</code> (keep empty)</li>
 <li class="">For HTTP deployments: <code>GEOPULSE_AUTH_SECURE_COOKIES=false</code></li>
 <li class="">For HTTPS deployments: <code>GEOPULSE_AUTH_SECURE_COOKIES=true</code></li>
-<li class="">Verify JWT keys exist in <code>keys/</code> directory</li>
+<li class="">Verify the encryption key exists in the <code>keys/</code> directory</li>
 <li class="">For split-subdomain setups, see <a class="" href="/docs/system-administration/configuration/authentication">Authentication Configuration</a></li>
 </ul>
 <p><strong>Network/Proxy issues:</strong></p>
@@ -300,7 +300,7 @@ sizes use appropriate memory allocations and query optimization settings.</p><h4
 </ul>
 <p><strong>Key generation issues:</strong></p>
 <ul>
-<li class="">JWT keys and AI encryption keys are automatically generated in the <code>keys/</code> directory on first startup</li>
+<li class="">The encryption key is automatically generated in the <code>keys/</code> directory on first startup</li>
 <li class="">If you see key-related errors, check that the <code>geopulse-keygen</code> service completed successfully:
 <code>docker compose logs geopulse-keygen</code></li>
 <li class="">Keys are persistent - they won&#x27;t be regenerated if they already exist</li>

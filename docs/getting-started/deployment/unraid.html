@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.122776b4.js" defer="defer"></script>
-<script src="/assets/js/main.0d9c062b.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.f297ce88.js" defer="defer"></script>
+<script src="/assets/js/main.03a7dc04.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -104,7 +104,7 @@
 <p>By default, GeoPulse stores persistent files under:</p>
 <div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">/mnt/user/appdata/geopulse</span><br></span></code></pre></div></div>
 <p>The compose files create these paths:</p>
-<table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td><code>postgres/</code></td><td>PostgreSQL/PostGIS database files.</td></tr><tr><td><code>keys/</code></td><td>JWT keys and AI encryption key generated on first start.</td></tr><tr><td><code>import-drop/</code></td><td>Optional server-side import drop folder.</td></tr><tr><td><code>mosquitto/</code></td><td>MQTT config and data when using the complete compose file. Broker logs use Docker stdout rotation.</td></tr></tbody></table>
+<table><thead><tr><th>Path</th><th>Purpose</th></tr></thead><tbody><tr><td><code>postgres/</code></td><td>PostgreSQL/PostGIS database files.</td></tr><tr><td><code>keys/</code></td><td>Encryption key generated on first start.</td></tr><tr><td><code>import-drop/</code></td><td>Optional server-side import drop folder.</td></tr><tr><td><code>mosquitto/</code></td><td>MQTT config and data when using the complete compose file. Broker logs use Docker stdout rotation.</td></tr></tbody></table>
 <p>To use another appdata path, set <code>GEOPULSE_APPDATA</code> before starting the stack:</p>
 <div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_APPDATA=/mnt/user/appdata/geopulse</span><br></span></code></pre></div></div>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="reverse-proxy">Reverse Proxy<a href="#reverse-proxy" class="hash-link" aria-label="Direct link to Reverse Proxy" title="Direct link to Reverse Proxy" translate="no">​</a></h2>
@@ -126,7 +126,7 @@
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="backup-and-restore">Backup and Restore<a href="#backup-and-restore" class="hash-link" aria-label="Direct link to Backup and Restore" title="Direct link to Backup and Restore" translate="no">​</a></h2>
 <p>Back up the full appdata directory:</p>
 <div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">/mnt/user/appdata/geopulse</span><br></span></code></pre></div></div>
-<p>At minimum, keep <code>postgres/</code> and <code>keys/</code> together. The database and JWT keys must match for existing user sessions and encrypted settings to continue working.</p>
+<p>At minimum, keep <code>postgres/</code> and <code>keys/</code> together. The database and the encryption key must match for encrypted settings to continue working.</p>
 <p>For database-aware backup and restore procedures, see <a class="" href="/docs/system-administration/maintenance/backup-restore">Backup &amp; Restore</a>.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="troubleshooting">Troubleshooting<a href="#troubleshooting" class="hash-link" aria-label="Direct link to Troubleshooting" title="Direct link to Troubleshooting" translate="no">​</a></h2>
 <p><strong>Cannot open the web UI</strong></p>
