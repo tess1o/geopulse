@@ -639,10 +639,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  autoShowTripReplayControls: {
-    type: Boolean,
-    default: true
-  },
   enable3dBuildingsByDefault: {
     type: Boolean,
     default: false
@@ -1185,7 +1181,8 @@ const {
   activeTrip: activeHighlightedTrip,
   showPath,
   supports3d: isVectorMapMode,
-  autoShowControls: computed(() => props.autoShowTripReplayControls)
+  // The trip summary card carries a "Replay" button; the replay bar opens from it.
+  autoShowControls: false
 })
 
 const getCrossTypeSources = () => ({

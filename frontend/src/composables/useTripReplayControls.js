@@ -27,6 +27,7 @@ export const useTripReplayControls = ({
   activeTrip,
   showPath = true,
   supports3d = false,
+  // false: a selected trip shows only a "Replay" button; the controls open (and play) when it is clicked.
   autoShowControls = true
 } = {}) => {
   const replayPathPayload = ref({ tripKey: '', points: [] })
@@ -90,8 +91,6 @@ export const useTripReplayControls = ({
   const showTripReplayRestoreButton = computed(() => (
     showTripReplayBarAvailable.value && replayControlsDismissed.value
   ))
-
-  const shouldAutoShowControls = () => unref(autoShowControls) !== false
 
   const pathReplayState = computed(() => ({
     enabled: showTripReplayBar.value,
@@ -284,7 +283,7 @@ export const useTripReplayControls = ({
       return
     }
 
-    replayControlsDismissed.value = !shouldAutoShowControls()
+    replayControlsDismissed.value = !autoShowControls
     replayPathPayload.value = { tripKey: '', points: [] }
     resetTripReplay({ resetPreferences: true })
   })
@@ -293,17 +292,7 @@ export const useTripReplayControls = ({
     if (!available) {
       replayControlsDismissed.value = false
       resetTripReplay({ resetPreferences: true })
-    } else if (!shouldAutoShowControls()) {
-      replayControlsDismissed.value = true
-    }
-  })
-
-  watch(() => shouldAutoShowControls(), (autoShow) => {
-    if (!showTripReplayBarAvailable.value) {
-      return
-    }
-
-    if (!autoShow) {
+    } else if (!autoShowControls) {
       replayControlsDismissed.value = true
     }
   })

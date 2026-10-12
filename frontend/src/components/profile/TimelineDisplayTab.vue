@@ -55,20 +55,6 @@
                 />
               </template>
             </SettingCard>
-
-            <SettingCard
-              :title="t('profile.timeline.behavior.replayControls.title')"
-              :description="t('profile.timeline.behavior.replayControls.description')"
-              :details="t('profile.timeline.behavior.replayControls.details')"
-              setting-id="autoShowTripReplayControls"
-            >
-              <template #control>
-                <ToggleSwitch
-                  v-model="form.autoShowTripReplayControls"
-                  class="toggle-control"
-                />
-              </template>
-            </SettingCard>
           </div>
         </section>
 
@@ -338,7 +324,6 @@ const form = ref({
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],
@@ -413,7 +398,6 @@ const editablePreferenceKeys = [
   'pathMaxPoints',
   'pathAdaptiveSimplification',
   'showCurrentLocationTelemetry',
-  'autoShowTripReplayControls',
   'enable3dBuildingsByDefault',
   'mapMatchingEnabled',
   'mapMatchingExcludedMovementTypes'
@@ -429,7 +413,6 @@ const normalizePreferences = (preferences = {}) => ({
   pathMaxPoints: Number(preferences.pathMaxPoints ?? 0),
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
-  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
   enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
   mapMatchingExcludedMovementTypes: normalizeMovementTypeList(preferences.mapMatchingExcludedMovementTypes),
@@ -570,7 +553,6 @@ const handleSubmit = async () => {
       pathMaxPoints: form.value.pathMaxPoints,
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
-      autoShowTripReplayControls: form.value.autoShowTripReplayControls,
       enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
       mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false,
       mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes)
@@ -592,7 +574,6 @@ const handleReset = () => {
     pathMaxPoints: 0,
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
-    autoShowTripReplayControls: true,
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],

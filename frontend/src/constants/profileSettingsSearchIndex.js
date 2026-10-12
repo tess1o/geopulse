@@ -125,13 +125,6 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['telemetry', 'current location', 'popup']
   },
   {
-    id: 'autoShowTripReplayControls',
-    title: 'Auto-show Replay Controls',
-    tab: 'timelineDisplay',
-    subtitle: 'Display',
-    keywords: ['replay', 'trip replay', 'controls', 'trip selection']
-  },
-  {
     id: 'enable3dBuildingsByDefault',
     title: 'Enable 3D Buildings by Default',
     tab: 'timelineDisplay',

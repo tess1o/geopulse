@@ -92,20 +92,4 @@ public class MemosPreferencesService {
         }
         return fallback;
     }
-
-    String resolveErrorMessage(Throwable throwable) {
-        String message = throwable.getMessage();
-        if (message != null) {
-            if (message.contains("401") || message.contains("Unauthorized")) {
-                return "Authentication failed";
-            }
-            if (message.contains("404") || message.contains("Not Found")) {
-                return "Server not found";
-            }
-            if (message.toLowerCase(Locale.ROOT).contains("timeout") || message.contains("Connection refused")) {
-                return "Connection timeout";
-            }
-        }
-        return "Failed to connect to Memos server";
-    }
 }

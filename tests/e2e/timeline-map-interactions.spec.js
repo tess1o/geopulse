@@ -525,10 +525,9 @@ test.describe('Timeline Map Interactions', () => {
       await expect(page.locator('.map-color-legend--speed')).toHaveCount(0);
     });
 
-    test('should show the speed legend in the trip summary when replay controls are not auto-shown', async ({page, isolatedUsers, dbManager, mapMode}) => {
+    test('should show the speed legend in the trip summary', async ({page, isolatedUsers, dbManager, mapMode}) => {
       const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
-        colorScheme: 'RED_GREEN_SAFE',
-        autoShowTripReplayControls: false
+        colorScheme: 'RED_GREEN_SAFE'
       });
 
       await selectCarTrip(timelinePage);

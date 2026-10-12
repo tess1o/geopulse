@@ -111,7 +111,7 @@ const notesStore = useNotesStore()
 const aiStore = useAIStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, timeDisplayMode, language, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, timeDisplayMode, language, defaultDateRangePreset, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -156,7 +156,6 @@ const timelineDisplayPrefs = ref({
   pathAdaptiveSimplification: true,
   defaultDateRangePreset: defaultDateRangePreset.value || '',
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true,
   enable3dBuildingsByDefault: enable3dBuildingsByDefault.value ?? false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],
@@ -558,7 +557,6 @@ const loadTimelineDisplayPreferences = async () => {
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
         defaultDateRangePreset: data.defaultDateRangePreset || '',
         showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
-        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: data.mapMatchingEnabled ?? false,
         mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)

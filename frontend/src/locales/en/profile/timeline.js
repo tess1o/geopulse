@@ -20,11 +20,6 @@ export default {
             title: 'Current-location telemetry',
             description: 'Show telemetry values in the current-location map popup.',
             details: 'This affects only popup visibility. Telemetry storage and GPS Data table are unchanged.'
-        },
-        replayControls: {
-            title: 'Auto-show replay controls',
-            description: 'Open the replay control bar when a trip is selected.',
-            details: 'When disabled, trip replay remains available from a compact Replay button.'
         }
     },
     sources: {

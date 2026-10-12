@@ -244,7 +244,6 @@ const timelineDisplayPrefs = {
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],

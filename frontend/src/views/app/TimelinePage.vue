@@ -63,7 +63,6 @@
               :panoramax-available="panoramaxAvailable"
               :panoramax-endpoint="panoramaxEndpoint"
               :enable-trip-replay="true"
-              :auto-show-trip-replay-controls="autoShowTripReplayControls"
               :enable3d-buildings-by-default="enable3dBuildingsByDefault"
               :read-only="demoReadOnly"
               @timeline-marker-click="handleTimelineMarkerClick"
@@ -264,9 +263,6 @@ const readTimelineDisplayFallback = () => {
     customMapTileUrl: customMapTileUrlSource || null,
     customMapStyleUrl: customMapStyleUrlSource || null,
     mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || cachedProfile.mapRenderMode),
-    autoShowTripReplayControls: user.autoShowTripReplayControls
-      ?? cachedProfile.autoShowTripReplayControls
-      ?? true,
     enable3dBuildingsByDefault: user.enable3dBuildingsByDefault
       ?? cachedProfile.enable3dBuildingsByDefault
       ?? false,
@@ -297,7 +293,6 @@ const showCurrentLocationTelemetry = ref(initialTimelineDisplaySettings.showCurr
 const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
-const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
 const enable3dBuildingsByDefault = ref(initialTimelineDisplaySettings.enable3dBuildingsByDefault)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
 const mapMatchingExcludedMovementTypes = ref(initialTimelineDisplaySettings.mapMatchingExcludedMovementTypes)
@@ -788,7 +783,6 @@ const loadTimelineDisplaySettings = async () => {
       ? data.customMapStyleUrl || null
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
-    autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
     enable3dBuildingsByDefault.value = data?.enable3dBuildingsByDefault ?? fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = data?.mapMatchingEnabled ?? fallback.mapMatchingEnabled
     mapMatchingExcludedMovementTypes.value = Array.isArray(data?.mapMatchingExcludedMovementTypes)
@@ -801,7 +795,6 @@ const loadTimelineDisplaySettings = async () => {
     customMapTileUrl.value = fallback.customMapTileUrl
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
-    autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
     enable3dBuildingsByDefault.value = fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = fallback.mapMatchingEnabled
     mapMatchingExcludedMovementTypes.value = fallback.mapMatchingExcludedMovementTypes

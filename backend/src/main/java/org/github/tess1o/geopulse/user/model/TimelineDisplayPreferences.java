@@ -71,9 +71,6 @@ public class TimelineDisplayPreferences implements Serializable {
     /** Show telemetry in the current-location popup on the Timeline map. Default: true. */
     private Boolean showCurrentLocationTelemetry;
 
-    /** Automatically show trip replay controls when a trip is selected. Default: true. */
-    private Boolean autoShowTripReplayControls;
-
     /** Enable 3D buildings when a compatible MapTiler vector map opens. Default: false. */
     private Boolean enable3dBuildingsByDefault;
 
@@ -124,7 +121,6 @@ public class TimelineDisplayPreferences implements Serializable {
                 .pathMaxPoints(pathMaxPoints != null ? pathMaxPoints : 0)
                 .pathAdaptiveSimplification(pathAdaptiveSimplification != null ? pathAdaptiveSimplification : true)
                 .showCurrentLocationTelemetry(showCurrentLocationTelemetry != null ? showCurrentLocationTelemetry : true)
-                .autoShowTripReplayControls(autoShowTripReplayControls != null ? autoShowTripReplayControls : true)
                 .enable3dBuildingsByDefault(enable3dBuildingsByDefault != null ? enable3dBuildingsByDefault : false)
                 .mapMatchingEnabled(mapMatchingEnabled != null ? mapMatchingEnabled : false)
                 .mapMatchingExcludedMovementTypes(mapMatchingExcludedMovementTypes != null

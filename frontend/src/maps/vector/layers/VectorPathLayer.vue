@@ -709,6 +709,8 @@ const renderLayer = () => {
     removeLayers(props.map, [state.highlightedCasingLayerId, state.highlightedHitLayerId, state.highlightedLineLayerId])
     removeSources(props.map, [state.highlightedSourceId])
     hoverController.syncTripHoverContext(null, [])
+    // Resets the emission key too, so selecting the same trip again re-sends its replay path.
+    emitReplayPathData(null)
     syncReplayFocusLayerVisibility()
     syncReplayMarker()
     registerEvents()
