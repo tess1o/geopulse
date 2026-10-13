@@ -315,7 +315,7 @@ const loadUsers = async () => {
       page: page.value.toString(),
       size: pageSize.value.toString(),
       sortBy: sortField.value,
-      sortDir: sortOrder.value === 1 ? 'asc' : 'desc'
+      sortDirection: sortOrder.value === 1 ? 'asc' : 'desc'
     })
 
     if (searchQuery.value) {

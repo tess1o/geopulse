@@ -2055,8 +2055,8 @@ const loadRawGpsPoints = async () => {
 
   try {
     const data = await technicalDataStore.fetchRawMapPoints({
-      startTime,
-      endTime,
+      from: startTime,
+      to: endTime,
       limit: 10000
     })
     if (requestId !== rawGpsPointsRequestId) return
