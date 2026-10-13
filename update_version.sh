@@ -28,7 +28,6 @@ files_to_update=(
     "frontend/pom.xml"
     "frontend/nginx.conf"
     "pom.xml"
-    "charts/index.yaml"
     "docs/openapi/openapi.json"
     "docs/openapi/openapi.yaml"
     "helm/geopulse/values.yaml"

@@ -103,6 +103,12 @@ helm repo update
 helm upgrade geopulse geopulse/geopulse -f your-values.yaml
 ```
 
+If you installed from the OCI registry:
+
+```bash
+helm upgrade geopulse oci://ghcr.io/tess1o/charts/geopulse -f your-values.yaml
+```
+
 ### Step 3: Verify Deployment
 
 Check that the pods are running with the new version:

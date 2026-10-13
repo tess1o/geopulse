@@ -70,3 +70,4 @@ npm-debug.log*
 /backup/
 build_native.sh
 deploy-geopulse.sh
+/charts/

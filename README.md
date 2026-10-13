@@ -240,6 +240,8 @@ helm repo update
 helm install my-geopulse geopulse/geopulse
 ```
 
+Or install the signed OCI chart from GHCR: `helm install my-geopulse oci://ghcr.io/tess1o/charts/geopulse`
+
 **Post-deployment steps:**
 
 1. Create the first account to become admin automatically, or set `GEOPULSE_ADMIN_EMAIL` for an explicit admin email.

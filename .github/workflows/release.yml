@@ -1105,66 +1105,20 @@ jobs:
           cd docs-website
           npm ci
 
-      - name: Fetch published Helm index from GitHub Pages
+      - name: Restore existing Helm charts from gh-pages
         run: |
-          echo "Fetching current published index.yaml from GitHub Pages..."
-          PUBLISHED_INDEX="https://tess1o.github.io/geopulse/charts/index.yaml"
+          # gh-pages is the source of truth for published charts. Never build a fresh
+          # index here: deploying it would drop every older version from the Helm repo.
+          git fetch origin gh-pages
+          rm -rf charts
+          git checkout origin/gh-pages -- charts/
 
-          # Try to fetch with retries (exponential backoff: 2s, 4s, 8s)
-          for i in 1 2 3; do
-            if curl -sSfL -o charts/published-index.yaml "$PUBLISHED_INDEX" && \
-               grep -q "^apiVersion: v1$" charts/published-index.yaml && \
-               grep -q "^entries:" charts/published-index.yaml; then
-              echo "✅ Successfully fetched published index"
-              echo "MERGE_INDEX=charts/published-index.yaml" >> $GITHUB_ENV
-              break
-            else
-              rm -f charts/published-index.yaml
-              if [ $i -eq 3 ]; then
-                echo "⚠️ Could not fetch published index, will use local index as fallback"
-                echo "MERGE_INDEX=charts/index.yaml" >> $GITHUB_ENV
-              else
-                WAIT_TIME=$((2 ** i))
-                echo "Attempt $i failed, retrying in ${WAIT_TIME}s..."
-                sleep $WAIT_TIME
-              fi
-            fi
-          done
-
-      - name: Download existing Helm charts from GitHub Pages
-        run: |
-          echo "Downloading existing chart packages to preserve old versions..."
-          CHARTS_URL="https://tess1o.github.io/geopulse/charts"
-
-          # Only download if we successfully fetched the published index
-          if [ -f charts/published-index.yaml ]; then
-            # Extract all chart URLs from the published index
-            CHART_URLS=$(grep -E "^\s+- https://tess1o.github.io/geopulse/charts/geopulse-.*\.tgz" charts/published-index.yaml | sed 's/.*- //' | sort -u)
-
-            if [ -n "$CHART_URLS" ]; then
-              echo "Found existing charts to download:"
-              echo "$CHART_URLS"
-
-              # Download each chart
-              for URL in $CHART_URLS; do
-                FILENAME=$(basename "$URL")
-                echo "Downloading $FILENAME..."
-                if curl -sSfL -o "charts/$FILENAME" "$URL"; then
-                  echo "✅ Downloaded $FILENAME"
-                else
-                  echo "⚠️ Failed to download $FILENAME (may not exist yet)"
-                fi
-              done
-
-              echo ""
-              echo "Downloaded charts:"
-              ls -lh charts/*.tgz 2>/dev/null || echo "No charts downloaded"
-            else
-              echo "No existing charts found in published index"
-            fi
-          else
-            echo "⚠️ Skipping chart download - no published index available"
+          if [ ! -f charts/index.yaml ]; then
+            echo "❌ charts/index.yaml not found on gh-pages"
+            exit 1
           fi
+
+          echo "✅ Restored $(ls -1 charts/*.tgz | wc -l) chart packages from gh-pages"
 
       - name: Package Helm chart
         run: |
@@ -1174,16 +1128,7 @@ jobs:
       - name: Update Helm repo index
         run: |
           echo "Updating Helm repository index..."
-          if [ -f "$MERGE_INDEX" ]; then
-            echo "Merging with: $MERGE_INDEX"
-            helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge "$MERGE_INDEX"
-          else
-            echo "Creating new index (no existing index found)"
-            helm repo index charts --url https://tess1o.github.io/geopulse/charts
-          fi
-
-          # Cleanup temporary file
-          rm -f charts/published-index.yaml
+          helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
 
       - name: Validate Helm index
         run: |
@@ -1275,6 +1220,86 @@ jobs:
           echo "  - Docker Hub"
           echo "  - GitHub Container Registry"
           echo "  - Helm repository (GitHub Pages)"
+          echo "  - Helm chart: oci://ghcr.io/tess1o/charts/geopulse (cosign-signed, see publish-helm-oci job)"
           echo "  - REST API documentation (GitHub Pages)"
           echo ""
           echo "📝 Next: Create GitHub Release at https://github.com/${{ github.repository }}/releases/new?tag=v${{ needs.prepare.outputs.version }}"
+
+  # Publish the Helm chart as a cosign-signed OCI artifact on GHCR
+  publish-helm-oci:
+    needs: [prepare, build-frontend, create-jvm-manifests, create-native-manifests, create-native-compat-manifests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # keyless cosign signing via GitHub OIDC
+    env:
+      CHART_REPO: oci://ghcr.io/tess1o/charts
+      CHART_REF: ghcr.io/tess1o/charts/geopulse
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          echo "$GITHUB_TOKEN" | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Package Helm chart
+        run: |
+          helm package helm/geopulse -d dist
+          if [ ! -f "dist/geopulse-${VERSION}.tgz" ]; then
+            echo "❌ dist/geopulse-${VERSION}.tgz not found - does helm/geopulse/Chart.yaml version match the tag?"
+            ls -1 dist
+            exit 1
+          fi
+
+      - name: Push Helm chart to GHCR
+        id: push
+        run: |
+          set -o pipefail
+          helm push "dist/geopulse-${VERSION}.tgz" "$CHART_REPO" 2>&1 | tee push.log
+          DIGEST=$(grep -oE 'sha256:[a-f0-9]{64}' push.log | head -1)
+          if [ -z "$DIGEST" ]; then
+            echo "❌ Could not read the chart digest from helm push output"
+            exit 1
+          fi
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "✅ Pushed ${CHART_REF}:${VERSION}@${DIGEST}"
+
+      - name: Sign Helm chart with cosign
+        run: |
+          cosign sign --yes "${CHART_REF}@${{ steps.push.outputs.digest }}"
+
+      - name: Verify Helm chart signature
+        run: |
+          cosign verify "${CHART_REF}@${{ steps.push.outputs.digest }}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity "https://github.com/${{ github.workflow_ref }}" > /dev/null
+          echo "✅ Signature verified"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Helm chart (OCI)"
+            echo ""
+            echo "Published \`${CHART_REF}:${VERSION}\` (\`${{ steps.push.outputs.digest }}\`), signed with cosign."
+            echo ""
+            echo '```bash'
+            echo "helm install geopulse ${CHART_REPO}/geopulse --version ${VERSION}"
+            echo "cosign verify ${CHART_REF}:${VERSION} \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com \\"
+            echo "  --certificate-identity-regexp '^https://github.com/tess1o/geopulse/.github/workflows/release.yml@refs/tags/v'"
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY

@@ -18,6 +18,67 @@ helm repo update
 helm install my-geopulse geopulse/geopulse
 ```
 
+## Installation from OCI registry (GHCR)
+
+Each release also publishes the chart as an OCI artifact to GitHub Container Registry. Helm 3.8+ can install it without `helm repo add`:
+
+```bash
+helm install my-geopulse oci://ghcr.io/tess1o/charts/geopulse
+```
+
+Add `--version <version>` to pin a release. Upgrades use the same reference:
+
+```bash
+helm upgrade my-geopulse oci://ghcr.io/tess1o/charts/geopulse -f your-values.yaml
+```
+
+### Verifying the chart signature
+
+The OCI chart is signed with [cosign](https://github.com/sigstore/cosign) keyless signing from the GeoPulse release workflow. To verify it:
+
+```bash
+cosign verify ghcr.io/tess1o/charts/geopulse:<version> \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/tess1o/geopulse/.github/workflows/release.yml@refs/tags/v'
+```
+
+### GitOps with Flux
+
+Flux can pull the chart as an `OCIRepository` and check the signature before reconciling:
+
+```yaml
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: geopulse
+  namespace: geopulse
+spec:
+  interval: 1h
+  url: oci://ghcr.io/tess1o/charts/geopulse
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    semver: ">=1.0.0"
+  verify:
+    provider: cosign
+    matchOIDCIdentity:
+      - issuer: "^https://token.actions.githubusercontent.com$"
+        subject: "^https://github.com/tess1o/geopulse/.github/workflows/release.yml@refs/tags/v.*$"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: geopulse
+  namespace: geopulse
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: geopulse
+  values: {}
+```
+
 ## Installation from source code
 
 ### 1. Clone the Repository

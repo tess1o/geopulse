@@ -16,6 +16,12 @@ helm install geopulse geopulse/geopulse
 helm install geopulse geopulse/geopulse -f custom-values.yaml
 ```
 
+The chart is also published as a cosign-signed OCI artifact on GHCR:
+
+```bash
+helm install geopulse oci://ghcr.io/tess1o/charts/geopulse
+```
+
 ## Documentation
 
 For comprehensive documentation, please visit:

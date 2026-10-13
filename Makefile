@@ -23,7 +23,7 @@ endef
 
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
-all: build-backend-jvm build-backend-native build-frontend openapi publish-helm
+all: build-backend-jvm build-backend-native build-frontend openapi
 .PHONY: build-all
 build-all: build-backend-jvm build-backend-native build-frontend
 
@@ -177,23 +177,6 @@ openapi:
 	@grep -q '"x-tagGroups"' docs/openapi/openapi.json || \
 		(echo "❌ OpenAPI filter did not run: x-tagGroups is missing. Check the GeoPulseOpenApiFilter build logs." && exit 1)
 	@echo "✅ OpenAPI spec copied to docs/openapi/"
-
-.PHONY: publish-helm
-publish-helm:
-	@echo "📦 Packaging Helm chart..."
-	helm package helm/geopulse -d charts
-
-	@echo "🧩 Updating Helm repo index..."
-	helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
-
-	@echo "📂 Copying charts to docs-website static directory..."
-	mkdir -p docs-website/static/charts
-	cp -r charts/* docs-website/static/charts/
-
-	@echo "🚀 Deploying documentation with Helm charts..."
-	cd docs-website && GIT_USER=tess1o npm run deploy
-
-	@echo "✅ Helm charts and documentation published successfully!"
 
 # Backend unit tests
 .PHONY: backend-test-unit
