@@ -82,6 +82,25 @@ export default {
         instructions: 'Інструкції',
         edit: 'Редагувати'
     },
+    status: {
+        lastReceived: 'Останні дані отримано: {time}',
+        neverReceived: 'Дані ще не надходили',
+        newestPoint: 'Найновіша збережена точка від {time}',
+        lastSkipped: 'Остання пропущена точка: {reason} ({time})',
+        rejection: {
+            ACCURACY_EXCEEDED: 'точність {accuracy} м перевищує ліміт {threshold} м',
+            MISSING_ACCURACY: 'точність не передано, хоча встановлено ліміт {threshold} м',
+            NEGATIVE_ACCURACY: 'недійсна точність {accuracy} м',
+            SPEED_EXCEEDED: 'швидкість {speed} км/год перевищує ліміт {threshold} км/год',
+            DUPLICATE: 'дублікат уже збереженої точки',
+            INVALID_PAYLOAD: 'бракує координат або часу',
+            UNKNOWN: 'відхилено'
+        },
+        authFailure: {
+            INVALID_CREDENTIALS: 'Неправильний пароль {time}. Перевірте облікові дані в застосунку трекера.',
+            UNKNOWN: 'Запит відхилено {time}.'
+        }
+    },
     dialog: {
         editHeader: 'Редагувати джерело місцезнаходження',
         addHeader: 'Додати джерело місцезнаходження',

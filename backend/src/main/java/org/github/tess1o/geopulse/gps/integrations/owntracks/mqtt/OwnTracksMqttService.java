@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPayloadDecryptionService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
@@ -62,6 +63,9 @@ public class OwnTracksMqttService {
 
     @Inject
     OwnTracksPayloadDecryptionService payloadDecryptionService;
+
+    @Inject
+    GpsSourceIngestStatusService ingestStatusService;
 
     private MqttClient mqttClient;
     private volatile boolean maintenancePaused;
@@ -373,6 +377,7 @@ public class OwnTracksMqttService {
                     locationMessage, authenticationResult.getUserId(), deviceId,
                     GpsSourceType.OWNTRACKS, authenticationResult.getConfig());
             if (summary != null) summary.logCompletion(GpsSourceType.OWNTRACKS, started);
+            ingestStatusService.recordIngest(authenticationResult.getConfig(), summary);
 
         } catch (Exception e) {
             log.error("Error processing OwnTracks MQTT message", e);

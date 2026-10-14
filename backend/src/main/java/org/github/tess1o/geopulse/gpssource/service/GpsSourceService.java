@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.gpssource.mapper.GpsSourceConfigMapper;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigDTO;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceIngestStatusDTO;
 import org.github.tess1o.geopulse.gpssource.model.UpdateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -21,6 +22,7 @@ import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     private final SecurePasswordUtils passwordUtils;
     private final EntityManager em;
     private final AIEncryptionService encryptionService;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     @Getter
     @ConfigProperty(name = "geopulse.gps.filter.inaccurate-data.enabled", defaultValue = "false")
@@ -59,19 +62,27 @@ public class GpsSourceService implements GpsSourceConfigProvider {
                             GpsSourceConfigMapper gpsSourceMapper,
                             SecurePasswordUtils passwordUtils,
                             EntityManager em,
-                            AIEncryptionService encryptionService) {
+                            AIEncryptionService encryptionService,
+                            GpsSourceIngestStatusService ingestStatusService) {
         this.gpsSourceRepository = gpsSourceRepository;
         this.gpsSourceMapper = gpsSourceMapper;
         this.passwordUtils = passwordUtils;
         this.em = em;
         this.encryptionService = encryptionService;
+        this.ingestStatusService = ingestStatusService;
     }
 
 
     @Transactional
     public List<GpsSourceConfigDTO> findGpsSourceConfigs(UUID userId) {
         List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserId(userId);
-        return configs.stream().map(gpsSourceMapper::toDTO).toList();
+        Map<UUID, GpsSourceIngestStatusDTO> statuses = ingestStatusService.findBySourceConfigIds(
+                configs.stream().map(GpsSourceConfigEntity::getId).toList());
+        return configs.stream().map(config -> {
+            GpsSourceConfigDTO dto = gpsSourceMapper.toDTO(config);
+            dto.setIngestStatus(statuses.get(config.getId()));
+            return dto;
+        }).toList();
     }
 
     @Transactional

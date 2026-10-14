@@ -84,6 +84,25 @@ export default {
         instructions: 'Instructions',
         edit: 'Edit'
     },
+    status: {
+        lastReceived: 'Last data received: {time}',
+        neverReceived: 'No data received yet',
+        newestPoint: 'Newest stored point is from {time}',
+        lastSkipped: 'Last skipped point: {reason} ({time})',
+        rejection: {
+            ACCURACY_EXCEEDED: 'accuracy {accuracy} m is above the {threshold} m limit',
+            MISSING_ACCURACY: 'no accuracy reported while a {threshold} m limit is set',
+            NEGATIVE_ACCURACY: 'invalid accuracy {accuracy} m',
+            SPEED_EXCEEDED: 'speed {speed} km/h is above the {threshold} km/h limit',
+            DUPLICATE: 'duplicate of a point already stored',
+            INVALID_PAYLOAD: 'missing coordinates or timestamp',
+            UNKNOWN: 'rejected'
+        },
+        authFailure: {
+            INVALID_CREDENTIALS: 'Wrong password used {time}. Check the credentials in your tracker app.',
+            UNKNOWN: 'A request was refused {time}.'
+        }
+    },
     dialog: {
         editHeader: 'Edit Location Source',
         addHeader: 'Add Location Source',

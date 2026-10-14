@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks;
 
 import jakarta.ws.rs.core.Response;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPayloadDecryptionService;
@@ -51,6 +52,9 @@ class OwnTracksResourceTest {
     @Mock
     private OwnTracksPayloadDecryptionService payloadDecryptionService;
 
+    @Mock
+    private GpsSourceIngestStatusService ingestStatusService;
+
     private OwnTracksResource resource;
 
     @BeforeEach
@@ -60,7 +64,8 @@ class OwnTracksResourceTest {
                 authRegistry,
                 ownTracksPoiService,
                 ownTracksTagService,
-                payloadDecryptionService
+                payloadDecryptionService,
+                ingestStatusService
         );
     }
 

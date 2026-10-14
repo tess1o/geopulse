@@ -34,6 +34,29 @@
           </div>
         </template>
         <template #content>
+          <div class="source-ingest-status" :data-testid="`source-ingest-status-${source.id}`">
+            <div class="ingest-line">
+              <span class="ingest-dot" :class="`ingest-dot--${statuses[source.id].severity}`"></span>
+              <span v-if="statuses[source.id].lastReceivedAt">
+                {{ t('locationSources.status.lastReceived', { time: timezone.timeAgo(statuses[source.id].lastReceivedAt) }) }}
+              </span>
+              <span v-else>{{ t('locationSources.status.neverReceived') }}</span>
+            </div>
+            <div v-if="statuses[source.id].newestPointAt" class="ingest-detail">
+              {{ t('locationSources.status.newestPoint', { time: timezone.formatDateTimeDisplay(statuses[source.id].newestPointAt) }) }}
+            </div>
+            <div v-if="statuses[source.id].rejection" class="ingest-detail">
+              {{ t('locationSources.status.lastSkipped', {
+                reason: t(statuses[source.id].rejection.messageKey, statuses[source.id].rejection.params),
+                time: timezone.timeAgo(statuses[source.id].rejection.at)
+              }) }}
+            </div>
+            <div v-if="statuses[source.id].authProblem" class="ingest-detail ingest-detail--danger">
+              <i class="pi pi-exclamation-triangle"></i>
+              {{ t(statuses[source.id].authProblem.messageKey, { time: timezone.timeAgo(statuses[source.id].authProblem.at) }) }}
+            </div>
+          </div>
+
           <div class="source-actions">
             <div class="status-toggle">
               <ToggleSwitch
@@ -74,7 +97,10 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useTimezone } from '@/composables/useTimezone'
+import { buildLocationSourceStatus } from '@/components/location-sources/locationSourceStatus'
 import {
   getLocationSourceDisplayName,
   getLocationSourceIcon,
@@ -82,13 +108,18 @@ import {
 } from '@/components/location-sources/locationSourceMeta'
 
 const { t } = useI18n()
+const timezone = useTimezone()
 
-defineProps({
+const props = defineProps({
   sources: {
     type: Array,
     default: () => []
   }
 })
+
+const statuses = computed(() => Object.fromEntries(
+  props.sources.map(source => [source.id, buildLocationSourceStatus(source)])
+))
 
 const emit = defineEmits([
   'status-change',
@@ -168,6 +199,54 @@ const emit = defineEmits([
 .connection-badge {
   font-size: 0.7rem;
   font-weight: 500;
+}
+
+.source-ingest-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background: var(--gp-surface-muted);
+  font-size: 0.85rem;
+  color: var(--gp-text-primary);
+}
+
+.ingest-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ingest-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--gp-text-muted);
+}
+
+.ingest-dot--success {
+  background: var(--gp-success);
+}
+
+.ingest-dot--warn {
+  background: var(--gp-warning);
+}
+
+.ingest-dot--danger {
+  background: var(--gp-danger);
+}
+
+.ingest-detail {
+  color: var(--gp-text-secondary);
+  padding-left: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.ingest-detail--danger {
+  color: var(--gp-danger-text);
 }
 
 .source-actions {

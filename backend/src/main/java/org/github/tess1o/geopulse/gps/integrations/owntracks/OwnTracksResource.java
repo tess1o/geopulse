@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks;
 
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -58,6 +59,7 @@ public class OwnTracksResource {
     private final OwnTracksPoiService ownTracksPoiService;
     private final OwnTracksTagService ownTracksTagService;
     private final OwnTracksPayloadDecryptionService payloadDecryptionService;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
@@ -66,12 +68,14 @@ public class OwnTracksResource {
                            GpsIntegrationAuthenticatorRegistry authRegistry,
                            OwnTracksPoiService ownTracksPoiService,
                            OwnTracksTagService ownTracksTagService,
-                           OwnTracksPayloadDecryptionService payloadDecryptionService) {
+                           OwnTracksPayloadDecryptionService payloadDecryptionService,
+                           GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
         this.ownTracksPoiService = ownTracksPoiService;
         this.ownTracksTagService = ownTracksTagService;
         this.payloadDecryptionService = payloadDecryptionService;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @POST
@@ -165,6 +169,7 @@ public class OwnTracksResource {
             var summary = gpsPointService.saveOwnTracksGpsPoint(
                     ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
             if (summary != null) summary.logCompletion(GpsSourceType.OWNTRACKS, requestStart);
+            ingestStatusService.recordIngest(config, summary);
             return Response.ok(EMPTY_JSON_ARRAY).build();
         } catch (Exception e) {
             result = "error";

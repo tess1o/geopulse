@@ -104,8 +104,9 @@ public class GpsPointMapper {
         // Convert speed from m/s to km/h for consistent storage (HomeAssistant sends m/s)
         Double speedMs = location.getSpeed();
         entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
-        entity.setAltitude(Math.round(location.getAltitude()) * 1.0);
-        entity.setBattery(message.getBattery().getLevel() * 1.0);
+        entity.setAltitude(location.getAltitude() != null ? Math.round(location.getAltitude()) * 1.0 : null);
+        Integer batteryLevel = message.getBattery() != null ? message.getBattery().getLevel() : null;
+        entity.setBattery(batteryLevel != null ? batteryLevel * 1.0 : null);
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
 

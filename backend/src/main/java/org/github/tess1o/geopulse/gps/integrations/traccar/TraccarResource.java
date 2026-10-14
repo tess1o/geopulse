@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.traccar;
 
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -44,11 +45,14 @@ public class TraccarResource {
 
     private final GpsPointService gpsPointService;
     private final GpsSourceService gpsSourceService;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     public TraccarResource(GpsPointService gpsPointService,
-                           GpsSourceService gpsSourceService) {
+                           GpsSourceService gpsSourceService,
+                           GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.gpsSourceService = gpsSourceService;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @POST
@@ -83,7 +87,9 @@ public class TraccarResource {
 
         var summary = new GpsPointService.GpsIngestSummary(0, 0, 0, 0);
         for (GpsSourceConfigEntity config : matchedConfigs) {
-            summary = summary.plus(gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config));
+            var configSummary = gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config);
+            ingestStatusService.recordIngest(config, configSummary);
+            summary = summary.plus(configSummary);
         }
         summary.logCompletion(GpsSourceType.TRACCAR, started);
         return Response.ok().build();

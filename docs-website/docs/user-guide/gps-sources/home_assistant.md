@@ -45,12 +45,12 @@ rest_command:
         "location": {
           "latitude": {{ state_attr('device_tracker.iphone_16', 'latitude') }},
           "longitude": {{ state_attr('device_tracker.iphone_16', 'longitude') }},
-          "accuracy": {{ state_attr('device_tracker.iphone_16', 'gps_accuracy') | default(0, true) }},
-          "altitude": {{ state_attr('device_tracker.iphone_16', 'altitude') | default(0, true) }},
-          "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | default(0, true) }}
+          "accuracy": {{ state_attr('device_tracker.iphone_16', 'gps_accuracy') | tojson }},
+          "altitude": {{ state_attr('device_tracker.iphone_16', 'altitude') | tojson }},
+          "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | tojson }}
         },
         "battery": {
-          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(states('sensor.iphone_16_battery_level'), true) | default(0, true) }}
+          "level": {{ (state_attr('device_tracker.iphone_16', 'battery_level') or states('sensor.iphone_16_battery_level')) | int(none) | tojson }}
         }
       }
 ```
@@ -60,6 +60,12 @@ rest_command:
 *   Replace `https://geopulse.yourdomain.com` with the actual domain of your GeoPulse server.
 *   Replace `YOUR_CONFIGURED_TOKEN` with the token you generated in GeoPulse in Step 1.
 *   Replace `iphone_16` with the actual `entity_id` of your device tracker in Home Assistant.
+
+`latitude` and `longitude` are required. A location without them is skipped. `accuracy`, `altitude`, `speed` and `battery` are optional: the `tojson` filter sends `null` when Home Assistant doesn't report a value, and GeoPulse stores the field as empty. Avoid replacing missing values with `0`. An accuracy of `0` claims a perfect GPS fix and gets past the accuracy filter, and a speed of `0` makes every point look stationary.
+
+:::tip Test the template first
+Paste the `payload` template into **Developer Tools → Template** in Home Assistant to check that it renders valid JSON for your device before restarting.
+:::
 
 ### 2.2: Update `automations.yaml`
 
@@ -79,3 +85,40 @@ Next, add an automation that triggers the `send_gps_data` service whenever your 
 After modifying `configuration.yaml` and `automations.yaml`, you must restart your Home Assistant server for the changes to take effect.
 
 Once Home Assistant restarts, it will begin sending location updates to your GeoPulse account, which will be automatically processed to build your timeline.
+
+To confirm data is arriving, open **Location Sources** in GeoPulse. The Home Assistant card shows when data was last received and why the last skipped point was skipped, if any.
+
+---
+
+## Sending missed points in bulk
+
+The automation above sends one location at a time, and Home Assistant doesn't retry a request that fails. Integrations that queue locations while GeoPulse is unreachable, or that backfill history from the Home Assistant recorder, can send them in one request:
+
+```http
+POST /api/v1/gps/ingest/home-assistant/batch
+Authorization: Bearer YOUR_CONFIGURED_TOKEN
+Content-Type: application/json
+
+[
+  {
+    "device_id": "iphone_16",
+    "timestamp": "2025-06-07T09:15:30+00:00",
+    "location": { "latitude": 49.8419, "longitude": 24.0315, "accuracy": 8 },
+    "battery": { "level": 82 }
+  },
+  {
+    "device_id": "iphone_16",
+    "timestamp": "2025-06-07T09:16:30+00:00",
+    "location": { "latitude": 49.8426, "longitude": 24.0331, "accuracy": 12, "speed": 3.1 }
+  }
+]
+```
+
+*   Each item uses the same format as a single location, but `timestamp` is required. Items without one are skipped, since "now" would misplace a queued point.
+*   Up to 1000 items per request. Larger requests are refused with `413`; split them into several requests.
+*   Points already stored are skipped as duplicates, so it's safe to resend a batch after a failed request.
+*   The response reports what happened to the batch:
+
+```json
+{ "accepted": 2, "saved": 2, "duplicate": 0, "filtered": 0 }
+```

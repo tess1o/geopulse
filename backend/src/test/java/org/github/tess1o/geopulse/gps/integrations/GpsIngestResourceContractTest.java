@@ -225,6 +225,82 @@ class GpsIngestResourceContractTest {
     }
 
     @Test
+    void homeAssistantAcceptsMissingOptionalFieldsAndSkipsMissingCoordinates() {
+        String token = "home-assistant-optional-" + TestIds.uniqueValue("ha");
+        createTokenSource("HOME_ASSISTANT", token, null);
+
+        given()
+                .header("Authorization", "Bearer " + token)
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "device_id", "ha-person",
+                        "timestamp", "2026-05-27T21:00:00Z",
+                        "location", Map.of("latitude", 50.6, "longitude", 30.6)
+                ))
+                .when().post(INGEST + "/home-assistant")
+                .then().statusCode(200);
+
+        Map<String, Object> missingLongitude = new HashMap<>();
+        missingLongitude.put("latitude", 50.7);
+        missingLongitude.put("longitude", null);
+        given()
+                .header("Authorization", "Bearer " + token)
+                .contentType(ContentType.JSON)
+                .body(Map.of("device_id", "ha-person", "timestamp", "2026-05-27T21:01:00Z",
+                        "location", missingLongitude))
+                .when().post(INGEST + "/home-assistant")
+                .then().statusCode(200);
+
+        List<GpsPointEntity> points = gpsPointRepository.findByUserId(userId);
+        assertThat(points).hasSize(1);
+        GpsPointEntity point = points.getFirst();
+        assertThat(point.getCoordinates().getY()).isEqualTo(50.6);
+        assertThat(point.getAccuracy()).isNull();
+        assertThat(point.getAltitude()).isNull();
+        assertThat(point.getVelocity()).isNull();
+        assertThat(point.getBattery()).isNull();
+    }
+
+    @Test
+    void homeAssistantBatchStoresQueuedPointsAndReportsOutcomes() {
+        String token = "home-assistant-batch-" + TestIds.uniqueValue("ha");
+        createTokenSource("HOME_ASSISTANT", token, null);
+
+        Map<String, Object> first = haPoint("2026-05-27T22:00:00Z", 50.80, 30.80);
+        Map<String, Object> second = haPoint("2026-05-27T22:01:00Z", 50.81, 30.81);
+        Map<String, Object> noTimestamp = new HashMap<>(haPoint(null, 50.82, 30.82));
+
+        given()
+                .header("Authorization", "Bearer " + token)
+                .contentType(ContentType.JSON)
+                .body(List.of(second, first, first, noTimestamp))
+                .when().post(INGEST + "/home-assistant/batch")
+                .then()
+                .statusCode(200)
+                .body("accepted", equalTo(4))
+                .body("saved", equalTo(2))
+                .body("duplicate", equalTo(1))
+                .body("filtered", equalTo(1));
+
+        assertThat(gpsPointRepository.findByUserId(userId))
+                .extracting(GpsPointEntity::getTimestamp)
+                .containsExactlyInAnyOrder(Instant.parse("2026-05-27T22:00:00Z"), Instant.parse("2026-05-27T22:01:00Z"));
+
+        List<Map<String, Object>> tooMany = Collections.nCopies(1001, first);
+        assertProblemEnvelope(given()
+                .header("Authorization", "Bearer " + token)
+                .contentType(ContentType.JSON)
+                .body(tooMany)
+                .when().post(INGEST + "/home-assistant/batch"), 413, "PAYLOAD_TOO_LARGE");
+
+        assertProblemEnvelope(given()
+                .header("Authorization", "Bearer invalid-home-assistant-token")
+                .contentType(ContentType.JSON)
+                .body(List.of(first))
+                .when().post(INGEST + "/home-assistant/batch"), 401, "AUTHENTICATION_REQUIRED");
+    }
+
+    @Test
     void nativeIntegrationCredentialsAreRequired() {
         assertProblemEnvelope(given()
                 .contentType(ContentType.JSON)
@@ -282,6 +358,14 @@ class GpsIngestResourceContractTest {
                 .statusCode(201)
                 .body("type", equalTo(source.get("type")))
                 .body("active", equalTo(true));
+    }
+
+    private Map<String, Object> haPoint(String timestamp, double latitude, double longitude) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("device_id", "ha-batch-device");
+        point.put("timestamp", timestamp);
+        point.put("location", Map.of("latitude", latitude, "longitude", longitude, "accuracy", 6.0));
+        return point;
     }
 
     private Map<String, Object> locationPayload(double latitude, double longitude, long timestamp) {

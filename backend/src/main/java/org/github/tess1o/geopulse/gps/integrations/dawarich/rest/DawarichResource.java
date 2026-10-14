@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.integrations.dawarich.rest;
 
 import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -49,11 +50,14 @@ public class DawarichResource {
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
 
-    public DawarichResource(GpsPointService gpsPointService, GpsIntegrationAuthenticatorRegistry authRegistry) {
+    public DawarichResource(GpsPointService gpsPointService, GpsIntegrationAuthenticatorRegistry authRegistry,
+                            GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @GET
@@ -96,6 +100,7 @@ public class DawarichResource {
         var config = authResult.get().getConfig();
         var summary = gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
         if (summary != null) summary.logCompletion(GpsSourceType.DAWARICH, started);
+        ingestStatusService.recordIngest(config, summary);
         return Response.ok().build();
     }
 

@@ -152,6 +152,22 @@ public final class GpsIngestExamples {
             }
             """;
 
+    public static final String HOME_ASSISTANT_BATCH = """
+            [
+              {
+                "device_id": "iphone_16",
+                "timestamp": "2025-06-07T09:15:30+00:00",
+                "location": { "latitude": 49.8419, "longitude": 24.0315, "accuracy": 8 },
+                "battery": { "level": 82 }
+              },
+              {
+                "device_id": "iphone_16",
+                "timestamp": "2025-06-07T09:16:30+00:00",
+                "location": { "latitude": 49.8426, "longitude": 24.0331, "accuracy": 12, "speed": 3.1 }
+              }
+            ]
+            """;
+
     public static final String DAWARICH = """
             {
               "locations": [

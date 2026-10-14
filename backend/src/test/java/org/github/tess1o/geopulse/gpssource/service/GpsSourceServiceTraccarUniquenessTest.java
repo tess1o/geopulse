@@ -52,11 +52,15 @@ class GpsSourceServiceTraccarUniquenessTest {
     @Mock
     private AIEncryptionService encryptionService;
 
+    @Mock
+    private GpsSourceIngestStatusService ingestStatusService;
+
     private GpsSourceService service;
 
     @BeforeEach
     void setUp() {
-        service = new GpsSourceService(gpsSourceRepository, gpsSourceMapper, passwordUtils, em, encryptionService);
+        service = new GpsSourceService(gpsSourceRepository, gpsSourceMapper, passwordUtils, em, encryptionService,
+                ingestStatusService);
     }
 
     @Test

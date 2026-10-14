@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.gpslogger;
 
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -49,11 +50,14 @@ public class GpsLoggerResource {
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     public GpsLoggerResource(GpsPointService gpsPointService,
-                             GpsIntegrationAuthenticatorRegistry authRegistry) {
+                             GpsIntegrationAuthenticatorRegistry authRegistry,
+                             GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @POST
@@ -88,6 +92,7 @@ public class GpsLoggerResource {
 
         var summary = gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.GPSLOGGER, config);
         if (summary != null) summary.logCompletion(GpsSourceType.GPSLOGGER, started);
+        ingestStatusService.recordIngest(config, summary);
         return Response.ok("[]").build();
     }
 }

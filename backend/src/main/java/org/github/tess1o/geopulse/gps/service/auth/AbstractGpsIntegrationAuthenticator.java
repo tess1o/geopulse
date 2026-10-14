@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.gps.service.auth;
 
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceAuthFailureCode;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
@@ -19,8 +21,12 @@ public abstract class AbstractGpsIntegrationAuthenticator implements GpsIntegrat
     @Inject
     protected GpsSourceConfigProvider configProvider;
 
+    @Inject
+    protected GpsSourceIngestStatusService ingestStatusService;
+
     @Override
     public final Optional<GpsAuthenticationResult> authenticate(String authHeader) {
+        GpsSourceConfigEntity config = null;
         try {
             Optional<GpsSourceConfigEntity> configOpt = findConfig(authHeader);
             if (configOpt.isEmpty()) {
@@ -28,7 +34,7 @@ public abstract class AbstractGpsIntegrationAuthenticator implements GpsIntegrat
                 return Optional.empty();
             }
 
-            GpsSourceConfigEntity config = configOpt.get();
+            config = configOpt.get();
             if (!isConfigActive(config)) {
                 return Optional.empty();
             }
@@ -44,6 +50,9 @@ public abstract class AbstractGpsIntegrationAuthenticator implements GpsIntegrat
 
         } catch (InvalidPasswordException | IllegalArgumentException e) {
             logAuthenticationFailed(e);
+            // Only attributable when the source was identified (known username, wrong password); a wrong
+            // token finds no source at all
+            ingestStatusService.recordAuthFailure(config, GpsSourceAuthFailureCode.INVALID_CREDENTIALS);
             return Optional.empty();
         }
     }

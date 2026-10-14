@@ -26,4 +26,5 @@ public class GpsSourceConfigDTO {
     private Integer maxAllowedSpeed;
     private boolean enableDuplicateDetection;
     private Integer duplicateDetectionThresholdMinutes;
+    private GpsSourceIngestStatusDTO ingestStatus; // null until the source receives its first request
 }

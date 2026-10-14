@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.colota;
 
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -39,11 +40,14 @@ public class ColotaResource {
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     public ColotaResource(GpsPointService gpsPointService,
-                          GpsIntegrationAuthenticatorRegistry authRegistry) {
+                          GpsIntegrationAuthenticatorRegistry authRegistry,
+                          GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @POST
@@ -68,6 +72,7 @@ public class ColotaResource {
 
         var summary = gpsPointService.saveColotaGpsPoint(payload, userId, GpsSourceType.COLOTA, config);
         if (summary != null) summary.logCompletion(GpsSourceType.COLOTA, started);
+        ingestStatusService.recordIngest(config, summary);
         return Response.ok("[]").build();
     }
 }

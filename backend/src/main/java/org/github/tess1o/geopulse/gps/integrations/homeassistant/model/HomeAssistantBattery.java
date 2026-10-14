@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class HomeAssistantBattery {
-    private int level;
+    private Integer level; // optional
 }

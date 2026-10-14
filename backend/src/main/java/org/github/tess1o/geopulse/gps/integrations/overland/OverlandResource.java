@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.overland;
 
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
@@ -40,11 +41,14 @@ public class OverlandResource {
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final GpsSourceIngestStatusService ingestStatusService;
 
     @Inject
-    public OverlandResource(GpsPointService gpsPointService, GpsIntegrationAuthenticatorRegistry authRegistry) {
+    public OverlandResource(GpsPointService gpsPointService, GpsIntegrationAuthenticatorRegistry authRegistry,
+                            GpsSourceIngestStatusService ingestStatusService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
+        this.ingestStatusService = ingestStatusService;
     }
 
     @POST
@@ -66,7 +70,9 @@ public class OverlandResource {
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        saveToDb(overlandLocations, userId, config).logCompletion(GpsSourceType.OVERLAND, started);
+        var summary = saveToDb(overlandLocations, userId, config);
+        summary.logCompletion(GpsSourceType.OVERLAND, started);
+        ingestStatusService.recordIngest(config, summary);
         return Response.ok(new OverlandResultResponse("ok")).build();
     }
 

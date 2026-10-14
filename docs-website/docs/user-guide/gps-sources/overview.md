@@ -47,6 +47,17 @@ Once configured, your location sources will appear as individual cards in the **
 *   **Edit:** Modify the source's credentials or filtering settings.
 *   **Delete:** Permanently remove the source from GeoPulse.
 
+### Checking that data arrives
+
+Each card also shows the source's latest activity, which helps when a tracker is set up but nothing appears on your timeline:
+
+*   **Last data received:** when GeoPulse last accepted a request from this source, or *No data received yet*. A dot next to it turns amber when nothing has arrived for a day.
+*   **Newest stored point:** shown when the newest point's GPS time is well behind the time it arrived, for example after a tracker uploads points it queued while offline.
+*   **Last skipped point:** the most recent point that was not stored, and why. For example, it was a duplicate, or its accuracy or speed exceeded the source's filter.
+*   **Wrong password:** shown when a tracker uses this source's username with the wrong password.
+
+A request with an unknown token or username can't be linked to any source, so it doesn't appear on any card. If a source still shows *No data received yet* while your device is sending, check the URL and the token or username in the tracker app.
+
 ---
 
 ## GPS Data Filtering

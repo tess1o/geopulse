@@ -51,17 +51,43 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_NOT_F
 @Slf4j
 public class GpsPointService {
 
-    public record GpsIngestSummary(int accepted, int saved, int duplicate, int filtered) {
+    /**
+     * Outcome counts of one ingest request, plus the latest skipped point's reason and the GPS time of the
+     * newest stored point (both feed the per-source ingest status).
+     */
+    public record GpsIngestSummary(int accepted, int saved, int duplicate, int filtered,
+                                   GpsIngestRejection lastRejection, Instant newestSavedTimestamp) {
+        public GpsIngestSummary(int accepted, int saved, int duplicate, int filtered) {
+            this(accepted, saved, duplicate, filtered, null, null);
+        }
+
         public static GpsIngestSummary of(GpsIngestOutcome outcome) {
+            return of(outcome, null, null);
+        }
+
+        static GpsIngestSummary of(GpsIngestOutcome outcome, GpsIngestRejection rejection, Instant savedTimestamp) {
             return new GpsIngestSummary(1, outcome == GpsIngestOutcome.SAVED ? 1 : 0,
                     outcome == GpsIngestOutcome.DUPLICATE ? 1 : 0,
-                    outcome == GpsIngestOutcome.FILTERED ? 1 : 0);
+                    outcome == GpsIngestOutcome.FILTERED ? 1 : 0,
+                    rejection, savedTimestamp);
+        }
+
+        static GpsIngestSummary invalid(int count) {
+            return count <= 0
+                    ? new GpsIngestSummary(0, 0, 0, 0)
+                    : new GpsIngestSummary(count, 0, 0, count,
+                            GpsIngestRejection.of(GpsIngestRejectionCode.INVALID_PAYLOAD), null);
         }
 
         public GpsIngestSummary plus(GpsIngestSummary other) {
             if (other == null) return this;
+            Instant newest = newestSavedTimestamp;
+            if (other.newestSavedTimestamp != null && (newest == null || other.newestSavedTimestamp.isAfter(newest))) {
+                newest = other.newestSavedTimestamp;
+            }
             return new GpsIngestSummary(accepted + other.accepted, saved + other.saved,
-                    duplicate + other.duplicate, filtered + other.filtered);
+                    duplicate + other.duplicate, filtered + other.filtered,
+                    other.lastRejection != null ? other.lastRejection : lastRejection, newest);
         }
 
         public void logCompletion(GpsSourceType source, long startedNanos) {
@@ -73,8 +99,14 @@ public class GpsPointService {
 
     public enum GpsIngestOutcome { SAVED, DUPLICATE, FILTERED }
 
-    private record PersistResult(GpsIngestOutcome outcome, GpsPointEntity point) {
+    private record PersistResult(GpsIngestOutcome outcome, GpsPointEntity point, GpsIngestRejection rejection) {
+        GpsIngestSummary toSummary() {
+            return GpsIngestSummary.of(outcome, rejection, point != null ? point.getTimestamp() : null);
+        }
     }
+
+    /** Upper bound for one Home Assistant batch request. */
+    public static final int HOME_ASSISTANT_BATCH_MAX_POINTS = 1000;
     private final GpsPointMapper gpsPointMapper;
     private final GpsPointRepository gpsPointRepository;
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
@@ -135,7 +167,7 @@ public class GpsPointService {
         if (filterResult.isRejected()) {
             // Already logged in filtering service
             countGpsPoint(sourceType, "filtered");
-            return new PersistResult(GpsIngestOutcome.FILTERED, null);
+            return new PersistResult(GpsIngestOutcome.FILTERED, null, filterResult.getRejection());
         }
 
         // Check for existing point with the same unique key
@@ -150,7 +182,8 @@ public class GpsPointService {
         if (existingPoint.isPresent()) {
             // It's a duplicate, reject it
             countGpsPoint(sourceType, "duplicate");
-            return new PersistResult(GpsIngestOutcome.DUPLICATE, null);
+            return new PersistResult(GpsIngestOutcome.DUPLICATE, null,
+                    GpsIngestRejection.of(GpsIngestRejectionCode.DUPLICATE));
         } else {
             // Persist the new entity
             stageStart = metricsStart();
@@ -160,7 +193,7 @@ public class GpsPointService {
             geofenceEvaluationService.handlePersistedPoint(entity);
             recordGpsStage(stageStart, sourceType, "geofence", "success");
             countGpsPoint(sourceType, "saved");
-            return new PersistResult(GpsIngestOutcome.SAVED, entity);
+            return new PersistResult(GpsIngestOutcome.SAVED, entity, null);
         }
     }
 
@@ -168,17 +201,23 @@ public class GpsPointService {
         if (result.point() != null) {
             enrichSavedGpsPointsIfBoatReady(userId, List.of(result.point()));
         }
-        return GpsIngestSummary.of(result.outcome());
+        return result.toSummary();
     }
 
+    /**
+     * Counts a point skipped before mapping: a duplicate, or (for {@code FILTERED}) a payload that is missing
+     * required data.
+     */
     private GpsIngestSummary countAndSummarize(GpsSourceType sourceType, GpsIngestOutcome outcome) {
-        countGpsPoint(sourceType, outcome == GpsIngestOutcome.DUPLICATE ? "duplicate" : "filtered");
-        return GpsIngestSummary.of(outcome);
+        return countAndReject(sourceType, outcome).toSummary();
     }
 
     private PersistResult countAndReject(GpsSourceType sourceType, GpsIngestOutcome outcome) {
         countGpsPoint(sourceType, outcome == GpsIngestOutcome.DUPLICATE ? "duplicate" : "filtered");
-        return new PersistResult(outcome, null);
+        GpsIngestRejectionCode code = outcome == GpsIngestOutcome.DUPLICATE
+                ? GpsIngestRejectionCode.DUPLICATE
+                : GpsIngestRejectionCode.INVALID_PAYLOAD;
+        return new PersistResult(outcome, null, GpsIngestRejection.of(code));
     }
 
     private void enrichSavedGpsPointsIfBoatReady(UUID userId, Collection<GpsPointEntity> savedPoints) {
@@ -331,7 +370,7 @@ public class GpsPointService {
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
 
             PersistResult result = filterAndPersistGpsPoint(entity, config);
-            summary = summary.plus(GpsIngestSummary.of(result.outcome()));
+            summary = summary.plus(result.toSummary());
             if (result.point() != null) savedPoints.add(result.point());
         }
         enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
@@ -340,6 +379,46 @@ public class GpsPointService {
 
     @Transactional
     public GpsIngestSummary saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        return finishSingle(saveHomeAssistantGpsPointInternal(data, userId, sourceType, config), userId);
+    }
+
+    /**
+     * Stores a batch of Home Assistant locations, e.g. points queued while GeoPulse was unreachable.
+     * Points without a timestamp are skipped because "now" would misplace a queued point.
+     */
+    @Transactional
+    public GpsIngestSummary saveHomeAssistantGpsPoints(List<HomeAssistantGpsData> data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (data == null || data.isEmpty()) {
+            return new GpsIngestSummary(0, 0, 0, 0);
+        }
+
+        List<HomeAssistantGpsData> validPoints = data.stream()
+                .filter(point -> point != null && point.getTimestamp() != null)
+                .sorted(Comparator.comparing(HomeAssistantGpsData::getTimestamp))
+                .toList();
+        int missingTimestampCount = data.size() - validPoints.size();
+        for (int i = 0; i < missingTimestampCount; i++) countGpsPoint(sourceType, "filtered");
+
+        List<GpsPointEntity> savedPoints = new ArrayList<>();
+        GpsIngestSummary summary = GpsIngestSummary.invalid(missingTimestampCount);
+        for (HomeAssistantGpsData point : validPoints) {
+            PersistResult result = saveHomeAssistantGpsPointInternal(point, userId, sourceType, config);
+            summary = summary.plus(result.toSummary());
+            if (result.point() != null) savedPoints.add(result.point());
+        }
+        enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
+        return summary;
+    }
+
+    private PersistResult saveHomeAssistantGpsPointInternal(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (data == null || data.getLocation() == null
+                || data.getLocation().getLatitude() == null || data.getLocation().getLongitude() == null) {
+            log.warn("Skipping Home Assistant payload for user {}: missing latitude/longitude", userId);
+            return countAndReject(sourceType, GpsIngestOutcome.FILTERED);
+        }
+        if (data.getTimestamp() == null) {
+            data.setTimestamp(Instant.now());
+        }
         Instant timestamp = data.getTimestamp();
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -353,12 +432,12 @@ public class GpsPointService {
             double lon = data.getLocation().getLongitude();
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
+                return countAndReject(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             // Fallback to exact timestamp duplicate check
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
+                return countAndReject(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 
@@ -366,7 +445,7 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
 
-        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
+        return filterAndPersistGpsPoint(entity, config);
     }
 
     @Transactional
@@ -448,11 +527,11 @@ public class GpsPointService {
                 .sorted(Comparator.comparing(GpsPointDTO::getTimestamp))
                 .toList();
         int missingTimestampCount = data.size() - validPoints.size();
-        GpsIngestSummary summary = new GpsIngestSummary(missingTimestampCount, 0, 0, missingTimestampCount);
+        GpsIngestSummary summary = GpsIngestSummary.invalid(missingTimestampCount);
         for (int i = 0; i < missingTimestampCount; i++) countGpsPoint(sourceType, "filtered");
         for (GpsPointDTO point : validPoints) {
             PersistResult result = saveMobileAppGpsPointInternal(point, deviceId, userId, sourceType, config);
-            summary = summary.plus(GpsIngestSummary.of(result.outcome()));
+            summary = summary.plus(result.toSummary());
             if (result.point() != null) savedPoints.add(result.point());
         }
         enrichSavedGpsPointsIfBoatReady(userId, savedPoints);

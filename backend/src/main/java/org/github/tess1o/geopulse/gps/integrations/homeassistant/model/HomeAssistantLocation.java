@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class HomeAssistantLocation {
-    private double latitude;
-    private double longitude;
+    private Double latitude;  // required; a missing value rejects the point instead of storing 0,0
+    private Double longitude; // required
     private Double accuracy; // optional
     private Double altitude; // optional
     private Double speed;    // optional

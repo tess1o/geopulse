@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.integrations.traccar;
 
 import jakarta.ws.rs.core.Response;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceIngestStatusService;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarDevice;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
@@ -39,11 +40,14 @@ class TraccarResourceTest {
     @Mock
     private GpsSourceService gpsSourceService;
 
+    @Mock
+    private GpsSourceIngestStatusService ingestStatusService;
+
     private TraccarResource resource;
 
     @BeforeEach
     void setUp() {
-        resource = new TraccarResource(gpsPointService, gpsSourceService);
+        resource = new TraccarResource(gpsPointService, gpsSourceService, ingestStatusService);
     }
 
     @Test
