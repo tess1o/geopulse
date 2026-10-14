@@ -40,20 +40,28 @@ public class SequenceResetService {
                 return;
             }
             
-            // Get the maximum ID from the table
-            Long maxId = (Long) entityManager
-                .createNativeQuery("SELECT COALESCE(MAX(id), 0) FROM " + tableName)
+            // Only ever move the sequence forward, past rows imported with their original ids. Hibernate hands
+            // out ids in blocks taken from the sequence, and rows from a block may be saved but not committed yet
+            // (MAX(id) cannot see them): moving the sequence back below its last value would hand that block out
+            // again, and the inserts that get its ids would fail with duplicate keys. One statement, so the
+            // sequence cannot move between reading it and setting it.
+            Object[] result = (Object[]) entityManager
+                .createNativeQuery("SELECT m.max_id, s.last_value, "
+                    + "CASE WHEN m.max_id + 1 > s.last_value THEN setval('" + sequenceName + "', m.max_id + 1) "
+                    + "ELSE s.last_value END "
+                    + "FROM (SELECT COALESCE(MAX(id), 0) AS max_id FROM " + tableName + ") m, " + sequenceName + " s")
                 .getSingleResult();
-            
-            log.info("Table {} has max ID: {}, resetting sequence {} to {}", tableName, maxId, sequenceName, maxId + 1);
-            
-            // Use getSingleResult() instead of executeUpdate() since setval() returns a value
-            Long newSequenceValue = (Long) entityManager
-                .createNativeQuery("SELECT setval('" + sequenceName + "', ?)")
-                .setParameter(1, maxId + 1)
-                .getSingleResult();
-            
-            log.info("Successfully reset sequence {} to {} for table {}", sequenceName, newSequenceValue, tableName);
+            long maxId = ((Number) result[0]).longValue();
+            long lastValue = ((Number) result[1]).longValue();
+            long newSequenceValue = ((Number) result[2]).longValue();
+
+            if (newSequenceValue == lastValue) {
+                log.info("Table {} has max ID: {}, sequence {} is already at {}, leaving it unchanged",
+                    tableName, maxId, sequenceName, lastValue);
+            } else {
+                log.info("Table {} has max ID: {}, advanced sequence {} from {} to {}",
+                    tableName, maxId, sequenceName, lastValue, newSequenceValue);
+            }
         } catch (Exception e) {
             log.error("Failed to reset sequence {} for table {}: {}", sequenceName, tableName, e.getMessage(), e);
         }
