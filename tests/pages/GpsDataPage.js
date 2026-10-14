@@ -1,3 +1,5 @@
+import { TestHelpers } from '../utils/test-helpers.js';
+
 export class GpsDataPage {
   constructor(page) {
     this.page = page;
@@ -297,12 +299,27 @@ export class GpsDataPage {
    * Set date range filter
    */
   async setDateRangeFilter(startDate, endDate) {
+    await this.fillDateRange(startDate, endDate);
+    await this.applyDateFilter();
+  }
+
+  /**
+   * Fill the From and To pickers without applying them. Filling takes many clicks (hours and minutes are
+   * stepped one at a time), so a test waiting for the filtered request should start waiting after this,
+   * right before applyDateFilter().
+   */
+  async fillDateRange(startDate, endDate) {
     await this.setDateTimePickerValue(this.selectors.startDateTimeInput, startDate);
     await this.page.keyboard.press('Escape').catch(() => {});
 
     await this.setDateTimePickerValue(this.selectors.endDateTimeInput, endDate);
-
     await this.page.keyboard.press('Escape').catch(() => {});
+  }
+
+  /**
+   * Apply the date range filled in the pickers
+   */
+  async applyDateFilter() {
     await this.page.locator(this.selectors.applyDateFilterButton).click();
   }
 
@@ -335,8 +352,7 @@ export class GpsDataPage {
     const month = date.getMonth(); // 0-indexed
     const day = date.getDate();
     
-    // Navigate to correct month/year if needed
-    await this.navigateToMonthYear(year, month, panel);
+    await TestHelpers.navigateDatePickerToMonth(panel, year, month);
     
     // Click on the day using aria-label
     const daySelector = `.p-datepicker-calendar td[aria-label="${day}"]`;
@@ -407,47 +423,6 @@ export class GpsDataPage {
 
     for (let i = 0; i < steps; i += 1) {
       await button.click();
-    }
-  }
-
-  /**
-   * Navigate to specific month and year in date picker
-   */
-  async navigateToMonthYear(targetYear, targetMonth, panel = this.getActiveDatePickerPanel()) {
-    // Get current displayed month/year
-    const monthButton = panel.locator('.p-datepicker-select-month').first();
-    const yearButton = panel.locator('.p-datepicker-select-year').first();
-    const nextButton = panel.locator('.p-datepicker-next-button').first();
-    const prevButton = panel.locator('.p-datepicker-prev-button').first();
-    
-    // Navigate to correct year first
-    let currentYear = parseInt(await yearButton.textContent());
-    while (currentYear !== targetYear) {
-      if (currentYear < targetYear) {
-        await nextButton.click();
-      } else {
-        await prevButton.click();
-      }
-      await this.page.waitForTimeout(200);
-      currentYear = parseInt(await yearButton.textContent());
-    }
-    
-    // Navigate to correct month
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-    const targetMonthName = monthNames[targetMonth];
-    
-    let currentMonthText = await monthButton.textContent();
-    while (currentMonthText !== targetMonthName) {
-      const currentMonthIndex = monthNames.indexOf(currentMonthText);
-      
-      if (currentMonthIndex < targetMonth) {
-        await nextButton.click();
-      } else {
-        await prevButton.click();
-      }
-      await this.page.waitForTimeout(200);
-      currentMonthText = await monthButton.textContent();
     }
   }
 

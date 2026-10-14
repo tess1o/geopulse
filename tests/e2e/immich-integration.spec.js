@@ -466,7 +466,7 @@ test.describe('Immich integration', () => {
       });
 
       // Open it as a guest.
-      await context.clearCookies();
+      await TestSetupHelper.leaveAppAndClearCookies(page, context);
       const sharedTimelinePage = new SharedTimelinePage(page);
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();

@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {GpsDataPage} from '../pages/GpsDataPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
+import {TestSetupHelper} from '../utils/test-setup-helper.js';
 import {GpsDataFactory} from '../utils/gps-data-factory.js';
 import {DateFormatTestHelper, DateFormatValues} from '../utils/date-format-test-helper.js';
 import {UserSettingsApi} from '../utils/user-settings-api.js';
@@ -871,14 +872,15 @@ test.describe('GPS Data Page', () => {
             expect(user1Stats.totalPoints).toBe(user1GpsData.allPoints.length);
             expect(user1Stats.totalPoints).not.toBe(user2GpsData.allPoints.length);
 
-            // Clear session and login as user2 (avoids flaky logout-response timing)
-            await page.context().clearCookies();
+            // Clear session and login as user2 (avoids flaky logout-response timing). Clear storage on the
+            // login page: the GPS page would redirect itself to /login on its next 401.
+            await TestSetupHelper.leaveAppAndClearCookies(page);
+            await loginPage.navigate();
             await page.evaluate(() => {
                 localStorage.clear();
                 sessionStorage.clear();
             });
 
-            await loginPage.navigate();
             await loginPage.login(user2.email, user2.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
 
@@ -1125,6 +1127,11 @@ test.describe('GPS Data Page', () => {
             const expectedStartPrefix = '2025-09-22T04:00:';
             const expectedEndPrefix = '2025-09-23T03:59:';
 
+            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
+            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
+            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            await gpsDataPage.fillDateRange(selectedStartDate, selectedEndDate);
+
             // Wait for the exact API request to avoid races with unrelated GPS requests
             const apiRequestPromise = page.waitForRequest(request => {
                 if (!isGpsDateRangeRequest(request)) {
@@ -1136,11 +1143,7 @@ test.describe('GPS Data Page', () => {
                 const endTime = requestUrl.searchParams.get('to') || '';
                 return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
-
-            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
-            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
-            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
-            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
+            await gpsDataPage.applyDateFilter();
             await gpsDataPage.waitForTableReload();
             const apiRequest = await apiRequestPromise;
 
@@ -1190,6 +1193,12 @@ test.describe('GPS Data Page', () => {
             const expectedStartPrefix = '2025-09-21T23:00:';
             const expectedEndPrefix = '2025-09-22T22:59:';
 
+            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
+            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
+            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            await gpsDataPage.fillDateRange(selectedStartDate, selectedEndDate);
+
+            // Wait for the exact API request to avoid races with unrelated GPS requests
             const apiRequestPromise = page.waitForRequest(request => {
                 if (!isGpsDateRangeRequest(request)) {
                     return false;
@@ -1200,11 +1209,7 @@ test.describe('GPS Data Page', () => {
                 const endTime = requestUrl.searchParams.get('to') || '';
                 return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
-
-            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
-            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
-            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
-            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
+            await gpsDataPage.applyDateFilter();
             await gpsDataPage.waitForTableReload();
             const apiRequest = await apiRequestPromise;
 
@@ -1253,8 +1258,9 @@ test.describe('GPS Data Page', () => {
             // Select date in UTC timezone
             const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0); // September 22, 2025
             const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            await gpsDataPage.fillDateRange(selectedStartDate, selectedEndDate);
             const utcRequestPromise = page.waitForRequest(request => isGpsDateRangeRequest(request));
-            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
+            await gpsDataPage.applyDateFilter();
             await gpsDataPage.waitForTableReload();
             const utcRequestRaw = await utcRequestPromise;
 
@@ -1266,8 +1272,9 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.waitForPageLoad();
 
             // Select same date again (should now be interpreted as NY time)
+            await gpsDataPage.fillDateRange(selectedStartDate, selectedEndDate);
             const nyRequestPromise = page.waitForRequest(request => isGpsDateRangeRequest(request));
-            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
+            await gpsDataPage.applyDateFilter();
             await gpsDataPage.waitForTableReload();
             const nyRequestRaw = await nyRequestPromise;
 

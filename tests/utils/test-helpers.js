@@ -22,6 +22,35 @@ export class TestHelpers {
   }
 
   /**
+   * Show a month in an open PrimeVue DatePicker by picking it in the year and month views. Stepping there
+   * with the prev/next arrows costs one click per month between today and the target, so tests on fixed
+   * dates got slower every month until they ran past their timeouts; this takes a few clicks whatever
+   * the date.
+   * @param {import('@playwright/test').Locator} panel the open picker panel, in its date view
+   * @param {number} year e.g. 2025
+   * @param {number} monthIndex 0-based, like Date#getMonth
+   */
+  static async navigateDatePickerToMonth(panel, year, monthIndex) {
+    await panel.locator('.p-datepicker-select-year').first().click();
+    const yearCells = panel.locator('.p-datepicker-year-view .p-datepicker-year');
+    await expect(yearCells.first()).toBeVisible();
+
+    // The year view shows one decade; the arrows move a decade at a time.
+    for (;;) {
+      const years = (await yearCells.allTextContents()).map(text => parseInt(text, 10));
+      if (years.includes(year)) break;
+      const arrow = year < years[0] ? '.p-datepicker-prev-button' : '.p-datepicker-next-button';
+      await panel.locator(arrow).first().click();
+      await expect.poll(async () => parseInt(await yearCells.first().textContent(), 10)).not.toBe(years[0]);
+    }
+
+    await yearCells.filter({ hasText: String(year) }).first().click();
+    // The month view always lists all twelve months, January first.
+    await panel.locator('.p-datepicker-month-view .p-datepicker-month').nth(monthIndex).click();
+    await expect(panel.locator('.p-datepicker-day-view')).toBeVisible();
+  }
+
+  /**
    * Wait for navigation to complete
    * @param {import('@playwright/test').Page} page 
    * @param {string|RegExp|((url: URL) => boolean)} expectedUrl

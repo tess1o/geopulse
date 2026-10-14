@@ -5,6 +5,7 @@ import {TestSetupHelper} from "../utils/test-setup-helper.js";
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 import {MAP_POPUP_CONTENT_SELECTOR} from '../utils/map-engine-harness.js';
+import {TestHelpers} from '../utils/test-helpers.js';
 
 const RASTER_MAP_MODE = 'RASTER';
 
@@ -1116,25 +1117,8 @@ test.describe('Friends Page', () => {
       // Verify calendar popup is visible
       const calendar = page.locator('.p-datepicker-panel').first();
       if (await calendar.isVisible()) {
-        // Navigate backwards from current date to September 2025
-        // Click previous month button multiple times
-        const prevButton = page.locator('.p-datepicker-prev-button');
-
-        // Calculate how many months back from current month to September 2025
-        const now = new Date();
-        const targetMonth = 8; // September (0-indexed, so January = 0, September = 8)
-        const targetYear = 2025;
-
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-
-        const monthsBack = (currentYear - targetYear) * 12 + (currentMonth - targetMonth);
-
-        // Navigate backwards to September 2025
-        for (let i = 0; i < monthsBack; i++) {
-          await prevButton.click();
-          await page.waitForTimeout(200);
-        }
+        // Go to September 2025 (month index 8)
+        await TestHelpers.navigateDatePickerToMonth(calendar, 2025, 8);
 
         // Select September 20, 2025 (start date)
         const day20 = page.locator('.p-datepicker-calendar td:not(.p-datepicker-other-month) span:has-text("20")').first();

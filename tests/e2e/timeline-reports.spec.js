@@ -213,11 +213,10 @@ test.describe('Timeline Reports Page', () => {
 
       // Click on first row
       await reportsPage.clickTableRow(0);
-      await page.waitForTimeout(500);
 
       // Verify dialog is visible
       const dialog = page.locator('.p-dialog');
-      expect(await dialog.isVisible()).toBe(true);
+      await expect(dialog).toBeVisible();
 
       // Verify dialog contains map section
       const mapSection = page.locator('.map-section');
@@ -268,19 +267,16 @@ test.describe('Timeline Reports Page', () => {
 
       // Click on first row to open dialog
       await reportsPage.clickTableRow(0);
-      await page.waitForTimeout(500);
 
       // Verify dialog is open
       const dialog = page.locator('.p-dialog');
-      expect(await dialog.isVisible()).toBe(true);
+      await expect(dialog).toBeVisible();
 
       // Click close button
-      const closeButton = page.locator('.p-dialog-close-button');
-      await closeButton.click();
-      await page.waitForTimeout(300);
+      await dialog.locator('.p-dialog-close-button').click();
 
-      // Verify dialog is closed
-      expect(await dialog.isVisible()).toBe(false);
+      // Verify dialog is closed (waits out the hide animation, which can run past a fixed delay)
+      await expect(dialog).toBeHidden();
     });
 
     test('should display correct table count text', async ({page, isolatedUsers, dbManager}) => {
@@ -383,11 +379,10 @@ test.describe('Timeline Reports Page', () => {
 
       // Click on first row
       await reportsPage.clickTableRow(0);
-      await page.waitForTimeout(500);
 
       // Verify dialog is visible
       const dialog = page.locator('.p-dialog');
-      expect(await dialog.isVisible()).toBe(true);
+      await expect(dialog).toBeVisible();
 
       // Verify dialog contains map section
       const mapSection = page.locator('.map-section');
@@ -434,19 +429,16 @@ test.describe('Timeline Reports Page', () => {
 
       // Click on first row to open dialog
       await reportsPage.clickTableRow(0);
-      await page.waitForTimeout(500);
 
       // Verify dialog is open
       const dialog = page.locator('.p-dialog');
-      expect(await dialog.isVisible()).toBe(true);
+      await expect(dialog).toBeVisible();
 
       // Click close button
-      const closeButton = page.locator('.p-dialog-close-button');
-      await closeButton.click();
-      await page.waitForTimeout(300);
+      await dialog.locator('.p-dialog-close-button').click();
 
-      // Verify dialog is closed
-      expect(await dialog.isVisible()).toBe(false);
+      // Verify dialog is closed (waits out the hide animation, which can run past a fixed delay)
+      await expect(dialog).toBeHidden();
     });
 
     test('should display correct table count text', async ({page, isolatedUsers, dbManager}) => {

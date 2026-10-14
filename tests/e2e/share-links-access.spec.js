@@ -416,16 +416,18 @@ test.describe('Shared Links Public Access', () => {
       );
       await TestSetupHelper.applyTimelineDisplayPreferences(dbManager, owner.email, { colorScheme: 'RED_GREEN_SAFE' });
 
-      // Clearing cookies is not enough to be a guest: shared pages recognize a signed-in viewer from the
-      // profile cached in localStorage and offer "My settings", so drop that too.
-      await page.evaluate(() => window.localStorage.clear());
-
       const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
         id: 'a1000000-0000-0000-0000-000000000011',
         name: 'Owner Colors Timeline'
       });
 
+      // Clearing cookies is not enough to be a guest: shared pages recognize a signed-in viewer from the
+      // profile cached in localStorage and offer "My settings", so drop that too. Do it on the shared page,
+      // which is public and never redirects to /login, then reload as a plain guest.
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await page.evaluate(() => window.localStorage.clear());
+      await page.reload();
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
       await sharedTimelinePage.waitForMapReady();

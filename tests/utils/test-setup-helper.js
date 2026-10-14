@@ -157,9 +157,20 @@ export class TestSetupHelper {
     }
 
     // Logout to simulate guest access
-    await context.clearCookies();
+    await this.leaveAppAndClearCookies(page, context);
 
     return { user, testUser };
+  }
+
+  /**
+   * Drop the session cookies so the page continues as a guest. Leave the app first: sessions live on the
+   * server, so the app's requests start failing with 401 the moment the cookies go, and the app answers a
+   * 401 by redirecting its page to /login. That redirect would race the test's next navigation or
+   * page.evaluate (landing on /login instead, or destroying the evaluate's context).
+   */
+  static async leaveAppAndClearCookies(page, context = page.context()) {
+    await page.goto('about:blank');
+    await context.clearCookies();
   }
 
   /**

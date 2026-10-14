@@ -805,9 +805,9 @@ test.describe('Timeline Map Interactions', () => {
       await mapPage.waitForAddFavoriteDialog();
       await mapPage.closeAddFavoriteDialog();
       
-      // Verify dialog is closed
+      // Verify dialog is closed (waits out the hide animation)
       const dialog = page.locator('.p-dialog:has(.p-dialog-title:text("Add To Favorites"))');
-      expect(await dialog.isVisible()).toBe(false);
+      await expect(dialog).toBeHidden();
     });
   });
 
