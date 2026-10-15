@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.auth.service;
 
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -25,7 +26,14 @@ import java.util.Locale;
  *     <li>Safe methods need {@code read}; everything else needs {@code write}.</li>
  * </ol>
  * The MCP endpoint is not JAX-RS and is covered by {@link ApiTokenReadHttpPolicy}.
+ *
+ * <p>{@code @ApplicationScoped} rather than the default singleton: Quarkus REST creates global filters during
+ * static init, which a native build runs at image build time. A singleton would be stored in the image heap
+ * together with the client proxies of its injected beans, and the native build rejects those
+ * ({@code ApiTokenSecretService_ClientProxy ... was found in the image heap}). As a normal-scoped bean only this
+ * filter's proxy is stored, and the filter and its dependencies are created at run time.</p>
  */
+@ApplicationScoped
 @Provider
 @Priority(Priorities.AUTHORIZATION + 10)
 public class ApiTokenScopeFilter implements ContainerRequestFilter {
