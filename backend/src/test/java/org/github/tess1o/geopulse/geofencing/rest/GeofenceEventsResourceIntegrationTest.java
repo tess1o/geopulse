@@ -171,6 +171,27 @@ class GeofenceEventsResourceIntegrationTest {
                 .body("items[0].title", equalTo("Middle leave"));
     }
     @Test
+    void shouldReturnOnlyNewerEventsOldestFirstWithAfterId() {
+        GeofenceRuleEntity home = createRule(ownerUser, "Home");
+        GeofenceEventEntity first = createEvent(ownerUser, subjectA, home, null, GeofenceEventType.ENTER, "First",
+                Instant.parse("2026-03-21T08:00:00Z"), null);
+        createEvent(ownerUser, subjectA, home, null, GeofenceEventType.LEAVE, "Second",
+                Instant.parse("2026-03-21T09:00:00Z"), null);
+        createEvent(ownerUser, subjectB, home, null, GeofenceEventType.ENTER, "Third",
+                Instant.parse("2026-03-21T07:00:00Z"), null);
+
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/v1/geofences/events?afterId=" + first.getId() + "&sortDirection=desc")
+                .then()
+                .statusCode(200)
+                .body("items.size()", equalTo(2))
+                .body("items[0].title", equalTo("Second"))
+                .body("items[1].title", equalTo("Third"));
+    }
+
+    @Test
     void shouldRejectInvalidFilters() {
         given()
                 .header("Authorization", "Bearer " + ownerToken)

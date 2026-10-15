@@ -26,6 +26,8 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarDevice;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.model.*;
+import org.github.tess1o.geopulse.gps.service.GpsIngestRejection;
+import org.github.tess1o.geopulse.gps.service.GpsIngestRejectionCode;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 
 @RegisterForReflection(targets = {
@@ -100,7 +102,10 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPropertiesDeserializer.class,
         TimelineSegmentBoundary.class,
-        TimelineSegmentBoundary.SegmentType.class
+        TimelineSegmentBoundary.SegmentType.class,
+        GpsIngestSummaryResponse.class,
+        GpsIngestRejection.class,
+        GpsIngestRejectionCode.class
 })
 public class GpsNativeConfig {
 }

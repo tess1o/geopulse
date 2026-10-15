@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,26 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
     public List<TimelineTripEntity> findByUserAndDateRange(UUID userId, Instant from, Instant to) {
         return find("user.id = ?1 and timestamp >= ?2 and timestamp <= ?3 order by timestamp",
                 userId, from, to).list();
+    }
+
+    public Optional<TimelineTripEntity> findLatestByUserIdAtOrBefore(UUID userId, Instant timestamp) {
+        return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
+                .firstResultOptional();
+    }
+
+    /** {@code [trip count, distance in meters, duration in seconds]} for trips starting in {@code [from, to)}. */
+    public long[] aggregateTripsStartedBetween(UUID userId, Instant from, Instant to) {
+        Object[] row = getEntityManager().createQuery("""
+                        SELECT COUNT(t), COALESCE(SUM(t.distanceMeters), 0), COALESCE(SUM(t.tripDuration), 0)
+                        FROM TimelineTripEntity t
+                        WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp < ?3
+                        """, Object[].class)
+                .setParameter(1, userId)
+                .setParameter(2, from)
+                .setParameter(3, to)
+                .getSingleResult();
+        return new long[]{((Number) row[0]).longValue(), ((Number) row[1]).longValue(),
+                ((Number) row[2]).longValue()};
     }
 
     /**

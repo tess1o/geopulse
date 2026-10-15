@@ -207,16 +207,100 @@
         </div>
 
         <div v-else-if="formData.type === 'HOME_ASSISTANT'" class="form-section">
-          <div class="form-field">
-            <label for="location-source-token-ha" class="form-label">{{ t('locationSources.dialog.token') }}</label>
-            <InputText
-              id="location-source-token-ha"
-              v-model="formData.token"
-              :placeholder="t('locationSources.dialog.tokenPlaceholder')"
-              :invalid="!!formErrors.token"
-            />
-            <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
-          </div>
+          <small v-if="editingSource?.apiTokenId" class="text-muted">
+            {{ t('locationSources.dialog.apiTokenLinkedNote', { name: editingSource.apiTokenName || '' }) }}
+          </small>
+
+          <template v-else>
+            <div v-if="!isEditMode" class="form-field">
+              <span class="form-label">{{ t('locationSources.dialog.homeAssistant.modeLabel') }}</span>
+              <div class="connection-type-selection">
+                <div
+                  :class="['connection-type-option', { active: formData.haMode === 'sourceToken' }]"
+                  data-testid="ha-mode-source-token"
+                  @click="formData.haMode = 'sourceToken'"
+                >
+                  <i class="pi pi-key"></i>
+                  <div>
+                    <div class="connection-type-name">{{ t('locationSources.dialog.homeAssistant.sourceTokenTitle') }}</div>
+                    <div class="connection-type-description">{{ t('locationSources.dialog.homeAssistant.sourceTokenDescription') }}</div>
+                  </div>
+                </div>
+                <div
+                  :class="['connection-type-option', { active: formData.haMode === 'apiToken' }]"
+                  data-testid="ha-mode-api-token"
+                  @click="formData.haMode = 'apiToken'"
+                >
+                  <i class="pi pi-id-card"></i>
+                  <div>
+                    <div class="connection-type-name">
+                      {{ t('locationSources.dialog.homeAssistant.apiTokenTitle') }}
+                      <Tag :value="t('locationSources.dialog.homeAssistant.recommended')" severity="success" class="recommended-tag" />
+                    </div>
+                    <div class="connection-type-description">{{ t('locationSources.dialog.homeAssistant.apiTokenDescription') }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="!isEditMode && formData.haMode === 'apiToken'" class="form-field">
+              <span class="form-label">{{ t('locationSources.dialog.homeAssistant.tokenLabel') }}</span>
+              <div class="token-choice">
+                <label class="token-choice-option">
+                  <RadioButton v-model="formData.haTokenChoice" value="new" inputId="ha-token-new" />
+                  <span>{{ t('locationSources.dialog.homeAssistant.createToken') }}</span>
+                </label>
+                <InputText
+                  v-if="formData.haTokenChoice === 'new'"
+                  id="ha-token-name"
+                  v-model="formData.haNewTokenName"
+                  :placeholder="t('locationSources.dialog.homeAssistant.tokenNamePlaceholder')"
+                  :aria-label="t('locationSources.dialog.homeAssistant.tokenNameLabel')"
+                  :invalid="!!formErrors.haNewTokenName"
+                  class="token-choice-input"
+                />
+                <small v-if="formErrors.haNewTokenName" class="error-message">{{ formErrors.haNewTokenName }}</small>
+
+                <label class="token-choice-option">
+                  <RadioButton
+                    v-model="formData.haTokenChoice"
+                    value="existing"
+                    inputId="ha-token-existing"
+                    :disabled="availableIngestTokens.length === 0"
+                  />
+                  <span>{{ t('locationSources.dialog.homeAssistant.useExistingToken') }}</span>
+                </label>
+                <template v-if="formData.haTokenChoice === 'existing'">
+                  <Select
+                    v-model="formData.haApiTokenId"
+                    :options="availableIngestTokens"
+                    optionLabel="label"
+                    optionValue="id"
+                    :placeholder="t('locationSources.dialog.homeAssistant.selectToken')"
+                    :invalid="!!formErrors.haApiTokenId"
+                    class="token-choice-input"
+                  />
+                  <small v-if="formErrors.haApiTokenId" class="error-message">{{ formErrors.haApiTokenId }}</small>
+                  <small class="text-muted token-choice-input">{{ t('locationSources.dialog.homeAssistant.existingTokenHint') }}</small>
+                </template>
+                <small v-else-if="availableIngestTokens.length === 0" class="text-muted token-choice-input">
+                  {{ t('locationSources.dialog.homeAssistant.noExistingTokens') }}
+                </small>
+              </div>
+            </div>
+
+            <div v-if="isEditMode || formData.haMode === 'sourceToken'" class="form-field">
+              <label for="location-source-token-ha" class="form-label">{{ t('locationSources.dialog.homeAssistant.sourceTokenLabel') }}</label>
+              <InputText
+                id="location-source-token-ha"
+                v-model="formData.token"
+                :placeholder="t('locationSources.dialog.tokenPlaceholder')"
+                :invalid="!!formErrors.token"
+              />
+              <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
+              <small class="text-muted">{{ t('locationSources.dialog.homeAssistant.sourceTokenHint') }}</small>
+            </div>
+          </template>
         </div>
 
         <GpsFilteringSettings v-model:settings="formData" />
@@ -258,6 +342,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GpsFilteringSettings from '@/components/GpsFilteringSettings.vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   LOCATION_SOURCE_OPTIONS,
   getLocationSourceDisplayName,
@@ -275,10 +360,17 @@ const props = defineProps({
   defaultFilteringValues: {
     type: Object,
     default: null
+  },
+  // API tokens already connected to a Home Assistant source; they can't be connected twice
+  linkedApiTokenIds: {
+    type: Array,
+    default: () => []
   }
 })
 
 const emit = defineEmits(['submit'])
+
+const authStore = useAuthStore()
 
 const visible = ref(false)
 const isEditMode = ref(false)
@@ -286,6 +378,10 @@ const editingSource = ref(null)
 const addWizardStep = ref(1)
 
 const formData = ref({
+  haMode: 'apiToken',
+  haTokenChoice: 'new',
+  haNewTokenName: 'Home Assistant',
+  haApiTokenId: null,
   type: 'OWNTRACKS',
   username: '',
   password: '',
@@ -306,6 +402,26 @@ const formErrors = ref({})
 const sourceTypes = LOCATION_SOURCE_OPTIONS
 
 const summarySource = computed(() => editingSource.value || formData.value)
+
+const ingestTokens = ref([])
+const availableIngestTokens = computed(() => ingestTokens.value
+  .filter(token => !props.linkedApiTokenIds.includes(token.id))
+  .map(token => ({ id: token.id, label: `${token.name} (${token.preview})` })))
+
+const loadIngestTokens = async () => {
+  try {
+    ingestTokens.value = (await authStore.listApiTokens('gps:ingest')) || []
+  } catch {
+    ingestTokens.value = []
+  }
+}
+
+watch(
+  () => visible.value && !isEditMode.value && formData.value.type === 'HOME_ASSISTANT',
+  (needsTokens) => {
+    if (needsTokens) loadIngestTokens()
+  }
+)
 
 const getDefaultFiltering = () => {
   if (props.defaultFilteringValues) {
@@ -329,6 +445,10 @@ const getDefaultFiltering = () => {
 const resetDialogForm = () => {
   const defaults = getDefaultFiltering()
   formData.value = {
+    haMode: 'apiToken',
+    haTokenChoice: 'new',
+    haNewTokenName: 'Home Assistant',
+    haApiTokenId: null,
     type: 'OWNTRACKS',
     username: '',
     password: '',
@@ -363,12 +483,24 @@ const openQuickSetup = (type) => {
   visible.value = true
 }
 
+/** Add dialog for a Home Assistant source using this existing API token. */
+const openHomeAssistantApiToken = (apiTokenId) => {
+  openQuickSetup('HOME_ASSISTANT')
+  formData.value.haMode = 'apiToken'
+  formData.value.haTokenChoice = 'existing'
+  formData.value.haApiTokenId = apiTokenId
+}
+
 const openEdit = (source) => {
   isEditMode.value = true
   editingSource.value = source
   addWizardStep.value = 2
   formErrors.value = {}
   formData.value = {
+    haMode: 'sourceToken',
+    haTokenChoice: 'new',
+    haNewTokenName: 'Home Assistant',
+    haApiTokenId: null,
     type: source.type,
     username: source.username || '',
     password: '',
@@ -437,6 +569,13 @@ const clearErrorIfFieldNowValid = (field) => {
 watch(() => formData.value.username, () => clearErrorIfFieldNowValid('username'))
 watch(() => formData.value.password, () => clearErrorIfFieldNowValid('password'))
 watch(() => formData.value.token, () => clearErrorIfFieldNowValid('token'))
+watch(
+  () => [formData.value.haMode, formData.value.haTokenChoice, formData.value.haApiTokenId, formData.value.haNewTokenName],
+  () => {
+    delete formErrors.value.haNewTokenName
+    delete formErrors.value.haApiTokenId
+  }
+)
 watch(() => formData.value.payloadEncryptionSecret, () => clearErrorIfFieldNowValid('payloadEncryptionSecret'))
 
 watch(() => formData.value.type, () => {
@@ -469,8 +608,16 @@ const validateForm = () => {
     if (isBlank(formData.value.token)) {
       formErrors.value.token = t('locationSources.dialog.validation.apiKeyRequired')
     }
+  } else if (formData.value.type === 'HOME_ASSISTANT' && !isEditMode.value && formData.value.haMode === 'apiToken') {
+    if (formData.value.haTokenChoice === 'new' && isBlank(formData.value.haNewTokenName)) {
+      formErrors.value.haNewTokenName = t('locationSources.dialog.validation.tokenNameRequired')
+    }
+    if (formData.value.haTokenChoice === 'existing' && !formData.value.haApiTokenId) {
+      formErrors.value.haApiTokenId = t('locationSources.dialog.validation.apiTokenRequired')
+    }
   } else if (formData.value.type === 'HOME_ASSISTANT') {
-    if (isBlank(formData.value.token)) {
+    // Sources connected to a personal API token have no token of their own
+    if (!editingSource.value?.apiTokenId && isBlank(formData.value.token)) {
       formErrors.value.token = t('locationSources.dialog.validation.tokenRequired')
     }
   }
@@ -500,6 +647,7 @@ const getSourceIdentifier = getLocationSourceIdentifier
 defineExpose({
   openAdd,
   openQuickSetup,
+  openHomeAssistantApiToken,
   openEdit,
   close
 })
@@ -508,6 +656,29 @@ defineExpose({
 <style scoped>
 .source-dialog {
   min-width: 500px;
+}
+
+.recommended-tag {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
+
+.token-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.token-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.token-choice-input {
+  margin-left: 1.75rem;
 }
 
 .dialog-content {

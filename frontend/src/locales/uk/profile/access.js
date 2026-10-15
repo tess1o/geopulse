@@ -55,7 +55,26 @@ export default {
             status: 'Статус',
             expires: 'Термін дії',
             lastUsed: 'Останнє використання',
-            actions: 'Дії'
+            actions: 'Дії',
+            access: 'Доступ'
+        },
+        access: {
+            label: 'Доступ',
+            fixedHint: 'Доступ не можна змінити пізніше. Щоб змінити його, створіть новий токен і відкличте цей.',
+            presets: {
+                full: { title: 'Повний доступ', description: 'Усе, що можете ви, зокрема керування API-токенами, а для адміністраторів — адмін-панель.' },
+                readOnly: { title: 'Лише читання', description: 'Перегляд ваших даних і MCP-клієнти. Нічого не змінює.' },
+                homeAssistant: { title: 'Home Assistant', description: 'Читання ваших даних і надсилання локацій з Home Assistant.' },
+                backup: { title: 'Резервна копія', description: 'Читання ваших даних, створення та завантаження експортів.' },
+                custom: { title: 'Власний', description: 'Оберіть окремі дозволи.' }
+            },
+            scopes: {
+                read: { title: 'Читання', description: 'Перегляд хронології, місць, статистики, друзів і налаштувань.' },
+                write: { title: 'Запис', description: 'Зміна або видалення даних і налаштувань.' },
+                gpsIngest: { title: 'Надсилання локацій', description: 'Надсилання GPS-точок цим токеном.' },
+                export: { title: 'Експорт', description: 'Створення та завантаження експортів.' },
+                import: { title: 'Імпорт', description: 'Імпорт файлів, що додають дані. Імпорт із заміною наявних даних також потребує запису.' }
+            }
         },
         never: 'Ніколи',
         status: {
@@ -83,7 +102,9 @@ export default {
         createdDialog: {
             header: 'API-токен створено',
             message: 'Цей токен показується лише один раз. Збережіть його в безпечному місці, перш ніж закрити це вікно.',
-            confirm: 'Я зберіг цей токен'
+            confirm: 'Я зберіг цей токен',
+            homeAssistantNext: 'Далі: додайте джерело локацій Home Assistant для цього токена, щоб локації з Home Assistant з’являлися в GeoPulse. Спершу скопіюйте токен — він показується лише один раз.',
+            homeAssistantLink: 'Додати джерело Home Assistant'
         },
         revokeDialog: {
             header: 'Відкликати API-токен',
@@ -92,7 +113,8 @@ export default {
             confirm: 'Відкликати'
         },
         validation: {
-            nameRequired: 'Потрібно вказати назву токена'
+            nameRequired: 'Потрібно вказати назву токена',
+            scopeRequired: 'Оберіть принаймні один дозвіл'
         },
         toasts: {
             error: 'Помилка',

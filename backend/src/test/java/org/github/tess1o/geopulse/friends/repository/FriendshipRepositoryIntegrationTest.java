@@ -60,6 +60,7 @@ class FriendshipRepositoryIntegrationTest {
         assertNotNull(friend);
         assertEquals("2026-03-06T17:05:34Z", friend.getLastSeen());
         assertEquals(81.0, friend.getLastBattery());
+        assertEquals(12.5, friend.getLastAccuracy());
     }
 
     @Test
@@ -79,6 +80,7 @@ class FriendshipRepositoryIntegrationTest {
         FriendInfoDTO friend = friends.get(0);
         assertNotNull(friend);
         assertNull(friend.getLastBattery());
+        assertNull(friend.getLastAccuracy());
     }
 
     private UserEntity createUser(String prefix) {
@@ -112,6 +114,7 @@ class FriendshipRepositoryIntegrationTest {
         gpsPoint.setTimestamp(timestamp);
         gpsPoint.setCoordinates(GeoUtils.createPoint(25.595304, 49.550959));
         gpsPoint.setBattery(battery);
+        gpsPoint.setAccuracy(12.5);
         gpsPoint.setSourceType(GpsSourceType.OWNTRACKS);
         gpsPoint.setCreatedAt(Instant.now());
         entityManager.persist(gpsPoint);

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.importdata.rest;
 
+import io.quarkus.security.identity.SecurityIdentity;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.service.ApiTokenScopeChecker;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import io.quarkus.security.Authenticated;
@@ -51,6 +54,12 @@ public class ImportResource {
 
     @Inject
     ImportTempFileService tempFileService;
+
+    @Inject
+    SecurityIdentity securityIdentity;
+
+    @Inject
+    ApiTokenScopeChecker scopeChecker;
 
     @ConfigProperty(name = "geopulse.import.chunked.max-file-size-gb", defaultValue = "10")
     int maxFileSizeGB;
@@ -119,6 +128,10 @@ public class ImportResource {
 
         ImportOptions importOptions = options != null ? options : new ImportOptions();
         importOptions.validateTimeRange();
+        // The `import` scope only adds data; replacing existing data needs `write`
+        if (importOptions.isClearDataBeforeImport()) {
+            scopeChecker.requireAnyScope(securityIdentity, ApiTokenScope.WRITE);
+        }
         importOptions.setImportFormat(importFormat.getValue());
 
             // Create import job

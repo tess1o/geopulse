@@ -1,30 +1,79 @@
 ---
 title: Using Home Assistant with GeoPulse
-description: A step-by-step guide on how to configure Home Assistant to send location data to GeoPulse.
+description: Connect Home Assistant to GeoPulse with the GeoPulse integration, or send locations with a manual rest_command.
 ---
 
 # Using Home Assistant with GeoPulse
 
-This integration allows you to leverage Home Assistant's powerful device tracking capabilities to send location updates to GeoPulse. This is particularly useful if you already have device trackers configured in Home Assistant (e.g., for mobile apps, router-based tracking, etc.).
+There are two ways to connect Home Assistant to GeoPulse:
 
-This guide will walk you through the required configuration in both GeoPulse and your Home Assistant setup.
-
----
-
-## Step 1: Configure GeoPulse
-
-First, you need to create a new location source in GeoPulse that will receive the data from Home Assistant.
-
-1.  In your GeoPulse account, navigate to **Settings -> Location Sources**.
-2.  Click **Add New Source** and select **Home Assistant**.
-3.  Enter a secure and unique **Token**. This token will be used to authorize requests from Home Assistant.
-4.  Click **Save** to create the new location source. Make sure to copy the generated token for the next step.
+- **[GeoPulse integration](#option-1-geopulse-integration-recommended) (recommended).** A custom integration that works in both directions with one token:
+  - forwards your `device_tracker` and `person` entities to GeoPulse, with a queue on disk that retries during outages and a service to backfill recorder history;
+  - shows your current stay or trip, place, today's totals and friends in Home Assistant, and fires events for automations (geofence enter/leave, stay/trip started/ended, tracking lost/resumed).
+- **[Manual `rest_command`](#option-2-manual-rest_command) setup.** A few lines of YAML that only send locations to GeoPulse.
 
 ---
 
-## Step 2: Configure Home Assistant
+## Option 1: GeoPulse integration (recommended)
 
-After setting up the source in GeoPulse, you will need to modify your Home Assistant configuration files (`configuration.yaml` and `automations.yaml`) to send location data to GeoPulse.
+Requirements: GeoPulse 2.0 or newer, Home Assistant 2026.3 or newer, and [HACS](https://hacs.xyz/).
+
+### Step 1: Install the integration
+
+1.  In Home Assistant, open **HACS**, choose **⋮ → Custom repositories**, and add `https://github.com/tess1o/geopulse-homeassistant` with type **Integration**.
+2.  Find **GeoPulse** in HACS, install it, and restart Home Assistant.
+
+### Step 2: Create a token in GeoPulse
+
+1.  In GeoPulse, open **Location Sources** and click **Add New Source**.
+2.  Choose **Home Assistant → GeoPulse integration → Create a new token**, and click **Add Source**.
+3.  Copy the **URL** and the **Token** from the dialog. The token is shown only once.
+
+GeoPulse creates an API token with the `read` and `gps:ingest` scopes and connects it to a new Home Assistant location
+source. Locations sent with the token are stored under that source.
+
+:::tip Using a token you already have
+A token created under **Profile → Security → API tokens** with **Home Assistant** access can be used instead: choose
+**Use an existing token** in step 2. Without a connected location source, the token can read your data but can't send
+locations.
+:::
+
+### Step 3: Add the integration in Home Assistant
+
+1.  Open **Settings → Devices & services → Add integration** and choose **GeoPulse**, or use
+    [this link](https://my.home-assistant.io/redirect/config_flow_start/?domain=geopulse_ha).
+2.  Paste the URL and the token.
+3.  Choose the trackers to forward.
+
+One integration entry is one GeoPulse account, which is one person, so choose only trackers that belong to that
+person. For other family members, add the integration again with their own GeoPulse account and token.
+
+To confirm data is arriving, open **Location Sources** in GeoPulse. The source card shows when data was last received
+and why the last skipped point was skipped, if any.
+
+The [integration's README](https://github.com/tess1o/geopulse-homeassistant#readme) lists all entities, events,
+services and options, with automation examples.
+
+---
+
+## Option 2: Manual `rest_command`
+
+This setup only sends locations from Home Assistant to GeoPulse. Locations aren't queued, so a point sent while
+GeoPulse is unreachable is lost.
+
+### Step 1: Configure GeoPulse
+
+1.  In GeoPulse, open **Location Sources** and click **Add New Source**.
+2.  Choose **Home Assistant → Source token**.
+3.  Enter a secure and unique **Source token**. Home Assistant uses it to authorize its requests.
+4.  Click **Add Source**.
+
+---
+
+### Step 2: Configure Home Assistant
+
+Add the following to your Home Assistant configuration files (`configuration.yaml` and `automations.yaml`) to send
+location data to GeoPulse.
 
 ### 2.1: Update `configuration.yaml`
 
@@ -58,7 +107,7 @@ rest_command:
 **Important Replacements:**
 
 *   Replace `https://geopulse.yourdomain.com` with the actual domain of your GeoPulse server.
-*   Replace `YOUR_CONFIGURED_TOKEN` with the token you generated in GeoPulse in Step 1.
+*   Replace `YOUR_CONFIGURED_TOKEN` with the source token you entered in GeoPulse in Step 1.
 *   Replace `iphone_16` with the actual `entity_id` of your device tracker in Home Assistant.
 
 `latitude` and `longitude` are required. A location without them is skipped. `accuracy`, `altitude`, `speed` and `battery` are optional: the `tojson` filter sends `null` when Home Assistant doesn't report a value, and GeoPulse stores the field as empty. Avoid replacing missing values with `0`. An accuracy of `0` claims a perfect GPS fix and gets past the accuracy filter, and a speed of `0` makes every point look stationary.
@@ -92,7 +141,7 @@ To confirm data is arriving, open **Location Sources** in GeoPulse. The Home Ass
 
 ## Sending missed points in bulk
 
-The automation above sends one location at a time, and Home Assistant doesn't retry a request that fails. Integrations that queue locations while GeoPulse is unreachable, or that backfill history from the Home Assistant recorder, can send them in one request:
+The GeoPulse integration already queues locations and sends them in batches. For your own scripts: the automation above sends one location at a time, and Home Assistant doesn't retry a request that fails. Clients that queue locations while GeoPulse is unreachable, or that backfill history from the Home Assistant recorder, can send them in one request:
 
 ```http
 POST /api/v1/gps/ingest/home-assistant/batch

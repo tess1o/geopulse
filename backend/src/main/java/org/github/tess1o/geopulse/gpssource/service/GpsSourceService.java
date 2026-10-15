@@ -7,7 +7,12 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.gpssource.model.ConnectedGpsSourceDTO;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
+import org.github.tess1o.geopulse.auth.dto.CreateApiTokenResponse;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.model.UserApiTokenEntity;
+import org.github.tess1o.geopulse.auth.service.ApiTokenService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksEncryptionKeyUtil;
 import org.github.tess1o.geopulse.gpssource.mapper.GpsSourceConfigMapper;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
@@ -23,7 +28,9 @@ import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -36,6 +43,11 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     private final EntityManager em;
     private final AIEncryptionService encryptionService;
     private final GpsSourceIngestStatusService ingestStatusService;
+    private final ApiTokenService apiTokenService;
+
+    /** Scopes of tokens created together with a Home Assistant source: send locations and read data. */
+    static final List<String> HOME_ASSISTANT_TOKEN_SCOPES =
+            List.of(ApiTokenScope.READ.value(), ApiTokenScope.GPS_INGEST.value());
 
     @Getter
     @ConfigProperty(name = "geopulse.gps.filter.inaccurate-data.enabled", defaultValue = "false")
@@ -63,13 +75,15 @@ public class GpsSourceService implements GpsSourceConfigProvider {
                             SecurePasswordUtils passwordUtils,
                             EntityManager em,
                             AIEncryptionService encryptionService,
-                            GpsSourceIngestStatusService ingestStatusService) {
+                            GpsSourceIngestStatusService ingestStatusService,
+                            ApiTokenService apiTokenService) {
         this.gpsSourceRepository = gpsSourceRepository;
         this.gpsSourceMapper = gpsSourceMapper;
         this.passwordUtils = passwordUtils;
         this.em = em;
         this.encryptionService = encryptionService;
         this.ingestStatusService = ingestStatusService;
+        this.apiTokenService = apiTokenService;
     }
 
 
@@ -87,6 +101,19 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     @Transactional
     public GpsSourceConfigDTO addGpsSourceConfig(CreateGpsSourceConfigDto newConfig) {
+        return addGpsSourceConfig(newConfig, null);
+    }
+
+    /**
+     * Creates a source. A Home Assistant source with {@code apiTokenId} or {@code newApiToken} is connected to a
+     * personal API token instead of having a source token; a new token is
+     * created in the same transaction and its secret returned once.
+     */
+    @Transactional
+    public GpsSourceConfigDTO addGpsSourceConfig(CreateGpsSourceConfigDto newConfig, String ipAddress) {
+        if (isApiTokenSource(newConfig)) {
+            return addApiTokenSource(newConfig, ipAddress);
+        }
         normalizeTraccarConfig(newConfig);
         validatePayloadEncryptionSecret(newConfig.getType(), newConfig.getPayloadEncryptionSecret());
         validateUniqueness(newConfig);
@@ -94,6 +121,50 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         GpsSourceConfigEntity gpsSourceConfigEntity = gpsSourceMapper.toEntity(newConfig, user);
         gpsSourceRepository.persist(gpsSourceConfigEntity);
         return gpsSourceMapper.toDTO(gpsSourceConfigEntity);
+    }
+
+    private static boolean isApiTokenSource(CreateGpsSourceConfigDto config) {
+        return config.getApiTokenId() != null || config.getNewApiToken() != null;
+    }
+
+    private GpsSourceConfigDTO addApiTokenSource(CreateGpsSourceConfigDto newConfig, String ipAddress) {
+        if (newConfig.getType() != GpsSourceType.HOME_ASSISTANT) {
+            throw new IllegalArgumentException("Only Home Assistant sources can use an API token");
+        }
+        if (newConfig.getApiTokenId() != null && newConfig.getNewApiToken() != null) {
+            throw new IllegalArgumentException("Choose either an existing API token or a new one");
+        }
+
+        UUID userId = newConfig.getUserId();
+        String secret = null;
+        UserApiTokenEntity apiToken;
+        if (newConfig.getNewApiToken() != null) {
+            String name = hasText(newConfig.getNewApiToken().getName())
+                    ? newConfig.getNewApiToken().getName() : "Home Assistant";
+            CreateApiTokenResponse created = apiTokenService.createToken(userId, name,
+                    newConfig.getNewApiToken().getExpiresAt(), HOME_ASSISTANT_TOKEN_SCOPES, ipAddress);
+            secret = created.getToken();
+            apiToken = apiTokenService.requireOwnedActiveToken(userId, created.getApiToken().getId());
+        } else {
+            apiToken = apiTokenService.requireOwnedActiveToken(userId, newConfig.getApiTokenId());
+            Set<ApiTokenScope> scopes = apiToken.getScopeSet();
+            if (!scopes.contains(ApiTokenScope.GPS_INGEST) && !scopes.contains(ApiTokenScope.ALL)) {
+                throw new IllegalArgumentException("This API token cannot send locations; it needs the gps:ingest scope");
+            }
+            if (gpsSourceRepository.findByApiTokenIdAndSourceType(apiToken.getId(), GpsSourceType.HOME_ASSISTANT).isPresent()) {
+                throw new IllegalArgumentException("This API token is already connected to a Home Assistant source");
+            }
+        }
+
+        newConfig.setToken(null);
+        newConfig.setConnectionType(GpsSourceConfigEntity.ConnectionType.HTTP);
+        GpsSourceConfigEntity entity = gpsSourceMapper.toEntity(newConfig, em.getReference(UserEntity.class, userId));
+        entity.setApiToken(apiToken);
+        gpsSourceRepository.persist(entity);
+
+        GpsSourceConfigDTO dto = gpsSourceMapper.toDTO(entity);
+        dto.setApiTokenSecret(secret);
+        return dto;
     }
 
     private void validateUniqueness(CreateGpsSourceConfigDto newConfig) {
@@ -135,12 +206,29 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         if (configs == null || configs.isEmpty()) {
             return true;
         }
-        return configs.stream().noneMatch(config -> config.getToken().equals(newConfig.getToken()));
+        return configs.stream().noneMatch(config -> Objects.equals(config.getToken(), newConfig.getToken()));
     }
 
     @Transactional
     public boolean deleteGpsSourceConfig(UUID configId, UUID userId) {
         return gpsSourceRepository.deleteByUserIdAndConfigId(configId, userId) > 0;
+    }
+
+    /**
+     * Deletes a source and, when asked, revokes the API token it is connected to; otherwise points sent with that
+     * token would create the source again.
+     */
+    @Transactional
+    public boolean deleteGpsSourceConfig(UUID configId, UUID userId, boolean revokeApiToken, String ipAddress) {
+        Optional<GpsSourceConfigEntity> source = gpsSourceRepository.findByConfigIdAndUserId(configId, userId);
+        if (source.isEmpty()) {
+            return false;
+        }
+        UserApiTokenEntity apiToken = source.get().getApiToken();
+        if (revokeApiToken && apiToken != null && !apiToken.isRevoked()) {
+            apiTokenService.revokeOwnedToken(userId, apiToken.getId(), ipAddress);
+        }
+        return deleteGpsSourceConfig(configId, userId);
     }
 
     @Transactional
@@ -172,8 +260,8 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
                 dbConfig.getSourceType() == GpsSourceType.DAWARICH ||
                 dbConfig.getSourceType() == GpsSourceType.HOME_ASSISTANT) {
-            // Only update token if a new one is provided
-            if (hasText(config.getToken())) {
+            // Only update token if a new one is provided; API-token sources never get their own token
+            if (hasText(config.getToken()) && dbConfig.getApiToken() == null) {
                 dbConfig.setToken(config.getToken());
             }
         }
@@ -205,6 +293,24 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         dbConfig.setEnableDuplicateDetection(config.isEnableDuplicateDetection());
         dbConfig.setDuplicateDetectionThresholdMinutes(config.getDuplicateDetectionThresholdMinutes());
         return true;
+    }
+
+    /** The source connected to the user's API token, with its ingest status but no credentials. */
+    @Transactional
+    public Optional<ConnectedGpsSourceDTO> findConnectedSource(UUID userId, UUID apiTokenId) {
+        return gpsSourceRepository.findByApiTokenIdAndSourceType(apiTokenId, GpsSourceType.HOME_ASSISTANT)
+                .filter(source -> source.getUser().getId().equals(userId))
+                .map(source -> new ConnectedGpsSourceDTO(source.getId(), source.getSourceType().name(), source.isActive(),
+                        ingestStatusService.findBySourceConfigIds(List.of(source.getId())).get(source.getId())));
+    }
+
+    /**
+     * The source connected to this personal API token: points sent with the token are stored under it. Sources are only
+     * connected in Location Sources (or through {@code POST /gps/sources} with an API token), never implicitly.
+     */
+    @Transactional
+    public Optional<GpsSourceConfigEntity> findApiTokenSource(UserApiTokenEntity apiToken, GpsSourceType sourceType) {
+        return gpsSourceRepository.findByApiTokenIdAndSourceType(apiToken.getId(), sourceType);
     }
 
     public List<GpsSourceConfigEntity> findAllActiveByTokenAndSourceType(String token, GpsSourceType sourceType) {

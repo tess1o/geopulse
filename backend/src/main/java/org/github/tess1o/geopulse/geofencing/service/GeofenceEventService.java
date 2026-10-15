@@ -143,6 +143,7 @@ public class GeofenceEventService {
                 .dateTo(source.getDateTo())
                 .subjectUserIds(subjectUserIds)
                 .eventTypes(eventTypes)
+                .afterId(source.getAfterId())
                 .build();
     }
 

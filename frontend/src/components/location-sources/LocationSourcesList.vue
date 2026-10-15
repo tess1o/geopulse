@@ -40,6 +40,7 @@
               <span v-if="statuses[source.id].lastReceivedAt">
                 {{ t('locationSources.status.lastReceived', { time: timezone.timeAgo(statuses[source.id].lastReceivedAt) }) }}
               </span>
+              <span v-else-if="source.apiTokenId">{{ t('locationSources.status.waitingForApiToken') }}</span>
               <span v-else>{{ t('locationSources.status.neverReceived') }}</span>
             </div>
             <div v-if="statuses[source.id].newestPointAt" class="ingest-detail">

@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.notes.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.shared.service.SecretMask;
 import org.github.tess1o.geopulse.notes.client.MemosClient;
 import org.github.tess1o.geopulse.notes.model.CreateNoteRequest;
 import org.github.tess1o.geopulse.notes.model.MemosConfigResponse;
@@ -173,7 +174,7 @@ public class MemosNoteService {
 
         MemosPreferences existing = preferencesService.applyDefaults(user.getMemosPreferences());
         String apiKey = request.getApiKey();
-        if ((apiKey == null || apiKey.isBlank()) && existing.getApiKey() != null && !existing.getApiKey().isBlank()) {
+        if (SecretMask.isUnchanged(apiKey) && existing.getApiKey() != null && !existing.getApiKey().isBlank()) {
             apiKey = existing.getApiKey();
         }
 
@@ -240,7 +241,7 @@ public class MemosNoteService {
 
         String serverUrl = preferencesService.normalizeServerUrl(request.getServerUrl());
         String apiKey = request.getApiKey();
-        if (apiKey == null || apiKey.isBlank()) {
+        if (SecretMask.isUnchanged(apiKey)) {
             MemosPreferences preferences = user.getMemosPreferences();
             if (preferences != null && preferences.getApiKey() != null && !preferences.getApiKey().isBlank()) {
                 apiKey = preferences.getApiKey();

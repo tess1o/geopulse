@@ -30,6 +30,12 @@
             <div class="token-preview">{{ data.preview }}</div>
           </template>
         </Column>
+        <Column field="scopes" :header="t('profile.access.apiTokens.columns.access')">
+          <template #body="{ data }">
+            <div>{{ formatAccess(data.scopes) }}</div>
+            <small v-if="presetForScopes(data.scopes) === 'custom'" class="muted">{{ formatScopeList(data.scopes) }}</small>
+          </template>
+        </Column>
         <Column field="status" :header="t('profile.access.apiTokens.columns.status')">
           <template #body="{ data }">
             <Tag :value="formatStatus(data.status)" :severity="statusSeverity(data.status)" />
@@ -80,7 +86,7 @@
       v-model:visible="editDialogVisible"
       :header="editingToken ? t('profile.access.apiTokens.editDialog.editHeader') : t('profile.access.apiTokens.editDialog.createHeader')"
       :modal="true"
-      :style="{ width: '440px' }"
+      :style="{ width: '520px' }"
     >
         <div class="dialog-form">
           <div class="form-field">
@@ -111,6 +117,41 @@
             />
             <small class="muted">{{ t('profile.access.apiTokens.editDialog.expirationHint') }}</small>
           </div>
+          <div class="form-field">
+            <span class="field-label">{{ t('profile.access.apiTokens.access.label') }}</span>
+            <template v-if="editingToken">
+              <div>{{ formatAccess(editingToken.scopes) }}</div>
+              <small class="muted">{{ t('profile.access.apiTokens.access.fixedHint') }}</small>
+            </template>
+            <template v-else>
+              <div class="access-options" role="radiogroup">
+                <label v-for="preset in API_TOKEN_PRESETS" :key="preset.id" class="access-option">
+                  <RadioButton v-model="form.preset" :value="preset.id" :inputId="`api-token-preset-${preset.id}`" :disabled="readOnly" />
+                  <span>
+                    <span class="access-title">{{ t(`profile.access.apiTokens.access.presets.${preset.id}.title`) }}</span>
+                    <small class="muted">{{ t(`profile.access.apiTokens.access.presets.${preset.id}.description`) }}</small>
+                  </span>
+                </label>
+              </div>
+              <div v-if="form.preset === 'custom'" class="custom-scopes">
+                <label v-for="scope in API_TOKEN_SCOPES" :key="scope" class="access-option">
+                  <Checkbox
+                    :modelValue="form.customScopes.includes(scope)"
+                    binary
+                    :inputId="`api-token-scope-${scope}`"
+                    :disabled="readOnly"
+                    @update:modelValue="(checked) => form.customScopes = toggleCustomScope(form.customScopes, scope, checked)"
+                  />
+                  <span>
+                    <span class="access-title">{{ t(`profile.access.apiTokens.access.scopes.${scopeKey(scope)}.title`) }}</span>
+                    <small class="muted">{{ t(`profile.access.apiTokens.access.scopes.${scopeKey(scope)}.description`) }}</small>
+                  </span>
+                </label>
+              </div>
+              <small v-if="scopeError" class="error-message">{{ scopeError }}</small>
+              <small class="muted">{{ t('profile.access.apiTokens.access.fixedHint') }}</small>
+            </template>
+          </div>
         </div>
         <template #footer>
           <Button :label="t('profile.access.apiTokens.cancel')" icon="pi pi-times" text @click="closeEditDialog" />
@@ -137,6 +178,18 @@
             <InputText :modelValue="createdToken" readonly class="w-full" />
             <Button icon="pi pi-copy" @click="copyCreatedToken" />
           </div>
+          <Message v-if="createdPreset === 'homeAssistant'" severity="info" :closable="false">
+            <div class="home-assistant-next">
+              <span>{{ t('profile.access.apiTokens.createdDialog.homeAssistantNext') }}</span>
+              <Button
+                :label="t('profile.access.apiTokens.createdDialog.homeAssistantLink')"
+                icon="pi pi-arrow-right"
+                iconPos="right"
+                size="small"
+                @click="openHomeAssistantSetup"
+              />
+            </div>
+          </Message>
         </div>
         <template #footer>
           <Button :label="t('profile.access.apiTokens.createdDialog.confirm')" @click="closeCreatedTokenDialog" />
@@ -177,14 +230,27 @@ import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
+import RadioButton from 'primevue/radiobutton'
+import Checkbox from 'primevue/checkbox'
+import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
+import {
+  API_TOKEN_PRESETS,
+  API_TOKEN_SCOPES,
+  FULL_ACCESS_SCOPE,
+  presetForScopes,
+  scopesForPreset,
+  toggleCustomScope
+} from '@/components/profile/apiTokenScopes'
 
 const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
+const router = useRouter()
 
 const props = defineProps({
   readOnly: {
@@ -203,11 +269,12 @@ const revokeDialogVisible = ref(false)
 const editingToken = ref(null)
 const tokenToRevoke = ref(null)
 const createdToken = ref('')
+const createdPreset = ref(null)
+const createdTokenId = ref(null)
 const formError = ref('')
-const form = ref({
-  name: '',
-  expiresAt: null
-})
+const scopeError = ref('')
+const emptyForm = () => ({ name: '', expiresAt: null, preset: 'readOnly', customScopes: ['read'] })
+const form = ref(emptyForm())
 
 const loadTokens = async () => {
   loading.value = true
@@ -223,8 +290,9 @@ const loadTokens = async () => {
 const openCreateDialog = () => {
   if (props.readOnly) return
   editingToken.value = null
-  form.value = { name: '', expiresAt: null }
+  form.value = emptyForm()
   formError.value = ''
+  scopeError.value = ''
   editDialogVisible.value = true
 }
 
@@ -232,10 +300,12 @@ const openEditDialog = (token) => {
   if (props.readOnly) return
   editingToken.value = token
   form.value = {
+    ...emptyForm(),
     name: token.name || '',
     expiresAt: toDatePickerValue(token.expiresAt)
   }
   formError.value = ''
+  scopeError.value = ''
   editDialogVisible.value = true
 }
 
@@ -253,11 +323,22 @@ const saveToken = async () => {
     return
   }
 
+  const scopes = scopesForPreset(form.value.preset, form.value.customScopes)
+  if (!editingToken.value && scopes.length === 0) {
+    scopeError.value = t('profile.access.apiTokens.validation.scopeRequired')
+    return
+  }
+  scopeError.value = ''
+
   saving.value = true
   try {
     const payload = {
       name,
       expiresAt: toInstantOrNull(form.value.expiresAt)
+    }
+    // Scopes are fixed at creation; the edit request only changes name and expiry
+    if (!editingToken.value) {
+      payload.scopes = scopes
     }
 
     if (editingToken.value) {
@@ -266,6 +347,8 @@ const saveToken = async () => {
     } else {
       const response = await authStore.saveApiToken(null, payload)
       createdToken.value = response?.token || ''
+      createdPreset.value = form.value.preset
+      createdTokenId.value = response?.apiToken?.id || null
       createdTokenDialogVisible.value = !!createdToken.value
       toast.add({ severity: 'success', summary: t('profile.access.apiTokens.toasts.created.title'), detail: t('profile.access.apiTokens.toasts.created.detail'), life: 2500 })
     }
@@ -318,9 +401,18 @@ const copyCreatedToken = async () => {
   })
 }
 
+// Copy the token first: it is shown only once and Home Assistant needs it
+const openHomeAssistantSetup = () => {
+  const apiTokenId = createdTokenId.value
+  closeCreatedTokenDialog()
+  router.push({ path: '/app/location-sources', query: { add: 'home-assistant', apiTokenId } })
+}
+
 const closeCreatedTokenDialog = () => {
   createdTokenDialogVisible.value = false
   createdToken.value = ''
+  createdPreset.value = null
+  createdTokenId.value = null
 }
 
 const statusSeverity = (status) => {
@@ -342,6 +434,21 @@ const formatStatus = (status) => {
   if (!status) return ''
   const key = statusKeys[status]
   return key ? t(`profile.access.apiTokens.status.${key}`) : status
+}
+
+const scopeKey = (scope) => (scope === 'gps:ingest' ? 'gpsIngest' : scope)
+
+const formatScopeList = (scopes) => (scopes || [])
+  .map(scope => (scope === FULL_ACCESS_SCOPE
+    ? t('profile.access.apiTokens.access.presets.full.title')
+    : t(`profile.access.apiTokens.access.scopes.${scopeKey(scope)}.title`)))
+  .join(', ')
+
+const formatAccess = (scopes) => {
+  const preset = presetForScopes(scopes)
+  return preset === 'custom'
+    ? t('profile.access.apiTokens.access.presets.custom.title')
+    : t(`profile.access.apiTokens.access.presets.${preset}.title`)
 }
 
 const formatDateTime = (value) => {
@@ -406,9 +513,48 @@ onMounted(loadTokens)
   gap: 0.5rem;
 }
 
+.field-label {
+  font-weight: 600;
+}
+
+.access-options,
+.custom-scopes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.custom-scopes {
+  padding-left: 1.75rem;
+}
+
+.access-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.access-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.access-title {
+  font-weight: 500;
+}
+
 .error-message {
   color: var(--gp-danger);
   font-size: 0.85rem;
+}
+
+.home-assistant-next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .created-token {

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.importdata.rest;
 
+import io.quarkus.security.identity.SecurityIdentity;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.service.ApiTokenScopeChecker;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import io.quarkus.security.Authenticated;
@@ -50,6 +53,12 @@ public class ImportUploadResource {
     @Inject
     ImportTempFileService tempFileService;
 
+    @Inject
+    SecurityIdentity securityIdentity;
+
+    @Inject
+    ApiTokenScopeChecker scopeChecker;
+
     // ==================== CHUNKED UPLOAD ====================
 
     /**
@@ -81,6 +90,10 @@ public class ImportUploadResource {
             }
             if (request.getOptions() != null) {
                 request.getOptions().validateTimeRange();
+                // The `import` scope only adds data; replacing existing data needs `write`
+                if (request.getOptions().isClearDataBeforeImport()) {
+                    scopeChecker.requireAnyScope(securityIdentity, ApiTokenScope.WRITE);
+                }
             }
 
             log.info("Initializing chunked upload for user {}: fileName={}, fileSize={} MB, format={}",

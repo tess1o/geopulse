@@ -14,7 +14,11 @@ import org.github.tess1o.geopulse.auth.dto.CreateApiTokenRequest;
 import org.github.tess1o.geopulse.auth.dto.ApiTokenResponse;
 import org.github.tess1o.geopulse.auth.dto.CreateApiTokenResponse;
 import org.github.tess1o.geopulse.auth.dto.UpdateApiTokenRequest;
+import io.quarkus.security.identity.SecurityIdentity;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.auth.service.ApiTokenService;
+import org.github.tess1o.geopulse.auth.service.IdentityAttributes;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
@@ -28,6 +32,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOT_FOUND;
 
 @Path("/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
@@ -45,18 +50,47 @@ public class ApiTokenResource {
     @Inject
     ApiTokenService apiTokenService;
 
+    @Inject
+    SecurityIdentity securityIdentity;
+
     @GET
     @Operation(summary = "List API tokens",
             description = "Returns the API tokens of the signed-in user with name, short preview, status, "
-                    + "expiration, and last-use metadata. Token secrets are never returned.")
-    public List<ApiTokenResponse> listTokens() {
+                    + "expiration, scopes, and last-use metadata. Token secrets are never returned. With `scope`, "
+                    + "returns only active tokens created with that scope (for example `gps:ingest` to pick a token "
+                    + "for sending locations).")
+    public List<ApiTokenResponse> listTokens(
+            @Parameter(description = "Only active tokens with this scope.", example = "gps:ingest")
+            @QueryParam("scope") String scope) {
         UUID userId = currentUserService.getCurrentUserId();
-        return apiTokenService.listForUser(userId);
+        if (scope == null || scope.isBlank()) {
+            return apiTokenService.listForUser(userId);
+        }
+        ApiTokenScope requested = ApiTokenScope.fromValue(scope)
+                .orElseThrow(() -> new GeoPulseException(API_TOKEN_INVALID, "Unknown scope: " + scope));
+        return apiTokenService.listActiveWithScope(userId, requested);
+    }
+
+    @GET
+    @Path("/current")
+    @RequiresApiTokenScope(ApiTokenScope.READ)
+    @Operation(summary = "Get the calling API token",
+            description = "Returns the API token used to authenticate this request, including its scopes, so a client "
+                    + "can check what it is allowed to do. Works with a token of any scope. Returns 404 when the "
+                    + "request is not authenticated with an API token.")
+    public ApiTokenResponse currentToken() {
+        String tokenId = securityIdentity.getAttribute(IdentityAttributes.API_TOKEN_ID);
+        if (tokenId == null) {
+            throw new GeoPulseException(NOT_FOUND, "This request is not authenticated with an API token");
+        }
+        return apiTokenService.findActiveForUser(currentUserService.getCurrentUserId(), UUID.fromString(tokenId))
+                .orElseThrow(() -> new GeoPulseException(NOT_FOUND, "API token not found"));
     }
 
     @POST
     @Operation(summary = "Create an API token",
-            description = "Creates an API token that acts as the signed-in user. The response contains the full "
+            description = "Creates an API token that acts as the signed-in user, limited to the requested scopes "
+                    + "(`all` for full access). Scopes cannot be changed later. The response contains the full "
                     + "token secret; it is shown only once and cannot be retrieved later. Optionally set an "
                     + "expiration time.")
     public RestResponse<CreateApiTokenResponse> createToken(@Valid CreateApiTokenRequest createRequest) {
@@ -67,6 +101,7 @@ public class ApiTokenResource {
                     userId,
                     createRequest.getName(),
                     createRequest.getExpiresAt(),
+                    createRequest.getScopes(),
                     ipAddress
             ));
         } catch (IllegalArgumentException e) {

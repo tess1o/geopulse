@@ -80,12 +80,13 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                            ELSE latest_trip.trip_duration
                        END as latest_activity_duration_seconds,
                        ufp.share_live_location as friend_shares_live_location,
-                       ufp.share_timeline as friend_shares_timeline
+                       ufp.share_timeline as friend_shares_timeline,
+                       CASE WHEN ufp.share_live_location = true THEN latest_gps.accuracy ELSE NULL END as accuracy
                 FROM user_friends f
                 JOIN users u ON f.friend_id = u.id
                 LEFT JOIN user_friend_permissions ufp ON (ufp.user_id = u.id AND ufp.friend_id = f.user_id)
                 LEFT JOIN LATERAL (
-                    SELECT timestamp, coordinates, battery
+                    SELECT timestamp, coordinates, battery, accuracy
                     FROM gps_points
                     WHERE user_id = u.id
                     ORDER BY timestamp DESC
@@ -132,6 +133,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                         .latestActivityDurationSeconds(record[9] == null ? 0 : ((Number) record[9]).intValue())
                         .friendSharesLiveLocation(record[10] == null ? false : (Boolean) record[10])
                         .friendSharesTimeline(record[11] == null ? false : (Boolean) record[11])
+                        .lastAccuracy(getNullableDouble(record[12]))
                         .build())
                 .toList();
     }

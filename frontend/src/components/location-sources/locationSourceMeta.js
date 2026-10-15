@@ -95,6 +95,9 @@ export const getLocationSourceIdentifier = (source) => {
     return source.token ? t('locationSources.meta.apiKeyPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noApiKey')
   }
   if (source.type === 'HOME_ASSISTANT') {
+    if (source.apiTokenId) {
+      return t('locationSources.meta.apiToken', { name: source.apiTokenName || '' })
+    }
     return source.token ? t('locationSources.meta.tokenPrefix', { token: source.token.substring(0, 8) }) : t('locationSources.meta.noToken')
   }
 

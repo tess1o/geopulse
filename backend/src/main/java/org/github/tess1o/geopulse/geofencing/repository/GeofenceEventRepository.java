@@ -53,7 +53,15 @@ public class GeofenceEventRepository implements PanacheRepository<GeofenceEventE
             params.put("eventTypes", query.getEventTypes());
         }
 
-        String orderBy = resolveSortField(query.getSortBy()) + " " + resolveSortDirection(query.getSortDir()) + ", e.id DESC";
+        if (query.getAfterId() != null) {
+            where.append(" AND e.id > :afterId");
+            params.put("afterId", query.getAfterId());
+        }
+
+        // A cursor reads forward in id order; otherwise use the requested sort
+        String orderBy = query.getAfterId() != null
+                ? "e.id ASC"
+                : resolveSortField(query.getSortBy()) + " " + resolveSortDirection(query.getSortDir()) + ", e.id DESC";
 
         String select = "SELECT e FROM GeofenceEventEntity e " +
                 "JOIN FETCH e.rule r " +

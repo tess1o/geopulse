@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.auth.session.model.SessionRevocationReason;
 import org.github.tess1o.geopulse.auth.session.model.UserSessionEntity;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.auth.dto.*;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
 import org.github.tess1o.geopulse.auth.model.ApiTokenStatus;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
@@ -46,6 +47,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 AuthStatusResponse.class,
                 UserApiTokenEntity.class,
                 ApiTokenStatus.class,
+                ApiTokenScope.class,
                 ApiTokenResponse.class,
                 CreateApiTokenRequest.class,
                 CreateApiTokenResponse.class,

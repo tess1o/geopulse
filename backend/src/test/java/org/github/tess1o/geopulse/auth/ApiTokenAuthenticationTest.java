@@ -202,7 +202,8 @@ class ApiTokenAuthenticationTest {
                 .body("""
                         {
                           "name": "Created through API",
-                          "expiresAt": "%s"
+                          "expiresAt": "%s",
+                          "scopes": ["all"]
                         }
                         """.formatted(Instant.now().plusSeconds(7200)))
                 .when()
@@ -213,6 +214,7 @@ class ApiTokenAuthenticationTest {
                 .body("token", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
                 .body("apiToken.name", equalTo("Created through API"))
                 .body("apiToken.preview", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
+                .body("apiToken.scopes", contains("all"))
                 .extract()
                 .path("apiToken.id");
 

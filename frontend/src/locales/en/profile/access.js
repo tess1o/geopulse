@@ -54,7 +54,27 @@ export default {
             status: 'Status',
             expires: 'Expires',
             lastUsed: 'Last Used',
-            actions: 'Actions'
+            actions: 'Actions',
+            access: 'Access'
+        },
+        // Token scopes. Preset and scope titles also label tokens in the table.
+        access: {
+            label: 'Access',
+            fixedHint: 'Access can\'t be changed later. To change it, create a new token and revoke this one.',
+            presets: {
+                full: { title: 'Full access', description: 'Everything you can do, including managing API tokens and, for admins, the admin area.' },
+                readOnly: { title: 'Read only', description: 'View your data and use MCP clients. Cannot change anything.' },
+                homeAssistant: { title: 'Home Assistant', description: 'Read your data and send locations from Home Assistant.' },
+                backup: { title: 'Backup', description: 'Read your data and create and download exports.' },
+                custom: { title: 'Custom', description: 'Choose individual permissions.' }
+            },
+            scopes: {
+                read: { title: 'Read', description: 'View timeline, places, statistics, friends and settings.' },
+                write: { title: 'Write', description: 'Change or delete data and settings.' },
+                gpsIngest: { title: 'Send locations', description: 'Send GPS points with this token.' },
+                export: { title: 'Export', description: 'Create and download exports.' },
+                import: { title: 'Import', description: 'Import files that add data. Imports that replace existing data also need Write.' }
+            }
         },
         // Stands in for a missing expiry or last-used timestamp in the table.
         never: 'Never',
@@ -86,7 +106,9 @@ export default {
         createdDialog: {
             header: 'API Token Created',
             message: 'This token is shown once. Store it securely before closing this dialog.',
-            confirm: 'I have stored this token'
+            confirm: 'I have stored this token',
+            homeAssistantNext: 'Next: add a Home Assistant location source for this token, so locations from Home Assistant show up in GeoPulse. Copy the token first; it is shown only once.',
+            homeAssistantLink: 'Add Home Assistant source'
         },
         revokeDialog: {
             header: 'Revoke API Token',
@@ -97,7 +119,8 @@ export default {
             confirm: 'Revoke'
         },
         validation: {
-            nameRequired: 'Token name is required'
+            nameRequired: 'Token name is required',
+            scopeRequired: 'Choose at least one permission'
         },
         toasts: {
             // Summary shared by the failure toasts below.

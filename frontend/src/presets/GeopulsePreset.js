@@ -129,6 +129,19 @@ const GeopulsePreset = definePreset(Aura, {
                 }
             }
         },
+        toggleswitch: {
+            colorScheme: {
+                dark: {
+                    // Aura's dark track is {surface.700}, the same slate as --gp-surface-muted panels (e.g. GPS
+                    // filtering in the Location Sources dialog), which hid the switch there. One step lighter keeps
+                    // the off state visible on cards and muted panels alike.
+                    root: {
+                        background: '{surface.600}',
+                        hoverBackground: '{surface.500}'
+                    }
+                }
+            }
+        },
         card: {
             colorScheme: {
                 light: {

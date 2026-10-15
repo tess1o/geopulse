@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.dto.ApiTokenResponse;
 import org.github.tess1o.geopulse.auth.dto.CreateApiTokenResponse;
 import org.github.tess1o.geopulse.auth.model.ApiTokenAuthenticationResult;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
 import org.github.tess1o.geopulse.auth.model.ApiTokenStatus;
 import org.github.tess1o.geopulse.auth.model.UserApiTokenEntity;
 import org.github.tess1o.geopulse.auth.repository.UserApiTokenRepository;
@@ -35,10 +36,18 @@ public class ApiTokenService {
     @Inject
     ApiTokenSecretService apiTokenSecretService;
 
+    /** Creates a full-access ({@link ApiTokenScope#ALL}) token. */
     @Transactional
     public CreateApiTokenResponse createToken(UUID userId, String name, Instant expiresAt, String ipAddress) {
+        return createToken(userId, name, expiresAt, List.of(ApiTokenScope.ALL.value()), ipAddress);
+    }
+
+    @Transactional
+    public CreateApiTokenResponse createToken(UUID userId, String name, Instant expiresAt, List<String> scopes,
+                                              String ipAddress) {
         UserEntity user = findUserOrThrow(userId);
         validateExpiresAt(expiresAt);
+        Set<ApiTokenScope> scopeSet = parseRequestedScopes(scopes);
 
         String rawToken = apiTokenSecretService.generateToken();
         UserApiTokenEntity entity = UserApiTokenEntity.builder()
@@ -49,6 +58,7 @@ public class ApiTokenService {
                 .tokenSuffix(apiTokenSecretService.suffix(rawToken))
                 .createdAt(Instant.now())
                 .expiresAt(expiresAt)
+                .scopes(ApiTokenScope.format(scopeSet))
                 .build();
 
         apiTokenRepository.persist(entity);
@@ -72,6 +82,24 @@ public class ApiTokenService {
         return apiTokenRepository.findByUserId(userId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /** Active tokens of the user that were created with the given scope (full-access tokens are not included). */
+    public List<ApiTokenResponse> listActiveWithScope(UUID userId, ApiTokenScope scope) {
+        return apiTokenRepository.findByUserId(userId).stream()
+                .filter(UserApiTokenEntity::isActive)
+                .filter(token -> token.getScopeSet().contains(scope))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /** The user's active token; throws {@link IllegalArgumentException} when missing, foreign or inactive. */
+    public UserApiTokenEntity requireOwnedActiveToken(UUID userId, UUID tokenId) {
+        UserApiTokenEntity token = findOwnedToken(userId, tokenId);
+        if (!token.isActive()) {
+            throw new IllegalArgumentException("API token is revoked or expired");
+        }
+        return token;
     }
 
     public List<ApiTokenResponse> listForAdmin(UUID userId, ApiTokenStatus status, int page, int size) {
@@ -119,6 +147,18 @@ public class ApiTokenService {
         UserApiTokenEntity entity = apiTokenRepository.findByIdOptional(tokenId)
                 .orElseThrow(() -> new IllegalArgumentException("API token not found"));
         revoke(entity, adminUserId, ActionType.API_TOKEN_ADMIN_REVOKED, ipAddress);
+    }
+
+    /** The token behind an API-token-authenticated request, if it is still active. */
+    public Optional<ApiTokenResponse> findActiveForUser(UUID userId, UUID tokenId) {
+        return apiTokenRepository.findByIdOptional(tokenId)
+                .filter(token -> token.getUser() != null && userId.equals(token.getUser().getId()))
+                .filter(UserApiTokenEntity::isActive)
+                .map(this::toResponse);
+    }
+
+    public boolean isApiToken(String rawToken) {
+        return apiTokenSecretService.hasTokenPrefix(rawToken);
     }
 
     @Transactional
@@ -175,6 +215,7 @@ public class ApiTokenService {
                 .lastUsedAt(entity.getLastUsedAt())
                 .lastUsedIp(entity.getLastUsedIp())
                 .status(entity.getStatus())
+                .scopes(entity.getScopeSet().stream().sorted().map(ApiTokenScope::value).toList())
                 .build();
     }
 
@@ -214,6 +255,21 @@ public class ApiTokenService {
         );
     }
 
+    private Set<ApiTokenScope> parseRequestedScopes(List<String> requested) {
+        if (requested == null || requested.isEmpty()) {
+            throw new IllegalArgumentException("Choose at least one scope");
+        }
+        Set<ApiTokenScope> scopes = EnumSet.noneOf(ApiTokenScope.class);
+        for (String value : requested) {
+            scopes.add(ApiTokenScope.fromValue(value)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown scope: " + value)));
+        }
+        if (scopes.contains(ApiTokenScope.ALL) && scopes.size() > 1) {
+            throw new IllegalArgumentException("Scope 'all' cannot be combined with other scopes");
+        }
+        return scopes;
+    }
+
     private void validateExpiresAt(Instant expiresAt) {
         if (expiresAt != null && !expiresAt.isAfter(Instant.now())) {
             throw new IllegalArgumentException("Expiration date must be in the future");
@@ -235,6 +291,7 @@ public class ApiTokenService {
         details.put("preview", entity.getPreview());
         details.put("expiresAt", entity.getExpiresAt() != null ? entity.getExpiresAt().toString() : null);
         details.put("status", entity.getStatus().name());
+        details.put("scopes", entity.getScopes());
         return details;
     }
 }

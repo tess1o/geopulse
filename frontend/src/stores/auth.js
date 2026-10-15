@@ -602,9 +602,10 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async listApiTokens() {
+        /** All API tokens, or with `scope` only active tokens that have it (e.g. `gps:ingest`). */
+        async listApiTokens(scope = null) {
             try {
-                return await apiService.get('/api-tokens')
+                return await apiService.get('/api-tokens', scope ? { scope } : {})
             } catch (error) {
                 throw this.fail(error, 'Failed to load API tokens')
             }

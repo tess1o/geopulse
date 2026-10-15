@@ -38,4 +38,7 @@ public class GeofenceEventQueryDto {
 
     @Builder.Default
     private List<GeofenceEventType> eventTypes = List.of();
+
+    /** Cursor: only events with a larger id, returned oldest first. */
+    private Long afterId;
 }

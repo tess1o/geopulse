@@ -9,14 +9,65 @@ MCP clients, dashboards, scheduled jobs, and other automation owned by a GeoPuls
 
 ## What an API token can do
 
-An API token acts as the user who created it:
+An API token acts as the user who created it, limited to the **scopes** chosen when it was created:
 
-- It can call every authenticated endpoint available to that user.
-- If an administrator creates a token for their own account, that token has the administrator's API permissions.
+- With full access, it can call every authenticated endpoint available to that user. If an administrator creates a
+  full-access token for their own account, that token has the administrator's API permissions.
+- With narrower scopes, it can only do what those scopes allow (see [Scopes](#scopes)).
 - It is separate from browser login cookies and does not require CSRF handling.
 - It records usage metadata such as last-used time and last-used IP.
 
-Treat API tokens like passwords. Anyone with the token can use it until it expires or is revoked.
+Treat API tokens like passwords. Anyone with the token can use it until it expires or is revoked. Give each client the
+narrowest access it needs.
+
+## Scopes
+
+| Scope | Allows |
+|---|---|
+| `all` | Everything the user can do, including managing API tokens and, for administrators, the admin API. |
+| `read` | Reading data: every `GET` request on user endpoints, a few read-only `POST` requests (previews and searches), and the [MCP server](./mcp.md). |
+| `write` | Changing or deleting data and settings (`POST`, `PUT`, `PATCH` and `DELETE` requests). |
+| `gps:ingest` | Sending GPS points with the token, for example to `POST /api/v1/gps/ingest/home-assistant`. |
+| `export` | Creating, checking and downloading exports. |
+| `import` | Uploading files and running imports that add data. An import that replaces existing data (`clearDataBeforeImport`) also needs `write`. |
+
+The create dialog offers presets for common cases:
+
+| Preset | Scopes | Typical use |
+|---|---|---|
+| Full access | `all` | Personal scripts you fully trust. |
+| Read only | `read` | Dashboards, MCP clients, reporting. |
+| Home Assistant | `read`, `gps:ingest` | The [GeoPulse integration for Home Assistant](https://github.com/tess1o/geopulse-homeassistant): sends locations and reads your status. |
+| Backup | `read`, `export` | Scheduled backups. |
+| Custom | any combination | Anything else. |
+
+A few things to know:
+
+- **Scopes are fixed.** You can rename a token or change its expiration, but not its scopes. To change access, create
+  a new token and revoke the old one.
+- **Tokens created before scopes existed have full access** (`all`), so existing automation keeps working.
+- **Some endpoints always need full access**, even for reading: API token management (`/api/v1/api-tokens`), password
+  changes, sign-in sessions, and the admin API. A leaked limited token cannot create new tokens or reach the admin
+  area.
+- **A client can check its own token** with `GET /api/v1/api-tokens/current`. It works with any scope and returns the
+  token's id, owner (`userId`), name, scopes and expiration.
+- **Tokens without full access never see stored credentials of other integrations.** Source tokens in
+  `GET /api/v1/gps/sources` and notification destinations (Apprise URLs) in `GET /api/v1/geofences/templates` are left
+  out (`null`).
+
+When a token lacks a scope, GeoPulse answers `403 Forbidden` with the code `API_TOKEN_SCOPE_REQUIRED`. The response
+names the missing scope in `requiredScope` and in the `X-GeoPulse-Required-Scope` header:
+
+```json
+{
+  "type": "urn:geopulse:error:API_TOKEN_SCOPE_REQUIRED",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "This API token does not have the 'write' scope.",
+  "code": "API_TOKEN_SCOPE_REQUIRED",
+  "requiredScope": "write"
+}
+```
 
 ## Create a token
 
@@ -27,8 +78,9 @@ Treat API tokens like passwords. Anyone with the token can use it until it expir
 5. Click **Create Token**.
 6. Enter a clear name, such as `Home dashboard` or `Nightly export job`.
 7. Optionally choose an expiration date.
-8. Click **Create**.
-9. Copy the token immediately and store it securely.
+8. Under **Access**, choose a preset or **Custom** permissions.
+9. Click **Create**.
+10. Copy the token immediately and store it securely.
 
 GeoPulse shows the token secret only once. After closing the creation dialog, the app only shows a short preview, status,
 expiration, and usage metadata.
@@ -87,8 +139,8 @@ Good practice:
 
 In **Profile > Security > API Tokens**, you can:
 
-- View token name, preview, status, expiration, last-used time, and last-used IP.
-- Edit the token name or expiration.
+- View token name, access, preview, status, expiration, last-used time, and last-used IP.
+- Edit the token name or expiration (access cannot be changed).
 - Revoke a token.
 
 Revoking a token takes effect immediately. Any automation using that token will stop authenticating.
@@ -108,4 +160,8 @@ If an API request returns `401 Unauthorized`, check that:
 - The token has not expired or been revoked.
 - There are no extra spaces or quotes around the token value.
 
-If a request returns `403 Forbidden`, the token is valid but the user does not have permission for that endpoint.
+If a request returns `403 Forbidden`, the token is valid but not allowed to make that request:
+
+- With the code `API_TOKEN_SCOPE_REQUIRED`, the token is missing the scope named in `requiredScope`. Create a token with
+  that scope.
+- Otherwise, the user does not have permission for that endpoint (for example, a regular user calling the admin API).

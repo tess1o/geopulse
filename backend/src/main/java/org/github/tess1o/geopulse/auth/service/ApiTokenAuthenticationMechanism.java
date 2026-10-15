@@ -81,6 +81,8 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
                 .addAttribute(IdentityAttributes.AUTH_TYPE, IdentityAttributes.AUTH_TYPE_API_TOKEN)
                 .addAttribute(IdentityAttributes.USER_ID, user.getId().toString())
                 .addAttribute(IdentityAttributes.USER_EMAIL, user.getEmail())
+                .addAttribute(IdentityAttributes.API_TOKEN_ID, auth.apiToken().getId().toString())
+                .addAttribute(IdentityAttributes.API_TOKEN_SCOPES, auth.apiToken().getScopeSet())
                 .build();
 
         apiTokenService.recordUsage(auth.apiToken().getId(), ipAddress);

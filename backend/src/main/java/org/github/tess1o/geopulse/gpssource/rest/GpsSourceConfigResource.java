@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gpssource.rest;
 
+import org.github.tess1o.geopulse.gpssource.model.ConnectedGpsSourceDTO;
+import org.github.tess1o.geopulse.auth.service.IdentityAttributes;
+import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -14,13 +17,21 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.inject.Inject;
+import io.quarkus.security.identity.SecurityIdentity;
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.shared.openapi.ApiTags;
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.service.ApiTokenScopeChecker;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt.MqttConfiguration;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.model.GpsFilteringDefaultsDTO;
@@ -59,6 +70,15 @@ public class GpsSourceConfigResource {
     private final CurrentUserService currentUserService;
     private final MqttConfiguration mqttConfiguration;
 
+    @Inject
+    SecurityIdentity securityIdentity;
+
+    @Inject
+    ApiTokenScopeChecker scopeChecker;
+
+    @Context
+    HttpServerRequest request;
+
     public GpsSourceConfigResource(GpsSourceService gpsSourceService,
                                    GpsSourceTypeTelemetryConfigService telemetryConfigService,
                                    CurrentUserService currentUserService,
@@ -72,9 +92,34 @@ public class GpsSourceConfigResource {
     @GET
     @Operation(summary = "List GPS sources",
             description = "Returns the GPS sources of the signed-in user: type, credentials (username or token), "
-                    + "device filter, active status, and point filtering settings.")
+                    + "device filter, active status, and point filtering settings. For an API token without full access, "
+                    + "source tokens are left out (`token` is null).")
     public List<GpsSourceConfigDTO> getGpsSourceConfigs() {
-        return gpsSourceService.findGpsSourceConfigs(currentUserService.getCurrentUserId());
+        List<GpsSourceConfigDTO> sources = gpsSourceService.findGpsSourceConfigs(currentUserService.getCurrentUserId());
+        if (scopeChecker.isLimitedApiToken(securityIdentity)) {
+            // A read-only or integration token must not reveal the credentials of the user's other trackers
+            sources.forEach(source -> source.setToken(null));
+        }
+        return sources;
+    }
+
+    @GET
+    @Path("/current")
+    @RequiresApiTokenScope({ApiTokenScope.READ, ApiTokenScope.GPS_INGEST})
+    @Operation(summary = "Get the source of the calling API token",
+            description = "Returns the location source connected to the API token used for this request (a Home "
+                    + "Assistant source set up with a personal API token) with its ingest status: when data last "
+                    + "arrived and why the last point was skipped. Never returns credentials. Works with a token that has "
+                    + "`read` or `gps:ingest`. Returns 404 when the token is not connected to a source yet, or the request "
+                    + "is not authenticated with an API token.")
+    public ConnectedGpsSourceDTO getConnectedSource() {
+        String tokenId = securityIdentity.getAttribute(IdentityAttributes.API_TOKEN_ID);
+        if (tokenId == null) {
+            throw new GeoPulseException(GPS_SOURCE_NOT_FOUND, "This request is not authenticated with an API token");
+        }
+        return gpsSourceService.findConnectedSource(currentUserService.getCurrentUserId(), UUID.fromString(tokenId))
+                .orElseThrow(() -> new GeoPulseException(GPS_SOURCE_NOT_FOUND,
+                        "No location source is connected to this API token yet"));
     }
 
     @GET
@@ -172,12 +217,20 @@ public class GpsSourceConfigResource {
     @Operation(summary = "Create a GPS source",
             description = "Creates a GPS source that a tracker app can send data to. Basic-auth sources (OwnTracks, "
                     + "GPSLogger, Colota) need a username and password; token sources (Overland, Traccar, Home "
-                    + "Assistant, Dawarich) need a token.")
+                    + "Assistant, Dawarich) need a token. A Home Assistant source for the GeoPulse Home Assistant "
+                    + "integration uses a personal API token instead: pass `apiTokenId` to connect an existing token "
+                    + "with the `gps:ingest` scope, or `newApiToken` to create one (its secret is returned once in "
+                    + "`apiTokenSecret`).")
     public RestResponse<GpsSourceConfigDTO> addGpsSourceConfig(
             @NotNull @Valid CreateGpsSourceConfigDto config) {
         config.setUserId(currentUserService.getCurrentUserId());
+        if (config.getNewApiToken() != null) {
+            // Creating API tokens is account security: a limited token must not mint new ones
+            scopeChecker.requireAnyScope(securityIdentity, ApiTokenScope.ALL);
+        }
         try {
-            return RestResponse.status(Response.Status.CREATED, gpsSourceService.addGpsSourceConfig(config));
+            return RestResponse.status(Response.Status.CREATED,
+                    gpsSourceService.addGpsSourceConfig(config, UserIpAddress.resolve(request)));
         } catch (IllegalArgumentException exception) {
             throw new GeoPulseException(INVALID_GPS_SOURCE, INVALID_GPS_SOURCE.title(), exception);
         }
@@ -188,12 +241,19 @@ public class GpsSourceConfigResource {
     @APIResponse(responseCode = "204", description = "GPS source deleted")
     @Operation(summary = "Delete a GPS source",
             description = "Deletes a GPS source. Its credentials stop working immediately. GPS points already "
-                    + "received are kept.")
+                    + "received are kept. For a source connected to a personal API token, set `revokeApiToken` to "
+                    + "also revoke that token; otherwise locations sent with it create the source again.")
     public RestResponse<Void> deleteGpsSourceConfig(
             @Parameter(description = "GPS source ID.")
-            @PathParam("id") UUID configId) {
+            @PathParam("id") UUID configId,
+            @Parameter(description = "Also revoke the API token the source is connected to. Needs a signed-in "
+                    + "session or a full-access token.")
+            @QueryParam("revokeApiToken") boolean revokeApiToken) {
+        if (revokeApiToken) {
+            scopeChecker.requireAnyScope(securityIdentity, ApiTokenScope.ALL);
+        }
         boolean deleted = gpsSourceService.deleteGpsSourceConfig(
-                configId, currentUserService.getCurrentUserId());
+                configId, currentUserService.getCurrentUserId(), revokeApiToken, UserIpAddress.resolve(request));
         if (!deleted) {
             throw new GeoPulseException(GPS_SOURCE_NOT_FOUND, "GPS source not found",
                     Map.of("sourceId", configId.toString()));

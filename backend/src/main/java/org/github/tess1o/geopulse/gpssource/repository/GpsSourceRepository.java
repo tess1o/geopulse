@@ -12,6 +12,10 @@ import java.util.UUID;
 @ApplicationScoped
 public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfigEntity, UUID> {
 
+    public Optional<GpsSourceConfigEntity> findByApiTokenIdAndSourceType(UUID apiTokenId, GpsSourceType sourceType) {
+        return find("apiToken.id = ?1 and sourceType = ?2", apiTokenId, sourceType).firstResultOptional();
+    }
+
     public List<GpsSourceConfigEntity> findByUserId(UUID userId) {
         return list("user.id = ?1", userId);
     }

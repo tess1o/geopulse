@@ -91,7 +91,7 @@ GeoPulse supports multiple GPS tracking apps. Choose the one that works best for
 | **Traccar** | Any | Existing Traccar server deployments with Position Forwarding | Varies |
 | **GPS Logger** | Android | Lightweight, battery-efficient | Low |
 | **Dawarich** | iOS, Android | Privacy-focused, API key authentication | Low-Medium |
-| **Home Assistant** | Any | Smart home integration, existing HA users | Varies |
+| **Home Assistant** | Any | Existing HA users; two-way GeoPulse integration | Varies |
 | **Colota** | Any | Privacy-focused batch updates with smart tracking sync | Low |
 
 ### Quick Setup Process

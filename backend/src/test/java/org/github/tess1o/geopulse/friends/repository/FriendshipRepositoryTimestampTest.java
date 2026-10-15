@@ -54,7 +54,8 @@ class FriendshipRepositoryTimestampTest {
                 "TRIP",
                 120,
                 true,
-                true
+                true,
+                9.5
         };
 
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
@@ -86,7 +87,8 @@ class FriendshipRepositoryTimestampTest {
                 "STAY",
                 300,
                 true,
-                false
+                false,
+                null
         };
 
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);

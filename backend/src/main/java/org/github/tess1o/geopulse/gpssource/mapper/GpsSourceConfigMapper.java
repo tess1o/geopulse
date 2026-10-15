@@ -37,6 +37,8 @@ public class GpsSourceConfigMapper {
                 .maxAllowedSpeed(config.getMaxAllowedSpeed())
                 .enableDuplicateDetection(config.isEnableDuplicateDetection())
                 .duplicateDetectionThresholdMinutes(config.getDuplicateDetectionThresholdMinutes())
+                .apiTokenId(config.getApiToken() != null ? config.getApiToken().getId() : null)
+                .apiTokenName(config.getApiToken() != null ? config.getApiToken().getName() : null)
                 .build();
     }
 

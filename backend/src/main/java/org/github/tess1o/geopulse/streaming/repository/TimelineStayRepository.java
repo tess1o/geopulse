@@ -54,6 +54,35 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .firstResultOptional();
     }
 
+    /** Latest stay starting at or before the timestamp, with its favorite and geocoding place loaded. */
+    public Optional<TimelineStayEntity> findLatestWithPlaceAtOrBefore(UUID userId, Instant timestamp) {
+        return getEntityManager().createQuery("""
+                        SELECT s FROM TimelineStayEntity s
+                        LEFT JOIN FETCH s.favoriteLocation
+                        LEFT JOIN FETCH s.geocodingLocation
+                        WHERE s.user.id = ?1 AND s.timestamp <= ?2
+                        ORDER BY s.timestamp DESC
+                        """, TimelineStayEntity.class)
+                .setParameter(1, userId)
+                .setParameter(2, timestamp)
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst();
+    }
+
+    /** {@code [stay count, distinct place names]} for stays starting in {@code [from, to)}. */
+    public long[] countStaysAndPlacesStartedBetween(UUID userId, Instant from, Instant to) {
+        Object[] row = getEntityManager().createQuery("""
+                        SELECT COUNT(s), COUNT(DISTINCT s.locationName) FROM TimelineStayEntity s
+                        WHERE s.user.id = ?1 AND s.timestamp >= ?2 AND s.timestamp < ?3
+                        """, Object[].class)
+                .setParameter(1, userId)
+                .setParameter(2, from)
+                .setParameter(3, to)
+                .getSingleResult();
+        return new long[]{((Number) row[0]).longValue(), ((Number) row[1]).longValue()};
+    }
+
     public Optional<TimelineStayEntity> findEarliestByUserIdAtOrAfterTimestamp(UUID userId, Instant timestamp) {
         return find("user.id = ?1 and timestamp >= ?2 order by timestamp asc", userId, timestamp)
                 .firstResultOptional();

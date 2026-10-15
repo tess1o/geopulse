@@ -8,6 +8,7 @@ import lombok.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -60,6 +61,11 @@ public class UserApiTokenEntity extends PanacheEntityBase {
     @Column(name = "last_used_ip", length = 45)
     private String lastUsedIp;
 
+    /** Comma-separated {@link ApiTokenScope} values; fixed at creation. */
+    @Column(name = "scopes", nullable = false, length = 200)
+    @Builder.Default
+    private String scopes = ApiTokenScope.ALL.value();
+
     public boolean isExpired() {
         return expiresAt != null && !Instant.now().isBefore(expiresAt);
     }
@@ -80,6 +86,10 @@ public class UserApiTokenEntity extends PanacheEntityBase {
             return ApiTokenStatus.EXPIRED;
         }
         return ApiTokenStatus.ACTIVE;
+    }
+
+    public Set<ApiTokenScope> getScopeSet() {
+        return ApiTokenScope.parse(scopes);
     }
 
     public String getPreview() {

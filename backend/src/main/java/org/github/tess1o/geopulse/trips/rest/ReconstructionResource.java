@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -44,6 +46,7 @@ public class ReconstructionResource {
 
     @POST
     @Path("/preview")
+    @RequiresApiTokenScope(ApiTokenScope.READ)
     @Operation(summary = "Preview a trip reconstruction",
             description = "Checks a reconstruction request and returns how many GPS points it would create, and for "
                     + "which time range. A reconstruction describes missing parts of a trip as a list of stays and "

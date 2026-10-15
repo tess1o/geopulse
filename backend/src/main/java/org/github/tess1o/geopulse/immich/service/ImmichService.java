@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.shared.service.SecretMask;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
 import org.github.tess1o.geopulse.geocoding.service.GeonamesLocationNormalizationService;
 import org.github.tess1o.geopulse.immich.client.ImmichClient;
@@ -162,7 +163,7 @@ public class ImmichService {
         return Optional.of(ImmichConfigResponse.builder()
                 .serverUrl(immichPrefs.getServerUrl())
                 .enabled(immichPrefs.getEnabled())
-                .apiKey(immichPrefs.getApiKey())
+                .apiKey(SecretMask.mask(immichPrefs.getApiKey()))
                 .build());
     }
 
@@ -175,9 +176,14 @@ public class ImmichService {
             throw new IllegalArgumentException("User not found: " + userId);
         }
 
+        String apiKey = request.getApiKey();
+        if (SecretMask.isUnchanged(apiKey) && user.getImmichPreferences() != null) {
+            apiKey = user.getImmichPreferences().getApiKey();
+        }
+
         ImmichPreferences immichPrefs = ImmichPreferences.builder()
                 .serverUrl(normalizeServerUrl(request.getServerUrl()))
-                .apiKey(request.getApiKey())
+                .apiKey(apiKey)
                 .enabled(request.getEnabled())
                 .build();
 
@@ -217,7 +223,7 @@ public class ImmichService {
         String apiKey = request.getApiKey();
 
         // If no API key provided in request, try to use the saved one from DB
-        if (apiKey == null || apiKey.isBlank()) {
+        if (SecretMask.isUnchanged(apiKey)) {
             ImmichPreferences immichPrefs = user.getImmichPreferences();
             if (immichPrefs != null && immichPrefs.getApiKey() != null && !immichPrefs.getApiKey().isBlank()) {
                 apiKey = immichPrefs.getApiKey();

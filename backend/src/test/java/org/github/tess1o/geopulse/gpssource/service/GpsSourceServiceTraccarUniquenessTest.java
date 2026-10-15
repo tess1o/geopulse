@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gpssource.service;
 
 import jakarta.persistence.EntityManager;
+import org.github.tess1o.geopulse.auth.service.ApiTokenService;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.gpssource.mapper.GpsSourceConfigMapper;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
@@ -55,12 +56,15 @@ class GpsSourceServiceTraccarUniquenessTest {
     @Mock
     private GpsSourceIngestStatusService ingestStatusService;
 
+    @Mock
+    private ApiTokenService apiTokenService;
+
     private GpsSourceService service;
 
     @BeforeEach
     void setUp() {
         service = new GpsSourceService(gpsSourceRepository, gpsSourceMapper, passwordUtils, em, encryptionService,
-                ingestStatusService);
+                ingestStatusService, apiTokenService);
     }
 
     @Test

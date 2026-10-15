@@ -55,6 +55,11 @@ const restApiItems = [
         id: 'api/mcp',
         label: 'MCP Server',
     },
+    {
+        type: 'doc',
+        id: 'api/home-assistant-integration',
+        label: 'Home Assistant Integration',
+    },
     ...generatedApiCategories,
 ];
 

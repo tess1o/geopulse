@@ -6,6 +6,10 @@ public final class IdentityAttributes {
     public static final String AUTH_TYPE = "geopulse.auth.type";
     public static final String USER_ID = "geopulse.auth.userId";
     public static final String USER_EMAIL = "geopulse.auth.userEmail";
+    /** Set for API-token-authenticated requests only: the token's id. */
+    public static final String API_TOKEN_ID = "geopulse.auth.apiTokenId";
+    /** Set for API-token-authenticated requests only: the token's {@code Set<ApiTokenScope>}. */
+    public static final String API_TOKEN_SCOPES = "geopulse.auth.apiTokenScopes";
     /** Set for session-authenticated requests only. */
     public static final String SESSION_ID = "geopulse.auth.sessionId";
 

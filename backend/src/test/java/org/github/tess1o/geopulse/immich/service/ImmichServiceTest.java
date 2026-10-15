@@ -5,6 +5,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.github.tess1o.geopulse.geocoding.service.GeonamesLocationNormalizationService;
 import org.github.tess1o.geopulse.immich.client.ImmichClient;
 import org.github.tess1o.geopulse.immich.model.ImmichAsset;
+import org.github.tess1o.geopulse.immich.model.ImmichConfigResponse;
+import org.github.tess1o.geopulse.immich.model.UpdateImmichConfigRequest;
+import org.github.tess1o.geopulse.shared.service.SecretMask;
 import org.github.tess1o.geopulse.immich.model.ImmichExifInfo;
 import org.github.tess1o.geopulse.immich.model.ImmichPhotoMapMarkerDto;
 import org.github.tess1o.geopulse.immich.model.ImmichPhotoMapMarkersResponse;
@@ -55,6 +58,43 @@ class ImmichServiceTest {
         service.immichClient = immichClient;
         service.userRepository = userRepository;
         service.geonamesLocationNormalizationService = geonamesLocationNormalizationService;
+    }
+
+    @Test
+    void configResponseNeverExposesTheStoredApiKey() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = userWithImmichKey(userId, "stored-secret");
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        assertThat(service.getUserImmichConfig(userId)).get()
+                .extracting(ImmichConfigResponse::getApiKey)
+                .isEqualTo(SecretMask.MASK);
+    }
+
+    @Test
+    void savingWithTheMaskKeepsTheStoredApiKey() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = userWithImmichKey(userId, "stored-secret");
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        UpdateImmichConfigRequest request = new UpdateImmichConfigRequest();
+        request.setServerUrl("https://immich.example.test");
+        request.setApiKey(SecretMask.MASK);
+        request.setEnabled(true);
+        service.updateUserImmichConfig(userId, request);
+
+        assertThat(user.getImmichPreferences().getApiKey()).isEqualTo("stored-secret");
+    }
+
+    private UserEntity userWithImmichKey(UUID userId, String apiKey) {
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setImmichPreferences(ImmichPreferences.builder()
+                .serverUrl("https://immich.example.test")
+                .apiKey(apiKey)
+                .enabled(true)
+                .build());
+        return user;
     }
 
     @Test

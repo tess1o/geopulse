@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.notes.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.shared.service.SecretMask;
 import org.github.tess1o.geopulse.notes.model.MemosConfigResponse;
 import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosVisibility;
@@ -17,7 +18,7 @@ public class MemosPreferencesService {
     MemosConfigResponse toConfigResponse(MemosPreferences preferences) {
         return MemosConfigResponse.builder()
                 .serverUrl(preferences.getServerUrl())
-                .apiKey(preferences.getApiKey())
+                .apiKey(SecretMask.mask(preferences.getApiKey()))
                 .enabled(Boolean.TRUE.equals(preferences.getEnabled()))
                 .defaultSaveDestination(preferences.getDefaultSaveDestination())
                 .defaultVisibility(preferences.getDefaultVisibility())

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.mapmatching.rest;
 
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -57,6 +59,7 @@ public class MapMatchingResource {
 
     @POST
     @Path("/searches")
+    @RequiresApiTokenScope(ApiTokenScope.READ)
     @RolesAllowed({"USER", "ADMIN"})
     @Operation(summary = "Check map matching results",
             description = "Returns the current state and, when finished, the snapped path of up to 100 queued map "

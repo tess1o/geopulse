@@ -51,6 +51,8 @@
           :has-gps-logger-source="hasGpsLoggerSource"
           :has-dawarich-source="hasDawarichSource"
           :has-home-assistant-source="hasHomeAssistantSource"
+          :has-home-assistant-api-token-source="hasHomeAssistantApiTokenSource"
+          :has-home-assistant-source-token-source="hasHomeAssistantSourceTokenSource"
           :has-colota-source="hasColotaSource"
           @tab-change="handleTabChange"
           @copy-text="copyToClipboard"
@@ -60,8 +62,39 @@
           ref="locationSourceDialogRef"
           :saving="saving"
           :defaultFilteringValues="defaultFilteringValues"
+          :linkedApiTokenIds="linkedApiTokenIds"
           @submit="handleLocationSourceDialogSubmit"
         />
+
+        <HomeAssistantConnectDialog
+          v-model:visible="connectDialog.visible"
+          :serverUrl="serverUrl"
+          :tokenSecret="connectDialog.tokenSecret"
+          :tokenName="connectDialog.tokenName"
+          @copy-text="copyToClipboard"
+        />
+
+        <Dialog
+          v-model:visible="deleteDialog.visible"
+          :header="t('locationSources.page.confirmDeleteHeader')"
+          :modal="true"
+          :style="{ width: '460px' }"
+        >
+          <div class="delete-linked-source">
+            <p>{{ t('locationSources.page.confirmDeleteMessage', { name: getSourceDisplayName(deleteDialog.source?.type) }) }}</p>
+            <label class="revoke-option">
+              <Checkbox v-model="deleteDialog.revokeApiToken" binary inputId="revoke-linked-token" />
+              <span>{{ t('locationSources.page.revokeLinkedToken', { name: deleteDialog.source?.apiTokenName || '' }) }}</span>
+            </label>
+            <small class="text-muted">
+              {{ deleteDialog.revokeApiToken ? t('locationSources.page.revokeLinkedTokenHint') : t('locationSources.page.keepLinkedTokenHint') }}
+            </small>
+          </div>
+          <template #footer>
+            <Button :label="t('locationSources.page.cancel')" severity="secondary" outlined @click="deleteDialog.visible = false" />
+            <Button :label="t('locationSources.page.delete')" severity="danger" @click="confirmLinkedDelete" />
+          </template>
+        </Dialog>
 
         <!-- Confirm Delete Dialog -->
         <ConfirmDialog />
@@ -77,6 +110,7 @@ import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useRoute, useRouter } from 'vue-router'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -86,6 +120,7 @@ import LocationSourceDialog from '@/components/location-sources/LocationSourceDi
 import LocationSourceQuickSetupGuide from '@/components/location-sources/LocationSourceQuickSetupGuide.vue'
 import LocationSourceInstructionsCard from '@/components/location-sources/LocationSourceInstructionsCard.vue'
 import LocationSourcesList from '@/components/location-sources/LocationSourcesList.vue'
+import HomeAssistantConnectDialog from '@/components/location-sources/HomeAssistantConnectDialog.vue'
 import { getLocationSourceDisplayName } from '@/components/location-sources/locationSourceMeta'
 
 // Store
@@ -101,6 +136,8 @@ const { gpsSourceConfigs, defaultFilteringValues, ownTracksMqttConfig } = storeT
 // Services
 const toast = useToast()
 const confirm = useConfirm()
+const route = useRoute()
+const router = useRouter()
 
 // State
 const locationSourceDialogRef = ref(null)
@@ -141,6 +178,22 @@ const hasDawarichSource = computed(() =>
 const hasHomeAssistantSource = computed(() => 
   gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT')
 )
+
+const hasHomeAssistantApiTokenSource = computed(() =>
+  gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT' && source.apiTokenId)
+)
+
+const hasHomeAssistantSourceTokenSource = computed(() =>
+  gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT' && !source.apiTokenId)
+)
+
+const linkedApiTokenIds = computed(() =>
+  gpsSourceConfigs.value.map(source => source.apiTokenId).filter(Boolean)
+)
+
+const serverUrl = typeof window !== 'undefined' ? window.location.origin : ''
+const connectDialog = ref({ visible: false, tokenSecret: null, tokenName: '' })
+const deleteDialog = ref({ visible: false, source: null, revokeApiToken: true })
 
 const hasColotaSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'COLOTA')
@@ -329,6 +382,23 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
           null,
           formData.type === 'OWNTRACKS' ? formData.payloadEncryptionSecret : null
         )
+      } else if (formData.type === 'HOME_ASSISTANT' && formData.haMode === 'apiToken') {
+        const created = await gpsStore.addHomeAssistantIntegrationSource({
+          apiTokenId: formData.haTokenChoice === 'existing' ? formData.haApiTokenId : null,
+          newApiToken: formData.haTokenChoice === 'new' ? { name: formData.haNewTokenName.trim() } : null,
+          filters: {
+            filterInaccurateData: formData.filterInaccurateData,
+            maxAllowedAccuracy: formData.maxAllowedAccuracy,
+            maxAllowedSpeed: formData.maxAllowedSpeed,
+            enableDuplicateDetection: formData.enableDuplicateDetection,
+            duplicateDetectionThresholdMinutes: formData.duplicateDetectionThresholdMinutes
+          }
+        })
+        connectDialog.value = {
+          visible: true,
+          tokenSecret: created?.apiTokenSecret || null,
+          tokenName: created?.apiTokenName || ''
+        }
       } else {
         // Token-only sources (Overland, Traccar, Dawarich, Home Assistant).
         await gpsStore.addGpsConfigSource(
@@ -395,6 +465,11 @@ const handleStatusChange = async ({ id, status }) => {
 }
 
 const confirmDelete = (source) => {
+  if (source.apiTokenId) {
+    // Integration sources come back on the token's next location unless the token is revoked too
+    deleteDialog.value = { visible: true, source, revokeApiToken: true }
+    return
+  }
   confirm.require({
     message: t('locationSources.page.confirmDeleteMessage', { name: getSourceDisplayName(source.type) }),
     header: t('locationSources.page.confirmDeleteHeader'),
@@ -412,9 +487,15 @@ const confirmDelete = (source) => {
   })
 }
 
-const deleteSource = async (id) => {
+const confirmLinkedDelete = async () => {
+  const { source, revokeApiToken } = deleteDialog.value
+  deleteDialog.value.visible = false
+  if (source) await deleteSource(source.id, { revokeApiToken })
+}
+
+const deleteSource = async (id, options = {}) => {
   try {
-    await gpsStore.deleteGpsSource(id)
+    await gpsStore.deleteGpsSource(id, options)
     toast.add({
       severity: 'success',
       summary: t('locationSources.page.toasts.sourceDeletedSummary'),
@@ -451,6 +532,18 @@ const copyToClipboard = async (text) => {
   }
 }
 
+/**
+ * `?add=home-assistant&apiTokenId=…` (linked from the "API token created" dialog) opens the Add dialog for the
+ * GeoPulse integration with that token selected. The query is cleared so a reload doesn't reopen it.
+ */
+const openRequestedHomeAssistantSetup = () => {
+  const { add, apiTokenId } = route.query
+  if (add !== 'home-assistant' || typeof apiTokenId !== 'string') return
+  router.replace({ query: {} })
+  if (linkedApiTokenIds.value.includes(apiTokenId)) return
+  locationSourceDialogRef.value?.openHomeAssistantApiToken(apiTokenId)
+}
+
 // Lifecycle
 onMounted(async () => {
   try {
@@ -464,6 +557,7 @@ onMounted(async () => {
     // Ensure first tab is active after data loads
     await nextTick()
     setFirstTabActive()
+    openRequestedHomeAssistantSetup()
   } catch (error) {
     console.error('Error loading GPS source data:', error)
     toast.add({
@@ -477,6 +571,23 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.delete-linked-source {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.delete-linked-source p {
+  margin: 0;
+}
+
+.revoke-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
 .location-sources-page {
   max-width: 1200px;
   margin: 0 auto;

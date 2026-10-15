@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geofencing.rest;
 
+import io.quarkus.security.identity.SecurityIdentity;
+import org.github.tess1o.geopulse.auth.service.ApiTokenScopeChecker;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -82,6 +84,12 @@ public class GeofenceResource {
     private final CurrentUserService currentUserService;
 
     @Inject
+    SecurityIdentity securityIdentity;
+
+    @Inject
+    ApiTokenScopeChecker scopeChecker;
+
+    @Inject
     public GeofenceResource(GeofenceRuleService ruleService,
                             GeofenceEventService eventService,
                             NotificationTemplateService templateService,
@@ -156,7 +164,8 @@ public class GeofenceResource {
     @Path("/events")
     @Operation(summary = "List geofence events",
             description = "Returns enter and leave events recorded by the signed-in user's rules, one page at a "
-                    + "time, with filters.")
+                    + "time, with filters. To poll for new events, pass `afterId` with the largest event `id` seen so "
+                    + "far: only newer events are returned, oldest first, and the sort parameters are ignored.")
     public PageResponse<GeofenceEventDto> getEvents(
             @Parameter(description = "Page number, starting at 0.")
             @QueryParam("page") @DefaultValue("0") int page,
@@ -175,7 +184,9 @@ public class GeofenceResource {
             @Parameter(description = "Comma-separated user IDs of the people the events are about.")
             @QueryParam("subjectUserIds") String subjectUserIdsValue,
             @Parameter(description = "Comma-separated event types: `ENTER`, `LEAVE`.", example = "ENTER")
-            @QueryParam("eventTypes") String eventTypesValue) {
+            @QueryParam("eventTypes") String eventTypesValue,
+            @Parameter(description = "Only events with an `id` greater than this, oldest first.", example = "1520")
+            @QueryParam("afterId") Long afterId) {
         GeofenceEventQueryDto query = GeofenceEventQueryDto.builder()
                 .page(page)
                 .pageSize(pageSize)
@@ -186,6 +197,7 @@ public class GeofenceResource {
                 .dateTo(parseInstant(dateToValue, "dateTo"))
                 .subjectUserIds(parseUuidList(subjectUserIdsValue, "subjectUserIds"))
                 .eventTypes(parseEventTypes(eventTypesValue))
+                .afterId(afterId)
                 .build();
         return eventService.listEventsPage(currentUserService.getCurrentUserId(), query);
     }
@@ -225,9 +237,15 @@ public class GeofenceResource {
     @Path("/templates")
     @Operation(summary = "List notification templates",
             description = "Returns the notification templates of the signed-in user. A template defines the title "
-                    + "and body of a geofence notification and where it is sent: in-app, through Apprise, or both.")
+                    + "and body of a geofence notification and where it is sent: in-app, through Apprise, or both. For "
+                    + "an API token without full access, `destination` is left out, since Apprise URLs often contain "
+                    + "secrets.")
     public List<NotificationTemplateDto> getTemplates() {
-        return templateService.listTemplates(currentUserService.getCurrentUserId());
+        List<NotificationTemplateDto> templates = templateService.listTemplates(currentUserService.getCurrentUserId());
+        if (scopeChecker.isLimitedApiToken(securityIdentity)) {
+            templates.forEach(template -> template.setDestination(null));
+        }
+        return templates;
     }
 
     @GET

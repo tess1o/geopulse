@@ -38,8 +38,13 @@ import org.github.tess1o.geopulse.shared.openapi.GpsIngestExamples;
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 @Tag(name = ApiTags.GPS_TRACKER_INGEST)
+// Alternatives: the source's own token, or a personal API token with the gps:ingest scope
 @SecurityRequirement(name = ApiSecuritySchemes.GPS_SOURCE_TOKEN)
+@SecurityRequirement(name = ApiSecuritySchemes.BEARER)
+@SecurityRequirement(name = ApiSecuritySchemes.API_KEY)
 public class HomeAssistantResource {
+    private static final String API_KEY_HEADER = "X-API-Key";
+
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
     private final GpsSourceIngestStatusService ingestStatusService;
@@ -53,14 +58,18 @@ public class HomeAssistantResource {
 
     @POST
     @Operation(summary = "Ingest Home Assistant location",
-            description = "Receives a location update sent by a Home Assistant automation (REST command) and stores "
-                    + "it as a GPS point for the user who owns the Home Assistant GPS source.")
+            description = "Receives a location update from Home Assistant and stores it as a GPS point. Send either "
+                    + "the token of a Home Assistant GPS source (the `configuration.yaml` setup), or a personal API "
+                    + "token with the `gps:ingest` scope; points sent with an API token go to the Home Assistant "
+                    + "source connected to it in Location Sources. "
+                    + "`latitude` and `longitude` are required; leave out unknown values instead of sending 0.")
     @APIResponse(responseCode = "200", description = "Location accepted")
     public Response handleHA(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     examples = @ExampleObject(name = "location", value = GpsIngestExamples.HOME_ASSISTANT)))
-                             HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
+                             HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken,
+                             @HeaderParam(API_KEY_HEADER) String apiKey) {
         long started = System.nanoTime();
-        var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
+        var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, credentials(authToken, apiKey));
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
@@ -88,9 +97,10 @@ public class HomeAssistantResource {
     public GpsIngestSummaryResponse handleHABatch(@RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     examples = @ExampleObject(name = "locations", value = GpsIngestExamples.HOME_ASSISTANT_BATCH)))
                                                   List<HomeAssistantGpsData> data,
-                                                  @HeaderParam("Authorization") String authToken) {
+                                                  @HeaderParam("Authorization") String authToken,
+                                                  @HeaderParam(API_KEY_HEADER) String apiKey) {
         long started = System.nanoTime();
-        var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
+        var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, credentials(authToken, apiKey));
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
@@ -105,5 +115,13 @@ public class HomeAssistantResource {
         summary.logCompletion(GpsSourceType.HOME_ASSISTANT, started);
         ingestStatusService.recordIngest(config, summary);
         return GpsIngestSummaryResponse.from(summary);
+    }
+
+    /** The source token or personal API token, from {@code Authorization: Bearer} or {@code X-API-Key}. */
+    private static String credentials(String authorization, String apiKey) {
+        if (authorization == null && apiKey != null && !apiKey.isBlank()) {
+            return "Bearer " + apiKey.trim();
+        }
+        return authorization;
     }
 }

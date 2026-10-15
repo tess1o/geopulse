@@ -338,7 +338,48 @@
           </div>
         </div>
 
-        <div v-if="activeTab === 'home_assistant' && hasHomeAssistantSource">
+        <div v-if="activeTab === 'home_assistant' && hasHomeAssistantApiTokenSource">
+          <div class="instruction-content">
+            <h3 class="instruction-title">{{ t('locationSources.instructions.homeAssistantApiToken.title') }}</h3>
+            <div class="instruction-steps">
+              <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <div class="step-title">
+                    {{ t('locationSources.instructions.homeAssistantApiToken.installTitle') }}
+                    <a :href="homeAssistantIntegrationUrl" target="_blank" rel="noopener noreferrer">{{ t('locationSources.instructions.homeAssistantApiToken.installLink') }}</a>
+                  </div>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <div class="step-title">
+                    {{ t('locationSources.instructions.homeAssistantApiToken.integrationUrlTitle') }}
+                    <a :href="homeAssistantAddIntegrationUrl" target="_blank" rel="noopener noreferrer">{{ t('locationSources.instructions.homeAssistantApiToken.addIntegrationLink') }}</a>
+                  </div>
+                  <div class="copy-field">
+                    <code>{{ browserOrigin }}</code>
+                    <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(browserOrigin)" />
+                  </div>
+                </div>
+              </div>
+              <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <div class="step-title">{{ t('locationSources.instructions.homeAssistantApiToken.tokenTitle') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.homeAssistantApiToken.tokenDescription') }}</div>
+                  <div class="step-value">
+                    {{ t('locationSources.instructions.homeAssistantApiToken.otherClients') }}
+                    <a :href="homeAssistantApiDocsUrl" target="_blank" rel="noopener noreferrer">{{ t('locationSources.instructions.homeAssistantApiToken.apiReference') }}</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="activeTab === 'home_assistant' && hasHomeAssistantSourceTokenSource">
           <div class="instruction-content">
             <h3 class="instruction-title">{{ t('locationSources.instructions.homeAssistant.title') }}</h3>
             <div class="instruction-steps">
@@ -435,6 +476,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import {
+  HOME_ASSISTANT_ADD_INTEGRATION_URL,
+  HOME_ASSISTANT_API_DOCS_URL,
+  HOME_ASSISTANT_INTEGRATION_URL
+} from '@/constants/homeAssistantIntegration'
 
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
@@ -481,6 +527,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  hasHomeAssistantApiTokenSource: {
+    type: Boolean,
+    default: false
+  },
+  hasHomeAssistantSourceTokenSource: {
+    type: Boolean,
+    default: false
+  },
   hasHomeAssistantSource: {
     type: Boolean,
     default: false
@@ -496,6 +550,10 @@ const emit = defineEmits(['tab-change', 'copy-text'])
 const browserOrigin = computed(() => (
   typeof window !== 'undefined' ? window.location.origin : ''
 ))
+
+const homeAssistantIntegrationUrl = HOME_ASSISTANT_INTEGRATION_URL
+const homeAssistantAddIntegrationUrl = HOME_ASSISTANT_ADD_INTEGRATION_URL
+const homeAssistantApiDocsUrl = HOME_ASSISTANT_API_DOCS_URL
 
 const mqttBrokerHost = computed(() => {
   const host = props.ownTracksMqttConfig?.brokerHost

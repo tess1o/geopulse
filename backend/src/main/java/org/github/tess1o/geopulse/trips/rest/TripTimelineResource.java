@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -119,6 +121,7 @@ public class TripTimelineResource {
 
     @POST
     @Path("/stay-split/preview")
+    @RequiresApiTokenScope(ApiTokenScope.READ)
     @Operation(summary = "Preview splitting a trip with a stay",
             description = "Shows how a timeline trip would look if part of it were turned into a stay, for example a "
                     + "stop the detection missed. Nothing is saved.")

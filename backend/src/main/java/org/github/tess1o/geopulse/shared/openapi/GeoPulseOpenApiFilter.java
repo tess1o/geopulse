@@ -42,6 +42,9 @@ public class GeoPulseOpenApiFilter implements OASFilter {
     private static final String APPLICATION_PROBLEM_JSON = "application/problem+json";
     private static final String UNAUTHORIZED_DESCRIPTION =
             "Authentication is required or the provided credentials are invalid.";
+    private static final String INGEST_FORBIDDEN_DESCRIPTION =
+            "The API token lacks the `gps:ingest` scope (`API_TOKEN_SCOPE_REQUIRED`), no GPS source is connected to it "
+                    + "(`GPS_SOURCE_NOT_CONNECTED`), or its GPS source is disabled (`GPS_SOURCE_DISABLED`).";
     private static final String FORBIDDEN_DESCRIPTION =
             "The authenticated user does not have permission to access this resource.";
     private static final String INTERNAL_LINE = "**Internal:** Used by the GeoPulse web app. Not part of the "
@@ -54,6 +57,8 @@ public class GeoPulseOpenApiFilter implements OASFilter {
         ADMIN_READ("**Access:** Administrators only. In demo mode, the demo account can also call this "
                 + "read-only endpoint."),
         GPS_SOURCE("**Access:** Credentials of a GPS source configured in GeoPulse, not a session or API token."),
+        GPS_SOURCE_OR_API_TOKEN("**Access:** The token of a GPS source configured in GeoPulse, or a personal API token "
+                + "with the `gps:ingest` scope."),
         SHARE_LINK("**Access:** Anyone with the share link, using the link's access token. "
                 + "No GeoPulse account needed.");
 
@@ -212,6 +217,10 @@ public class GeoPulseOpenApiFilter implements OASFilter {
                 .filter(requirement -> requirement.getSchemes() != null)
                 .flatMap(requirement -> requirement.getSchemes().keySet().stream())
                 .collect(Collectors.toSet());
+        if (schemes.contains(ApiSecuritySchemes.GPS_SOURCE_TOKEN)
+                && (schemes.contains(ApiSecuritySchemes.BEARER) || schemes.contains(ApiSecuritySchemes.API_KEY))) {
+            return Access.GPS_SOURCE_OR_API_TOKEN;
+        }
         if (schemes.contains(ApiSecuritySchemes.GPS_SOURCE_BASIC)
                 || schemes.contains(ApiSecuritySchemes.GPS_SOURCE_TOKEN)
                 || schemes.contains(ApiSecuritySchemes.GPS_SOURCE_QUERY_KEY)) {
@@ -243,7 +252,7 @@ public class GeoPulseOpenApiFilter implements OASFilter {
             case USER, ADMIN, ADMIN_READ -> operation.setSecurity(List.of(
                     OASFactory.createSecurityRequirement().addScheme(ApiSecuritySchemes.BEARER),
                     OASFactory.createSecurityRequirement().addScheme(ApiSecuritySchemes.API_KEY)));
-            case PUBLIC, GPS_SOURCE, SHARE_LINK -> {
+            case PUBLIC, GPS_SOURCE, GPS_SOURCE_OR_API_TOKEN, SHARE_LINK -> {
                 // Public operations have no requirement; the others keep the requirement declared on the resource.
             }
         }
@@ -289,7 +298,9 @@ public class GeoPulseOpenApiFilter implements OASFilter {
         }
 
         setResponseDescription(responses, "401", UNAUTHORIZED_DESCRIPTION);
-        if (access != Access.GPS_SOURCE && access != Access.SHARE_LINK) {
+        if (access == Access.GPS_SOURCE_OR_API_TOKEN) {
+            setResponseDescription(responses, "403", INGEST_FORBIDDEN_DESCRIPTION);
+        } else if (access != Access.GPS_SOURCE && access != Access.SHARE_LINK) {
             setResponseDescription(responses, "403", FORBIDDEN_DESCRIPTION);
         }
     }

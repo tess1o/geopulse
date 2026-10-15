@@ -77,11 +77,33 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
       }
     },
 
-    async deleteGpsSource(id) {
+    /**
+     * Home Assistant source for the GeoPulse integration, connected to a personal API token: either an existing one
+     * (`apiTokenId`) or a new one (`newApiToken: { name }`). The response carries a new token's secret once, in
+     * `apiTokenSecret`.
+     */
+    async addHomeAssistantIntegrationSource({ apiTokenId = null, newApiToken = null, filters = {} }) {
+      try {
+        const created = await apiService.post('/gps/sources', {
+          type: 'HOME_ASSISTANT',
+          connectionType: 'HTTP',
+          apiTokenId,
+          newApiToken,
+          ...filters
+        })
+        const { apiTokenSecret, ...source } = created || {}
+        this.gpsSourceConfigs.push(source)
+        return created
+      } catch (error) {
+        throw this.fail(error, 'Failed to add GPS source')
+      }
+    },
+
+    async deleteGpsSource(id, { revokeApiToken = false } = {}) {
       const originalConfigs = [...this.gpsSourceConfigs]
       this.gpsSourceConfigs = this.gpsSourceConfigs.filter(config => config.id !== id)
       try {
-        await apiService.delete(`/gps/sources/${id}`)
+        await apiService.delete(revokeApiToken ? `/gps/sources/${id}?revokeApiToken=true` : `/gps/sources/${id}`)
       } catch (error) {
         this.gpsSourceConfigs = originalConfigs
         throw this.fail(error, 'Failed to delete GPS source')

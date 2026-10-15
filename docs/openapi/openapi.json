@@ -377,7 +377,7 @@
         }
       },
       "ApiErrorCode" : {
-        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "PASSWORD_REGISTRATION_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "ROUTING_UNAVAILABLE", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
+        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "API_TOKEN_SCOPE_REQUIRED", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_DISABLED", "GPS_SOURCE_NOT_CONNECTED", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_LOGOUT_TOKEN_INVALID", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "PASSWORD_REGISTRATION_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "ROUTING_UNAVAILABLE", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
         "type" : "string"
       },
       "ApiProblemResponse" : {
@@ -472,6 +472,13 @@
           },
           "status" : {
             "$ref" : "#/components/schemas/ApiTokenStatus"
+          },
+          "scopes" : {
+            "description" : "What the token may do, e.g. `all` or `read`, `gps:ingest`.",
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -677,6 +684,9 @@
             "type" : "boolean"
           },
           "adminLoginBypassEnabled" : {
+            "type" : "boolean"
+          },
+          "oidcAutoLaunchEnabled" : {
             "type" : "boolean"
           },
           "guestRootRedirectToLoginEnabled" : {
@@ -1513,6 +1523,29 @@
           }
         }
       },
+      "ConnectedGpsSourceDTO" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "type" : "string",
+            "example" : "HOME_ASSISTANT"
+          },
+          "active" : {
+            "description" : "False when the user disabled the source; locations sent with the token are then rejected with `GPS_SOURCE_DISABLED`.",
+            "type" : "boolean"
+          },
+          "ingestStatus" : {
+            "description" : "Latest ingest activity; null until the first location arrives.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/GpsSourceIngestStatusDTO"
+            } ]
+          }
+        }
+      },
       "ConnectionType" : {
         "enum" : [ "HTTP", "MQTT" ],
         "type" : "string"
@@ -1685,6 +1718,7 @@
         }
       },
       "CreateApiTokenRequest" : {
+        "required" : [ "scopes" ],
         "type" : "object",
         "properties" : {
           "name" : {
@@ -1698,6 +1732,15 @@
               "$ref" : "#/components/schemas/Instant"
             } ],
             "example" : "2026-12-31T23:59:59Z"
+          },
+          "scopes" : {
+            "description" : "What the token may do: `all`, or any of `read`, `write`, `gps:ingest`, `export`, `import`. `all` cannot be combined with other scopes. Scopes cannot be changed later.",
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "example" : [ "read", "gps:ingest" ]
           }
         }
       },
@@ -1902,6 +1945,20 @@
             "format" : "int32",
             "type" : "integer",
             "example" : 2
+          },
+          "apiTokenId" : {
+            "description" : "Home Assistant only: connect the source to this existing personal API token (it needs the `gps:ingest` scope) instead of a source token.",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            } ]
+          },
+          "newApiToken" : {
+            "description" : "Home Assistant only: create a new personal API token for sending locations (scopes `read` and `gps:ingest`) and connect the source to it. The response contains the token secret once, in `apiTokenSecret`. Needs a signed-in session or a full-access token.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/NewApiToken"
+            } ]
           }
         }
       },
@@ -2403,6 +2460,10 @@
           }
         }
       },
+      "CurrentActivityState" : {
+        "enum" : [ "STAY", "TRIP", "DATA_GAP", "UNKNOWN", "NO_DATA" ],
+        "type" : "string"
+      },
       "CurrentLocationData" : {
         "type" : "object",
         "properties" : {
@@ -2420,6 +2481,36 @@
           "accuracy" : {
             "format" : "double",
             "type" : "number"
+          }
+        }
+      },
+      "CurrentStatusDTO" : {
+        "type" : "object",
+        "properties" : {
+          "generatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "timezone" : {
+            "description" : "The user's timezone; `today` uses it.",
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/CurrentActivityState"
+          },
+          "stay" : {
+            "$ref" : "#/components/schemas/StayStatus"
+          },
+          "trip" : {
+            "$ref" : "#/components/schemas/TripStatus"
+          },
+          "dataGap" : {
+            "$ref" : "#/components/schemas/DataGapStatus"
+          },
+          "lastPoint" : {
+            "$ref" : "#/components/schemas/LastPointStatus"
+          },
+          "today" : {
+            "$ref" : "#/components/schemas/TodaySummary"
           }
         }
       },
@@ -2545,6 +2636,22 @@
           },
           "updatedAt" : {
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "DataGapStatus" : {
+        "type" : "object",
+        "properties" : {
+          "since" : {
+            "description" : "Time of the last GPS point before the gap.",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ]
+          },
+          "durationSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         }
       },
@@ -3514,6 +3621,10 @@
             "format" : "double",
             "type" : "number"
           },
+          "lastAccuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
           "lastLocation" : {
             "type" : "string"
           },
@@ -3854,6 +3965,27 @@
           }
         }
       },
+      "GpsIngestSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "accepted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "saved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "duplicate" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "filtered" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
       "GpsIngestionResponse" : {
         "type" : "object",
         "properties" : {
@@ -4106,6 +4238,49 @@
           "duplicateDetectionThresholdMinutes" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "ingestStatus" : {
+            "$ref" : "#/components/schemas/GpsSourceIngestStatusDTO"
+          },
+          "apiTokenId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "apiTokenName" : {
+            "type" : "string"
+          },
+          "apiTokenSecret" : {
+            "description" : "Only in the response that created a new API token for this source: its secret, shown once.",
+            "type" : "string"
+          }
+        }
+      },
+      "GpsSourceIngestStatusDTO" : {
+        "type" : "object",
+        "properties" : {
+          "lastReceivedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastSavedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastSavedPointTimestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastRejectedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastRejectionCode" : {
+            "type" : "string"
+          },
+          "lastRejectionParams" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "lastAuthFailureAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "lastAuthFailureCode" : {
+            "type" : "string"
           }
         }
       },
@@ -4835,6 +5010,44 @@
           }
         }
       },
+      "LastPointStatus" : {
+        "type" : "object",
+        "properties" : {
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "receivedAt" : {
+            "description" : "When GeoPulse received the point.",
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ]
+          },
+          "ageSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "battery" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "sourceType" : {
+            "type" : "string"
+          }
+        }
+      },
       "Leg" : {
         "type" : "object",
         "properties" : {
@@ -5252,6 +5465,16 @@
           }
         }
       },
+      "LogoutResponse" : {
+        "type" : "object",
+        "properties" : {
+          "idpLogoutUrl" : {
+            "description" : "URL that also signs the user out of the OIDC provider, or null when there is nothing to do at the provider (password session, provider without an end-session endpoint, or the feature is disabled).",
+            "type" : "string",
+            "nullable" : true
+          }
+        }
+      },
       "MaintenanceStatusDto" : {
         "type" : "object",
         "properties" : {
@@ -5665,6 +5888,22 @@
           }
         }
       },
+      "NewApiToken" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "example" : "Home Assistant"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2027-12-31T23:59:59Z"
+          }
+        }
+      },
       "NormalizationRuleDto" : {
         "type" : "object",
         "properties" : {
@@ -5996,6 +6235,9 @@
             "type" : "string"
           },
           "issuer" : {
+            "type" : "string"
+          },
+          "endSessionEndpoint" : {
             "type" : "string"
           },
           "metadataCachedAt" : {
@@ -7708,6 +7950,49 @@
         "enum" : [ "PENDING", "QUEUED", "RUNNING", "READY", "FAILED", "UNKNOWN" ],
         "type" : "string"
       },
+      "StayStatus" : {
+        "type" : "object",
+        "properties" : {
+          "placeName" : {
+            "type" : "string"
+          },
+          "favoriteId" : {
+            "format" : "int64",
+            "description" : "Set when the place is one of the user's favorites.",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "locationSource" : {
+            "description" : "`FAVORITE` or `GEOCODING`.",
+            "type" : "string"
+          },
+          "since" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "durationSeconds" : {
+            "format" : "int64",
+            "description" : "Seconds since the stay started, counted to now.",
+            "type" : "integer"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "city" : {
+            "type" : "string"
+          },
+          "country" : {
+            "type" : "string"
+          }
+        }
+      },
       "TargetType" : {
         "enum" : [ "SETTING", "USER", "OIDC_PROVIDER", "INVITATION", "API_TOKEN", "TIMELINE_REGENERATION_CAMPAIGN", "BACKUP" ],
         "type" : "string"
@@ -8242,9 +8527,6 @@
           "showCurrentLocationTelemetry" : {
             "type" : "boolean"
           },
-          "autoShowTripReplayControls" : {
-            "type" : "boolean"
-          },
           "enable3dBuildingsByDefault" : {
             "type" : "boolean"
           },
@@ -8755,6 +9037,37 @@
           }
         }
       },
+      "TodaySummary" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "distanceMeters" : {
+            "format" : "int64",
+            "description" : "Distance of trips that started today.",
+            "type" : "integer"
+          },
+          "tripCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "stayCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "uniquePlaces" : {
+            "format" : "int64",
+            "description" : "Distinct places of stays that started today.",
+            "type" : "integer"
+          },
+          "movingSeconds" : {
+            "format" : "int64",
+            "description" : "Duration of trips that started today.",
+            "type" : "integer"
+          }
+        }
+      },
       "TokenRefreshRequest" : {
         "required" : [ "refreshToken" ],
         "type" : "object",
@@ -9070,7 +9383,7 @@
             "$ref" : "#/components/schemas/Instant"
           },
           "status" : {
-            "$ref" : "#/components/schemas/TripStatus"
+            "$ref" : "#/components/schemas/TripStatus1"
           },
           "color" : {
             "type" : "string"
@@ -9413,6 +9726,35 @@
         }
       },
       "TripStatus" : {
+        "type" : "object",
+        "properties" : {
+          "since" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "durationSeconds" : {
+            "format" : "int64",
+            "description" : "Seconds since the trip started, counted to now.",
+            "type" : "integer"
+          },
+          "distanceMeters" : {
+            "format" : "int64",
+            "description" : "Distance covered as of the last timeline update.",
+            "type" : "integer"
+          },
+          "movementType" : {
+            "type" : "string"
+          },
+          "startLatitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "startLongitude" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "TripStatus1" : {
         "enum" : [ "UNPLANNED", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
         "type" : "string"
       },
@@ -9519,7 +9861,7 @@
             "type" : "string"
           },
           "status" : {
-            "$ref" : "#/components/schemas/TripStatus"
+            "$ref" : "#/components/schemas/TripStatus1"
           },
           "startTime" : {
             "$ref" : "#/components/schemas/Instant"
@@ -10601,7 +10943,7 @@
           "status" : {
             "type" : "string",
             "allOf" : [ {
-              "$ref" : "#/components/schemas/TripStatus"
+              "$ref" : "#/components/schemas/TripStatus1"
             } ],
             "example" : "UPCOMING"
           }
@@ -14418,9 +14760,18 @@
     "/api/v1/api-tokens" : {
       "get" : {
         "summary" : "List API tokens",
-        "description" : "Returns the API tokens of the signed-in user with name, short preview, status, expiration, and last-use metadata. Token secrets are never returned.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Returns the API tokens of the signed-in user with name, short preview, status, expiration, scopes, and last-use metadata. Token secrets are never returned. With `scope`, returns only active tokens created with that scope (for example `gps:ingest` to pick a token for sending locations).\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ApiTokenResource_listTokens",
         "tags" : [ "API Tokens" ],
+        "parameters" : [ {
+          "description" : "Only active tokens with this scope.",
+          "example" : "gps:ingest",
+          "name" : "scope",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -14450,7 +14801,7 @@
       },
       "post" : {
         "summary" : "Create an API token",
-        "description" : "Creates an API token that acts as the signed-in user. The response contains the full token secret; it is shown only once and cannot be retrieved later. Optionally set an expiration time.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Creates an API token that acts as the signed-in user, limited to the requested scopes (`all` for full access). Scopes cannot be changed later. The response contains the full token secret; it is shown only once and cannot be retrieved later. Optionally set an expiration time.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ApiTokenResource_createToken",
         "tags" : [ "API Tokens" ],
         "requestBody" : {
@@ -14482,6 +14833,37 @@
           },
           "400" : {
             "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/api-tokens/current" : {
+      "get" : {
+        "summary" : "Get the calling API token",
+        "description" : "Returns the API token used to authenticate this request, including its scopes, so a client can check what it is allowed to do. Works with a token of any scope. Returns 404 when the request is not authenticated with an API token.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "ApiTokenResource_currentToken",
+        "tags" : [ "API Tokens" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiTokenResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
           }
         },
         "security" : [ {
@@ -14611,7 +14993,7 @@
     "/api/v1/auth/api-sessions/current/refresh" : {
       "post" : {
         "summary" : "Refresh tokens",
-        "description" : "Exchanges a refresh token obtained from `POST /api/v1/auth/api-sessions` for a new access token and refresh token.\n\n**Access:** Public. No authentication required.",
+        "description" : "Exchanges a refresh token obtained from `POST /api/v1/auth/api-sessions` (or the mobile sign-in) for a new access token and refresh token. Each refresh token works once: the previous one stops working, and presenting an already used refresh token again signs the session out.\n\n**Access:** Public. No authentication required.",
         "operationId" : "AuthenticationResource_refreshToken",
         "tags" : [ "Sessions" ],
         "requestBody" : {
@@ -14709,7 +15091,7 @@
     "/api/v1/auth/mobile-sessions" : {
       "post" : {
         "summary" : "Exchange a mobile sign-in code",
-        "description" : "Exchanges a code created with `POST /api/v1/auth/mobile-codes` for access and refresh tokens. Each code works once and expires after a short time.\n\n**Access:** Public. No authentication required.",
+        "description" : "Exchanges a code created with `POST /api/v1/auth/mobile-codes` for an API session: an access token and a refresh token, renewed with `POST /api/v1/auth/api-sessions/current/refresh`. Each code works once and expires after a short time.\n\n**Access:** Public. No authentication required.",
         "operationId" : "MobileSessionExchangeResource_exchangeSessionCode",
         "tags" : [ "Mobile Sign-in" ],
         "requestBody" : {
@@ -14807,10 +15189,55 @@
         }
       }
     },
+    "/api/v1/auth/oidc/backchannel-logouts/{provider}" : {
+      "post" : {
+        "summary" : "Receive an OIDC back-channel logout",
+        "description" : "Called by the OIDC provider, not by users: configure this URL as the provider's back-channel logout URI. The provider posts a signed `logout_token` (OpenID Connect Back-Channel Logout 1.0); GeoPulse verifies it and signs out the sessions started from that provider session (`sid`), or all of that user's sessions from the provider (`sub`). Returns 200 even when no session matched, and 400 when the token is invalid.\n\n**Access:** Public. No authentication required.",
+        "operationId" : "OidcAuthenticationResource_backchannelLogout",
+        "tags" : [ "OIDC Sign-in" ],
+        "parameters" : [ {
+          "description" : "Name of the OIDC provider as configured in GeoPulse.",
+          "name" : "provider",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "logout_token" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Logout token accepted; matching sessions are signed out",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
     "/api/v1/auth/oidc/callbacks" : {
       "post" : {
         "summary" : "Complete OIDC sign-in",
-        "description" : "Completes an OIDC sign-in or account-linking flow with the authorization code and state the provider returned. On success, sets the session cookies like password sign-in. A new account is created on first sign-in when OIDC registration is enabled. If an account with the same email already exists, the request fails with `OIDC_ACCOUNT_LINKING_REQUIRED` and the error contains a linking token for `POST /api/v1/auth/oidc/account-links/password` or `POST /api/v1/auth/oidc/account-links/oidc`.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Public. No authentication required.",
+        "description" : "Completes an OIDC sign-in or account-linking flow with the authorization code and state the provider returned. On success, sets the session cookie like password sign-in. A new account is created on first sign-in when OIDC registration is enabled. If an account with the same email already exists, the request fails with `OIDC_ACCOUNT_LINKING_REQUIRED` and the error contains a linking token for `POST /api/v1/auth/oidc/account-links/password` or `POST /api/v1/auth/oidc/account-links/oidc`.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Public. No authentication required.",
         "x-internal" : true,
         "operationId" : "OidcAuthenticationResource_handleCallback",
         "tags" : [ "OIDC Sign-in" ],
@@ -15028,7 +15455,7 @@
     "/api/v1/auth/sessions" : {
       "post" : {
         "summary" : "Sign in with email and password",
-        "description" : "Signs in a browser user. On success the session is stored in secure HTTP-only cookies (access token, refresh token, and expiration time) and the response describes the signed-in user. Fails when password login is disabled for this user. API clients that cannot use cookies should call `POST /api/v1/auth/api-sessions` or, better, use an API token.\n\n**Access:** Public. No authentication required.",
+        "description" : "Signs in a browser user. On success the session is stored in a secure HTTP-only session cookie and the response describes the signed-in user. Fails when password login is disabled for this user. API clients that cannot use cookies should call `POST /api/v1/auth/api-sessions` or, better, use an API token.\n\n**Access:** Public. No authentication required.",
         "operationId" : "AuthenticationResource_loginUser",
         "tags" : [ "Sessions" ],
         "requestBody" : {
@@ -15061,12 +15488,19 @@
     "/api/v1/auth/sessions/current" : {
       "delete" : {
         "summary" : "Sign out",
-        "description" : "Ends the browser session by clearing the session cookies. Access tokens already issued to API clients stay valid until they expire.\n\n**Access:** Public. No authentication required.",
+        "description" : "Ends the current session: the browser session cookie, or the API session whose access token is sent as `Authorization: Bearer`. The session stops working immediately and the session cookies are cleared. When the session was started with an OIDC provider that supports RP-initiated logout, `idpLogoutUrl` is the provider URL that ends the provider session too; otherwise it is null.\n\n**Access:** Public. No authentication required.",
         "operationId" : "AuthenticationResource_logout",
         "tags" : [ "Sessions" ],
         "responses" : {
-          "204" : {
-            "description" : "Authentication cookies cleared"
+          "200" : {
+            "description" : "Session ended and cookies cleared",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -15085,27 +15519,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/sessions/current/refresh" : {
-      "post" : {
-        "summary" : "Refresh the browser session",
-        "description" : "Renews the browser session using the refresh-token cookie and sets new session cookies. Used by the web app; API clients should use `POST /api/v1/auth/api-sessions/current/refresh`.\n\n**Access:** Public. No authentication required.",
-        "operationId" : "AuthenticationResource_refreshTokenCookie",
-        "tags" : [ "Sessions" ],
-        "parameters" : [ {
-          "description" : "Refresh token cookie set at sign-in. Sent by the browser automatically.",
-          "name" : "refresh_token",
-          "in" : "cookie",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "Authentication cookies refreshed"
           }
         }
       }
@@ -18052,10 +18465,19 @@
     "/api/v1/geofences/events" : {
       "get" : {
         "summary" : "List geofence events",
-        "description" : "Returns enter and leave events recorded by the signed-in user's rules, one page at a time, with filters.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Returns enter and leave events recorded by the signed-in user's rules, one page at a time, with filters. To poll for new events, pass `afterId` with the largest event `id` seen so far: only newer events are returned, oldest first, and the sort parameters are ignored.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "GeofenceResource_getEvents",
         "tags" : [ "Geofences" ],
         "parameters" : [ {
+          "description" : "Only events with an `id` greater than this, oldest first.",
+          "example" : 1520,
+          "name" : "afterId",
+          "in" : "query",
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
           "description" : "Comma-separated event types: `ENTER`, `LEAVE`.",
           "example" : "ENTER",
           "name" : "eventTypes",
@@ -18410,7 +18832,7 @@
     "/api/v1/geofences/templates" : {
       "get" : {
         "summary" : "List notification templates",
-        "description" : "Returns the notification templates of the signed-in user. A template defines the title and body of a geofence notification and where it is sent: in-app, through Apprise, or both.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Returns the notification templates of the signed-in user. A template defines the title and body of a geofence notification and where it is sent: in-app, through Apprise, or both. For an API token without full access, `destination` is left out, since Apprise URLs often contain secrets.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "GeofenceResource_getTemplates",
         "tags" : [ "Geofences" ],
         "responses" : {
@@ -18882,9 +19304,16 @@
     "/api/v1/gps/ingest/home-assistant" : {
       "post" : {
         "summary" : "Ingest Home Assistant location",
-        "description" : "Receives a location update sent by a Home Assistant automation (REST command) and stores it as a GPS point for the user who owns the Home Assistant GPS source.\n\n**Access:** Credentials of a GPS source configured in GeoPulse, not a session or API token.",
+        "description" : "Receives a location update from Home Assistant and stores it as a GPS point. Send either the token of a Home Assistant GPS source (the `configuration.yaml` setup), or a personal API token with the `gps:ingest` scope; points sent with an API token go to the Home Assistant source connected to it in Location Sources. `latitude` and `longitude` are required; leave out unknown values instead of sending 0.\n\n**Access:** The token of a GPS source configured in GeoPulse, or a personal API token with the `gps:ingest` scope.",
         "operationId" : "HomeAssistantResource_handleHA",
         "tags" : [ "GPS Tracker Ingest" ],
+        "parameters" : [ {
+          "name" : "X-API-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -18927,10 +19356,108 @@
           },
           "401" : {
             "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The API token lacks the `gps:ingest` scope (`API_TOKEN_SCOPE_REQUIRED`), no GPS source is connected to it (`GPS_SOURCE_NOT_CONNECTED`), or its GPS source is disabled (`GPS_SOURCE_DISABLED`)."
           }
         },
         "security" : [ {
           "gpsSourceToken" : [ ]
+        }, {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/gps/ingest/home-assistant/batch" : {
+      "post" : {
+        "summary" : "Ingest Home Assistant locations in bulk",
+        "description" : "Receives up to 1000 location updates in one request, for example points a Home Assistant integration queued while GeoPulse was unreachable. Every item uses the single-location format and must include a timestamp; items without one are skipped. Returns how many points were stored and skipped.\n\n**Access:** The token of a GPS source configured in GeoPulse, or a personal API token with the `gps:ingest` scope.",
+        "operationId" : "HomeAssistantResource_handleHABatch",
+        "tags" : [ "GPS Tracker Ingest" ],
+        "parameters" : [ {
+          "name" : "X-API-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "examples" : {
+                "locations" : {
+                  "value" : [ {
+                    "device_id" : "iphone_16",
+                    "timestamp" : "2025-06-07T09:15:30+00:00",
+                    "location" : {
+                      "latitude" : 49.8419,
+                      "longitude" : 24.0315,
+                      "accuracy" : 8
+                    },
+                    "battery" : {
+                      "level" : 82
+                    }
+                  }, {
+                    "device_id" : "iphone_16",
+                    "timestamp" : "2025-06-07T09:16:30+00:00",
+                    "location" : {
+                      "latitude" : 49.8426,
+                      "longitude" : 24.0331,
+                      "accuracy" : 12,
+                      "speed" : 3.1
+                    }
+                  } ]
+                }
+              },
+              "schema" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/HomeAssistantGpsData"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Batch processed",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GpsIngestSummaryResponse"
+                }
+              }
+            }
+          },
+          "413" : {
+            "description" : "More than 1000 locations in one request",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblemResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The API token lacks the `gps:ingest` scope (`API_TOKEN_SCOPE_REQUIRED`), no GPS source is connected to it (`GPS_SOURCE_NOT_CONNECTED`), or its GPS source is disabled (`GPS_SOURCE_DISABLED`)."
+          }
+        },
+        "security" : [ {
+          "gpsSourceToken" : [ ]
+        }, {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
         } ]
       }
     },
@@ -19935,7 +20462,7 @@
     "/api/v1/gps/sources" : {
       "get" : {
         "summary" : "List GPS sources",
-        "description" : "Returns the GPS sources of the signed-in user: type, credentials (username or token), device filter, active status, and point filtering settings.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Returns the GPS sources of the signed-in user: type, credentials (username or token), device filter, active status, and point filtering settings. For an API token without full access, source tokens are left out (`token` is null).\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "GpsSourceConfigResource_getGpsSourceConfigs",
         "tags" : [ "GPS Sources" ],
         "responses" : {
@@ -19967,7 +20494,7 @@
       },
       "post" : {
         "summary" : "Create a GPS source",
-        "description" : "Creates a GPS source that a tracker app can send data to. Basic-auth sources (OwnTracks, GPSLogger, Colota) need a username and password; token sources (Overland, Traccar, Home Assistant, Dawarich) need a token.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Creates a GPS source that a tracker app can send data to. Basic-auth sources (OwnTracks, GPSLogger, Colota) need a username and password; token sources (Overland, Traccar, Home Assistant, Dawarich) need a token. A Home Assistant source for the GeoPulse Home Assistant integration uses a personal API token instead: pass `apiTokenId` to connect an existing token with the `gps:ingest` scope, or `newApiToken` to create one (its secret is returned once in `apiTokenSecret`).\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "GpsSourceConfigResource_addGpsSourceConfig",
         "tags" : [ "GPS Sources" ],
         "requestBody" : {
@@ -19992,6 +20519,37 @@
           },
           "400" : {
             "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/gps/sources/current" : {
+      "get" : {
+        "summary" : "Get the source of the calling API token",
+        "description" : "Returns the location source connected to the API token used for this request (a Home Assistant source set up with a personal API token) with its ingest status: when data last arrived and why the last point was skipped. Never returns credentials. Works with a token that has `read` or `gps:ingest`. Returns 404 when the token is not connected to a source yet, or the request is not authenticated with an API token.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "GpsSourceConfigResource_getConnectedSource",
+        "tags" : [ "GPS Sources" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConnectedGpsSourceDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
           }
         },
         "security" : [ {
@@ -20238,7 +20796,7 @@
       },
       "delete" : {
         "summary" : "Delete a GPS source",
-        "description" : "Deletes a GPS source. Its credentials stop working immediately. GPS points already received are kept.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Deletes a GPS source. Its credentials stop working immediately. GPS points already received are kept. For a source connected to a personal API token, set `revokeApiToken` to also revoke that token; otherwise locations sent with it create the source again.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "GpsSourceConfigResource_deleteGpsSourceConfig",
         "tags" : [ "GPS Sources" ],
         "parameters" : [ {
@@ -20248,6 +20806,13 @@
           "required" : true,
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Also revoke the API token the source is connected to. Needs a signed-in session or a full-access token.",
+          "name" : "revokeApiToken",
+          "in" : "query",
+          "schema" : {
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -26895,7 +27460,7 @@
     "/api/v1/users/me/password" : {
       "put" : {
         "summary" : "Change your password",
-        "description" : "Changes the signed-in user's password. The current password is required when one is set; accounts created through OIDC can set a first password this way.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Changes the signed-in user's password. The current password is required when one is set; accounts created through OIDC can set a first password this way. All other sessions of the user are signed out.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "UserResource_changePassword",
         "tags" : [ "Profile & Preferences" ],
         "requestBody" : {
@@ -26927,6 +27492,37 @@
           },
           "400" : {
             "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/users/me/status" : {
+      "get" : {
+        "summary" : "Get current status",
+        "description" : "Returns what the signed-in user is doing now (`STAY`, `TRIP`, `DATA_GAP`, `UNKNOWN` when the timeline has not been generated yet, or `NO_DATA`), with the place or trip, the latest GPS point, and totals for today in the user's timezone. Durations are counted to now. The timeline itself is updated every few minutes, so a new stay or trip can appear with that delay. Meant for dashboards and home automation polling every minute or so; a client that wants \"stay started\" or \"trip ended\" events compares successive responses.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "CurrentStatusResource_getStatus",
+        "tags" : [ "Timeline" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CurrentStatusDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
           }
         },
         "security" : [ {

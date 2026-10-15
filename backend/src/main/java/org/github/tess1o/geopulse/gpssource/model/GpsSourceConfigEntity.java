@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.gpssource.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.github.tess1o.geopulse.auth.model.UserApiTokenEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -34,6 +35,11 @@ public class GpsSourceConfigEntity {
     private String token;         // For Overland
     @Column(name = "device_id")
     private String deviceId;      // Optional Traccar device uniqueId filter
+
+    /** Set when the source receives points sent with this personal API token instead of its own credentials. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "api_token_id")
+    private UserApiTokenEntity apiToken;
 
     @Column(name = "payload_encryption_secret_encrypted", columnDefinition = "TEXT")
     private String payloadEncryptionSecretEncrypted;

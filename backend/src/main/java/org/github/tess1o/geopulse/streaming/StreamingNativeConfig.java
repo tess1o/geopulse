@@ -85,7 +85,14 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         LocationLookupFavoriteDTO.class,
         LocationLookupVisitDTO.class,
         LocationLookupMatchDTO.class,
-        LocationLookupResponseDTO.class
+        LocationLookupResponseDTO.class,
+        CurrentActivityState.class,
+        CurrentStatusDTO.class,
+        CurrentStatusDTO.StayStatus.class,
+        CurrentStatusDTO.TripStatus.class,
+        CurrentStatusDTO.DataGapStatus.class,
+        CurrentStatusDTO.LastPointStatus.class,
+        CurrentStatusDTO.TodaySummary.class
 })
 public class StreamingNativeConfig {
 }
