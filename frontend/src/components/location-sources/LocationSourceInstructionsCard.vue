@@ -715,6 +715,13 @@ const emitCopy = (text) => {
   line-height: 1.4;
 }
 
+.step-content a {
+  color: var(--gp-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
 .text-muted {
   color: var(--gp-text-muted, #9ca3af);
   font-size: 0.85rem;

@@ -85,6 +85,13 @@ const apiDocsUrl = HOME_ASSISTANT_API_DOCS_URL
   gap: 0.75rem;
 }
 
+.connect-content a {
+  color: var(--gp-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
 .connect-steps {
   margin: 0;
   padding-left: 1.25rem;

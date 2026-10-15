@@ -30,6 +30,10 @@ export class LocationSourcesPage {
           http: '.connection-type-option:has-text("HTTP")',
           mqtt: '.connection-type-option:has-text("MQTT")'
         },
+        homeAssistantModes: {
+          sourceToken: '[data-testid="ha-mode-source-token"]',
+          apiToken: '[data-testid="ha-mode-api-token"]'
+        },
         fields: {
           username: '#location-source-username',
           password: '#location-source-password input',
@@ -194,9 +198,11 @@ export class LocationSourcesPage {
   }
 
   /**
-   * Fill Home Assistant form fields
+   * Fill Home Assistant form fields.
+   * The dialog defaults to the API-token mode, so switch to the per-source token mode first.
    */
   async fillHomeAssistantForm(token) {
+    await this.page.locator(this.selectors.dialog.homeAssistantModes.sourceToken).click();
     await this.page.fill(this.selectors.dialog.fields.homeAssistantToken, token);
   }
 
