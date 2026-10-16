@@ -1,0 +1,15 @@
+services:
+  owntracks-fanout:
+    image: nginx:stable-alpine
+    container_name: owntracks-fanout
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      # Full ingest URLs. Each target gets its own path; the path the phone uses is ignored.
+      PROD_URL: https://geopulse.example.com/api/v1/gps/ingest/owntracks
+      DEV_URL: https://geopulse-dev.example.com/api/v1/gps/ingest/owntracks
+      # Docker's embedded DNS; works on any compose network.
+      RESOLVER: 127.0.0.11
+    volumes:
+      - ./default.conf.template:/etc/nginx/templates/default.conf.template:ro
