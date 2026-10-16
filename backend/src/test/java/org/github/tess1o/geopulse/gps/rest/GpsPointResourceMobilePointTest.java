@@ -25,6 +25,7 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
@@ -167,7 +168,8 @@ class GpsPointResourceMobilePointTest {
                 telemetryService,
                 geofenceService,
                 timelineConfigurationProvider,
-                gpsPointEnvironmentService
+                gpsPointEnvironmentService,
+                mock(TimelineRebuildRequestRepository.class)
         );
 
         UUID userId = UUID.randomUUID();
@@ -316,7 +318,8 @@ class GpsPointResourceMobilePointTest {
                 telemetryService,
                 geofenceService,
                 timelineConfigurationProvider,
-                gpsPointEnvironmentService
+                gpsPointEnvironmentService,
+                mock(TimelineRebuildRequestRepository.class)
         );
 
         UUID userId = UUID.randomUUID();
@@ -382,7 +385,8 @@ class GpsPointResourceMobilePointTest {
                 telemetryService,
                 geofenceService,
                 timelineConfigurationProvider,
-                gpsPointEnvironmentService
+                gpsPointEnvironmentService,
+                mock(TimelineRebuildRequestRepository.class)
         );
 
         UUID userId = UUID.randomUUID();
@@ -447,7 +451,8 @@ class GpsPointResourceMobilePointTest {
                 telemetryService,
                 geofenceService,
                 timelineConfigurationProvider,
-                gpsPointEnvironmentService
+                gpsPointEnvironmentService,
+                mock(TimelineRebuildRequestRepository.class)
         );
 
         UUID userId = UUID.randomUUID();

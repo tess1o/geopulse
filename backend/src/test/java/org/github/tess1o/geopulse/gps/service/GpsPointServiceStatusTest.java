@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.junit.jupiter.api.Tag;
@@ -96,7 +97,8 @@ class GpsPointServiceStatusTest {
                 mock(GpsTelemetryRenderingService.class),
                 mock(GeofenceEvaluationService.class),
                 mock(TimelineConfigurationProvider.class),
-                mock(GpsPointEnvironmentService.class)
+                mock(GpsPointEnvironmentService.class),
+                mock(TimelineRebuildRequestRepository.class)
         );
     }
 

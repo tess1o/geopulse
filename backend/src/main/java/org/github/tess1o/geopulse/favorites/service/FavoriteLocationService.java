@@ -497,14 +497,11 @@ public class FavoriteLocationService {
      * This method is NOT transactional and should be called after the transaction commits.
      */
     public UUID createTimelineRegenerationJob(UUID userId) {
-        try {
-            UUID jobId = asyncTimelineGenerationService.regenerateTimelineAsync(userId);
+        UUID jobId = asyncTimelineGenerationService.requestFullRegeneration(userId);
+        if (jobId != null) {
             log.info("Created async timeline regeneration job {} for user {}", jobId, userId);
-            return jobId;
-        } catch (IllegalStateException e) {
-            log.warn("Could not create regeneration job for user {}: {}", userId, e.getMessage());
-            return null;
         }
+        return jobId;
     }
 
     // Reconciliation methods

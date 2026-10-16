@@ -29,6 +29,7 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import jakarta.persistence.EntityManager;
@@ -112,6 +113,7 @@ public class GpsPointService {
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
     private final EntityManager em;
     private final StreamingTimelineGenerationService streamingTimelineGenerationService;
+    private final TimelineRebuildRequestRepository rebuildRequestRepository;
     private final GpsDataFilteringService filteringService;
     private final GpsTelemetryRenderingService telemetryRenderingService;
     private final GeofenceEvaluationService geofenceEvaluationService;
@@ -138,7 +140,8 @@ public class GpsPointService {
                            GpsTelemetryRenderingService telemetryRenderingService,
                            GeofenceEvaluationService geofenceEvaluationService,
                            TimelineConfigurationProvider timelineConfigurationProvider,
-                           GpsPointEnvironmentService gpsPointEnvironmentService) {
+                           GpsPointEnvironmentService gpsPointEnvironmentService,
+                           TimelineRebuildRequestRepository rebuildRequestRepository) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
@@ -149,6 +152,7 @@ public class GpsPointService {
         this.geofenceEvaluationService = geofenceEvaluationService;
         this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.gpsPointEnvironmentService = gpsPointEnvironmentService;
+        this.rebuildRequestRepository = rebuildRequestRepository;
     }
 
     /**
@@ -188,6 +192,8 @@ public class GpsPointService {
             // Persist the new entity
             stageStart = metricsStart();
             gpsPointRepository.persist(entity);
+            // The real-time job only rebuilds timelines that asked for it; this point is new data.
+            rebuildRequestRepository.request(entity.getUser().getId(), entity.getTimestamp());
             recordGpsStage(stageStart, sourceType, "persist", "success");
             stageStart = metricsStart();
             geofenceEvaluationService.handlePersistedPoint(entity);
@@ -749,6 +755,8 @@ public class GpsPointService {
 
         // Delete the GPS point
         gpsPointRepository.delete(gpsPoint);
+        // Committed with the delete, so the timeline still catches up if the scheduled regeneration never runs.
+        rebuildRequestRepository.request(userId, pointTimestamp);
 
         return new GpsPointDeleteResult(1, pointTimestamp);
     }
@@ -790,6 +798,8 @@ public class GpsPointService {
             gpsPointRepository.delete(point);
             deletedCount++;
         }
+        // Committed with the delete, so the timeline still catches up if the scheduled regeneration never runs.
+        rebuildRequestRepository.request(userId, earliestTimestamp);
 
         log.info("Successfully deleted {} GPS points for user {}", deletedCount, userId);
         return new GpsPointDeleteResult(deletedCount, earliestTimestamp);
@@ -968,6 +978,9 @@ public class GpsPointService {
         em.createNativeQuery("DELETE FROM gps_points WHERE user_id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
+
+        // Nothing is left to rebuild.
+        rebuildRequestRepository.delete(userId);
 
         log.info("Successfully deleted all GPS and timeline data for user {}", userId);
     }

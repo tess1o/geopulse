@@ -34,11 +34,14 @@ public class TripPlanItemService {
 
     private final TripAccessService tripAccessService;
     private final TripPlanItemRepository tripPlanItemRepository;
+    private final TripVisitAutoMatchService tripVisitAutoMatchService;
 
     public TripPlanItemService(TripAccessService tripAccessService,
-                               TripPlanItemRepository tripPlanItemRepository) {
+                               TripPlanItemRepository tripPlanItemRepository,
+                               TripVisitAutoMatchService tripVisitAutoMatchService) {
         this.tripAccessService = tripAccessService;
         this.tripPlanItemRepository = tripPlanItemRepository;
+        this.tripVisitAutoMatchService = tripVisitAutoMatchService;
     }
 
     public List<TripPlanItemDto> getTripPlanItems(UUID userId, Long tripId) {
@@ -70,6 +73,7 @@ public class TripPlanItemService {
 
         tripPlanItemRepository.persist(entity);
         log.info("Created trip plan item {} for trip {} and user {}", entity.getId(), tripId, userId);
+        matchVisits(userId, tripId);
         return toDto(entity);
     }
 
@@ -109,7 +113,16 @@ public class TripPlanItemService {
 
         tripPlanItemRepository.persist(entity);
         log.info("Updated trip plan item {} for trip {} and user {}", itemId, tripId, userId);
+        matchVisits(userId, tripId);
         return toDto(entity);
+    }
+
+    /**
+     * Matches the trip's plan items against the timeline now. It used to happen only as a side effect of the
+     * real-time job rebuilding the timeline every few minutes, which it no longer does without new data.
+     */
+    private void matchVisits(UUID userId, Long tripId) {
+        tripVisitAutoMatchService.evaluate(userId, tripId, true);
     }
 
     /**

@@ -14,7 +14,10 @@ import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.TimelineRebuildRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -23,6 +26,7 @@ import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMerger;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.service.TripVisitAutoMatchService;
@@ -33,6 +37,7 @@ import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +49,35 @@ import java.util.concurrent.TimeUnit;
 public class StreamingTimelineGenerationService {
 
     public static final Instant DEFAULT_START_DATE = Instant.parse("1970-01-01T00:00:00Z");
+
+    /** Where a partial regeneration restarts, relative to the earliest affected time. */
+    public enum RestartPoint {
+        /** At the latest stay before the affected time; everything before it is kept. */
+        LATEST_STAY,
+        /**
+         * At the stay before the latest stay before the affected time, keeping that stay's start; everything before
+         * is kept. With fewer stays, everything is regenerated.
+         * <p>
+         * The parts a regeneration keeps are never revisited, and a restart at the latest stay drifts from a full
+         * rebuild in two ways, both seen when replaying recorded and generated days:
+         * <ul>
+         *     <li>Whether a trip between two stays is real, or noise between two stays at the same place that a full
+         *     rebuild merges, often only becomes clear once the second stay has grown. Keeping the stay before it in
+         *     the regenerated part leaves that decision open.</li>
+         *     <li>Generation starts blank at the restart. A stay's first points can be the last, still moving fixes
+         *     of the arrival; a full rebuild reaches them in trip mode and counts them to the stay, a blank start may
+         *     not. Everything new lies after the restart stay, and its start was decided when it was the latest stay,
+         *     with the trip into it in view, so that start is kept.</li>
+         * </ul>
+         * The restart stay itself is where the regenerated part begins: post-processing keeps a short trip only when a
+         * stay comes before it.
+         * <p>
+         * Used by the real-time job, which regenerates the same recent stretch again and again, and by the safety net,
+         * which compares the result with what was stored.
+         */
+        BEFORE_PREVIOUS_STAY
+    }
+
 
     @Inject
     TimelineConfigurationProvider configurationProvider;
@@ -98,6 +132,9 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     TripVisitAutoMatchService tripVisitAutoMatchService;
+
+    @Inject
+    TimelineRebuildRequestRepository rebuildRequestRepository;
 
     @Inject
     Event<TimelineDataChangedEvent> timelineDataChangedEvent;
@@ -158,7 +195,28 @@ public class StreamingTimelineGenerationService {
 
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp, UUID jobId, String trigger) {
-        log.info("Starting timeline regeneration for user {} from timestamp {}", userId, earliestAffectedTimestamp);
+        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, jobId, trigger, true, RestartPoint.LATEST_STAY);
+    }
+
+    @Transactional
+    public void generateTimelineFromTimestamp(UUID userId, Instant requestedFrom, UUID jobId, String trigger,
+                                              boolean includePendingRebuild) {
+        generateTimelineFromTimestamp(userId, requestedFrom, jobId, trigger, includePendingRebuild,
+                RestartPoint.LATEST_STAY);
+    }
+
+    /**
+     * Regenerates the timeline from {@code restartPoint} relative to {@code requestedFrom}.
+     * <p>
+     * With {@code includePendingRebuild}, the user's pending rebuild request (see
+     * {@link TimelineRebuildRequestRepository}) is covered too: generation starts from whichever is earlier, and the
+     * request is cleared on success unless it changed while this generation ran. Only the real-time job passes
+     * false, to keep the latest stays updating while a request keeps failing.
+     */
+    @Transactional
+    public void generateTimelineFromTimestamp(UUID userId, Instant requestedFrom, UUID jobId, String trigger,
+                                              boolean includePendingRebuild, RestartPoint restartPoint) {
+        log.info("Starting timeline regeneration for user {} from timestamp {}", userId, requestedFrom);
         long startTime = System.currentTimeMillis();
         long metricsStart = metricsStart();
         String result = "success";
@@ -178,13 +236,26 @@ public class StreamingTimelineGenerationService {
         }
         recordTimelineStage(stageStart, trigger, "lock", "success");
 
+        // Read after taking the lock, so a generation that finished just before is already reflected.
+        TimelineRebuildRequest pendingRebuild = includePendingRebuild
+                ? rebuildRequestRepository.find(userId).orElse(null)
+                : null;
+        boolean extendedByPendingRebuild = pendingRebuild != null && pendingRebuild.rebuildFrom().isBefore(requestedFrom);
+        Instant earliestAffectedTimestamp = extendedByPendingRebuild ? pendingRebuild.rebuildFrom() : requestedFrom;
+        if (extendedByPendingRebuild) {
+            log.info("Timeline regeneration for user {} also covers its pending rebuild from {}", userId,
+                    earliestAffectedTimestamp);
+        }
+        boolean pendingRebuildFinished = false;
+
         try {
             // Step 2: Cleaning up old data (10%)
             updateProgress(jobId, "cleaningUp", "Cleaning up old timeline data", 2, 10, null);
 
-            // Find latest stay before the affected timestamp and clean up from that point
+            // Clean up from the restart point (see RestartPoint)
             stageStart = metricsStart();
-            Instant regenerationStartTime = deleteFromStayBeforeTimestampAndCleanup(userId, earliestAffectedTimestamp);
+            Restart restart = deleteFromRestartPoint(userId, earliestAffectedTimestamp, restartPoint);
+            Instant regenerationStartTime = restart.from();
             recordTimelineStage(stageStart, trigger, "cleanup", "success");
 
             stageStart = metricsStart();
@@ -205,6 +276,8 @@ public class StreamingTimelineGenerationService {
                 completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
+                pendingRebuildFinished = true;
+                finishPendingRebuild(userId, pendingRebuild, regenerationStartTime);
                 return;
             }
 
@@ -244,12 +317,12 @@ public class StreamingTimelineGenerationService {
             updateProgress(jobId, "postProcessingTrips", "Post-processing trips and validating detections", 5, 70, null);
 
             long tripPostProcessingStartNanos = System.nanoTime();
-            List<TimelineEvent> events = tripPostProcessor.postProcessTrips(
+            List<TimelineEvent> events = keepRestartStayStart(userId, tripPostProcessor.postProcessTrips(
                     userId,
                     rawEvents,
                     config,
                     environmentDatasetVersion
-            );
+            ), restart);
             recordTimelineStage(tripPostProcessingStartNanos, trigger, "trip_postprocess", "success");
             countTimelineEvents(trigger, "postprocessed", events.size());
             log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
@@ -339,8 +412,15 @@ public class StreamingTimelineGenerationService {
                     hasGeneratedTrips(generatedTimeline));
             recordTimelineStage(stageStart, trigger, "timeline_changed_event", "success");
 
+            pendingRebuildFinished = true;
+            finishPendingRebuild(userId, pendingRebuild, regenerationStartTime);
         } catch (Exception e) {
             result = "error";
+            // Once the request row has been touched by this transaction, counting the failure in a separate
+            // transaction would wait on our own lock; the request is then simply rolled back to how it was.
+            if (pendingRebuild != null && !pendingRebuildFinished) {
+                recordPendingRebuildFailure(userId, e);
+            }
             failJob(jobId, "Timeline generation failed: " + e.getMessage());
             throw new RuntimeException("Timeline generation failed", e);
         } finally {
@@ -382,48 +462,92 @@ public class StreamingTimelineGenerationService {
     }
 
     /**
-     * Finds the latest stay before the specified timestamp, deletes it and all timeline events
-     * (stays, trips, gaps) after that timestamp, and returns the starting point for regeneration.
-     *
-     * @param userId            The user ID
-     * @param affectedTimestamp The timestamp before which to find the latest stay
-     * @return The timestamp from which to start timeline regeneration
+     * Where a regeneration for changes from {@code affectedTimestamp} restarts; empty when it has to start from
+     * scratch.
      */
-    private Instant deleteFromStayBeforeTimestampAndCleanup(UUID userId, Instant affectedTimestamp) {
-        // Find latest stay before the affected timestamp
-        Optional<TimelineStayEntity> stayBeforeAffected = timelineStayRepository.findLatestByUserIdBeforeTimestamp(userId, affectedTimestamp);
+    public Optional<Instant> findRestartPoint(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
+        return findRestart(userId, affectedTimestamp, restartPoint).map(Restart::from);
+    }
 
-        if (stayBeforeAffected.isPresent()) {
-            Instant stayStartTime = stayBeforeAffected.get().getTimestamp();
-            log.debug("Deleting stay for user {} at {} and cleaning up all events after this time", userId, stayStartTime);
+    /**
+     * Where to restart, and for {@link RestartPoint#BEFORE_PREVIOUS_STAY} where the restart stay ended (otherwise null).
+     */
+    private record Restart(Instant from, Instant restartStayEnd) {
+    }
 
-            // Delete all stays from this timestamp forward (including the anchor stay)
-            long deletedStays = timelineStayRepository.delete("user.id = :userId and timestamp >= :timestamp",
-                    Map.of("userId", userId, "timestamp", stayStartTime));
-            if (deletedStays > 0) {
-                log.debug("Cleaned up {} stays starting from timestamp {}", deletedStays, stayStartTime);
-            }
-
-            // Delete all trips from this timestamp forward
-            long deletedTrips = timelineTripRepository.delete("user.id = :userId and timestamp >= :timestamp",
-                    Map.of("userId", userId, "timestamp", stayStartTime));
-            if (deletedTrips > 0) {
-                log.debug("Cleaned up {} trips starting from timestamp {}", deletedTrips, stayStartTime);
-            }
-
-            // Delete all data gaps from this timestamp forward
-            long deletedGaps = timelineDataGapRepository.delete("user.id = :userId and startTime >= :timestamp",
-                    Map.of("userId", userId, "timestamp", stayStartTime));
-            if (deletedGaps > 0) {
-                log.debug("Cleaned up {} data gaps starting from timestamp {}", deletedGaps, stayStartTime);
-            }
-
-            return stayStartTime;
-        } else {
-            // No stays found before the affected timestamp - fallback to complete regeneration
-            log.debug("No stays found for user {} before timestamp {}, falling back to complete regeneration", userId, affectedTimestamp);
-            return deleteAllTimelineEventsAndStartFromScratch(userId);
+    private Optional<Restart> findRestart(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
+        Optional<TimelineStayEntity> latestStay =
+                timelineStayRepository.findLatestByUserIdBeforeTimestamp(userId, affectedTimestamp);
+        if (restartPoint == RestartPoint.LATEST_STAY || latestStay.isEmpty()) {
+            return latestStay.map(stay -> new Restart(stay.getTimestamp(), null));
         }
+        // The restart stay must be one generation produces itself, or it cannot come out as a stay again.
+        return timelineStayRepository.findLatestGeneratedStayBefore(userId, latestStay.get().getTimestamp())
+                .map(previousStay -> new Restart(previousStay.getTimestamp(),
+                        previousStay.getTimestamp().plusSeconds(previousStay.getStayDuration())));
+    }
+
+    /**
+     * Gives the restart stay back the start it had (see {@link RestartPoint#BEFORE_PREVIOUS_STAY}). A blank start may
+     * leave its first arrival fixes to a short trip in front of it, or start it a few fixes later; both are undone.
+     * Changes nothing when something else than trips comes before the first stay.
+     */
+    private List<TimelineEvent> keepRestartStayStart(UUID userId, List<TimelineEvent> events, Restart restart) {
+        if (restart.restartStayEnd() == null) {
+            return events;
+        }
+        int firstStayIndex = -1;
+        for (int i = 0; i < events.size(); i++) {
+            if (events.get(i) instanceof Stay) {
+                firstStayIndex = i;
+                break;
+            }
+            if (!(events.get(i) instanceof Trip)) {
+                return events;
+            }
+        }
+        if (firstStayIndex < 0) {
+            return events;
+        }
+        Stay stay = (Stay) events.get(firstStayIndex);
+        if (!stay.getStartTime().isBefore(restart.restartStayEnd())) {
+            // The restart stay did not come out as a stay at all; the kept part no longer fits. A full regeneration
+            // on the next real-time pass repairs it.
+            log.warn("Restart stay of user {} at {} was not regenerated as a stay; requesting a full regeneration",
+                    userId, restart.from());
+            rebuildRequestRepository.request(userId, DEFAULT_START_DATE);
+            return events;
+        }
+        if (!stay.getStartTime().isAfter(restart.from())) {
+            return events;
+        }
+        log.debug("Restart stay of user {} kept at {} (regenerated from {})", userId, restart.from(), stay.getStartTime());
+        stay.setDuration(stay.getDuration().plus(Duration.between(restart.from(), stay.getStartTime())));
+        stay.setStartTime(restart.from());
+        return new ArrayList<>(events.subList(firstStayIndex, events.size()));
+    }
+
+    /**
+     * Deletes the stays, trips and data gaps from the restart point on and returns where to regenerate from.
+     */
+    private Restart deleteFromRestartPoint(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
+        Optional<Restart> restart = findRestart(userId, affectedTimestamp, restartPoint);
+        if (restart.isEmpty()) {
+            log.debug("No restart point for user {} before {}, falling back to complete regeneration", userId,
+                    affectedTimestamp);
+            return new Restart(deleteAllTimelineEventsAndStartFromScratch(userId), null);
+        }
+        Instant from = restart.get().from();
+        log.debug("Cleaning up timeline of user {} from {}", userId, from);
+        long deletedStays = timelineStayRepository.delete("user.id = :userId and timestamp >= :timestamp",
+                Map.of("userId", userId, "timestamp", from));
+        long deletedTrips = timelineTripRepository.delete("user.id = :userId and timestamp >= :timestamp",
+                Map.of("userId", userId, "timestamp", from));
+        long deletedGaps = timelineDataGapRepository.delete("user.id = :userId and startTime >= :timestamp",
+                Map.of("userId", userId, "timestamp", from));
+        log.debug("Cleaned up {} stays, {} trips and {} data gaps of user {} from {}", deletedStays, deletedTrips,
+                deletedGaps, userId, from);
+        return restart.get();
     }
 
     /**
@@ -453,6 +577,43 @@ public class StreamingTimelineGenerationService {
 
         // Return early date to ensure we process all GPS points from the beginning
         return DEFAULT_START_DATE;
+    }
+
+    /**
+     * Clears the pending rebuild this generation covered, then asks for another pass when the latest stay was left
+     * without a place name. Must be the last database work of a successful generation: from here on the request row
+     * is locked by this transaction.
+     */
+    private void finishPendingRebuild(UUID userId, TimelineRebuildRequest pendingRebuild, Instant regenerationStartTime) {
+        if (pendingRebuild != null && !rebuildRequestRepository.complete(pendingRebuild)) {
+            log.debug("Rebuild request for user {} changed during generation; keeping it for the next run", userId);
+        }
+        requestGeocodingRetryIfNeeded(userId, regenerationStartTime);
+    }
+
+    /**
+     * When reverse geocoding fails, the stay gets a fallback name and nothing is cached. The real-time job used to
+     * retry that for the latest stay simply by rebuilding it every few minutes; now it only rebuilds on request, so
+     * the latest stay asks for its own retry.
+     */
+    private void requestGeocodingRetryIfNeeded(UUID userId, Instant regenerationStartTime) {
+        timelineStayRepository.find("user.id = ?1 order by timestamp desc", userId)
+                .firstResultOptional()
+                .filter(stay -> !stay.getTimestamp().isBefore(regenerationStartTime))
+                .filter(stay -> stay.getFavoriteLocation() == null && stay.getGeocodingLocation() == null)
+                .ifPresent(stay -> {
+                    log.info("Latest stay of user {} at {} has no resolved place; requesting another pass",
+                            userId, stay.getTimestamp());
+                    rebuildRequestRepository.request(userId, stay.getTimestamp());
+                });
+    }
+
+    private void recordPendingRebuildFailure(UUID userId, Exception failure) {
+        try {
+            rebuildRequestRepository.recordFailure(userId, failure.toString());
+        } catch (Exception recordError) {
+            log.warn("Could not record the failed timeline rebuild for user {}: {}", userId, recordError.getMessage());
+        }
     }
 
     private boolean acquireLock(UUID userId) {

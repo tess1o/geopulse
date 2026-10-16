@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -36,6 +37,9 @@ public class AsyncTimelineGenerationService {
     @Inject
     TimelineJobProgressService jobProgressService;
 
+    @Inject
+    TimelineRebuildRequestRepository rebuildRequestRepository;
+
     private final ConcurrentHashMap<UUID, Instant> pendingRegenerationStartTimes = new ConcurrentHashMap<>();
 
     public record TimelineSchedulingResult(
@@ -43,6 +47,25 @@ public class AsyncTimelineGenerationService {
             boolean scheduled,
             boolean queued
     ) {
+    }
+
+    /**
+     * Full regeneration after a change that affects the whole timeline (a favorite, timeline settings).
+     * <p>
+     * A rebuild request is committed first, so the timeline still catches up when the job cannot start now (another
+     * job is running for the user) or fails: the real-time job then runs it. A job that completes clears it.
+     *
+     * @return the job id, or null when no job could be started now
+     */
+    public UUID requestFullRegeneration(UUID userId) {
+        rebuildRequestRepository.requestIndependently(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE);
+        try {
+            return regenerateTimelineAsync(userId);
+        } catch (IllegalStateException e) {
+            log.info("Could not start a regeneration job for user {} now ({}); the real-time job will run it",
+                    userId, e.getMessage());
+            return null;
+        }
     }
 
     /**

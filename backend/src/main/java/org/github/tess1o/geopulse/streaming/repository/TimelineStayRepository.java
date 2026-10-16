@@ -49,6 +49,26 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .firstResultOptional();
     }
 
+    /**
+     * The latest stay starting before the timestamp that timeline generation produces itself: stays created by a
+     * manual override (a data gap or part of a trip turned into a stay) are skipped, since generation only recreates
+     * them afterwards.
+     */
+    public Optional<TimelineStayEntity> findLatestGeneratedStayBefore(UUID userId, Instant beforeTimestamp) {
+        return getEntityManager().createQuery("""
+                        SELECT s FROM TimelineStayEntity s
+                        WHERE s.user.id = :userId AND s.timestamp < :before
+                          AND NOT EXISTS (SELECT 1 FROM TimelineDataGapStayOverrideEntity o WHERE o.stay = s)
+                          AND NOT EXISTS (SELECT 1 FROM TimelineTripStaySplitOverrideEntity o WHERE o.stay = s)
+                        ORDER BY s.timestamp DESC
+                        """, TimelineStayEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("before", beforeTimestamp)
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst();
+    }
+
     public Optional<TimelineStayEntity> findLatestByUserIdAtOrBeforeTimestamp(UUID userId, Instant timestamp) {
         return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
                 .firstResultOptional();

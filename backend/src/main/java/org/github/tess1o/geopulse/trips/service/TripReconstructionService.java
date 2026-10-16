@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
@@ -44,17 +45,20 @@ public class TripReconstructionService {
     private final GpsPointRepository gpsPointRepository;
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final EntityManager entityManager;
+    private final TimelineRebuildRequestRepository rebuildRequestRepository;
 
     public TripReconstructionService(TripAccessService tripAccessService,
                                      TimelineConfigurationProvider timelineConfigurationProvider,
                                      GpsPointRepository gpsPointRepository,
                                      AsyncTimelineGenerationService asyncTimelineGenerationService,
-                                     EntityManager entityManager) {
+                                     EntityManager entityManager,
+                                     TimelineRebuildRequestRepository rebuildRequestRepository) {
         this.tripAccessService = tripAccessService;
         this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.gpsPointRepository = gpsPointRepository;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.entityManager = entityManager;
+        this.rebuildRequestRepository = rebuildRequestRepository;
     }
 
     public TripReconstructionPreviewDto preview(UUID actorUserId,
@@ -144,6 +148,8 @@ public class TripReconstructionService {
             }
         }
 
+        // Committed with the points: if the regeneration job below cannot start or fails, the real-time job runs it.
+        rebuildRequestRepository.request(ownerUserId, earliestInsertedTimestamp);
         return new PersistenceResult(insertedPoints, duplicatePoints, earliestInsertedTimestamp);
     }
 

@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
 import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -192,7 +193,8 @@ class GpsPointServiceRawMapPointsTest {
                 mock(GpsTelemetryRenderingService.class),
                 mock(GeofenceEvaluationService.class),
                 configurationProvider,
-                mock(GpsPointEnvironmentService.class)
+                mock(GpsPointEnvironmentService.class),
+                mock(TimelineRebuildRequestRepository.class)
         );
         service.locationPointResolver = resolver;
         return service;

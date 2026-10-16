@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
@@ -27,6 +28,9 @@ public class TimelineImportHelper {
 
     @Inject
     TimelineJobProgressService jobProgressService;
+
+    @Inject
+    TimelineRebuildRequestRepository rebuildRequestRepository;
 
     @Inject
     BadgeRecalculationService badgeRecalculationService;
@@ -54,6 +58,10 @@ public class TimelineImportHelper {
 
         // Update import progress immediately so frontend sees the change
         job.updateProgress(75, "Timeline generation in progress...");
+
+        // The imported points are already committed. If the generation below fails, this request makes the
+        // real-time job retry it instead of leaving the timeline without them; a successful generation clears it.
+        rebuildRequestRepository.requestIndependently(job.getUserId(), firstGpsPointDate);
 
         int maxRetries = 10;
         int baseDelayMs = 1000; // Start with 1 second

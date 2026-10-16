@@ -149,6 +149,13 @@ public class GeofenceEvaluationService {
         }
 
         GeofenceRuleStateEntity state = existingStateOpt.get();
+        GpsPointEntity newestPoint = state.getLastPoint();
+        if (newestPoint != null && newestPoint.getTimestamp() != null
+                && point.getTimestamp().isBefore(newestPoint.getTimestamp())) {
+            // A late point (a queued upload, a backfill): the state already reflects newer positions, and evaluating
+            // it would flip inside/outside and emit an enter or leave event that never happened at this time.
+            return;
+        }
         state.setLastPoint(point);
 
         boolean changed = !Objects.equals(state.getCurrentInside(), inside);

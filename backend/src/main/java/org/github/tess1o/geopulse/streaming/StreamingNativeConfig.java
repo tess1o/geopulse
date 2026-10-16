@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.*;
 import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 
 @RegisterForReflection(targets = {
         TimelineStayEntity.class,
@@ -52,6 +53,8 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         TimelineConfig.class,
         TimelineJobProgress.class,
         TimelineJobProgress.JobStatus.class,
+        // Key of the EnumMap the nightly safety net reports its results in.
+        TimelineSafetyNetService.Outcome.class,
         PlaceDetailsDTO.class,
         PlaceGeometryDTO.class,
         PlaceStatisticsDTO.class,

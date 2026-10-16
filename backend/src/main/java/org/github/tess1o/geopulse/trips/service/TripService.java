@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
@@ -46,19 +47,23 @@ public class TripService {
     private final UserRepository userRepository;
     private final TripAccessService tripAccessService;
     private final FriendshipRepository friendshipRepository;
+    // Lazy: the matcher itself depends on this service.
+    private final Instance<TripVisitAutoMatchService> tripVisitAutoMatchService;
 
     public TripService(TripRepository tripRepository,
                        TripCollaboratorRepository tripCollaboratorRepository,
                        TimelineLabelRepository timelineLabelRepository,
                        UserRepository userRepository,
                        TripAccessService tripAccessService,
-                       FriendshipRepository friendshipRepository) {
+                       FriendshipRepository friendshipRepository,
+                       Instance<TripVisitAutoMatchService> tripVisitAutoMatchService) {
         this.tripRepository = tripRepository;
         this.tripCollaboratorRepository = tripCollaboratorRepository;
         this.timelineLabelRepository = timelineLabelRepository;
         this.userRepository = userRepository;
         this.tripAccessService = tripAccessService;
         this.friendshipRepository = friendshipRepository;
+        this.tripVisitAutoMatchService = tripVisitAutoMatchService;
     }
 
     public List<TripDto> getTrips(UUID userId, String statusFilter) {
@@ -184,6 +189,14 @@ public class TripService {
 
     @Transactional
     public TripDto updateTrip(UUID userId, Long tripId, UpdateTripDto dto) {
+        TripDto updated = applyTripUpdate(userId, tripId, dto);
+        // The dates decide which stays count as visits. Matching used to happen only as a side effect of the
+        // real-time job rebuilding the timeline every few minutes, which it no longer does without new data.
+        tripVisitAutoMatchService.get().evaluate(userId, tripId, true);
+        return updated;
+    }
+
+    private TripDto applyTripUpdate(UUID userId, Long tripId, UpdateTripDto dto) {
         Instant startTime = dto.getStartTime();
         Instant endTime = dto.getEndTime();
         validateDatePair(startTime, endTime);

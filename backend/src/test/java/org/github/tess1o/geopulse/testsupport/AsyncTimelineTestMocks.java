@@ -18,6 +18,7 @@ public final class AsyncTimelineTestMocks {
     public static void install() {
         AsyncTimelineGenerationService service = mock(AsyncTimelineGenerationService.class);
         when(service.regenerateTimelineAsync(any(UUID.class))).thenAnswer(ignored -> UUID.randomUUID());
+        when(service.requestFullRegeneration(any(UUID.class))).thenAnswer(ignored -> UUID.randomUUID());
         when(service.scheduleTimelineRegenerationFromTimestamp(any(UUID.class), any(Instant.class)))
                 .thenAnswer(ignored -> new AsyncTimelineGenerationService.TimelineSchedulingResult(
                         UUID.randomUUID(), true, false));

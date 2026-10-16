@@ -8,17 +8,15 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaignService;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -29,7 +27,7 @@ import java.util.concurrent.Semaphore;
 public class RealTimeTimelineJob {
 
     @Inject
-    StreamingTimelineGenerationService timelineGenerationService;
+    RealtimeTimelineProcessor realtimeProcessor;
 
     @Inject
     TimelineRegenerationCampaignService campaignService;
@@ -97,7 +95,6 @@ public class RealTimeTimelineJob {
         recordRealtimeSchedulerDuration(startedAtNanos, "success");
     }
 
-    @Transactional
     public void processUser(UserEntity user) {
         if (campaignService.hasActiveCampaignForUser(user.getId())) {
             log.debug("Skipping real-time timeline processing for user {} due to active forced regeneration campaign",
@@ -105,7 +102,8 @@ public class RealTimeTimelineJob {
             countRealtimeUsers("skipped_campaign", 1);
             return;
         }
-        timelineGenerationService.generateTimelineFromTimestamp(user.getId(), Instant.now(), "realtime");
+        RealtimeTimelineProcessor.Outcome outcome = realtimeProcessor.process(user.getId());
+        countRealtimeUsers(outcome.metricResult(), 1);
     }
 
     private long metricsStart() {

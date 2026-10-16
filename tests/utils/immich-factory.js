@@ -15,10 +15,12 @@ import { TestConfig } from '../config/test-config.js';
  * The timeline map only renders when the range has GPS points, so every seeded stay and trip also
  * gets the GPS points it would have been built from.
  *
- * The backend's RealTimeTimelineJob runs every five minutes and, for every idle user, deletes the
- * latest stay (and everything after it) before regenerating from the GPS points after it.
- * insertPhotoStays ends with a photo-less night stay, without GPS points, after the tested range,
- * so the job deletes that stay instead of a photo stay and has nothing to regenerate.
+ * The backend's RealTimeTimelineJob only rebuilds timelines that asked for it: points saved or deleted
+ * through the API, favorite or settings changes, imports. Rows seeded straight into the database ask
+ * for nothing, so the job leaves them alone (it only maintains the ongoing data gap). insertPhotoStays
+ * still ends with a photo-less night stay, without GPS points, after the tested range: older backends
+ * deleted every user's latest stay on each run, and a rebuild requested during a test would start
+ * around the latest stays rather than among the photo stays.
  */
 
 // URL the GeoPulse backend uses to reach the fake server (compose service name, not localhost).
@@ -164,7 +166,7 @@ export class ImmichFactory {
 
   /**
    * Every day of PHOTO_DAYS: a stay at the place from startHourUtc, then a walk away from it, with
-   * GPS points for both. Ends with the night stay the real-time timeline job may delete.
+   * GPS points for both. Ends with a night stay that keeps the latest stays out of the tested range.
    * Pass favoriteId or geocodingId to link the stays to a place (place, city and country pages).
    * @returns {Promise<Array<{id: number, timestamp: Date, durationSeconds: number}>>} the photo stays
    */

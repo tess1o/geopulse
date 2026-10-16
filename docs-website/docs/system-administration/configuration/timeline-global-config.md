@@ -9,12 +9,32 @@ processing job. They affect all users and **cannot** be overridden on a per-user
 
 Controls the background job that processes real-time timeline updates for all users.
 
+On every run, the job only rebuilds the timelines that changed since the last run: new or late GPS points, deleted
+points, a favorite or settings change that could not start its own regeneration, or an import whose regeneration
+failed. Every such change records the earliest time it affects, and the job rebuilds from there. For everyone else it
+only creates or extends the ongoing data gap. A user whose timeline is already being regenerated (an import, a manual
+rebuild) is skipped and picked up by a later run.
+
 | Property                               | Default | Description                                                                                                  |
 |----------------------------------------|---------|--------------------------------------------------------------------------------------------------------------|
 | `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2`     | The number of concurrent threads used to process timeline updates for different users.                       |
 | `GEOPULSE_TIMELINE_JOB_INTERVAL`       | `5m`    | The interval at which the system checks for and processes pending real-time timeline updates for users.      |
 | `GEOPULSE_TIMELINE_JOB_DELAY`          | `1m`    | The delay after application startup before the first timeline processing job is executed.                    |
 | `GEOPULSE_TIMELINE_VIEW_ITEM_LIMIT`    | `150`   | Show a warning in UI if total number of timeline items (stays + trips + data gaps) is larger than this value |
+
+### Nightly safety net
+
+Once a night, GeoPulse rebuilds the recent part of every timeline that received GPS points in the configured window
+and compares the result with what was stored. A correct timeline comes out the same. When it differs, the rebuild
+corrects it and the server log shows a warning with the stays, trips and data gaps that changed; the
+`geopulse_timeline_safety_net_users_total{result="corrected"}` metric counts these. Regular corrections point at a
+problem worth reporting.
+
+| Property                                     | Default        | Description                                                         |
+|----------------------------------------------|----------------|---------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_SAFETY_NET_ENABLED`       | `true`         | Turns the nightly safety net on or off.                             |
+| `GEOPULSE_TIMELINE_SAFETY_NET_CRON`          | `0 30 3 * * ?` | When it runs (Quartz cron, server time).                            |
+| `GEOPULSE_TIMELINE_SAFETY_NET_WINDOW_HOURS`  | `48`           | How many hours back it rebuilds, and which users it checks.         |
 
 To understand better how Timeline Processing works, please refer to
 the [Timeline Processing](/docs/user-guide/core-features/timeline) section.
