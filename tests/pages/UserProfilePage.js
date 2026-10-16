@@ -70,6 +70,18 @@ export class UserProfilePage {
         errorMessage: '.error-message'
       },
 
+      // API tokens section of the Security tab
+      apiTokens: {
+        heading: '#api-tokens-heading',
+        createButton: '.api-tokens-section button:has-text("Create Token")',
+        nameInput: '#api-token-name',
+        presetOption: (preset) => `label.access-option:has(#api-token-preset-${preset})`,
+        submitButton: '.p-dialog button:has-text("Create")',
+        createdDialog: '.p-dialog:has-text("API Token Created")',
+        createdConfirmButton: 'button:has-text("I have stored this token")',
+        rows: '.tokens-table tbody tr'
+      },
+
       // AI Assistant tab selectors
       ai: {
         enableToggle: '#ai-enabled',
@@ -606,6 +618,21 @@ export class UserProfilePage {
   /**
    * Check if Change Password button is enabled
    */
+  /**
+   * Create an API token in the Security tab with the given preset (the dialog defaults to Read only)
+   * and close the dialog that shows its secret.
+   */
+  async createApiToken(name, preset = 'readOnly') {
+    const sel = this.selectors.apiTokens;
+    await this.page.locator(sel.createButton).click();
+    await this.page.fill(sel.nameInput, name);
+    await this.page.locator(sel.presetOption(preset)).click();
+    await this.page.locator(sel.submitButton).click();
+    await this.page.locator(sel.createdDialog).waitFor({ state: 'visible' });
+    await this.page.locator(sel.createdConfirmButton).click();
+    await this.page.locator(sel.createdDialog).waitFor({ state: 'hidden' });
+  }
+
   async isChangePasswordButtonEnabled() {
     return !await this.page.isDisabled(this.selectors.security.changePasswordButton);
   }

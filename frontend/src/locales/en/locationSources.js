@@ -163,7 +163,9 @@ export default {
             existingTokenHint: 'GeoPulse can\'t show a token\'s secret again, so choose this only if you saved it.',
             noExistingTokens: 'No API tokens that can send locations yet.',
             sourceTokenLabel: 'Source token',
-            sourceTokenHint: 'Any secret you choose. Paste the same value into the Authorization header of the rest_command.'
+            sourceTokenHint: 'Any secret you choose. Paste the same value into the Authorization header of the rest_command.',
+            readOnlyHint: 'Already sending locations from another app, such as OwnTracks? You don\'t need a location source to see GeoPulse in Home Assistant: {link} and use it in the integration.',
+            readOnlyHintLink: 'create a read-only API token'
         },
         cancel: 'Cancel',
         continue: 'Continue',

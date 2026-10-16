@@ -161,7 +161,9 @@ export default {
             existingTokenHint: 'GeoPulse не може показати секрет токена повторно, тож обирайте цей варіант, лише якщо ви його зберегли.',
             noExistingTokens: 'Ще немає API-токенів, які можуть надсилати локації.',
             sourceTokenLabel: 'Токен джерела',
-            sourceTokenHint: 'Будь-який секрет на ваш вибір. Вставте те саме значення в заголовок Authorization у rest_command.'
+            sourceTokenHint: 'Будь-який секрет на ваш вибір. Вставте те саме значення в заголовок Authorization у rest_command.',
+            readOnlyHint: 'Вже надсилаєте локації з іншого застосунку, наприклад OwnTracks? Щоб бачити GeoPulse у Home Assistant, джерело локацій не потрібне: {link} і вкажіть його в інтеграції.',
+            readOnlyHintLink: 'створіть API-токен лише для читання'
         },
         cancel: 'Скасувати',
         continue: 'Продовжити',

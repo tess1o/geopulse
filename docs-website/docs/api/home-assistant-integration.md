@@ -24,6 +24,12 @@ source, and shows the token once. Tokens can also be created under **Profile > S
 **Home Assistant** preset, but such a token can only send locations after it's connected to a source in Location
 Sources (*Use an existing token*). See [API Tokens](./api-tokens.md).
 
+Both scopes are only needed for both directions. A client that only reads from GeoPulse, for example because the
+user's phone already sends locations through OwnTracks, needs a token with just `read`, created under
+**Profile > Security > API tokens** with the **Read only** preset, and no location source. Such a token gets
+`403 API_TOKEN_SCOPE_REQUIRED` on the location endpoints below, so check `scopes` during setup and don't offer to
+send locations. A client that only sends needs just `gps:ingest`.
+
 Send the token on every request, either way:
 
 ```http

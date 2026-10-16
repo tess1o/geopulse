@@ -1,6 +1,7 @@
 import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
+import {UserProfilePage} from '../pages/UserProfilePage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
@@ -243,6 +244,67 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
       expect(dbSource.username).toBeNull();
       expect(dbSource.password_hash).toBe("")
+    });
+
+    test('should point Home Assistant users who only read data to a read-only API token', async ({page, isolatedUsers, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const userProfilePage = new UserProfilePage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+
+      await locationSourcesPage.clickAddNewSource();
+      await locationSourcesPage.waitForDialog();
+      await locationSourcesPage.selectSourceType('HOME_ASSISTANT');
+
+      const hint = page.locator(locationSourcesPage.selectors.dialog.homeAssistantReadOnlyHint);
+      await expect(hint).toBeVisible();
+      await expect(hint).toContainText('Already sending locations from another app');
+
+      // The hint applies to both ways of sending locations from Home Assistant
+      await page.locator(locationSourcesPage.selectors.dialog.homeAssistantModes.sourceToken).click();
+      await expect(hint).toBeVisible();
+
+      await locationSourcesPage.openReadOnlyTokenSetupFromHomeAssistant();
+      await page.waitForURL(/\/app\/profile\?.*tab=security/);
+      await expect(page.locator(locationSourcesPage.selectors.dialog.container)).toBeHidden();
+      await expect(page.locator(userProfilePage.selectors.apiTokens.heading)).toBeVisible();
+
+      // Read only is the default preset; pass it explicitly so the test states what it checks
+      await userProfilePage.createApiToken('Home Assistant (read only)', 'readOnly');
+      const tokenRow = page.locator(userProfilePage.selectors.apiTokens.rows, {hasText: 'Home Assistant (read only)'});
+      await expect(tokenRow).toContainText('Read only');
+
+      // The token can only read, and no location source was created for it
+      const user = await dbManager.getUserByEmail(testUser.email);
+      const tokens = await LocationSourcesPage.getApiTokensFromDb(dbManager, user.id);
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].name).toBe('Home Assistant (read only)');
+      expect(tokens[0].scopes).toBe('read');
+      expect(await LocationSourcesPage.getGpsSourceCountFromDb(dbManager, user.id)).toBe(0);
+    });
+
+    test('should not show the read-only hint when editing a Home Assistant source', async ({page, isolatedUsers}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+      await locationSourcesPage.createHomeAssistantSource('home-assistant-edit-hint-token');
+
+      await locationSourcesPage.clickEditSource(0);
+      await locationSourcesPage.waitForDialog();
+      await expect(page.locator(locationSourcesPage.selectors.dialog.fields.homeAssistantToken)).toBeVisible();
+      await expect(page.locator(locationSourcesPage.selectors.dialog.homeAssistantReadOnlyHint)).toHaveCount(0);
     });
 
     test('should use quick setup buttons to create sources', async ({page, isolatedUsers, dbManager}) => {

@@ -34,6 +34,7 @@ export class LocationSourcesPage {
           sourceToken: '[data-testid="ha-mode-source-token"]',
           apiToken: '[data-testid="ha-mode-api-token"]'
         },
+        homeAssistantReadOnlyHint: '[data-testid="ha-read-only-hint"]',
         fields: {
           username: '#location-source-username',
           password: '#location-source-password input',
@@ -204,6 +205,13 @@ export class LocationSourcesPage {
   async fillHomeAssistantForm(token) {
     await this.page.locator(this.selectors.dialog.homeAssistantModes.sourceToken).click();
     await this.page.fill(this.selectors.dialog.fields.homeAssistantToken, token);
+  }
+
+  /**
+   * Follow the Home Assistant dialog's hint for showing GeoPulse data in Home Assistant with a read-only token
+   */
+  async openReadOnlyTokenSetupFromHomeAssistant() {
+    await this.page.locator(this.selectors.dialog.homeAssistantReadOnlyHint).locator('a').click();
   }
 
   /**
@@ -446,6 +454,14 @@ export class LocationSourcesPage {
   static async verifyGpsSourceInDb(dbManager, userId, sourceType, identifier, shouldExist = true) {
     const source = await this.getGpsSourceFromDb(dbManager, userId, sourceType, identifier);
     return shouldExist ? source !== null : source === null;
+  }
+
+  /**
+   * Get the user's API tokens from the database
+   */
+  static async getApiTokensFromDb(dbManager, userId) {
+    const result = await dbManager.client.query(`SELECT * FROM user_api_tokens WHERE user_id = $1`, [userId]);
+    return result.rows;
   }
 
   /**

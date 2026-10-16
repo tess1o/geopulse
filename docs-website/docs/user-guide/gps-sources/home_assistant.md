@@ -12,6 +12,9 @@ There are two ways to connect Home Assistant to GeoPulse:
   - shows your current stay or trip, place, today's totals and friends in Home Assistant, and fires events for automations (geofence enter/leave, stay/trip started/ended, tracking lost/resumed).
 - **[Manual `rest_command`](#option-2-manual-rest_command) setup.** A few lines of YAML that only send locations to GeoPulse.
 
+Already sending locations to GeoPulse from another app, such as OwnTracks? The integration can also work one way,
+from GeoPulse to Home Assistant: see [Only show GeoPulse data in Home Assistant](#only-show-geopulse-data-in-home-assistant).
+
 ---
 
 ## Option 1: GeoPulse integration (recommended)
@@ -53,6 +56,22 @@ and why the last skipped point was skipped, if any.
 
 The [integration's README](https://github.com/tess1o/geopulse-homeassistant#readme) lists all entities, events,
 services and options, with automation examples.
+
+### Only show GeoPulse data in Home Assistant
+
+If your phone already sends locations to GeoPulse through another app, such as OwnTracks, Home Assistant doesn't need
+to send anything. Use a read-only token instead of a location source:
+
+1.  In GeoPulse, open **Profile → Security → API tokens** and click **Create Token**.
+2.  Keep the **Read only** access, give the token a name, and click **Create**. Copy the token; it's shown only once.
+3.  Add the integration in Home Assistant as in [Step 3](#step-3-add-the-integration-in-home-assistant), with this
+    token.
+
+The integration sees that the token can't send locations, skips choosing trackers and hides the forwarding options.
+You still get your current stay or trip, place, today's totals, friends and the automation events. Don't add a Home
+Assistant location source in GeoPulse for this setup; it would never receive data.
+
+The **Home Assistant** setup in **Location Sources → Add New Source** links to the same place.
 
 ---
 

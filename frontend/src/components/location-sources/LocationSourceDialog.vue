@@ -241,6 +241,16 @@
                   </div>
                 </div>
               </div>
+              <i18n-t
+                keypath="locationSources.dialog.homeAssistant.readOnlyHint"
+                tag="small"
+                class="text-muted read-only-hint"
+                data-testid="ha-read-only-hint"
+              >
+                <template #link>
+                  <router-link :to="readOnlyTokenRoute" @click="visible = false">{{ t('locationSources.dialog.homeAssistant.readOnlyHintLink') }}</router-link>
+                </template>
+              </i18n-t>
             </div>
 
             <div v-if="!isEditMode && formData.haMode === 'apiToken'" class="form-field">
@@ -351,6 +361,9 @@ import {
 } from '@/components/location-sources/locationSourceMeta'
 
 const { t } = useI18n()
+
+// Showing GeoPulse data in Home Assistant without sending locations needs only a read-only API token, not a source
+const readOnlyTokenRoute = { path: '/app/profile', query: { tab: 'security', setting: 'api-tokens-heading' } }
 
 const props = defineProps({
   saving: {
@@ -909,6 +922,13 @@ defineExpose({
   color: var(--gp-text-muted, #6b7280);
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.read-only-hint a {
+  color: var(--gp-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: .18em;
 }
 
 .error-message {
