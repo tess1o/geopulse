@@ -96,6 +96,18 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 
 ---
 
+## 🏠 Home Assistant Integration
+
+The [GeoPulse for Home Assistant](https://github.com/tess1o/geopulse-homeassistant) integration (installed via HACS) connects Home Assistant to GeoPulse with a single API token, in both directions:
+
+- **Home Assistant → GeoPulse:** forward `device_tracker` and `person` entities. Points are queued on disk and retried, and recorder history can be backfilled.
+- **GeoPulse → Home Assistant:** your current stay or trip and its place, today's distance, trips and stays, a presence tracker, friends on the map, and server health.
+- **Automations:** events for geofence enter/leave, stay/trip started/ended, and tracking lost/resumed.
+
+Requires GeoPulse 2.0+ and Home Assistant 2026.3+. See the [integration README](https://github.com/tess1o/geopulse-homeassistant#readme) for setup.
+
+---
+
 ## 📸 Feature Tour
 
 <table>
@@ -254,6 +266,7 @@ Or install the signed OCI chart from GHCR: `helm install my-geopulse oci://ghcr.
 
 * **New users:** [Quick Start Guide](https://geopulse.cc/docs/getting-started/quick-start)
 * **GPS setup:** [GPS Sources Overview](https://geopulse.cc/docs/user-guide/gps-sources/overview)
+* **Home Assistant:** [GeoPulse for Home Assistant](https://github.com/tess1o/geopulse-homeassistant)
 * **Deployment:** [Docker](https://geopulse.cc/docs/getting-started/deployment/docker-compose) | [Unraid](https://geopulse.cc/docs/getting-started/deployment/unraid) | [Proxmox](https://geopulse.cc/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://geopulse.cc/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://geopulse.cc/docs/getting-started/deployment/manual-installation) | [Env Variables](https://geopulse.cc/docs/getting-started/deployment/environment-variables)
 * **Administration:** [Admin Panel](https://geopulse.cc/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://geopulse.cc/docs/system-administration/configuration/oidc-sso)
 * **Maintenance:** [Backup & Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore) | [Updating](https://geopulse.cc/docs/system-administration/maintenance/updating)
