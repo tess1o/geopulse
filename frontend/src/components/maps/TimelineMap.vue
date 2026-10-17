@@ -374,8 +374,9 @@
             <span>{{ item }}</span>
           </template>
         </div>
+        <!-- Mobile drops the legend to keep the card short over the map. -->
         <MapColorLegend
-          v-if="showSpeedLegend"
+          v-if="showSpeedLegend && !isMobileTripSelectionViewport"
           class="trip-summary-legend"
           variant="speed"
           :speed-colors="mapAppearance.speedBandColors"
@@ -2336,7 +2337,7 @@ defineExpose({
   .trip-summary {
     bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
     width: calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
-    max-width: 22rem;
+    max-width: 30rem;
   }
 }
 </style>
