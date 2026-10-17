@@ -27706,7 +27706,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.39.0",
+    "version" : "2.0.0",
     "description" : "REST API of GeoPulse, a self-hosted location timeline. Authentication, examples, and guides: https://geopulse.cc/docs/api/intro",
     "contact" : {
       "name" : "tess1o",
