@@ -1,10 +1,12 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -53,6 +55,9 @@ class RebuildRequestLifecycleIntegrationTest {
 
     @Inject
     StreamingTimelineGenerationService generationService;
+
+    @Inject
+    EntityManager entityManager;
 
     private GeocodingProviderFactory geocoding;
 
@@ -175,6 +180,40 @@ class RebuildRequestLifecycleIntegrationTest {
         assertThat(harness.pendingRebuild(userId)).isPresent();
 
         jobProgressService.completeJob(jobId);
+        assertThat(harness.process(userId)).isEqualTo(Outcome.REBUILT);
+        assertThat(harness.pendingRebuild(userId)).isEmpty();
+    }
+
+    @Test
+    void userInAnActiveRegenerationCampaignIsSkipped() {
+        UUID userId = harness.createUser("active-campaign");
+        harness.ingest(userId, new Commute().all());
+        UUID campaignId = UUID.randomUUID();
+        QuarkusTransaction.requiringNew().run(() -> {
+            entityManager.createNativeQuery("""
+                            INSERT INTO timeline_regeneration_campaigns (id, campaign_key, affected_from, reason, source)
+                            VALUES (:id, :key, :affectedFrom, 'test campaign', 'ADMIN')
+                            """)
+                    .setParameter("id", campaignId)
+                    .setParameter("key", "realtime-skip-" + campaignId)
+                    .setParameter("affectedFrom", at("06:00"))
+                    .executeUpdate();
+            entityManager.createNativeQuery("""
+                            INSERT INTO timeline_regeneration_campaign_users (campaign_id, user_id)
+                            VALUES (:campaignId, :userId)
+                            """)
+                    .setParameter("campaignId", campaignId)
+                    .setParameter("userId", userId)
+                    .executeUpdate();
+        });
+
+        assertThat(harness.process(userId)).isEqualTo(Outcome.SKIPPED_CAMPAIGN);
+        assertThat(harness.pendingRebuild(userId)).isPresent();
+
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery(
+                        "UPDATE timeline_regeneration_campaigns SET status = 'COMPLETED' WHERE id = :id")
+                .setParameter("id", campaignId)
+                .executeUpdate());
         assertThat(harness.process(userId)).isEqualTo(Outcome.REBUILT);
         assertThat(harness.pendingRebuild(userId)).isEmpty();
     }

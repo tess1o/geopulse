@@ -98,6 +98,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
+import { getMovementTypeEmoji } from '@/constants/movementTypes'
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
 import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
@@ -266,22 +267,9 @@ const { matchingNotes } = useTimelineCardNoteMatching({
   durationField: 'tripDuration'
 })
 
-// Movement type icons; labels come from the shared movementTypes.* catalog.
-const movementTypeIcons = {
-  WALK: '🚶',
-  BICYCLE: '🚴',
-  RUNNING: '🏃',
-  CAR: '🚗',
-  MOTORCYCLE: '🏍️',
-  PUBLIC_TRANSPORT: '🚌',
-  TRAIN: '🚊',
-  FLIGHT: '✈️',
-  BOAT: '⛵',
-  UNKNOWN: '❓'
-}
-
+// Labels come from the shared movementTypes.* catalog.
 const formatMovementType = (type) => {
-  return { label: te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type, icon: movementTypeIcons[type] || '' }
+  return { label: te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type, icon: getMovementTypeEmoji(type) }
 }
 
 const movementTypeSource = computed(() => props.tripItem.movementTypeSource || 'AUTO')

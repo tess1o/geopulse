@@ -220,7 +220,8 @@ export class JourneyInsightsPage {
 
   async getMovementDistance(label) {
     const mode = this.page.locator(this.selectors.travelStory.movementModes)
-      .filter({hasText: new RegExp(`^${label}\\s`)});
+      // Rows start with the movement type's emoji, then the label.
+      .filter({hasText: new RegExp(`^\\P{L}*${label}\\s`, 'u')});
     const distanceText = await mode.locator('small').textContent();
     return distanceText.trim();
   }

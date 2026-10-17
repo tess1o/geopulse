@@ -13,7 +13,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor;
-import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaignService;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -28,9 +27,6 @@ public class RealTimeTimelineJob {
 
     @Inject
     RealtimeTimelineProcessor realtimeProcessor;
-
-    @Inject
-    TimelineRegenerationCampaignService campaignService;
 
     @Inject
     @Identifier("timeline-processing")
@@ -95,15 +91,10 @@ public class RealTimeTimelineJob {
         recordRealtimeSchedulerDuration(startedAtNanos, "success");
     }
 
-    public void processUser(UserEntity user) {
-        if (campaignService.hasActiveCampaignForUser(user.getId())) {
-            log.debug("Skipping real-time timeline processing for user {} due to active forced regeneration campaign",
-                    user.getId());
-            countRealtimeUsers("skipped_campaign", 1);
-            return;
-        }
+    public RealtimeTimelineProcessor.Outcome processUser(UserEntity user) {
         RealtimeTimelineProcessor.Outcome outcome = realtimeProcessor.process(user.getId());
         countRealtimeUsers(outcome.metricResult(), 1);
+        return outcome;
     }
 
     private long metricsStart() {

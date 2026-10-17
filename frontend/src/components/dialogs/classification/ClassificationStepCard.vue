@@ -41,6 +41,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getMovementTypeEmoji } from '@/constants/movementTypes'
 
 const { t, te } = useI18n()
 
@@ -81,19 +82,7 @@ const movementTypeLabel = (type) => {
   return te(key) ? t(key) : type
 }
 
-const getTransportIcon = (type) => {
-  const iconMap = {
-    'FLIGHT': '✈️',
-    'TRAIN': '🚊',
-    'BOAT': '⛵',
-    'BICYCLE': '🚴',
-    'RUNNING': '🏃',
-    'CAR': '🚗',
-    'WALK': '🚶',
-    'UNKNOWN': '❓'
-  }
-  return iconMap[type] || '❓'
-}
+const getTransportIcon = (type) => getMovementTypeEmoji(type)
 
 const formatValue = (value) => {
   if (value === null || value === undefined) return t('classification.na')

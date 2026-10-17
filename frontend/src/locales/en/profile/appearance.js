@@ -6,7 +6,7 @@ export default {
     description: 'Choose map colors and line styles that are easy for you to see, including color vision friendly presets.',
     colorVision: {
         heading: 'Color vision',
-        description: 'Pick a preset that sets path, speed and heatmap colors in one step. You can still fine-tune individual colors below.',
+        description: 'Pick a preset that sets path, speed and heatmap colors in one step, along with the trip type colors in charts. You can still fine-tune individual colors below.',
         customized: 'Customized',
         schemes: {
             DEFAULT: {

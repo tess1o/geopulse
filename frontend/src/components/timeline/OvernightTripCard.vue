@@ -94,6 +94,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
+import { getMovementTypeEmoji } from '@/constants/movementTypes'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
@@ -272,21 +273,7 @@ const getTimestampText = () => {
   return timezone.getOvernightTimestampText(props.tripItem, props.currentDate, { forceLabel: props.forceZoneLabel })
 }
 
-const getMovementIcon = () => {
-  switch (props.tripItem.movementType) {
-    case 'WALK': return '🚶'
-    case 'BICYCLE': return '🚴'
-    case 'RUNNING': return '🏃'
-    case 'CAR': return '🚗'
-    case 'MOTORCYCLE': return '🏍️'
-    case 'PUBLIC_TRANSPORT': return '🚌'
-    case 'TRAIN': return '🚊'
-    case 'FLIGHT': return '✈️'
-    case 'BOAT': return '⛵'
-    case 'UNKNOWN': return '❓'
-    default: return '❓'
-  }
-}
+const getMovementIcon = () => getMovementTypeEmoji(props.tripItem.movementType)
 
 const getOnThisDayText = () => {
   return timezone.getOvernightOnThisDayText(props.tripItem, props.currentDate)

@@ -3,23 +3,11 @@ import { formatDistanceForUnit } from '@/utils/measurementFormatters'
 import { t, te } from '@/locales'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import { formatWeatherDisplayTitle } from '@/maps/shared/stayWeather'
-
-const STACK_MOVEMENT_TYPE_ICONS = {
-  WALK: '🚶',
-  BICYCLE: '🚴',
-  RUNNING: '🏃',
-  CAR: '🚗',
-  MOTORCYCLE: '🏍️',
-  PUBLIC_TRANSPORT: '🚌',
-  TRAIN: '🚊',
-  FLIGHT: '✈️',
-  BOAT: '⛵',
-  UNKNOWN: '❓'
-}
+import { getMovementTypeEmoji } from '@/constants/movementTypes'
 
 export const getMovementTypeDisplay = (movementType) => ({
   label: te(`movementTypes.${movementType}`) ? t(`movementTypes.${movementType}`) : (movementType || t('maps.popups.common.unknown')),
-  icon: STACK_MOVEMENT_TYPE_ICONS[movementType] || '❓'
+  icon: getMovementTypeEmoji(movementType)
 })
 
 export const getStackItemTypeClass = (item) => {

@@ -453,7 +453,9 @@ import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 import { partitionWeatherSamplesByStay } from '@/maps/shared/stayWeather'
-import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
+import { collectTimelineDataBounds, getTimelineBoundsViewport } from '@/maps/shared/timelineViewport'
+import { useTimelineMapHeatmap } from '@/composables/useTimelineMapHeatmap'
+import { useRawGpsPointsInspector } from '@/composables/useRawGpsPointsInspector'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
@@ -480,9 +482,7 @@ import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
 import {useImmichStore} from '@/stores/immich'
 import {useNotesStore} from '@/stores/notes'
-import {useDigestStore} from '@/stores/digest'
 import {useDateRangeStore} from '@/stores/dateRange'
-import {useTechnicalDataStore} from '@/stores/technicalData'
 
 // Props
 const props = defineProps({
@@ -676,7 +676,6 @@ const { t, te } = useI18n()
 const MOBILE_TRIP_SELECTION_MEDIA = '(max-width: 768px), (pointer: coarse)'
 const TIMELINE_SINGLE_LOCATION_ZOOM = 14
 const TIMELINE_FIT_BOUNDS_MAX_ZOOM = 16
-const TIMELINE_COLLAPSED_BOUNDS_THRESHOLD_METERS = 250
 const TIMELINE_FIT_BOUNDS_PADDING = [20, 20]
 const BUILDINGS_3D_PITCH = 45
 
@@ -701,6 +700,16 @@ const {
 } = useMapLayers()
 
 const {
+  rawGpsPoints,
+  rawGpsPointsLoading,
+  loadRawGpsPoints,
+  resolveRawGpsPointLocation
+} = useRawGpsPointsInspector({
+  enabled: showRawGpsPoints,
+  isPublicView: () => props.isPublicView
+})
+
+const {
   timelineRegenerationVisible,
   timelineRegenerationType,
   currentJobId,
@@ -715,9 +724,7 @@ const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const immichStore = useImmichStore()
 const notesStore = useNotesStore()
-const digestStore = useDigestStore()
 const dateRangeStore = useDateRangeStore()
-const technicalDataStore = useTechnicalDataStore()
 
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
@@ -767,21 +774,10 @@ const map = shallowRef(null)
 const panoramaxViewerVisible = ref(false)
 const panoramaxSelection = ref({ sequenceId: null, pictureId: null, details: '' })
 const featureContextMenuActive = ref(false)
-const heatmapEnabled = ref(false)
-const heatmapLayer = ref('stays')
-const heatmapPoints = ref([])
-const rawGpsPoints = ref([])
-const rawGpsPointsLoading = ref(false)
 const buildings3dEnabled = ref(false)
 const mapTilerBuildings3dSupported = ref(false)
 let mapTilerBuildings3dListenerMap = null
 let mapTilerBuildings3dStyleListener = null
-let heatmapRequestId = 0
-let rawGpsPointsRequestId = 0
-const heatmapPrefetches = new Map()
-const rawGpsPointsCache = new Map()
-const rawGpsLocationCache = new Map()
-const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
 
 // Path colors, width and outline come from the viewer's appearance preferences (see PathLayer).
@@ -878,81 +874,6 @@ const frozenMapCenter = ref(null)
 const mapCenter = computed(() => frozenMapCenter.value || props.defaultCenterWhenEmpty)
 const mapZoom = ref(13)
 
-const toFiniteMapCoordinate = (value) => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const isValidMapLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90
-const isValidMapLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180
-
-const normalizeTimelineBoundsPoint = (point) => {
-  if (Array.isArray(point) && point.length >= 2) {
-    const latitude = toFiniteMapCoordinate(point[0])
-    const longitude = toFiniteMapCoordinate(point[1])
-    if (isValidMapLatitude(latitude) && isValidMapLongitude(longitude)) {
-      return [latitude, longitude]
-    }
-  }
-
-  if (point && typeof point === 'object') {
-    const latitude = toFiniteMapCoordinate(point.latitude ?? point.lat)
-    const longitude = toFiniteMapCoordinate(point.longitude ?? point.lng ?? point.lon)
-    if (isValidMapLatitude(latitude) && isValidMapLongitude(longitude)) {
-      return [latitude, longitude]
-    }
-  }
-
-  return null
-}
-
-const addTimelineBoundsPoint = (bounds, point) => {
-  const normalizedPoint = normalizeTimelineBoundsPoint(point)
-  if (normalizedPoint) {
-    bounds.push(normalizedPoint)
-  }
-}
-
-const getTimelineBoundsViewport = (bounds) => {
-  const points = Array.isArray(bounds)
-    ? bounds.map(normalizeTimelineBoundsPoint).filter(Boolean)
-    : []
-
-  if (points.length === 0) {
-    return null
-  }
-
-  let south = Infinity
-  let west = Infinity
-  let north = -Infinity
-  let east = -Infinity
-
-  points.forEach(([latitude, longitude]) => {
-    south = Math.min(south, latitude)
-    west = Math.min(west, longitude)
-    north = Math.max(north, latitude)
-    east = Math.max(east, longitude)
-  })
-
-  if (![south, west, north, east].every(Number.isFinite)) {
-    return null
-  }
-
-  const center = [
-    (south + north) / 2,
-    (west + east) / 2
-  ]
-  const diagonalMeters = haversineDistanceMetersFromCoordinates(south, west, north, east)
-  const isCollapsedBounds = points.length === 1
-    || (Number.isFinite(diagonalMeters) && diagonalMeters <= TIMELINE_COLLAPSED_BOUNDS_THRESHOLD_METERS)
-
-  return {
-    points,
-    center,
-    isCollapsedBounds
-  }
-}
-
 // A data fit stops any running camera animation and otherwise keeps the current pitch,
 // so it would cancel the 3D tilt started on map load; carry the tilt in the fit itself.
 const getBuildings3dViewportOptions = () => {
@@ -1048,6 +969,14 @@ const notesForLayer = computed(() => (
 const heatmapAvailable = computed(() => {
   return !props.isPublicView && dateRangeStore.hasDateRange && dateRangeStore.isValidRange
 })
+
+const {
+  heatmapEnabled,
+  heatmapLayer,
+  heatmapPoints,
+  toggleHeatmap: handleToggleHeatmap,
+  setHeatmapLayer: handleHeatmapLayerChange
+} = useTimelineMapHeatmap({ available: heatmapAvailable })
 
 const heatmapScale = computed(() => {
   return heatmapLayer.value === 'trips'
@@ -1796,17 +1725,6 @@ const handleViewerLocationStop = () => {
   emit('viewer-location-stop')
 }
 
-const handleToggleHeatmap = (enabled) => {
-  if (!heatmapAvailable.value && enabled) {
-    return
-  }
-  heatmapEnabled.value = enabled
-}
-
-const handleHeatmapLayerChange = (layer) => {
-  heatmapLayer.value = layer
-}
-
 const handleToggleRawGpsPoints = (enabled) => {
   if (props.isPublicView) return
 
@@ -1958,178 +1876,6 @@ const closePhotoViewer = () => {
   photoViewerIndex.value = 0
 }
 
-
-
-// ─── Heatmap logic ───────────────────────────────────────────────────────────
-
-const getHeatmapRangeKey = (startTime, endTime, layer) => {
-  return `range:${startTime}:${endTime}:${layer}`
-}
-
-const loadHeatmap = async () => {
-  if (!heatmapEnabled.value || !heatmapAvailable.value) {
-    heatmapPoints.value = []
-    return
-  }
-
-  const range = dateRangeStore.getCurrentDateRange
-  if (!range || range.length !== 2) return
-  const [startTime, endTime] = range
-  const key = getHeatmapRangeKey(startTime, endTime, heatmapLayer.value)
-
-  const cached = digestStore.heatmapData?.[key]
-  if (cached) {
-    heatmapPoints.value = Array.isArray(cached) ? cached : []
-    return
-  }
-
-  const requestId = ++heatmapRequestId
-  const inFlight = heatmapPrefetches.get(key)
-  const data = inFlight
-    ? await inFlight
-    : await digestStore.fetchHeatmapRangeData(
-      startTime,
-      endTime,
-      heatmapLayer.value,
-      { silent: true }
-    )
-  if (requestId !== heatmapRequestId) return
-
-  heatmapPoints.value = Array.isArray(data) ? data : []
-}
-
-const prefetchHeatmapRange = () => {
-  if (!heatmapAvailable.value) return
-  const range = dateRangeStore.getCurrentDateRange
-  if (!range || range.length !== 2) return
-  const [startTime, endTime] = range
-
-  const layers = ['stays', 'trips']
-  layers.forEach((layer) => {
-    const key = getHeatmapRangeKey(startTime, endTime, layer)
-    if (digestStore.heatmapData?.[key] || heatmapPrefetches.has(key)) return
-
-    const promise = digestStore.fetchHeatmapRangeData(
-      startTime,
-      endTime,
-      layer,
-      { silent: true }
-    )
-      .finally(() => heatmapPrefetches.delete(key))
-    heatmapPrefetches.set(key, promise)
-  })
-}
-
-// ─── Raw GPS point inspector logic ──────────────────────────────────────────
-
-const getRawGpsRange = () => {
-  const range = dateRangeStore.getCurrentDateRange
-  return Array.isArray(range) && range.length === 2 && range[0] && range[1]
-    ? range
-    : null
-}
-
-const getRawGpsRangeKey = (startTime, endTime) => `raw-gps:${startTime}:${endTime}`
-
-const loadRawGpsPoints = async () => {
-  if (!showRawGpsPoints.value || props.isPublicView) {
-    return
-  }
-
-  const range = getRawGpsRange()
-  if (!range) {
-    rawGpsPoints.value = []
-    return
-  }
-
-  const [startTime, endTime] = range
-  const key = getRawGpsRangeKey(startTime, endTime)
-  const cached = rawGpsPointsCache.get(key)
-  if (cached) {
-    rawGpsPoints.value = cached.points
-    return
-  }
-
-  const requestId = ++rawGpsPointsRequestId
-  rawGpsPointsLoading.value = true
-
-  try {
-    const data = await technicalDataStore.fetchRawMapPoints({
-      from: startTime,
-      to: endTime,
-      limit: 10000
-    })
-    if (requestId !== rawGpsPointsRequestId) return
-
-    const points = Array.isArray(data.points) ? data.points : []
-    const meta = {
-      totalCount: Number(data.totalCount || 0),
-      returnedCount: Number(data.returnedCount || points.length),
-      limit: Number(data.limit || 10000),
-      limited: Boolean(data.limited)
-    }
-
-    rawGpsPointsCache.set(key, { points, meta })
-    rawGpsPoints.value = points
-
-    if (meta.limited && !rawGpsLimitWarningKeys.has(key)) {
-      rawGpsLimitWarningKeys.add(key)
-      toast.add({
-        severity: 'warn',
-        summary: t('maps.timelineMap.rawGpsLimited.summary'),
-        detail: t('maps.timelineMap.rawGpsLimited.detail', { returnedCount: meta.returnedCount, totalCount: meta.totalCount }),
-        life: 5000
-      })
-    }
-  } catch (error) {
-    if (requestId !== rawGpsPointsRequestId) return
-    rawGpsPoints.value = []
-    console.error('Failed to load raw GPS points:', error)
-    toast.add({
-      severity: 'error',
-      summary: t('maps.timelineMap.rawGpsLoadFailed.summary'),
-      detail: t('maps.timelineMap.rawGpsLoadFailed.detail'),
-      life: 5000
-    })
-  } finally {
-    if (requestId === rawGpsPointsRequestId) {
-      rawGpsPointsLoading.value = false
-    }
-  }
-}
-
-const getRawGpsLocationCacheKey = (point) => {
-  if (point?.id != null) {
-    return `id:${point.id}`
-  }
-  return `coord:${point?.latitude}:${point?.longitude}`
-}
-
-const resolveRawGpsPointLocation = async (point) => {
-  if (!point?.id) {
-    throw new Error('GPS point id is required to resolve location')
-  }
-
-  const key = getRawGpsLocationCacheKey(point)
-  if (rawGpsLocationCache.has(key)) {
-    return rawGpsLocationCache.get(key)
-  }
-
-  const promise = technicalDataStore.resolveRawPointLocation(point.id)
-
-  rawGpsLocationCache.set(key, promise)
-  try {
-    const location = await promise
-    rawGpsLocationCache.set(key, location)
-    return location
-  } catch (error) {
-    rawGpsLocationCache.delete(key)
-    throw error
-  }
-}
-
-
-
 // Computed data from stores and props
 const pathDataToSegments = (pathData) => {
   // A deliberate null means this layer has no remaining raw fallback segments.
@@ -2223,49 +1969,12 @@ const hasAnyData = computed(() => {
          processedPlannedItemsData.value.length > 0
 })
 
-const dataBounds = computed(() => {
-  const bounds = []
-  
-  // Add path data bounds
-  if (processedPathData.value.length > 0) {
-    processedPathData.value.forEach(pathGroup => {
-      if (Array.isArray(pathGroup)) {
-        pathGroup.forEach(point => {
-          addTimelineBoundsPoint(bounds, point)
-        })
-      }
-    })
-  }
-  
-  // Add timeline data bounds
-  if (processedTimelineData.value.length > 0) {
-    processedTimelineData.value.forEach(item => {
-      addTimelineBoundsPoint(bounds, item)
-    })
-  }
-  
-  // Add favorites data bounds
-  if (processedFavoritesData.value.length > 0) {
-    processedFavoritesData.value.forEach(favorite => {
-      if (favorite.type === 'point') {
-        addTimelineBoundsPoint(bounds, favorite)
-      } else if (favorite.type === 'area' && favorite.coordinates) {
-        favorite.coordinates.forEach(coord => {
-          addTimelineBoundsPoint(bounds, coord)
-        })
-      }
-    })
-  }
-
-  // Add planned items bounds
-  if (processedPlannedItemsData.value.length > 0) {
-    processedPlannedItemsData.value.forEach(item => {
-      addTimelineBoundsPoint(bounds, item)
-    })
-  }
-  
-  return bounds.length > 0 ? bounds : null
-})
+const dataBounds = computed(() => collectTimelineDataBounds({
+  pathData: processedPathData.value,
+  timelineData: processedTimelineData.value,
+  favoritesData: processedFavoritesData.value,
+  plannedItemsData: processedPlannedItemsData.value
+}))
 
 // Sets the one-time initial map center (see `frozenMapCenter` declaration above).
 watch(dataBounds, (newBounds) => {
@@ -2307,38 +2016,6 @@ watch(dataBounds, (newBounds) => {
     }
   }
 }, { immediate: true })
-
-watch(heatmapEnabled, (enabled) => {
-  if (enabled) {
-    loadHeatmap()
-  }
-})
-
-watch(heatmapLayer, () => {
-  if (heatmapEnabled.value) {
-    loadHeatmap()
-  }
-})
-
-watch(
-  () => dateRangeStore.getCurrentDateRange,
-  () => {
-    prefetchHeatmapRange()
-    if (heatmapEnabled.value) {
-      loadHeatmap()
-    }
-    if (showRawGpsPoints.value) {
-      loadRawGpsPoints()
-    }
-  },
-  { immediate: true }
-)
-
-watch(showRawGpsPoints, (enabled) => {
-  if (enabled) {
-    loadRawGpsPoints()
-  }
-})
 
 // Lifecycle
 onMounted(() => {

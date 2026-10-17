@@ -97,330 +97,9 @@
       </BaseCard>
     </div>
 
-    <!-- Date Filter -->
-    <BaseCard class="filter-section">
-      <div class="filter-header">
-        <h3 class="filter-title">{{ t('technicalData.page.filters.title') }}</h3>
-        <div class="filter-header-actions">
-          <Button
-            v-if="activeFilterCount > 0"
-            :label="t('technicalData.page.filters.activeCount', { count: activeFilterCount })"
-            severity="info"
-            size="small"
-            outlined
-            :badge="activeFilterCount.toString()"
-          />
-          <Button
-            v-if="hasActiveFilters"
-            :label="t('technicalData.page.filters.clearAll')"
-            severity="secondary"
-            size="small"
-            text
-            @click="clearAllFilters"
-          />
-          <Button
-            :icon="showAdvancedFilters ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-            :label="showAdvancedFilters ? t('technicalData.page.filters.hideAdvanced') : t('technicalData.page.filters.showAdvanced')"
-            text
-            size="small"
-            @click="showAdvancedFilters = !showAdvancedFilters"
-          />
-        </div>
-      </div>
+    <GpsPointFiltersPanel :filters-state="gpsPointFilters" />
 
-      <!-- Quick Date Presets -->
-      <div class="quick-presets">
-        <Button :label="t('technicalData.page.filters.today')" size="small" outlined @click="setToday" />
-        <Button :label="t('technicalData.page.filters.yesterday')" size="small" outlined @click="setYesterday" />
-        <Button :label="t('technicalData.page.filters.last7Days')" size="small" outlined @click="setLast7Days" />
-        <Button :label="t('technicalData.page.filters.last30Days')" size="small" outlined @click="setLast30Days" />
-      </div>
-
-      <div class="filter-controls">
-        <div class="date-time-filter-group">
-          <div class="date-time-field">
-            <label class="filter-label" for="gps-start-date-time-input">{{ t('technicalData.page.filters.from') }}</label>
-            <DatePicker
-              input-id="gps-start-date-time-input"
-              v-model="startDateTime"
-              show-time
-              hour-format="24"
-              show-icon
-              icon-display="input"
-              :date-format="timezone.getPrimeVueDatePickerFormat()"
-              :placeholder="t('technicalData.page.filters.startPlaceholder')"
-              class="date-picker date-time-picker"
-            />
-          </div>
-          <div class="date-time-field">
-            <label class="filter-label" for="gps-end-date-time-input">{{ t('technicalData.page.filters.to') }}</label>
-            <DatePicker
-              input-id="gps-end-date-time-input"
-              v-model="endDateTime"
-              show-time
-              hour-format="24"
-              show-icon
-              icon-display="input"
-              :date-format="timezone.getPrimeVueDatePickerFormat()"
-              :placeholder="t('technicalData.page.filters.endPlaceholder')"
-              class="date-picker date-time-picker"
-            />
-          </div>
-        </div>
-        <Button
-          :label="t('technicalData.page.filters.apply')"
-          icon="pi pi-check"
-          size="small"
-          :disabled="!canApplyDateFilter"
-          @click="applyDateFilter"
-          class="date-filter-apply-button"
-        />
-        <Button
-          v-if="hasDateFilter || hasDateFilterDraft"
-          :label="t('technicalData.page.filters.clear')"
-          severity="secondary"
-          size="small"
-          text
-          icon="pi pi-times"
-          @click="clearDateFilter"
-        />
-      </div>
-      <div v-if="dateFilterValidationMessage" class="filter-validation-message">
-        <i class="pi pi-exclamation-triangle"></i>
-        <span>{{ dateFilterValidationMessage }}</span>
-      </div>
-
-      <!-- Advanced Filters -->
-      <div v-if="showAdvancedFilters" class="advanced-filters">
-        <div class="filter-row">
-          <div class="filter-field">
-            <label class="filter-label">{{ t('technicalData.page.filters.sourceTypesLabel') }}</label>
-            <MultiSelect
-              v-model="filters.sourceTypes"
-              :options="sourceTypeOptions"
-              option-label="label"
-              option-value="value"
-              :placeholder="t('technicalData.page.filters.allSources')"
-              display="chip"
-              class="filter-input"
-              :showToggleAll="false"
-            />
-          </div>
-        </div>
-
-        <div class="filter-row">
-          <div class="filter-field">
-            <label class="filter-label">{{ t('technicalData.page.filters.accuracyLabel') }}</label>
-            <div class="range-inputs">
-              <InputNumber
-                v-model="filters.accuracyMin"
-                :placeholder="t('technicalData.page.filters.min')"
-                :min="0"
-                :max="10000"
-                class="range-input"
-              />
-              <span class="range-separator">{{ t('technicalData.page.filters.rangeTo') }}</span>
-              <InputNumber
-                v-model="filters.accuracyMax"
-                :placeholder="t('technicalData.page.filters.max')"
-                :min="0"
-                :max="10000"
-                class="range-input"
-              />
-            </div>
-          </div>
-
-          <div class="filter-field">
-            <label class="filter-label">{{ t('technicalData.page.filters.speedLabel') }}</label>
-            <div class="range-inputs">
-              <InputNumber
-                v-model="filters.speedMin"
-                :placeholder="t('technicalData.page.filters.min')"
-                :min="0"
-                :max="500"
-                class="range-input"
-              />
-              <span class="range-separator">{{ t('technicalData.page.filters.rangeTo') }}</span>
-              <InputNumber
-                v-model="filters.speedMax"
-                :placeholder="t('technicalData.page.filters.max')"
-                :min="0"
-                :max="500"
-                class="range-input"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Active Filter Chips -->
-      <div v-if="hasActiveFilters" class="active-filter-chips">
-        <Chip
-          v-if="hasDateFilter"
-          :label="t('technicalData.page.filters.dateChip', { range: formatDateRange(appliedStartDateTime, appliedEndDateTime) })"
-          removable
-          @remove="clearDateFilter"
-        />
-        <Chip
-          v-if="filters.accuracyMin !== null || filters.accuracyMax !== null"
-          :label="t('technicalData.page.filters.accuracyChip', { min: filters.accuracyMin || 0, max: filters.accuracyMax || '∞' })"
-          removable
-          @remove="filters.accuracyMin = null; filters.accuracyMax = null"
-        />
-        <Chip
-          v-if="filters.speedMin !== null || filters.speedMax !== null"
-          :label="t('technicalData.page.filters.speedChip', { min: filters.speedMin || 0, max: filters.speedMax || '∞' })"
-          removable
-          @remove="filters.speedMin = null; filters.speedMax = null"
-        />
-        <Chip
-          v-if="filters.sourceTypes && filters.sourceTypes.length > 0"
-          :label="t('technicalData.page.filters.sourcesChip', { count: filters.sourceTypes.length })"
-          removable
-          @remove="filters.sourceTypes = []"
-        />
-      </div>
-    </BaseCard>
-
-    <BaseCard class="filter-section telemetry-mapping-section">
-      <div class="filter-header">
-        <h3 class="filter-title">{{ t('technicalData.page.telemetry.title') }}</h3>
-        <div class="filter-header-actions">
-          <small class="text-muted">{{ t('technicalData.page.telemetry.hint') }}</small>
-          <Button
-            :icon="showTelemetryMappingAdvanced ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-            :label="showTelemetryMappingAdvanced ? t('technicalData.page.telemetry.hideMapping') : t('technicalData.page.telemetry.showMapping')"
-            text
-            size="small"
-            @click="showTelemetryMappingAdvanced = !showTelemetryMappingAdvanced"
-          />
-        </div>
-      </div>
-
-      <div v-if="showTelemetryMappingAdvanced" class="advanced-filters telemetry-mapping-content">
-        <div class="telemetry-mapping-controls">
-          <div class="telemetry-mapping-select">
-            <label class="filter-label" for="telemetry-source-type">{{ t('technicalData.page.telemetry.sourceTypeLabel') }}</label>
-            <Select
-              id="telemetry-source-type"
-              v-model="selectedTelemetrySourceType"
-              :options="telemetrySourceTypeOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="telemetry-source-select"
-            />
-          </div>
-
-          <div class="telemetry-mapping-actions">
-            <Button
-              :label="t('technicalData.page.telemetry.resetToDefaults')"
-              icon="pi pi-refresh"
-              text
-              :loading="telemetryResetting"
-              @click="resetTelemetryMapping"
-            />
-            <Button
-              :label="t('technicalData.page.telemetry.addRow')"
-              icon="pi pi-plus"
-              outlined
-              @click="addTelemetryMappingRow"
-            />
-            <Button
-              :label="t('technicalData.page.telemetry.saveMapping')"
-              icon="pi pi-save"
-              :loading="telemetrySaving"
-              @click="saveTelemetryMapping"
-            />
-          </div>
-        </div>
-
-        <div v-if="telemetryLoading" class="telemetry-loading">
-          {{ t('technicalData.page.telemetry.loading') }}
-        </div>
-
-        <div v-else class="telemetry-table-wrapper">
-          <table class="telemetry-table">
-            <thead>
-            <tr>
-              <th>{{ t('technicalData.page.telemetry.columns.key') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.label') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.type') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.unit') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.gpsData') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.currentPopup') }}</th>
-              <th>{{ t('technicalData.page.telemetry.columns.order') }}</th>
-              <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-if="telemetryMappingRows.length === 0">
-              <td colspan="8" class="telemetry-empty">{{ t('technicalData.page.telemetry.empty') }}</td>
-            </tr>
-            <tr v-for="(entry, index) in telemetryMappingRows" :key="`${entry.key || 'new'}-${index}`">
-              <td>
-                <InputText v-model="entry.key" :placeholder="t('technicalData.page.telemetry.keyPlaceholder')" class="telemetry-input" />
-              </td>
-              <td>
-                <InputText v-model="entry.label" :placeholder="t('technicalData.page.telemetry.labelPlaceholder')" class="telemetry-input" />
-              </td>
-              <td>
-                <Select
-                  v-model="entry.type"
-                  :options="telemetryTypeOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  class="telemetry-input"
-                />
-              </td>
-              <td>
-                <InputText v-model="entry.unit" :placeholder="t('technicalData.page.telemetry.unitPlaceholder')" class="telemetry-input telemetry-unit" />
-              </td>
-              <td class="telemetry-check-cell">
-                <Checkbox v-model="entry.showInGpsData" binary />
-              </td>
-              <td class="telemetry-check-cell">
-                <Checkbox v-model="entry.showInCurrentPopup" binary />
-              </td>
-              <td>
-                <InputNumber v-model="entry.order" :min="0" :step="10" class="telemetry-input telemetry-order" />
-              </td>
-              <td class="telemetry-remove-cell">
-                <Button
-                  icon="pi pi-trash"
-                  severity="danger"
-                  text
-                  size="small"
-                  @click="removeTelemetryMappingRow(index)"
-                />
-              </td>
-            </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="telemetry-boolean-grid" v-if="telemetryBooleanRows.length > 0">
-          <div
-            v-for="(entry, index) in telemetryBooleanRows"
-            :key="`bool-${entry.key || index}`"
-            class="telemetry-boolean-row"
-          >
-            <div class="telemetry-boolean-title">{{ entry.label || entry.key || t('technicalData.page.telemetry.booleanDefaultLabel', { index: index + 1 }) }}</div>
-            <div class="telemetry-boolean-fields">
-              <InputText
-                v-model="entry.trueValues"
-                :placeholder="t('technicalData.page.telemetry.trueValuesPlaceholder')"
-                class="telemetry-input"
-              />
-              <InputText
-                v-model="entry.falseValues"
-                :placeholder="t('technicalData.page.telemetry.falseValuesPlaceholder')"
-                class="telemetry-input"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </BaseCard>
+    <TelemetryMappingSection />
 
     <!-- Filtered Results Banner -->
     <BaseCard v-if="hasActiveFilters && filteredRecordsText" class="filtered-banner">
@@ -894,9 +573,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import { useTechnicalDataStore } from '@/stores/technicalData'
-import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { useTimezone } from '@/composables/useTimezone'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { useGpsPointFilters } from '@/composables/useGpsPointFilters'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
@@ -909,17 +588,15 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
 import PullToRefreshIndicator from '@/components/ui/PullToRefreshIndicator.vue'
 import GpsPointEditDialog from '@/components/dialogs/GpsPointEditDialog.vue'
+import GpsPointFiltersPanel from '@/components/technical-data/GpsPointFiltersPanel.vue'
+import TelemetryMappingSection from '@/components/technical-data/TelemetryMappingSection.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
-import MultiSelect from 'primevue/multiselect'
-import InputNumber from 'primevue/inputnumber'
-import Chip from 'primevue/chip'
 import Badge from 'primevue/badge'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
@@ -929,52 +606,19 @@ import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()
-const gpsSourcesStore = useGpsSourcesStore()
 const toast = useToast()
 const route = useRoute()
 const router = useRouter()
+const gpsPointFilters = useGpsPointFilters({ onChange: () => refreshAfterFilterChange() })
+const { hasActiveFilters, buildFilterParams } = gpsPointFilters
 
 // Reactive state
 const isMobile = ref(false)
 const isTablet = ref(false)
-const startDateTime = ref(null)
-const endDateTime = ref(null)
-const appliedStartDateTime = ref(null)
-const appliedEndDateTime = ref(null)
 const pageSize = ref(50)
 const currentPage = ref(0)
 const sortField = ref('timestamp')
 const sortOrder = ref(-1) // -1 for descending, 1 for ascending
-
-// Advanced filters
-const showAdvancedFilters = ref(false)
-const showTelemetryMappingAdvanced = ref(false)
-const filters = ref({
-  sourceTypes: [],
-  accuracyMin: null,
-  accuracyMax: null,
-  speedMin: null,
-  speedMax: null
-})
-
-// Source type options for multi-select
-// Brand/format names (OwnTracks, GPSLogger, Overland, Traccar, Google Timeline, GPX, Dawarich,
-// Home Assistant, Colota, GeoJSON, CSV) are never translated - see locales/en/locationSources.js.
-// "Manual Reconstruction" is a real label, so the whole array is a computed to stay reactive to it.
-const sourceTypeOptions = computed(() => [
-  { label: 'OwnTracks', value: 'OWNTRACKS' },
-  { label: 'GPSLogger', value: 'GPSLOGGER' },
-  { label: 'Overland', value: 'OVERLAND' },
-  { label: 'Traccar', value: 'TRACCAR' },
-  { label: 'Google Timeline', value: 'GOOGLE_TIMELINE' },
-  { label: 'GPX', value: 'GPX' },
-  { label: 'Dawarich', value: 'DAWARICH' },
-  { label: 'Home Assistant', value: 'HOME_ASSISTANT' },
-  { label: 'Colota', value: 'COLOTA' },
-  { label: 'GeoJSON', value: 'GEOJSON' },
-  { label: 'CSV', value: 'CSV' },
-  { label: t('technicalData.page.filters.sourceOptions.manualReconstruction'), value: 'MANUAL' }
-])
 
 // Page size options
 const pageSizeOptions = ref([25, 50, 100, 200, 500])
@@ -1007,24 +651,6 @@ const deleteAllLoading = ref(false)
 
 // Shift-click selection tracking
 const lastSelectedIndex = ref(null)
-const telemetryLoading = ref(false)
-const telemetrySaving = ref(false)
-const telemetryResetting = ref(false)
-const selectedTelemetrySourceType = ref('OWNTRACKS')
-const telemetryMappingRows = ref([])
-
-// Brand names (OwnTracks, GPSLogger) are never translated.
-const telemetrySourceTypeOptions = [
-  { label: 'OwnTracks', value: 'OWNTRACKS' },
-  { label: 'GPSLogger', value: 'GPSLOGGER' }
-]
-
-const telemetryTypeOptions = computed(() => [
-  { label: t('technicalData.page.telemetry.typeOptions.boolean'), value: 'boolean' },
-  { label: t('technicalData.page.telemetry.typeOptions.number'), value: 'number' },
-  { label: t('technicalData.page.telemetry.typeOptions.string'), value: 'string' }
-])
-
 // Computed properties
 const summaryStats = computed(() => technicalDataStore.summaryStats)
 const gpsPoints = computed(() => technicalDataStore.gpsPoints)
@@ -1037,43 +663,6 @@ const gpsPointsWithDelta = computed(() =>
 )
 
 const hasData = computed(() => summaryStats.value.totalPoints > 0)
-const isValidDateValue = (date) => date instanceof Date && Number.isFinite(date.getTime())
-const hasDateFilterDraft = computed(() => Boolean(startDateTime.value || endDateTime.value))
-const hasCompleteDateFilterDraft = computed(() =>
-  isValidDateValue(startDateTime.value) && isValidDateValue(endDateTime.value)
-)
-const dateFilterValidationMessage = computed(() => {
-  if (!hasCompleteDateFilterDraft.value) return ''
-  if (startDateTime.value.getTime() > endDateTime.value.getTime()) {
-    return t('technicalData.page.filters.fromBeforeTo')
-  }
-  return ''
-})
-const canApplyDateFilter = computed(() =>
-  hasCompleteDateFilterDraft.value && !dateFilterValidationMessage.value
-)
-const hasDateFilter = computed(() =>
-  isValidDateValue(appliedStartDateTime.value) && isValidDateValue(appliedEndDateTime.value)
-)
-
-const hasActiveFilters = computed(() => {
-  return hasDateFilter.value ||
-         (filters.value.accuracyMin !== null && filters.value.accuracyMin !== undefined) ||
-         (filters.value.accuracyMax !== null && filters.value.accuracyMax !== undefined) ||
-         (filters.value.speedMin !== null && filters.value.speedMin !== undefined) ||
-         (filters.value.speedMax !== null && filters.value.speedMax !== undefined) ||
-         (filters.value.sourceTypes && filters.value.sourceTypes.length > 0)
-})
-
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (hasDateFilter.value) count++
-  if (filters.value.accuracyMin !== null || filters.value.accuracyMax !== null) count++
-  if (filters.value.speedMin !== null || filters.value.speedMax !== null) count++
-  if (filters.value.sourceTypes && filters.value.sourceTypes.length > 0) count++
-  return count
-})
-
 const filteredRecordsText = computed(() => {
   if (!hasActiveFilters.value) return ''
 
@@ -1122,10 +711,6 @@ const allVisibleGpsRowsSelected = computed(() => {
   if (gpsPointsWithDelta.value.length === 0) return false
   return gpsPointsWithDelta.value.every(row => isRowSelected(row))
 })
-
-const telemetryBooleanRows = computed(() =>
-  telemetryMappingRows.value.filter(entry => entry.type === 'boolean')
-)
 
 const mobileActionMenuItems = computed(() => [
   {
@@ -1220,63 +805,6 @@ const formatTelemetryValue = (item) => {
   return `${value} ${item.unit}`
 }
 
-const formatDateRange = (startDate, endDate) => {
-  if (!startDate || !endDate) return ''
-  const start = formatPickerDateTime(startDate)
-  const end = formatPickerDateTime(endDate)
-  return `${start} - ${end}`
-}
-
-const formatDateForAPI = (date) => {
-  if (!date) return null
-
-  // Preserve selected hour/minute from DatePicker while still interpreting in user timezone.
-  const { start } = timezone.createDateTimeRangeFromPicker(date, date)
-  return start
-}
-
-const getFirstQueryValue = (value) => {
-  if (Array.isArray(value)) return value[0]
-  return typeof value === 'string' ? value : null
-}
-
-const utcInstantToPickerDate = (value) => {
-  const utcValue = getFirstQueryValue(value)
-  if (!utcValue) return null
-
-  const dateTime = timezone.fromUtc(utcValue)
-  if (!dateTime.isValid()) return null
-
-  return new Date(
-    dateTime.year(),
-    dateTime.month(),
-    dateTime.date(),
-    dateTime.hour(),
-    dateTime.minute(),
-    dateTime.second(),
-    dateTime.millisecond()
-  )
-}
-
-const hydrateDateFilterFromRouteQuery = () => {
-  const queryStart = utcInstantToPickerDate(route.query.startTime)
-  const queryEnd = utcInstantToPickerDate(route.query.endTime)
-
-  if (!isValidDateValue(queryStart) || !isValidDateValue(queryEnd) || queryStart.getTime() > queryEnd.getTime()) {
-    return
-  }
-
-  startDateTime.value = queryStart
-  endDateTime.value = queryEnd
-  appliedStartDateTime.value = new Date(queryStart.getTime())
-  appliedEndDateTime.value = new Date(queryEnd.getTime())
-}
-
-const formatPickerDateTime = (date) => {
-  const utcDateTime = formatDateForAPI(date)
-  return utcDateTime ? timezone.formatDateTimeDisplay(utcDateTime) : '-'
-}
-
 const getSourceSeverity = (sourceType) => {
   const severityMap = {
     'OWNTRACKS': 'success',
@@ -1291,139 +819,6 @@ const getSourceSeverity = (sourceType) => {
     'GPX': 'contrast'
   }
   return severityMap[sourceType] || 'contrast'
-}
-
-const cloneTelemetryRows = (rows = []) => {
-  if (!Array.isArray(rows)) return []
-  return rows.map((entry, index) => ({
-    key: entry.key || '',
-    label: entry.label || entry.key || '',
-    type: entry.type || 'string',
-    unit: entry.unit || '',
-    order: Number.isFinite(entry.order) ? entry.order : (index + 1) * 10,
-    trueValues: Array.isArray(entry.trueValues) ? [...entry.trueValues] : (entry.trueValues || ''),
-    falseValues: Array.isArray(entry.falseValues) ? [...entry.falseValues] : (entry.falseValues || ''),
-    showInGpsData: entry.enabled === false ? false : (entry.showInGpsData ?? true),
-    showInCurrentPopup: entry.enabled === false ? false : (entry.showInCurrentPopup ?? true)
-  }))
-}
-
-const serializeTelemetryValues = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(v => String(v || '').trim()).filter(v => v.length > 0)
-  }
-  if (!value) return []
-  return String(value)
-    .split(',')
-    .map(v => v.trim())
-    .filter(v => v.length > 0)
-}
-
-const buildTelemetryPayload = () => telemetryMappingRows.value
-  .filter(entry => String(entry.key || '').trim().length > 0)
-  .map((entry, index) => ({
-    key: String(entry.key || '').trim(),
-    label: String(entry.label || entry.key || '').trim(),
-    type: entry.type || 'string',
-    unit: entry.unit ? String(entry.unit).trim() : null,
-    enabled: Boolean(entry.showInGpsData || entry.showInCurrentPopup),
-    order: Number.isFinite(entry.order) ? entry.order : (index + 1) * 10,
-    trueValues: serializeTelemetryValues(entry.trueValues),
-    falseValues: serializeTelemetryValues(entry.falseValues),
-    showInGpsData: entry.showInGpsData ?? true,
-    showInCurrentPopup: entry.showInCurrentPopup ?? true
-  }))
-
-const loadTelemetryMapping = async (sourceType = selectedTelemetrySourceType.value) => {
-  telemetryLoading.value = true
-  try {
-    const response = await gpsSourcesStore.fetchTelemetryMapping(sourceType)
-    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
-  } catch (error) {
-    console.error('Error loading telemetry mapping:', error)
-    telemetryMappingRows.value = []
-    toast.add({
-      severity: 'error',
-      summary: t('technicalData.page.toasts.telemetryLoadFailedSummary'),
-      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.telemetryLoadFailedFallback')),
-      life: 5000
-    })
-  } finally {
-    telemetryLoading.value = false
-  }
-}
-
-const addTelemetryMappingRow = () => {
-  const nextOrder = ((telemetryMappingRows.value.length || 0) + 1) * 10
-  telemetryMappingRows.value = [
-    ...telemetryMappingRows.value,
-    {
-      key: '',
-      label: '',
-      type: 'string',
-      unit: '',
-      order: nextOrder,
-      trueValues: [],
-      falseValues: [],
-      showInGpsData: true,
-      showInCurrentPopup: true
-    }
-  ]
-}
-
-const removeTelemetryMappingRow = (index) => {
-  const next = [...telemetryMappingRows.value]
-  next.splice(index, 1)
-  telemetryMappingRows.value = next
-}
-
-const saveTelemetryMapping = async () => {
-  telemetrySaving.value = true
-  try {
-    const response = await gpsSourcesStore.updateTelemetryMapping(
-      selectedTelemetrySourceType.value,
-      buildTelemetryPayload()
-    )
-    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
-    toast.add({
-      severity: 'success',
-      summary: t('technicalData.page.toasts.telemetrySavedSummary'),
-      detail: t('technicalData.page.toasts.telemetrySavedDetail'),
-      life: 3000
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: t('technicalData.page.toasts.saveFailedSummary'),
-      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.saveTelemetryFailedFallback')),
-      life: 5000
-    })
-  } finally {
-    telemetrySaving.value = false
-  }
-}
-
-const resetTelemetryMapping = async () => {
-  telemetryResetting.value = true
-  try {
-    const response = await gpsSourcesStore.resetTelemetryMapping(selectedTelemetrySourceType.value)
-    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
-    toast.add({
-      severity: 'success',
-      summary: t('technicalData.page.toasts.telemetryResetSummary'),
-      detail: t('technicalData.page.toasts.telemetryResetDetail'),
-      life: 3000
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: t('technicalData.page.toasts.resetFailedSummary'),
-      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.resetTelemetryFailedFallback')),
-      life: 5000
-    })
-  } finally {
-    telemetryResetting.value = false
-  }
 }
 
 const handleResize = () => {
@@ -1442,78 +837,6 @@ const refreshAfterFilterChange = async () => {
   lastSelectedIndex.value = null // Reset shift-click tracking
   await loadGPSPoints()
   await loadSummaryStats()
-}
-
-const applyDateFilter = async () => {
-  if (!canApplyDateFilter.value) return
-  appliedStartDateTime.value = new Date(startDateTime.value.getTime())
-  appliedEndDateTime.value = new Date(endDateTime.value.getTime())
-  await refreshAfterFilterChange()
-}
-
-const clearDateFilter = async () => {
-  startDateTime.value = null
-  endDateTime.value = null
-  appliedStartDateTime.value = null
-  appliedEndDateTime.value = null
-  await refreshAfterFilterChange()
-}
-
-// Quick date preset methods
-const setToday = () => {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-  startDateTime.value = start
-  endDateTime.value = end
-  applyDateFilter()
-}
-
-const setYesterday = () => {
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0)
-  const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59)
-  startDateTime.value = start
-  endDateTime.value = end
-  applyDateFilter()
-}
-
-const setLast7Days = () => {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - 7)
-  start.setHours(0, 0, 0, 0)
-  end.setHours(23, 59, 59, 999)
-  startDateTime.value = start
-  endDateTime.value = end
-  applyDateFilter()
-}
-
-const setLast30Days = () => {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - 30)
-  start.setHours(0, 0, 0, 0)
-  end.setHours(23, 59, 59, 999)
-  startDateTime.value = start
-  endDateTime.value = end
-  applyDateFilter()
-}
-
-const clearAllFilters = async () => {
-  startDateTime.value = null
-  endDateTime.value = null
-  appliedStartDateTime.value = null
-  appliedEndDateTime.value = null
-  filters.value = {
-    sourceTypes: [],
-    accuracyMin: null,
-    accuracyMax: null,
-    speedMin: null,
-    speedMax: null
-  }
-  await refreshAfterFilterChange()
 }
 
 const onPageChange = async (event) => {
@@ -1586,36 +909,6 @@ const loadSummaryStats = async () => {
   } finally {
     isLoading.value = false
   }
-}
-
-// Helper to build filter params
-const buildFilterParams = () => {
-  const params = {}
-
-  // Date/time range
-  if (hasDateFilter.value) {
-    params.from = formatDateForAPI(appliedStartDateTime.value)
-    params.to = formatDateForAPI(appliedEndDateTime.value)
-  }
-
-  // Advanced filters
-  if (filters.value.accuracyMin !== null && filters.value.accuracyMin !== undefined) {
-    params.accuracyMin = filters.value.accuracyMin
-  }
-  if (filters.value.accuracyMax !== null && filters.value.accuracyMax !== undefined) {
-    params.accuracyMax = filters.value.accuracyMax
-  }
-  if (filters.value.speedMin !== null && filters.value.speedMin !== undefined) {
-    params.speedMin = filters.value.speedMin
-  }
-  if (filters.value.speedMax !== null && filters.value.speedMax !== undefined) {
-    params.speedMax = filters.value.speedMax
-  }
-  if (filters.value.sourceTypes && filters.value.sourceTypes.length > 0) {
-    params.sourceTypes = filters.value.sourceTypes.join(',')
-  }
-
-  return params
 }
 
 const loadGPSPoints = async () => {
@@ -1959,12 +1252,11 @@ const handleRowClick = (event) => {
 onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
-  hydrateDateFilterFromRouteQuery()
+  gpsPointFilters.hydrateFromRouteQuery(route.query)
   
   await Promise.all([
     loadSummaryStats(),
-    loadGPSPoints(),
-    loadTelemetryMapping(selectedTelemetrySourceType.value)
+    loadGPSPoints()
   ])
 })
 
@@ -1977,19 +1269,6 @@ watch(pageSize, async () => {
   currentPage.value = 0
   await loadGPSPoints()
 })
-
-watch(selectedTelemetrySourceType, async (type) => {
-  await loadTelemetryMapping(type)
-})
-
-// Watch filters for changes
-watch(filters, async () => {
-  currentPage.value = 0
-  selectedRows.value = [] // Clear selection when filters change
-  lastSelectedIndex.value = null // Reset shift-click tracking
-  await loadGPSPoints()
-  await loadSummaryStats()
-}, { deep: true })
 </script>
 
 <style scoped>
@@ -2062,216 +1341,6 @@ watch(filters, async () => {
 /* Filter Section */
 .filter-section {
   margin-bottom: var(--gp-spacing-lg);
-}
-
-.filter-controls {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--gp-spacing-lg);
-  flex-wrap: wrap;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-sm);
-  flex: 1;
-  min-width: 250px;
-}
-
-.filter-label {
-  font-weight: 500;
-  color: var(--gp-text-secondary);
-  white-space: nowrap;
-}
-
-.date-picker {
-  flex: 1;
-  max-width: 300px;
-}
-
-.date-time-filter-group {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: var(--gp-spacing-md);
-  flex: 1 1 560px;
-  max-width: 760px;
-}
-
-.date-time-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-xs);
-  min-width: 0;
-}
-
-.date-time-picker {
-  width: 100%;
-  max-width: none;
-}
-
-.date-filter-apply-button {
-  flex-shrink: 0;
-}
-
-.filter-validation-message {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-xs);
-  margin-top: var(--gp-spacing-sm);
-  color: var(--p-red-600);
-  font-size: 0.875rem;
-}
-
-.filter-validation-message i {
-  font-size: 0.875rem;
-}
-
-.telemetry-mapping-section {
-  margin-bottom: var(--gp-spacing-lg);
-}
-
-.telemetry-mapping-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.telemetry-mapping-controls {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.telemetry-mapping-select {
-  min-width: 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.telemetry-source-select {
-  width: 220px;
-}
-
-.telemetry-mapping-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.telemetry-loading {
-  color: var(--gp-text-secondary);
-  font-size: 0.9rem;
-}
-
-.telemetry-table-wrapper {
-  border: 1px solid var(--gp-border);
-  border-radius: var(--gp-radius-small);
-  overflow-x: auto;
-  background: var(--gp-surface-card);
-}
-
-.telemetry-table {
-  width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
-}
-
-.telemetry-table th,
-.telemetry-table td {
-  border-bottom: 1px solid var(--gp-border);
-  padding: 0.45rem 0.5rem;
-  text-align: left;
-  vertical-align: middle;
-  font-size: 0.82rem;
-}
-
-.telemetry-table th {
-  white-space: nowrap;
-  color: var(--gp-text-secondary);
-  font-weight: 600;
-  background: var(--gp-surface-muted);
-}
-
-.telemetry-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.telemetry-input {
-  width: 100%;
-}
-
-.telemetry-unit {
-  min-width: 72px;
-}
-
-.telemetry-order {
-  max-width: 90px;
-}
-
-.telemetry-check-cell {
-  text-align: center;
-}
-
-.telemetry-remove-cell {
-  text-align: center;
-}
-
-.telemetry-empty {
-  text-align: center;
-  color: var(--gp-text-muted, #6b7280);
-  font-style: italic;
-}
-
-.telemetry-boolean-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.telemetry-boolean-row {
-  border: 1px solid var(--gp-border);
-  border-radius: var(--gp-radius-small);
-  padding: 0.6rem;
-  background: var(--gp-surface-card);
-}
-
-.telemetry-boolean-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin-bottom: 0.45rem;
-}
-
-.telemetry-boolean-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-/* Large screen filter optimizations */
-@media (min-width: 1440px) {
-  .filter-controls {
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-  }
-
-  .filter-group {
-    flex: 0 0 auto;
-    min-width: 300px;
-  }
-
-  .date-picker {
-    max-width: 400px;
-  }
-
-  .date-time-picker {
-    max-width: none;
-  }
 }
 
 /* Table Section */
@@ -2364,22 +1433,6 @@ watch(filters, async () => {
   /* Show fewer page numbers on mobile */
   .gps-data-table :deep(.p-paginator .p-paginator-page:nth-child(n+8)) {
     display: none;
-  }
-
-  .telemetry-mapping-controls {
-    align-items: stretch;
-  }
-
-  .telemetry-source-select {
-    width: 100%;
-  }
-
-  .telemetry-mapping-actions {
-    width: 100%;
-  }
-
-  .telemetry-boolean-fields {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -2777,43 +1830,6 @@ watch(filters, async () => {
     font-size: 0.9rem;
   }
 
-  .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--gp-spacing-md);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .filter-group {
-    flex-direction: column;
-    align-items: stretch;
-    min-width: unset;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .date-time-filter-group {
-    grid-template-columns: 1fr;
-    flex-basis: auto;
-    max-width: 100%;
-    width: 100%;
-  }
-
-  .date-picker,
-  .date-time-picker {
-    max-width: 100%;
-    width: 100%;
-    min-width: unset;
-  }
-
-  .date-filter-apply-button,
-  .filter-controls > .p-button {
-    width: 100%;
-    justify-content: center;
-  }
-
   /* Ensure datepicker component fits */
   .filter-section :deep(.p-datepicker) {
     width: 100%;
@@ -3151,83 +2167,6 @@ watch(filters, async () => {
   color: var(--gp-text-secondary);
 }
 
-/* Filter Enhancements */
-.filter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--gp-spacing-md);
-  padding-bottom: var(--gp-spacing-sm);
-  border-bottom: 1px solid var(--gp-border);
-}
-
-.filter-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--gp-text-primary);
-}
-
-.filter-header-actions {
-  display: flex;
-  gap: var(--gp-spacing-sm);
-  align-items: center;
-}
-
-.quick-presets {
-  display: flex;
-  gap: var(--gp-spacing-sm);
-  margin-bottom: var(--gp-spacing-md);
-  flex-wrap: wrap;
-}
-
-.advanced-filters {
-  margin-top: var(--gp-spacing-md);
-  padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border);
-}
-
-.filter-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--gp-spacing-md);
-  margin-bottom: var(--gp-spacing-md);
-}
-
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-xs);
-}
-
-.range-inputs {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-sm);
-}
-
-.range-input {
-  flex: 1;
-}
-
-.range-separator {
-  color: var(--gp-text-muted);
-  font-size: 0.9rem;
-}
-
-.filter-input {
-  width: 100%;
-}
-
-.active-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gp-spacing-sm);
-  margin-top: var(--gp-spacing-md);
-  padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border);
-}
-
 /* Filtered Banner */
 .filtered-banner {
   margin-bottom: var(--gp-spacing-lg);
@@ -3309,26 +2248,6 @@ watch(filters, async () => {
 
 /* Mobile Responsive Filters */
 @media (max-width: 768px) {
-  .filter-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .filter-header-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .quick-presets {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    width: 100%;
-  }
-
-  .filter-row {
-    grid-template-columns: 1fr;
-  }
-
   .table-header {
     flex-direction: column;
     align-items: flex-start;

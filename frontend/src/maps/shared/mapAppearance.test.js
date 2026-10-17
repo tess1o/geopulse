@@ -13,6 +13,7 @@ import {
   resolveSharedAppearanceChoice,
   sharedAppearancePreferences
 } from './mapAppearance'
+import { MOVEMENT_TYPE_PALETTES } from '@/utils/movementTypeColors'
 
 const HEX = /^#[0-9a-f]{6}$/i
 
@@ -43,6 +44,7 @@ describe('resolveMapAppearance', () => {
     })
     expect(appearance.speedBandColors).toEqual(SPEED_BAND_PALETTES.DEFAULT)
     expect(Object.values(appearance.overrides)).toEqual([false, false, false, false])
+    expect(appearance.movementTypeColors).toBe(MOVEMENT_TYPE_PALETTES.DEFAULT)
   })
 
   it('fills unset values from the color scheme', () => {
@@ -52,6 +54,7 @@ describe('resolveMapAppearance', () => {
     expect(appearance.activePathColor).toBe(COLOR_SCHEME_PRESETS.RED_GREEN_SAFE.activePathColor)
     expect(appearance.speedBandColors).toEqual(SPEED_BAND_PALETTES.RED_GREEN_SAFE)
     expect(appearance.heatmapGradient).toEqual(HEATMAP_GRADIENTS.CIVIDIS)
+    expect(appearance.movementTypeColors).toBe(MOVEMENT_TYPE_PALETTES.COLOR_BLIND_SAFE)
   })
 
   it('lets explicit values override the color scheme', () => {

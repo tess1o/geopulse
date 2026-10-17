@@ -354,6 +354,10 @@
 <script setup>
 import { ref, computed, watch, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import {
+  getMovementTypeIcon as getTransportIcon,
+  getMovementTypeSeverity as getTransportSeverity
+} from '@/constants/movementTypes'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -509,42 +513,12 @@ const formatDuration = (seconds) => {
   return memoizedDurationFormat(seconds || 0, formatDurationSmart)
 }
 
-const getTransportSeverity = (transportMode) => {
-  const severityMap = {
-    'CAR': 'info',
-    'MOTORCYCLE': 'info',
-    'PUBLIC_TRANSPORT': 'info',
-    'WALK': 'success',
-    'BICYCLE': 'info',
-    'RUNNING': 'success',
-    'TRAIN': 'info',
-    'FLIGHT': 'danger',
-    'BOAT': 'info',
-    'UNKNOWN': 'secondary'
-  }
-  return severityMap[transportMode?.toUpperCase()] || 'secondary'
-}
 
 const getTransportLabel = (transportMode) => {
   const key = `movementTypes.${transportMode}`
   return te(key) ? t(key) : transportMode
 }
 
-const getTransportIcon = (transportMode) => {
-  const iconMap = {
-    'CAR': 'pi pi-car',
-    'MOTORCYCLE': 'fas fa-motorcycle',
-    'PUBLIC_TRANSPORT': 'pi pi-directions',
-    'WALK': 'fas fa-walking',
-    'BICYCLE': 'fas fa-bicycle',
-    'RUNNING': 'fas fa-running',
-    'TRAIN': 'fas fa-train',
-    'FLIGHT': 'fas fa-plane',
-    'BOAT': 'pi pi-compass',
-    'UNKNOWN': 'pi pi-question-circle'
-  }
-  return iconMap[transportMode?.toUpperCase()] || 'pi pi-question-circle'
-}
 
 const handleRowSelect = (event) => {
   emit('row-select', event.data)

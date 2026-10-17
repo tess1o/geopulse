@@ -41,7 +41,9 @@ public class RealtimeTimelineProcessor {
         /** Another generation holds the user's timeline; the next pass picks the user up. */
         SKIPPED_BUSY("skipped_busy"),
         /** A timeline job (import, manual rebuild, settings change) is running for the user. */
-        SKIPPED_ACTIVE_JOB("skipped_active_job");
+        SKIPPED_ACTIVE_JOB("skipped_active_job"),
+        /** A forced regeneration campaign will rebuild the user's timeline. */
+        SKIPPED_CAMPAIGN("skipped_campaign");
 
         private final String metricResult;
 
@@ -72,8 +74,16 @@ public class RealtimeTimelineProcessor {
     @Inject
     TimelineJobProgressService jobProgressService;
 
+    @Inject
+    TimelineRegenerationCampaignService campaignService;
+
     @Transactional
     public Outcome process(UUID userId) {
+        if (campaignService.hasActiveCampaignForUser(userId)) {
+            log.debug("Skipping real-time timeline processing for user {} due to active forced regeneration campaign",
+                    userId);
+            return Outcome.SKIPPED_CAMPAIGN;
+        }
         if (jobProgressService.getUserActiveJob(userId).isPresent()) {
             return Outcome.SKIPPED_ACTIVE_JOB;
         }
