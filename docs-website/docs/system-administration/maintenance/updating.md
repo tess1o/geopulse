@@ -85,7 +85,7 @@ image:
 ```
 
 :::warning PostgreSQL 18
-Recent charts use PostgreSQL 18 (`postgis/postgis:18-3.6`). A release that still runs PostgreSQL 17 must either migrate its data first with the [PostgreSQL 18 upgrade script](./postgresql-18-upgrade.md#kubernetes--helm) or keep `postgres.image.tag: "17-3.5"` in its values. Otherwise the postgres pod fails to start (no data is lost).
+Recent charts use PostgreSQL 18 (`postgis/postgis:18-3.6`). A release that still runs PostgreSQL 17 must keep `postgres.image.tag: "17-3.5"` in its values when it updates GeoPulse; otherwise the postgres pod fails to start (no data is lost). After the update, you can move to PostgreSQL 18 with the [PostgreSQL 18 upgrade script](./postgresql-18-upgrade.md#kubernetes--helm).
 :::
 
 ### Step 2: Upgrade with Helm

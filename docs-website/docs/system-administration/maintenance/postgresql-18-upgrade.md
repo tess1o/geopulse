@@ -17,7 +17,7 @@ PostgreSQL 18 cannot open the data files of PostgreSQL 17, so the upgrade copies
 |---|---|
 | New installation | Nothing. It already runs PostgreSQL 18. |
 | Docker Compose or Unraid, existing | Nothing is required. Your `docker-compose.yml` still pins PostgreSQL 17. Upgrade with the script when convenient. |
-| Helm, existing | The chart now defaults to PostgreSQL 18. Run the script **before** upgrading the chart, or pin `postgres.image.tag=17-3.5` in your values. |
+| Helm, existing | The chart now defaults to PostgreSQL 18. Pin `postgres.image.tag: "17-3.5"` in your values **before** upgrading the chart. Upgrade with the script when convenient, then change the pin to `18-3.6`. |
 | External PostgreSQL (`postgres.enabled=false`, managed database) | Nothing. GeoPulse works with PostgreSQL 17 and 18; upgrade your database server with your provider's tools. |
 | Manual / Proxmox LXC | See [Manual installations](#manual-and-proxmox-lxc-installations). |
 
@@ -52,6 +52,8 @@ If the script is interrupted, run it again. It reads where the previous run stop
 ## Before you start
 
 - **Update GeoPulse first** to a version with PostgreSQL 18 support, and keep that version during the database upgrade. The script checks this.
+- **Docker Compose**: keep your current PostgreSQL 17 lines in `docker-compose.yml` (`postgis/postgis:17-3.5` mounted at `/var/lib/postgresql/data`). The script switches them. If you already replaced the file with a newer one that uses PostgreSQL 18, put the two lines back first.
+- **Helm**: update the chart with `postgres.image.tag: "17-3.5"` pinned, then run the script.
 - **Disk space**: the data volume needs room for a second copy of the database, and the backup folder needs room for the dump (usually much smaller than the database). The script shows both numbers before it starts.
 - **Downtime**: GeoPulse is offline during the upgrade. A few GB usually take minutes; the counts and the restore grow with the database size.
 - **Other tools**: stop anything else that connects to the database, such as Grafana or a database client.
@@ -139,7 +141,15 @@ The PostgreSQL 18 files are created inside the existing `/mnt/user/appdata/geopu
 
 ## Kubernetes / Helm
 
-Run the Helm script from a machine with `kubectl` and `helm` access to the cluster, **before** upgrading to a chart that defaults to PostgreSQL 18:
+Charts with PostgreSQL 18 support default to PostgreSQL 18. Update an existing release with PostgreSQL 17 pinned in your values file, so the database keeps running during the update:
+
+```yaml
+postgres:
+  image:
+    tag: "17-3.5"
+```
+
+Then run the Helm script from a machine with `kubectl` and `helm` access to the cluster, with the chart version the release now runs:
 
 ```bash
 curl -L -o upgrade-postgres-18.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/helm/upgrade-postgres-18.sh
@@ -157,17 +167,21 @@ The script:
 
 The PVC needs free space for the dump plus a second copy of the database. Upgrade state is kept in the ConfigMap `<release>-postgres-pg18-upgrade`.
 
+After a successful run, change `postgres.image.tag` in your values file to `"18-3.6"`, or remove it to use the chart default. Otherwise the next `helm upgrade -f <values>` switches the image back to PostgreSQL 17, which cannot open the upgraded data.
+
 Without `--chart`, the script changes the StatefulSet image with `kubectl` instead. In that case set `postgres.image.tag: "18-3.6"` in your values before the next `helm upgrade`, otherwise Helm switches the image back (PostgreSQL then refuses to start; no data is lost).
 
 :::warning Upgraded the chart first?
-A release that still has PostgreSQL 17 data and is switched to the PostgreSQL 18 image does not start: the postgres pod logs `database files are incompatible with server`. Nothing is lost. Go back to PostgreSQL 17, then run the script:
+A release that still has PostgreSQL 17 data and is switched to the PostgreSQL 18 image does not start: the postgres pod logs `database files are incompatible with server`. Nothing is lost. Add the `postgres.image.tag: "17-3.5"` pin shown above to your values file, upgrade again, and delete the stuck pod:
 
 ```bash
-helm rollback <release> -n <namespace>          # or set postgres.image.tag=17-3.5
+helm upgrade <release> geopulse/geopulse -n <namespace> -f <values>
 kubectl -n <namespace> delete pod <release>-postgres-0
 ```
 
-The pod has to be deleted by hand: a StatefulSet does not replace a pod that is stuck on a broken template, even after the template is reverted.
+The pod has to be deleted by hand: a StatefulSet does not replace a pod that is stuck on a broken template, even after the template is reverted. Once PostgreSQL 17 runs again, GeoPulse works, and you can run the script whenever it suits you.
+
+Prefer the pin over `helm rollback`: a rollback also returns GeoPulse to the previous version, and the script needs the new one.
 :::
 
 ## Rolling back

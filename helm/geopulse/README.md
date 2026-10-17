@@ -121,7 +121,12 @@ For restore activation, scale the backend deployment to exactly one replica and 
 
 The bundled database is PostgreSQL 18 (`postgis/postgis:18-3.6`). PostgreSQL 18 cannot open PostgreSQL 17 data files, so a release that ran `17-3.5` has to migrate its data. Until then the postgres pod fails with "database files are incompatible with server"; nothing is deleted.
 
-Run `helm/upgrade-postgres-18.sh` before upgrading the chart. It dumps the PostgreSQL 17 database, restores it into a new PostgreSQL 18 data directory on the same PVC, keeps the PostgreSQL 17 directory for rollback, and then upgrades the release. See the [PostgreSQL 18 upgrade guide](https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade). To stay on PostgreSQL 17 for now, set `postgres.image.tag=17-3.5`. If the chart was already upgraded and the postgres pod is crash-looping, run `helm rollback` and then delete the postgres pod (`kubectl delete pod <release>-postgres-0`); a StatefulSet does not replace a pod stuck on a broken template by itself.
+1. Set `postgres.image.tag: "17-3.5"` in your values **before** upgrading the chart, so the database keeps running on PostgreSQL 17.
+2. Upgrade the chart.
+3. Optionally, at any time later, run `helm/upgrade-postgres-18.sh --chart geopulse/geopulse --chart-version <installed version>`. It dumps the PostgreSQL 17 database, restores it into a new PostgreSQL 18 data directory on the same PVC, keeps the PostgreSQL 17 directory for rollback, and switches the release to `18-3.6`. The script needs the backend from step 2.
+4. Then change `postgres.image.tag` in your values to `"18-3.6"` (or remove it). Otherwise the next `helm upgrade` switches back to PostgreSQL 17.
+
+See the [PostgreSQL 18 upgrade guide](https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade). If the chart was already upgraded without the pin and the postgres pod is crash-looping, add the pin, run `helm upgrade` again, and delete the postgres pod (`kubectl delete pod <release>-postgres-0`); a StatefulSet does not replace a pod stuck on a broken template by itself.
 
 ### Most Common Parameters
 

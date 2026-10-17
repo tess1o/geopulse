@@ -73,7 +73,8 @@ services:
 
   geopulse-postgres:
     # PostgreSQL 18 stores data in /var/lib/postgresql/18/docker, so the volume is mounted at /var/lib/postgresql.
-    # Upgrading an existing PostgreSQL 17 installation? Run upgrade-postgres-18.sh first:
+    # Existing PostgreSQL 17 installation (postgis 17-3.5)? Keep your current image and volume lines, and use
+    # this file only after upgrade-postgres-18.sh has moved the database to PostgreSQL 18:
     # https://geopulse.cc/docs/system-administration/maintenance/postgresql-18-upgrade
     image: postgis/postgis:18-3.6
     container_name: geopulse-postgres

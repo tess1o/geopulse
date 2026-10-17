@@ -379,7 +379,7 @@ die_after_abort() { warn "$1"; abort_before_switch; }
 preflight() {
     log "Checking the current installation"
     # A StatefulSet does not replace a pod stuck on a broken template by itself, hence the delete.
-    local rollback_hint="run 'helm rollback $RELEASE -n $NAMESPACE' (or set postgres.image.tag=17-3.5) and 'kubectl -n $NAMESPACE delete pod $POD', wait until PostgreSQL is ready, then run this script"
+    local rollback_hint="set postgres.image.tag=17-3.5 in your values, run 'helm upgrade' again and 'kubectl -n $NAMESPACE delete pod $POD', wait until PostgreSQL is ready, then run this script"
     case "${CURRENT_IMAGE##*:}" in
         17*) ;;
         *) die "The StatefulSet already uses $CURRENT_IMAGE, which cannot open the PostgreSQL 17 data (\"database files are incompatible with server\"). Nothing was lost: $rollback_hint." ;;
