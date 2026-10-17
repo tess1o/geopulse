@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,7 +94,7 @@ class TimelineSafetyNetIntegrationTest {
     @Test
     void userWithARunningJobIsDeferred() {
         UUID userId = userWithRecentDays("safety-busy", 54);
-        Instant from = Instant.now().minus(WINDOW);
+        Instant from = Instant.now().minus(WINDOW).truncatedTo(ChronoUnit.MICROS); // Postgres keeps microseconds
         UUID jobId = jobProgressService.createJob(userId);
         try {
             assertThat(safetyNetService.verifyUser(userId, from)).isEqualTo(Outcome.DEFERRED);
