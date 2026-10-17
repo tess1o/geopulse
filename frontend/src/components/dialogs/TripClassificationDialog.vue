@@ -214,6 +214,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { useTimezone } from '@/composables/useTimezone'
+import { getMovementTypeEmoji, getMovementTypeSeverity as getTransportSeverity } from '@/constants/movementTypes'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { useTimelineStore } from '@/stores/timeline'
@@ -263,21 +264,11 @@ const movementTypeOptions = computed(() => MOVEMENT_TYPE_VALUES.map((value) => (
   value
 })))
 
-const PRIORITY_ORDER_ICONS = {
-  FLIGHT: '✈️',
-  BOAT: '⛵',
-  TRAIN: '🚊',
-  BICYCLE: '🚴',
-  RUNNING: '🏃',
-  CAR: '🚗',
-  WALK: '🚶',
-  UNKNOWN: '❓'
-}
 const PRIORITY_ORDER_VALUES = ['FLIGHT', 'BOAT', 'TRAIN', 'BICYCLE', 'RUNNING', 'CAR', 'WALK', 'UNKNOWN']
 
 const priorityOrderSteps = computed(() => PRIORITY_ORDER_VALUES.map((type) => ({
   type,
-  icon: PRIORITY_ORDER_ICONS[type],
+  icon: getMovementTypeEmoji(type),
   label: movementTypeLabel(type).toUpperCase()
 })))
 
@@ -423,20 +414,6 @@ const formatVariance = (variance) => {
   return variance.toFixed(1)
 }
 
-const getTransportSeverity = (transportMode) => {
-  const severityMap = {
-    'CAR': 'info',
-    'MOTORCYCLE': 'info',
-    'WALK': 'success',
-    'BICYCLE': 'info',
-    'RUNNING': 'success',
-    'TRAIN': 'info',
-    'FLIGHT': 'danger',
-    'BOAT': 'info',
-    'UNKNOWN': 'secondary'
-  }
-  return severityMap[transportMode?.toUpperCase()] || 'secondary'
-}
 </script>
 
 <style scoped>

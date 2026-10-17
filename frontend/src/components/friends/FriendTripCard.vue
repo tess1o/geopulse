@@ -37,6 +37,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
+import { getMovementTypeEmoji } from '@/constants/movementTypes'
 import BaseFriendTimelineCard from './BaseFriendTimelineCard.vue'
 
 const { t, te } = useI18n()
@@ -66,23 +67,7 @@ const props = defineProps({
 
 defineEmits(['click'])
 
-const movementTypeIcons = {
-  WALK: '🚶',
-  BICYCLE: '🚴',
-  RUNNING: '🏃',
-  CAR: '🚗',
-  MOTORCYCLE: '🏍️',
-  PUBLIC_TRANSPORT: '🚌',
-  TRAIN: '🚊',
-  FLIGHT: '✈️',
-  BOAT: '⛵',
-  UNKNOWN: '❓'
-}
-
-const movementIcon = computed(() => {
-  const type = props.item.movementType || 'UNKNOWN'
-  return movementTypeIcons[type] || 'pi pi-map'
-})
+const movementIcon = computed(() => getMovementTypeEmoji(props.item.movementType))
 
 const movementLabel = computed(() => {
   const type = props.item.movementType || 'UNKNOWN'

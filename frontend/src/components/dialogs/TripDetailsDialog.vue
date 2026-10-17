@@ -165,6 +165,10 @@ import MapContainer from '@/components/maps/MapContainer.vue'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import {
+  getMovementTypeIcon as getTransportIcon,
+  getMovementTypeSeverity as getTransportSeverity
+} from '@/constants/movementTypes'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { formatDurationSmart, formatDistance, formatSpeed } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
@@ -314,37 +318,7 @@ const formatDuration = (seconds) => {
   return formatDurationSmart(seconds || 0)
 }
 
-const getTransportSeverity = (transportMode) => {
-  const severityMap = {
-    'CAR': 'info',
-    'MOTORCYCLE': 'info',
-    'PUBLIC_TRANSPORT': 'info',
-    'WALK': 'success',
-    'BICYCLE': 'info',
-    'RUNNING': 'success',
-    'TRAIN': 'info',
-    'FLIGHT': 'danger',
-    'BOAT': 'info',
-    'UNKNOWN': 'secondary'
-  }
-  return severityMap[transportMode?.toUpperCase()] || 'secondary'
-}
 
-const getTransportIcon = (transportMode) => {
-  const iconMap = {
-    'CAR': 'pi pi-car',
-    'MOTORCYCLE': 'fas fa-motorcycle',
-    'PUBLIC_TRANSPORT': 'pi pi-directions',
-    'WALK': 'fas fa-walking',
-    'BICYCLE': 'fas fa-bicycle',
-    'RUNNING': 'fas fa-running',
-    'TRAIN': 'fas fa-train',
-    'FLIGHT': 'fas fa-plane',
-    'BOAT': 'pi pi-compass',
-    'UNKNOWN': 'pi pi-question-circle'
-  }
-  return iconMap[transportMode?.toUpperCase()] || 'pi pi-question-circle'
-}
 
 const copyToClipboard = async (text) => {
   const success = await copyTextToClipboard(text)

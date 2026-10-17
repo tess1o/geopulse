@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayGeographyRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 
 import java.time.Instant;
@@ -31,6 +32,9 @@ public class LocationAnalyticsService {
 
     @Inject
     TimelineStayRepository stayRepository;
+
+    @Inject
+    TimelineStayGeographyRepository stayGeographyRepository;
 
     @Inject
     FavoritesRepository favoritesRepository;
@@ -89,7 +93,7 @@ public class LocationAnalyticsService {
 
         // Search cities
         if (typeFilter == null || "city".equalsIgnoreCase(typeFilter)) {
-            List<Object[]> cities = stayRepository.searchCitiesByName(userId, query, 10);
+            List<Object[]> cities = stayGeographyRepository.searchCitiesByName(userId, query, 10);
             for (Object[] row : cities) {
                 String cityName = (String) row[0];
                 String country = (String) row[1];
@@ -107,7 +111,7 @@ public class LocationAnalyticsService {
 
         // Search countries
         if (typeFilter == null || "country".equalsIgnoreCase(typeFilter)) {
-            List<Object[]> countries = stayRepository.searchCountriesByName(userId, query, 10);
+            List<Object[]> countries = stayGeographyRepository.searchCountriesByName(userId, query, 10);
             for (Object[] row : countries) {
                 String countryName = (String) row[0];
                 int visitCount = ((Number) row[1]).intValue();
@@ -135,7 +139,7 @@ public class LocationAnalyticsService {
      * @return list of city summaries
      */
     public List<CitySummaryDTO> getAllCities(UUID userId) {
-        List<Object[]> citiesData = stayRepository.getCitiesWithCounts(userId);
+        List<Object[]> citiesData = stayGeographyRepository.getCitiesWithCounts(userId);
 
         return citiesData.stream()
                 .map(row -> CitySummaryDTO.builder()
@@ -155,7 +159,7 @@ public class LocationAnalyticsService {
      * @return list of country summaries
      */
     public List<CountrySummaryDTO> getAllCountries(UUID userId) {
-        List<Object[]> countriesData = stayRepository.getCountriesWithCounts(userId);
+        List<Object[]> countriesData = stayGeographyRepository.getCountriesWithCounts(userId);
 
         return countriesData.stream()
                 .map(row -> CountrySummaryDTO.builder()
@@ -196,7 +200,7 @@ public class LocationAnalyticsService {
         int safeMinVisits = minVisits == null ? 1 : Math.max(1, minVisits);
         int safeLimit = limit == null ? 3000 : Math.min(Math.max(limit, 1), 10000);
 
-        List<Object[]> rows = stayRepository.findMapPlaces(
+        List<Object[]> rows = stayGeographyRepository.findMapPlaces(
                 userId,
                 startTime,
                 endTime,
@@ -221,7 +225,7 @@ public class LocationAnalyticsService {
      * @return city details or empty if not found
      */
     public Optional<CityDetailsDTO> getCityDetails(UUID userId, String cityName) {
-        Object[] statsData = stayRepository.getCityStatistics(userId, cityName);
+        Object[] statsData = stayGeographyRepository.getCityStatistics(userId, cityName);
 
         // Check if city has any visits
         long totalVisits = ((Number) statsData[0]).longValue();
@@ -233,13 +237,13 @@ public class LocationAnalyticsService {
         LocationStatisticsDTO statistics = buildLocationStatistics(statsData);
 
         // Get time-based visit counts
-        Object[] visitCounts = stayRepository.getVisitCountsByCity(userId, cityName);
+        Object[] visitCounts = stayGeographyRepository.getVisitCountsByCity(userId, cityName);
         statistics.setVisitsThisWeek(((Number) visitCounts[0]).longValue());
         statistics.setVisitsThisMonth(((Number) visitCounts[1]).longValue());
         statistics.setVisitsThisYear(((Number) visitCounts[2]).longValue());
 
         // Get top places in city (limit to 5)
-        List<Object[]> topPlacesData = stayRepository.getTopPlacesInCity(userId, cityName, 5);
+        List<Object[]> topPlacesData = stayGeographyRepository.getTopPlacesInCity(userId, cityName, 5);
         List<TopPlaceInLocationDTO> topPlaces = topPlacesData.stream()
                 .map(this::convertToTopPlace)
                 .toList();
@@ -248,7 +252,7 @@ public class LocationAnalyticsService {
         PlaceGeometryDTO geometry = getCityGeometry(userId, cityName);
 
         // Get country name
-        String country = stayRepository.getCountryForCity(userId, cityName);
+        String country = stayGeographyRepository.getCountryForCity(userId, cityName);
 
         return Optional.of(CityDetailsDTO.builder()
                 .cityName(cityName)
@@ -267,7 +271,7 @@ public class LocationAnalyticsService {
      * @return country details or empty if not found
      */
     public Optional<CountryDetailsDTO> getCountryDetails(UUID userId, String countryName) {
-        Object[] statsData = stayRepository.getCountryStatistics(userId, countryName);
+        Object[] statsData = stayGeographyRepository.getCountryStatistics(userId, countryName);
 
         // Check if country has any visits
         long totalVisits = ((Number) statsData[0]).longValue();
@@ -288,14 +292,14 @@ public class LocationAnalyticsService {
                 .build();
 
         // Get time-based visit counts
-        Object[] visitCounts = stayRepository.getVisitCountsByCountry(userId, countryName);
+        Object[] visitCounts = stayGeographyRepository.getVisitCountsByCountry(userId, countryName);
         statistics.setVisitsThisWeek(((Number) visitCounts[0]).longValue());
         statistics.setVisitsThisMonth(((Number) visitCounts[1]).longValue());
         statistics.setVisitsThisYear(((Number) visitCounts[2]).longValue());
 
         // Get cities in country
-        List<Object[]> citiesData = stayRepository.getCitiesInCountry(userId, countryName);
-        Map<String, Object[]> cityCentroids = stayRepository.getCityCentroidsInCountry(userId, countryName).stream()
+        List<Object[]> citiesData = stayGeographyRepository.getCitiesInCountry(userId, countryName);
+        Map<String, Object[]> cityCentroids = stayGeographyRepository.getCityCentroidsInCountry(userId, countryName).stream()
                 .collect(Collectors.toMap(row -> (String) row[0], row -> row));
         List<CityInCountryDTO> cities = citiesData.stream()
                 .map(row -> {
@@ -313,7 +317,7 @@ public class LocationAnalyticsService {
                 .toList();
 
         // Get top places in country (limit to 5)
-        List<Object[]> topPlacesData = stayRepository.getTopPlacesInCountry(userId, countryName, 5);
+        List<Object[]> topPlacesData = stayGeographyRepository.getTopPlacesInCountry(userId, countryName, 5);
         List<TopPlaceInLocationDTO> topPlaces = topPlacesData.stream()
                 .map(this::convertToTopPlace)
                 .toList();
@@ -348,10 +352,10 @@ public class LocationAnalyticsService {
         boolean ascending = "asc".equalsIgnoreCase(sortDirection);
         String validSortBy = validateSortField(sortBy);
 
-        List<TimelineStayEntity> stays = stayRepository.findByCityPaginated(
+        List<TimelineStayEntity> stays = stayGeographyRepository.findByCityPaginated(
                 userId, cityName, page, validPageSize, validSortBy, ascending);
 
-        long totalCount = stayRepository.countByCity(userId, cityName);
+        long totalCount = stayGeographyRepository.countByCity(userId, cityName);
 
         List<PlaceVisitDTO> visits = stays.stream()
                 .map(this::convertToPlaceVisitDTO)
@@ -381,10 +385,10 @@ public class LocationAnalyticsService {
         boolean ascending = "asc".equalsIgnoreCase(sortDirection);
         String validSortBy = validateSortField(sortBy);
 
-        List<TimelineStayEntity> stays = stayRepository.findByCountryPaginated(
+        List<TimelineStayEntity> stays = stayGeographyRepository.findByCountryPaginated(
                 userId, countryName, page, validPageSize, validSortBy, ascending);
 
-        long totalCount = stayRepository.countByCountry(userId, countryName);
+        long totalCount = stayGeographyRepository.countByCountry(userId, countryName);
 
         List<PlaceVisitDTO> visits = stays.stream()
                 .map(this::convertToPlaceVisitDTO)
@@ -410,7 +414,7 @@ public class LocationAnalyticsService {
         boolean ascending = "asc".equalsIgnoreCase(sortDirection);
         String validSortBy = validateSortField(sortBy);
 
-        List<TimelineStayEntity> stays = stayRepository.findByCity(
+        List<TimelineStayEntity> stays = stayGeographyRepository.findByCity(
                 userId, cityName, validSortBy, ascending);
 
         return stays.stream()
@@ -433,7 +437,7 @@ public class LocationAnalyticsService {
         boolean ascending = "asc".equalsIgnoreCase(sortDirection);
         String validSortBy = validateSortField(sortBy);
 
-        List<TimelineStayEntity> stays = stayRepository.findByCountry(
+        List<TimelineStayEntity> stays = stayGeographyRepository.findByCountry(
                 userId, countryName, validSortBy, ascending);
 
         return stays.stream()
@@ -526,7 +530,7 @@ public class LocationAnalyticsService {
      * Get geometry (centroid) for a city.
      */
     private PlaceGeometryDTO getCityGeometry(UUID userId, String cityName) {
-        Object[] centroid = stayRepository.getCityCentroid(userId, cityName);
+        Object[] centroid = stayGeographyRepository.getCityCentroid(userId, cityName);
 
         Double latitude = centroid[0] != null ? ((Number) centroid[0]).doubleValue() : null;
         Double longitude = centroid[1] != null ? ((Number) centroid[1]).doubleValue() : null;
@@ -546,7 +550,7 @@ public class LocationAnalyticsService {
      * Get geometry (centroid) for a country.
      */
     private PlaceGeometryDTO getCountryGeometry(UUID userId, String countryName) {
-        Object[] centroid = stayRepository.getCountryCentroid(userId, countryName);
+        Object[] centroid = stayGeographyRepository.getCountryCentroid(userId, countryName);
 
         Double latitude = centroid[0] != null ? ((Number) centroid[0]).doubleValue() : null;
         Double longitude = centroid[1] != null ? ((Number) centroid[1]).doubleValue() : null;

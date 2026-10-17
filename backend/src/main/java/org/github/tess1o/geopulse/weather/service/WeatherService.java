@@ -14,11 +14,6 @@ import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthSta
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
-import org.github.tess1o.geopulse.shared.service.TimestampUtils;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderClient;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
@@ -35,8 +30,6 @@ import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliati
 import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliationRepository;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.WEATHER_TARGET_NOT_FOUND;
-import org.github.tess1o.geopulse.weather.repository.WeatherTargetBatchRow;
-import org.locationtech.jts.geom.Point;
 
 import javax.net.ssl.SSLHandshakeException;
 import java.time.Duration;
@@ -50,7 +43,6 @@ import java.util.function.Supplier;
 @Slf4j
 public class WeatherService {
 
-    private static final int ONGOING_PRIORITY = 100;
     private static final int HISTORICAL_BACKFILL_PRIORITY = 70;
     private static final Duration HISTORICAL_RECONCILIATION_CHUNK = Duration.ofDays(90);
     private static final ExternalIntegrationType WEATHER_INTEGRATION = ExternalIntegrationType.WEATHER;
@@ -83,10 +75,7 @@ public class WeatherService {
     WeatherBackfillReconciliationRepository backfillReconciliationRepository;
 
     @Inject
-    TimelineStayRepository stayRepository;
-
-    @Inject
-    TimelineTripRepository tripRepository;
+    WeatherTargetPlanner targetPlanner;
 
     @Inject
     WeatherProviderRegistry providerRegistry;
@@ -105,6 +94,10 @@ public class WeatherService {
 
     @ConfigProperty(name = "geopulse.weather.provider.ssl-handshake-retry-attempts", defaultValue = "2")
     int sslHandshakeRetryAttempts;
+
+    private WeatherWorkloadMetrics metrics() {
+        return new WeatherWorkloadMetrics(workloadMetrics);
+    }
 
     public WeatherSamplesResponse findSamples(UUID userId, Instant startTime, Instant endTime,
                                               Double minLat, Double minLon, Double maxLat, Double maxLon) {
@@ -199,11 +192,11 @@ public class WeatherService {
         int skipped = 0;
         int chunkLimit = Math.max(1, maxChunks);
         for (int i = 0; i < chunkLimit; i++) {
-            long chunkStart = metricsStart();
+            long chunkStart = metrics().start();
             String chunkResult = "success";
             WeatherTargetQueueResponse response = QuarkusTransaction.requiringNew().call(this::processNextHistoricalBackfillChunk);
             if (response == null) {
-                recordWeatherTimer("geopulse.weather.reconciliation.chunk.duration", chunkStart,
+                metrics().recordTimer("geopulse.weather.reconciliation.chunk.duration", chunkStart,
                         "historical_backfill", "empty");
                 break;
             }
@@ -211,12 +204,12 @@ public class WeatherService {
             created += response.getTargetsCreated();
             known += response.getTargetsAlreadyKnown();
             skipped += response.getTargetsSkipped();
-            countWeatherTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "created", response.getTargetsCreated());
-            countWeatherTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "known", response.getTargetsAlreadyKnown());
-            countWeatherTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "skipped", response.getTargetsSkipped());
-            recordWeatherTimer("geopulse.weather.reconciliation.chunk.duration", chunkStart,
+            metrics().countTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "created", response.getTargetsCreated());
+            metrics().countTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "known", response.getTargetsAlreadyKnown());
+            metrics().countTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "skipped", response.getTargetsSkipped());
+            metrics().recordTimer("geopulse.weather.reconciliation.chunk.duration", chunkStart,
                     "historical_backfill", chunkResult);
-            countWeatherChunks("historical_backfill", "success", 1);
+            metrics().countChunks("historical_backfill", "success", 1);
         }
 
         long pendingUserRanges = QuarkusTransaction.requiringNew()
@@ -231,12 +224,12 @@ public class WeatherService {
     }
 
     private WeatherTargetQueueResponse processNextHistoricalBackfillChunk() {
-        long stageStart = metricsStart();
+        long stageStart = metrics().start();
         WeatherBackfillReconciliation reconciliation = backfillReconciliationRepository.claimNext(
                 Instant.now(),
                 HISTORICAL_RECONCILIATION_CHUNK
         );
-        recordWeatherStage(stageStart, "claim_chunk", "historical_backfill", reconciliation == null ? "empty" : "success");
+        metrics().recordStage(stageStart, "claim_chunk", "historical_backfill", reconciliation == null ? "empty" : "success");
         if (reconciliation == null) {
             return null;
         }
@@ -253,7 +246,7 @@ public class WeatherService {
             return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
         }
 
-        WeatherTargetQueueResponse response = enqueueForChunk(
+        WeatherTargetQueueResponse response = targetPlanner.enqueueForChunk(
                 reconciliation.userId(),
                 reconciliation.chunkStart(),
                 reconciliation.chunkEnd(),
@@ -306,24 +299,24 @@ public class WeatherService {
         int skipped = 0;
 
         for (UserEntity user : activeUsers()) {
-            long stageStart = metricsStart();
-            Optional<WeatherSampleCandidate> candidate = latestActiveCandidate(user, now, intervalMinutes);
-            recordWeatherStage(stageStart, "ongoing_candidate", WeatherTargetSource.ONGOING.name(), candidate.isPresent() ? "success" : "empty");
+            long stageStart = metrics().start();
+            Optional<WeatherSampleCandidate> candidate = targetPlanner.latestActiveCandidate(user, now, intervalMinutes);
+            metrics().recordStage(stageStart, "ongoing_candidate", WeatherTargetSource.ONGOING.name(), candidate.isPresent() ? "success" : "empty");
             if (candidate.isEmpty()) {
                 skipped++;
                 continue;
             }
 
-            stageStart = metricsStart();
-            EnqueueResult result = enqueueCandidate(user, candidate.get());
-            recordWeatherStage(stageStart, "enqueue_targets", WeatherTargetSource.ONGOING.name(), result.created ? "created" : result.known ? "known" : "skipped");
-            created += result.created ? 1 : 0;
-            known += result.known ? 1 : 0;
-            skipped += result.skipped ? 1 : 0;
+            stageStart = metrics().start();
+            WeatherTargetPlanner.EnqueueResult result = targetPlanner.enqueueCandidate(user, candidate.get());
+            metrics().recordStage(stageStart, "enqueue_targets", WeatherTargetSource.ONGOING.name(), result.created() ? "created" : result.known() ? "known" : "skipped");
+            created += result.created() ? 1 : 0;
+            known += result.known() ? 1 : 0;
+            skipped += result.skipped() ? 1 : 0;
         }
-        countWeatherTargets(WeatherTargetSource.ONGOING, "created", created);
-        countWeatherTargets(WeatherTargetSource.ONGOING, "known", known);
-        countWeatherTargets(WeatherTargetSource.ONGOING, "skipped", skipped);
+        metrics().countTargets(WeatherTargetSource.ONGOING, "created", created);
+        metrics().countTargets(WeatherTargetSource.ONGOING, "known", known);
+        metrics().countTargets(WeatherTargetSource.ONGOING, "skipped", skipped);
 
         return WeatherTargetQueueResponse.builder()
                 .targetsCreated(created)
@@ -372,13 +365,13 @@ public class WeatherService {
         if (targets.isEmpty()) {
             return WeatherFetchBatchResult.empty();
         }
-        countWeatherTargets(null, "claimed", targets.size());
+        metrics().countTargets(null, "claimed", targets.size());
         WeatherTargetSource requestSource = targets.stream().anyMatch(target -> target.source() == WeatherTargetSource.ONGOING)
                 ? WeatherTargetSource.ONGOING
                 : targets.getFirst().source();
         targets.forEach(target -> targetRepository.markAttemptStarted(target.id()));
 
-        long startedAt = metricsStart();
+        long startedAt = metrics().start();
         try {
             ProviderFetchBatchResult fetchResult = fetchProviderSamples(targets, requestSource);
             int processed = 0;
@@ -393,18 +386,18 @@ public class WeatherService {
                 if (requiringNew(() -> storeProviderSample(target,
                         new ProviderFetchResult(fetchResult.providerKey(), sample)))) {
                     processed++;
-                    countWeatherTargets(target.source(), "processed", 1);
+                    metrics().countTargets(target.source(), "processed", 1);
                 }
             }
-            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "success");
+            metrics().recordStage(startedAt, "provider_fetch_group", requestSource.name(), "success");
             return new WeatherFetchBatchResult(true, processed, null);
         } catch (InternalQuotaExceededException e) {
             Instant retryAt = recordInternalQuotaExceeded(e.getMessage());
             releaseRemainingClaimedTargets(targets, 0, retryAt, e.getMessage());
-            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "quota");
+            metrics().recordStage(startedAt, "provider_fetch_group", requestSource.name(), "quota");
             return new WeatherFetchBatchResult(true, 0, e.getMessage());
         } catch (WeatherProviderException e) {
-            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), e.getKind().name());
+            metrics().recordStage(startedAt, "provider_fetch_group", requestSource.name(), e.getKind().name());
             if (e.getKind() == WeatherProviderErrorKind.NO_DATA) {
                 targets.forEach(target -> targetRepository.markSkipped(target.id(),
                         "Weather provider has no data: " + e.getMessage()));
@@ -419,7 +412,7 @@ public class WeatherService {
             releaseRemainingClaimedTargets(targets, 0, retryAt, e.getMessage());
             return new WeatherFetchBatchResult(true, 0, e.getMessage());
         } catch (Exception e) {
-            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "error");
+            metrics().recordStage(startedAt, "provider_fetch_group", requestSource.name(), "error");
             targets.forEach(target -> targetRepository.markFailedOrRetry(target.id(), e.getMessage()));
             log.error("Weather provider batch failed for {} targets: {}", targets.size(), e.getMessage(), e);
             return new WeatherFetchBatchResult(true, 0, null);
@@ -535,218 +528,6 @@ public class WeatherService {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    private WeatherTargetQueueResponse enqueueForChunk(UUID userId, Instant startTime, Instant endTime,
-                                                       WeatherTargetSource source, int priority) {
-        List<WeatherSampleCandidate> candidates = new ArrayList<>();
-
-        long stageStart = metricsStart();
-        List<Object[]> stayRows = entityManager.createNativeQuery("""
-                SELECT timestamp, stay_duration, ST_Y(location), ST_X(location)
-                FROM timeline_stays
-                WHERE user_id = ?1
-                  AND timestamp <= ?3
-                  AND timestamp + (stay_duration * INTERVAL '1 second') >= ?2
-                ORDER BY timestamp
-                """)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .getResultList();
-        recordWeatherStage(stageStart, "load_stays", source.name(), "success");
-        for (Object[] row : stayRows) {
-            Instant stayStart = TimestampUtils.getInstantSafe(row[0]);
-            long durationSeconds = ((Number) row[1]).longValue();
-            double latitude = ((Number) row[2]).doubleValue();
-            double longitude = ((Number) row[3]).doubleValue();
-            for (Instant targetAt : samplingPolicy.sampleTimesForStay(stayStart, durationSeconds, startTime, endTime)) {
-                candidates.add(new WeatherSampleCandidate(latitude, longitude, targetAt, source, priority));
-            }
-        }
-
-        stageStart = metricsStart();
-        List<Object[]> tripRows = entityManager.createNativeQuery("""
-                SELECT timestamp,
-                       trip_duration,
-                       ST_Y(start_point),
-                       ST_X(start_point),
-                       ST_Y(end_point),
-                       ST_X(end_point)
-                FROM timeline_trips
-                WHERE user_id = ?1
-                  AND timestamp <= ?3
-                  AND timestamp + (trip_duration * INTERVAL '1 second') >= ?2
-                ORDER BY timestamp
-                """)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .getResultList();
-        recordWeatherStage(stageStart, "load_trips", source.name(), "success");
-        for (Object[] row : tripRows) {
-            TimelineTripSlice trip = new TimelineTripSlice(
-                    TimestampUtils.getInstantSafe(row[0]),
-                    ((Number) row[1]).longValue(),
-                    ((Number) row[2]).doubleValue(),
-                    ((Number) row[3]).doubleValue(),
-                    ((Number) row[4]).doubleValue(),
-                    ((Number) row[5]).doubleValue()
-            );
-            candidates.addAll(tripCandidates(userId, trip, startTime, endTime, source, priority));
-        }
-
-        int skipped = 0;
-        int validCandidates = 0;
-        Map<WeatherTargetKey, WeatherTargetBatchRow> batchRows = new LinkedHashMap<>();
-        for (WeatherSampleCandidate candidate : candidates) {
-            if (!isValidCoordinate(candidate.latitude(), candidate.longitude())) {
-                skipped++;
-                continue;
-            }
-
-            validCandidates++;
-            double latitudeBucket = configurationService.bucketCoordinate(candidate.latitude());
-            double longitudeBucket = configurationService.bucketCoordinate(candidate.longitude());
-            Instant targetAt = samplingPolicy.truncateToHour(candidate.targetAt());
-            WeatherTargetKey key = new WeatherTargetKey(latitudeBucket, longitudeBucket, targetAt);
-            batchRows.putIfAbsent(key, new WeatherTargetBatchRow(
-                    candidate.latitude(),
-                    candidate.longitude(),
-                    latitudeBucket,
-                    longitudeBucket,
-                    targetAt
-            ));
-        }
-
-        stageStart = metricsStart();
-        int created = targetRepository.enqueueMissingBatch(
-                userId,
-                primaryProviderKey(),
-                List.copyOf(batchRows.values()),
-                source,
-                priority
-        );
-        recordWeatherStage(stageStart, "enqueue_targets", source.name(), "success");
-        return WeatherTargetQueueResponse.builder()
-                .targetsCreated(created)
-                .targetsAlreadyKnown(Math.max(0, validCandidates - created))
-                .targetsSkipped(skipped)
-                .build();
-    }
-
-    private List<WeatherSampleCandidate> tripCandidates(UUID userId, TimelineTripSlice trip,
-                                                        Instant rangeStart, Instant rangeEnd,
-                                                        WeatherTargetSource source, int priority) {
-        List<WeatherSampleCandidate> result = new ArrayList<>();
-        for (Instant targetAt : samplingPolicy.sampleTimesForTrip(
-                trip.startTime(), trip.durationSeconds(), rangeStart, rangeEnd)) {
-            double[] coordinates = findTripCoordinateAt(userId, trip.startTime(), trip.durationSeconds(), targetAt)
-                    .orElseGet(() -> interpolateTripCoordinate(trip, targetAt));
-            result.add(new WeatherSampleCandidate(coordinates[0], coordinates[1], targetAt, source, priority));
-        }
-        return result;
-    }
-
-    private EnqueueResult enqueueCandidate(UserEntity user, WeatherSampleCandidate candidate) {
-        if (!isValidCoordinate(candidate.latitude(), candidate.longitude())) {
-            return EnqueueResult.skippedResult();
-        }
-
-        double latitudeBucket = configurationService.bucketCoordinate(candidate.latitude());
-        double longitudeBucket = configurationService.bucketCoordinate(candidate.longitude());
-        Instant targetAt = samplingPolicy.truncateToHour(candidate.targetAt());
-
-        if (sampleRepository.existsAtBucketHour(user.getId(), primaryProviderKey(), latitudeBucket, longitudeBucket, targetAt)) {
-            return EnqueueResult.knownResult();
-        }
-
-        boolean created = targetRepository.enqueueIfMissing(
-                user,
-                primaryProviderKey(),
-                candidate.latitude(),
-                candidate.longitude(),
-                latitudeBucket,
-                longitudeBucket,
-                targetAt,
-                candidate.source(),
-                candidate.priority()
-        );
-
-        return created ? EnqueueResult.createdResult() : EnqueueResult.knownResult();
-    }
-
-    private Optional<WeatherSampleCandidate> latestActiveCandidate(UserEntity user, Instant now, int intervalMinutes) {
-        Optional<TimelineStayEntity> latestStay = stayRepository.find("user.id = ?1 order by timestamp desc", user.getId()).firstResultOptional();
-        Optional<TimelineTripEntity> latestTrip = tripRepository.find("user.id = ?1 order by timestamp desc", user.getId()).firstResultOptional();
-
-        TimelineStayEntity stay = latestStay.orElse(null);
-        TimelineTripEntity trip = latestTrip.orElse(null);
-        Instant stayEnd = stay != null ? stay.getTimestamp().plusSeconds(stay.getStayDuration()) : Instant.EPOCH;
-        Instant tripEnd = trip != null ? trip.getTimestamp().plusSeconds(trip.getTripDuration()) : Instant.EPOCH;
-        Duration activeWindow = Duration.ofMinutes(Math.max(60, intervalMinutes * 2L));
-
-        if (stayEnd.isAfter(tripEnd) && stay != null && !stayEnd.isBefore(now.minus(activeWindow)) && stay.getLocation() != null) {
-            Point point = stay.getLocation();
-            return Optional.of(new WeatherSampleCandidate(
-                    point.getY(),
-                    point.getX(),
-                    samplingPolicy.ongoingSampleTime(now, intervalMinutes),
-                    WeatherTargetSource.ONGOING,
-                    ONGOING_PRIORITY
-            ));
-        }
-
-        if (trip != null && !tripEnd.isBefore(now.minus(activeWindow))) {
-            double[] coordinates = findTripCoordinateAt(user.getId(), trip, now)
-                    .orElseGet(() -> interpolateTripCoordinate(trip, now));
-            if (coordinates != null) {
-                return Optional.of(new WeatherSampleCandidate(
-                        coordinates[0],
-                        coordinates[1],
-                        samplingPolicy.ongoingSampleTime(now, intervalMinutes),
-                        WeatherTargetSource.ONGOING,
-                        ONGOING_PRIORITY
-                ));
-            }
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<double[]> findTripCoordinateAt(UUID userId, TimelineTripEntity trip, Instant targetAt) {
-        return findTripCoordinateAt(userId, trip.getTimestamp(), trip.getTripDuration(), targetAt);
-    }
-
-    private Optional<double[]> findTripCoordinateAt(UUID userId, Instant tripStart, long durationSeconds, Instant targetAt) {
-        long stageStart = metricsStart();
-        Optional<double[]> coordinates = backfillReconciliationRepository.findNearestTripCoordinate(
-                userId, tripStart, durationSeconds, targetAt);
-        recordWeatherStage(stageStart, "trip_coordinate_lookup", "trip", coordinates.isPresent() ? "success" : "empty");
-        return coordinates;
-    }
-
-    private double[] interpolateTripCoordinate(TimelineTripEntity trip, Instant targetAt) {
-        if (trip == null || trip.getStartPoint() == null || trip.getEndPoint() == null || trip.getTripDuration() <= 0) {
-            return null;
-        }
-        long elapsedSeconds = Math.max(0, Math.min(trip.getTripDuration(), Duration.between(trip.getTimestamp(), targetAt).toSeconds()));
-        double ratio = elapsedSeconds / (double) trip.getTripDuration();
-        double latitude = trip.getStartPoint().getY() + ((trip.getEndPoint().getY() - trip.getStartPoint().getY()) * ratio);
-        double longitude = trip.getStartPoint().getX() + ((trip.getEndPoint().getX() - trip.getStartPoint().getX()) * ratio);
-        return new double[]{latitude, longitude};
-    }
-
-    private double[] interpolateTripCoordinate(TimelineTripSlice trip, Instant targetAt) {
-        long elapsedSeconds = Math.max(0, Math.min(
-                trip.durationSeconds(),
-                Duration.between(trip.startTime(), targetAt).toSeconds()
-        ));
-        double ratio = elapsedSeconds / (double) trip.durationSeconds();
-        double latitude = trip.startLatitude() + ((trip.endLatitude() - trip.startLatitude()) * ratio);
-        double longitude = trip.startLongitude() + ((trip.endLongitude() - trip.startLongitude()) * ratio);
-        return new double[]{latitude, longitude};
-    }
-
     private void releaseRemainingClaimedTargets(List<WeatherSampleTargetClaim> targets, int startIndex, Instant retryAt, String reason) {
         for (int i = startIndex; i < targets.size(); i++) {
             targetRepository.releaseUntil(targets.get(i).id(), retryAt, reason);
@@ -769,7 +550,7 @@ public class WeatherService {
     }
 
     private Instant recordProviderQuotaExceeded(String providerKey, WeatherProviderException e) {
-        countQuotaBlock("provider", providerKey);
+        metrics().countQuotaBlock("provider", providerKey);
         Instant retryAt = e.getRetryAfter() != null && e.getRetryAfter().isAfter(Instant.now())
                 ? e.getRetryAfter()
                 : nextUtcDayStart().plus(INTERNAL_QUOTA_RESET_GRACE);
@@ -785,7 +566,7 @@ public class WeatherService {
     }
 
     private Instant recordInternalQuotaExceeded(String message) {
-        countQuotaBlock("internal", primaryProviderKey());
+        metrics().countQuotaBlock("internal", primaryProviderKey());
         Instant retryAt = nextUtcDayStart().plus(INTERNAL_QUOTA_RESET_GRACE);
         return integrationHealthService.recordQuotaExceeded(
                 WEATHER_INTEGRATION,
@@ -1018,7 +799,7 @@ public class WeatherService {
                             : "Daily weather backfill reserve exhausted");
                 }
 
-                long providerStart = metricsStart();
+                long providerStart = metrics().start();
                 try {
                     WeatherProviderClient client = providerClient(providerKey);
                     Map<Instant, WeatherProviderSample> samples = client.fetchHourlyBatch(
@@ -1027,15 +808,15 @@ public class WeatherService {
                         throw new WeatherProviderException(WeatherProviderErrorKind.NO_DATA,
                                 "Provider response did not include any requested hour");
                     }
-                    recordProviderRequest(providerKey, requestSource, "success");
-                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), "success");
+                    metrics().recordProviderRequest(providerKey, requestSource, "success");
+                    metrics().recordStage(providerStart, "provider_request", requestSource.name(), "success");
                     integrationHealthService.recordSuccess(WEATHER_INTEGRATION, providerKey);
                     return new ProviderFetchBatchResult(providerKey, samples);
                 } catch (WeatherProviderException e) {
                     WeatherProviderException failure = providerExceptionWithProvider(e, providerKey);
                     lastFailure = failure;
-                    recordProviderRequest(providerKey, requestSource, e.getKind().name());
-                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), e.getKind().name());
+                    metrics().recordProviderRequest(providerKey, requestSource, e.getKind().name());
+                    metrics().recordStage(providerStart, "provider_request", requestSource.name(), e.getKind().name());
                     if (shouldRetrySslHandshakeFailure(e, attempt, maxAttempts)) {
                         log.info("Weather provider SSL handshake failed for a target group; retrying {}/{}",
                                 attempt + 1, maxAttempts);
@@ -1049,8 +830,8 @@ public class WeatherService {
                     }
                     throw failure;
                 } catch (Exception e) {
-                    recordProviderRequest(providerKey, requestSource, "error");
-                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), "error");
+                    metrics().recordProviderRequest(providerKey, requestSource, "error");
+                    metrics().recordStage(providerStart, "provider_request", requestSource.name(), "error");
                     throw e;
                 }
             }
@@ -1144,10 +925,6 @@ public class WeatherService {
         return UserEntity.find("isActive = true").list();
     }
 
-    private boolean isValidCoordinate(double latitude, double longitude) {
-        return latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
-    }
-
     private Map<String, String> metricUnits() {
         return Map.ofEntries(
                 Map.entry("temperature", "°C"),
@@ -1164,62 +941,6 @@ public class WeatherService {
         );
     }
 
-    private long metricsStart() {
-        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
-    }
-
-    private void recordWeatherTimer(String name, long startedAtNanos, String source, String result) {
-        if (workloadMetrics == null) {
-            return;
-        }
-        workloadMetrics.recordTimer(name, startedAtNanos,
-                "component", "weather",
-                "source", normalizeWeatherSource(source),
-                "result", result);
-    }
-
-    private void recordWeatherStage(long startedAtNanos, String stage, String source, String result) {
-        if (workloadMetrics == null) {
-            return;
-        }
-        workloadMetrics.recordTimer("geopulse.weather.stage.duration", startedAtNanos,
-                "component", "weather",
-                "stage", stage,
-                "source", normalizeWeatherSource(source),
-                "result", result);
-    }
-
-    private void countWeatherTargets(WeatherTargetSource source, String result, long count) {
-        if (workloadMetrics == null || count <= 0) {
-            return;
-        }
-        workloadMetrics.increment("geopulse.weather.targets", count,
-                "component", "weather",
-                "source", source == null ? "ALL" : source.name(),
-                "result", result);
-    }
-
-    private void countWeatherChunks(String trigger, String result, long count) {
-        if (workloadMetrics == null || count <= 0) {
-            return;
-        }
-        workloadMetrics.increment("geopulse.weather.reconciliation.chunks", count,
-                "component", "weather",
-                "trigger", normalizeWeatherSource(trigger),
-                "result", result);
-    }
-
-    private void recordProviderRequest(String providerKey, WeatherTargetSource source, String result) {
-        if (workloadMetrics == null) {
-            return;
-        }
-        workloadMetrics.increment("geopulse.weather.provider.requests",
-                "component", "weather",
-                "provider", providerKey,
-                "source", source.name(),
-                "result", result);
-    }
-
     private boolean reserveConnectionTestCall() {
         boolean reserved = quotaService.tryReserveConnectionTest(1, configurationService.dailyRequestLimit());
         if (reserved && workloadMetrics != null) {
@@ -1231,45 +952,4 @@ public class WeatherService {
         }
         return reserved;
     }
-
-    private void countQuotaBlock(String type, String providerKey) {
-        if (workloadMetrics != null) {
-            workloadMetrics.increment("geopulse.weather.quota.blocks",
-                    "component", "weather",
-                    "type", type,
-                    "provider", providerKey);
-        }
-    }
-
-    private String normalizeWeatherSource(String source) {
-        return source == null || source.isBlank() ? "unknown" : source;
-    }
-
-    private record EnqueueResult(boolean created, boolean known, boolean skipped) {
-        static EnqueueResult createdResult() {
-            return new EnqueueResult(true, false, false);
-        }
-
-        static EnqueueResult knownResult() {
-            return new EnqueueResult(false, true, false);
-        }
-
-        static EnqueueResult skippedResult() {
-            return new EnqueueResult(false, false, true);
-        }
-    }
-
-    private record WeatherTargetKey(double latitudeBucket, double longitudeBucket, Instant targetAt) {
-    }
-
-    private record TimelineTripSlice(
-            Instant startTime,
-            long durationSeconds,
-            double startLatitude,
-            double startLongitude,
-            double endLatitude,
-            double endLongitude
-    ) {
-    }
-
 }

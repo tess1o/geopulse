@@ -41,7 +41,7 @@ const props = defineProps({
   },
   color: {
     type: String,
-    default: 'primary' // primary, secondary, success, warning, danger, info, contrast
+    default: 'primary' // primary, secondary, success, warning, danger, info, contrast, or a #rrggbb color
   },
   valueFormatter: {
     type: Function,
@@ -128,7 +128,15 @@ const toDataset = ({ label, data, variant }) => ({
   hoverBorderWidth: 2
 })
 
-const getVariant = (colorKey) => themeColors.value.variants[colorKey] || themeColors.value.variants.primary
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+// A #rrggbb color is used as is, with a translucent fill on hover.
+const getVariant = (colorKey) => {
+  if (HEX_COLOR.test(colorKey || '')) {
+    return { bg: colorKey, border: colorKey, light: `${colorKey}99` }
+  }
+  return themeColors.value.variants[colorKey] || themeColors.value.variants.primary
+}
 
 // Chart data computed property
 const chartData = computed(() => {

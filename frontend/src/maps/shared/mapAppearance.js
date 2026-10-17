@@ -1,3 +1,5 @@
+import { getMovementTypePalette } from '@/utils/movementTypeColors'
+
 // Map appearance: the single place that turns a user's color vision preset and overrides into concrete colors.
 // Preference values mirror TimelineDisplayPreferences on the backend. An empty (or missing) override means
 // "follow the color scheme"; the backend stores only what the user picked explicitly.
@@ -117,6 +119,7 @@ export function resolveMapAppearance(prefs = {}) {
     speedBandsEnabled: speedBandColors !== null,
     heatmapGradientKey,
     heatmapGradient: HEATMAP_GRADIENTS[heatmapGradientKey],
+    movementTypeColors: getMovementTypePalette(colorScheme),
     pathWidth,
     highlightedPathWidth: pathWidth + HIGHLIGHTED_PATH_EXTRA_WIDTH,
     outlineEnabled: prefs?.pathOutlineEnabled === true,

@@ -98,6 +98,7 @@ import {
   getDistanceUnitLabel
 } from '@/utils/calculationsHelpers'
 import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
+import { useMapAppearance } from '@/composables/useMapAppearance'
 
 const { t, te } = useI18n()
 
@@ -134,18 +135,8 @@ const props = defineProps({
   }
 })
 
-// Trip type colors; labels come from the shared movementTypes.* catalog.
-const tripTypeColors = {
-  WALK: 'success',
-  BICYCLE: 'warning',
-  RUNNING: 'contrast',
-  CAR: 'primary',
-  MOTORCYCLE: 'info',
-  PUBLIC_TRANSPORT: 'secondary',
-  TRAIN: 'secondary',
-  FLIGHT: 'danger',
-  BOAT: 'info'
-}
+// Trip type colors follow the user's color scheme; labels come from the shared movementTypes.* catalog.
+const mapAppearance = useMapAppearance()
 
 // Y-axis title based on unit system
 const yAxisTitle = computed(() => t('ui.dashboard.distanceAxisTitle', { unit: getDistanceUnitLabel() }))
@@ -183,7 +174,7 @@ const chartDatasets = computed(() => {
 
     // Get configuration for this trip type
     const label = te(`movementTypes.${tripType}`) ? t(`movementTypes.${tripType}`) : tripType
-    const color = tripTypeColors[tripType] || 'secondary'
+    const color = mapAppearance.value.movementTypeColors[tripType] || 'secondary'
 
     datasets.push({
       label,

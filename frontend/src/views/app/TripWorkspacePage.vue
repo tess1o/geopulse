@@ -335,82 +335,11 @@
       </template>
     </Dialog>
 
-    <Dialog
+    <TripCollaboratorsDialog
       v-model:visible="showCollaboratorsDialog"
-      modal
-      :header="t('trips.workspacePage.collaboratorsDialog.header')"
-      class="gp-dialog-md"
-      @show="loadCollaboratorsData"
-    >
-      <div class="collaborators-content">
-        <Message severity="info" :closable="false">
-          {{ t('trips.workspacePage.collaboratorsDialog.infoMessage') }}
-        </Message>
-
-        <div class="collaborator-add-row">
-          <Select
-            v-model="newCollaboratorFriendId"
-            :options="availableFriendOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="t('trips.workspacePage.collaboratorsDialog.selectFriendPlaceholder')"
-            class="w-full"
-            filter
-          />
-          <Select
-            v-model="newCollaboratorRole"
-            :options="collaboratorRoleOptions"
-            optionLabel="label"
-            optionValue="value"
-            class="collaborator-role-select"
-          />
-          <Button
-            icon="pi pi-plus"
-            :label="t('trips.workspacePage.collaboratorsDialog.add')"
-            :loading="isSavingCollaborator"
-            :disabled="!newCollaboratorFriendId"
-            @click="addCollaborator"
-          />
-        </div>
-
-        <div v-if="collaboratorsLoading" class="collaborators-loading">
-          <ProgressSpinner />
-        </div>
-
-        <div v-else-if="collaborators.length === 0" class="collaborators-empty">
-          {{ t('trips.workspacePage.collaboratorsDialog.empty') }}
-        </div>
-
-        <div v-else class="collaborators-list">
-          <div
-            v-for="collaborator in collaborators"
-            :key="collaborator.userId"
-            class="collaborator-row"
-          >
-            <div class="collaborator-main">
-              <strong>{{ collaborator.fullName || collaborator.email }}</strong>
-              <small>{{ collaborator.email }}</small>
-            </div>
-            <Select
-              :model-value="collaborator.accessRole"
-              :options="collaboratorRoleOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="collaborator-role-select"
-              @update:model-value="updateCollaboratorRole(collaborator, $event)"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              severity="danger"
-              :loading="isSavingCollaborator"
-              @click="removeCollaborator(collaborator)"
-            />
-          </div>
-        </div>
-      </div>
-    </Dialog>
+      :trip-id="tripId"
+      :can-manage="isOwner"
+    />
 
     <TripReconstructionDialog
       :visible="showReconstructionDialog"
@@ -438,70 +367,15 @@
       @close-geocoding="closeWorkspaceGeocodingDialog"
     />
 
-    <Dialog
+    <TripTimelineJobDialog
       v-model:visible="showTimelineGenerationDialog"
-      modal
-      :header="t('trips.workspacePage.timelineGenerationDialog.header')"
-      class="gp-dialog-md timeline-generation-dialog"
-      :closable="timelineJobCanClose"
-      :dismissableMask="timelineJobCanClose"
+      :job-id="trackedTimelineJobId"
+      :progress="timelineJobProgress"
+      :error="timelineJobError"
+      :refreshing="isRefreshingAfterTimelineJob"
+      @retry="retryTimelineJobProgress"
       @hide="handleTimelineGenerationDialogHide"
-    >
-      <div class="timeline-generation-content">
-        <div class="timeline-generation-status-row">
-          <Tag :value="timelineJobStatusLabel" :severity="timelineJobStatusSeverity" />
-          <small v-if="trackedTimelineJobId" class="timeline-generation-job-id">
-            {{ t('trips.workspacePage.timelineGenerationDialog.jobId', { id: trackedTimelineJobId }) }}
-          </small>
-        </div>
-
-        <p class="timeline-generation-step">
-          {{ timelineJobCurrentStep }}
-        </p>
-
-        <ProgressBar
-          :value="timelineJobProgressValue"
-          :showValue="false"
-        />
-
-        <div class="timeline-generation-meta">
-          <span>{{ timelineJobProgressValue }}%</span>
-          <span>{{ timelineJobDurationLabel }}</span>
-        </div>
-
-        <Message
-          v-if="timelineJobProgress?.errorMessage || timelineJobError"
-          severity="error"
-          :closable="false"
-        >
-          {{ timelineJobProgress?.errorMessage || timelineJobError }}
-        </Message>
-        <Message
-          v-else-if="isRefreshingAfterTimelineJob"
-          severity="info"
-          :closable="false"
-        >
-          {{ t('trips.workspacePage.timelineGenerationDialog.refreshingWorkspace') }}
-        </Message>
-      </div>
-
-      <template #footer>
-        <Button
-          v-if="timelineJobStatus === 'FAILED'"
-          :label="t('trips.workspacePage.timelineGenerationDialog.retryStatus')"
-          icon="pi pi-refresh"
-          outlined
-          :disabled="!trackedTimelineJobId"
-          @click="retryTimelineJobProgress"
-        />
-        <Button
-          :label="t('trips.workspacePage.timelineGenerationDialog.close')"
-          icon="pi pi-times"
-          :disabled="!timelineJobCanClose"
-          @click="showTimelineGenerationDialog = false"
-        />
-      </template>
-    </Dialog>
+    />
 
     <ConfirmDialog group="trip-workspace-plan-item" />
   </AppLayout>
@@ -524,7 +398,6 @@ import { useTripsStore } from '@/stores/trips'
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import { useTimelineStore } from '@/stores/timeline'
-import { useFriendsStore } from '@/stores/friends'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -539,22 +412,20 @@ import TripStopsRail from '@/components/trips/workspace/TripStopsRail.vue'
 import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vue'
 import TripSummaryBar from '@/components/trips/workspace/TripSummaryBar.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
-import L from 'leaflet'
-import { getVectorEngine } from '@/maps/runtime/vectorEngineRegistry'
-import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import TripCollaboratorsDialog from '@/components/trips/workspace/TripCollaboratorsDialog.vue'
+import TripTimelineJobDialog from '@/components/trips/workspace/TripTimelineJobDialog.vue'
+import { isTimelineJobDialogClosable } from '@/components/trips/workspace/timelineJobDialogState'
+import { createPlanItemDialogMapAdapter } from '@/maps/tripPlanItem/runtime/createPlanItemDialogMapAdapter'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
-import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
-import ProgressBar from 'primevue/progressbar'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
-import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import { buildSequenceMap, buildStraightLegs, hasPlanCoordinates, sortPlanItems } from '@/utils/tripPlanOrder'
 import {
   getTripPlanSuggestionCoordinates,
@@ -571,7 +442,6 @@ const authStore = useAuthStore()
 const tripsStore = useTripsStore()
 const immichStore = useImmichStore()
 const timelineStore = useTimelineStore()
-const friendsStore = useFriendsStore()
 
 const {
   currentTrip,
@@ -658,12 +528,6 @@ const {
   getBias: () => resolvePlanItemLocationSearchBias(),
   fallbackLabel: t('trips.search.plannedPlaceFallback')
 })
-const collaboratorsLoading = ref(false)
-const isSavingCollaborator = ref(false)
-const collaborators = ref([])
-const availableFriends = ref([])
-const newCollaboratorFriendId = ref(null)
-const newCollaboratorRole = ref('VIEW')
 const {
   currentJobId: trackedTimelineJobId,
   jobProgress: timelineJobProgress,
@@ -698,11 +562,6 @@ const routingAvailable = computed(() => Boolean(authStore.mapMatchingAvailable))
 const priorityOptions = computed(() => [
   { label: t('trips.stopsRail.priorityOptional'), value: 'OPTIONAL' },
   { label: t('trips.stopsRail.priorityMust'), value: 'MUST' }
-])
-
-const collaboratorRoleOptions = computed(() => [
-  { label: t('trips.managementPage.access.viewer'), value: 'VIEW' },
-  { label: t('trips.managementPage.access.editor'), value: 'EDIT' }
 ])
 
 const tripId = computed(() => Number(route.params.tripId))
@@ -980,90 +839,15 @@ const showTripPhotosSection = computed(() => (
   !isUnplannedTrip.value &&
   Boolean(tripImmichSearchParams.value)
 ))
-const availableFriendOptions = computed(() => {
-  const selectedIds = new Set((collaborators.value || []).map((item) => String(item.userId)))
-  return (availableFriends.value || [])
-    .filter((friend) => !selectedIds.has(String(friend.friendId)))
-    .map((friend) => ({
-      value: friend.friendId,
-      label: friend.fullName || friend.email || String(friend.friendId)
-    }))
-})
-const timelineJobStatus = computed(() => String(timelineJobProgress.value?.status || '').toUpperCase())
-const timelineJobCanClose = computed(() => {
-  if (timelineJobError.value) return true
-  if (!trackedTimelineJobId.value) return true
-  return timelineJobStatus.value === 'COMPLETED' || timelineJobStatus.value === 'FAILED'
-})
-const timelineJobStatusLabel = computed(() => {
-  switch (timelineJobStatus.value) {
-    case 'QUEUED':
-      return t('trips.workspacePage.timelineGenerationDialog.statusQueued')
-    case 'RUNNING':
-      return t('trips.workspacePage.timelineGenerationDialog.statusRunning')
-    case 'COMPLETED':
-      return t('trips.workspacePage.timelineGenerationDialog.statusCompleted')
-    case 'FAILED':
-      return t('trips.workspacePage.timelineGenerationDialog.statusFailed')
-    default:
-      return t('trips.workspacePage.timelineGenerationDialog.statusStarting')
-  }
-})
-const timelineJobStatusSeverity = computed(() => {
-  switch (timelineJobStatus.value) {
-    case 'QUEUED':
-      return 'info'
-    case 'RUNNING':
-      return 'warn'
-    case 'COMPLETED':
-      return 'success'
-    case 'FAILED':
-      return 'danger'
-    default:
-      return 'secondary'
-  }
-})
-const timelineJobCurrentStep = computed(() => (
-  formatMessageDescriptor(timelineJobProgress.value?.currentStep)
-  || (timelineJobStatus.value === 'FAILED'
-    ? t('trips.workspacePage.timelineGenerationDialog.stepFailed')
-    : t('trips.workspacePage.timelineGenerationDialog.stepPreparing'))
-))
-const timelineJobProgressValue = computed(() => {
-  const raw = Number(timelineJobProgress.value?.progressPercentage)
-  if (!Number.isFinite(raw)) return 0
-  return Math.min(100, Math.max(0, Math.round(raw)))
-})
-const timelineJobDurationLabel = computed(() => {
-  const durationMs = Number(timelineJobProgress.value?.durationMs)
-  if (!Number.isFinite(durationMs) || durationMs < 0) {
-    return t('trips.workspacePage.timelineGenerationDialog.durationDash')
-  }
-  return t('trips.workspacePage.timelineGenerationDialog.durationValue', { duration: formatJobDuration(durationMs) })
-})
+const timelineJobCanClose = computed(() => isTimelineJobDialogClosable({
+  jobId: trackedTimelineJobId.value,
+  progress: timelineJobProgress.value,
+  error: timelineJobError.value
+}))
 
 const formatDateTime = (value) => {
   if (!value) return '—'
   return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
-}
-
-const formatJobDuration = (durationMs) => {
-  const totalSeconds = Math.floor(durationMs / 1000)
-  if (totalSeconds < 60) {
-    return t('trips.workspacePage.timelineGenerationDialog.secondsShort', { count: totalSeconds })
-  }
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes < 60) {
-    return seconds > 0
-      ? t('trips.workspacePage.timelineGenerationDialog.minutesSecondsShort', { minutes, seconds })
-      : t('trips.workspacePage.timelineGenerationDialog.minutesShort', { count: minutes })
-  }
-  const hours = Math.floor(minutes / 60)
-  const minutesRemainder = minutes % 60
-  return minutesRemainder > 0
-    ? t('trips.workspacePage.timelineGenerationDialog.hoursMinutesShort', { hours, minutes: minutesRemainder })
-    : t('trips.workspacePage.timelineGenerationDialog.hoursShort', { count: hours })
 }
 
 const formatPlannedDay = (plannedDay) => {
@@ -1119,104 +903,6 @@ const openCollaboratorsDialog = () => {
 const openReconstructionDialog = () => {
   if (!canReconstructTrip.value) return
   showReconstructionDialog.value = true
-}
-
-const loadCollaboratorsData = async () => {
-  if (!isOwner.value) return
-  collaboratorsLoading.value = true
-  try {
-    const [loadedCollaborators, loadedFriends] = await Promise.all([
-      tripsStore.fetchTripCollaborators(tripId.value),
-      friendsStore.fetchFriends()
-    ])
-    collaborators.value = Array.isArray(loadedCollaborators) ? loadedCollaborators : []
-    availableFriends.value = Array.isArray(loadedFriends) ? loadedFriends : []
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: t('trips.workspacePage.toasts.loadCollaboratorsFailedSummary'),
-      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.loadCollaboratorsFailedFallback')),
-      life: 5000
-    })
-  } finally {
-    collaboratorsLoading.value = false
-  }
-}
-
-const addCollaborator = async () => {
-  if (!newCollaboratorFriendId.value) return
-  isSavingCollaborator.value = true
-  try {
-    await tripsStore.setTripCollaborator(tripId.value, newCollaboratorFriendId.value, newCollaboratorRole.value)
-    newCollaboratorFriendId.value = null
-    newCollaboratorRole.value = 'VIEW'
-    await loadCollaboratorsData()
-    toast.add({
-      severity: 'success',
-      summary: t('trips.workspacePage.toasts.collaboratorAddedSummary'),
-      detail: t('trips.workspacePage.toasts.collaboratorAddedDetail'),
-      life: 2500
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: t('trips.workspacePage.toasts.addCollaboratorFailedSummary'),
-      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
-      life: 5000
-    })
-  } finally {
-    isSavingCollaborator.value = false
-  }
-}
-
-const updateCollaboratorRole = async (collaborator, nextRole) => {
-  if (!collaborator?.userId || !nextRole) return
-  const previousRole = collaborator.accessRole
-  collaborator.accessRole = nextRole
-  isSavingCollaborator.value = true
-  try {
-    await tripsStore.setTripCollaborator(tripId.value, collaborator.userId, nextRole)
-    toast.add({
-      severity: 'success',
-      summary: t('trips.workspacePage.toasts.roleUpdatedSummary'),
-      detail: t('trips.workspacePage.toasts.roleUpdatedDetail'),
-      life: 2200
-    })
-  } catch (error) {
-    collaborator.accessRole = previousRole
-    toast.add({
-      severity: 'error',
-      summary: t('trips.workspacePage.toasts.updateRoleFailedSummary'),
-      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
-      life: 5000
-    })
-  } finally {
-    isSavingCollaborator.value = false
-  }
-}
-
-const removeCollaborator = async (collaborator) => {
-  if (!collaborator?.userId) return
-  isSavingCollaborator.value = true
-  try {
-    await tripsStore.removeTripCollaborator(tripId.value, collaborator.userId)
-    collaborators.value = collaborators.value.filter((item) => String(item.userId) !== String(collaborator.userId))
-    toast.add({
-      severity: 'success',
-      summary: t('trips.workspacePage.toasts.collaboratorRemovedSummary'),
-      detail: t('trips.workspacePage.toasts.collaboratorRemovedDetail'),
-      life: 2200
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: t('trips.workspacePage.toasts.removeCollaboratorFailedSummary'),
-      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
-      life: 5000
-    })
-  } finally {
-    isSavingCollaborator.value = false
-  }
 }
 
 const clampRangeToTrip = (startTime, endTime, trip = currentTrip.value) => {
@@ -1506,15 +1192,6 @@ const applyPlanSuggestionToForm = async (suggestion) => {
   planItemForm.value.longitude = typeof suggestion.longitude === 'number' ? suggestion.longitude : planItemForm.value.longitude
 }
 
-const PLAN_ITEM_DIALOG_MARKER_HTML = `
-  <span class="plan-item-dialog-marker-pin" aria-hidden="true">
-    <svg viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15 1.5C9.2 1.5 4.5 6.2 4.5 12c0 8.1 10.5 19.6 10.5 19.6S25.5 20.1 25.5 12c0-5.8-4.7-10.5-10.5-10.5z" fill="#f43f5e" stroke="#0f172a" stroke-width="1.4" />
-      <circle cx="15" cy="12" r="4.2" fill="#fef08a" stroke="#0f172a" stroke-width="1.2" />
-    </svg>
-  </span>
-`
-
 const resolvePlanItemCoordinates = () => {
   const latitude = parsePlanItemCoordinate(planItemForm.value.latitude, -90, 90)
   const longitude = parsePlanItemCoordinate(planItemForm.value.longitude, -180, 180)
@@ -1557,80 +1234,6 @@ const setPlanItemDialogMapCenter = ({ zoom = null, centerFromSelection = false }
   } else if (!hasPlanItemCoordinates.value) {
     planItemDialogMapZoom.value = 13
   }
-}
-
-const createRasterPlanItemDialogMapAdapter = (map) => {
-  let marker = null
-
-  const clear = () => {
-    if (marker) {
-      map.removeLayer(marker)
-      marker = null
-    }
-  }
-
-  const render = (coords) => {
-    clear()
-    if (!coords) return
-
-    const markerIcon = L.divIcon({
-      className: 'plan-item-dialog-marker-icon',
-      html: PLAN_ITEM_DIALOG_MARKER_HTML,
-      iconSize: [30, 40],
-      iconAnchor: [15, 38]
-    })
-
-    marker = L.marker([coords.lat, coords.lon], { icon: markerIcon }).addTo(map)
-  }
-
-  return {
-    render,
-    cleanup: clear
-  }
-}
-
-const createVectorPlanItemDialogMarkerElement = () => {
-  const markerElement = document.createElement('div')
-  markerElement.className = 'plan-item-dialog-marker-icon plan-item-dialog-marker-icon--vector'
-  markerElement.innerHTML = PLAN_ITEM_DIALOG_MARKER_HTML
-  return markerElement
-}
-
-const createVectorPlanItemDialogMapAdapter = (map) => {
-  const { maplibregl } = getVectorEngine()
-  let marker = null
-
-  const clear = () => {
-    if (marker) {
-      marker.remove()
-      marker = null
-    }
-  }
-
-  const render = (coords) => {
-    clear()
-    if (!coords) return
-
-    marker = new maplibregl.Marker({
-      element: createVectorPlanItemDialogMarkerElement(),
-      anchor: 'bottom'
-    })
-      .setLngLat([coords.lon, coords.lat])
-      .addTo(map)
-  }
-
-  return {
-    render,
-    cleanup: clear
-  }
-}
-
-const createPlanItemDialogMapAdapter = (map) => {
-  const mapMode = resolveMapEngineModeFromInstance(map, MAP_RENDER_MODES.RASTER)
-  if (mapMode === MAP_RENDER_MODES.VECTOR) {
-    return createVectorPlanItemDialogMapAdapter(map)
-  }
-  return createRasterPlanItemDialogMapAdapter(map)
 }
 
 const syncPlanItemDialogMapLocation = ({ recenter = false, zoom = null } = {}) => {
@@ -2315,60 +1918,6 @@ watch(showPlanItemDialog, async (nextVisible) => {
   min-width: 260px;
 }
 
-.collaborators-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-md);
-}
-
-.collaborator-add-row {
-  display: grid;
-  grid-template-columns: 1fr 10rem auto;
-  gap: var(--gp-spacing-sm);
-  align-items: center;
-}
-
-.collaborator-role-select {
-  min-width: 8rem;
-}
-
-.collaborators-loading {
-  display: flex;
-  justify-content: center;
-  padding: var(--gp-spacing-md);
-}
-
-.collaborators-empty {
-  color: var(--gp-text-secondary);
-  text-align: center;
-  padding: var(--gp-spacing-md);
-}
-
-.collaborators-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-sm);
-}
-
-.collaborator-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: var(--gp-spacing-sm);
-  align-items: center;
-  border: 1px solid var(--gp-border);
-  border-radius: var(--gp-radius-small);
-  padding: var(--gp-spacing-sm);
-}
-
-.collaborator-main {
-  display: flex;
-  flex-direction: column;
-}
-
-.collaborator-main small {
-  color: var(--gp-text-secondary);
-}
-
 .workspace-card .workspace-timeline-split {
   --workspace-map-height: clamp(550px, 70vh, 760px);
   --timeline-split-side-width: clamp(360px, 22vw, 460px);
@@ -2508,37 +2057,6 @@ watch(showPlanItemDialog, async (nextVisible) => {
   width: 100%;
 }
 
-.timeline-generation-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-sm);
-}
-
-.timeline-generation-status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-}
-
-.timeline-generation-job-id {
-  color: var(--gp-text-secondary);
-}
-
-.timeline-generation-step {
-  margin: 0;
-  color: var(--gp-text-primary);
-  font-weight: 500;
-}
-
-.timeline-generation-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--gp-text-secondary);
-  font-size: 0.85rem;
-}
-
 @media (max-width: 1279px) {
   .workspace-card .workspace-timeline-split {
     --timeline-split-side-width: clamp(340px, 30vw, 420px);
@@ -2666,14 +2184,6 @@ watch(showPlanItemDialog, async (nextVisible) => {
     padding: 0;
   }
 
-  .collaborator-add-row {
-    grid-template-columns: 1fr;
-  }
-
-  .collaborator-row {
-    grid-template-columns: 1fr;
-  }
-
   .plan-item-dialog-row {
     grid-template-columns: 1fr;
   }
@@ -2769,31 +2279,5 @@ watch(showPlanItemDialog, async (nextVisible) => {
 .plan-item-dialog {
   width: 95vw;
   max-width: 1480px;
-}
-
-.plan-item-dialog-marker-icon {
-  background: transparent;
-  border: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.plan-item-dialog-marker-pin {
-  display: inline-flex;
-  width: 30px;
-  height: 40px;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.plan-item-dialog-marker-pin svg {
-  width: 30px;
-  height: 40px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
-}
-
-.plan-item-dialog-marker-icon--vector .plan-item-dialog-marker-pin svg {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 </style>

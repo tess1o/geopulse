@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.streaming.rebuild;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -41,6 +42,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -70,7 +73,8 @@ public class TimelineReplayHarness {
     RealTimeTimelineJob realTimeTimelineJob;
 
     @Inject
-    RealtimeTimelineProcessor realtimeProcessor;
+    @Identifier("timeline-processing")
+    ExecutorService timelineExecutor;
 
     @Inject
     TimelineRebuildRequestRepository rebuildRequestRepository;
@@ -209,9 +213,15 @@ public class TimelineReplayHarness {
         });
     }
 
-    /** One real-time pass for this user, returning what it did. */
+    /**
+     * One pass of the real-time job for this user, exactly as the scheduler runs it, returning what it did. It runs on
+     * the timeline executor, where neither a transaction nor a request context is active: the test thread has a
+     * request context, which would hide database access outside a transaction.
+     */
     public RealtimeTimelineProcessor.Outcome process(UUID userId) {
-        return realtimeProcessor.process(userId);
+        UserEntity user = QuarkusTransaction.requiringNew()
+                .call(() -> entityManager.find(UserEntity.class, userId));
+        return CompletableFuture.supplyAsync(() -> realTimeTimelineJob.processUser(user), timelineExecutor).join();
     }
 
     /** Delivers each batch, running a real-time pass after it, as a phone uploading through the day would. */
@@ -239,13 +249,6 @@ public class TimelineReplayHarness {
                 .as("%s: real-time timeline differs from a full rebuild.%nreal-time:%n  %s%nfull rebuild:%n  %s",
                         scenario, String.join("\n  ", realtime.content()), String.join("\n  ", clean.content()))
                 .containsExactlyElementsOf(clean.content());
-    }
-
-    /** One pass of the real-time job for this user, exactly as the scheduler runs it. */
-    public void realtimePass(UUID userId) {
-        UserEntity user = QuarkusTransaction.requiringNew()
-                .call(() -> entityManager.find(UserEntity.class, userId));
-        realTimeTimelineJob.processUser(user);
     }
 
     /** A clean rebuild of the whole timeline from the stored points: the reference result. */

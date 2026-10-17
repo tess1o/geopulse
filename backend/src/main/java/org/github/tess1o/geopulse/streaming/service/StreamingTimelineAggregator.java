@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayAIQueryRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
@@ -27,6 +28,9 @@ public class StreamingTimelineAggregator {
 
     @Inject
     TimelineStayRepository timelineStayRepository;
+
+    @Inject
+    TimelineStayAIQueryRepository stayAIQueryRepository;
 
     @Inject
     TimelineTripRepository timelineTripRepository;
@@ -111,7 +115,7 @@ public class StreamingTimelineAggregator {
         timeline.setLastUpdated(Instant.now());
 
         // Get stays with city/country information via SQL joins
-        var aiStays = timelineStayRepository.findAITimelineStaysWithLocationData(userId, startTime, endTime);
+        var aiStays = stayAIQueryRepository.findAITimelineStaysWithLocationData(userId, startTime, endTime);
         timeline.setStays(aiStays);
 
         // Get trips without GPS path data
@@ -415,7 +419,7 @@ public class StreamingTimelineAggregator {
     public List<AIStayStatsDTO> getStayStats(UUID userId, Instant startTime, Instant endTime, StayGroupBy groupBy) {
         log.debug("Getting stay statistics for user {} from {} to {} grouped by {}", userId, startTime, endTime, groupBy);
         
-        List<AIStayStatsDTO> stats = timelineStayRepository.findStayStatistics(userId, startTime, endTime, groupBy);
+        List<AIStayStatsDTO> stats = stayAIQueryRepository.findStayStatistics(userId, startTime, endTime, groupBy);
         
         log.debug("Retrieved {} stay statistics groups", stats.size());
         return stats;
@@ -453,7 +457,7 @@ public class StreamingTimelineAggregator {
         
         // Get all trips and stays to compute origin/destination
         var aiTrips = timelineTripRepository.findAITimelineTripsWithoutPath(userId, startTime, endTime);
-        var aiStays = timelineStayRepository.findAITimelineStaysWithLocationData(userId, startTime, endTime);
+        var aiStays = stayAIQueryRepository.findAITimelineStaysWithLocationData(userId, startTime, endTime);
         
         // Populate origin/destination information
         populateOriginDestination(aiTrips, aiStays);

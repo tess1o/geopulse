@@ -31,23 +31,17 @@ import {
   getDistanceUnitLabel
 } from '@/utils/calculationsHelpers'
 import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
+import { useMapAppearance } from '@/composables/useMapAppearance'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
-// Trip type display configuration with distinct colors -- labels resolve through the shared
-// `movementTypes.*` catalog (same enum values used by trip reconstruction/profile) rather than
-// duplicating English text here.
-const tripTypeConfig = computed(() => ({
-  WALK: { label: t('movementTypes.WALK'), color: 'success' },
-  RUNNING: { label: t('movementTypes.RUNNING'), color: 'contrast' },
-  BICYCLE: { label: t('movementTypes.BICYCLE'), color: 'warning' },
-  CAR: { label: t('movementTypes.CAR'), color: 'primary' },
-  MOTORCYCLE: { label: t('movementTypes.MOTORCYCLE'), color: 'info' },
-  PUBLIC_TRANSPORT: { label: t('movementTypes.PUBLIC_TRANSPORT'), color: 'secondary' },
-  TRAIN: { label: t('movementTypes.TRAIN'), color: 'secondary' },
-  FLIGHT: { label: t('movementTypes.FLIGHT'), color: 'danger' },
-  BOAT: { label: t('movementTypes.BOAT'), color: 'info' }
-}))
+// Trip type colors follow the user's color scheme; labels resolve through the shared `movementTypes.*` catalog
+// (same enum values used by trip reconstruction/profile) rather than duplicating English text here.
+const mapAppearance = useMapAppearance()
+const tripTypeConfig = (tripType) => ({
+  label: te(`movementTypes.${tripType}`) ? t(`movementTypes.${tripType}`) : tripType,
+  color: mapAppearance.value.movementTypeColors[tripType] || 'secondary'
+})
 
 // Y-axis title based on unit system and view mode
 const yAxisTitle = computed(() => {
@@ -111,7 +105,7 @@ const chartDatasets = computed(() => {
     const alignedData = alignDataWithKeys(chartData, chartData.data)
 
     // Get configuration for this trip type
-    const config = tripTypeConfig.value[tripType] || { label: tripType, color: 'secondary' }
+    const config = tripTypeConfig(tripType)
 
     datasets.push({
       label: `${config.label}`,

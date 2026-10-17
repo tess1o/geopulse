@@ -72,6 +72,7 @@ import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
+import { getMovementTypeSeverity as getTransportSeverity } from '@/constants/movementTypes'
 
 const props = defineProps({
   visible: {
@@ -203,21 +204,6 @@ const reset = async () => {
   }
 }
 
-const getTransportSeverity = (transportMode) => {
-  const severityMap = {
-    CAR: 'info',
-    MOTORCYCLE: 'info',
-    PUBLIC_TRANSPORT: 'info',
-    WALK: 'success',
-    BICYCLE: 'info',
-    RUNNING: 'success',
-    TRAIN: 'info',
-    FLIGHT: 'danger',
-    BOAT: 'info',
-    UNKNOWN: 'secondary'
-  }
-  return severityMap[transportMode?.toUpperCase()] || 'secondary'
-}
 
 const formatDateTime = (timestamp, locationTimezone) => {
   if (!timestamp) return t('tripDialogs.movementTypeQuickEdit.unknownTime')

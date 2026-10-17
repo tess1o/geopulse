@@ -1,13 +1,8 @@
+import { MOVEMENT_TYPES, getMovementTypeIcon } from '@/constants/movementTypes'
+
+// Map markers and timeline icons show a car for trips of unknown type.
 const TRIP_MOVEMENT_ICON_CLASS_MAP = Object.freeze({
-  WALK: 'fas fa-walking',
-  BICYCLE: 'fas fa-bicycle',
-  RUNNING: 'fas fa-running',
-  TRAIN: 'fas fa-train',
-  FLIGHT: 'fas fa-plane',
-  BOAT: 'pi pi-compass',
-  CAR: 'pi pi-car',
-  MOTORCYCLE: 'fas fa-motorcycle',
-  PUBLIC_TRANSPORT: 'pi pi-directions',
+  ...Object.fromEntries(MOVEMENT_TYPES.map((type) => [type, getMovementTypeIcon(type)])),
   UNKNOWN: 'pi pi-car'
 })
 
