@@ -192,6 +192,7 @@ export default {
             flightEnabled: 'Виявлення польоту увімкнено',
             flightMinAvgSpeed: 'Мінімальна середня швидкість польоту',
             flightMinMaxSpeed: 'Мінімальна пікова швидкість польоту',
+            flightMinDistanceKm: 'Мінімальна відстань польоту',
             boatEnabled: 'Виявлення човна увімкнено',
             boatMinWaterRatio: 'Мінімальне співвідношення води для човна',
             boatMinWaterDistanceMeters: 'Мінімальна відстань по воді для човна',

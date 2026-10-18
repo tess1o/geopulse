@@ -187,6 +187,7 @@ export default {
             flightEnabled: 'Flight Detection Enabled',
             flightMinAvgSpeed: 'Flight Minimum Average Speed',
             flightMinMaxSpeed: 'Flight Minimum Peak Speed',
+            flightMinDistanceKm: 'Flight Minimum Distance',
             boatEnabled: 'Boat Detection Enabled',
             boatMinWaterRatio: 'Boat Minimum Water Ratio',
             boatMinWaterDistanceMeters: 'Boat Minimum Water Distance',

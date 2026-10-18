@@ -325,6 +325,7 @@ public class TripClassificationDetailsService {
                 config.getFlightEnabled(),
                 config.getFlightEnabled() ? config.getFlightMinAvgSpeed() : null,
                 config.getFlightEnabled() ? config.getFlightMinMaxSpeed() : null,
+                config.getFlightEnabled() ? config.getFlightMinDistanceKm() : null,
 
                 // BOAT
                 config.getBoatEnabled(),
@@ -653,20 +654,33 @@ public class TripClassificationDetailsService {
             return new ClassificationStep("FLIGHT", true, passed, reason, checks);
         } else {
             // Standard GPS-based classification
+            double minDistanceKm = TravelClassification.getFlightMinDistanceKm(config);
             boolean avgCheck = avgSpeedKmh >= config.getFlightMinAvgSpeed();
             boolean maxCheck = maxSpeedKmh >= config.getFlightMinMaxSpeed();
+            boolean distanceCheck = distanceKm >= minDistanceKm;
 
             checks.add(new ThresholdCheck("Average Speed", ">=",
                     config.getFlightMinAvgSpeed(), avgSpeedKmh, avgCheck));
             checks.add(new ThresholdCheck("Max Speed", ">=",
                     config.getFlightMinMaxSpeed(), maxSpeedKmh, maxCheck));
+            if (minDistanceKm > 0) {
+                checks.add(new ThresholdCheck("Minimum Distance", ">=",
+                        minDistanceKm, distanceKm, distanceCheck));
+            }
 
-            boolean passed = avgCheck || maxCheck; // OR logic
-            String reason = passed
-                    ? String.format("Flight detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds flight thresholds. %s",
-                    avgSpeedKmh, maxSpeedKmh, speedSource)
-                    : String.format("Not a flight: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
-                    avgSpeedKmh, config.getFlightMinAvgSpeed(), maxSpeedKmh, config.getFlightMinMaxSpeed(), speedSource);
+            boolean speedPassed = avgCheck || maxCheck; // OR logic
+            boolean passed = speedPassed && distanceCheck;
+            String reason;
+            if (passed) {
+                reason = String.format("Flight detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds flight thresholds. %s",
+                        avgSpeedKmh, maxSpeedKmh, speedSource);
+            } else if (speedPassed) {
+                reason = String.format("Not a flight: speed matches flight thresholds but distance (%.1f km) < %.1f km minimum. %s",
+                        distanceKm, minDistanceKm, speedSource);
+            } else {
+                reason = String.format("Not a flight: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
+                        avgSpeedKmh, config.getFlightMinAvgSpeed(), maxSpeedKmh, config.getFlightMinMaxSpeed(), speedSource);
+            }
 
             return new ClassificationStep("FLIGHT", true, passed, reason, checks);
         }

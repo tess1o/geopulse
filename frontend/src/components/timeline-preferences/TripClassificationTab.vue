@@ -458,9 +458,24 @@
             v-if="modelValue.flightMinMaxSpeed !== undefined"
             :model-value="modelValue.flightMinMaxSpeed"
             @update:model-value="updatePref('flightMinMaxSpeed', $event)"
-            :min="400.0" :max="900.0" :step="50.0"
+            :min="150.0" :max="900.0" :step="50.0"
             :labels="threeLabels('flight.minMaxSpeed')"
             suffix=" km/h" :decimal-places="1"
+          />
+        </div>
+
+        <div class="parameter-group" data-setting-id="flightMinDistanceKm">
+          <label class="parameter-label">{{ t('timeline.preferences.tripClassification.flight.minDistance.label') }}</label>
+          <p class="parameter-description">
+            {{ t('timeline.preferences.tripClassification.flight.minDistance.description') }}
+          </p>
+          <SliderControl
+            v-if="modelValue.flightMinDistanceKm !== undefined"
+            :model-value="modelValue.flightMinDistanceKm"
+            @update:model-value="updatePref('flightMinDistanceKm', $event)"
+            :min="0" :max="500" :step="1"
+            :labels="threeLabels('flight.minDistance')"
+            suffix=" km" :decimal-places="0"
           />
         </div>
       </template>

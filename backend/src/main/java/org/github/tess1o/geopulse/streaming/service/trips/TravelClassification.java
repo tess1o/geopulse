@@ -26,7 +26,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * - HIGH SPEED trips (&gt; 200 km/h): Always trusts GPS (straight-line distance unreliable)
  * <p>
  * CRITICAL CLASSIFICATION ORDER:
- * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak)
+ * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak, optional minimum distance)
  * 2. BOAT - sustained movement over water (speed is only a sanity check)
  * 3. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
  * 4. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
@@ -351,7 +351,7 @@ public class TravelClassification {
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
-                statistics.speedVariance(), waterStatistics, config);
+                statistics.speedVariance(), distanceMeters, waterStatistics, config);
     }
 
     /**
@@ -467,7 +467,7 @@ public class TravelClassification {
 
         // For other modes, use standard speed-based classification
         // When no max speed available, use avg speed for both
-        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, waterStatistics, config);
+        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, distanceMeters, waterStatistics, config);
     }
 
     /**
@@ -486,12 +486,14 @@ public class TravelClassification {
      * @param avgSpeedKmh   average speed in km/h
      * @param maxSpeedKmh   maximum speed in km/h
      * @param speedVariance speed variance (null if not available)
+     * @param distanceMeters trip distance in meters
      * @param config        timeline configuration
      * @return classified trip type
      */
     private TripType classifyBySpeed(double avgSpeedKmh,
                                      double maxSpeedKmh,
                                      Double speedVariance,
+                                     long distanceMeters,
                                      TripWaterStatistics waterStatistics,
                                      TimelineConfig config) {
 
@@ -509,7 +511,9 @@ public class TravelClassification {
         // 1. FLIGHT - highest priority (unambiguous speeds)
         //    Uses OR logic: avg >= 400 OR max >= 500
         //    Handles flights with long taxi/ground time
+        //    Optional minimum distance filters short trips where a GPS jump inflates the speed
         if (Boolean.TRUE.equals(config.getFlightEnabled()) &&
+                distanceMeters / 1000.0 >= getFlightMinDistanceKm(config) &&
                 (avgSpeedKmh >= config.getFlightMinAvgSpeed() ||
                         maxSpeedKmh >= config.getFlightMinMaxSpeed())) {
             return FLIGHT;
@@ -949,5 +953,9 @@ public class TravelClassification {
         }
 
         return threshold;
+    }
+
+    public static double getFlightMinDistanceKm(TimelineConfig config) {
+        return config.getFlightMinDistanceKm() != null ? config.getFlightMinDistanceKm() : 0.0;
     }
 }

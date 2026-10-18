@@ -305,7 +305,7 @@ const CLASSIFICATION_FIELDS = [
   'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
   'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
   'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
-  'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed',
+  'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed', 'flightMinDistanceKm',
   'boatEnabled', 'boatMinWaterRatio', 'boatMinWaterDistanceMeters',
   'boatMinContinuousWaterDistanceMeters', 'boatMaxPlausibleSpeed'
 ]
@@ -359,6 +359,7 @@ const PREFERENCE_VALUE_TYPES = {
   flightEnabled: 'boolean',
   flightMinAvgSpeed: 'number',
   flightMinMaxSpeed: 'number',
+  flightMinDistanceKm: 'number',
   boatEnabled: 'boolean',
   boatMinWaterRatio: 'number',
   boatMinWaterDistanceMeters: 'number',
@@ -405,6 +406,7 @@ const PREFERENCE_UNITS = {
   trainMaxMaxSpeed: 'km/h',
   flightMinAvgSpeed: 'km/h',
   flightMinMaxSpeed: 'km/h',
+  flightMinDistanceKm: 'km',
   tripArrivalDetectionMinDurationSeconds: 's',
   tripSustainedStopMinDurationSeconds: 's',
   tripArrivalMinPoints: 'points',

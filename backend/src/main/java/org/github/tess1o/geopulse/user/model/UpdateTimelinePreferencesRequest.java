@@ -178,9 +178,13 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMax(value = "600.0", message = "Flight min avg speed must be at most 600.0 km/h")
     private Double flightMinAvgSpeed;
 
-    @DecimalMin(value = "400.0", message = "Flight min max speed must be at least 400.0 km/h")
+    @DecimalMin(value = "150.0", message = "Flight min max speed must be at least 150.0 km/h")
     @DecimalMax(value = "900.0", message = "Flight min max speed must be at most 900.0 km/h")
     private Double flightMinMaxSpeed;
+
+    @DecimalMin(value = "0.0", message = "Flight min distance must be at least 0.0 km")
+    @DecimalMax(value = "500.0", message = "Flight min distance must be at most 500.0 km")
+    private Double flightMinDistanceKm;
 
     // Optional Trip Types - Boat
     private Boolean boatEnabled;

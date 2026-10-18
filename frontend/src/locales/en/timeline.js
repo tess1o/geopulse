@@ -716,9 +716,16 @@ export default {
                 minMaxSpeed: {
                     label: 'Minimum Peak Speed',
                     description: 'Catches flights with long taxi/wait time (OR logic with avg speed)',
-                    labelLow: '400.0 km/h (Turboprop)',
+                    labelLow: '150.0 km/h (Light aircraft)',
                     labelMid: '500.0 km/h (Default)',
                     labelHigh: '900.0 km/h (Jet)'
+                },
+                minDistance: {
+                    label: 'Minimum Distance',
+                    description: 'Trips shorter than this are never classified as flights. Prevents short trips with GPS jumps from being detected as flights (0 = no minimum)',
+                    labelLow: '0 km (Default)',
+                    labelMid: '250 km',
+                    labelHigh: '500 km (Strict)'
                 }
             },
             boat: {

@@ -188,7 +188,8 @@ Flight is an optional trip type for detecting air travel. **Disabled by default.
 :::info OR Logic for Flights
 Flight classification uses **OR logic**: a trip is classified as FLIGHT if **either** average speed ≥
 `FLIGHT_MIN_AVG_SPEED` **or** maximum speed ≥ `FLIGHT_MIN_MAX_SPEED`. This handles flights with long taxi/boarding times
-that lower the overall average.
+that lower the overall average. When `FLIGHT_MIN_DISTANCE_KM` is set, trips shorter than it are never classified as
+flights, which prevents short trips with GPS jumps from being detected as flights.
 :::
 
 | Property                                 | Default | Description                                                                              |
@@ -196,6 +197,7 @@ that lower the overall average.
 | `GEOPULSE_TIMELINE_FLIGHT_ENABLED`       | `false` | Whether flight classification is enabled                                                 |
 | `GEOPULSE_TIMELINE_FLIGHT_MIN_AVG_SPEED` | `400.0` | Minimum average speed (km/h) for flight trips. Conservative default includes ground time |
 | `GEOPULSE_TIMELINE_FLIGHT_MIN_MAX_SPEED` | `500.0` | Minimum peak speed (km/h) for flight trips. Catches flights with long taxi time          |
+| `GEOPULSE_TIMELINE_FLIGHT_MIN_DISTANCE_KM` | `0.0` | Minimum trip distance (km) for flight trips. `0` disables the check                     |
 
 ### Classification Priority Order
 

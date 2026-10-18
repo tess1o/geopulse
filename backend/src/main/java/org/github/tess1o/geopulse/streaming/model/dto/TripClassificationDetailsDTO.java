@@ -87,6 +87,7 @@ public record TripClassificationDetailsDTO(
             Boolean flightEnabled,
             Double flightMinAvgSpeed,
             Double flightMinMaxSpeed,
+            Double flightMinDistanceKm,
 
             // BOAT thresholds (optional)
             Boolean boatEnabled,

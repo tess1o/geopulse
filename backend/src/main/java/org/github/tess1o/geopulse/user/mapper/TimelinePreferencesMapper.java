@@ -148,6 +148,8 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "flightMinMaxSpeed",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightMinDistanceKm",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     // Optional Trip Types - Boat
     @org.mapstruct.Mapping(target = "boatEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -222,6 +224,7 @@ public interface TimelinePreferencesMapper {
                     .flightEnabled(fromImport.getFlightEnabled())
                     .flightMinAvgSpeed(fromImport.getFlightMinAvgSpeed())
                     .flightMinMaxSpeed(fromImport.getFlightMinMaxSpeed())
+                    .flightMinDistanceKm(fromImport.getFlightMinDistanceKm())
                     .boatEnabled(fromImport.getBoatEnabled())
                     .boatMinWaterRatio(fromImport.getBoatMinWaterRatio())
                     .boatMinWaterDistanceMeters(fromImport.getBoatMinWaterDistanceMeters())
@@ -280,6 +283,7 @@ public interface TimelinePreferencesMapper {
                 .flightEnabled(existing.getFlightEnabled())
                 .flightMinAvgSpeed(existing.getFlightMinAvgSpeed())
                 .flightMinMaxSpeed(existing.getFlightMinMaxSpeed())
+                .flightMinDistanceKm(existing.getFlightMinDistanceKm())
                 .boatEnabled(existing.getBoatEnabled())
                 .boatMinWaterRatio(existing.getBoatMinWaterRatio())
                 .boatMinWaterDistanceMeters(existing.getBoatMinWaterDistanceMeters())

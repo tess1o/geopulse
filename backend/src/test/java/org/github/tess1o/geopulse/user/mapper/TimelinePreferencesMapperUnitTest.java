@@ -129,4 +129,40 @@ class TimelinePreferencesMapperUnitTest {
         assertNull(config.getStaypointVelocityThreshold());
         assertNull(config.getIsMergeEnabled());
     }
+    @Test
+    void testFlightMinDistanceMapping() {
+        TimelineConfig fromPreferences = mapper.preferencesToConfig(TimelinePreferences.builder()
+                .flightMinDistanceKm(5.0)
+                .build());
+        assertEquals(5.0, fromPreferences.getFlightMinDistanceKm());
+
+        TimelineConfig fromRequest = mapper.requestToConfig(UpdateTimelinePreferencesRequest.builder()
+                .flightMinDistanceKm(7.0)
+                .build());
+        assertEquals(7.0, fromRequest.getFlightMinDistanceKm());
+
+        TimelinePreferences fromConfig = mapper.configToPreferences(TimelineConfig.builder()
+                .flightMinDistanceKm(9.0)
+                .build());
+        assertEquals(9.0, fromConfig.getFlightMinDistanceKm());
+    }
+    @Test
+    void testMergePreferencesKeepsAndOverridesFlightMinDistance() {
+        TimelinePreferences existing = TimelinePreferences.builder()
+                .flightMinDistanceKm(5.0)
+                .build();
+
+        TimelinePreferences keptFromExisting = mapper.mergePreferences(TimelinePreferences.builder().build(), existing);
+        assertEquals(5.0, keptFromExisting.getFlightMinDistanceKm());
+
+        TimelinePreferences overriddenByImport = mapper.mergePreferences(TimelinePreferences.builder()
+                .flightMinDistanceKm(10.0)
+                .build(), existing);
+        assertEquals(10.0, overriddenByImport.getFlightMinDistanceKm());
+
+        TimelinePreferences importOnly = mapper.mergePreferences(TimelinePreferences.builder()
+                .flightMinDistanceKm(3.0)
+                .build(), null);
+        assertEquals(3.0, importOnly.getFlightMinDistanceKm());
+    }
 }

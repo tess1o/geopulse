@@ -229,6 +229,10 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String flightMinMaxSpeed;
 
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.min_distance_km", defaultValue = "0.0")
+    @StaticInitSafe
+    String flightMinDistanceKm;
+
     // Optional Trip Types - Boat
     @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.enabled", defaultValue = "false")
     @StaticInitSafe

@@ -420,6 +420,13 @@ public class TimelineConfig {
      */
     private Double flightMinMaxSpeed;
 
+    /**
+     * Minimum trip distance in km for GPS-based flight classification.
+     * Prevents short trips with GPS jumps (high peak speed) from being classified as flights.
+     * Default: 0.0 km (no minimum)
+     */
+    private Double flightMinDistanceKm;
+
     // Optional Trip Types Configuration - Boat
     /**
      * Enable or disable boat trip type detection.

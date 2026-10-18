@@ -389,6 +389,13 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setFlightMinMaxSpeed,
                         Double::valueOf
                 ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.min_distance_km",
+                        properties.getFlightMinDistanceKm(),
+                        TimelineConfig::getFlightMinDistanceKm,
+                        TimelineConfig::setFlightMinDistanceKm,
+                        Double::valueOf
+                ))
                 // Optional Trip Types - Boat
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.boat.enabled",

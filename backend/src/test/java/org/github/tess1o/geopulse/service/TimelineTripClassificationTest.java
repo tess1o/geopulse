@@ -593,6 +593,62 @@ public class TimelineTripClassificationTest {
         TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(45), 31500, flightConfig);
         assertEquals(TripType.FLIGHT, result);
     }
+    @Test
+    void testLightAircraftFlight_WithLoweredPeakThreshold() {
+        TimelineConfig flightConfig = lightAircraftFlightConfig(null);
+        // Light aircraft: 20 km in 10 min → 120 km/h avg, 180 km/h peak
+        TripGpsStatistics stats = new TripGpsStatistics(120.0/3.6, 180.0/3.6, 20.0, 0);
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(10), 20000, flightConfig);
+        assertEquals(TripType.FLIGHT, result);
+    }
+    @Test
+    void testShortTripWithGpsJump_WithoutMinDistance_IsFlight() {
+        TimelineConfig flightConfig = lightAircraftFlightConfig(0.0);
+        // Short car trip: 3 km in 4 min → 45 km/h avg, GPS jump makes peak 200 km/h
+        TripGpsStatistics stats = new TripGpsStatistics(45.0/3.6, 200.0/3.6, 30.0, 0);
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(4), 3000, flightConfig);
+        assertEquals(TripType.FLIGHT, result);
+    }
+    @Test
+    void testShortTripWithGpsJump_BelowMinDistance_IsNotFlight() {
+        TimelineConfig flightConfig = lightAircraftFlightConfig(5.0);
+        // Same short trip, but 3 km < 5 km minimum flight distance
+        TripGpsStatistics stats = new TripGpsStatistics(45.0/3.6, 200.0/3.6, 30.0, 0);
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(4), 3000, flightConfig);
+        assertEquals(TripType.CAR, result);
+    }
+    @Test
+    void testFlight_AtMinDistance_IsFlight() {
+        TimelineConfig flightConfig = lightAircraftFlightConfig(5.0);
+        // Exactly 5 km at flight-like speeds: 5 km in 2 min → 150 km/h avg, 200 km/h peak
+        TripGpsStatistics stats = new TripGpsStatistics(150.0/3.6, 200.0/3.6, 30.0, 0);
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(2), 5000, flightConfig);
+        assertEquals(TripType.FLIGHT, result);
+    }
+    @Test
+    void testFlight_MinDistanceDoesNotAffectLongFlights() {
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .flightMinDistanceKm(50.0)
+                .carMinAvgSpeed(10.0)
+                .build();
+        TripGpsStatistics stats = new TripGpsStatistics(850.0/3.6, 900.0/3.6, 120.0, 0);
+        TripType result = classification.classifyTravelType(stats, Duration.ofHours(8), 6800000, flightConfig);
+        assertEquals(TripType.FLIGHT, result);
+    }
+    private TimelineConfig lightAircraftFlightConfig(Double minDistanceKm) {
+        return TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(100.0)
+                .flightMinMaxSpeed(150.0)
+                .flightMinDistanceKm(minDistanceKm)
+                .carEnabled(true)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+    }
     // ====================
     // PRIORITY ORDER TESTS
     // ====================

@@ -245,6 +245,48 @@ export function useClassificationValidation(prefs) {
   })
 
   /**
+   * Check for flight peak threshold reaching into the train peak speed range
+   * Flight is checked first (OR logic), so trains peaking at or above flight min peak become FLIGHT
+   */
+  const flightTrainPeakOverlapWarning = computed(() => {
+    if (!prefs.value?.flightEnabled || !prefs.value?.trainEnabled) return null
+
+    const flightMinMax = prefs.value?.flightMinMaxSpeed ?? 500.0
+    const trainMaxMax = prefs.value?.trainMaxMaxSpeed ?? 180.0
+
+    if (flightMinMax <= trainMaxMax) {
+      return {
+        type: 'flight',
+        severity: 'warn',
+        message: `Flight min peak speed (${flightMinMax} km/h) is at or below train max peak speed (${trainMaxMax} km/h). Flight is checked first, so train trips in this range will be classified as FLIGHT.`
+      }
+    }
+
+    return null
+  })
+
+  /**
+   * Check for a low flight peak threshold without a minimum flight distance
+   * Car trips and short trips with GPS jumps can reach low peak thresholds and become FLIGHT
+   */
+  const flightLowPeakWithoutDistanceWarning = computed(() => {
+    if (!prefs.value?.flightEnabled) return null
+
+    const flightMinMax = prefs.value?.flightMinMaxSpeed ?? 500.0
+    const minDistance = prefs.value?.flightMinDistanceKm ?? 0
+
+    if (flightMinMax < 300 && minDistance <= 0) {
+      return {
+        type: 'flight',
+        severity: 'warn',
+        message: `Flight min peak speed (${flightMinMax} km/h) is low and no minimum flight distance is set. Fast car trips or short trips with GPS jumps may be classified as FLIGHT. Consider setting a minimum distance.`
+      }
+    }
+
+    return null
+  })
+
+  /**
    * Check for car min/max inversion
    */
   const carMinMaxWarning = computed(() => {
@@ -316,6 +358,8 @@ export function useClassificationValidation(prefs) {
       trainMinPeakWarning.value,
       flightMinMaxWarning.value,
       flightTrainOverlapWarning.value,
+      flightTrainPeakOverlapWarning.value,
+      flightLowPeakWithoutDistanceWarning.value,
       carMinMaxWarning.value,
       walkingMaxWarning.value,
       boatWaterEvidenceWarning.value

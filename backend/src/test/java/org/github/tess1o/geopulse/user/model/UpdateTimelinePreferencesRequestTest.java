@@ -23,4 +23,30 @@ class UpdateTimelinePreferencesRequestTest {
         assertEquals(0, validator.validate(valid).size());
         assertEquals(1, validator.validate(invalid).size());
     }
+
+    @Test
+    void acceptsFlightPeakSpeedDownTo150() {
+        assertEquals(0, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinMaxSpeed(150.0)
+                .build()).size());
+        assertEquals(1, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinMaxSpeed(149.0)
+                .build()).size());
+    }
+
+    @Test
+    void validatesFlightMinDistanceRange() {
+        assertEquals(0, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinDistanceKm(0.0)
+                .build()).size());
+        assertEquals(0, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinDistanceKm(500.0)
+                .build()).size());
+        assertEquals(1, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinDistanceKm(-1.0)
+                .build()).size());
+        assertEquals(1, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightMinDistanceKm(501.0)
+                .build()).size());
+    }
 }
