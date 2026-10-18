@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -492,6 +495,7 @@ public class DataGapStayOverrideService {
             Instant previousStart = previousStay.getTimestamp();
             Instant nextEnd = stayEnd(nextStay);
             previousStay.setStayDuration(Duration.between(previousStart, nextEnd).getSeconds());
+            previousStay.setExplanation(TimelineExplanation.withNote(previousStay.getExplanation(), manualGapStay()));
             stayRepository.delete(nextStay);
             return previousStay;
         }
@@ -500,6 +504,7 @@ public class DataGapStayOverrideService {
             Instant previousStart = previousStay.getTimestamp();
             Instant extendedEnd = gapEnd.isAfter(stayEnd(previousStay)) ? gapEnd : stayEnd(previousStay);
             previousStay.setStayDuration(Duration.between(previousStart, extendedEnd).getSeconds());
+            previousStay.setExplanation(TimelineExplanation.withNote(previousStay.getExplanation(), manualGapStay()));
             return previousStay;
         }
 
@@ -507,6 +512,7 @@ public class DataGapStayOverrideService {
             Instant nextEnd = stayEnd(nextStay);
             nextStay.setTimestamp(gapStart);
             nextStay.setStayDuration(Duration.between(gapStart, nextEnd).getSeconds());
+            nextStay.setExplanation(TimelineExplanation.withNote(nextStay.getExplanation(), manualGapStay()));
             return nextStay;
         }
 
@@ -517,6 +523,7 @@ public class DataGapStayOverrideService {
                 .location(GeoUtils.createPoint(location.longitude(), location.latitude()))
                 .locationName(location.locationName())
                 .locationSource(location.locationSource())
+                .explanation(new TimelineExplanation(manualGapStay(), java.util.List.of(), null).toMap())
                 .build();
 
         if (location.favoriteId() != null) {
@@ -715,4 +722,9 @@ public class DataGapStayOverrideService {
             this.score = score;
         }
     }
+
+    private static TimelineReason manualGapStay() {
+        return TimelineReason.of(TimelineReasons.MANUAL_GAP_STAY);
+    }
+
 }

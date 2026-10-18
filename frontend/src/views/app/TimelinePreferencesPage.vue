@@ -313,7 +313,7 @@ const CLASSIFICATION_FIELDS = [
 const STRUCTURAL_FIELDS = [
   'staypointVelocityThreshold', 'staypointRadiusMeters',
   'staypointMinDurationMinutes', 'tripDetectionAlgorithm',
-  'useVelocityAccuracy', 'staypointMaxAccuracyThreshold', 'staypointMinAccuracyRatio',
+  'useVelocityAccuracy', 'staypointMaxAccuracyThreshold',
   'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
   'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
   'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
@@ -331,7 +331,6 @@ const PREFERENCE_VALUE_TYPES = {
   useVelocityAccuracy: 'boolean',
   staypointVelocityThreshold: 'number',
   staypointMaxAccuracyThreshold: 'number',
-  staypointMinAccuracyRatio: 'number',
   tripDetectionAlgorithm: 'string',
   walkingMaxAvgSpeed: 'number',
   walkingMaxMaxSpeed: 'number',
@@ -617,10 +616,6 @@ const formatPreferenceValue = (key, value) => {
   if (key === 'tripDetectionAlgorithm') {
     if (value === 'single') return t('timelinePreferences.page.formatValue.singleTrip')
     if (value === 'multiple') return t('timelinePreferences.page.formatValue.multipleTrips')
-  }
-
-  if (key === 'staypointMinAccuracyRatio' && typeof value === 'number') {
-    return `${Math.round(value * 100)}%`
   }
 
   if (key === 'gapTripInferenceMinDistanceMeters' && typeof value === 'number') {

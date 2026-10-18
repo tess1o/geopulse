@@ -117,30 +117,6 @@
         />
       </template>
     </SettingCard>
-
-    <!-- Min Accuracy Ratio -->
-    <SettingCard
-      v-if="modelValue.useVelocityAccuracy"
-      :title="t('timeline.preferences.stayPointDetection.minAccuracyRatio.title')"
-      :description="t('timeline.preferences.stayPointDetection.minAccuracyRatio.description')"
-      :details="t('timeline.preferences.stayPointDetection.minAccuracyRatio.details')"
-      setting-id="staypointMinAccuracyRatio"
-    >
-      <template #control>
-        <SliderControl
-          v-if="modelValue.staypointMinAccuracyRatio !== undefined"
-          :model-value="modelValue.staypointMinAccuracyRatio"
-          @update:model-value="updatePref('staypointMinAccuracyRatio', $event)"
-          :min="0.1"
-          :max="1.0"
-          :step="0.05"
-          :labels="minAccuracyRatioLabels"
-          :input-min="0.1"
-          :input-max="1.0"
-          :decimal-places="2"
-        />
-      </template>
-    </SettingCard>
     </div>
   </PreferencesTabLayout>
 </template>
@@ -189,7 +165,6 @@ const radiusLabels = threeLabels('radius')
 const minDurationLabels = threeLabels('minDuration')
 const velocityThresholdLabels = threeLabels('velocityThreshold')
 const accuracyThresholdLabels = threeLabels('accuracyThreshold')
-const minAccuracyRatioLabels = threeLabels('minAccuracyRatio')
 
 const radiusDetails = lowerHigherDetails('radius')
 const minDurationDetails = lowerHigherDetails('minDuration')

@@ -159,7 +159,6 @@ export default {
             useVelocityAccuracy: 'Enhanced Filtering',
             staypointVelocityThreshold: 'Velocity Threshold',
             staypointMaxAccuracyThreshold: 'GPS Accuracy Threshold',
-            staypointMinAccuracyRatio: 'Minimum Accuracy Ratio',
             tripDetectionAlgorithm: 'Trip Detection Algorithm',
             walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
             walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',

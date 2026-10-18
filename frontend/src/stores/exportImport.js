@@ -347,25 +347,13 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
-        async downloadDebugExport(request) {
+        // Debug exports run as export jobs: poll fetchExportStatus, then downloadExportFile
+        async createDebugExportJob(request) {
             this.exportError = null
             try {
-                const response = await apiService.post('/exports/debug', request, { responseType: 'blob' })
-                if (!(response.data instanceof Blob)) {
-                    throw new Error('Invalid debug export response')
-                }
-
-                const url = window.URL.createObjectURL(response.data)
-                const link = document.createElement('a')
-                link.href = url
-                const disposition = response.headers?.['content-disposition'] || ''
-                const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-                link.download = match?.[1]?.replace(/['"]/g, '') || 'geopulse-debug.zip'
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
-                window.URL.revokeObjectURL(url)
-                return true
+                const job = await apiService.post('/exports/debug', request)
+                this.addExportJob(job)
+                return job
             } catch (error) {
                 throw this.failExport(error, 'Failed to export debug data')
             }
@@ -488,16 +476,27 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
-        async uploadDebugImport(file, clearExistingData, updateTimelineConfig) {
+        // Debug imports run as import jobs; returns { job, report }, the report once the job has completed
+        async uploadDebugImport(file, { clearExistingData, updateTimelineConfig, updateTimezone }) {
             this.importError = null
             const formData = new FormData()
             formData.append('file', file)
             formData.append('clearExistingData', clearExistingData)
             formData.append('updateTimelineConfig', updateTimelineConfig)
+            formData.append('updateTimezone', updateTimezone)
             try {
-                await apiService.post('/debug-imports', formData)
+                return await apiService.post('/debug-imports', formData)
             } catch (error) {
                 throw this.failImport(error, 'Failed to import debug data')
+            }
+        },
+
+        async fetchDebugImport(importJobId) {
+            this.importError = null
+            try {
+                return await apiService.get(`/debug-imports/${importJobId}`)
+            } catch (error) {
+                throw this.failImport(error, 'Failed to fetch debug import status')
             }
         },
 

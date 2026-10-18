@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.model.domain;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -15,6 +16,32 @@ public class UserState {
     private ProcessorMode currentMode = ProcessorMode.UNKNOWN;
     private List<GPSPoint> activePoints = new ArrayList<>();
     private GPSPoint lastProcessedPoint;
+
+    /** How the next event begins: with the very first point, or with the first point after a data gap. */
+    private TimelineReason nextStartReason = TimelineReason.of(TimelineReasons.FIRST_POINT);
+
+    /** Why the event being built from the active points began, and what was decided about it since. */
+    private TimelineExplanation activeExplanation = new TimelineExplanation();
+
+    /** The user's favorite areas: stay detection keeps points in the same area as the stay together. */
+    private List<FavoriteAreaDto> favoriteAreas = List.of();
+
+    /**
+     * Begins explaining a new event.
+     */
+    public void startExplanation(TimelineReason start) {
+        activeExplanation = new TimelineExplanation(start, null, null);
+    }
+
+    /**
+     * The active event's explanation with its end, ready to attach to the finalized event. Explaining starts afresh.
+     */
+    public TimelineExplanation finishExplanation(TimelineReason end) {
+        TimelineExplanation explanation = activeExplanation;
+        explanation.setEnd(end);
+        activeExplanation = new TimelineExplanation();
+        return explanation;
+    }
 
     public void addActivePoint(GPSPoint point) {
         this.activePoints.add(point);
@@ -66,9 +93,14 @@ public class UserState {
         return new ArrayList<>(activePoints);
     }
 
+    /**
+     * Starts over after a data gap.
+     */
     public void reset() {
         currentMode = ProcessorMode.UNKNOWN;
         activePoints.clear();
         lastProcessedPoint = null;
+        nextStartReason = TimelineReason.of(TimelineReasons.AFTER_DATA_GAP);
+        activeExplanation = new TimelineExplanation();
     }
 }

@@ -41,8 +41,8 @@ import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assert
  * <p>Requests authenticate with a bearer header, so no CSRF token is involved; the CSRF rules for
  * cookie sessions are covered by {@code CsrfProtectionContractTest}.
  *
- * <p>Not covered: the {@code POST /debug-imports} success path. It requires a ZIP whose
- * {@code gps_data.json} matches the debug-import schema — see the notes on that test.
+ * <p>The import scheduler is off here, so a debug import job is only created, never run; the import itself is covered
+ * by {@code DebugExportRoundTripIntegrationTest}.
  */
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -367,6 +367,38 @@ class ImportContractTest {
                         fieldPart("updateTimelineConfig", "false"))
                         .when().post(DEBUG_IMPORTS),
                 400, "INVALID_DEBUG_IMPORT");
+    }
+
+    @Test
+    void debugImportStartsAJobWithAReport() {
+        Response created = multipart(ownerToken,
+                filePart("file", "issue-627.zip", debugExportFixture(), "application/zip"),
+                fieldPart("clearExistingData", "true"),
+                fieldPart("updateTimelineConfig", "true"),
+                fieldPart("updateTimezone", "false"))
+                .when().post(DEBUG_IMPORTS);
+        assertThat(created.statusCode()).isEqualTo(200);
+        String jobId = created.jsonPath().getString("job.importJobId");
+        assertThat(jobId).isNotBlank();
+        assertThat(created.jsonPath().getString("report")).as("no report before the job ran").isNull();
+
+        Response polled = authenticated(ownerToken).when().get(DEBUG_IMPORTS + "/" + jobId);
+        assertThat(polled.statusCode()).isEqualTo(200);
+        assertThat(polled.jsonPath().getString("job.importJobId")).isEqualTo(jobId);
+
+        assertProblemEnvelope(authenticated(ownerToken).when().get(DEBUG_IMPORTS + "/" + UUID.randomUUID()),
+                404, "IMPORT_JOB_NOT_FOUND");
+        authenticated(ownerToken).when().delete("/api/v1/imports/" + jobId);
+    }
+
+    private static byte[] debugExportFixture() {
+        try (InputStream stream = ImportContractTest.class.getResourceAsStream(
+                "/timeline-fixtures/issue-627-debug-export.zip")) {
+            assertThat(stream).isNotNull();
+            return stream.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static byte[] fixtureBytes() {

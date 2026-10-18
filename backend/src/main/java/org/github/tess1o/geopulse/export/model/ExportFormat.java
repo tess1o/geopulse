@@ -9,7 +9,9 @@ public enum ExportFormat {
     GPX,
     OWNTRACKS,
     GEOJSON,
-    CSV;
+    CSV,
+    /** Anonymized archive for reproducing a timeline issue; created with {@code POST /exports/debug} only. */
+    DEBUG;
 
     @JsonValue
     public String value() {

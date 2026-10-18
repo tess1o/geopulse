@@ -113,6 +113,8 @@
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <StayCard
@@ -132,6 +134,8 @@
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <!-- Trip Cards -->
@@ -154,6 +158,8 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
@@ -176,6 +182,8 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
@@ -193,6 +201,8 @@
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <DataGapCard
@@ -207,6 +217,8 @@
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
             </div>
           </template>
@@ -219,8 +231,18 @@
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
       :read-only="readOnly"
+      :show-explanation-link="!isPublicView"
       @movement-updated="handleMovementTypeUpdated"
+      @show-explanation="handleShowExplanationFromClassification"
       @close="handleCloseClassificationDialog"
+    />
+
+    <TimelineEventExplanationDialog
+      :visible="explanationDialogVisible"
+      :kind="selectedItemForExplanation?.type || 'stay'"
+      :item="selectedItemForExplanation"
+      @show-classification="handleShowClassificationFromExplanation"
+      @close="handleCloseExplanationDialog"
     />
 
     <TripMovementTypeQuickEditDialog
@@ -282,6 +304,9 @@ import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 const TripClassificationDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripClassificationDialog.vue')
 )
+const TimelineEventExplanationDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TimelineEventExplanationDialog.vue')
+)
 const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
 )
@@ -308,6 +333,8 @@ const displayLimit = ref(50)
 // Classification dialog state
 const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
+const explanationDialogVisible = ref(false)
+const selectedItemForExplanation = ref(null)
 const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
 const dataGapConversionDialogVisible = ref(false)
@@ -677,6 +704,27 @@ const handleShowClassification = (tripItem) => {
 const handleCloseClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
+}
+
+const handleShowExplanation = (item) => {
+  selectedItemForExplanation.value = item
+  explanationDialogVisible.value = true
+}
+
+const handleCloseExplanationDialog = () => {
+  explanationDialogVisible.value = false
+  selectedItemForExplanation.value = null
+}
+
+// The explanation and classification dialogs of a trip link to each other; only one is open at a time
+const handleShowClassificationFromExplanation = (tripItem) => {
+  handleCloseExplanationDialog()
+  handleShowClassification(tripItem)
+}
+
+const handleShowExplanationFromClassification = (tripItem) => {
+  handleCloseClassificationDialog()
+  handleShowExplanation(tripItem)
 }
 
 const handleShowMapMatchingDetails = (tripItem) => {

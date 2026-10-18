@@ -18,6 +18,11 @@
             :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
+          <TimelineExplanationTrigger
+            v-if="allowExplanation"
+            kind="trip"
+            @show-explanation="emit('show-explanation', tripItem)"
+          />
         </div>
       </div>
     </template>
@@ -91,6 +96,7 @@
 </template>
 
 <script setup>
+import TimelineExplanationTrigger from './TimelineExplanationTrigger.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
@@ -143,6 +149,11 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  // Whether the card may open the explanation dialog (it needs the owner's account)
+  allowExplanation: {
+    type: Boolean,
+    default: true
+  },
   readOnly: {
     type: Boolean,
     default: false
@@ -153,7 +164,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved', 'show-map-matching-details']);
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved', 'show-map-matching-details', 'show-explanation']);
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -206,6 +217,16 @@ const contextMenuItems = computed(() => {
       }
     }
   ]
+
+  if (props.allowExplanation) {
+    items.push({
+      label: t('timeline.explanation.toggle.trip'),
+      icon: 'pi pi-question-circle',
+      command: () => {
+        emit('show-explanation', props.tripItem)
+      }
+    })
+  }
 
   if (matchingNotes.value.length > 0) {
     items.push({

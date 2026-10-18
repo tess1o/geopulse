@@ -57,7 +57,6 @@ class StreamingTimelineProcessorTest {
             .staypointRadiusMeters(100) // stay radius
             .staypointMinDurationMinutes(10) // 10 minutes min stay
             .staypointMaxAccuracyThreshold(50.0) // 50m accuracy threshold
-            .staypointMinAccuracyRatio(0.7) // require 70% accurate points
             .useVelocityAccuracy(true) // enable accuracy validation
             .staypointVelocityThreshold(7.2) // 7.2 km/h = 2 m/s
             .dataGapThresholdSeconds(3600) // 1 hour
@@ -123,7 +122,6 @@ class StreamingTimelineProcessorTest {
             .staypointRadiusMeters(100)
             .staypointMinDurationMinutes(10)
             .staypointMaxAccuracyThreshold(50.0) // threshold set
-            .staypointMinAccuracyRatio(0.7)
             .useVelocityAccuracy(false) // but validation disabled
             .build();
         List<TimelineEvent> result = processor.processPoints(Arrays.asList(), configDisabled, testUserId);
@@ -178,22 +176,6 @@ class StreamingTimelineProcessorTest {
         assertTrue((Boolean) method.invoke(processor, poorAccuracyPoint, configDisabled));
     }
 
-    @Test
-    void shouldRejectStay_WhenAccuracyRatioTooLow() {
-        // Mock finalization service to return null when accuracy ratio fails
-        when(finalizationService.finalizeStayWithoutLocation(any(UserState.class), eq(config)))
-            .thenReturn(null); // This simulates accuracy ratio validation failure
-        List<GPSPoint> points = Arrays.asList(
-            createGpsPoint(Instant.parse("2024-08-15T08:00:00Z"), 40.7589, -73.9851, 0.0, 20.0), // good
-            createGpsPoint(Instant.parse("2024-08-15T08:10:00Z"), 40.7589, -73.9851, 0.0, 100.0), // bad
-            createGpsPoint(Instant.parse("2024-08-15T08:20:00Z"), 40.7589, -73.9851, 0.0, 100.0), // bad
-            createGpsPoint(Instant.parse("2024-08-15T08:30:00Z"), 40.7589, -73.9851, 0.0, 100.0)  // bad
-            // Only 1/4 points are accurate (25%) < 70% required
-        );
-        List<TimelineEvent> result = processor.processPoints(points, config, testUserId);
-        assertNotNull(result);
-        // The exact behavior depends on state transitions, but stays should be rejected due to low accuracy ratio
-    }
     /**
      * CRITICAL TEST #1: Demonstrates the retroactive stay timestamp issue.
      *
@@ -298,6 +280,50 @@ class StreamingTimelineProcessorTest {
         Instant actualTripEnd = trip.getStartTime().plus(trip.getDuration());
         assertEquals(expectedTripEnd, actualTripEnd,
             "Trip should end at first stopped point (arrival boundary), not at the last moving point");
+    }
+
+    /**
+     * Sparse GPS: arrival is detected only once the stopped points already span the minimum stay duration,
+     * and the very next point is far away. The stop must still become a stay, not the start of the next trip.
+     */
+    @Test
+    void shouldConfirmStay_WhenArrivalClusterAlreadyLastsMinimumAndNextPointIsFar() {
+        TimelineConfig sparseConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(7)
+            .staypointVelocityThreshold(7.2)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .build();
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2024-08-15T09:50:00Z"), 40.7589, -73.9851, 15.0, 20.0), // moving
+            createGpsPoint(Instant.parse("2024-08-15T09:55:00Z"), 40.7689, -73.9751, 15.0, 20.0), // moving
+            createGpsPoint(Instant.parse("2024-08-15T10:00:00Z"), 40.7789, -73.9651, 0.0, 20.0),  // 1st stopped
+            createGpsPoint(Instant.parse("2024-08-15T10:05:00Z"), 40.7789, -73.9651, 0.0, 20.0),  // 2nd stopped
+            createGpsPoint(Instant.parse("2024-08-15T10:10:00Z"), 40.7789, -73.9651, 0.0, 20.0),  // 3rd stopped -> arrival, 10 min
+            createGpsPoint(Instant.parse("2024-08-15T10:15:00Z"), 40.7889, -73.9551, 15.0, 20.0), // already far away
+            createGpsPoint(Instant.parse("2024-08-15T10:20:00Z"), 40.7989, -73.9451, 15.0, 20.0)
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, sparseConfig, testUserId);
+
+        List<Stay> stays = events.stream().filter(Stay.class::isInstance).map(Stay.class::cast).toList();
+        assertEquals(1, stays.size(), "The 10-minute stop should be a stay, not part of a trip");
+        Stay stay = stays.getFirst();
+        assertEquals(Instant.parse("2024-08-15T10:00:00Z"), stay.getStartTime());
+        assertEquals(java.time.Duration.ofMinutes(10), stay.getDuration());
+
+        TimelineExplanation explanation = stay.getExplanation();
+        assertNotNull(explanation);
+        assertEquals(TimelineReasons.ARRIVAL, explanation.getStart().code());
+        assertTrue(explanation.getNotes().stream().anyMatch(note -> TimelineReasons.CONFIRMED.equals(note.code())),
+            "The stay should record that it was confirmed");
+        assertTrue(explanation.getNotes().stream().noneMatch(note -> TimelineReasons.SHORT_STOP.equals(note.code())));
+        assertEquals(TimelineReasons.MOVED_AWAY, explanation.getEnd().code());
     }
 
     /**

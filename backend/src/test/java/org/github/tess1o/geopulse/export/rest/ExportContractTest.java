@@ -214,10 +214,31 @@ class ExportContractTest {
                         .when().post(EXPORTS + "/debug"),
                 400, "INVALID_DEBUG_EXPORT_REQUEST");
 
-        Response zip = authenticated(ownerToken).body(debugBody(RANGE_START, RANGE_END))
+        // A latitude shift changes distances, so the exported timeline could not be reproduced
+        Map<String, Object> latitudeShift = debugBody(RANGE_START, RANGE_END);
+        latitudeShift.put("latitudeShift", 5.0);
+        assertProblemEnvelope(authenticated(ownerToken).body(latitudeShift).when().post(EXPORTS + "/debug"),
+                400, "INVALID_DEBUG_EXPORT_REQUEST");
+
+        // Debug exports run as export jobs; only this endpoint starts them
+        Map<String, Object> plainDebug = exportBody();
+        plainDebug.put("format", "debug");
+        assertProblemEnvelope(authenticated(ownerToken).body(plainDebug).when().post(EXPORTS),
+                400, "INVALID_EXPORT_REQUEST");
+
+        Map<String, Object> withIssue = debugBody(RANGE_START, RANGE_END);
+        withIssue.put("issueDescription", "x".repeat(4001));
+        assertProblemEnvelope(authenticated(ownerToken).body(withIssue).when().post(EXPORTS + "/debug"),
+                400, "INVALID_DEBUG_EXPORT_REQUEST");
+
+        Response created = authenticated(ownerToken).body(debugBody(RANGE_START, RANGE_END))
                 .when().post(EXPORTS + "/debug");
-        assertThat(zip.statusCode()).isEqualTo(200);
-        assertThat(zip.contentType()).startsWith("application/zip");
+        assertThat(created.statusCode()).isEqualTo(200);
+        assertThat(created.jsonPath().getString("format")).isEqualTo("debug");
+        assertThat(created.jsonPath().getString("status")).isEqualTo("processing");
+        String jobId = created.jsonPath().getString("exportJobId");
+        assertThat(authenticated(ownerToken).when().get(EXPORTS + "/" + jobId).statusCode()).isEqualTo(200);
+        assertThat(authenticated(ownerToken).when().delete(EXPORTS + "/" + jobId).statusCode()).isEqualTo(204);
     }
 
     private static Map<String, Object> exportBody() {

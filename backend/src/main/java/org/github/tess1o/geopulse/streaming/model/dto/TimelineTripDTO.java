@@ -34,6 +34,10 @@ public class TimelineTripDTO implements GpsPoint {
     private long distanceMeters;
     private String movementType;
     private String movementTypeSource;
+
+    /** Why the timeline engine created this event as it is; absent until the timeline is regenerated. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private TimelineExplanationDTO explanation;
     private List<? extends GpsPoint> path; // Only used for TRIP items
 
     /**

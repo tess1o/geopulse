@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -24,8 +25,7 @@ import java.util.*;
  * <p>Features accuracy-based filtering to improve data quality:</p>
  * <ul>
  *   <li><strong>Pre-filtering:</strong> Removes GPS points with accuracy exceeding the configured threshold</li>
- *   <li><strong>Cluster validation:</strong> Ensures staypoint clusters meet minimum accuracy ratio requirements</li>
- *   <li><strong>Configurable thresholds:</strong> Uses staypointMaxAccuracyThreshold and staypointMinAccuracyRatio from TimelineConfig</li>
+ *   <li><strong>Configurable threshold:</strong> Uses staypointMaxAccuracyThreshold from TimelineConfig</li>
  * </ul>
  *
  * <p>Accuracy validation can be disabled by setting useVelocityAccuracy=false in the configuration.</p>
@@ -39,7 +39,8 @@ public class StreamingTimelineProcessor {
      * A 50cm tolerance ensures that small floating-point variations in Haversine
      * calculations don't cause different stay/trip boundary decisions across JVM versions.
      */
-    private static final double DISTANCE_EPSILON_METERS = 0.5;
+    /** Tolerance allowed over the stay radius. */
+    static final double DISTANCE_EPSILON_METERS = 0.5;
     private static final double DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS = 300.0;
     private static final double MIN_WATER_TRANSITION_SPLIT_DURATION_SECONDS = 120.0;
     private static final double MIN_LAND_TRANSITION_SPLIT_DURATION_SECONDS = 60.0;
@@ -70,7 +71,6 @@ public class StreamingTimelineProcessor {
      * <ol>
      *   <li>Filters GPS points using staypointMaxAccuracyThreshold</li>
      *   <li>Processes filtered points through the state machine</li>
-     *   <li>Validates staypoint clusters using staypointMinAccuracyRatio</li>
      *   <li>Populates location data for finalized stays</li>
      * </ol>
      *
@@ -93,11 +93,32 @@ public class StreamingTimelineProcessor {
      * @return list of finalized timeline events
      */
     public List<TimelineEvent> processPoints(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId) {
+        return processPoints(newPoints, config, userId, jobId, null);
+    }
+
+    /**
+     * Picks up a trip that began with a stay being left: the first point is taken as the point recorded outside that
+     * stay, and only events starting at or after {@code emitFrom} are returned. A regeneration uses it to replay the way
+     * into its first stay exactly as a full regeneration went, without regenerating what came before.
+     *
+     * @param tripStart why the trip began, as recorded when the stay was left
+     * @param emitFrom  where the regenerated part begins
+     */
+    public record TripReplay(TimelineReason tripStart, Instant emitFrom) {
+    }
+
+    /**
+     * Process GPS points to generate timeline events, optionally picking up a trip first (see {@link TripReplay}).
+     */
+    public List<TimelineEvent> processPoints(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId,
+                                             TripReplay replay) {
         UserState userState = new UserState();
         List<TimelineEvent> finalizedEvents = new ArrayList<>();
+        boolean tripToPickUp = replay != null;
 
         // Pre-load user's favorite areas for stay detection enhancement
         List<FavoriteAreaDto> userFavoriteAreas = loadUserFavoriteAreas(userId);
+        userState.setFavoriteAreas(userFavoriteAreas);
 
         // Determine total point count for progress tracking
         Long totalPoints = null;
@@ -114,7 +135,12 @@ public class StreamingTimelineProcessor {
             processedCount++;
             // Apply accuracy filter inline to support streaming without loading all points
             if (shouldIncludePoint(point, config)) {
-                processPoint(point, userState, config, finalizedEvents, userFavoriteAreas);
+                if (tripToPickUp) {
+                    pickUpTrip(point, userState, replay.tripStart());
+                    tripToPickUp = false;
+                } else {
+                    processPoint(point, userState, config, finalizedEvents, userFavoriteAreas);
+                }
             }
 
             // Update progress periodically
@@ -132,6 +158,11 @@ public class StreamingTimelineProcessor {
         TimelineEvent finalEvent = finalizeActiveEvent(userState, config);
         if (finalEvent != null) {
             finalizedEvents.add(finalEvent);
+        }
+
+        // The replayed way into the first stay was generated before and is kept as it is
+        if (replay != null) {
+            finalizedEvents.removeIf(event -> event.getStartTime().isBefore(replay.emitFrom()));
         }
 
         // 4. Batch populate location data for all stays at once (with progress tracking if jobId provided)
@@ -235,8 +266,21 @@ public class StreamingTimelineProcessor {
         userState.setCurrentMode(ProcessorMode.POTENTIAL_STAY);
         userState.clearActivePoints();
         userState.addActivePoint(point);
+        userState.startExplanation(userState.getNextStartReason());
 
         return ProcessingResult.withStateOnly(userState);
+    }
+
+    /**
+     * The state a confirmed stay leaves behind when a point is recorded outside it (see
+     * {@link #handleConfirmedStayState}).
+     */
+    private void pickUpTrip(GPSPoint point, UserState userState, TimelineReason tripStart) {
+        userState.setCurrentMode(ProcessorMode.IN_TRIP);
+        userState.clearActivePoints();
+        userState.addActivePoint(point);
+        userState.startExplanation(tripStart);
+        userState.setLastProcessedPoint(point);
     }
 
     /**
@@ -250,11 +294,8 @@ public class StreamingTimelineProcessor {
 
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
             // Before transitioning to trip, check if both points are within same favorite area
-            FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
-            FavoriteAreaDto centroidArea = findContainingFavoriteArea(centroid, userFavoriteAreas);
-
-            if (currentPointArea != null && centroidArea != null &&
-                    currentPointArea.getId() == centroidArea.getId()) {
+            if (FavoriteAreas.sameArea(FavoriteAreas.containing(point, userFavoriteAreas),
+                    FavoriteAreas.containing(centroid, userFavoriteAreas))) {
                 // Both points within same favorite area - continue stay detection despite distance
                 userState.addActivePoint(point);
 
@@ -263,13 +304,13 @@ public class StreamingTimelineProcessor {
                 Duration minStayDuration = getMinStayDuration(config);
 
                 if (stayDuration.compareTo(minStayDuration) >= 0) {
-                    userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
+                    confirmStay(userState, config);
                 }
 
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - transition to trip as before
-                return transitionToTrip(point, userState);
+                return transitionToTrip(point, userState, config);
             }
         } else {
             // Point is close - add to potential stay
@@ -280,7 +321,7 @@ public class StreamingTimelineProcessor {
             Duration minStayDuration = getMinStayDuration(config);
 
             if (stayDuration.compareTo(minStayDuration) >= 0) {
-                userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
+                confirmStay(userState, config);
             }
 
             return ProcessingResult.withStateOnly(userState);
@@ -298,22 +339,27 @@ public class StreamingTimelineProcessor {
 
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
             // Before finalizing stay, check if both points are within same favorite area
-            FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
-            FavoriteAreaDto centroidArea = findContainingFavoriteArea(centroid, userFavoriteAreas);
-
-            if (currentPointArea != null && centroidArea != null &&
-                    currentPointArea.getId() == centroidArea.getId()) {
+            if (FavoriteAreas.sameArea(FavoriteAreas.containing(point, userFavoriteAreas),
+                    FavoriteAreas.containing(centroid, userFavoriteAreas))) {
                 // Both points within same favorite area - continue stay despite distance
                 userState.addActivePoint(point);
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - finalize stay and start trip as before
-                TimelineEvent finalizedStay = finalizationService.finalizeStayWithoutLocation(userState, config);
+                Stay finalizedStay = finalizationService.finalizeStayWithoutLocation(userState, config);
+                long distanceMeters = Math.round(distance);
+                TimelineExplanation stayExplanation = userState.finishExplanation(TimelineReason.of(
+                        TimelineReasons.MOVED_AWAY, "distanceMeters", distanceMeters, "radiusMeters", (int) stayRadius));
+                if (finalizedStay != null) {
+                    finalizedStay.setExplanation(stayExplanation);
+                }
 
                 // Start new trip
                 userState.setCurrentMode(ProcessorMode.IN_TRIP);
                 userState.clearActivePoints();
                 userState.addActivePoint(point);
+                userState.startExplanation(TimelineReason.of(
+                        TimelineReasons.LEFT_STAY, "distanceMeters", distanceMeters, "radiusMeters", (int) stayRadius));
 
                 return ProcessingResult.withSingleEvent(userState, finalizedStay);
             }
@@ -351,6 +397,11 @@ public class StreamingTimelineProcessor {
             List<GPSPoint> stoppedPoints = allPoints.subList(stopResult.stoppedClusterStartIndex, allPoints.size());
 
             TimelineEvent finalizedTrip = null;
+            TripStopHeuristicsService.TripStopDetection detection = stopResult.detection;
+            TimelineReason arrival = TimelineReason.of(TimelineReasons.ARRIVAL,
+                    "stopSeconds", detection.getStopDuration().getSeconds(),
+                    "points", detection.getStoppedPoints(),
+                    "stopSpeedKmh", detection.getStopSpeedThresholdKmh());
 
             // Only finalize trip if there were moving points before the stop
             if (!tripPoints.isEmpty()) {
@@ -361,12 +412,23 @@ public class StreamingTimelineProcessor {
                 }
                 finalizedTrip = finalizationService.finalizeTrip(tripState, config);
             }
+            TimelineExplanation tripExplanation = userState.finishExplanation(arrival);
+            if (finalizedTrip != null) {
+                finalizedTrip.setExplanation(tripExplanation);
+            }
 
             // Start new potential stay with the stopped points (retroactive to first stopped point)
             userState.setCurrentMode(ProcessorMode.POTENTIAL_STAY);
             userState.clearActivePoints();
             for (GPSPoint p : stoppedPoints) {
                 userState.addActivePoint(p);
+            }
+            userState.startExplanation(arrival);
+
+            // With sparse GPS the stop can already last the minimum by the time it is detected. Confirm it now,
+            // or a next point outside the radius would turn it into the start of a trip as a "short" stop.
+            if (calculateCurrentStayDuration(userState).compareTo(getMinStayDuration(config)) >= 0) {
+                confirmStay(userState, config);
             }
 
             // Return trip event if one was created, otherwise just state change
@@ -431,12 +493,15 @@ public class StreamingTimelineProcessor {
         if (completedTrip == null) {
             return null;
         }
+        TimelineReason transition = TimelineReason.of(TimelineReasons.WATER_TRANSITION, "toWater", currentRun.onWater);
+        completedTrip.setExplanation(userState.finishExplanation(transition));
 
         userState.setCurrentMode(ProcessorMode.IN_TRIP);
         userState.clearActivePoints();
         for (int i = previousRun.endIndex; i < activePoints.size(); i++) {
             userState.addActivePoint(activePoints.get(i));
         }
+        userState.startExplanation(transition);
 
         log.debug("Split active trip on {} -> {} environment transition: previous={}m/{}s, current={}m/{}s",
                 previousRun.onWater ? "water" : "land",
@@ -553,10 +618,28 @@ public class StreamingTimelineProcessor {
     /**
      * Transition from potential stay to trip state.
      */
-    private ProcessingResult transitionToTrip(GPSPoint point, UserState userState) {
+    private ProcessingResult transitionToTrip(GPSPoint point, UserState userState, TimelineConfig config) {
+        // The stop was too short to become a stay, so its points become the start of a trip
+        TimelineReason shortStop = TimelineReason.of(TimelineReasons.SHORT_STOP,
+                "stopSeconds", calculateCurrentStayDuration(userState).getSeconds(),
+                "minMinutes", config.getStaypointMinDurationMinutes());
+        TimelineExplanation explanation = userState.getActiveExplanation();
+        TimelineReason start = explanation.getStart();
+        if (start != null && TimelineReasons.ARRIVAL.equals(start.code())) {
+            explanation.setStart(shortStop);
+        } else {
+            explanation.note(shortStop);
+        }
         userState.setCurrentMode(ProcessorMode.IN_TRIP);
         userState.addActivePoint(point);
         return ProcessingResult.withStateOnly(userState);
+    }
+
+    private void confirmStay(UserState userState, TimelineConfig config) {
+        userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
+        userState.getActiveExplanation().note(TimelineReason.of(TimelineReasons.CONFIRMED,
+                "radiusMeters", config.getStaypointRadiusMeters(),
+                "minMinutes", config.getStaypointMinDurationMinutes()));
     }
 
     /**
@@ -573,18 +656,16 @@ public class StreamingTimelineProcessor {
             return null;
         }
 
-        switch (userState.getCurrentMode()) {
-            case POTENTIAL_STAY:
-            case CONFIRMED_STAY:
-                return finalizationService.finalizeStayWithoutLocation(userState, config);
-
-            case IN_TRIP:
-                return finalizationService.finalizeTrip(userState, config);
-
-            case UNKNOWN:
-            default:
-                return null;
+        TimelineEvent event = switch (userState.getCurrentMode()) {
+            case POTENTIAL_STAY, CONFIRMED_STAY -> finalizationService.finalizeStayWithoutLocation(userState, config);
+            case IN_TRIP -> finalizationService.finalizeTrip(userState, config);
+            default -> null;
+        };
+        TimelineExplanation explanation = userState.finishExplanation(TimelineReason.of(TimelineReasons.LAST_POINT));
+        if (event != null) {
+            event.setExplanation(explanation);
         }
+        return event;
     }
 
 
@@ -606,18 +687,21 @@ public class StreamingTimelineProcessor {
     private static class StopDetectionResult {
         final boolean stopDetected;
         final int stoppedClusterStartIndex;  // Index in activePoints where stopped cluster begins
+        final TripStopHeuristicsService.TripStopDetection detection;
 
-        StopDetectionResult(boolean stopDetected, int stoppedClusterStartIndex) {
+        StopDetectionResult(boolean stopDetected, int stoppedClusterStartIndex,
+                            TripStopHeuristicsService.TripStopDetection detection) {
             this.stopDetected = stopDetected;
             this.stoppedClusterStartIndex = stoppedClusterStartIndex;
+            this.detection = detection;
         }
 
         static StopDetectionResult noStop() {
-            return new StopDetectionResult(false, -1);
+            return new StopDetectionResult(false, -1, null);
         }
 
-        static StopDetectionResult stopDetected(int startIndex) {
-            return new StopDetectionResult(true, startIndex);
+        static StopDetectionResult stopDetected(TripStopHeuristicsService.TripStopDetection detection) {
+            return new StopDetectionResult(true, detection.getStoppedClusterStartIndex(), detection);
         }
     }
 
@@ -647,7 +731,7 @@ public class StreamingTimelineProcessor {
         TripStopHeuristicsService.TripStopDetection detection =
                 tripStopHeuristicsService.detectTripStopFromRecentWindow(activePoints, config);
         if (detection.isStopDetected()) {
-            return StopDetectionResult.stopDetected(detection.getStoppedClusterStartIndex());
+            return StopDetectionResult.stopDetected(detection);
         }
 
         return StopDetectionResult.noStop();
@@ -699,32 +783,5 @@ public class StreamingTimelineProcessor {
             log.warn("Failed to load favorite areas for user {}: {}", userId, e.getMessage());
             return new ArrayList<>();
         }
-    }
-
-    /**
-     * Find the favorite area that contains the given GPS point.
-     * Uses rectangular bounding box containment check.
-     *
-     * @param point         GPS point to check
-     * @param favoriteAreas list of favorite areas to search
-     * @return favorite area containing the point, or null if none found
-     */
-    private FavoriteAreaDto findContainingFavoriteArea(GPSPoint point, List<FavoriteAreaDto> favoriteAreas) {
-        if (point == null || favoriteAreas == null || favoriteAreas.isEmpty()) {
-            return null;
-        }
-
-        double pointLat = point.getLatitude();
-        double pointLon = point.getLongitude();
-
-        for (FavoriteAreaDto area : favoriteAreas) {
-            // Check if point is within the rectangular area bounds
-            if (pointLat >= area.getSouthWestLat() && pointLat <= area.getNorthEastLat() &&
-                    pointLon >= area.getSouthWestLon() && pointLon <= area.getNorthEastLon()) {
-                return area;
-            }
-        }
-
-        return null;
     }
 }

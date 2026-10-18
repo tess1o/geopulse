@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.service.explanation.TimelineExplanationPointClassifier;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
@@ -394,6 +395,42 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
 
         return results.stream()
                 .map(this::mapToGPSPoint)
+                .toList();
+    }
+
+    /**
+     * Stored points between two instants for explaining a timeline event, oldest first or newest first. Accuracy and
+     * speed stay null when the source sent none.
+     *
+     * @param inclusive whether points at {@code from} and {@code to} count
+     * @param limit     the most points to return, or null for all
+     */
+    public List<TimelineExplanationPointClassifier.RawPoint> findExplanationPoints(
+            UUID userId, Instant from, Instant to, boolean inclusive, boolean newestFirst, Integer limit) {
+        String bounds = inclusive
+                ? "gp.timestamp >= :from AND gp.timestamp <= :to "
+                : "gp.timestamp > :from AND gp.timestamp < :to ";
+        String order = newestFirst ? "DESC" : "ASC";
+        Query query = getEntityManager().createNativeQuery(
+                        "SELECT gp.timestamp, ST_Y(gp.coordinates), ST_X(gp.coordinates), gp.accuracy, gp.velocity " +
+                                "FROM gps_points gp WHERE gp.user_id = :userId AND " + bounds +
+                                "ORDER BY gp.timestamp " + order + ", gp.id " + order)
+                .setParameter("userId", userId)
+                .setParameter("from", from)
+                .setParameter("to", to);
+        if (limit != null) {
+            query.setMaxResults(limit);
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = query.getResultList();
+        return rows.stream()
+                .map(row -> new TimelineExplanationPointClassifier.RawPoint(
+                        TimestampUtils.getInstantSafe(row[0]),
+                        ((Number) row[1]).doubleValue(),
+                        ((Number) row[2]).doubleValue(),
+                        row[3] != null ? ((Number) row[3]).doubleValue() : null,
+                        row[4] != null ? ((Number) row[4]).doubleValue() : null))
                 .toList();
     }
 

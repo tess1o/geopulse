@@ -25,10 +25,6 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String staypointAccuracyThreshold;
 
-    @ConfigProperty(name = "geopulse.timeline.staypoint.min_accuracy_ratio", defaultValue = "0.5")
-    @StaticInitSafe
-    String staypointMinAccuracyRatio;
-
     // Trip Detection
     @ConfigProperty(name = "geopulse.timeline.trip.detection.algorithm", defaultValue = "single")
     @StaticInitSafe

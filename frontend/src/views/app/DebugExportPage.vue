@@ -70,6 +70,37 @@
                 </small>
               </div>
 
+              <!-- Problem Report -->
+              <div class="form-group">
+                <label class="form-label" for="issueDescription">{{ t('data.debugExport.issueLabel') }}</label>
+                <Textarea
+                    id="issueDescription"
+                    v-model="issueDescription"
+                    rows="4"
+                    autoResize
+                    :maxlength="MAX_ISSUE_LENGTH"
+                    :placeholder="t('data.debugExport.issuePlaceholder')"
+                    :disabled="demoModeEnabled"
+                    class="issue-input"
+                />
+                <label class="input-label issue-time-label" for="issueTime">{{ t('data.debugExport.issueTimeLabel') }}</label>
+                <Calendar
+                    v-model="issueTime"
+                    inputId="issueTime"
+                    showTime
+                    hourFormat="24"
+                    dateFormat="yy-mm-dd"
+                    showButtonBar
+                    :placeholder="t('data.debugExport.issueTimePlaceholder')"
+                    :maxDate="new Date()"
+                    :disabled="demoModeEnabled"
+                    class="date-input"
+                />
+                <small class="form-help-text">
+                  {{ t('data.debugExport.issueHelp') }}
+                </small>
+              </div>
+
               <!-- Coordinate Shift Configuration -->
               <div class="form-group">
                 <div class="form-label-with-action">
@@ -85,24 +116,14 @@
                 </div>
                 <div class="shift-inputs">
                   <div class="shift-input-group">
-                    <label class="input-label">{{ t('data.debugExport.latitudeShiftLabel') }}</label>
-                    <InputNumber
-                        v-model="latitudeShift"
-                        :minFractionDigits="6"
-                        :maxFractionDigits="6"
-                        :allowEmpty="false"
-                        :placeholder="t('data.debugExport.latitudeShiftPlaceholder')"
-                        :disabled="demoModeEnabled"
-                        class="shift-input"
-                    />
-                  </div>
-                  <div class="shift-input-group">
                     <label class="input-label">{{ t('data.debugExport.longitudeShiftLabel') }}</label>
                     <InputNumber
                         v-model="longitudeShift"
                         :minFractionDigits="6"
                         :maxFractionDigits="6"
                         :allowEmpty="false"
+                        :min="-180"
+                        :max="180"
                         :placeholder="t('data.debugExport.longitudeShiftPlaceholder')"
                         :disabled="demoModeEnabled"
                         class="shift-input"
@@ -128,6 +149,17 @@
                 <small class="form-help-text">
                   {{ t('data.debugExport.includeConfigurationHelp') }}
                 </small>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <Checkbox v-model="includeTimeline" :binary="true" inputId="includeTimeline" :disabled="demoModeEnabled" />
+                    <label for="includeTimeline" class="checkbox-label">
+                      {{ t('data.debugExport.includeTimeline') }}
+                    </label>
+                  </div>
+                </div>
+                <small class="form-help-text">
+                  {{ t('data.debugExport.includeTimelineHelp') }}
+                </small>
               </div>
 
               <!-- Export Button -->
@@ -140,6 +172,12 @@
                     @click="exportDebugData"
                     class="export-button"
                 />
+              </div>
+
+              <!-- Export Progress -->
+              <div v-if="isExporting && exportJob" class="export-progress">
+                <ProgressBar :value="exportJob.progress || 0" />
+                <small class="form-help-text">{{ exportProgressMessage }}</small>
               </div>
 
               <!-- Validation Messages -->
@@ -191,6 +229,18 @@
                   <i class="pi pi-check-circle"></i>
                   <strong>favorite_areas.json</strong> - {{ t('data.debugExport.items.favoriteAreas') }}
                 </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>reverse_geocoding.json</strong> - {{ t('data.debugExport.items.reverseGeocoding') }}
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>timeline_overrides.json</strong> - {{ t('data.debugExport.items.timelineOverrides') }}
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>timeline.json</strong> - {{ t('data.debugExport.items.timeline') }}
+                </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
@@ -205,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -218,10 +268,15 @@ import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
+import Textarea from 'primevue/textarea'
+import ProgressBar from 'primevue/progressbar'
 import { useAuthStore } from '@/stores/auth'
 import { useExportImportStore } from '@/stores/exportImport'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { generateLongitudeShift } from '@/utils/debugExportShift'
+import { pollJob } from '@/utils/jobPolling'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -233,9 +288,21 @@ const { demoModeEnabled } = storeToRefs(authStore)
 // Form state
 const startDate = ref(null)
 const endDate = ref(null)
-const latitudeShift = ref(null)
 const longitudeShift = ref(null)
 const includeConfiguration = ref(true)
+const includeTimeline = ref(true)
+const MAX_ISSUE_LENGTH = 4000
+const issueDescription = ref('')
+const issueTime = ref(null)
+const exportJob = ref(null)
+let exportPolling = null
+
+const exportProgressMessage = computed(() =>
+  formatMessageDescriptor(exportJob.value?.progressMessage) || t('data.debugExport.exportInProgress'))
+
+onUnmounted(() => {
+  exportPolling?.cancel()
+})
 const isExporting = ref(false)
 const validationError = ref(null)
 const exportError = ref(null)
@@ -250,17 +317,13 @@ const initializeDates = () => {
   endDate.value = end
 }
 
-// Generate random coordinate shift
-// Uses conservative ranges to avoid pushing coordinates out of bounds
-// Latitude: -20 to +20 (safe for most locations except near poles)
-// Longitude: -40 to +40 (longitude wraps, but smaller shifts are safer)
+// Coordinates move east or west only, so distances stay exact and the timeline regenerates as the user saw it
 const generateRandomShift = () => {
   if (demoModeEnabled.value) {
     return
   }
 
-  latitudeShift.value = parseFloat((Math.random() * 40 - 20).toFixed(6))
-  longitudeShift.value = parseFloat((Math.random() * 80 - 40).toFixed(6))
+  longitudeShift.value = generateLongitudeShift()
 }
 
 // Initialize on mount
@@ -291,7 +354,7 @@ const isFormValid = computed(() => {
     return false
   }
 
-  if (latitudeShift.value === null || longitudeShift.value === null) {
+  if (longitudeShift.value === null) {
     validationError.value = t('data.debugExport.validation.enterShift')
     return false
   }
@@ -323,12 +386,28 @@ const exportDebugData = async () => {
     const requestData = {
       startTime: dateRange.start,  // Already UTC ISO string (start of day in user's timezone)
       endTime: dateRange.end,      // Already UTC ISO string (end of day in user's timezone)
-      latitudeShift: latitudeShift.value,
+      latitudeShift: 0,
       longitudeShift: longitudeShift.value,
-      includeConfiguration: includeConfiguration.value
+      includeConfiguration: includeConfiguration.value,
+      includeTimeline: includeTimeline.value,
+      issueDescription: issueDescription.value.trim() || null,
+      issueTime: issueTime.value ? timezone.createDateTimeFromPicker(issueTime.value)?.toISOString() : null
     }
 
-    await exportImportStore.downloadDebugExport(requestData)
+    // The export runs in the background; wait for it, then download the archive
+    exportJob.value = await exportImportStore.createDebugExportJob(requestData)
+    exportPolling = pollJob({
+      fetchJob: () => exportImportStore.fetchExportStatus(exportJob.value.exportJobId),
+      onUpdate: job => { exportJob.value = job }
+    })
+    const finished = await exportPolling.promise
+    if (!finished) {
+      return
+    }
+    if (finished.status === 'failed') {
+      throw new Error(formatMessageDescriptor(finished.error) || t('data.debugExport.exportFailedFallback'))
+    }
+    await exportImportStore.downloadExportFile(finished.exportJobId)
 
     toast.add({
       severity: 'success',
@@ -353,11 +432,29 @@ const exportDebugData = async () => {
     })
   } finally {
     isExporting.value = false
+    exportPolling = null
   }
 }
 </script>
 
 <style scoped>
+.issue-input {
+  width: 100%;
+}
+
+.issue-time-label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.export-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 .debug-export-page {
   max-width: 900px;
   margin: 0 auto;
@@ -586,7 +683,7 @@ const exportDebugData = async () => {
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--p-blue-50);
+  background: var(--gp-primary-soft);
   border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
   color: var(--gp-text-secondary);

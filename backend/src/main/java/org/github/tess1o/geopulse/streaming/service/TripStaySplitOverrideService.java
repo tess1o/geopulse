@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -344,6 +347,8 @@ public class TripStaySplitOverrideService {
                 trip,
                 entityManager.getReference(UserEntity.class, userId)
         );
+        entity.setExplanation(TimelineExplanation.withNote(entity.getExplanation(),
+                TimelineReason.of(TimelineReasons.MANUAL_SPLIT)));
         applyWaterClassification(userId, entity, config);
         return entity;
     }
@@ -373,6 +378,8 @@ public class TripStaySplitOverrideService {
                 .location(GeoUtils.createPoint(location.longitude(), location.latitude()))
                 .locationName(normalizeLocationName(location.locationName()))
                 .locationSource(location.locationSource())
+                .explanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.MANUAL_SPLIT), List.of(), null)
+                        .toMap())
                 .build();
 
         if (location.favoriteId() != null) {

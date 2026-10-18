@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -112,6 +115,8 @@ public class StreamingDataGapService {
                 newGap.setStartTime(lastGpsTime);
                 newGap.setEndTime(now);
                 newGap.setDurationSeconds(Duration.between(newGap.getStartTime(), newGap.getEndTime()).getSeconds());
+                newGap.setExplanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.NO_POINTS_SINCE_LAST,
+                        "thresholdSeconds", config.getDataGapThresholdSeconds()), java.util.List.of(), null).toMap());
                 timelineDataGapRepository.persist(newGap);
                 log.info("Created new data gap for user {} - start: {}, duration: {}min",
                         userId, lastGpsTime, Duration.between(lastGpsTime, now).toMinutes());

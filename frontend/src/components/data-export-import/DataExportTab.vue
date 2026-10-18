@@ -826,6 +826,9 @@ const formatDateRange = (job) => {
 }
 
 const getFormatDisplayName = (format) => {
+  if (format === 'debug') {
+    return t('data.debugExport.formatLabel')
+  }
   const option = exportFormatOptions.value.find(option => option.value === format)
   return option ? option.label : format
 }

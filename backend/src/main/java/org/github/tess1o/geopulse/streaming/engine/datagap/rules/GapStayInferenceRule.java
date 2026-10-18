@@ -8,6 +8,9 @@ import org.github.tess1o.geopulse.streaming.engine.GapStayInferenceService;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.GapStayInferencePlan;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -51,15 +54,20 @@ public class GapStayInferenceRule implements DataGapRule {
 
         log.info("Gap stay inference applied - skipping gap creation, points are at same location");
         applyStayInferencePlan(stayInferencePlan, context.userState(), context.config(), gapEvents);
+        context.userState().getActiveExplanation().note(TimelineReason.of(TimelineReasons.CONTINUED_OVER_GAP,
+                "gapSeconds", context.gapDuration().getSeconds()));
         // Don't create gap, don't reset state - let state machine process the point normally.
         return true;
     }
 
     private void applyStayInferencePlan(GapStayInferencePlan plan, UserState userState,
                                         TimelineConfig config, List<TimelineEvent> gapEvents) {
+        TimelineReason stoppedBeforeGap = TimelineReason.of(TimelineReasons.STOPPED_BEFORE_GAP);
         if (plan.hasTripToFinalize()) {
             Trip finalizedTrip = finalizeTripFromPoints(plan.getTripPointsToFinalize(), config);
+            TimelineExplanation tripExplanation = userState.finishExplanation(stoppedBeforeGap);
             if (finalizedTrip != null) {
+                finalizedTrip.setExplanation(tripExplanation);
                 gapEvents.add(finalizedTrip);
             }
         }
@@ -69,6 +77,9 @@ public class GapStayInferenceRule implements DataGapRule {
             userState.clearActivePoints();
             for (GPSPoint point : plan.getReplacementStayPoints()) {
                 userState.addActivePoint(point);
+            }
+            if (plan.hasTripToFinalize()) {
+                userState.startExplanation(stoppedBeforeGap);
             }
         }
     }

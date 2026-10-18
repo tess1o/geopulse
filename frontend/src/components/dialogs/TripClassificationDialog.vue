@@ -198,6 +198,14 @@
     </div>
 
     <template #footer>
+      <Button
+        v-if="showExplanationLink"
+        :label="t('classification.dialog.explanationLink')"
+        icon="pi pi-map"
+        text
+        class="classification-explanation-link"
+        @click="$emit('show-explanation', trip)"
+      />
       <Button :label="t('classification.dialog.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
@@ -234,10 +242,15 @@ const props = defineProps({
   readOnly: {
     type: Boolean,
     default: false
+  },
+  // Offer the trip's explanation dialog (why it starts and ends where it does)
+  showExplanationLink: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['close', 'movement-updated'])
+const emit = defineEmits(['close', 'movement-updated', 'show-explanation'])
 
 const { t, te } = useI18n()
 const toast = useToast()
@@ -417,6 +430,10 @@ const formatVariance = (variance) => {
 </script>
 
 <style scoped>
+.classification-explanation-link {
+  margin-right: auto;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;

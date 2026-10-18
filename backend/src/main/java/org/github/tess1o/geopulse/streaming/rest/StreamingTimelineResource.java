@@ -30,6 +30,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.LocationLookupResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEventExplanationDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
 import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
@@ -39,6 +40,7 @@ import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
+import org.github.tess1o.geopulse.streaming.service.explanation.TimelineEventExplanationService;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
@@ -58,9 +60,11 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_OVERRI
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_LOCATION_LOOKUP;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_JOB_ID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.STAY_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ALREADY_ACTIVE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
 
 @Path("/timeline")
@@ -82,6 +86,7 @@ public class StreamingTimelineResource {
     @Inject MultiUserTimelineService multiUserTimelineService;
     @Inject TimelineLocationLookupService timelineLocationLookupService;
     @Inject LocationTimezoneService locationTimezoneService;
+    @Inject TimelineEventExplanationService timelineEventExplanationService;
 
     @GET
     @Operation(summary = "Get the timeline",
@@ -180,6 +185,51 @@ public class StreamingTimelineResource {
                 .resetTripStaySplitOverride(currentUserService.getCurrentUserId(), overrideId)
                 .orElseThrow(() -> new GeoPulseException(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
                         "Trip split override not found or access denied", Map.of("overrideId", overrideId)));
+    }
+
+    @GET
+    @Path("/stays/{stayId}/explanation")
+    @Operation(summary = "Explain a stay",
+            description = "Why the timeline engine created this stay as it is: its recorded reasons, its GPS points "
+                    + "and a few before and after it, which points were left out for their accuracy, and which "
+                    + "points started and ended it.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public TimelineEventExplanationDetailsDTO explainStay(
+            @Parameter(description = "Stay ID, as returned by the timeline.")
+            @PathParam("stayId") Long stayId) {
+        return timelineEventExplanationService.explainStay(stayId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new GeoPulseException(STAY_NOT_FOUND, "Stay not found or access denied",
+                        Map.of("stayId", stayId)));
+    }
+
+    @GET
+    @Path("/trips/{tripId}/explanation")
+    @Operation(summary = "Explain a trip",
+            description = "Why the timeline engine created this trip as it is: its recorded reasons, its GPS points "
+                    + "and a few before and after it, which points were left out for their accuracy, and which "
+                    + "points started and ended it. For why it has its movement type, see "
+                    + "`GET /api/v1/trips/{tripId}/timeline/classification`.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public TimelineEventExplanationDetailsDTO explainTrip(
+            @Parameter(description = "Trip ID, as returned by the timeline.")
+            @PathParam("tripId") Long tripId) {
+        return timelineEventExplanationService.explainTrip(tripId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
+                        Map.of("tripId", tripId)));
+    }
+
+    @GET
+    @Path("/data-gaps/{gapId}/explanation")
+    @Operation(summary = "Explain a data gap",
+            description = "Why the timeline has a data gap here: its recorded reason, the last point before it and "
+                    + "the first point after it, and any points inside it that were left out for their accuracy.")
+    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
+    public TimelineEventExplanationDetailsDTO explainDataGap(
+            @Parameter(description = "Data gap ID, as returned by the timeline.")
+            @PathParam("gapId") Long gapId) {
+        return timelineEventExplanationService.explainDataGap(gapId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
+                        Map.of("gapId", gapId)));
     }
 
     @GET

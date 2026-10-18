@@ -100,7 +100,8 @@ class TripStopHeuristicsService {
             log.debug("Full-cluster stop accepted - start={}, end={}, duration={}, points={}, speedThreshold={}, radius={}",
                     firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), clusterDuration,
                     clusterPointCount, stopSpeedThreshold, stayRadius);
-            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex, clusterDuration, clusterPointCount,
+                    stopSpeedThreshold);
         }
 
         log.debug("Full-cluster stop rejected - duration {} below sustained={} and arrival={} for start={}, end={}, points={}",
@@ -137,7 +138,8 @@ class TripStopHeuristicsService {
             log.debug("Sustained-stop fallback accepted - start={}, end={}, duration={}, points={}, speedThreshold={}",
                     firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), slowDuration,
                     recentPoints.size(), stopSpeedThreshold);
-            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex, slowDuration, recentPoints.size(),
+                    stopSpeedThreshold);
         }
 
         log.debug("Sustained-stop fallback rejected - duration {} below required {} for start={}, end={}, points={}",
@@ -239,18 +241,27 @@ class TripStopHeuristicsService {
     static final class TripStopDetection {
         private final boolean stopDetected;
         private final int stoppedClusterStartIndex;
+        private final Duration stopDuration;
+        private final int stoppedPoints;
+        private final double stopSpeedThresholdMetersPerSecond;
 
-        private TripStopDetection(boolean stopDetected, int stoppedClusterStartIndex) {
+        private TripStopDetection(boolean stopDetected, int stoppedClusterStartIndex, Duration stopDuration,
+                                  int stoppedPoints, double stopSpeedThresholdMetersPerSecond) {
             this.stopDetected = stopDetected;
             this.stoppedClusterStartIndex = stoppedClusterStartIndex;
+            this.stopDuration = stopDuration;
+            this.stoppedPoints = stoppedPoints;
+            this.stopSpeedThresholdMetersPerSecond = stopSpeedThresholdMetersPerSecond;
         }
 
         static TripStopDetection noStop() {
-            return new TripStopDetection(false, -1);
+            return new TripStopDetection(false, -1, Duration.ZERO, 0, 0.0);
         }
 
-        static TripStopDetection stopDetected(int startIndex) {
-            return new TripStopDetection(true, startIndex);
+        static TripStopDetection stopDetected(int startIndex, Duration stopDuration, int stoppedPoints,
+                                              double stopSpeedThresholdMetersPerSecond) {
+            return new TripStopDetection(true, startIndex, stopDuration, stoppedPoints,
+                    stopSpeedThresholdMetersPerSecond);
         }
 
         boolean isStopDetected() {
@@ -259,6 +270,19 @@ class TripStopHeuristicsService {
 
         int getStoppedClusterStartIndex() {
             return stoppedClusterStartIndex;
+        }
+
+        Duration getStopDuration() {
+            return stopDuration;
+        }
+
+        int getStoppedPoints() {
+            return stoppedPoints;
+        }
+
+        /** The speed below which points count as stopped, in km/h like the setting. */
+        double getStopSpeedThresholdKmh() {
+            return Math.round(stopSpeedThresholdMetersPerSecond * 3.6 * 10.0) / 10.0;
         }
     }
 

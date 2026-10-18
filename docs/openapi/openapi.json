@@ -1461,6 +1461,10 @@
             "format" : "double",
             "type" : "number"
           },
+          "flightMinDistanceKm" : {
+            "format" : "double",
+            "type" : "number"
+          },
           "boatEnabled" : {
             "type" : "boolean"
           },
@@ -2986,6 +2990,123 @@
           },
           "includeConfiguration" : {
             "type" : "boolean"
+          },
+          "issueDescription" : {
+            "type" : "string"
+          },
+          "issueTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "DebugImportJobResponse" : {
+        "type" : "object",
+        "properties" : {
+          "job" : {
+            "$ref" : "#/components/schemas/ImportJobResponse"
+          },
+          "report" : {
+            "$ref" : "#/components/schemas/DebugImportReport"
+          }
+        }
+      },
+      "DebugImportReport" : {
+        "type" : "object",
+        "properties" : {
+          "exportVersion" : {
+            "type" : "string"
+          },
+          "exporterAppVersion" : {
+            "type" : "string"
+          },
+          "importerAppVersion" : {
+            "type" : "string"
+          },
+          "exportDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "timezone" : {
+            "type" : "string"
+          },
+          "timezoneApplied" : {
+            "type" : "boolean"
+          },
+          "timelineConfigApplied" : {
+            "type" : "boolean"
+          },
+          "issue" : {
+            "$ref" : "#/components/schemas/Issue"
+          },
+          "requestedRange" : {
+            "$ref" : "#/components/schemas/Range"
+          },
+          "exportedRange" : {
+            "$ref" : "#/components/schemas/Range"
+          },
+          "imported" : {
+            "$ref" : "#/components/schemas/Imported"
+          },
+          "gpsSources" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "additionalProperties" : { }
+            }
+          },
+          "timelineStatus" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "water" : {
+            "$ref" : "#/components/schemas/Water"
+          },
+          "comparison" : {
+            "$ref" : "#/components/schemas/DebugTimelineComparison"
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Warning"
+            }
+          }
+        }
+      },
+      "DebugTimelineComparison" : {
+        "type" : "object",
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "matches" : {
+            "type" : "boolean"
+          },
+          "from" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "matching" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "different" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "missing" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "extra" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Row"
+            }
           }
         }
       },
@@ -3335,8 +3456,33 @@
         "enum" : [ "IMPORT_FAILED", "SETUP_FAILED", "TRIP_RECLASSIFICATION_FAILED", "SETUP_WORKER_STALE", "UNKNOWN" ],
         "type" : "string"
       },
+      "Event" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "start" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "end" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "durationSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "movementType" : {
+            "type" : "string"
+          },
+          "explanation" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
       "ExportFormat" : {
-        "enum" : [ "geopulse", "gpx", "owntracks", "geojson", "csv" ],
+        "enum" : [ "geopulse", "gpx", "owntracks", "geojson", "csv", "debug" ],
         "type" : "string"
       },
       "ExportJobResponse" : {
@@ -4859,6 +5005,30 @@
         "enum" : [ "validating", "processing", "completed", "failed" ],
         "type" : "string"
       },
+      "Imported" : {
+        "type" : "object",
+        "properties" : {
+          "gpsPoints" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "favoriteLocations" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "favoriteAreas" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "geocodingLocations" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "overrides" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "IngestionHealth" : {
         "type" : "object",
         "properties" : {
@@ -4973,6 +5143,17 @@
       "InvitationStatus" : {
         "enum" : [ "PENDING", "USED", "EXPIRED", "REVOKED" ],
         "type" : "string"
+      },
+      "Issue" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "time" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
       },
       "JobResponse" : {
         "type" : "object",
@@ -7228,6 +7409,17 @@
           }
         }
       },
+      "Range" : {
+        "type" : "object",
+        "properties" : {
+          "start" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "end" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "RawGpsPointLocationDTO" : {
         "type" : "object",
         "properties" : {
@@ -7320,6 +7512,18 @@
           },
           "limited" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "Reason" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "params" : {
+            "type" : "object",
+            "additionalProperties" : { }
           }
         }
       },
@@ -7614,6 +7818,20 @@
           },
           "mostCommonRoute" : {
             "$ref" : "#/components/schemas/MostCommonRoute"
+          }
+        }
+      },
+      "Row" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "expected" : {
+            "$ref" : "#/components/schemas/Event"
+          },
+          "actual" : {
+            "$ref" : "#/components/schemas/Event"
           }
         }
       },
@@ -8218,10 +8436,6 @@
             "format" : "double",
             "type" : "number"
           },
-          "staypointMinAccuracyRatio" : {
-            "format" : "double",
-            "type" : "number"
-          },
           "staypointRadiusMeters" : {
             "format" : "int32",
             "type" : "integer"
@@ -8396,6 +8610,10 @@
             "format" : "double",
             "type" : "number"
           },
+          "flightMinDistanceKm" : {
+            "format" : "double",
+            "type" : "number"
+          },
           "boatEnabled" : {
             "type" : "boolean"
           },
@@ -8461,6 +8679,9 @@
           },
           "ongoing" : {
             "type" : "boolean"
+          },
+          "explanation" : {
+            "$ref" : "#/components/schemas/TimelineExplanationDTO"
           },
           "startLocationTimezone" : {
             "$ref" : "#/components/schemas/LocationTimezoneDTO"
@@ -8577,6 +8798,311 @@
           },
           "capabilities" : {
             "$ref" : "#/components/schemas/TimelineDisplayCapabilities"
+          }
+        }
+      },
+      "TimelineEventExplanationDetailsDTO" : {
+        "description" : "Why the timeline engine created a stay, trip or data gap as it is, with the GPS points of the event and a few points before and after it. Each point says whether the engine used it and which decision it was part of.",
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "description" : "STAY, TRIP or DATA_GAP.",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "explanation" : {
+            "description" : "The reasons the engine recorded when it created the event.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationDTO"
+            } ]
+          },
+          "location" : {
+            "description" : "Stay: the stored location. It is the location of a favorite when the stay matched one.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationCoordinates"
+            } ]
+          },
+          "centre" : {
+            "description" : "Stay: the average of the points the engine used, which is the centre it measured the stay radius from.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationCoordinates"
+            } ]
+          },
+          "radiusMeters" : {
+            "format" : "int32",
+            "description" : "Stay: the stay radius in meters, from the current timeline settings.",
+            "type" : "integer"
+          },
+          "startPoint" : {
+            "description" : "Trip: where it starts.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationCoordinates"
+            } ]
+          },
+          "endPoint" : {
+            "description" : "Trip: where it ends.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationCoordinates"
+            } ]
+          },
+          "settings" : {
+            "description" : "The current values of the timeline settings that decide stays, trips and data gaps.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationSettings"
+            } ]
+          },
+          "settingsChanged" : {
+            "description" : "Settings whose value when the timeline was built differs from the current value. The timeline follows the new value only after it is regenerated.",
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TimelineExplanationSettingChange"
+            }
+          },
+          "points" : {
+            "description" : "The GPS points of the event and up to 10 points before and after it, oldest first.",
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TimelineExplanationPoint"
+            }
+          },
+          "filtered" : {
+            "description" : "How many points were left out because they were less accurate than the GPS accuracy threshold.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/TimelineExplanationFiltered"
+            } ]
+          },
+          "ingestionFilters" : {
+            "description" : "Filters of the user's active GPS sources that drop points before they are stored. Points dropped this way are not in `points`.",
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TimelineExplanationIngestionFilter"
+            }
+          },
+          "truncated" : {
+            "description" : "True when the event has more points than are returned; ordinary used points were thinned out, every left-out or deciding point is kept.",
+            "type" : "boolean"
+          },
+          "totalEventPoints" : {
+            "format" : "int32",
+            "description" : "How many stored points the event has.",
+            "type" : "integer"
+          }
+        }
+      },
+      "TimelineExplanationCoordinates" : {
+        "type" : "object",
+        "properties" : {
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "TimelineExplanationDTO" : {
+        "description" : "Why the timeline engine created this event as it is: how it starts and ends, and what was decided on the way. Each reason has a code and the values it was based on.",
+        "type" : "object",
+        "properties" : {
+          "start" : {
+            "description" : "How the event starts, e.g. FIRST_POINT, AFTER_DATA_GAP, ARRIVAL, LEFT_STAY, SHORT_STOP.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Reason"
+            } ]
+          },
+          "notes" : {
+            "description" : "Decisions made while the event was open, e.g. CONFIRMED, MERGED.",
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Reason"
+            }
+          },
+          "end" : {
+            "description" : "How the event ends, e.g. MOVED_AWAY, ARRIVAL, DATA_GAP, LAST_POINT.",
+            "type" : "object",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Reason"
+            } ]
+          }
+        }
+      },
+      "TimelineExplanationFiltered" : {
+        "type" : "object",
+        "properties" : {
+          "inEvent" : {
+            "format" : "int32",
+            "description" : "Points in the event that were left out.",
+            "type" : "integer"
+          },
+          "inContext" : {
+            "format" : "int32",
+            "description" : "Points before and after the event that were left out.",
+            "type" : "integer"
+          },
+          "thresholdMeters" : {
+            "format" : "double",
+            "description" : "The GPS accuracy threshold in meters, or null when points are not filtered.",
+            "type" : "number"
+          }
+        }
+      },
+      "TimelineExplanationIngestionFilter" : {
+        "type" : "object",
+        "properties" : {
+          "sourceType" : {
+            "description" : "Source type, e.g. OWNTRACKS.",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "Username or device of the source, when it has one.",
+            "type" : "string"
+          },
+          "maxAccuracyMeters" : {
+            "format" : "int32",
+            "description" : "Points less accurate than this, in meters, are not stored.",
+            "type" : "integer"
+          },
+          "maxSpeedKmh" : {
+            "format" : "int32",
+            "description" : "Points faster than this, in km/h, are not stored.",
+            "type" : "integer"
+          },
+          "duplicateThresholdMinutes" : {
+            "format" : "int32",
+            "description" : "Points that repeat the previous location within this many minutes are not stored.",
+            "type" : "integer"
+          }
+        }
+      },
+      "TimelineExplanationPoint" : {
+        "type" : "object",
+        "properties" : {
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "accuracyMeters" : {
+            "format" : "double",
+            "description" : "Accuracy in meters, or null when the source did not send one.",
+            "type" : "number"
+          },
+          "speedKmh" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "part" : {
+            "description" : "BEFORE, EVENT or AFTER: whether the point is before, in or after the event.",
+            "type" : "string"
+          },
+          "used" : {
+            "description" : "False when the point was left out for its accuracy.",
+            "type" : "boolean"
+          },
+          "distanceFromCentreMeters" : {
+            "format" : "double",
+            "description" : "Stay: meters from the centre.",
+            "type" : "number"
+          },
+          "outsideRadius" : {
+            "description" : "Stay: true when the point is farther from the centre than the stay radius.",
+            "type" : "boolean"
+          },
+          "reasons" : {
+            "description" : "Codes of the reasons this point was part of, e.g. ARRIVAL for the points that made up the stop, MOVED_AWAY for the point that ended a stay.",
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "TimelineExplanationSettingChange" : {
+        "type" : "object",
+        "properties" : {
+          "setting" : {
+            "description" : "Setting name, e.g. staypointRadiusMeters.",
+            "type" : "string"
+          },
+          "builtWith" : {
+            "type" : "number"
+          },
+          "current" : {
+            "type" : "number"
+          }
+        }
+      },
+      "TimelineExplanationSettings" : {
+        "type" : "object",
+        "properties" : {
+          "staypointRadiusMeters" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "staypointMinDurationMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "staypointMaxAccuracyThreshold" : {
+            "format" : "double",
+            "description" : "The GPS accuracy threshold in meters, or null when points are not filtered by accuracy.",
+            "type" : "number"
+          },
+          "staypointVelocityThreshold" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "tripArrivalDetectionMinDurationSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "tripArrivalMinPoints" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "dataGapThresholdSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "dataGapMinDurationSeconds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "isMergeEnabled" : {
+            "type" : "boolean"
+          },
+          "mergeMaxDistanceMeters" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mergeMaxTimeGapMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -8922,6 +9448,9 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "explanation" : {
+            "$ref" : "#/components/schemas/TimelineExplanationDTO"
+          },
           "tripSplitOverrideId" : {
             "format" : "int64",
             "type" : "integer"
@@ -8982,6 +9511,9 @@
           },
           "movementTypeSource" : {
             "type" : "string"
+          },
+          "explanation" : {
+            "$ref" : "#/components/schemas/TimelineExplanationDTO"
           },
           "path" : {
             "type" : "array",
@@ -10636,12 +11168,6 @@
             "minimum" : 1.0,
             "type" : "number"
           },
-          "staypointMinAccuracyRatio" : {
-            "format" : "double",
-            "maximum" : 1.0,
-            "minimum" : 0.1,
-            "type" : "number"
-          },
           "tripDetectionAlgorithm" : {
             "pattern" : "^(single|multiple)$",
             "type" : "string"
@@ -10861,7 +11387,13 @@
           "flightMinMaxSpeed" : {
             "format" : "double",
             "maximum" : 900.0,
-            "minimum" : 400.0,
+            "minimum" : 150.0,
+            "type" : "number"
+          },
+          "flightMinDistanceKm" : {
+            "format" : "double",
+            "maximum" : 500.0,
+            "minimum" : 0.0,
             "type" : "number"
           },
           "boatEnabled" : {
@@ -11553,6 +12085,36 @@
             "description" : "Description of the validation error",
             "type" : "string",
             "example" : "Invalid email format"
+          }
+        }
+      },
+      "Warning" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "params" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
+      "Water" : {
+        "type" : "object",
+        "properties" : {
+          "boatEnabled" : {
+            "type" : "boolean"
+          },
+          "exporterDatasetAvailable" : {
+            "type" : "boolean"
+          },
+          "importerDatasetAvailable" : {
+            "type" : "boolean"
+          },
+          "flagsImported" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         }
       },
@@ -15794,8 +16356,8 @@
     },
     "/api/v1/debug-imports" : {
       "post" : {
-        "summary" : "Import a debug export",
-        "description" : "Imports a ZIP archive created by `POST /api/v1/exports/debug`, which is used to reproduce timeline issues. By default, the user's existing data is deleted first and the timeline settings from the archive are applied. Intended for troubleshooting, not for regular imports.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "summary" : "Start a debug import",
+        "description" : "Starts a background import of a ZIP archive created by `POST /api/v1/exports/debug`, which is used to reproduce timeline issues. By default, the user's existing data is deleted first and the timeline settings and timezone from the archive are applied. Poll `GET /api/v1/debug-imports/{importJobId}` until the job is `completed`; its report compares the regenerated timeline with the one in the archive. Intended for troubleshooting, not for regular imports.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "x-internal" : true,
         "operationId" : "DebugImportResource_uploadDebugData",
         "tags" : [ "Import" ],
@@ -15816,6 +16378,10 @@
                   "updateTimelineConfig" : {
                     "default" : true,
                     "type" : "boolean"
+                  },
+                  "updateTimezone" : {
+                    "default" : true,
+                    "type" : "boolean"
                   }
                 }
               }
@@ -15824,8 +16390,56 @@
           "required" : true
         },
         "responses" : {
-          "201" : {
-            "description" : "Created"
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DebugImportJobResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/debug-imports/{importJobId}" : {
+      "get" : {
+        "summary" : "Get a debug import job",
+        "description" : "Returns the status and progress of a debug import. When it is `completed`, the response includes a report: the user's description of the problem, how the regenerated timeline compares with the one in the archive, and reasons the two may differ other than a bug.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "x-internal" : true,
+        "operationId" : "DebugImportResource_getDebugImport",
+        "tags" : [ "Import" ],
+        "parameters" : [ {
+          "description" : "Import job ID.",
+          "name" : "importJobId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DebugImportJobResponse"
+                }
+              }
+            }
           },
           "401" : {
             "description" : "Authentication is required or the provided credentials are invalid."
@@ -16374,8 +16988,8 @@
     },
     "/api/v1/exports/debug" : {
       "post" : {
-        "summary" : "Create a debug export",
-        "description" : "Returns a ZIP archive with GPS data, and optionally the timeline and timeline settings, for a time range, with all coordinates shifted by the given latitude and longitude offsets to hide real locations. Share it when reporting a timeline issue; it can be loaded with `POST /api/v1/debug-imports`.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "summary" : "Start a debug export",
+        "description" : "Starts a background export of a ZIP archive with GPS data, favorites, matched places, manual timeline corrections, GPS source filter settings, the state of the timeline and optionally the timeline and timeline settings, for a time range widened to the timeline events it touches. All coordinates are shifted by the given longitude offset to hide real locations and all place names are anonymized; `latitudeShift` must be 0, because a latitude shift changes distances. `issueDescription` and `issueTime` describe the problem. Poll `GET /api/v1/exports/{exportJobId}` and download the archive like any export. Share it when reporting a timeline issue; it can be loaded with `POST /api/v1/debug-imports`.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "x-internal" : true,
         "operationId" : "ExportResource_createDebugExport",
         "tags" : [ "Export" ],
@@ -16391,16 +17005,15 @@
         },
         "responses" : {
           "200" : {
-            "description" : "Debug export archive",
-            "x-internal" : true,
+            "description" : "Debug export job created",
             "content" : {
-              "application/zip" : {
+              "application/json" : {
                 "schema" : {
-                  "format" : "binary",
-                  "type" : "string"
+                  "$ref" : "#/components/schemas/ExportJobResponse"
                 }
               }
-            }
+            },
+            "x-internal" : true
           },
           "400" : {
             "description" : "Invalid debug export request",
@@ -16413,9 +17026,9 @@
               }
             }
           },
-          "x-internal" : true,
-          "500" : {
-            "description" : "Internal Server Error: the server encountered an unexpected condition that prevented it from fulfilling the request",
+          "429" : {
+            "description" : "Too many active export jobs",
+            "x-internal" : true,
             "content" : {
               "application/problem+json" : {
                 "schema" : {
@@ -16424,6 +17037,7 @@
               }
             }
           },
+          "x-internal" : true,
           "401" : {
             "description" : "Authentication is required or the provided credentials are invalid."
           },
@@ -25363,6 +25977,48 @@
         } ]
       }
     },
+    "/api/v1/timeline/data-gaps/{gapId}/explanation" : {
+      "get" : {
+        "summary" : "Explain a data gap",
+        "description" : "Why the timeline has a data gap here: its recorded reason, the last point before it and the first point after it, and any points inside it that were left out for their accuracy.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "x-internal" : true,
+        "operationId" : "StreamingTimelineResource_explainDataGap",
+        "tags" : [ "Timeline" ],
+        "parameters" : [ {
+          "description" : "Data gap ID, as returned by the timeline.",
+          "name" : "gapId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEventExplanationDetailsDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
     "/api/v1/timeline/data-gaps/{gapId}/stay-conversion" : {
       "put" : {
         "summary" : "Convert a data gap to a stay",
@@ -25763,6 +26419,90 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TripStaySplitResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/stays/{stayId}/explanation" : {
+      "get" : {
+        "summary" : "Explain a stay",
+        "description" : "Why the timeline engine created this stay as it is: its recorded reasons, its GPS points and a few before and after it, which points were left out for their accuracy, and which points started and ended it.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "x-internal" : true,
+        "operationId" : "StreamingTimelineResource_explainStay",
+        "tags" : [ "Timeline" ],
+        "parameters" : [ {
+          "description" : "Stay ID, as returned by the timeline.",
+          "name" : "stayId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEventExplanationDetailsDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/trips/{tripId}/explanation" : {
+      "get" : {
+        "summary" : "Explain a trip",
+        "description" : "Why the timeline engine created this trip as it is: its recorded reasons, its GPS points and a few before and after it, which points were left out for their accuracy, and which points started and ended it. For why it has its movement type, see `GET /api/v1/trips/{tripId}/timeline/classification`.\n\n**Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "x-internal" : true,
+        "operationId" : "StreamingTimelineResource_explainTrip",
+        "tags" : [ "Timeline" ],
+        "parameters" : [ {
+          "description" : "Trip ID, as returned by the timeline.",
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEventExplanationDetailsDTO"
                 }
               }
             }

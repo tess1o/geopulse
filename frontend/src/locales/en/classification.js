@@ -9,6 +9,7 @@ export default {
     dialog: {
         header: 'Trip Classification Details',
         loading: 'Loading classification details...',
+        explanationLink: 'Why does this trip start and end here?',
         close: 'Close'
     },
     overview: {

@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineExplanationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
@@ -67,6 +68,7 @@ public class StreamingTimelineConverter {
         entity.setStayDuration(stay.getDuration().toSeconds()); // Already in seconds
         entity.setLocationName(stay.getLocationName());
         entity.setLocationSource(getLocationSource(stay));
+        entity.setExplanation(storedExplanation(stay.getExplanation()));
 
         // Set favorite location reference using pre-loaded map (O(1) lookup)
         if (stay.getFavoriteId() != null && stay.getFavoriteId() != 0) {
@@ -109,6 +111,7 @@ public class StreamingTimelineConverter {
         entity.setDistanceMeters((long) trip.getDistanceMeters());
         entity.setMovementType(trip.getTripType() != null ? trip.getTripType().name() : "UNKNOWN");
         entity.setMovementTypeSource(MovementTypeSource.AUTO);
+        entity.setExplanation(storedExplanation(trip.getExplanation()));
 
         // Set start and end points
         GPSPoint startLocation = trip.getStartLocation();
@@ -161,6 +164,7 @@ public class StreamingTimelineConverter {
         entity.setStartTime(gap.getStartTime());
         entity.setEndTime(gap.getEndTime());
         entity.setDurationSeconds(gap.getDuration().getSeconds());
+        entity.setExplanation(storedExplanation(gap.getExplanation()));
 
         return entity;
     }
@@ -199,6 +203,7 @@ public class StreamingTimelineConverter {
                 .geocodingId(entity.getGeocodingLocation() != null ? entity.getGeocodingLocation().getId() : null)
                 .city(city)
                 .country(country)
+                .explanation(TimelineExplanationDTO.from(entity.getExplanation()))
                 .build();
     }
 
@@ -223,12 +228,17 @@ public class StreamingTimelineConverter {
                 .movementType(entity.getMovementType())
                 .movementTypeSource(entity.getMovementTypeSource() != null
                         ? entity.getMovementTypeSource().name()
-                        : MovementTypeSource.AUTO.name());
+                        : MovementTypeSource.AUTO.name())
+                .explanation(TimelineExplanationDTO.from(entity.getExplanation()));
 
         return builder.build();
     }
 
     // =================== Helper Methods ===================
+
+    private static java.util.LinkedHashMap<String, Object> storedExplanation(TimelineExplanation explanation) {
+        return explanation == null || explanation.isEmpty() ? null : explanation.toMap();
+    }
 
     /**
      * Determine location source based on DTO fields.

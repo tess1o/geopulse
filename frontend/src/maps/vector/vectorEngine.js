@@ -26,6 +26,7 @@ export { default as VectorViewerLocationMarker } from './markers/VectorViewerLoc
 export { usePhotoMapMarkersVector } from './composables/usePhotoMapMarkersVector'
 
 export { createVectorDetailsMapAdapter } from '@/maps/details/vector/createVectorDetailsMapAdapter'
+export { createVectorExplanationMapAdapter } from '@/maps/explanation/vector/createVectorExplanationMapAdapter'
 export { createVectorFavoriteAreaOverlayAdapter } from '@/maps/favoritesEdit/vector/createVectorFavoriteAreaOverlayAdapter'
 export { createVectorFavoritesManagementMapAdapter } from '@/maps/favoritesManagement/vector/createVectorFavoritesManagementMapAdapter'
 export { createVectorFriendsTimelineMapAdapter } from '@/maps/friendsTimeline/vector/createVectorFriendsTimelineMapAdapter'

@@ -7,6 +7,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -56,13 +59,17 @@ public class SparseInTripStayGapRule implements DataGapRule {
         log.info("Sparse IN_TRIP gap stay inference applied - creating inferred stay instead of data gap");
 
         Trip finalizedTrip = finalizeTripBeforeGap(context.userState(), context.config());
+        TimelineExplanation tripExplanation = context.userState()
+                .finishExplanation(GapRuleSupport.dataGapEnd(context.gapDuration()));
         if (finalizedTrip != null) {
+            finalizedTrip.setExplanation(tripExplanation);
             gapEvents.add(finalizedTrip);
             log.debug("Finalized trip before sparse stay inference: {} to {}",
                     finalizedTrip.getStartTime(), finalizedTrip.getEndTime());
         }
 
         Stay inferredStay = createInferredStayFromGap(context);
+        GapRuleSupport.explainInferred(inferredStay, context.userState(), TimelineReasons.INFERRED_DURING_GAP, context);
         gapEvents.add(inferredStay);
         log.debug("Created inferred stay from sparse gap: {} duration", inferredStay.getDuration());
 

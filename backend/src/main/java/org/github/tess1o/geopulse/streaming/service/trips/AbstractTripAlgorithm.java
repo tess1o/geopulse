@@ -9,6 +9,9 @@ import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
@@ -135,6 +138,8 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .waterStatistics(tripWaterStatistics)
                 .tripType(overallTripType)
                 .build();
+        mergedTrip.setExplanation(TimelineExplanation.joined(trips)
+                .note(TimelineReason.of(TimelineReasons.JOINED_SEGMENTS, "segments", trips.size())));
 
         log.debug("Merged {} trips into single trip: {}m, {}min, {}",
                 trips.size(), totalDistance, totalDuration.toMinutes(), overallTripType);
@@ -235,7 +240,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             );
         }
 
-        return Trip.builder()
+        Trip continuityTrip = Trip.builder()
                 .startTime(tripStart)
                 .duration(tripDuration)
                 .statistics(stats)
@@ -245,6 +250,9 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .distanceMeters(distanceMeters)
                 .tripType(tripType)
                 .build();
+        continuityTrip.setExplanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.CONTINUITY,
+                "distanceMeters", Math.round(distanceMeters)), List.of(), null));
+        return continuityTrip;
     }
 
     private MergedTripStatistics calculateMergedTripStatistics(UUID userId,

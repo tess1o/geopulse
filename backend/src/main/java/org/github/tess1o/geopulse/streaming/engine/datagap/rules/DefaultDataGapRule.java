@@ -5,6 +5,9 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 
@@ -31,7 +34,8 @@ public class DefaultDataGapRule implements DataGapRule {
                 finalizationService,
                 context.userState(),
                 context.lastPoint(),
-                context.config()
+                context.config(),
+                context.gapDuration()
         );
         if (activeEvent != null) {
             gapEvents.add(activeEvent);
@@ -43,6 +47,11 @@ public class DefaultDataGapRule implements DataGapRule {
                 context.lastPoint().getTimestamp(),
                 context.currentPoint().getTimestamp()
         );
+        Integer thresholdSeconds = context.config().getDataGapThresholdSeconds();
+        gap.setExplanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.NO_POINTS,
+                "gapSeconds", context.gapDuration().getSeconds(),
+                "thresholdSeconds", thresholdSeconds),
+                null, null));
         gapEvents.add(gap);
         log.debug("Created data gap event: {} duration", gap.getDuration());
 

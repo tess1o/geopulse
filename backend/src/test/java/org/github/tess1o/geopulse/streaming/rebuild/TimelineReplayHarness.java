@@ -7,10 +7,15 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import org.github.tess1o.geopulse.export.dto.TimelineDataDto;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.importdata.model.DebugImportRequest;
+import org.github.tess1o.geopulse.importdata.model.DebugTimelineComparison;
+import org.github.tess1o.geopulse.importdata.service.DebugTimelineComparisonService;
 import org.github.tess1o.geopulse.importdata.service.DebugImportService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.jobs.RealTimeTimelineJob;
@@ -38,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -97,12 +103,31 @@ public class TimelineReplayHarness {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    DebugTimelineComparisonService comparisonService;
+
     /** A new user with the export's timeline settings and favorites, but none of its GPS points. */
     public UUID createUserWithSettingsOf(String export, String prefix) {
+        return createUserWithSettingsOf(readResource(export), prefix);
+    }
+
+    /** A new user with the export's timeline settings, favorites, geocoding and overrides, but none of its points. */
+    public UUID createUserWithSettingsOf(byte[] export, String prefix) {
         UUID userId = testUserFactory.createUser(prefix).userId();
         try {
-            debugImportService.importDebugData(userId, withoutGpsPoints(readResource(export)),
+            debugImportService.importDebugData(userId, withoutGpsPoints(export),
                     new DebugImportRequest(true, true));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return userId;
+    }
+
+    /** A new user with everything in the export: points, settings, favorites, geocoding and overrides. */
+    public UUID importExport(byte[] export, String prefix) {
+        UUID userId = testUserFactory.createUser(prefix).userId();
+        try {
+            debugImportService.importDebugData(userId, export, new DebugImportRequest(true, true));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -176,8 +201,13 @@ public class TimelineReplayHarness {
 
     /** The export's GPS messages, oldest first. */
     public List<OwnTracksLocationMessage> messages(String export) {
+        return messages(readResource(export));
+    }
+
+    /** The export's GPS messages, oldest first. */
+    public List<OwnTracksLocationMessage> messages(byte[] export) {
         try {
-            JsonNode gpsData = objectMapper.readTree(readZipEntry(readResource(export), "gps_data.json"));
+            JsonNode gpsData = objectMapper.readTree(readZipEntry(export, "gps_data.json"));
             List<OwnTracksLocationMessage> messages = new ArrayList<>();
             for (JsonNode node : gpsData) {
                 messages.add(objectMapper.treeToValue(node, OwnTracksLocationMessage.class));
@@ -197,6 +227,40 @@ public class TimelineReplayHarness {
             batches.computeIfAbsent(message.getTst() / (minutes * 60L), ignored -> new ArrayList<>()).add(message);
         }
         return new ArrayList<>(batches.values());
+    }
+
+    /**
+     * Groups messages into the requests the exporting server actually received them in: in order of their arrival
+     * time ({@code created_at}), starting a new request whenever arrivals are more than a second apart. Messages
+     * without an arrival time are treated as arriving when they were recorded.
+     */
+    public static List<List<OwnTracksLocationMessage>> arrivalBatches(List<OwnTracksLocationMessage> messages) {
+        List<OwnTracksLocationMessage> byArrival = new ArrayList<>(messages);
+        byArrival.sort(Comparator.comparing(TimelineReplayHarness::arrival)
+                .thenComparing(OwnTracksLocationMessage::getTst));
+        List<List<OwnTracksLocationMessage>> batches = new ArrayList<>();
+        Long previousArrival = null;
+        for (OwnTracksLocationMessage message : byArrival) {
+            long arrival = arrival(message);
+            if (previousArrival == null || arrival - previousArrival > 1) {
+                batches.add(new ArrayList<>());
+            }
+            batches.getLast().add(message);
+            previousArrival = arrival;
+        }
+        return batches;
+    }
+
+    private static long arrival(OwnTracksLocationMessage message) {
+        return message.getCreatedAt() != null ? message.getCreatedAt() : message.getTst();
+    }
+
+    /**
+     * Replays the export's points the way the exporting server received them, running a real-time pass after each
+     * request: the user's timeline may have been built this way rather than by a full rebuild.
+     */
+    public void replayByArrival(UUID userId, byte[] export) {
+        replayLive(userId, arrivalBatches(messages(export)));
     }
 
     /** Sends messages through the OwnTracks ingest path in one request, as the live endpoint does. */
@@ -279,24 +343,104 @@ public class TimelineReplayHarness {
         });
     }
 
+    /**
+     * The timeline overlapping the export's requested range, as times, durations and movement types only: names and
+     * ids differ between the exporting server and this one.
+     */
+    public List<String> structure(UUID userId, byte[] export) {
+        ExportRanges ranges = exportRanges(export);
+        return QuarkusTransaction.requiringNew().call(() -> comparisonService
+                .currentEvents(userId, ranges.requestedStart(), ranges.requestedEnd(), ranges.latestPoint())
+                .stream()
+                .map(DebugTimelineComparison.Event::describe)
+                .toList());
+    }
+
+    /** The exporting server's timeline ({@code timeline.json}) in the form of {@link #structure(UUID, byte[])}. */
+    public List<String> exportedStructure(byte[] export) {
+        ExportRanges ranges = exportRanges(export);
+        return comparisonService
+                .exportedEvents(exportedTimeline(export), ranges.requestedStart(), ranges.requestedEnd(),
+                        ranges.latestPoint())
+                .stream()
+                .map(DebugTimelineComparison.Event::describe)
+                .toList();
+    }
+
+    /** The user's timeline must be the one the export says the exporting server showed, within the requested range. */
+    public void assertMatchesExportedTimeline(UUID userId, byte[] export) {
+        assertThat(structure(userId, export))
+                .as("timeline differs from the exported one")
+                .containsExactlyElementsOf(exportedStructure(export));
+    }
+
+    private TimelineDataDto exportedTimeline(byte[] export) {
+        try {
+            return objectMapper.readValue(readZipEntry(export, "timeline.json"), TimelineDataDto.class);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private ExportRanges exportRanges(byte[] export) {
+        try {
+            JsonNode metadata = objectMapper.readTree(readZipEntry(export, "metadata.json"));
+            JsonNode requested = metadata.path("requested_range");
+            Instant latestPoint = null;
+            for (JsonNode point : objectMapper.readTree(readZipEntry(export, "gps_data.json"))) {
+                Instant timestamp = point.hasNonNull("tst_ms")
+                        ? Instant.ofEpochMilli(point.get("tst_ms").asLong())
+                        : Instant.ofEpochSecond(point.get("tst").asLong());
+                if (latestPoint == null || timestamp.isAfter(latestPoint)) {
+                    latestPoint = timestamp;
+                }
+            }
+            return new ExportRanges(Instant.parse(requested.get("start").asText()),
+                    Instant.parse(requested.get("end").asText()), latestPoint);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private record ExportRanges(Instant requestedStart, Instant requestedEnd, Instant latestPoint) {
+    }
+
     private static String describe(TimelineStayEntity stay) {
-        return "STAY " + stay.getTimestamp() + " " + stay.getStayDuration() + "s '" + stay.getLocationName()
+        return "STAY " + stay.getTimestamp() + " " + stay.getStayDuration() + "s "
+                + String.format(Locale.ROOT, "(%.6f,%.6f)", stay.getLocation().getY(), stay.getLocation().getX())
+                + " '" + stay.getLocationName()
                 + "' favorite=" + (stay.getFavoriteLocation() == null ? null : stay.getFavoriteLocation().getId())
-                + " geocoding=" + (stay.getGeocodingLocation() == null ? null : stay.getGeocodingLocation().getId());
+                + " geocoding=" + (stay.getGeocodingLocation() == null ? null : stay.getGeocodingLocation().getId())
+                + " why=" + explanation(stay.getExplanation());
     }
 
     private static String describe(TimelineTripEntity trip) {
         return "TRIP " + trip.getTimestamp() + " " + trip.getTripDuration() + "s " + trip.getDistanceMeters() + "m "
-                + trip.getMovementType();
+                + trip.getMovementType() + " why=" + explanation(trip.getExplanation());
+    }
+
+    /** The whole explanation: start, notes and end, each with the values it was based on. */
+    private static String explanation(Map<String, Object> stored) {
+        TimelineExplanation explanation = TimelineExplanation.fromMap(stored);
+        if (explanation == null) {
+            return "none";
+        }
+        return reason(explanation.getStart()) + " " + explanation.getNotes().stream()
+                .map(TimelineReplayHarness::reason).toList() + " " + reason(explanation.getEnd());
+    }
+
+    private static String reason(TimelineReason reason) {
+        return reason == null ? "-" : reason.params().isEmpty() ? reason.code() : reason.code() + reason.params();
     }
 
     /** The ongoing gap ends at whatever "now" was when it was last extended, so only its start is compared. */
     private static String describe(TimelineDataGapEntity gap, Instant latestPoint) {
         boolean ongoing = Objects.equals(gap.getStartTime(), latestPoint);
-        return "GAP " + gap.getStartTime() + " .. " + (ongoing ? "ongoing" : gap.getEndTime());
+        return "GAP " + gap.getStartTime() + " why=" + explanation(gap.getExplanation()) + " .. "
+                + (ongoing ? "ongoing" : gap.getEndTime());
     }
 
-    private static byte[] readResource(String path) {
+    public static byte[] readResource(String path) {
         try (InputStream input = TimelineReplayHarness.class.getResourceAsStream(path)) {
             if (input == null) {
                 throw new IllegalArgumentException("Missing test fixture " + path);

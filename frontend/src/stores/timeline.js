@@ -374,6 +374,17 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        /** Why a stay, trip or data gap is as it is, with its GPS points. kind: 'stay', 'trip' or 'dataGap'. */
+        async fetchTimelineEventExplanation(kind, id) {
+            const paths = { stay: 'stays', trip: 'trips', dataGap: 'data-gaps' }
+            try {
+                return await apiService.get(`/timeline/${paths[kind]}/${id}/explanation`)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to load the explanation')
+                throw this.error
+            }
+        },
+
         async lookupLocation(latitude, longitude) {
             try {
                 return await apiService.get('/timeline/location-lookup',

@@ -70,7 +70,6 @@ class TimelinePreferencesUpdaterTest {
         request.setUseVelocityAccuracy(false);
         request.setStaypointVelocityThreshold(15.0);
         request.setStaypointMaxAccuracyThreshold(25.0);
-        request.setStaypointMinAccuracyRatio(0.9);
         request.setTripDetectionAlgorithm("single");
         request.setStaypointRadiusMeters(75);
         request.setStaypointMinDurationMinutes(10);
@@ -86,7 +85,6 @@ class TimelinePreferencesUpdaterTest {
         assertEquals(false, updatedPrefs.getUseVelocityAccuracy());
         assertEquals(15.0, updatedPrefs.getStaypointVelocityThreshold());
         assertEquals(25.0, updatedPrefs.getStaypointMaxAccuracyThreshold());
-        assertEquals(0.9, updatedPrefs.getStaypointMinAccuracyRatio());
         assertEquals("single", updatedPrefs.getTripDetectionAlgorithm());
         assertEquals(75, updatedPrefs.getStaypointRadiusMeters());
         assertEquals(10, updatedPrefs.getStaypointMinDurationMinutes());

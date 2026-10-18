@@ -858,7 +858,6 @@ public class UserService {
                 update.getTripDetectionAlgorithm() != null ||
                 update.getUseVelocityAccuracy() != null ||
                 update.getStaypointMaxAccuracyThreshold() != null ||
-                update.getStaypointMinAccuracyRatio() != null ||
                 update.getIsMergeEnabled() != null ||
                 update.getMergeMaxDistanceMeters() != null ||
                 update.getMergeMaxTimeGapMinutes() != null ||

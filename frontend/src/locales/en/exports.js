@@ -8,6 +8,8 @@
 export default {
     progressMessages: {
         initializingCsv: 'Initializing CSV export...',
+        collectingTimeline: 'Collecting timeline data...',
+        exportingGpsPoints: 'Exporting GPS points...',
         startingStreamGps: 'Starting to stream GPS data...',
         exportingGpsPointsCount: 'Exporting GPS points: {count} records',
         finalizingCsv: 'Finalizing CSV export...',

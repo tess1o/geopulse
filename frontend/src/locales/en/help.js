@@ -11,7 +11,8 @@ export default {
                 bullets: [
                     'Coordinates are shifted to protect your privacy',
                     'Location names are anonymized',
-                    'Includes timeline configuration for analysis'
+                    'Includes timeline configuration for analysis',
+                    'Lets you describe what is wrong and when it happened'
                 ],
                 demoDisabledText: 'Debug data export is disabled in demo mode to protect the shared demo dataset.',
                 demoDisabledTooltip: 'Debug data export is disabled in demo mode',

@@ -6,6 +6,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
+import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
+import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
@@ -18,6 +20,8 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
 import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -194,8 +198,58 @@ public class GeoPulseTimelineDetailsImporter {
             entityManager.persist(entity);
             gapOverrides++;
         }
-        log.info("Imported/updated {} trip overrides and {} gap overrides for user {}",
-                tripOverrides, gapOverrides, job.getUserId());
+
+        int staySplitOverrides = 0;
+        for (TimelineOverridesDataDto.TripStaySplitOverrideDto dto : emptyIfNull(data.getTripStaySplitOverrides())) {
+            if (dto.getSourceTripTimestamp() == null || dto.getStayStartTime() == null || dto.getStayEndTime() == null
+                    || shouldSkipDueToDateFilter(dto.getSourceTripTimestamp(), job)) {
+                continue;
+            }
+            TimelineTripStaySplitOverrideEntity entity = entityManager.createQuery("""
+                            SELECT override FROM TimelineTripStaySplitOverrideEntity override
+                            WHERE override.user.id = :userId
+                              AND override.sourceTripTimestamp = :timestamp
+                              AND override.stayStartTime = :stayStart
+                              AND override.stayEndTime = :stayEnd
+                            """, TimelineTripStaySplitOverrideEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("timestamp", dto.getSourceTripTimestamp())
+                    .setParameter("stayStart", dto.getStayStartTime())
+                    .setParameter("stayEnd", dto.getStayEndTime())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineTripStaySplitOverrideEntity::new);
+
+            entity.setUser(user);
+            Long mappedStayId = resolveMappedId(dto.getStayId(), referenceMaps.timelineStayIds);
+            Long mappedFavoriteId = resolveMappedId(dto.getFavoriteId(), referenceMaps.favoriteIds);
+            Long mappedGeocodingId = resolveMappedId(dto.getGeocodingId(), referenceMaps.geocodingIds);
+            entity.setStay(mappedStayId == null ? null : entityManager.getReference(TimelineStayEntity.class, mappedStayId));
+            entity.setFavoriteLocation(mappedFavoriteId == null ? null : entityManager.getReference(FavoritesEntity.class, mappedFavoriteId));
+            entity.setGeocodingLocation(mappedGeocodingId == null ? null : entityManager.getReference(ReverseGeocodingLocationEntity.class, mappedGeocodingId));
+            entity.setStayStartTime(dto.getStayStartTime());
+            entity.setStayEndTime(dto.getStayEndTime());
+            entity.setAnchorTimestamp(dto.getAnchorTimestamp() != null ? dto.getAnchorTimestamp() : dto.getStayStartTime());
+            entity.setStayLatitude(defaultDouble(dto.getStayLatitude()));
+            entity.setStayLongitude(defaultDouble(dto.getStayLongitude()));
+            entity.setStayLocationName(dto.getStayLocationName() != null ? dto.getStayLocationName() : "Unknown Location");
+            entity.setStayLocationSource(parseEnum(LocationSource.class, dto.getStayLocationSource(), LocationSource.GEOCODING));
+            entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
+            entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
+            entity.setSourceDistanceMeters(dto.getSourceDistanceMeters() == null ? 0L : dto.getSourceDistanceMeters());
+            entity.setSourceStartLatitude(defaultDouble(dto.getSourceStartLatitude()));
+            entity.setSourceStartLongitude(defaultDouble(dto.getSourceStartLongitude()));
+            entity.setSourceEndLatitude(defaultDouble(dto.getSourceEndLatitude()));
+            entity.setSourceEndLongitude(defaultDouble(dto.getSourceEndLongitude()));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            staySplitOverrides++;
+        }
+        log.info("Imported/updated {} trip overrides, {} gap overrides and {} stay-split overrides for user {}",
+                tripOverrides, gapOverrides, staySplitOverrides, job.getUserId());
     }
 
     @Transactional

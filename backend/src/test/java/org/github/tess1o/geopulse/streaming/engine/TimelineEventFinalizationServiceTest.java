@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
+import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
 import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -7,6 +8,8 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -26,7 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 /**
- * Unit tests for TimelineEventFinalizationService accuracy validation.
+ * Unit tests for TimelineEventFinalizationService.
  */
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -41,18 +44,16 @@ class TimelineEventFinalizationServiceTest {
     void setUp() {
         config = TimelineConfig.builder()
             .staypointMaxAccuracyThreshold(50.0) // 50m threshold
-            .staypointMinAccuracyRatio(0.7) // require 70% accurate points
-            .useVelocityAccuracy(true) // enable validation
+            .useVelocityAccuracy(true)
             .build();
     }
     @Test
-    void shouldFinalizeStay_WhenAccuracyRatioSufficient() {
+    void shouldFinalizeStayAtCentroid() {
         UserState userState = new UserState();
-        // Add points with good accuracy ratio (3/4 = 75% > 70% required)
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 30.0)); // good
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7590, -73.9850, 20.0)); // good
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7588, -73.9852, 40.0)); // good
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:15:00Z", 40.7587, -73.9853, 80.0)); // bad
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 30.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7590, -73.9850, 20.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7588, -73.9852, 40.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:15:00Z", 40.7587, -73.9853, 80.0));
         Stay result = service.finalizeStayWithoutLocation(userState, config);
         assertNotNull(result);
         assertEquals(Instant.parse("2024-08-15T08:00:00Z"), result.getStartTime());
@@ -61,63 +62,21 @@ class TimelineEventFinalizationServiceTest {
         assertEquals(-73.9851, result.getLongitude(), 0.001);
     }
     @Test
-    void shouldRejectStay_WhenAccuracyRatioInsufficient() {
+    void shouldFinalizeStay_WhenMostPointsAreInaccurate() {
+        // Inaccurate points are filtered out before the state machine; the finalizer does not judge accuracy again.
         UserState userState = new UserState();
-        // Add points with poor accuracy ratio (1/4 = 25% < 70% required)
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 30.0)); // good
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7590, -73.9850, 100.0)); // bad
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7588, -73.9852, 80.0)); // bad
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:15:00Z", 40.7587, -73.9853, 90.0)); // bad
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 30.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7590, -73.9850, 100.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7588, -73.9852, 80.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:15:00Z", 40.7587, -73.9853, 90.0));
         Stay result = service.finalizeStayWithoutLocation(userState, config);
-        assertNull(result, "Stay should be rejected due to insufficient accuracy ratio");
-    }
-    @Test
-    void shouldAllowStay_WhenAccuracyValidationDisabled() {
-        TimelineConfig configDisabled = TimelineConfig.builder()
-            .staypointMaxAccuracyThreshold(50.0)
-            .staypointMinAccuracyRatio(0.7)
-            .useVelocityAccuracy(false) // disabled
-            .build();
-        UserState userState = new UserState();
-        // Add points with poor accuracy ratio
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 30.0)); // good
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7590, -73.9850, 100.0)); // bad
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7588, -73.9852, 80.0)); // bad
-        Stay result = service.finalizeStayWithoutLocation(userState, configDisabled);
-        assertNotNull(result, "Stay should be allowed when validation is disabled");
-    }
-    @Test
-    void shouldAllowStay_WhenThresholdsNotConfigured() {
-        TimelineConfig configNoThresholds = TimelineConfig.builder()
-            .staypointMaxAccuracyThreshold(null) // not set
-            .staypointMinAccuracyRatio(null) // not set
-            .useVelocityAccuracy(true)
-            .build();
-        UserState userState = new UserState();
-        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 200.0)); // normally bad
-        Stay result = service.finalizeStayWithoutLocation(userState, configNoThresholds);
-        assertNotNull(result, "Stay should be allowed when thresholds are not configured");
+        assertNotNull(result);
     }
     @Test
     void shouldReturnNull_WhenUserStateEmpty() {
         UserState emptyState = new UserState();
         Stay result = service.finalizeStayWithoutLocation(emptyState, config);
         assertNull(result, "Should return null when user state has no active points");
-    }
-    @Test
-    void shouldCalculateAccuracyRatioCorrectly() {
-        UserState userState = new UserState();
-        // Exactly 70% accurate (7/10)
-        for (int i = 0; i < 7; i++) {
-            userState.addActivePoint(createGpsPoint(
-                Instant.parse("2024-08-15T08:0" + i + ":00Z"), 40.7589, -73.9851, 30.0)); // good
-        }
-        for (int i = 7; i < 10; i++) {
-            userState.addActivePoint(createGpsPoint(
-                Instant.parse("2024-08-15T08:0" + i + ":00Z"), 40.7589, -73.9851, 80.0)); // bad
-        }
-        Stay result = service.finalizeStayWithoutLocation(userState, config);
-        assertNotNull(result, "Should allow stay when accuracy ratio exactly meets threshold");
     }
 
     @Test
@@ -146,18 +105,46 @@ class TimelineEventFinalizationServiceTest {
         assertEquals(40.7580, stay.getLatitude(), 0.000001);
         assertEquals(-73.9855, stay.getLongitude(), 0.000001);
     }
+
+    @Test
+    void shouldNoteFavoriteArea_WhenStayKeepsPointsOutsideRadiusInItsArea() {
+        UserState userState = stayWithPointOutsideRadius();
+        userState.setFavoriteAreas(List.of(FavoriteAreaDto.builder().id(7L)
+            .southWestLat(40.7570).southWestLon(-73.9870).northEastLat(40.7610).northEastLon(-73.9830).build()));
+
+        service.finalizeStayWithoutLocation(userState, radiusConfig());
+
+        assertTrue(userState.getActiveExplanation().getNotes().stream()
+            .anyMatch(note -> TimelineReasons.FAVORITE_AREA.equals(note.code())));
+    }
+
+    @Test
+    void shouldNotNoteFavoriteArea_WhenStayHasNoFavoriteArea() {
+        UserState userState = stayWithPointOutsideRadius();
+
+        service.finalizeStayWithoutLocation(userState, radiusConfig());
+
+        assertTrue(userState.getActiveExplanation().getNotes().isEmpty());
+    }
+
+    /** Three points together and one about 90 m from the stay centre, beyond a 50 m radius. */
+    private UserState stayWithPointOutsideRadius() {
+        UserState userState = new UserState();
+        userState.startExplanation(TimelineReason.of(TimelineReasons.FIRST_POINT));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:00:00Z", 40.7589, -73.9851, 10.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:05:00Z", 40.7589, -73.9851, 10.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:10:00Z", 40.7589, -73.9851, 10.0));
+        userState.addActivePoint(createGpsPoint("2024-08-15T08:15:00Z", 40.7600, -73.9851, 10.0));
+        return userState;
+    }
+
+    private TimelineConfig radiusConfig() {
+        return TimelineConfig.builder().staypointRadiusMeters(50).build();
+    }
+
     private GPSPoint createGpsPoint(String timestamp, double lat, double lon, double accuracy) {
         return GPSPoint.builder()
             .timestamp(Instant.parse(timestamp))
-            .latitude(lat)
-            .longitude(lon)
-            .speed(1.0)
-            .accuracy(accuracy)
-            .build();
-    }
-    private GPSPoint createGpsPoint(Instant timestamp, double lat, double lon, double accuracy) {
-        return GPSPoint.builder()
-            .timestamp(timestamp)
             .latitude(lat)
             .longitude(lon)
             .speed(1.0)

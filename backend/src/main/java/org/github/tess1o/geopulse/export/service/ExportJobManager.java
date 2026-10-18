@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.export.model.DebugExportRequest;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportFormat;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -35,6 +36,9 @@ public class ExportJobManager {
     @Inject
     DataJobNotificationService dataJobNotificationService;
 
+    @Inject
+    DebugExportService debugExportService;
+
     private final ConcurrentHashMap<UUID, ExportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
@@ -54,6 +58,20 @@ public class ExportJobManager {
 
         log.info("Created {} export job {} for user {} with date range: {} to {}",
                 format, job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
+
+        return job;
+    }
+
+    public ExportJob createDebugExportJob(UUID userId, DebugExportRequest request) {
+        validateJobLimit(userId);
+
+        ExportJob job = new ExportJob(userId, List.of(), new ExportDateRange(request.getStartTime(), request.getEndTime()),
+                ExportFormat.DEBUG);
+        job.setDebugRequest(request);
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Created debug export job {} for user {} with date range: {} to {}",
+                job.getJobId(), userId, request.getStartTime(), request.getEndTime());
 
         return job;
     }
@@ -120,6 +138,7 @@ public class ExportJobManager {
         exportStrategies.put(ExportFormat.CSV, job -> exportDataGenerator.generateCsvExport(job));
         exportStrategies.put(ExportFormat.GPX, job -> exportDataGenerator.generateGpxExport(job, job.getGpxLayout()));
         exportStrategies.put(ExportFormat.GEOPULSE, job -> exportDataGenerator.generateGeoPulseNativeExport(job));
+        exportStrategies.put(ExportFormat.DEBUG, job -> debugExportService.generateDebugExport(job));
     }
 
     @FunctionalInterface
