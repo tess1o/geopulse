@@ -17,7 +17,7 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String useVelocityAccuracy;
 
-    @ConfigProperty(name = "geopulse.timeline.staypoint.velocity.threshold", defaultValue = "2.0")
+    @ConfigProperty(name = "geopulse.timeline.staypoint.velocity.threshold", defaultValue = "9.0")
     @StaticInitSafe
     String staypointVelocityThreshold;
 

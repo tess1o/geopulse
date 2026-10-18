@@ -44,7 +44,7 @@ class StationaryBoundaryStayGapRuleTest {
                 .gapStayInferenceEnabled(true)
                 .dataGapThresholdSeconds(10800)
                 .staypointRadiusMeters(100)
-                .staypointVelocityThreshold(3.5)
+                .staypointVelocityThreshold(12.6)
                 .tripArrivalMinPoints(2)
                 .build();
     }

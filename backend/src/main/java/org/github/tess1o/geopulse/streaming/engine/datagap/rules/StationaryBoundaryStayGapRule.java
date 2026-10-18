@@ -20,7 +20,7 @@ import java.util.List;
 @ApplicationScoped
 public class StationaryBoundaryStayGapRule implements DataGapRule {
     private static final int DEFAULT_STAY_RADIUS_METERS = 50;
-    private static final double DEFAULT_STOP_SPEED_THRESHOLD = 2.0;
+    private static final double DEFAULT_STOP_SPEED_THRESHOLD_KMH = 7.2;
     private static final int DEFAULT_MIN_TRIP_POINTS = 3;
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.stationary_boundary_in_trip.enabled",
@@ -179,9 +179,12 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         return configuredRadius != null ? configuredRadius : DEFAULT_STAY_RADIUS_METERS;
     }
 
+    /**
+     * Stop speed threshold in m/s, the unit of GPS point speeds. The setting itself is in km/h.
+     */
     private double resolveStopSpeedThreshold(TimelineConfig config) {
-        Double configuredThreshold = config.getStaypointVelocityThreshold();
-        return configuredThreshold != null ? configuredThreshold : DEFAULT_STOP_SPEED_THRESHOLD;
+        Double configuredThresholdKmh = config.getStaypointVelocityThreshold();
+        return (configuredThresholdKmh != null ? configuredThresholdKmh : DEFAULT_STOP_SPEED_THRESHOLD_KMH) / 3.6;
     }
 
     private int resolveMinTripPoints(TimelineConfig config) {

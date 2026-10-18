@@ -27,7 +27,7 @@ class GapStayInferenceServiceTest {
                 .gapStayInferenceEnabled(true)
                 .gapStayInferenceMaxGapHours(24)
                 .staypointRadiusMeters(80)
-                .staypointVelocityThreshold(2.0)
+                .staypointVelocityThreshold(7.2)
                 .tripArrivalMinPoints(3)
                 .tripArrivalDetectionMinDurationSeconds(90)
                 .build();

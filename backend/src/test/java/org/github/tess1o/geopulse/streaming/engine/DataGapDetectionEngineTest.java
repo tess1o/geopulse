@@ -218,7 +218,7 @@ class DataGapDetectionEngineTest {
         // Given: Real trip followed by slow clustered tail before GPS gap (arrival-like)
         config.setGapStayInferenceEnabled(true);
         config.setStaypointRadiusMeters(80);
-        config.setStaypointVelocityThreshold(2.0);
+        config.setStaypointVelocityThreshold(7.2);
         config.setTripArrivalMinPoints(3);
         config.setTripArrivalDetectionMinDurationSeconds(90); // default-like, gap heuristic uses relaxed threshold
         UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
@@ -336,7 +336,7 @@ class DataGapDetectionEngineTest {
     void shouldInferStationaryBoundaryStay_WhenInTripLongGapAndBoundariesAreStationaryAndClose() {
         config.setGapStayInferenceEnabled(true);
         config.setStaypointRadiusMeters(100);
-        config.setStaypointVelocityThreshold(3.5);
+        config.setStaypointVelocityThreshold(12.6);
         config.setTripArrivalMinPoints(2);
 
         StationaryBoundaryStayGapRule enabledBoundaryRule = new StationaryBoundaryStayGapRule(

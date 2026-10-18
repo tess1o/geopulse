@@ -20,7 +20,7 @@ class TripStopHeuristicsService {
     private static final Duration DEFAULT_ARRIVAL_DETECTION_DURATION = Duration.ofSeconds(90);
     private static final Duration DEFAULT_SUSTAINED_STOP_DURATION = Duration.ofSeconds(60);
     private static final int DEFAULT_TRIP_ARRIVAL_MIN_POINTS = 3;
-    private static final double DEFAULT_STOP_SPEED_THRESHOLD = 2.0;
+    private static final double DEFAULT_STOP_SPEED_THRESHOLD_KMH = 7.2;
 
     private static final Duration MIN_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(30);
     private static final Duration MAX_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(60);
@@ -202,9 +202,12 @@ class TripStopHeuristicsService {
         return radiusMeters != null ? radiusMeters : DEFAULT_STAY_RADIUS_METERS;
     }
 
+    /**
+     * Stop speed threshold in m/s, the unit of {@link GPSPoint#getSpeed()}. The setting itself is in km/h.
+     */
     double getStopSpeedThreshold(TimelineConfig config) {
-        Double threshold = config.getStaypointVelocityThreshold();
-        return threshold != null ? threshold : DEFAULT_STOP_SPEED_THRESHOLD;
+        Double thresholdKmh = config.getStaypointVelocityThreshold();
+        return (thresholdKmh != null ? thresholdKmh : DEFAULT_STOP_SPEED_THRESHOLD_KMH) / 3.6;
     }
 
     Duration getArrivalDetectionDuration(TimelineConfig config) {

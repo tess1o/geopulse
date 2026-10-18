@@ -247,7 +247,8 @@ public class DebugExportService {
     private byte[] generateMetadata(DebugExportRequest request,
                                     long gpsPointCount, int locationsCount, int areasCount) throws IOException {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("export_version", "1.0");
+        // 1.1: staypointVelocityThreshold in timeline_config.json is in km/h (it was m/s in 1.0)
+        metadata.put("export_version", "1.1");
         metadata.put("export_date", Instant.now().toString());
         metadata.put("coordinate_shift_applied", true);
         metadata.put("anonymization_applied", true);

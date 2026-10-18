@@ -495,7 +495,7 @@ export default {
                 detailsHigherLabel: 'Вищі значення',
                 detailsHigherValue: 'Дозволяє більше руху в межах зупинок',
                 labelLow: '1 км/год (Суворо)',
-                labelMid: '8 км/год (Збалансовано)',
+                labelMid: '9 км/год (Збалансовано)',
                 labelHigh: '20 км/год (Поблажливо)',
                 suffix: ' км/год'
             },

@@ -34,6 +34,8 @@ import java.util.zip.ZipInputStream;
 @Slf4j
 public class DebugImportService {
 
+    private static final String LEGACY_VELOCITY_MS_EXPORT_VERSION = "1.0";
+
     @Inject
     ObjectMapper objectMapper;
 
@@ -91,7 +93,7 @@ public class DebugImportService {
 
         // 6. Optionally update timeline configuration
         if (request.isUpdateTimelineConfig() && data.timelineConfig != null) {
-            updateTimelineConfig(userId, data.timelineConfig);
+            updateTimelineConfig(userId, data.timelineConfig, data.metadata);
         }
 
         // 7. Regenerate timeline
@@ -254,8 +256,16 @@ public class DebugImportService {
         log.info("Successfully imported {} favorite areas", areas.size());
     }
 
-    private void updateTimelineConfig(UUID userId, TimelineConfig config) {
+    private void updateTimelineConfig(UUID userId, TimelineConfig config, JsonNode metadata) {
         log.info("Updating timeline configuration for user {}", userId);
+
+        // Exports before version 1.1 hold the stay velocity threshold in m/s; it is in km/h now
+        String exportVersion = metadata != null && metadata.hasNonNull("export_version")
+                ? metadata.get("export_version").asText()
+                : LEGACY_VELOCITY_MS_EXPORT_VERSION;
+        if (LEGACY_VELOCITY_MS_EXPORT_VERSION.equals(exportVersion) && config.getStaypointVelocityThreshold() != null) {
+            config.setStaypointVelocityThreshold(config.getStaypointVelocityThreshold() * 3.6);
+        }
 
         // Use MapStruct to convert TimelineConfig to UpdateTimelinePreferencesRequest
         var request = timelinePreferencesMapper.configToRequest(config);

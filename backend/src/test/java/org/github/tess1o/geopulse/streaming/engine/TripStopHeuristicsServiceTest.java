@@ -20,7 +20,7 @@ class TripStopHeuristicsServiceTest {
         service = new TripStopHeuristicsService();
         config = TimelineConfig.builder()
                 .staypointRadiusMeters(80)
-                .staypointVelocityThreshold(2.0)
+                .staypointVelocityThreshold(7.2)
                 .tripArrivalMinPoints(3)
                 .tripArrivalDetectionMinDurationSeconds(90)
                 .tripSustainedStopMinDurationSeconds(60)
@@ -102,7 +102,7 @@ class TripStopHeuristicsServiceTest {
     void shouldDetectSustainedStopFallback_ForLowSpeedWalkingArrivalFromJuly2026Regression() {
         TimelineConfig walkingConfig = TimelineConfig.builder()
                 .staypointRadiusMeters(50)
-                .staypointVelocityThreshold(2.0)
+                .staypointVelocityThreshold(7.2)
                 .tripArrivalMinPoints(3)
                 .tripArrivalDetectionMinDurationSeconds(90)
                 .tripSustainedStopMinDurationSeconds(60)
@@ -162,7 +162,7 @@ class TripStopHeuristicsServiceTest {
     void shouldDetectTripStopFromRecentWindow_WithTwoStoppedPointsWhenConfigured() {
         TimelineConfig twoPointConfig = TimelineConfig.builder()
                 .staypointRadiusMeters(80)
-                .staypointVelocityThreshold(2.0)
+                .staypointVelocityThreshold(7.2)
                 .tripArrivalMinPoints(2)
                 .tripArrivalDetectionMinDurationSeconds(90)
                 .tripSustainedStopMinDurationSeconds(60)
@@ -214,6 +214,26 @@ class TripStopHeuristicsServiceTest {
                         config
                 );
         assertFalse(match.isMatched());
+    }
+    @Test
+    void shouldReadStopSpeedThresholdInKmhAndCompareInMetersPerSecond() {
+        config.setStaypointVelocityThreshold(9.0);
+        assertEquals(2.5, service.getStopSpeedThreshold(config), 1e-9);
+    }
+    @Test
+    void shouldNotDetectTripStop_WhenArrivalPointsAreFasterThanKmhThreshold() {
+        // 3 m/s is 10.8 km/h: above a 9 km/h threshold, although below the number 9 itself
+        config.setStaypointVelocityThreshold(9.0);
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 9.0),
+                point("2024-01-01T10:10:00Z", 40.7130, -74.0080, 11.0),
+                point("2024-01-01T10:20:00Z", 40.7140, -74.0060, 10.0),
+                point("2024-01-01T10:30:00Z", 40.71480, -74.00580, 3.0),
+                point("2024-01-01T10:31:00Z", 40.71484, -74.00576, 3.0),
+                point("2024-01-01T10:31:40Z", 40.71482, -74.00574, 3.0));
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, config);
+        assertFalse(result.isStopDetected());
     }
     private GPSPoint point(String isoTs, double lat, double lon, double speed) {
         return GPSPoint.builder()

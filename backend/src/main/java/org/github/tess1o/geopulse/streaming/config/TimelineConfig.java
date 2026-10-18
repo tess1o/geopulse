@@ -31,7 +31,7 @@ public class TimelineConfig {
      */
     private Boolean useVelocityAccuracy;
     /**
-     * Determines the velocity threshold (in meters per second) used to identify staypoints.
+     * Determines the velocity threshold (in km/h) used to identify staypoints.
      * A staypoint is detected when the velocity of movement falls below this threshold,
      * indicating that the user is likely stationary. Adjusting this value impacts how
      * sensitive the system is to detecting periods of low movement or stillness.

@@ -87,7 +87,7 @@
           :labels="velocityThresholdLabels"
           :suffix="t('timeline.preferences.stayPointDetection.velocityThreshold.suffix')"
           :input-min="0.5"
-          :input-max="50"
+          :input-max="100"
           :decimal-places="1"
         />
       </template>

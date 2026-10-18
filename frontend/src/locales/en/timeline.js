@@ -496,7 +496,7 @@ export default {
                 detailsHigherLabel: 'Higher values',
                 detailsHigherValue: 'Allow more movement within stays',
                 labelLow: '1 km/h (Strict)',
-                labelMid: '8 km/h (Balanced)',
+                labelMid: '9 km/h (Balanced)',
                 labelHigh: '20 km/h (Lenient)',
                 suffix: ' km/h'
             },

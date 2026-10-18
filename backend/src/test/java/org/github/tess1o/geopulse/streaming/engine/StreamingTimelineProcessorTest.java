@@ -59,7 +59,7 @@ class StreamingTimelineProcessorTest {
             .staypointMaxAccuracyThreshold(50.0) // 50m accuracy threshold
             .staypointMinAccuracyRatio(0.7) // require 70% accurate points
             .useVelocityAccuracy(true) // enable accuracy validation
-            .staypointVelocityThreshold(2.0) // 2 m/s
+            .staypointVelocityThreshold(7.2) // 7.2 km/h = 2 m/s
             .dataGapThresholdSeconds(3600) // 1 hour
             .dataGapMinDurationSeconds(60) // 1 minute
             .build();
@@ -215,7 +215,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig config3Points = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)  // Require 3 points
@@ -254,7 +254,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig config3Points = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)
@@ -315,7 +315,7 @@ class StreamingTimelineProcessorTest {
         // Configure for 2-point detection
         TimelineConfig configWith2Points = TimelineConfig.builder()
             .staypointRadiusMeters(50)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(2)  // Configure for 2 points
@@ -362,7 +362,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig infrequentGpsConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)  // 50m stay radius
             .staypointMinDurationMinutes(7)  // 7 min minimum stay
-            .staypointVelocityThreshold(2.0)  // 2 m/s stop threshold
+            .staypointVelocityThreshold(7.2)  // 7.2 km/h = 2 m/s stop threshold
             .tripArrivalDetectionMinDurationSeconds(90)  // 90 seconds for arrival
             .tripSustainedStopMinDurationSeconds(60)  // 60 seconds for sustained stop
             .tripArrivalMinPoints(2)  // KEY: Allow detection with 2 points
@@ -405,7 +405,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig defaultConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)  // DEFAULT: Require 3 points
@@ -435,7 +435,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig config = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(2)  // Minimum is 2
@@ -457,7 +457,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig walkingConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)
@@ -523,7 +523,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig multiModalConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(7)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)
@@ -586,7 +586,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig boatConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(10)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)
@@ -646,7 +646,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig boatConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(10)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)
@@ -707,7 +707,7 @@ class StreamingTimelineProcessorTest {
         TimelineConfig boatConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)
             .staypointMinDurationMinutes(10)
-            .staypointVelocityThreshold(2.0)
+            .staypointVelocityThreshold(7.2)
             .tripArrivalDetectionMinDurationSeconds(90)
             .tripSustainedStopMinDurationSeconds(60)
             .tripArrivalMinPoints(3)

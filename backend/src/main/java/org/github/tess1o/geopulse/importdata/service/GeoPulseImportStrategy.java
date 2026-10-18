@@ -266,7 +266,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         // 5. Import user info
         if (fileContents.containsKey(ExportImportConstants.FileNames.USER_INFO)) {
-            accountImporter.importUserInfoData(fileContents.get(ExportImportConstants.FileNames.USER_INFO), job);
+            accountImporter.importUserInfoData(fileContents.get(ExportImportConstants.FileNames.USER_INFO), job,
+                    readExportVersion(fileContents));
             totalProgress += 5;
             job.setProgress(totalProgress);
         }
@@ -319,11 +320,17 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
     }
 
+    private String readExportVersion(Map<String, byte[]> fileContents) throws IOException {
+        byte[] metadata = fileContents.get(ExportImportConstants.FileNames.METADATA);
+        return metadata != null ? IMPORT_JSON.readValue(metadata, ExportMetadataDto.class).getVersion() : null;
+    }
+
     private void validateMetadata(ZipInputStream zis, ImportJob job) throws IOException {
         byte[] content = zis.readAllBytes();
         ExportMetadataDto metadata = IMPORT_JSON.readValue(content, ExportMetadataDto.class);
 
         if (!ExportImportConstants.Versions.CURRENT.equals(metadata.getVersion()) &&
+                !ExportImportConstants.Versions.V1_1.equals(metadata.getVersion()) &&
                 !ExportImportConstants.Versions.V1_0.equals(metadata.getVersion())) {
             throw new IllegalArgumentException("Unsupported export version: " + metadata.getVersion());
         }

@@ -76,7 +76,9 @@ public final class ExportImportConstants {
      * Export version constants
      */
     public static final class Versions {
-        public static final String CURRENT = "1.1";
+        /** 1.2: the stay velocity threshold in user preferences is in km/h (it was m/s before). */
+        public static final String CURRENT = "1.2";
+        public static final String V1_1 = "1.1";
         public static final String V1_0 = "1.0";
     }
 }

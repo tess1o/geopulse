@@ -20,7 +20,7 @@ class TimelineConfigurationPropertiesTest {
         // Verify that values from application.properties are loaded correctly
         // These values should match what's configured in application.properties
         assertEquals("true", properties.getUseVelocityAccuracy());
-        assertEquals("2.5", properties.getStaypointVelocityThreshold()); // From application.properties
+        assertEquals("9.0", properties.getStaypointVelocityThreshold()); // From application.properties
         assertEquals("60.0", properties.getStaypointAccuracyThreshold());
         assertEquals("0.5", properties.getStaypointMinAccuracyRatio());
         assertEquals("single", properties.getTripDetectionAlgorithm());

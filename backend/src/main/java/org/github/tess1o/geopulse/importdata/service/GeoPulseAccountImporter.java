@@ -11,7 +11,9 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.importdata.mapper.ImportDataMapper;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -47,7 +49,7 @@ public class GeoPulseAccountImporter {
     EntityManager entityManager;
 
     @Transactional
-    public void importUserInfoData(byte[] content, ImportJob job) throws IOException {
+    public void importUserInfoData(byte[] content, ImportJob job, String exportVersion) throws IOException {
         UserInfoDataDto userInfoData = IMPORT_JSON.readValue(content, UserInfoDataDto.class);
         log.info("Importing user info for user {}", job.getUserId());
 
@@ -60,11 +62,23 @@ public class GeoPulseAccountImporter {
 
         // Update user preferences if they exist in the import
         if (userData.getPreferences() != null) {
+            convertLegacyVelocityThreshold(userData.getPreferences(), exportVersion);
             user.setTimelinePreferences(importDataMapper.updateTimelinePreferences(
                     userData.getPreferences(), user.getTimelinePreferences()));
         }
 
         userRepository.persist(user);
+    }
+
+    /**
+     * Exports before version 1.2 hold the stay velocity threshold in m/s; it is in km/h now.
+     */
+    private void convertLegacyVelocityThreshold(TimelinePreferences preferences, String exportVersion) {
+        boolean legacyVersion = ExportImportConstants.Versions.V1_0.equals(exportVersion)
+                || ExportImportConstants.Versions.V1_1.equals(exportVersion);
+        if (legacyVersion && preferences.getStaypointVelocityThreshold() != null) {
+            preferences.setStaypointVelocityThreshold(preferences.getStaypointVelocityThreshold() * 3.6);
+        }
     }
 
     @Transactional
