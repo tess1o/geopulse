@@ -426,6 +426,45 @@ watch(() => route.query.tab, (tab) => {
   justify-content: flex-start;
 }
 
+:deep(.job-running-hint) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--gp-surface-muted);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+:deep(.job-running-hint i) {
+  color: var(--p-primary-500);
+}
+
+:deep(.job-error-box) {
+  padding: 1rem;
+  border: 1px solid var(--p-red-300);
+  border-left: 4px solid var(--p-red-500);
+  border-radius: var(--gp-radius-medium);
+  background: var(--gp-surface-muted);
+}
+
+:deep(.job-error-header) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--p-red-500);
+  margin-bottom: 0.5rem;
+}
+
+:deep(.job-error-message) {
+  color: var(--gp-text-primary);
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
 :deep(.format-options) {
   display: grid;
   grid-template-columns: 1fr 1fr;

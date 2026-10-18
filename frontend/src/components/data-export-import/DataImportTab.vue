@@ -1,256 +1,7 @@
 <template>
   <div class="tab-section">
-    <!-- Import Form -->
-    <Card class="import-form-card">
-      <template #content>
-        <div class="import-form">
-          <!-- Import Format Selection -->
-          <div class="form-section">
-            <h3 class="form-section-title">{{ t('data.importTab.formatSectionTitle') }}</h3>
-            <div class="format-options">
-              <div
-                  v-for="format in importFormatOptions"
-                  :key="format.value"
-                  class="format-option"
-                  :class="{ 'selected': importFormat === format.value, 'disabled': readOnly }"
-              >
-                <RadioButton
-                    v-model="importFormat"
-                    :inputId="`import-${format.value}`"
-                    :value="format.value"
-                    :disabled="readOnly"
-                    class="format-radio"
-                />
-                <label :for="`import-${format.value}`" class="format-info">
-                  <div class="format-label">
-                    {{ format.label }}
-                  </div>
-                  <p class="format-description">{{ format.description }}</p>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- File Upload -->
-          <div class="form-section">
-            <h3 class="form-section-title">{{ t('data.importTab.selectFileTitle') }}</h3>
-            <div class="file-upload-container">
-              <FileUpload
-                  ref="fileUpload"
-                  mode="basic"
-                  :accept="getCurrentFormatConfig().acceptedFormats"
-                  @select="onFileSelect"
-                  @clear="onFileClear"
-                  :chooseLabel="t('data.importTab.chooseFile')"
-                  class="file-uploader"
-                  :auto="false"
-                  :disabled="readOnly"
-              />
-            </div>
-            <small class="upload-note">
-              {{ readOnly ? t('data.importTab.uploadDisabledDemo') : getUploadNote() }}
-            </small>
-          </div>
-
-          <!-- CSV Format Documentation (shown when CSV is selected, before file upload) -->
-          <div v-if="importFormat === 'csv'" class="csv-format-docs">
-            <h4 class="csv-docs-title">{{ t('data.importTab.csvSpecTitle') }}</h4>
-
-            <div class="csv-download-template">
-              <Button
-                :label="t('data.importTab.downloadCsvTemplate')"
-                icon="pi pi-download"
-                size="small"
-                outlined
-                :disabled="readOnly"
-                @click="downloadCsvTemplate"
-                class="template-button"
-              />
-            </div>
-
-            <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">{{ t('data.importTab.requiredFieldsTitle') }}</h5>
-              <ul class="csv-field-list">
-                <li><strong>timestamp</strong>: {{ t('data.importTab.requiredFields.timestamp') }}</li>
-                <li><strong>latitude</strong>: {{ t('data.importTab.requiredFields.latitude') }}</li>
-                <li><strong>longitude</strong>: {{ t('data.importTab.requiredFields.longitude') }}</li>
-              </ul>
-            </div>
-
-            <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">{{ t('data.importTab.optionalFieldsTitle') }}</h5>
-              <ul class="csv-field-list">
-                <li><strong>accuracy</strong>: {{ t('data.importTab.optionalFields.accuracy') }}</li>
-                <li><strong>velocity</strong>: {{ t('data.importTab.optionalFields.velocity') }}</li>
-                <li><strong>altitude</strong>: {{ t('data.importTab.optionalFields.altitude') }}</li>
-                <li><strong>battery</strong>: {{ t('data.importTab.optionalFields.battery') }}</li>
-                <li><strong>device_id</strong>: {{ t('data.importTab.optionalFields.deviceId') }}</li>
-                <li><strong>source_type</strong>: {{ t('data.importTab.optionalFields.sourceType') }}</li>
-              </ul>
-            </div>
-
-            <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">{{ t('data.importTab.exampleCsvTitle') }}</h5>
-              <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
-2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
-2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
-2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX</pre>
-            </div>
-
-            <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">{{ t('data.importTab.formatRulesTitle') }}</h5>
-              <ul class="csv-field-list">
-                <li>{{ t('data.importTab.formatRules.utf8') }}</li>
-                <li>{{ t('data.importTab.formatRules.header') }}</li>
-                <li>{{ t('data.importTab.formatRules.emptyOptional') }}</li>
-                <li>{{ t('data.importTab.formatRules.decimalSeparator') }}</li>
-                <li>{{ t('data.importTab.formatRules.timestampsUtc') }}</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- Import Options -->
-          <div v-if="selectedFile" class="form-section">
-            <h3 class="form-section-title">{{ t('data.importTab.importOptionsTitle') }}</h3>
-
-            <div class="import-options">
-              <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
-                <div class="option-group-header">
-                  <label class="option-label">{{ t('data.importTab.dataTypesToImport') }}</label>
-                  <Button
-                      :label="importOptions.dataTypes.length === availableDataTypes.length ? t('data.importTab.deselectAll') : t('data.importTab.selectAll')"
-                      outlined
-                      size="small"
-                      :disabled="readOnly"
-                      @click="toggleAllImportDataTypes"
-                      class="select-all-button"
-                  />
-                </div>
-                <div class="timeline-info">
-                  <i class="pi pi-info-circle"></i>
-                  <span><strong>{{ t('data.importTab.timelineDataLabel') }}</strong> {{ t('data.importTab.timelineDataNote') }}</span>
-                </div>
-                <div class="import-data-types">
-                  <div
-                      v-for="dataType in availableDataTypes"
-                      :key="dataType.key"
-                      class="import-data-type"
-                      :class="{ 'disabled': readOnly }"
-                  >
-                    <Checkbox
-                        v-model="importOptions.dataTypes"
-                        :inputId="`import-${dataType.key}`"
-                        :value="dataType.key"
-                        :disabled="readOnly"
-                    />
-                    <div class="import-type-info">
-                      <label :for="`import-${dataType.key}`" class="import-type-label">
-                        <i :class="dataType.icon" class="import-type-icon"></i>
-                        {{ dataType.label }}
-                      </label>
-                      <p class="import-type-description">{{ dataType.description }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="!getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
-                <div class="format-info">
-                  <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
-                  <span> {{ getFormatInfoMessage() }}</span>
-                </div>
-              </div>
-
-              <div class="option-group">
-                <div class="checkbox-option">
-                  <Checkbox
-                      v-model="enableDateFilter"
-                      inputId="dateFilter"
-                      :binary="true"
-                      :disabled="readOnly"
-                  />
-                  <label for="dateFilter" class="option-label">
-                    {{ t('data.importTab.importOnlyWithinRange') }}
-                  </label>
-                </div>
-              </div>
-
-              <div class="option-group">
-                <div class="checkbox-option">
-                  <Checkbox
-                      v-model="clearDataBeforeImport"
-                      inputId="clearDataBeforeImport"
-                      :binary="true"
-                      :disabled="readOnly"
-                  />
-                  <label for="clearDataBeforeImport" class="option-label">
-                    {{ t('data.importTab.replaceExistingData') }}
-                  </label>
-                </div>
-                <div class="option-description">
-                  <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--p-primary-500);"></i>
-                  {{ t('data.importTab.replaceExistingDataDescription') }}
-                </div>
-                <div v-if="clearDataBeforeImport" class="warning-message">
-                  <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
-                  <strong>{{ t('data.importTab.replaceWarningLabel') }}</strong> {{ t('data.importTab.replaceWarningText') }}
-                </div>
-              </div>
-
-              <div v-if="enableDateFilter" class="date-filter-controls">
-                <div class="date-control">
-                  <label for="importStartDate" class="date-label">{{ t('data.importTab.startDateLabel') }}</label>
-                  <Calendar
-                      id="importStartDate"
-                      v-model="importStartDate"
-                      :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                      :placeholder="t('data.importTab.startDatePlaceholder')"
-                      showIcon
-                      :disabled="readOnly"
-                      class="date-picker"
-                  />
-                </div>
-                <div class="date-control">
-                  <label for="importEndDate" class="date-label">{{ t('data.importTab.endDateLabel') }}</label>
-                  <Calendar
-                      id="importEndDate"
-                      v-model="importEndDate"
-                      :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                      :placeholder="t('data.importTab.endDatePlaceholder')"
-                      showIcon
-                      :disabled="readOnly"
-                      class="date-picker"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Import Actions -->
-          <div class="form-actions">
-            <Button
-                :label="t('data.importTab.startImport')"
-                icon="pi pi-upload"
-                @click="startImport"
-                :loading="isImporting || hasActiveImportJob"
-                :disabled="!canStartImport"
-                class="import-button"
-            />
-            <div class="import-info">
-              <small v-if="readOnly" class="demo-disabled-note">
-                {{ t('data.importTab.demoDisabledNote') }}
-              </small>
-              <small class="import-note">
-                {{ t('data.importTab.importDurationNote') }}
-              </small>
-            </div>
-          </div>
-        </div>
-      </template>
-    </Card>
-
     <!-- Upload Progress (shown during file upload) -->
-    <Card v-if="isUploading" class="upload-progress-card">
+    <Card v-if="isUploading" ref="uploadProgressCard" class="upload-progress-card">
       <template #content>
         <div class="upload-status">
           <div class="upload-header">
@@ -290,7 +41,7 @@
     </Card>
 
     <!-- Current Import Job Status -->
-    <Card v-if="currentImportJob && !isUploading" class="job-status-card">
+    <Card v-if="currentImportJob && !isUploading" ref="jobStatusCard" class="job-status-card">
       <template #content>
         <div class="job-status">
           <div class="job-header">
@@ -396,6 +147,271 @@
               </div>
             </div>
           </div>
+
+          <div v-if="currentImportJob.status === 'failed'" class="job-error-box">
+            <div class="job-error-header">
+              <i class="pi pi-times-circle"></i>
+              <span>{{ t('data.importTab.importFailedSummary') }}</span>
+            </div>
+            <div class="job-error-message">
+              {{ formatMessageDescriptor(currentImportJob.error) || t('data.importTab.importFailedUnknown') }}
+            </div>
+          </div>
+
+          <div v-if="hasActiveImportJob" class="job-running-hint">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ t('data.importTab.jobRunningHint') }}</span>
+          </div>
+
+          <div v-if="currentImportJob.status === 'completed'" class="job-actions">
+            <Button
+                :label="t('data.importTab.viewTimeline')"
+                icon="pi pi-calendar"
+                @click="router.push('/app/timeline')"
+            />
+          </div>
+        </div>
+      </template>
+    </Card>
+
+    <!-- Import Form -->
+    <Card class="import-form-card">
+      <template #content>
+        <div class="import-form">
+          <!-- Import Format Selection -->
+          <div class="form-section">
+            <h3 class="form-section-title">{{ t('data.importTab.formatSectionTitle') }}</h3>
+            <div class="format-options">
+              <div
+                  v-for="format in importFormatOptions"
+                  :key="format.value"
+                  class="format-option"
+                  :class="{ 'selected': importFormat === format.value, 'disabled': isFormLocked }"
+              >
+                <RadioButton
+                    v-model="importFormat"
+                    :inputId="`import-${format.value}`"
+                    :value="format.value"
+                    :disabled="isFormLocked"
+                    class="format-radio"
+                />
+                <label :for="`import-${format.value}`" class="format-info">
+                  <div class="format-label">
+                    {{ format.label }}
+                  </div>
+                  <p class="format-description">{{ format.description }}</p>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- File Upload -->
+          <div class="form-section">
+            <h3 class="form-section-title">{{ t('data.importTab.selectFileTitle') }}</h3>
+            <FileDropZone
+                v-model="selectedFile"
+                :accept="getCurrentFormatConfig().acceptedFormats"
+                :disabled="isFormLocked"
+                :prompt-text="t('data.importTab.dropZonePrompt')"
+                :hint-text="readOnly ? t('data.importTab.uploadDisabledDemo') : getUploadNote()"
+                :remove-label="t('data.importTab.removeFile')"
+                @invalid="onInvalidFile"
+            />
+          </div>
+
+          <!-- CSV Format Documentation (shown when CSV is selected, before file upload) -->
+          <div v-if="importFormat === 'csv'" class="csv-format-docs">
+            <h4 class="csv-docs-title">{{ t('data.importTab.csvSpecTitle') }}</h4>
+
+            <div class="csv-download-template">
+              <Button
+                :label="t('data.importTab.downloadCsvTemplate')"
+                icon="pi pi-download"
+                size="small"
+                outlined
+                :disabled="readOnly"
+                @click="downloadCsvTemplate"
+                class="template-button"
+              />
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.requiredFieldsTitle') }}</h5>
+              <ul class="csv-field-list">
+                <li><strong>timestamp</strong>: {{ t('data.importTab.requiredFields.timestamp') }}</li>
+                <li><strong>latitude</strong>: {{ t('data.importTab.requiredFields.latitude') }}</li>
+                <li><strong>longitude</strong>: {{ t('data.importTab.requiredFields.longitude') }}</li>
+              </ul>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.optionalFieldsTitle') }}</h5>
+              <ul class="csv-field-list">
+                <li><strong>accuracy</strong>: {{ t('data.importTab.optionalFields.accuracy') }}</li>
+                <li><strong>velocity</strong>: {{ t('data.importTab.optionalFields.velocity') }}</li>
+                <li><strong>altitude</strong>: {{ t('data.importTab.optionalFields.altitude') }}</li>
+                <li><strong>battery</strong>: {{ t('data.importTab.optionalFields.battery') }}</li>
+                <li><strong>device_id</strong>: {{ t('data.importTab.optionalFields.deviceId') }}</li>
+                <li><strong>source_type</strong>: {{ t('data.importTab.optionalFields.sourceType') }}</li>
+              </ul>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.exampleCsvTitle') }}</h5>
+              <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
+2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
+2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX</pre>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.formatRulesTitle') }}</h5>
+              <ul class="csv-field-list">
+                <li>{{ t('data.importTab.formatRules.utf8') }}</li>
+                <li>{{ t('data.importTab.formatRules.header') }}</li>
+                <li>{{ t('data.importTab.formatRules.emptyOptional') }}</li>
+                <li>{{ t('data.importTab.formatRules.decimalSeparator') }}</li>
+                <li>{{ t('data.importTab.formatRules.timestampsUtc') }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Import Options -->
+          <div v-if="selectedFile" class="form-section">
+            <h3 class="form-section-title">{{ t('data.importTab.importOptionsTitle') }}</h3>
+
+            <div class="import-options">
+              <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
+                <div class="option-group-header">
+                  <label class="option-label">{{ t('data.importTab.dataTypesToImport') }}</label>
+                  <Button
+                      :label="importOptions.dataTypes.length === availableDataTypes.length ? t('data.importTab.deselectAll') : t('data.importTab.selectAll')"
+                      outlined
+                      size="small"
+                      :disabled="isFormLocked"
+                      @click="toggleAllImportDataTypes"
+                      class="select-all-button"
+                  />
+                </div>
+                <div class="timeline-info">
+                  <i class="pi pi-info-circle"></i>
+                  <span><strong>{{ t('data.importTab.timelineDataLabel') }}</strong> {{ t('data.importTab.timelineDataNote') }}</span>
+                </div>
+                <div class="import-data-types">
+                  <div
+                      v-for="dataType in availableDataTypes"
+                      :key="dataType.key"
+                      class="import-data-type"
+                      :class="{ 'disabled': isFormLocked }"
+                  >
+                    <Checkbox
+                        v-model="importOptions.dataTypes"
+                        :inputId="`import-${dataType.key}`"
+                        :value="dataType.key"
+                        :disabled="isFormLocked"
+                    />
+                    <div class="import-type-info">
+                      <label :for="`import-${dataType.key}`" class="import-type-label">
+                        <i :class="dataType.icon" class="import-type-icon"></i>
+                        {{ dataType.label }}
+                      </label>
+                      <p class="import-type-description">{{ dataType.description }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="!getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
+                <div class="format-info">
+                  <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
+                  <span> {{ getFormatInfoMessage() }}</span>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <div class="checkbox-option">
+                  <Checkbox
+                      v-model="enableDateFilter"
+                      inputId="dateFilter"
+                      :binary="true"
+                      :disabled="isFormLocked"
+                  />
+                  <label for="dateFilter" class="option-label">
+                    {{ t('data.importTab.importOnlyWithinRange') }}
+                  </label>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <div class="checkbox-option">
+                  <Checkbox
+                      v-model="clearDataBeforeImport"
+                      inputId="clearDataBeforeImport"
+                      :binary="true"
+                      :disabled="isFormLocked"
+                  />
+                  <label for="clearDataBeforeImport" class="option-label">
+                    {{ t('data.importTab.replaceExistingData') }}
+                  </label>
+                </div>
+                <div class="option-description">
+                  <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--p-primary-500);"></i>
+                  {{ t('data.importTab.replaceExistingDataDescription') }}
+                </div>
+                <div v-if="clearDataBeforeImport" class="warning-message">
+                  <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                  <strong>{{ t('data.importTab.replaceWarningLabel') }}</strong> {{ t('data.importTab.replaceWarningText') }}
+                </div>
+              </div>
+
+              <div v-if="enableDateFilter" class="date-filter-controls">
+                <div class="date-control">
+                  <label for="importStartDate" class="date-label">{{ t('data.importTab.startDateLabel') }}</label>
+                  <Calendar
+                      id="importStartDate"
+                      v-model="importStartDate"
+                      :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+                      :placeholder="t('data.importTab.startDatePlaceholder')"
+                      showIcon
+                      :disabled="isFormLocked"
+                      class="date-picker"
+                  />
+                </div>
+                <div class="date-control">
+                  <label for="importEndDate" class="date-label">{{ t('data.importTab.endDateLabel') }}</label>
+                  <Calendar
+                      id="importEndDate"
+                      v-model="importEndDate"
+                      :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+                      :placeholder="t('data.importTab.endDatePlaceholder')"
+                      showIcon
+                      :disabled="isFormLocked"
+                      class="date-picker"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Import Actions -->
+          <div class="form-actions">
+            <Button
+                :label="t('data.importTab.startImport')"
+                icon="pi pi-upload"
+                @click="startImport"
+                :loading="isImporting || hasActiveImportJob"
+                :disabled="!canStartImport"
+                class="import-button"
+            />
+            <div class="import-info">
+              <small v-if="readOnly" class="demo-disabled-note">
+                {{ t('data.importTab.demoDisabledNote') }}
+              </small>
+              <small class="import-note">
+                {{ t('data.importTab.importDurationNote') }}
+              </small>
+            </div>
+          </div>
         </div>
       </template>
     </Card>
@@ -456,7 +472,7 @@
 </template>
 
 <script setup>
-import {ref, computed, watch, onMounted, onUnmounted} from 'vue'
+import {ref, computed, nextTick, watch, onMounted, onUnmounted} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {storeToRefs} from 'pinia'
 import {useRouter} from 'vue-router'
@@ -467,6 +483,7 @@ import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
 import {showDemoModeToast} from '@/utils/demoMode'
 import {formatApiErrorDetail, normalizeApiError} from '@/utils/apiErrorDetail'
 import {formatMessageDescriptor} from '@/utils/messageDescriptor'
+import FileDropZone from '@/components/ui/forms/FileDropZone.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -508,10 +525,17 @@ const {
   isUploading
 } = storeToRefs(exportImportStore)
 
+const uploadProgressCard = ref(null)
+const jobStatusCard = ref(null)
+
+const scrollToCard = async (cardRef) => {
+  await nextTick()
+  cardRef.value?.$el?.scrollIntoView?.({behavior: 'smooth', block: 'start'})
+}
+
 // State
 const importFormat = ref('geopulse')
 const selectedFile = ref(null)
-const fileUpload = ref(null)
 const enableDateFilter = ref(false)
 const clearDataBeforeImport = ref(false)
 const importStartDate = ref(null)
@@ -610,8 +634,10 @@ const importFormatOptions = computed(() => [
 ])
 
 // Computed
+const isFormLocked = computed(() => props.readOnly || isUploading.value || hasActiveImportJob.value)
+
 const canStartImport = computed(() => {
-  if (props.readOnly) {
+  if (isFormLocked.value) {
     return false
   }
 
@@ -629,19 +655,30 @@ const canStartImport = computed(() => {
 })
 
 // Methods
-const onFileSelect = (event) => {
-  if (props.readOnly) {
+const onInvalidFile = (file) => {
+  toast.add({
+    severity: 'error',
+    summary: t('data.importTab.invalidFileSummary'),
+    detail: t('data.importTab.invalidFileDetail', {
+      name: file.name,
+      label: getCurrentFormatConfig().label,
+      extensions: getCurrentFormatConfig().fileExtensions.join(', ')
+    }),
+    life: 5000
+  })
+}
+
+const fileMatchesFormat = (file, formatConfig) => {
+  const name = file.name.toLowerCase()
+  return formatConfig.fileExtensions.some(ext => name.endsWith(ext))
+}
+
+// A file picked for one format is usually not valid for another (e.g. .csv after switching to GPX).
+watch(importFormat, () => {
+  if (selectedFile.value && !fileMatchesFormat(selectedFile.value, getCurrentFormatConfig())) {
     selectedFile.value = null
-    fileUpload.value?.clear?.()
-    return
   }
-
-  selectedFile.value = event.files[0]
-}
-
-const onFileClear = () => {
-  selectedFile.value = null
-}
+})
 
 const startImport = async () => {
   if (props.readOnly) {
@@ -672,6 +709,7 @@ const startImport = async () => {
       throw new Error(`Upload function '${formatConfig.uploadFunction}' not found`)
     }
 
+    scrollToCard(uploadProgressCard)
     await uploadFunction(selectedFile.value, options)
 
     toast.add({
@@ -683,13 +721,11 @@ const startImport = async () => {
 
     // Clear the file selection
     selectedFile.value = null
-    if (fileUpload.value) {
-      fileUpload.value.clear()
-    }
 
     // Start polling for status updates
     if (currentImportJob.value) {
       startImportStatusPolling(currentImportJob.value.importJobId)
+      scrollToCard(jobStatusCard)
     }
   } catch (error) {
     console.error('Import error:', error)
@@ -897,6 +933,8 @@ watch(() => currentImportJob.value?.status, (newStatus) => {
 
 // Cleanup on unmount
 onUnmounted(() => {
+  window.removeEventListener('beforeunload', warnBeforeUnloadDuringUpload)
+
   // Cancel import polling
   if (importPollCanceller) {
     importPollCanceller.cancel()
@@ -938,20 +976,20 @@ const timelineKeyMetric = computed(() => {
   return null
 })
 
-// Watch for import job completion
-watch(() => currentImportJob.value?.status, (newStatus, oldStatus) => {
-  if (oldStatus && oldStatus !== 'completed' && newStatus === 'completed') {
-    toast.add({
-      severity: 'success',
-      summary: t('data.importTab.importCompletedSummary'),
-      detail: t('data.importTab.importCompletedDetail'),
-      life: 5000
-    })
+// Completion is announced by the IMPORT_COMPLETED in-app notification.
+
+// Reloading or closing the page aborts an upload in flight (processing after it is server-side).
+const warnBeforeUnloadDuringUpload = (event) => {
+  if (!isUploading.value) {
+    return
   }
-})
+  event.preventDefault()
+  event.returnValue = ''
+}
 
 // On component mount, fetch import jobs and resume polling if there's an active job
 onMounted(async () => {
+  window.addEventListener('beforeunload', warnBeforeUnloadDuringUpload)
   try {
     await exportImportStore.fetchImportJobs()
 
@@ -1049,31 +1087,6 @@ onMounted(async () => {
 
 .upload-info-message i {
   color: var(--p-primary-500);
-}
-
-/* File Upload */
-.file-upload-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  gap: 0.5rem;
-}
-
-.file-uploader {
-  width: 100%;
-  max-width: 400px;
-}
-
-.file-uploader :deep(.p-fileupload-choose) {
-  margin: 0 auto;
-  display: block;
-}
-
-.upload-note {
-  color: var(--gp-text-secondary);
-  margin-top: 0.5rem;
-  text-align: center;
 }
 
 /* Import Options */

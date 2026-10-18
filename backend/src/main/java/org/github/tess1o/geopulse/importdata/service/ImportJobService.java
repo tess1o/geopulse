@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
+import org.github.tess1o.geopulse.notifications.service.DataJobNotificationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Instant;
@@ -46,6 +47,9 @@ public class ImportJobService {
 
     @Inject
     CoverageProcessingService coverageProcessingService;
+
+    @Inject
+    DataJobNotificationService dataJobNotificationService;
 
     private final ConcurrentHashMap<UUID, ImportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
@@ -170,6 +174,7 @@ public class ImportJobService {
                 job.setStatus(ImportStatus.FAILED);
                 job.setError(e.getMessage());
                 job.setProgress(0);
+                dataJobNotificationService.importFinished(job);
             }
         }
 
@@ -215,6 +220,7 @@ public class ImportJobService {
                 job.setStatus(ImportStatus.FAILED);
                 job.setError(e.getMessage());
                 job.setProgress(0);
+                dataJobNotificationService.importFinished(job);
             }
         }
     }
@@ -277,6 +283,7 @@ public class ImportJobService {
 
                         log.warn("Import job {} marked as failed because timeline job {} failed: {}",
                                 importJob.getJobId(), importJob.getTimelineJobId(), timelineJob.getErrorMessage());
+                        dataJobNotificationService.importFinished(importJob);
                         continue;
                     }
 
@@ -308,6 +315,7 @@ public class ImportJobService {
         job.setProgressMessage("Import completed successfully");
 
         log.info("Completed import job {}", job.getJobId());
+        dataJobNotificationService.importFinished(job);
 
         if (!recalculateBadges) {
             return;

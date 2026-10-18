@@ -1,5 +1,110 @@
 <template>
   <div class="tab-section">
+    <!-- Current Export Job Status -->
+    <Card v-if="currentExportJob" ref="jobStatusCard" class="job-status-card">
+      <template #content>
+        <div class="job-status">
+          <div class="job-header">
+            <h3 class="job-title">{{ t('data.exportTab.currentJobTitle') }}</h3>
+            <Tag
+                :value="getStatusDisplayInfo(currentExportJob.status).label"
+                :severity="getStatusDisplayInfo(currentExportJob.status).severity"
+                :icon="getStatusDisplayInfo(currentExportJob.status).icon"
+            />
+          </div>
+
+          <div class="job-details">
+            <div class="job-detail" v-if="currentExportJob.format">
+              <span class="detail-label">{{ t('data.exportTab.formatLabel') }}</span>
+              <span class="detail-value">{{ getFormatDisplayName(currentExportJob.format) }}</span>
+            </div>
+
+            <div class="job-detail">
+              <span class="detail-label">{{ t('data.exportTab.dataTypesLabel') }}</span>
+              <span class="detail-value">
+                {{ currentExportJob.dataTypes?.map(getDataTypeDisplayName).join(', ') }}
+              </span>
+            </div>
+
+            <div class="job-detail" v-if="currentExportJob.startTime">
+              <span class="detail-label">{{ t('data.exportTab.dateRangeLabel') }}</span>
+              <span class="detail-value">
+                {{ formatDateRange(currentExportJob) }}
+              </span>
+            </div>
+
+            <div class="job-detail" v-if="currentExportJob.status === 'completed' && currentExportJob.fileSizeBytes">
+              <span class="detail-label">{{ t('data.exportTab.sizeLabel') }}</span>
+              <span class="detail-value">{{ getFileSizeDisplay(currentExportJob.fileSizeBytes) }}</span>
+            </div>
+
+            <div class="job-detail" v-if="currentExportJob.progress !== undefined && currentExportJob.status !== 'completed'">
+              <span class="detail-label">{{ t('data.exportTab.progressLabel') }}</span>
+              <div class="detail-value">
+                <ProgressBar :value="currentExportJob.progress" class="job-progress"/>
+                <div class="progress-info">
+                  <span class="progress-text">{{ currentExportJob.progress }}%</span>
+                  <span v-if="currentExportJob.progressMessage" class="progress-message">
+                    {{ formatMessageDescriptor(currentExportJob.progressMessage) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="currentExportJob.status === 'failed'" class="job-error-box">
+            <div class="job-error-header">
+              <i class="pi pi-times-circle"></i>
+              <span>{{ t('data.exportTab.exportFailedSummary') }}</span>
+            </div>
+            <div class="job-error-message">
+              {{ formatMessageDescriptor(currentExportJob.error) || t('data.exportTab.exportFailedUnknown') }}
+            </div>
+          </div>
+
+          <div v-if="hasActiveExportJob" class="job-running-hint">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ t('data.exportTab.jobRunningHint') }}</span>
+          </div>
+
+          <div v-if="currentExportJob.status === 'completed'" class="job-ready">
+            <div class="job-ready-info">
+              <span v-if="currentExportJob.expiresAt" class="job-expiry">
+                <i class="pi pi-clock"></i>
+                {{ isJobExpired(currentExportJob)
+                  ? t('data.exportTab.exportExpired')
+                  : t('data.exportTab.availableUntil', { time: formatDate(currentExportJob.expiresAt) }) }}
+              </span>
+              <Tag
+                  v-if="isExportDownloaded(currentExportJob.exportJobId)"
+                  :value="t('data.exportTab.downloaded')"
+                  severity="success"
+                  icon="pi pi-check"
+              />
+            </div>
+            <div class="job-actions">
+              <Button
+                  :label="t('data.exportTab.download')"
+                  icon="pi pi-download"
+                  @click="downloadExport(currentExportJob.exportJobId)"
+                  :disabled="readOnly || isJobExpired(currentExportJob)"
+                  v-tooltip.bottom="readOnly ? t('data.exportTab.downloadsDisabledDemo') : t('data.exportTab.downloadExportTooltip')"
+              />
+              <Button
+                  :label="t('data.exportTab.delete')"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  outlined
+                  :disabled="readOnly"
+                  v-tooltip.bottom="readOnly ? t('data.exportTab.deleteExportsDisabledDemo') : t('data.exportTab.deleteExportTooltip')"
+                  @click="confirmDeleteExport(currentExportJob.exportJobId)"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
+    </Card>
+
     <!-- Export Form -->
     <Card class="export-form-card">
       <template #content>
@@ -12,13 +117,13 @@
                   v-for="format in exportFormatOptions"
                   :key="format.value"
                   class="format-option"
-                  :class="{ 'selected': exportFormat === format.value, 'disabled': readOnly }"
+                  :class="{ 'selected': exportFormat === format.value, 'disabled': isFormLocked }"
               >
                 <RadioButton
                     v-model="exportFormat"
                     :inputId="format.value"
                     :value="format.value"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="format-radio"
                 />
                 <label :for="format.value" class="format-info">
@@ -39,7 +144,7 @@
                 :label="selectedDataTypes.length === availableDataTypes.length ? t('data.exportTab.deselectAll') : t('data.exportTab.selectAll')"
                 outlined
                 size="small"
-                :disabled="readOnly"
+                :disabled="isFormLocked"
                 @click="toggleAllExportDataTypes"
                 class="select-all-button"
               />
@@ -53,13 +158,13 @@
                   v-for="dataType in availableDataTypes"
                   :key="dataType.key"
                   class="data-type-option"
-                  :class="{ 'disabled': readOnly }"
+                  :class="{ 'disabled': isFormLocked }"
               >
                 <Checkbox
                     v-model="selectedDataTypes"
                     :inputId="dataType.key"
                     :value="dataType.key"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="data-type-checkbox"
                 />
                 <div class="data-type-info">
@@ -79,14 +184,14 @@
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
-                  :class="{ 'selected': owntracksExportFormat === 'ocat', 'disabled': readOnly }"
-                  @click="!readOnly && (owntracksExportFormat = 'ocat')"
+                  :class="{ 'selected': owntracksExportFormat === 'ocat', 'disabled': isFormLocked }"
+                  @click="!isFormLocked && (owntracksExportFormat = 'ocat')"
               >
                 <RadioButton
                     v-model="owntracksExportFormat"
                     inputId="owntracks-ocat"
                     value="ocat"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -101,14 +206,14 @@
 
               <div
                   class="gpx-option"
-                  :class="{ 'selected': owntracksExportFormat === 'array', 'disabled': readOnly }"
-                  @click="!readOnly && (owntracksExportFormat = 'array')"
+                  :class="{ 'selected': owntracksExportFormat === 'array', 'disabled': isFormLocked }"
+                  @click="!isFormLocked && (owntracksExportFormat = 'array')"
               >
                 <RadioButton
                     v-model="owntracksExportFormat"
                     inputId="owntracks-array"
                     value="array"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -129,14 +234,14 @@
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
-                  :class="{ 'selected': gpxExportMode === 'single', 'disabled': readOnly }"
-                  @click="!readOnly && (gpxExportMode = 'single')"
+                  :class="{ 'selected': gpxExportMode === 'single', 'disabled': isFormLocked }"
+                  @click="!isFormLocked && (gpxExportMode = 'single')"
               >
                 <RadioButton
                     v-model="gpxExportMode"
                     inputId="gpx-single"
                     value="single"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -151,14 +256,14 @@
 
               <div
                   class="gpx-option"
-                  :class="{ 'selected': gpxExportMode === 'zip', 'disabled': readOnly }"
-                  @click="!readOnly && (gpxExportMode = 'zip')"
+                  :class="{ 'selected': gpxExportMode === 'zip', 'disabled': isFormLocked }"
+                  @click="!isFormLocked && (gpxExportMode = 'zip')"
               >
                 <RadioButton
                     v-model="gpxExportMode"
                     inputId="gpx-zip"
                     value="zip"
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -178,14 +283,14 @@
               <div class="grouping-options">
                 <div
                     class="grouping-option"
-                    :class="{ 'selected': gpxZipGroupBy === 'individual', 'disabled': readOnly }"
-                    @click="!readOnly && (gpxZipGroupBy = 'individual')"
+                    :class="{ 'selected': gpxZipGroupBy === 'individual', 'disabled': isFormLocked }"
+                    @click="!isFormLocked && (gpxZipGroupBy = 'individual')"
                 >
                   <RadioButton
                       v-model="gpxZipGroupBy"
                       inputId="gpx-group-individual"
                       value="individual"
-                      :disabled="readOnly"
+                      :disabled="isFormLocked"
                       class="grouping-radio"
                   />
                   <div class="grouping-option-info">
@@ -200,14 +305,14 @@
 
                 <div
                     class="grouping-option"
-                    :class="{ 'selected': gpxZipGroupBy === 'daily', 'disabled': readOnly }"
-                    @click="!readOnly && (gpxZipGroupBy = 'daily')"
+                    :class="{ 'selected': gpxZipGroupBy === 'daily', 'disabled': isFormLocked }"
+                    @click="!isFormLocked && (gpxZipGroupBy = 'daily')"
                 >
                   <RadioButton
                       v-model="gpxZipGroupBy"
                       inputId="gpx-group-daily"
                       value="daily"
-                      :disabled="readOnly"
+                      :disabled="isFormLocked"
                       class="grouping-radio"
                   />
                   <div class="grouping-option-info">
@@ -269,7 +374,7 @@
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                     :placeholder="t('data.exportTab.startDatePlaceholder')"
                     showIcon
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="date-picker"
                 />
               </div>
@@ -281,7 +386,7 @@
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                     :placeholder="t('data.exportTab.endDatePlaceholder')"
                     showIcon
-                    :disabled="readOnly"
+                    :disabled="isFormLocked"
                     class="date-picker"
                 />
               </div>
@@ -291,28 +396,28 @@
                   :label="t('data.exportTab.last30Days')"
                   outlined
                   size="small"
-                  :disabled="readOnly"
+                  :disabled="isFormLocked"
                   @click="setDateRange(30)"
               />
               <Button
                   :label="t('data.exportTab.last90Days')"
                   outlined
                   size="small"
-                  :disabled="readOnly"
+                  :disabled="isFormLocked"
                   @click="setDateRange(90)"
               />
               <Button
                   :label="t('data.exportTab.lastYear')"
                   outlined
                   size="small"
-                  :disabled="readOnly"
+                  :disabled="isFormLocked"
                   @click="setDateRange(365)"
               />
               <Button
                   :label="t('data.exportTab.allTime')"
                   outlined
                   size="small"
-                  :disabled="readOnly"
+                  :disabled="isFormLocked"
                   @click="setDateRange(null)"
               />
             </div>
@@ -336,78 +441,8 @@
       </template>
     </Card>
 
-    <!-- Current Export Job Status -->
-    <Card v-if="currentExportJob" class="job-status-card">
-      <template #content>
-        <div class="job-status">
-          <div class="job-header">
-            <h3 class="job-title">{{ t('data.exportTab.currentJobTitle') }}</h3>
-            <Tag
-                :value="getStatusDisplayInfo(currentExportJob.status).label"
-                :severity="getStatusDisplayInfo(currentExportJob.status).severity"
-                :icon="getStatusDisplayInfo(currentExportJob.status).icon"
-            />
-          </div>
-
-          <div class="job-details">
-            <div class="job-detail" v-if="currentExportJob.format">
-              <span class="detail-label">{{ t('data.exportTab.formatLabel') }}</span>
-              <span class="detail-value">{{ getFormatDisplayName(currentExportJob.format) }}</span>
-            </div>
-
-            <div class="job-detail">
-              <span class="detail-label">{{ t('data.exportTab.dataTypesLabel') }}</span>
-              <span class="detail-value">
-                {{ currentExportJob.dataTypes?.map(getDataTypeDisplayName).join(', ') }}
-              </span>
-            </div>
-
-            <div class="job-detail" v-if="currentExportJob.startTime">
-              <span class="detail-label">{{ t('data.exportTab.dateRangeLabel') }}</span>
-              <span class="detail-value">
-                {{ formatDateRange(currentExportJob) }}
-              </span>
-            </div>
-
-            <div class="job-detail" v-if="currentExportJob.progress !== undefined">
-              <span class="detail-label">{{ t('data.exportTab.progressLabel') }}</span>
-              <div class="detail-value">
-                <ProgressBar :value="currentExportJob.progress" class="job-progress"/>
-                <div class="progress-info">
-                  <span class="progress-text">{{ currentExportJob.progress }}%</span>
-                  <span v-if="currentExportJob.progressMessage" class="progress-message">
-                    {{ formatMessageDescriptor(currentExportJob.progressMessage) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="job-actions" v-if="currentExportJob.status === 'completed'">
-            <Button
-                :label="t('data.exportTab.download')"
-                icon="pi pi-download"
-                @click="downloadExport(currentExportJob.exportJobId)"
-                :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? t('data.exportTab.downloadsDisabledDemo') : t('data.exportTab.downloadExportTooltip')"
-                outlined
-            />
-            <Button
-                :label="t('data.exportTab.delete')"
-                icon="pi pi-trash"
-                severity="danger"
-                outlined
-                :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? t('data.exportTab.deleteExportsDisabledDemo') : t('data.exportTab.deleteExportTooltip')"
-                @click="confirmDeleteExport(currentExportJob.exportJobId)"
-            />
-          </div>
-        </div>
-      </template>
-    </Card>
-
-    <!-- Export History (hidden for now) -->
-    <Card class="export-history-card" style="display: none;">
+    <!-- Recent Exports -->
+    <Card v-if="exportJobs.length > 0" class="export-history-card">
       <template #content>
         <div class="export-history">
           <div class="history-header">
@@ -451,6 +486,19 @@
                     {{ getFileSizeDisplay(job.fileSizeBytes) }}
                   </span>
                 </div>
+                <div v-if="job.status === 'completed' && job.expiresAt" class="export-item-meta">
+                  <span class="export-expiry">
+                    {{ isJobExpired(job)
+                      ? t('data.exportTab.exportExpired')
+                      : t('data.exportTab.availableUntil', { time: formatDate(job.expiresAt) }) }}
+                  </span>
+                  <Tag
+                      v-if="isExportDownloaded(job.exportJobId)"
+                      :value="t('data.exportTab.downloaded')"
+                      severity="success"
+                      size="small"
+                  />
+                </div>
               </div>
               <div class="export-item-actions">
                 <Button
@@ -485,18 +533,20 @@
 </template>
 
 <script setup>
-import {ref, computed, onMounted, watch} from 'vue'
+import {ref, computed, nextTick, onMounted, onUnmounted, watch} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {storeToRefs} from 'pinia'
+import {useRoute} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useTimezone} from '@/composables/useTimezone'
-import {useExportImportStore} from '@/stores/exportImport'
+import {useExportImportStore, isExportJobExpired} from '@/stores/exportImport'
 import {showDemoModeToast} from '@/utils/demoMode'
 import {formatMessageDescriptor} from '@/utils/messageDescriptor'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 const { t } = useI18n()
+const route = useRoute()
 const timezone = useTimezone()
 const toast = useToast()
 const confirm = useConfirm()
@@ -516,6 +566,22 @@ const {
   isExporting,
   hasActiveExportJob
 } = storeToRefs(exportImportStore)
+
+const jobStatusCard = ref(null)
+let exportPollCanceller = null
+
+const startExportStatusPolling = (exportJobId) => {
+  if (!exportJobId) {
+    return
+  }
+  exportPollCanceller?.cancel()
+  exportPollCanceller = exportImportStore.pollJobStatus(exportJobId, true)
+}
+
+const scrollToJobCard = async () => {
+  await nextTick()
+  jobStatusCard.value?.$el?.scrollIntoView?.({behavior: 'smooth', block: 'start'})
+}
 
 // State
 const selectedDataTypes = ref([
@@ -571,8 +637,10 @@ const exportFormatOptions = computed(() => [
 ])
 
 // Computed
+const isFormLocked = computed(() => props.readOnly || hasActiveExportJob.value)
+
 const canStartExport = computed(() => {
-  if (props.readOnly) {
+  if (isFormLocked.value) {
     return false
   }
 
@@ -641,7 +709,8 @@ const startExport = async () => {
 
     // Start polling for status updates
     if (currentExportJob.value) {
-      exportImportStore.pollJobStatus(currentExportJob.value.exportJobId, true)
+      startExportStatusPolling(currentExportJob.value.exportJobId)
+      scrollToJobCard()
     }
   } catch (error) {
     console.error('Export error:', error)
@@ -743,10 +812,7 @@ const refreshExportJobs = async () => {
   }
 }
 
-const isJobExpired = (job) => {
-  if (!job.expiresAt) return false
-  return timezone.now().isAfter(timezone.fromUtc(job.expiresAt))
-}
+const isJobExpired = (job) => isExportJobExpired(job)
 
 const formatDate = (dateString) => {
   return `${timezone.formatDateDisplay(dateString)} ${timezone.formatTime(dateString, { withSeconds: true })}`
@@ -765,7 +831,7 @@ const getFormatDisplayName = (format) => {
 }
 
 // Store utility methods
-const {getDataTypeDisplayName, getFileSizeDisplay, getStatusDisplayInfo} = exportImportStore
+const {getDataTypeDisplayName, getFileSizeDisplay, getStatusDisplayInfo, isExportDownloaded} = exportImportStore
 
 // Toggle all export data types
 const toggleAllExportDataTypes = () => {
@@ -786,21 +852,42 @@ const showDemoDisabledToast = () => {
   showDemoModeToast(toast, t('data.exportTab.demoToast'))
 }
 
-// Watch for export job completion
-watch(() => currentExportJob.value?.status, (newStatus, oldStatus) => {
-  if (oldStatus && oldStatus !== 'completed' && newStatus === 'completed') {
-    toast.add({
-      severity: 'success',
-      summary: t('data.exportTab.exportCompletedSummary'),
-      detail: t('data.exportTab.exportCompletedDetail'),
-      life: 5000
-    })
+// Completion is announced by the EXPORT_COMPLETED in-app notification; the card itself switches to
+// the Download button as soon as the poll sees it.
+
+const restoreExportJob = async (preferredJobId) => {
+  try {
+    const job = await exportImportStore.restoreCurrentExportJob(preferredJobId)
+    if (job && ['processing', 'validating'].includes(job.status)) {
+      startExportStatusPolling(job.exportJobId)
+    }
+    if (job && preferredJobId === job.exportJobId) {
+      scrollToJobCard()
+    }
+  } catch (error) {
+    console.error('Failed to restore export jobs:', error)
+  }
+}
+
+const queryExportJobId = () => (typeof route.query.exportJobId === 'string' ? route.query.exportJobId : null)
+
+onMounted(() => {
+  setDateRange(30)
+  // Pinia state does not survive a reload, so pick the job back up from the server. A notification
+  // link carries the job id, which wins over the default choice.
+  restoreExportJob(queryExportJobId())
+})
+
+// Opening an export notification while already on this tab only changes the query.
+watch(queryExportJobId, (jobId) => {
+  if (jobId && jobId !== currentExportJob.value?.exportJobId) {
+    restoreExportJob(jobId)
   }
 })
 
-// Initialize default date range (last 30 days)
-onMounted(() => {
-  setDateRange(30)
+onUnmounted(() => {
+  exportPollCanceller?.cancel()
+  exportPollCanceller = null
 })
 </script>
 
@@ -955,6 +1042,41 @@ onMounted(() => {
   font-size: 0.8rem;
   margin: 0;
   line-height: 1.3;
+}
+
+/* Completed export */
+.job-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.job-ready-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.job-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.export-item-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.export-expiry {
+  color: var(--gp-text-muted);
+  font-size: 0.8rem;
 }
 
 /* Export History */

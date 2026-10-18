@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportStatus;
 import org.github.tess1o.geopulse.export.model.GpxLayout;
 import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
+import org.github.tess1o.geopulse.notifications.service.DataJobNotificationService;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -30,6 +31,9 @@ public class ExportJobManager {
 
     @Inject
     ExportTempFileService tempFileService;
+
+    @Inject
+    DataJobNotificationService dataJobNotificationService;
 
     private final ConcurrentHashMap<UUID, ExportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
@@ -176,6 +180,8 @@ public class ExportJobManager {
                     job.setTempFilePath(null);
                 }
             }
+
+            dataJobNotificationService.exportFinished(job);
         }
     }
 

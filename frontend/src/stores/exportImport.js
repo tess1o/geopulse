@@ -6,6 +6,44 @@ import { normalizeApiError } from '@/utils/apiErrorDetail'
 import { t } from '@/locales'
 
 const TERMINAL_IMPORT_STATUSES = new Set(['completed', 'failed'])
+const ACTIVE_JOB_STATUSES = new Set(['processing', 'validating'])
+const DOWNLOADED_EXPORTS_KEY = 'gp.exports.downloaded'
+const MAX_TRACKED_DOWNLOADS = 50
+
+export const isExportJobExpired = (job, now = Date.now()) => {
+    if (!job?.expiresAt) return false
+    return new Date(job.expiresAt).getTime() <= now
+}
+
+/**
+ * The job the export tab should show after a reload: the newest one still running, otherwise the
+ * newest completed one that can still be downloaded. Failed and expired jobs are not restored.
+ */
+export const selectRestorableExportJob = (jobs, now = Date.now()) => {
+    const newestFirst = [...(jobs || [])].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    return newestFirst.find(job => ACTIVE_JOB_STATUSES.has(job.status))
+        || newestFirst.find(job => job.status === 'completed' && !isExportJobExpired(job, now))
+        || null
+}
+
+const readDownloadedExportIds = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(DOWNLOADED_EXPORTS_KEY) || '[]')
+        return Array.isArray(parsed) ? parsed : []
+    } catch {
+        return []
+    }
+}
+
+const writeDownloadedExportIds = (ids) => {
+    try {
+        localStorage.setItem(DOWNLOADED_EXPORTS_KEY, JSON.stringify(ids))
+    } catch {
+        // Storage can be unavailable (private mode, blocked site data); the marker is a convenience only.
+    }
+}
 
 const shouldIgnoreImportUpdate = (existingJob, incomingJob) => {
     if (!existingJob || !incomingJob) {
@@ -26,6 +64,7 @@ export const useExportImportStore = defineStore('exportImport', {
         exportJobs: [],
         currentExportJob: null,
         exportError: null,
+        downloadedExportIds: readDownloadedExportIds(),
 
         // Import state
         importJobs: [],
@@ -220,10 +259,51 @@ export const useExportImportStore = defineStore('exportImport', {
         async downloadExportFile(exportJobId) {
             this.exportError = null
             try {
-                return await apiService.download(`/exports/${exportJobId}/content`)
+                // Check the job first: a native download can't report API errors, it would just
+                // open the error response as a page. This surfaces "not found" as a normal error.
+                const job = await this.fetchExportStatus(exportJobId)
+                if (job.status !== 'completed') {
+                    throw new Error(t('data.exportTab.exportNotReady'))
+                }
+                if (isExportJobExpired(job)) {
+                    throw new Error(t('data.exportTab.exportExpired'))
+                }
+                apiService.downloadViaBrowser(`/exports/${exportJobId}/content`)
+                this.markExportDownloaded(exportJobId)
+                return true
             } catch (error) {
                 throw this.failExport(error, 'Failed to download export')
             }
+        },
+
+        markExportDownloaded(exportJobId) {
+            if (this.downloadedExportIds.includes(exportJobId)) {
+                return
+            }
+            this.downloadedExportIds = [exportJobId, ...this.downloadedExportIds].slice(0, MAX_TRACKED_DOWNLOADS)
+            writeDownloadedExportIds(this.downloadedExportIds)
+        },
+
+        isExportDownloaded(exportJobId) {
+            return this.downloadedExportIds.includes(exportJobId)
+        },
+
+        /**
+         * Load the user's export jobs and make the relevant one current again, so a page reload
+         * doesn't lose a running export or the Download button of a finished one.
+         * @param {string|null} preferredJobId - e.g. from a notification link; wins when it's still listed
+         * @returns {Object|null} the job that is now current
+         */
+        async restoreCurrentExportJob(preferredJobId = null) {
+            await this.fetchExportJobs()
+            const preferred = preferredJobId
+                ? this.exportJobs.find(job => job.exportJobId === preferredJobId)
+                : null
+            const job = preferred || selectRestorableExportJob(this.exportJobs)
+            if (job) {
+                this.setCurrentExportJob({ ...job })
+            }
+            return job
         },
 
         async deleteExportJob(exportJobId) {

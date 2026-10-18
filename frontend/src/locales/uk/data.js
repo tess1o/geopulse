@@ -283,7 +283,7 @@ export default {
         delete: 'Видалити',
         deleteExportsDisabledDemo: 'Видалення експортів вимкнено в демо-режимі',
         deleteExportTooltip: 'Видалити експорт',
-        exportHistoryTitle: 'Історія експорту',
+        exportHistoryTitle: 'Останні експорти',
         refresh: 'Оновити',
         noExportJobs: 'Завдань експорту не знайдено',
         exportExpired: 'Термін дії експорту минув',
@@ -305,13 +305,18 @@ export default {
         deleteFailedFallback: 'Не вдалося видалити завдання експорту',
         refreshFailedSummary: 'Помилка оновлення',
         refreshFailedFallback: 'Не вдалося оновити завдання експорту',
-        exportCompletedSummary: 'Експорт завершено',
-        exportCompletedDetail: 'Ваш експорт готовий до завантаження!'
+        exportNotReady: 'Експорт ще не готовий до завантаження',
+        exportFailedUnknown: 'Експорт не вдався з невідомої причини.',
+        jobRunningHint: 'Ви можете залишити цю сторінку, поки триває експорт. Ви отримаєте сповіщення, коли він буде готовий.',
+        availableUntil: 'Доступно до {time}',
+        downloaded: 'Завантажено',
+        sizeLabel: 'Розмір:'
     },
     importTab: {
         formatSectionTitle: 'Формат імпорту',
         selectFileTitle: 'Оберіть файл для імпорту',
-        chooseFile: 'Обрати файл для імпорту',
+        dropZonePrompt: 'Натисніть, щоб обрати, або перетягніть файл сюди',
+        removeFile: 'Видалити',
         uploadDisabledDemo: 'Завантаження файлів вимкнено в демо-режимі.',
         onlyFormatFilesSupported: 'Підтримуються лише файли {label} ({extensions})',
         csvSpecTitle: 'Специфікація формату CSV',
@@ -425,7 +430,10 @@ export default {
         templateDownloadedDetail: 'Шаблон CSV успішно завантажено',
         templateDownloadFailedSummary: 'Помилка завантаження',
         templateDownloadFailedFallback: 'Не вдалося завантажити шаблон CSV',
-        importCompletedSummary: 'Імпорт завершено',
-        importCompletedDetail: 'Ваші дані успішно імпортовано!'
+        invalidFileSummary: 'Непідтримуваний файл',
+        invalidFileDetail: '{name} не є файлом {label}. Підтримуються: {extensions}',
+        importFailedUnknown: 'Імпорт не вдався з невідомої причини.',
+        jobRunningHint: 'Ви можете залишити цю сторінку, поки триває імпорт. Ви отримаєте сповіщення, коли він завершиться.',
+        viewTimeline: 'Переглянути хронологію'
     }
 }

@@ -284,7 +284,7 @@ export default {
         delete: 'Delete',
         deleteExportsDisabledDemo: 'Deleting exports is disabled in demo mode',
         deleteExportTooltip: 'Delete export',
-        exportHistoryTitle: 'Export History',
+        exportHistoryTitle: 'Recent Exports',
         refresh: 'Refresh',
         noExportJobs: 'No export jobs found',
         exportExpired: 'Export has expired',
@@ -306,13 +306,18 @@ export default {
         deleteFailedFallback: 'Failed to delete export job',
         refreshFailedSummary: 'Refresh Failed',
         refreshFailedFallback: 'Failed to refresh export jobs',
-        exportCompletedSummary: 'Export Completed',
-        exportCompletedDetail: 'Your export is ready for download!'
+        exportNotReady: 'Export is not ready for download yet',
+        exportFailedUnknown: 'The export failed for an unknown reason.',
+        jobRunningHint: 'You can leave this page while the export runs. You will get a notification when it is ready.',
+        availableUntil: 'Available until {time}',
+        downloaded: 'Downloaded',
+        sizeLabel: 'Size:'
     },
     importTab: {
         formatSectionTitle: 'Import Format',
         selectFileTitle: 'Select Import File',
-        chooseFile: 'Choose Import File',
+        dropZonePrompt: 'Click to select or drag & drop a file',
+        removeFile: 'Remove',
         uploadDisabledDemo: 'File upload is disabled in demo mode.',
         onlyFormatFilesSupported: 'Only {label} files ({extensions}) are supported',
         csvSpecTitle: 'CSV Format Specification',
@@ -426,7 +431,10 @@ export default {
         templateDownloadedDetail: 'CSV template has been downloaded successfully',
         templateDownloadFailedSummary: 'Download Failed',
         templateDownloadFailedFallback: 'Failed to download CSV template',
-        importCompletedSummary: 'Import Completed',
-        importCompletedDetail: 'Your data has been successfully imported!'
+        invalidFileSummary: 'Unsupported file',
+        invalidFileDetail: '{name} is not a {label} file. Supported: {extensions}',
+        importFailedUnknown: 'The import failed for an unknown reason.',
+        jobRunningHint: 'You can leave this page while the import runs. You will get a notification when it finishes.',
+        viewTimeline: 'View Timeline'
     }
 }

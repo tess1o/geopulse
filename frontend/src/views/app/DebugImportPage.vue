@@ -38,35 +38,15 @@
               <h2 class="section-title">{{ t('data.debugImport.sectionTitle') }}</h2>
 
               <!-- File Upload -->
-              <div class="upload-area" @click="triggerFileInput" @drop.prevent="handleDrop" @dragover.prevent>
-                <input
-                  ref="fileInput"
-                  type="file"
-                  accept=".zip"
-                  @change="handleFileSelect"
-                  style="display: none"
-                />
-
-                <div v-if="!selectedFile" class="upload-prompt">
-                  <i class="pi pi-cloud-upload upload-icon"></i>
-                  <p class="upload-text">{{ t('data.debugImport.uploadPromptText') }}</p>
-                  <p class="upload-hint">{{ t('data.debugImport.uploadHint') }}</p>
-                </div>
-
-                <div v-else class="file-info">
-                  <i class="pi pi-file upload-icon"></i>
-                  <p class="file-name">{{ selectedFile.name }}</p>
-                  <p class="file-size">{{ formatFileSize(selectedFile.size) }}</p>
-                  <Button
-                    :label="t('data.debugImport.remove')"
-                    icon="pi pi-times"
-                    size="small"
-                    severity="danger"
-                    @click.stop="removeFile"
-                    text
-                  />
-                </div>
-              </div>
+              <FileDropZone
+                v-model="selectedFile"
+                accept=".zip"
+                :prompt-text="t('data.debugImport.uploadPromptText')"
+                :hint-text="t('data.debugImport.uploadHint')"
+                :remove-label="t('data.debugImport.remove')"
+                class="upload-area"
+                @invalid="showInvalidFileToast"
+              />
 
               <!-- Import Options -->
               <div class="form-group">
@@ -166,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -175,6 +155,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
+import FileDropZone from '@/components/ui/forms/FileDropZone.vue'
 import { useExportImportStore } from '@/stores/exportImport'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
@@ -185,58 +166,23 @@ const exportImportStore = useExportImportStore()
 
 // Form state
 const selectedFile = ref(null)
-const fileInput = ref(null)
 const clearExistingData = ref(true)
 const updateTimelineConfig = ref(true)
 const isImporting = ref(false)
 const importError = ref(null)
 
-// File selection
-const triggerFileInput = () => {
-  fileInput.value?.click()
+const showInvalidFileToast = () => {
+  toast.add({
+    severity: 'error',
+    summary: t('data.debugImport.invalidFileSummary'),
+    detail: t('data.debugImport.invalidFileDetail'),
+    life: 3000
+  })
 }
 
-const handleFileSelect = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    validateAndSetFile(file)
-  }
-}
-
-const handleDrop = (event) => {
-  const file = event.dataTransfer.files[0]
-  if (file) {
-    validateAndSetFile(file)
-  }
-}
-
-const validateAndSetFile = (file) => {
-  if (!file.name.endsWith('.zip')) {
-    toast.add({
-      severity: 'error',
-      summary: t('data.debugImport.invalidFileSummary'),
-      detail: t('data.debugImport.invalidFileDetail'),
-      life: 3000
-    })
-    return
-  }
-
-  selectedFile.value = file
+watch(selectedFile, () => {
   importError.value = null
-}
-
-const removeFile = () => {
-  selectedFile.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
-const formatFileSize = (bytes) => {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
+})
 
 // Import functionality
 const importData = async () => {
@@ -334,58 +280,7 @@ const importData = async () => {
 }
 
 .upload-area {
-  border: 2px dashed var(--gp-border);
-  border-radius: 8px;
-  padding: 3rem 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
   margin-bottom: 1.5rem;
-}
-
-.upload-area:hover {
-  border-color: var(--gp-primary);
-  background: var(--gp-surface-ground);
-}
-
-.upload-prompt .upload-icon,
-.file-info .upload-icon {
-  font-size: 3rem;
-  color: var(--gp-text-secondary);
-  margin-bottom: 1rem;
-}
-
-.upload-prompt .upload-text {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.upload-prompt .upload-hint {
-  font-size: 0.875rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-}
-
-.file-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.file-info .file-name {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  margin: 0;
-}
-
-.file-info .file-size {
-  font-size: 0.875rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 1rem 0;
 }
 
 .form-group {
@@ -529,10 +424,6 @@ const importData = async () => {
 @media (max-width: 768px) {
   .debug-import-page {
     padding: 1rem 0;
-  }
-
-  .upload-area {
-    padding: 2rem 1rem;
   }
 
   .import-button {

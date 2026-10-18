@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
+import org.github.tess1o.geopulse.notifications.service.DataJobNotificationService;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,9 @@ class ImportJobServiceCoverageTest {
 
     @Mock
     CoverageProcessingService coverageProcessingService;
+
+    @Mock
+    DataJobNotificationService dataJobNotificationService;
 
     @InjectMocks
     ImportJobService importJobService;
@@ -97,6 +101,7 @@ class ImportJobServiceCoverageTest {
         assertThat(job.getProgress()).isEqualTo(95);
         assertThat(job.getProgressMessage()).isEqualTo("Recalculating coverage...");
         assertThat(job.isCoverageRecalculationStarted()).isTrue();
+        verifyNoInteractions(dataJobNotificationService);
 
         importJobService.processImportJobs();
 
@@ -105,6 +110,7 @@ class ImportJobServiceCoverageTest {
         assertThat(job.getProgressMessage()).isEqualTo("Import completed successfully");
         verify(coverageProcessingService, times(1)).startFullRecalculationAsync(userId);
         verifyNoInteractions(badgeRecalculationService);
+        verify(dataJobNotificationService, times(1)).importFinished(job);
     }
 
     @Test

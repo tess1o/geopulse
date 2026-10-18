@@ -368,6 +368,23 @@ const apiService = {
     },
 
     /**
+     * Let the browser download a file straight from the API instead of buffering it in a blob.
+     * The browser streams it to disk and shows its own progress, which matters for large exports.
+     * Auth is the session cookie, so a plain GET navigation is authenticated.
+     * @param {string} endpoint - API endpoint, e.g. /exports/{id}/content
+     */
+    downloadViaBrowser(endpoint) {
+        assertApplicationTransportAvailable(endpoint);
+        const link = document.createElement('a');
+        link.href = `${API_BASE_URL}${endpoint}`;
+        link.download = '';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    },
+
+    /**
      * Handle common error scenarios and enhance error messages
      * @param {Error} error - Error object
      */
