@@ -139,6 +139,7 @@ public class DataJobNotificationService {
             case GEOJSON -> "GeoJSON";
             case GPX -> "GPX";
             case CSV -> "CSV";
+            case DEBUG -> "debug";
         };
     }
 

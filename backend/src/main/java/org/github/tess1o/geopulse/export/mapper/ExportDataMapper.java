@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
@@ -95,6 +96,7 @@ public class ExportDataMapper {
                 .address(stay.getLocationName())
                 .favoriteId(stay.getFavoriteLocation() != null ? stay.getFavoriteLocation().getId() : null)
                 .geocodingId(stay.getGeocodingLocation() != null ? stay.getGeocodingLocation().getId() : null)
+                .explanation(stay.getExplanation())
                 .build();
     }
 
@@ -119,7 +121,8 @@ public class ExportDataMapper {
                 .waterDistanceRatio(trip.getWaterDistanceRatio())
                 .longestWaterSegmentMeters(trip.getLongestWaterSegmentMeters())
                 .waterSampleCount(trip.getWaterSampleCount())
-                .waterEvidenceAvailable(trip.getWaterEvidenceAvailable());
+                .waterEvidenceAvailable(trip.getWaterEvidenceAvailable())
+                .explanation(trip.getExplanation());
 
         return builder.build();
     }
@@ -131,6 +134,7 @@ public class ExportDataMapper {
                 .endTime(dataGap.getEndTime())
                 .durationSeconds(dataGap.getDurationSeconds())
                 .createdAt(dataGap.getCreatedAt())
+                .explanation(dataGap.getExplanation())
                 .build();
     }
 
@@ -357,12 +361,14 @@ public class ExportDataMapper {
 
     public TimelineOverridesDataDto toTimelineOverridesDataDto(
             List<TimelineTripMovementOverrideEntity> tripOverrides,
-            List<TimelineDataGapStayOverrideEntity> gapOverrides) {
+            List<TimelineDataGapStayOverrideEntity> gapOverrides,
+            List<TimelineTripStaySplitOverrideEntity> staySplitOverrides) {
         return TimelineOverridesDataDto.builder()
                 .dataType(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES)
                 .exportDate(Instant.now())
                 .tripMovementOverrides(tripOverrides.stream().map(this::toTripMovementOverrideDto).collect(Collectors.toList()))
                 .dataGapStayOverrides(gapOverrides.stream().map(this::toDataGapStayOverrideDto).collect(Collectors.toList()))
+                .tripStaySplitOverrides(staySplitOverrides.stream().map(this::toTripStaySplitOverrideDto).collect(Collectors.toList()))
                 .build();
     }
 
@@ -401,6 +407,31 @@ public class ExportDataMapper {
                 .sourceBeforeLongitude(override.getSourceBeforeLongitude())
                 .sourceAfterLatitude(override.getSourceAfterLatitude())
                 .sourceAfterLongitude(override.getSourceAfterLongitude())
+                .createdAt(override.getCreatedAt())
+                .updatedAt(override.getUpdatedAt())
+                .build();
+    }
+
+    private TimelineOverridesDataDto.TripStaySplitOverrideDto toTripStaySplitOverrideDto(TimelineTripStaySplitOverrideEntity override) {
+        return TimelineOverridesDataDto.TripStaySplitOverrideDto.builder()
+                .id(override.getId())
+                .stayId(override.getStay() != null ? override.getStay().getId() : null)
+                .stayStartTime(override.getStayStartTime())
+                .stayEndTime(override.getStayEndTime())
+                .anchorTimestamp(override.getAnchorTimestamp())
+                .stayLatitude(override.getStayLatitude())
+                .stayLongitude(override.getStayLongitude())
+                .stayLocationName(override.getStayLocationName())
+                .stayLocationSource(override.getStayLocationSource() != null ? override.getStayLocationSource().name() : null)
+                .favoriteId(override.getFavoriteLocation() != null ? override.getFavoriteLocation().getId() : null)
+                .geocodingId(override.getGeocodingLocation() != null ? override.getGeocodingLocation().getId() : null)
+                .sourceTripTimestamp(override.getSourceTripTimestamp())
+                .sourceTripDurationSeconds(override.getSourceTripDurationSeconds())
+                .sourceDistanceMeters(override.getSourceDistanceMeters())
+                .sourceStartLatitude(override.getSourceStartLatitude())
+                .sourceStartLongitude(override.getSourceStartLongitude())
+                .sourceEndLatitude(override.getSourceEndLatitude())
+                .sourceEndLongitude(override.getSourceEndLongitude())
                 .createdAt(override.getCreatedAt())
                 .updatedAt(override.getUpdatedAt())
                 .build();

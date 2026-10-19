@@ -4,6 +4,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -50,7 +53,7 @@ public class TimelineMergeExecutionService {
         log.debug("Merged stay duration: stays={}min, trips={}min, total={}min",
                 totalDuration, tripDuration, finalDuration);
 
-        return Stay.builder()
+        Stay mergedStay = Stay.builder()
                 .startTime(firstStay.getStartTime())
                 .locationName(firstStay.getLocationName())
                 .duration(Duration.of(finalDuration, ChronoUnit.SECONDS))
@@ -59,6 +62,10 @@ public class TimelineMergeExecutionService {
                 .favoriteId(firstStay.getFavoriteId())
                 .geocodingId(firstStay.getGeocodingId())
                 .build();
+        List<Stay> merged = mergeGroup.stream().map(stays::get).toList();
+        mergedStay.setExplanation(TimelineExplanation.joined(merged)
+                .note(TimelineReason.of(TimelineReasons.MERGED, "stays", merged.size())));
+        return mergedStay;
     }
 
     /**

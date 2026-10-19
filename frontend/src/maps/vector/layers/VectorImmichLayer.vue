@@ -153,7 +153,7 @@ watch(
 )
 
 watch(
-  () => dateRangeStore.getCurrentDateRange,
+  () => dateRangeStore.getDataWindow,
   async (newRange) => {
     if (!isExternallyProvided.value && newRange && props.visible && isConfigured.value) {
       await fetchAndRenderPhotos()

@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import path from 'path';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 export class DataExportImportPage {
@@ -88,12 +89,23 @@ export class DataExportImportPage {
         // Export button
         exportButton: '.export-button',
 
-        // Export job status card
+        // Form card (the job status card is rendered above it)
+        formCard: '.export-form-card',
+
+        // Export job status card. The header tag is the job status; the card can also show a
+        // "Downloaded" tag once the file has been downloaded.
         jobCard: '.job-status-card',
-        jobStatus: '.job-status-card .p-tag',
-        jobProgress: '.job-status-card .p-progressbar',
+        jobStatus: '.job-status-card .job-header .p-tag',
+        jobProgress: '.job-status-card .job-progress',
+        jobRunningHint: '.job-status-card .job-running-hint',
+        jobExpiry: '.job-status-card .job-expiry',
+        downloadedTag: '.job-status-card .job-ready-info .p-tag',
         downloadButton: '.job-status-card button:has-text("Download")',
-        deleteButton: '.job-status-card button:has-text("Delete")'
+        deleteButton: '.job-status-card button:has-text("Delete")',
+
+        // Recent exports list
+        historyCard: '.export-history-card',
+        historyItems: '.export-history-card .export-item'
       },
 
       // Import tab selectors
@@ -112,9 +124,11 @@ export class DataExportImportPage {
           gpx: 'label[for="import-gpx"]'
         },
 
-        // File upload
-        fileUpload: '.file-upload-container input[type="file"]',
-        fileUploadButton: '.file-upload-container .p-fileupload-choose',
+        // File drop zone
+        fileDropZone: '.file-drop-zone',
+        fileUpload: '.file-drop-zone input[type="file"]',
+        selectedFileName: '.file-drop-zone .drop-file-name',
+        removeFileButton: '.file-drop-zone .drop-remove-button',
 
         // Import options - data types
         dataTypeCheckboxes: '.import-data-type input[type="checkbox"]',
@@ -145,12 +159,14 @@ export class DataExportImportPage {
 
         // Import button
         importButton: '.import-button',
+        formCard: '.import-form-card',
         uploadProgressCard: '.upload-progress-card',
 
-        // Import job status card
+        // Import job status card (rendered above the form)
         jobCard: '.job-status-card',
-        jobStatus: '.job-status-card .p-tag',
-        jobProgress: '.job-status-card .p-progressbar',
+        jobStatus: '.job-status-card .job-header .p-tag',
+        jobProgress: '.job-status-card .job-progress',
+        viewTimelineButton: '.job-status-card button:has-text("View Timeline")',
         importSummary: '.import-summary',
         summaryItems: '.summary-item'
       },
@@ -401,10 +417,47 @@ export class DataExportImportPage {
     throw new Error(`Export job did not reach status "${status}" within ${timeout}ms`);
   }
 
+  /**
+   * Progress of the running export, or null once it is no longer shown (the card drops the
+   * progress bar when the job completes).
+   */
   async getExportJobProgress() {
-    const progressBar = this.page.locator(this.selectors.export.jobProgress);
-    const ariaValueNow = await progressBar.getAttribute('aria-valuenow');
+    return this.readProgressBar(this.selectors.export.jobProgress);
+  }
+
+  async readProgressBar(selector) {
+    const progressBar = this.page.locator(selector);
+    if (!(await progressBar.isVisible().catch(() => false))) {
+      return null;
+    }
+    const ariaValueNow = await progressBar.getAttribute('aria-valuenow', { timeout: 1000 }).catch(() => null);
     return parseInt(ariaValueNow) || 0;
+  }
+
+  /**
+   * The job status card sits at the top of the tab, above the form.
+   */
+  async isJobCardAboveForm(tabName = 'export') {
+    const selectors = this.selectors[tabName.toLowerCase()];
+    const jobBox = await this.page.locator(selectors.jobCard).boundingBox();
+    const formBox = await this.page.locator(selectors.formCard).boundingBox();
+    return Boolean(jobBox && formBox && jobBox.y < formBox.y);
+  }
+
+  async isExportFormLocked() {
+    const formatRadio = this.page.locator(this.selectors.export.formatOptions.geopulse);
+    return await formatRadio.isDisabled();
+  }
+
+  async isExportDownloadedTagVisible() {
+    return await this.page.locator(this.selectors.export.downloadedTag).isVisible();
+  }
+
+  async getExportHistoryCount() {
+    if (!(await this.page.locator(this.selectors.export.historyCard).isVisible().catch(() => false))) {
+      return 0;
+    }
+    return await this.page.locator(this.selectors.export.historyItems).count();
   }
 
   async clickDownloadExport() {
@@ -460,10 +513,26 @@ export class DataExportImportPage {
     return null;
   }
 
+  /**
+   * Select a file through the drop zone's hidden file input and wait until the zone shows it.
+   */
   async uploadFile(filePath) {
     const fileInput = this.page.locator(this.selectors.import.fileUpload);
     await fileInput.setInputFiles(filePath);
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.import.selectedFileName))
+        .toHaveText(path.basename(filePath));
+  }
+
+  async getSelectedImportFileName() {
+    const fileName = this.page.locator(this.selectors.import.selectedFileName);
+    if (!(await fileName.isVisible().catch(() => false))) {
+      return null;
+    }
+    return (await fileName.textContent())?.trim() || null;
+  }
+
+  async removeSelectedImportFile() {
+    await this.page.locator(this.selectors.import.removeFileButton).click();
   }
 
   async selectImportDataType(dataType) {
@@ -603,9 +672,7 @@ export class DataExportImportPage {
   }
 
   async getImportJobProgress() {
-    const progressBar = this.page.locator(this.selectors.import.jobProgress);
-    const ariaValueNow = await progressBar.getAttribute('aria-valuenow');
-    return parseInt(ariaValueNow) || 0;
+    return this.readProgressBar(this.selectors.import.jobProgress);
   }
 
   async getImportSummary() {

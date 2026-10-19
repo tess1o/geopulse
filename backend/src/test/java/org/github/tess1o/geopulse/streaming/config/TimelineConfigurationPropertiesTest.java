@@ -22,7 +22,6 @@ class TimelineConfigurationPropertiesTest {
         assertEquals("true", properties.getUseVelocityAccuracy());
         assertEquals("9.0", properties.getStaypointVelocityThreshold()); // From application.properties
         assertEquals("60.0", properties.getStaypointAccuracyThreshold());
-        assertEquals("0.5", properties.getStaypointMinAccuracyRatio());
         assertEquals("single", properties.getTripDetectionAlgorithm());
         assertEquals("50", properties.getStaypointRadiusMeters());
         assertEquals("7", properties.getStaypointMinDurationMinutes());
@@ -42,7 +41,6 @@ class TimelineConfigurationPropertiesTest {
         assertNotNull(properties.getUseVelocityAccuracy());
         assertNotNull(properties.getStaypointVelocityThreshold());
         assertNotNull(properties.getStaypointAccuracyThreshold());
-        assertNotNull(properties.getStaypointMinAccuracyRatio());
         assertNotNull(properties.getTripDetectionAlgorithm());
         assertNotNull(properties.getStaypointRadiusMeters());
         assertNotNull(properties.getStaypointMinDurationMinutes());

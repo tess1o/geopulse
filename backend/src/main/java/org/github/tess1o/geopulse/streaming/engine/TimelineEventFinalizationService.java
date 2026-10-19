@@ -48,9 +48,11 @@ public class TimelineEventFinalizationService {
      * Location data will be populated later via batch processing.
      * Used by both main processing and data gap detection.
      *
+     * Notes on the active explanation when the stay keeps points outside its radius for its favorite area.
+     *
      * @param userState current user state with active stay points
-     * @param config    timeline configuration for accuracy validation
-     * @return finalized stay event without location data, or null if validation fails
+     * @param config    timeline configuration
+     * @return finalized stay event without location data, or null if the stay has no points
      */
     public Stay finalizeStayWithoutLocation(UserState userState, TimelineConfig config) {
         GPSPoint firstPoint = userState.getFirstActivePoint();
@@ -62,10 +64,10 @@ public class TimelineEventFinalizationService {
             return null;
         }
 
-        // Validate accuracy ratio if enabled
-        if (!passesAccuracyRatioValidation(userState.copyActivePoints(), config)) {
-            log.debug("Stay rejected due to insufficient accuracy ratio");
-            return null;
+        Integer radiusMeters = config.getStaypointRadiusMeters();
+        if (radiusMeters != null && FavoriteAreas.keepsPointsOutsideRadius(userState.getActivePoints(), centroid,
+                radiusMeters, userState.getFavoriteAreas())) {
+            userState.getActiveExplanation().note(TimelineReason.of(TimelineReasons.FAVORITE_AREA));
         }
 
         Duration stayDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
@@ -265,48 +267,5 @@ public class TimelineEventFinalizationService {
             return TripWaterStatistics.unavailable();
         }
         return tripWaterClassificationService.calculateStatistics(tripPath, config);
-    }
-
-    /**
-     * Validate if a cluster of GPS points meets the minimum accuracy ratio requirement.
-     * This ensures that a sufficient percentage of points in the cluster have acceptable accuracy.
-     *
-     * @param points GPS points in the cluster to validate
-     * @param config timeline configuration containing accuracy thresholds
-     * @return true if cluster passes accuracy ratio validation or if validation is disabled
-     */
-    private boolean passesAccuracyRatioValidation(List<GPSPoint> points, TimelineConfig config) {
-        if (points == null || points.isEmpty()) {
-            return false;
-        }
-
-        // Skip validation if velocity accuracy checks are disabled
-        if (Boolean.FALSE.equals(config.getUseVelocityAccuracy())) {
-            return true;
-        }
-
-        Double maxAccuracyThreshold = config.getStaypointMaxAccuracyThreshold();
-        Double minAccuracyRatio = config.getStaypointMinAccuracyRatio();
-
-        if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0 ||
-                minAccuracyRatio == null || minAccuracyRatio <= 0) {
-            return true; // Skip validation if thresholds are not properly configured
-        }
-
-        // Calculate accuracy ratio
-        long totalPoints = points.size();
-        long accuratePoints = points.stream()
-                .mapToLong(point -> (point.getAccuracy() <= maxAccuracyThreshold) ? 1 : 0)
-                .sum();
-
-        double actualRatio = (double) accuratePoints / totalPoints;
-        boolean passes = actualRatio >= minAccuracyRatio;
-
-        if (!passes) {
-            log.debug("Accuracy ratio validation failed: {}/{} ({}) < required {}",
-                    accuratePoints, totalPoints, actualRatio, minAccuracyRatio);
-        }
-
-        return passes;
     }
 }

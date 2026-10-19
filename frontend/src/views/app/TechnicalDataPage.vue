@@ -109,6 +109,34 @@
       </div>
     </BaseCard>
 
+    <!-- Staged GPS point edits, applied together -->
+    <Message v-if="hasPendingEdits" severity="warn" :closable="false" class="pending-edits-banner">
+      <div class="pending-edits-content">
+        <div class="pending-edits-text">
+          <i class="pi pi-pencil"></i>
+          <span>{{ t('technicalData.page.pendingEdits.message', { count: pendingCount }, pendingCount) }}</span>
+        </div>
+        <div class="pending-edits-actions">
+          <Button
+            :label="t('technicalData.page.pendingEdits.revertAll')"
+            icon="pi pi-undo"
+            size="small"
+            severity="secondary"
+            outlined
+            :disabled="applyEditsLoading"
+            @click="revertAllPendingEdits"
+          />
+          <Button
+            :label="t('technicalData.page.pendingEdits.apply')"
+            icon="pi pi-check"
+            size="small"
+            :loading="applyEditsLoading"
+            @click="applyPendingEdits"
+          />
+        </div>
+      </div>
+    </Message>
+
     <!-- GPS Points Table -->
     <BaseCard class="table-section">
       <DataTable
@@ -130,6 +158,7 @@
         class="gps-data-table"
         v-model:selection="selectedRows"
         selection-mode="multiple"
+        :row-class="pendingRowClass"
       >
         <template #paginatorstart>
           <span class="paginator-info">{{ t('technicalData.page.table.pageOf', { current: currentPage + 1, total: totalPages.toLocaleString() }) }}</span>
@@ -270,6 +299,17 @@
           <template #body="slotProps">
             <div class="actions-buttons">
               <Button
+                v-if="slotProps.data.pendingEdit"
+                icon="pi pi-undo"
+                severity="warn"
+                size="small"
+                text
+                :disabled="applyEditsLoading"
+                @click="revertPendingEdit(slotProps.data.id)"
+                v-tooltip.top="t('technicalData.page.pendingEdits.revertTooltip')"
+                class="action-button revert-button"
+              />
+              <Button
                 icon="pi pi-pencil"
                 severity="secondary"
                 size="small"
@@ -365,6 +405,7 @@
               v-for="point in gpsPointsWithDelta"
               :key="point.id"
               class="mobile-gps-row"
+              :class="pendingRowClass(point)"
               role="listitem"
             >
               <Checkbox
@@ -559,9 +600,12 @@
     <GpsPointEditDialog 
       :visible="showEditDialog"
       :gps-point="selectedGpsPoint"
+      :pending-changes="selectedGpsPoint ? getPendingChanges(selectedGpsPoint.id) : null"
       @close="showEditDialog = false"
       @save="handleEditSave"
+      @revert="handleEditRevert"
     />
+    <ConfirmDialog :group="unsavedEditsConfirmGroup" />
     </PullToRefreshIndicator>
     </PageContainer>
   </AppLayout>
@@ -569,13 +613,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { useI18n } from 'vue-i18n'
 import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useTimezone } from '@/composables/useTimezone'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useGpsPointFilters } from '@/composables/useGpsPointFilters'
+import { usePendingGpsEdits } from '@/composables/usePendingGpsEdits'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
@@ -602,11 +648,14 @@ import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
 import Menu from 'primevue/menu'
 import Paginator from 'primevue/paginator'
+import Message from 'primevue/message'
+import ConfirmDialog from 'primevue/confirmdialog'
 import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()
 const toast = useToast()
+const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const gpsPointFilters = useGpsPointFilters({ onChange: () => refreshAfterFilterChange() })
@@ -645,6 +694,23 @@ const deleteLoading = ref(false)
 const mobileActionMenu = ref()
 const mobileActionPoint = ref(null)
 
+// Staged edits, applied together in one request
+const {
+  pendingCount,
+  hasPendingEdits,
+  isPending,
+  getChanges: getPendingChanges,
+  getOriginal: getOriginalGpsPoint,
+  stage: stageGpsPointEdit,
+  revert: revertPendingEdit,
+  revertAll: revertAllPendingEdits,
+  dropIds: dropPendingEdits,
+  applyTo: applyPendingEdit,
+  toRequestEdits: pendingEditsRequest
+} = usePendingGpsEdits()
+const applyEditsLoading = ref(false)
+const unsavedEditsConfirmGroup = 'gps-data-unsaved-changes'
+
 // Delete all states
 const showDeleteAllDialog = ref(false)
 const deleteAllLoading = ref(false)
@@ -657,10 +723,12 @@ const gpsPoints = computed(() => technicalDataStore.gpsPoints)
 const totalRecords = computed(() => technicalDataStore.totalRecords)
 const gpsPointsWithDelta = computed(() =>
   gpsPoints.value.map((point, index, points) => ({
-    ...point,
+    ...applyPendingEdit(point),
     timeDeltaDisplay: formatTimeDelta(point.timestamp, points[index - 1]?.timestamp)
   }))
 )
+
+const pendingRowClass = (row) => (row.pendingEdit ? 'pending-edit-row' : '')
 
 const hasData = computed(() => summaryStats.value.totalPoints > 0)
 const filteredRecordsText = computed(() => {
@@ -713,6 +781,15 @@ const allVisibleGpsRowsSelected = computed(() => {
 })
 
 const mobileActionMenuItems = computed(() => [
+  ...(mobileActionPoint.value && isPending(mobileActionPoint.value.id) ? [{
+    label: t('technicalData.page.pendingEdits.revertTooltip'),
+    icon: 'pi pi-undo',
+    command: () => {
+      if (mobileActionPoint.value) {
+        revertPendingEdit(mobileActionPoint.value.id)
+      }
+    }
+  }] : []),
   {
     label: t('technicalData.page.table.editTooltip'),
     icon: 'pi pi-pencil',
@@ -988,7 +1065,8 @@ const handleExportCSV = async () => {
 }
 
 const editGpsPoint = (gpsPoint) => {
-  selectedGpsPoint.value = gpsPoint
+  // The dialog compares against the server values, not the staged ones shown in the row
+  selectedGpsPoint.value = getOriginalGpsPoint(gpsPoint)
   showEditDialog.value = true
 }
 
@@ -997,10 +1075,10 @@ const deleteGpsPoint = (gpsPoint) => {
   showDeleteDialog.value = true
 }
 
-const getDeleteResultData = (result) => result?.data || result || {}
+const getResultData = (result) => result?.data || result || {}
 
-const buildDeleteSuccessDetail = (baseMessage, result) => {
-  const data = getDeleteResultData(result)
+const buildRefreshSuccessDetail = (baseMessage, result) => {
+  const data = getResultData(result)
   const details = [baseMessage]
   let timelineJobUrl = null
 
@@ -1028,7 +1106,8 @@ const confirmDeleteGpsPoint = async () => {
   
   try {
     const result = await technicalDataStore.deleteGpsPoint(selectedGpsPoint.value.id)
-    const successDetail = buildDeleteSuccessDetail(t('technicalData.page.toasts.pointDeletedDetail'), result)
+    dropPendingEdits([selectedGpsPoint.value.id])
+    const successDetail = buildRefreshSuccessDetail(t('technicalData.page.toasts.pointDeletedDetail'), result)
 
     toast.add({
       group: 'gps-delete',
@@ -1061,24 +1140,53 @@ const confirmDeleteGpsPoint = async () => {
   }
 }
 
-const handleEditSave = async (updatedData) => {
-  if (!selectedGpsPoint.value) return
-  
-  try {
-    await technicalDataStore.updateGpsPoint(selectedGpsPoint.value.id, updatedData)
+const closeEditDialog = () => {
+  showEditDialog.value = false
+  selectedGpsPoint.value = null
+}
 
+const handleEditSave = (updatedData) => {
+  if (selectedGpsPoint.value) {
+    stageGpsPointEdit(selectedGpsPoint.value, updatedData)
+  }
+  closeEditDialog()
+}
+
+const handleEditRevert = () => {
+  if (selectedGpsPoint.value) {
+    revertPendingEdit(selectedGpsPoint.value.id)
+  }
+  closeEditDialog()
+}
+
+const applyPendingEdits = async () => {
+  if (!hasPendingEdits.value || applyEditsLoading.value) return
+
+  applyEditsLoading.value = true
+
+  try {
+    const result = await technicalDataStore.updateGpsPoints(pendingEditsRequest())
+    const updatedCount = getResultData(result).updatedCount ?? pendingCount.value
+    const successDetail = buildRefreshSuccessDetail(
+      t('technicalData.page.toasts.pointsUpdatedDetail', { count: updatedCount }, updatedCount),
+      result
+    )
+
+    revertAllPendingEdits()
     toast.add({
+      group: 'gps-delete',
       severity: 'success',
-      summary: t('technicalData.page.toasts.pointUpdatedSummary'),
-      detail: t('technicalData.page.toasts.pointUpdatedDetail'),
-      life: 3000
+      summary: t('technicalData.page.toasts.pointsUpdatedSummary'),
+      detail: successDetail.detail,
+      data: {
+        timelineJobUrl: successDetail.timelineJobUrl
+      },
+      life: 10000
     })
 
-    // Refresh the data
-    await loadGPSPoints()
-
+    await Promise.all([loadGPSPoints(), loadSummaryStats()])
   } catch (error) {
-    console.error('Error updating GPS point:', error)
+    console.error('Error updating GPS points:', error)
     const errorMessage = formatApiErrorDetail(error, t('technicalData.page.toasts.updateFailedFallback'))
     toast.add({
       severity: 'error',
@@ -1087,8 +1195,7 @@ const handleEditSave = async (updatedData) => {
       life: 5000
     })
   } finally {
-    showEditDialog.value = false
-    selectedGpsPoint.value = null
+    applyEditsLoading.value = false
   }
 }
 
@@ -1105,11 +1212,12 @@ const confirmBulkDelete = async () => {
   try {
     const pointIds = selectedRows.value.map(row => row.id)
     const result = await technicalDataStore.deleteGpsPoints(pointIds)
-    const deleteData = getDeleteResultData(result)
+    dropPendingEdits(pointIds)
+    const deleteData = getResultData(result)
 
     // Extract the correct count from the response
     const deletedCount = deleteData.deletedCount ?? pointIds.length
-    const successDetail = buildDeleteSuccessDetail(
+    const successDetail = buildRefreshSuccessDetail(
       t('technicalData.page.toasts.bulkDeleteSuccessDetail', { count: deletedCount }, deletedCount),
       result
     )
@@ -1153,6 +1261,7 @@ const confirmDeleteAll = async () => {
 
   try {
     await technicalDataStore.deleteAllGpsData()
+    revertAllPendingEdits()
 
     toast.add({
       severity: 'success',
@@ -1249,9 +1358,55 @@ const handleRowClick = (event) => {
 }
 
 // Lifecycle
+onBeforeRouteLeave((to, from, next) => {
+  if (to.path === from.path || !hasPendingEdits.value) {
+    next()
+    return
+  }
+
+  let guardResolved = false
+  const resolveGuard = (allowNavigation) => {
+    if (guardResolved) {
+      return
+    }
+
+    guardResolved = true
+    if (allowNavigation) {
+      next()
+    } else {
+      next(false)
+    }
+  }
+
+  confirm.require({
+    group: unsavedEditsConfirmGroup,
+    message: t('technicalData.page.pendingEdits.leaveConfirm.message', { count: pendingCount.value }, pendingCount.value),
+    header: t('technicalData.page.pendingEdits.leaveConfirm.header'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('technicalData.page.pendingEdits.leaveConfirm.accept'),
+    rejectLabel: t('technicalData.page.pendingEdits.leaveConfirm.reject'),
+    acceptClass: 'p-button-danger',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    accept: () => resolveGuard(true),
+    reject: () => resolveGuard(false),
+    onHide: () => resolveGuard(false)
+  })
+})
+
+const handleBeforeUnload = (event) => {
+  if (!hasPendingEdits.value) {
+    return
+  }
+
+  event.preventDefault()
+  event.returnValue = ''
+  return ''
+}
+
 onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  window.addEventListener('beforeunload', handleBeforeUnload)
   gpsPointFilters.hydrateFromRouteQuery(route.query)
   
   await Promise.all([
@@ -1262,6 +1417,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 // Watchers
@@ -2036,6 +2192,52 @@ watch(pageSize, async () => {
 }
 
 /* Actions Column */
+.pending-edits-banner {
+  margin-bottom: var(--gp-spacing-lg);
+}
+
+.pending-edits-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  width: 100%;
+}
+
+.pending-edits-text {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.pending-edits-actions {
+  display: flex;
+  gap: var(--gp-spacing-sm);
+  flex-shrink: 0;
+}
+
+.gps-data-table :deep(.pending-edit-row > td:first-child),
+.mobile-gps-row.pending-edit-row {
+  box-shadow: inset 3px 0 0 var(--gp-warning);
+}
+
+.gps-data-table :deep(.pending-edit-row),
+.mobile-gps-row.pending-edit-row {
+  background: var(--gp-warning-soft);
+}
+
+@media (max-width: 768px) {
+  .pending-edits-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pending-edits-actions .p-button {
+    flex: 1;
+    min-height: 44px;
+  }
+}
+
 .actions-buttons {
   display: flex;
   gap: var(--gp-spacing-xs);

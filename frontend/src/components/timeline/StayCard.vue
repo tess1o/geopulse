@@ -18,6 +18,11 @@
             :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
+          <TimelineExplanationTrigger
+            v-if="allowExplanation"
+            kind="stay"
+            @show-explanation="emit('show-explanation', stayItem)"
+          />
         </div>
       </div>
     </template>
@@ -88,6 +93,7 @@
 </template>
 
 <script setup>
+import TimelineExplanationTrigger from './TimelineExplanationTrigger.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -138,13 +144,18 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  // Whether the card may open the explanation dialog (it needs the owner's account)
+  allowExplanation: {
+    type: Boolean,
+    default: true
+  },
   readOnly: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'reset-trip-split-override', 'note-saved'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'reset-trip-split-override', 'note-saved', 'show-explanation'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -211,6 +222,16 @@ const contextMenuItems = computed(() => {
       disabled: props.readOnly,
       command: () => {
         handleResetTripSplitOverride()
+      }
+    })
+  }
+
+  if (props.allowExplanation) {
+    items.push({
+      label: t('timeline.explanation.toggle.stay'),
+      icon: 'pi pi-question-circle',
+      command: () => {
+        emit('show-explanation', props.stayItem)
       }
     })
   }
@@ -392,7 +413,7 @@ const navigateToCountryDetails = () => {
 
 const isOvernight = computed(() => {
   if (!props.stayItem.timestamp || !props.stayItem.stayDuration) return false;
-  return timezone.isOvernightWithDuration(props.stayItem.timestamp, props.stayItem.stayDuration);
+  return timezone.shouldShowAsOvernight({ ...props.stayItem, type: 'stay' });
 });
 
 const formatOnThisDayDuration = (stayItem) => {

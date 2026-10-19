@@ -41,6 +41,13 @@ public interface TimelineEvent {
     TimelineEventType getType();
 
     /**
+     * Why the event starts and ends where it does, as decided by the engine.
+     */
+    TimelineExplanation getExplanation();
+
+    void setExplanation(TimelineExplanation explanation);
+
+    /**
      * Check if this event contains the given timestamp.
      *
      * @param timestamp the timestamp to check

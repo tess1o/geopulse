@@ -170,7 +170,9 @@ export default {
         speedPlaceholder: 'Speed in km/h',
         accuracyLabel: 'Accuracy (meters)',
         accuracyPlaceholder: 'Accuracy in meters',
-        save: 'Save',
+        stageChange: 'Add Change',
+        revertToOriginal: 'Revert to Original',
+        stagingHint: 'Changes are not saved right away: apply them together with "Apply Changes" on the GPS Data page.',
         validation: {
             latitudeRequired: 'Latitude is required',
             latitudeRange: 'Latitude must be between -90 and 90',

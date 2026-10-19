@@ -46,6 +46,7 @@ public class ExportJob {
     private String fileExtension;  // File extension (.zip, .json, .gpx, .csv)
     private String error;
     private long fileSizeBytes;
+    private DebugExportRequest debugRequest; // Set for ExportFormat.DEBUG jobs only
 
     public ExportJob() {
         this.jobId = UUID.randomUUID();

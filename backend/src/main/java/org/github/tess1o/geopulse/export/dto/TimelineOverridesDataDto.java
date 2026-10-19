@@ -17,6 +17,7 @@ public class TimelineOverridesDataDto {
     private Instant exportDate;
     private List<TripMovementOverrideDto> tripMovementOverrides;
     private List<DataGapStayOverrideDto> dataGapStayOverrides;
+    private List<TripStaySplitOverrideDto> tripStaySplitOverrides;
 
     @Data
     @AllArgsConstructor
@@ -58,6 +59,33 @@ public class TimelineOverridesDataDto {
         private Double sourceBeforeLongitude;
         private Double sourceAfterLatitude;
         private Double sourceAfterLongitude;
+        private Instant createdAt;
+        private Instant updatedAt;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class TripStaySplitOverrideDto {
+        private Long id;
+        private Long stayId;
+        private Instant stayStartTime;
+        private Instant stayEndTime;
+        private Instant anchorTimestamp;
+        private Double stayLatitude;
+        private Double stayLongitude;
+        private String stayLocationName;
+        private String stayLocationSource;
+        private Long favoriteId;
+        private Long geocodingId;
+        private Instant sourceTripTimestamp;
+        private Long sourceTripDurationSeconds;
+        private Long sourceDistanceMeters;
+        private Double sourceStartLatitude;
+        private Double sourceStartLongitude;
+        private Double sourceEndLatitude;
+        private Double sourceEndLongitude;
         private Instant createdAt;
         private Instant updatedAt;
     }

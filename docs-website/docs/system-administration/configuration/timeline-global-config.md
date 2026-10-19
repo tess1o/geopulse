@@ -76,7 +76,6 @@ Controls how GeoPulse identifies when you're stationary at a location.
 | `GEOPULSE_TIMELINE_STAYPOINT_USE_VELOCITY_ACCURACY` | `true`  | Whether to consider velocity accuracy in filtering                      |
 | `GEOPULSE_TIMELINE_STAYPOINT_VELOCITY_THRESHOLD`    | `9.0`   | Velocity threshold (km/h) below which movement is considered a staypoint |
 | `GEOPULSE_TIMELINE_STAYPOINT_ACCURACY_THRESHOLD`    | `60.0`  | Maximum GPS accuracy (meters) for staypoint detection                   |
-| `GEOPULSE_TIMELINE_STAYPOINT_MIN_ACCURACY_RATIO`    | `0.5`   | Minimum accuracy ratio required for staypoint consideration             |
 
 ## Trip Classification
 

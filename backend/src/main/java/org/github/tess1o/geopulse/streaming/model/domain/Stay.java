@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.streaming.model.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.NoArgsConstructor;
 
 import java.time.Duration;
@@ -39,6 +41,12 @@ public class Stay implements TimelineEvent {
      * ID of matching geocoding result, if any
      */
     private Long geocodingId;
+
+    /** Why the engine created this event as it is; not part of the event's identity. */
+    @Builder.Default
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private TimelineExplanation explanation = new TimelineExplanation();
 
     @Override
     public TimelineEventType getType() {

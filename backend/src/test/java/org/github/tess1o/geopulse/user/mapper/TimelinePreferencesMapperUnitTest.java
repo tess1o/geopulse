@@ -21,7 +21,6 @@ class TimelinePreferencesMapperUnitTest {
                 .useVelocityAccuracy(true)
                 .staypointVelocityThreshold(2.5)
                 .staypointMaxAccuracyThreshold(50.0)
-                .staypointMinAccuracyRatio(0.8)
                 .staypointRadiusMeters(100)
                 .staypointMinDurationMinutes(5)
                 .isMergeEnabled(true)
@@ -36,7 +35,6 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(true, config.getUseVelocityAccuracy());
         assertEquals(2.5, config.getStaypointVelocityThreshold());
         assertEquals(50.0, config.getStaypointMaxAccuracyThreshold());
-        assertEquals(0.8, config.getStaypointMinAccuracyRatio());
         assertEquals(100, config.getStaypointRadiusMeters());
         assertEquals(5, config.getStaypointMinDurationMinutes());
         assertEquals(true, config.getIsMergeEnabled());

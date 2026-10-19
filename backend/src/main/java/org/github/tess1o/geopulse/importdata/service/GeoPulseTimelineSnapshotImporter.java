@@ -238,6 +238,7 @@ public class GeoPulseTimelineSnapshotImporter {
         executeUserDelete("DELETE FROM map_matching_reconciliations WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_trip_movement_overrides WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_data_gap_stay_overrides WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_trip_stay_split_overrides WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_stays WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_trips WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_data_gaps WHERE user_id = :userId", userId);

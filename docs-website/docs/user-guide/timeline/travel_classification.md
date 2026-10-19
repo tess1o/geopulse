@@ -14,7 +14,7 @@ GeoPulse automatically analyzes your trips to determine how you traveled, includ
 When GeoPulse detects that you're moving between two locations (a trip), it analyzes the GPS data to classify the trip type. This classification is based primarily on:
 
 - **Average Speed**  -  Your typical speed throughout the trip
-- **Maximum Speed**  -  The highest speed reached during the trip
+- **Maximum Speed**  -  The highest speed held for at least 30 seconds during the trip
 - **Speed Variance**  -  How consistent your speed was (important for distinguishing trains from cars)
 - **Water Evidence**  -  Whether the trip path spends sustained distance over water (used for boat trips)
 
@@ -76,6 +76,7 @@ The system evaluates trip types in a specific order to ensure accurate classific
 GeoPulse includes sophisticated GPS noise detection to ensure accurate classification:
 
 - **Supersonic Speed Detection**  -  Rejects impossible speeds above 1,200 km/h (GPS noise)
+- **Burst Resistance**  -  A few bad readings in quick succession, common when a tracker wakes up and the GPS fix is still settling, barely affect the average and cannot set the maximum speed on their own
 - **Reliability Validation**  -  Compares GPS speeds against calculated speeds from distance/duration
 - **Adaptive Thresholds**  -  Uses different validation rules for low-speed vs. high-speed trips
 - **Road-Vehicle Peak Preservation**  -  If GPS average speed is unreliable but the trip is long enough and the peak speed is plausible for road traffic, GeoPulse can keep that peak as evidence for **CAR** while still using the calculated average speed. Unrealistic spikes and very short noisy trips are still treated as GPS noise.
@@ -411,9 +412,9 @@ If you choose **Reset to automatic**:
 
 GeoPulse calculates speed statistics during trip processing:
 
-1. **Average GPS Speed** Mean of all GPS point speeds during the trip
-2. **Maximum GPS Speed** Highest speed recorded at any GPS point
-3. **Speed Variance**  Statistical variance of speeds (consistency measure)
+1. **Average GPS Speed**  Time-weighted mean of GPS point speeds: each reading counts for the time it covers, so a burst of readings a few seconds apart weighs as little as those few seconds
+2. **Maximum GPS Speed**  Highest speed held for at least 30 seconds. A single spike followed by normal readings does not count; a vehicle reporting high speeds on consecutive readings does. Trips with fewer than 3 points, or too short to cover 30 seconds, use the highest recorded speed instead
+3. **Speed Variance**  Time-weighted variance of speeds (consistency measure)
 4. **Calculated Speed**  Distance divided by duration (backup/validation)
 
 The system uses GPS-reported speeds when available and reliable, falling back to calculated speeds when GPS data is questionable.

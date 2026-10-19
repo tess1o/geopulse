@@ -5,6 +5,9 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
@@ -48,7 +51,8 @@ public class GapTripInferenceRule implements DataGapRule {
                 finalizationService,
                 context.userState(),
                 context.lastPoint(),
-                context.config()
+                context.config(),
+                context.gapDuration()
         );
         if (activeEvent != null) {
             gapEvents.add(activeEvent);
@@ -57,6 +61,7 @@ public class GapTripInferenceRule implements DataGapRule {
         }
 
         Trip inferredTrip = createInferredTrip(context);
+        GapRuleSupport.explainInferred(inferredTrip, context.userState(), TimelineReasons.INFERRED_TRIP_DURING_GAP, context);
         gapEvents.add(inferredTrip);
         log.debug("Created inferred trip: {} distance, {} duration, type {}",
                 inferredTrip.getDistanceMeters(), inferredTrip.getDuration(), inferredTrip.getTripType());

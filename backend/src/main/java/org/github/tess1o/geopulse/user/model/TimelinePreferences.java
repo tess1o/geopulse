@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.user.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,11 +14,12 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
+// Old exports may still carry retired settings, such as staypointMinAccuracyRatio.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TimelinePreferences implements Serializable {
     private Boolean useVelocityAccuracy;
     private Double staypointVelocityThreshold;
     private Double staypointMaxAccuracyThreshold;
-    private Double staypointMinAccuracyRatio;
     private String tripDetectionAlgorithm;
     private Integer staypointRadiusMeters;
     private Integer staypointMinDurationMinutes;

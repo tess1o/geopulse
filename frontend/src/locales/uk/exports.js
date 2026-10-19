@@ -10,6 +10,8 @@ export default {
         exportingGpsPointsCount: 'Експортування GPS-точок: {count} записів',
         finalizingCsv: 'Завершення експорту CSV...',
         exportCompleted: 'Експорт завершено',
+        collectingTimeline: 'Збирання даних хронології...',
+        exportingGpsPoints: 'Експортування GPS-точок...',
         initializingGeoJson: 'Ініціалізація експорту GeoJSON...',
         finalizingGeoJson: 'Завершення експорту GeoJSON...',
         streamingRecordsProgress: 'Експортування: {written} / {total} записів',

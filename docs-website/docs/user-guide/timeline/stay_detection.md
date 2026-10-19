@@ -168,31 +168,6 @@ If GPS point accuracy > threshold:
 - Including these points would degrade cluster quality
 - Filtered points don't affect stay detection at all
 
-### Cluster Quality Validation
-
-**Setting:** `Minimum Accuracy Ratio`
-**Default:** 50% (0.5)
-**Range:** 10-100%
-
-After a stay cluster is formed, the system validates overall quality:
-
-```
-Accurate points = count(points with accuracy ≤ threshold)
-Ratio = Accurate points / Total points
-
-If ratio < Minimum Accuracy Ratio:
-  → Stay is rejected
-```
-
-**Example:**
-- 10 points in a cluster
-- 4 points have accuracy ≤ 60m (good)
-- 6 points have accuracy > 60m (poor)
-- Ratio = 4/10 = 40%
-- With default 50% threshold: **Stay rejected**
-
-This ensures that stays are only created when sufficient high-quality GPS data exists.
-
 ### Enhanced Filtering Toggle
 
 **Setting:** `Enhanced Filtering`
@@ -348,21 +323,18 @@ GPS Accuracy Threshold: 50m (stricter for cities)
 ```
 Stay Detection Radius: 30-50m
 GPS Accuracy Threshold: 30m
-Minimum Accuracy Ratio: 70%
 ```
 
 **Average GPS Quality:**
 ```
 Stay Detection Radius: 50-75m
 GPS Accuracy Threshold: 60m
-Minimum Accuracy Ratio: 50%
 ```
 
 **Poor GPS Quality (indoor, urban canyons):**
 ```
 Stay Detection Radius: 100m
 GPS Accuracy Threshold: 100m
-Minimum Accuracy Ratio: 30%
 ```
 
 ---

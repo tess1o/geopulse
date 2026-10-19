@@ -54,6 +54,10 @@ public class ImportJob {
     @ToString.Exclude
     private byte[] fileData;
 
+    // Debug imports only: the options chosen, and what the import found once it completed
+    private DebugImportRequest debugImportRequest;
+    private DebugImportReport debugImportReport;
+
     public ImportJob(UUID userId, ImportOptions options, String fileName, byte[] fileData) {
         this.jobId = UUID.randomUUID();
         this.userId = userId;

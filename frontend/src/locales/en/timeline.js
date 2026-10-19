@@ -74,6 +74,187 @@ export default {
         splitTripWithStay: 'Split trip with stay...',
         mapMatchingDetails: 'Map matching details...'
     },
+    explanation: {
+        trigger: {
+            stay: 'Why this stay? See its GPS points and how it was decided',
+            trip: 'Why this trip? See its GPS points and how it was decided',
+            dataGap: 'Why a data gap? See the GPS points around it and how it was decided'
+        },
+        toggle: {
+            stay: 'Why this stay?',
+            trip: 'Why this trip?',
+            dataGap: 'Why a data gap?'
+        },
+        start: {
+            FIRST_POINT: 'Starts with the first GPS point there is.',
+            AFTER_DATA_GAP: 'Starts with the first GPS point after a data gap.',
+            ARRIVAL: 'Starts where you stopped moving: {points} points slower than {stopSpeedKmh} km/h for {stopSeconds}.',
+            SPARSE_STOP: 'Starts where you stopped: the next GPS point came {gapSeconds} later, only {distanceMeters} away.',
+            LEFT_STAY: 'Starts when a point {distanceMeters} from the stay was recorded (stay radius {radiusMeters}).',
+            SHORT_STOP: 'Starts with a stop of {stopSeconds}, too short to be a stay ({minMinutes} min needed), so it counts as part of this trip.',
+            WATER_TRANSITION_TO_WATER: 'Starts where you moved from land onto water.',
+            WATER_TRANSITION_TO_LAND: 'Starts where you moved from water onto land.',
+            INFERRED_DURING_GAP: 'There are no GPS points here for {gapSeconds}, but the points before and after are only {distanceMeters} apart, so you probably stayed here.',
+            INFERRED_TRIP_DURING_GAP: 'There are no GPS points here for {gapSeconds}; the points before and after are {distanceMeters} apart, so you must have travelled.',
+            CONTINUITY: 'No trip was detected between the stays before and after, which are {distanceMeters} apart, so this trip connects them.',
+            NO_POINTS: 'No GPS points for {gapSeconds}. Breaks longer than {thresholdSeconds} are shown as data gaps.',
+            NO_POINTS_SINCE_LAST: 'No GPS points since the last one. A break longer than {thresholdSeconds} is shown as a data gap until new points arrive.',
+            STOPPED_BEFORE_GAP: 'Starts where you stopped, right before a data gap.',
+            MANUAL_SPLIT: 'You added this stay by splitting a trip.',
+            MANUAL_GAP_STAY: 'You turned a data gap into this stay.'
+        },
+        note: {
+            CONFIRMED: 'Counts as a stay: the points stayed within {radiusMeters} for at least {minMinutes} min.',
+            FAVORITE_AREA: 'Points outside the stay radius were kept in this stay because they are in the same favorite area.',
+            CONTINUED_OVER_GAP: 'Continues over a {gapSeconds} data gap: the points before and after it are in the same place.',
+            MERGED: '{stays} stays at the same place were merged into this one.',
+            JOINED_SEGMENTS: '{segments} parts of movement were joined into this trip.',
+            SHORT_STOP: 'Includes a stop of {stopSeconds}, too short to be a stay ({minMinutes} min needed).',
+            MANUAL_SPLIT: 'Changed by your manual trip split.',
+            MANUAL_GAP_STAY: 'Extended by your manual data gap conversion.'
+        },
+        end: {
+            MOVED_AWAY: 'Ends when a point {distanceMeters} away was recorded (stay radius {radiusMeters}).',
+            ARRIVAL: 'Ends where you stopped moving: {points} points slower than {stopSpeedKmh} km/h for {stopSeconds}.',
+            SPARSE_STOP: 'Ends where you stopped: the next GPS point came {gapSeconds} later, only {distanceMeters} away.',
+            DATA_GAP: 'Ends at a data gap of {gapSeconds}.',
+            LAST_POINT: 'Ends with the last GPS point there is, so it may still be going on.',
+            WATER_TRANSITION_TO_WATER: 'Ends where you moved from land onto water.',
+            WATER_TRANSITION_TO_LAND: 'Ends where you moved from water onto land.',
+            STOPPED_BEFORE_GAP: 'Ends where you stopped, right before a data gap.'
+        }
+    },
+    explanationDialog: {
+        header: {
+            stay: 'Why this stay?',
+            trip: 'Why this trip?',
+            dataGap: 'Why a data gap?'
+        },
+        loading: 'Loading GPS points...',
+        loadFailed: 'Could not load the explanation.',
+        period: '{start} – {end} ({duration})',
+        sections: {
+            map: 'GPS points',
+            steps: 'How it was decided',
+            filtered: 'Points left out',
+            ingestion: 'Points that were never stored'
+        },
+        legend: {
+            used: 'Used',
+            filtered: 'Left out (inaccurate)',
+            context: 'Before and after',
+            deciding: 'Made a decision',
+            radius: 'Stay radius',
+            anchor: 'Saved place'
+        },
+        mapHint: 'Select a step to see its points on the map. Select a point for details.',
+        noPoints: 'There are no stored GPS points for this time.',
+        truncated: 'This event has {total} GPS points. The map shows {shown} of them, including every point that was left out or made a decision.',
+        steps: {
+            any: {
+                start: {
+                    FIRST_POINT: 'Starts at {time} with your first GPS point.',
+                    AFTER_DATA_GAP: 'Starts at {time}, with the first GPS point after a break in your data.',
+                    ARRIVAL: 'Starts at {time}, where you stopped moving.',
+                    SPARSE_STOP: 'Starts at {time}, where you stopped. No GPS points were recorded while you were here: the next one came {gapSeconds} later, only {distanceMeters} away.',
+                    LEFT_STAY: 'Started at {time}, when you were {distanceMeters} from the place you were staying, more than its {radiusMeters} radius.',
+                    SHORT_STOP: 'Starts with a stop from {time} to {endTime} ({stopSeconds}). A stay needs at least {minMinutes}, so the stop is counted as part of this trip.',
+                    WATER_TRANSITION_TO_WATER: 'Starts at {time}, where you moved from land onto water.',
+                    WATER_TRANSITION_TO_LAND: 'Starts at {time}, where you moved from water onto land.',
+                    INFERRED_DURING_GAP: 'There is no GPS data for {gapSeconds}, but the points before and after the break are only {distanceMeters} apart, so GeoPulse assumes you stayed here.',
+                    INFERRED_TRIP_DURING_GAP: 'There is no GPS data for {gapSeconds}, and the points before and after the break are {distanceMeters} apart, so you must have travelled in between.',
+                    CONTINUITY: 'No movement was recorded between the stays before and after this trip, but they are {distanceMeters} apart, so GeoPulse adds this trip to connect them. It has no GPS points of its own.',
+                    STOPPED_BEFORE_GAP: 'You stopped here at {time}, right before your GPS data stopped, and were in the same place when it came back.',
+                    MANUAL_SPLIT: 'You added this by splitting a trip.',
+                    MANUAL_GAP_STAY: 'You turned a data gap into this stay.',
+                    NO_POINTS: 'No GPS points from {time} to {endTime} ({gapSeconds}). Breaks longer than {thresholdSeconds} are shown as data gaps.',
+                    NO_POINTS_SINCE_LAST: 'No GPS points since {time}. A break longer than {thresholdSeconds} is shown as a data gap until new points arrive.'
+                },
+                note: {
+                    CONFIRMED: 'Counted as a stay from {time}: by then you had been within {radiusMeters} of this place for {minMinutes}.',
+                    FAVORITE_AREA: '{count} points were farther from the centre than the stay radius, but they are in the same favorite area, so they stayed part of this stay.',
+                    CONTINUED_OVER_GAP: 'There is no GPS data from {time} to {endTime} ({gapSeconds}), but you were in the same place before and after, so the stay continues over the break.',
+                    MERGED: '{stays} stays at this place, close together in place and time, were merged into this one.',
+                    JOINED_SEGMENTS: '{segments} trips in a row were joined into this one.',
+                    SHORT_STOP: 'Includes a stop of {stopSeconds}, shorter than the {minMinutes} a stay needs.',
+                    MANUAL_SPLIT: 'Changed by your manual trip split.',
+                    MANUAL_GAP_STAY: 'Extended by your manual data gap conversion.'
+                },
+                end: {
+                    MOVED_AWAY: 'Ended at {time}, when you were {distanceMeters} from the centre, more than the {radiusMeters} stay radius.',
+                    ARRIVAL: 'Ended at {time}, when you stopped moving.',
+                    SPARSE_STOP: 'Ended at {time}, where you stopped: the next GPS point came {gapSeconds} later, only {distanceMeters} away.',
+                    DATA_GAP: 'Ended at {time}, when your GPS data stopped for {gapSeconds}.',
+                    LAST_POINT: 'Your latest GPS point is at {time}, so this may still be going on.',
+                    WATER_TRANSITION_TO_WATER: 'Ended at {time}, where you moved from land onto water.',
+                    WATER_TRANSITION_TO_LAND: 'Ended at {time}, where you moved from water onto land.',
+                    STOPPED_BEFORE_GAP: 'Ended at {time}, where you stopped right before your GPS data stopped.'
+                }
+            },
+            stay: {
+                start: {
+                    ARRIVAL: 'You arrived at {time}, when you stopped moving.',
+                    MANUAL_SPLIT: 'You added this stay by splitting a trip.'
+                }
+            }
+        },
+        callouts: {
+            gapFiltered: '{count} GPS points were recorded during this time, but each was less accurate than {thresholdMeters} ({setting}), so they were left out and the time shows as a data gap.',
+            settingChanged: '{setting} was {builtWith} when this was built and is {current} now. Regenerate the timeline to apply the new value.'
+        },
+        filtered: {
+            none: 'Every GPS point of this event was used.',
+            some: '{filtered} of {total} GPS points were left out because they were less accurate than {thresholdMeters} ({setting}).',
+            worst: 'The least accurate one was ±{accuracyMeters}.',
+            context: '{count} points before or after it were left out as well.',
+            off: 'GPS points are not filtered by accuracy, because {setting} is off.'
+        },
+        ingestion: {
+            intro: 'Your GPS sources drop some points before they are stored, so those points cannot be shown here:',
+            source: '{source}: {rules}',
+            accuracy: 'points less accurate than {value}',
+            speed: 'points faster than {value}',
+            duplicates: 'repeats of the same place within {value}',
+            link: 'Location sources'
+        },
+        point: {
+            used: 'Used for this event.',
+            before: 'Before this event.',
+            after: 'After this event.',
+            filtered: 'Left out: accuracy ±{accuracyMeters}, worse than the {thresholdMeters} GPS Accuracy Threshold.',
+            outsideRadius: '{distanceMeters} from the centre, outside the {radiusMeters} radius.',
+            accuracy: 'Accuracy ±{value}',
+            noAccuracy: 'No accuracy recorded',
+            speed: 'Speed {value}',
+            reason: {
+                FIRST_POINT: 'Your first GPS point.',
+                AFTER_DATA_GAP: 'The first point after a break in GPS data.',
+                ARRIVAL: 'Part of the stop where you arrived.',
+                SPARSE_STOP: 'Where you stopped: the next point came much later, close by.',
+                LEFT_STAY: 'Started this trip: it is outside the stay radius.',
+                SHORT_STOP: 'Part of a stop too short to be a stay.',
+                WATER_TRANSITION: 'Where you moved between land and water.',
+                INFERRED_DURING_GAP: 'Next to the break this stay was assumed over.',
+                INFERRED_TRIP_DURING_GAP: 'Next to the break this trip was assumed over.',
+                STOPPED_BEFORE_GAP: 'Where you stopped before the break.',
+                NO_POINTS: 'Next to the break in GPS data.',
+                NO_POINTS_SINCE_LAST: 'The last point before the break.',
+                CONFIRMED: 'From here on it counted as a stay.',
+                FAVORITE_AREA: 'Outside the stay radius but inside the favorite area.',
+                CONTINUED_OVER_GAP: 'Next to a break the stay continued over.',
+                MOVED_AWAY: 'Ended the stay: it is outside the stay radius.',
+                DATA_GAP: 'Next to a break in GPS data.',
+                LAST_POINT: 'Your latest GPS point.'
+            }
+        },
+        settingsUsed: 'Settings',
+        changeSettings: 'Timeline preferences',
+        whyClassification: 'Why this movement type?',
+        close: 'Close',
+        on: 'on',
+        off: 'off',
+        minutes: '{value} min'
+    },
     container: {
         noData: 'No timeline for the given date range.',
         showingItems: 'Showing {shown} of {total} items.',
@@ -511,14 +692,6 @@ export default {
                 labelMid: '60m (Balanced)',
                 labelHigh: '200m (Low accuracy)',
                 suffix: ' m'
-            },
-            minAccuracyRatio: {
-                title: 'Minimum Accuracy Ratio',
-                description: 'Minimum ratio of accurate GPS points required in a stay point cluster',
-                details: 'Higher values ensure more reliable stay point detection by requiring a higher percentage of accurate GPS points',
-                labelLow: '10% (Lenient)',
-                labelMid: '50% (Balanced)',
-                labelHigh: '100% (Strict)'
             }
         },
         tripClassification: {

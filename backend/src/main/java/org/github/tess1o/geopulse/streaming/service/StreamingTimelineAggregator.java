@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineExplanationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
@@ -221,6 +222,7 @@ public class StreamingTimelineAggregator {
                     && gapEntity.getStartTime().equals(latestGpsTimestamp);
             var gapDTO = new TimelineDataGapDTO(
                     gapEntity.getId(), gapEntity.getStartTime(), gapEntity.getEndTime(), ongoing);
+            gapDTO.setExplanation(TimelineExplanationDTO.from(gapEntity.getExplanation()));
             timeline.getDataGaps().add(gapDTO);
         }
 

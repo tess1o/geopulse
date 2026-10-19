@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Builder
+// Old debug exports may still carry retired settings, such as staypointMinAccuracyRatio.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TimelineConfig {
 
     /**
@@ -49,18 +52,6 @@ public class TimelineConfig {
      * the precision of staypoint detection at the cost of excluding more data.
      */
     private Double staypointMaxAccuracyThreshold;
-    /**
-     * Defines the minimum ratio of accuracy required for a track point to be considered
-     * in staypoint detection. This ratio is evaluated as a fraction of the track point
-     * accuracy compared to a larger accuracy threshold (e.g., {@code staypointMaxAccuracyThreshold}).
-     *
-     * A lower value allows more imprecise points to qualify, while a higher value enforces stricter
-     * precision requirements.
-     *
-     * The parameter is used to filter track points in order to determine whether they contribute
-     * to identifying staypoints, ensuring that staypoints are derived from high-confidence data.
-     */
-    private Double staypointMinAccuracyRatio;
     /**
      * Specifies the radius (in meters) used for stay point detection and clustering.
      * GPS points within this distance are considered part of the same stay location.

@@ -30,7 +30,6 @@ import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentSer
 import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
@@ -42,11 +41,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GPS_POINT_EDIT;
 
 @ApplicationScoped
 @Slf4j
@@ -112,7 +116,6 @@ public class GpsPointService {
     private final GpsPointRepository gpsPointRepository;
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
     private final EntityManager em;
-    private final StreamingTimelineGenerationService streamingTimelineGenerationService;
     private final TimelineRebuildRequestRepository rebuildRequestRepository;
     private final GpsDataFilteringService filteringService;
     private final GpsTelemetryRenderingService telemetryRenderingService;
@@ -135,7 +138,6 @@ public class GpsPointService {
     @Inject
     public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
                            GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em,
-                           StreamingTimelineGenerationService streamingTimelineGenerationService,
                            GpsDataFilteringService filteringService,
                            GpsTelemetryRenderingService telemetryRenderingService,
                            GeofenceEvaluationService geofenceEvaluationService,
@@ -146,7 +148,6 @@ public class GpsPointService {
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
         this.em = em;
-        this.streamingTimelineGenerationService = streamingTimelineGenerationService;
         this.filteringService = filteringService;
         this.telemetryRenderingService = telemetryRenderingService;
         this.geofenceEvaluationService = geofenceEvaluationService;
@@ -690,43 +691,78 @@ public class GpsPointService {
     /**
      * Update a GPS point for a user.
      * This method allows updating location (latitude/longitude), speed, and accuracy.
+     * Timeline regeneration is not run here; see {@link #updateGpsPoints}.
      *
      * @param pointId The ID of the GPS point to update
      * @param dto     The update data
      * @param userId  The ID of the user (for security check)
-     * @return Updated GPS point DTO
+     * @return Updated point, earliest affected timestamp, and whether coordinates moved
      */
     @Transactional
-    public GpsPointDTO updateGpsPoint(Long pointId, EditGpsPointDto dto, UUID userId) {
-        log.info("Updating GPS point {} for user {}", pointId, userId);
+    public GpsPointUpdateResult updateGpsPoint(Long pointId, EditGpsPointDto dto, UUID userId) {
+        return updateGpsPoints(List.of(new GpsPointEditItem(pointId, dto)), userId);
+    }
 
-        // Find the GPS point and verify ownership
-        Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
-        if (optionalPoint.isEmpty()) {
+    /**
+     * Apply several GPS point corrections in one transaction.
+     * <p>
+     * Commits a timeline rebuild request from the earliest edited point instead of regenerating the timeline
+     * synchronously; the caller schedules the background job (same contract as {@link #deleteGpsPoints}).
+     *
+     * @param edits  The corrections, one per point
+     * @param userId The ID of the user (for security check)
+     * @return Updated points, earliest affected timestamp, and whether any coordinates moved
+     */
+    @Transactional
+    public GpsPointUpdateResult updateGpsPoints(List<GpsPointEditItem> edits, UUID userId) {
+        log.info("Updating {} GPS points for user {}", edits.size(), userId);
+
+        List<Long> pointIds = edits.stream().map(GpsPointEditItem::getId).toList();
+        Set<Long> uniqueIds = Set.copyOf(pointIds);
+        if (uniqueIds.size() != pointIds.size()) {
+            throw new GeoPulseException(INVALID_GPS_POINT_EDIT, "Each GPS point can be edited only once per request");
+        }
+
+        Map<Long, GpsPointEntity> pointsById = gpsPointRepository.list("id in ?1", pointIds).stream()
+                .collect(Collectors.toMap(GpsPointEntity::getId, Function.identity()));
+        if (pointsById.size() != pointIds.size()) {
             throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found");
         }
-
-        GpsPointEntity gpsPoint = optionalPoint.get();
-        if (!gpsPoint.getUser().getId().equals(userId)) {
-            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
+        for (GpsPointEntity point : pointsById.values()) {
+            if (!point.getUser().getId().equals(userId)) {
+                throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
+            }
         }
 
-        // Store original timestamp for timeline recalculation
-        Instant originalTimestamp = gpsPoint.getTimestamp();
+        boolean coordinatesChanged = false;
+        Instant earliestTimestamp = null;
+        List<GpsPointEntity> updatedPoints = new ArrayList<>(edits.size());
+        for (GpsPointEditItem edit : edits) {
+            GpsPointEntity gpsPoint = pointsById.get(edit.getId());
+            double lat = edit.getCoordinates().getLat();
+            double lng = edit.getCoordinates().getLng();
+            if (gpsPoint.getCoordinates() == null
+                    || gpsPoint.getCoordinates().getY() != lat
+                    || gpsPoint.getCoordinates().getX() != lng) {
+                coordinatesChanged = true;
+            }
 
-        // Update the GPS point
-        gpsPoint.setCoordinates(GeoUtils.createPoint(dto.getCoordinates().getLng(), dto.getCoordinates().getLat()));
-        gpsPoint.setVelocity(dto.getVelocity());
-        gpsPoint.setAccuracy(dto.getAccuracy());
+            gpsPoint.setCoordinates(GeoUtils.createPoint(lng, lat));
+            gpsPoint.setVelocity(edit.getVelocity());
+            gpsPoint.setAccuracy(edit.getAccuracy());
+            gpsPointRepository.persist(gpsPoint);
+            updatedPoints.add(gpsPoint);
 
-        gpsPointRepository.persist(gpsPoint);
-        enrichSavedGpsPointsIfBoatReady(userId, List.of(gpsPoint));
+            if (earliestTimestamp == null || gpsPoint.getTimestamp().isBefore(earliestTimestamp)) {
+                earliestTimestamp = gpsPoint.getTimestamp();
+            }
+        }
+        enrichSavedGpsPointsIfBoatReady(userId, updatedPoints);
+        // Committed with the edit, so the timeline still catches up if the scheduled regeneration never runs.
+        rebuildRequestRepository.request(userId, earliestTimestamp);
 
-        // Trigger synchronous timeline regeneration if needed
-        triggerSynchronousTimelineRegenerationIfNeeded(userId, originalTimestamp);
-
-        // Return updated point as DTO
-        return gpsPointMapper.toGpsPointDTO(gpsPoint);
+        List<GpsPointDTO> dtos = updatedPoints.stream().map(gpsPointMapper::toGpsPointDTO).toList();
+        return new GpsPointUpdateResult(dtos, earliestTimestamp, coordinatesChanged);
     }
 
     /**
@@ -803,15 +839,6 @@ public class GpsPointService {
 
         log.info("Successfully deleted {} GPS points for user {}", deletedCount, userId);
         return new GpsPointDeleteResult(deletedCount, earliestTimestamp);
-    }
-
-    /**
-     * Trigger synchronous timeline regeneration if needed.
-     * If the affected timestamp is in the past (not today), regenerate timeline immediately.
-     * For today's data, timeline is handled by live processing.
-     */
-    private void triggerSynchronousTimelineRegenerationIfNeeded(UUID userId, Instant affectedTimestamp) {
-        streamingTimelineGenerationService.generateTimelineFromTimestamp(userId, affectedTimestamp);
     }
 
     public Optional<GpsPointDTO> getLastKnownPosition(UUID userId) {

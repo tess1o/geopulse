@@ -24,6 +24,53 @@ class TripStopHeuristicsService {
 
     private static final Duration MIN_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(30);
     private static final Duration MAX_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(60);
+    private static final int DEFAULT_MIN_STAY_DURATION_MINUTES = 7;
+    /** Moving 1 km/h or slower between the two ends of a sparse stop counts as standing still. */
+    private static final double MAX_SPARSE_STOP_IMPLIED_SPEED_KMH = 1.0;
+
+    /**
+     * A stop recorded only at its two ends. Sparse sources, such as OwnTracks in its significant-changes mode, send nothing
+     * while the phone is still, and the speed they report around a stop is often left over from driving, so the stop
+     * never shows as slow points. The next point coming at least the minimum stay duration later, within the stay radius
+     * and implying almost no movement in between, means the trip stopped at the previous point.
+     *
+     * @return the stop, or null when the two points do not show one
+     */
+    SparseStop detectSparseStop(GPSPoint lastTripPoint, GPSPoint point, TimelineConfig config) {
+        if (lastTripPoint == null || lastTripPoint.getTimestamp() == null || point.getTimestamp() == null) {
+            return null;
+        }
+        Duration gap = Duration.between(lastTripPoint.getTimestamp(), point.getTimestamp());
+        if (gap.compareTo(getMinStayDuration(config)) < 0) {
+            return null;
+        }
+        double distanceMeters = lastTripPoint.distanceTo(point);
+        if (distanceMeters > getStayRadiusMeters(config) + StreamingTimelineProcessor.DISTANCE_EPSILON_METERS) {
+            log.debug("Sparse stop rejected - next point {}m away after {}, beyond the stay radius",
+                    Math.round(distanceMeters), gap);
+            return null;
+        }
+        double impliedSpeedKmh = (distanceMeters / 1000.0) / (gap.toMillis() / 3_600_000.0);
+        if (impliedSpeedKmh > MAX_SPARSE_STOP_IMPLIED_SPEED_KMH) {
+            log.debug("Sparse stop rejected - implied speed {}km/h over {}m in {} exceeds {}km/h",
+                    String.format("%.2f", impliedSpeedKmh), Math.round(distanceMeters), gap,
+                    MAX_SPARSE_STOP_IMPLIED_SPEED_KMH);
+            return null;
+        }
+        double stopSpeedThreshold = getStopSpeedThreshold(config);
+        boolean slow = lastTripPoint.getSpeed() <= stopSpeedThreshold && point.getSpeed() <= stopSpeedThreshold;
+        log.debug("Sparse stop accepted - start={}, next point {}m away after {}, slow={}",
+                lastTripPoint.getTimestamp(), Math.round(distanceMeters), gap, slow);
+        return new SparseStop(gap, distanceMeters, slow, Math.round(stopSpeedThreshold * 3.6 * 10.0) / 10.0);
+    }
+
+    /**
+     * @param slow                  both points report a speed under the stop threshold, so the stop is an ordinary
+     *                              arrival seen with fewer points than usual
+     * @param stopSpeedThresholdKmh the stop speed threshold the points were compared with
+     */
+    record SparseStop(Duration gap, double distanceMeters, boolean slow, double stopSpeedThresholdKmh) {
+    }
 
     TripStopDetection detectTripStopFromRecentWindow(List<GPSPoint> activePoints, TimelineConfig config) {
         int minPoints = getTripArrivalMinPoints(config);
@@ -100,7 +147,8 @@ class TripStopHeuristicsService {
             log.debug("Full-cluster stop accepted - start={}, end={}, duration={}, points={}, speedThreshold={}, radius={}",
                     firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), clusterDuration,
                     clusterPointCount, stopSpeedThreshold, stayRadius);
-            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex, clusterDuration, clusterPointCount,
+                    stopSpeedThreshold);
         }
 
         log.debug("Full-cluster stop rejected - duration {} below sustained={} and arrival={} for start={}, end={}, points={}",
@@ -137,7 +185,8 @@ class TripStopHeuristicsService {
             log.debug("Sustained-stop fallback accepted - start={}, end={}, duration={}, points={}, speedThreshold={}",
                     firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), slowDuration,
                     recentPoints.size(), stopSpeedThreshold);
-            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex, slowDuration, recentPoints.size(),
+                    stopSpeedThreshold);
         }
 
         log.debug("Sustained-stop fallback rejected - duration {} below required {} for start={}, end={}, points={}",
@@ -210,6 +259,11 @@ class TripStopHeuristicsService {
         return (thresholdKmh != null ? thresholdKmh : DEFAULT_STOP_SPEED_THRESHOLD_KMH) / 3.6;
     }
 
+    Duration getMinStayDuration(TimelineConfig config) {
+        Integer minutes = config.getStaypointMinDurationMinutes();
+        return Duration.ofMinutes(minutes != null ? minutes : DEFAULT_MIN_STAY_DURATION_MINUTES);
+    }
+
     Duration getArrivalDetectionDuration(TimelineConfig config) {
         Integer seconds = config.getTripArrivalDetectionMinDurationSeconds();
         return seconds != null ? Duration.ofSeconds(seconds) : DEFAULT_ARRIVAL_DETECTION_DURATION;
@@ -239,18 +293,27 @@ class TripStopHeuristicsService {
     static final class TripStopDetection {
         private final boolean stopDetected;
         private final int stoppedClusterStartIndex;
+        private final Duration stopDuration;
+        private final int stoppedPoints;
+        private final double stopSpeedThresholdMetersPerSecond;
 
-        private TripStopDetection(boolean stopDetected, int stoppedClusterStartIndex) {
+        private TripStopDetection(boolean stopDetected, int stoppedClusterStartIndex, Duration stopDuration,
+                                  int stoppedPoints, double stopSpeedThresholdMetersPerSecond) {
             this.stopDetected = stopDetected;
             this.stoppedClusterStartIndex = stoppedClusterStartIndex;
+            this.stopDuration = stopDuration;
+            this.stoppedPoints = stoppedPoints;
+            this.stopSpeedThresholdMetersPerSecond = stopSpeedThresholdMetersPerSecond;
         }
 
         static TripStopDetection noStop() {
-            return new TripStopDetection(false, -1);
+            return new TripStopDetection(false, -1, Duration.ZERO, 0, 0.0);
         }
 
-        static TripStopDetection stopDetected(int startIndex) {
-            return new TripStopDetection(true, startIndex);
+        static TripStopDetection stopDetected(int startIndex, Duration stopDuration, int stoppedPoints,
+                                              double stopSpeedThresholdMetersPerSecond) {
+            return new TripStopDetection(true, startIndex, stopDuration, stoppedPoints,
+                    stopSpeedThresholdMetersPerSecond);
         }
 
         boolean isStopDetected() {
@@ -259,6 +322,19 @@ class TripStopHeuristicsService {
 
         int getStoppedClusterStartIndex() {
             return stoppedClusterStartIndex;
+        }
+
+        Duration getStopDuration() {
+            return stopDuration;
+        }
+
+        int getStoppedPoints() {
+            return stoppedPoints;
+        }
+
+        /** The speed below which points count as stopped, in km/h like the setting. */
+        double getStopSpeedThresholdKmh() {
+            return Math.round(stopSpeedThresholdMetersPerSecond * 3.6 * 10.0) / 10.0;
         }
     }
 

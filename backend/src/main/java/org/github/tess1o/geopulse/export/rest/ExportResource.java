@@ -33,7 +33,6 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportJobResponse;
 import org.github.tess1o.geopulse.export.model.GpxLayout;
 import org.github.tess1o.geopulse.export.model.OwnTracksLayout;
-import org.github.tess1o.geopulse.export.service.DebugExportService;
 import org.github.tess1o.geopulse.export.service.ExportJobManager;
 import org.github.tess1o.geopulse.shared.api.SliceResponse;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
@@ -64,14 +63,13 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 @Tag(name = ApiTags.EXPORT)
 public class ExportResource {
 
+    private static final int MAX_ISSUE_DESCRIPTION_LENGTH = 4000;
+
     @Inject
     CurrentUserService currentUserService;
 
     @Inject
     ExportJobManager exportJobManager;
-
-    @Inject
-    DebugExportService debugExportService;
 
     @Inject
     SystemSettingsService settingsService;
@@ -137,6 +135,10 @@ public class ExportResource {
         }
         validateDateRange(request.getStartTime(), request.getEndTime());
         ExportFormat format = request.getFormat() == null ? ExportFormat.GEOPULSE : request.getFormat();
+        if (format == ExportFormat.DEBUG) {
+            throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Debug exports are created with POST /api/v1/exports/debug",
+                    Map.of("field", "format"));
+        }
         List<String> dataTypes = resolveDataTypes(format, request.getDataTypes());
 
         try {
@@ -294,23 +296,27 @@ public class ExportResource {
 
     @POST
     @Path("/debug")
-    @Produces({"application/zip", "application/problem+json"})
-    @APIResponse(responseCode = "200", description = "Debug export archive",
-            content = @Content(mediaType = "application/zip",
-                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @APIResponse(responseCode = "200", description = "Debug export job created")
     @APIResponse(responseCode = "400", description = "Invalid debug export request")
-    @Operation(summary = "Create a debug export",
-            description = "Returns a ZIP archive with GPS data, and optionally the timeline and timeline settings, "
-                    + "for a time range, with all coordinates shifted by the given latitude and longitude offsets "
-                    + "to hide real locations. Share it when reporting a timeline issue; it can be loaded with "
-                    + "`POST /api/v1/debug-imports`.")
+    @APIResponse(responseCode = "429", description = "Too many active export jobs")
+    @Operation(summary = "Start a debug export",
+            description = "Starts a background export of a ZIP archive with GPS data, favorites, matched places, "
+                    + "manual timeline corrections, GPS source filter settings, the state of the timeline and "
+                    + "optionally the timeline and timeline settings, for a time range widened to the timeline events "
+                    + "it touches. All coordinates are shifted by the given longitude offset to hide real locations "
+                    + "and all place names are anonymized; `latitudeShift` must be 0, because a latitude shift "
+                    + "changes distances. `issueDescription` and `issueTime` describe the problem. Poll `GET "
+                    + "/api/v1/exports/{exportJobId}` and download the archive like any export. Share it when reporting "
+                    + "a timeline issue; it can be loaded with `POST /api/v1/debug-imports`.")
     @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
-    public Response createDebugExport(DebugExportRequest request) throws Exception {
+    public ExportJobResponse createDebugExport(DebugExportRequest request) {
         validateDebugRequest(request);
-        UUID userId = currentUserService.getCurrentUserId();
-        byte[] data = debugExportService.generateDebugExport(userId, request);
-        return download(data, "application/zip",
-                "geopulse-debug-%s-%d.zip".formatted(userId, Instant.now().getEpochSecond()));
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            return toResponse(exportJobManager.createDebugExportJob(userId, request));
+        } catch (IllegalStateException exception) {
+            throw new GeoPulseException(RATE_LIMIT_EXCEEDED, RATE_LIMIT_EXCEEDED.title(), exception);
+        }
     }
 
     private void validateDateRange(Instant startTime, Instant endTime) {
@@ -337,6 +343,17 @@ public class ExportResource {
         }
         if (request.getLatitudeShift() == null || request.getLongitudeShift() == null) {
             throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Latitude and longitude shift are required");
+        }
+        // East-west distances scale with the cosine of the latitude: a latitude shift would change distances and
+        // speeds, and the exported timeline could no longer be reproduced. A longitude shift keeps them exact.
+        if (request.getLatitudeShift() != 0.0) {
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST,
+                    "Only a longitude shift is supported: latitudeShift must be 0, because shifting latitude "
+                            + "changes distances and the timeline could not be reproduced");
+        }
+        if (request.getIssueDescription() != null && request.getIssueDescription().length() > MAX_ISSUE_DESCRIPTION_LENGTH) {
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST,
+                    "Issue description cannot be longer than " + MAX_ISSUE_DESCRIPTION_LENGTH + " characters");
         }
     }
 
@@ -377,6 +394,7 @@ public class ExportResource {
         String filename = switch (job.getFormat()) {
             case OWNTRACKS -> "owntracks-export-%s-%d.%s";
             case GPX -> "geopulse-gpx-export-%s-%d.%s";
+            case DEBUG -> "geopulse-debug-%s-%d.%s";
             default -> "geopulse-export-%s-%d.%s";
         };
         return filename.formatted(userId.toString().substring(0, 8), job.getCreatedAt().getEpochSecond(), extension);

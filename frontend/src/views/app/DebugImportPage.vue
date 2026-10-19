@@ -74,6 +74,17 @@
                     {{ t('data.debugImport.updateTimelineConfigHelp') }}
                   </small>
                 </div>
+                <div class="checkbox-group">
+                  <div class="checkbox-item">
+                    <Checkbox v-model="updateTimezone" :binary="true" inputId="updateTimezone" />
+                    <label for="updateTimezone" class="checkbox-label">
+                      {{ t('data.debugImport.updateTimezone') }}
+                    </label>
+                  </div>
+                  <small class="checkbox-help">
+                    {{ t('data.debugImport.updateTimezoneHelp') }}
+                  </small>
+                </div>
               </div>
 
               <!-- Import Button -->
@@ -89,6 +100,12 @@
                 />
               </div>
 
+              <!-- Import Progress -->
+              <div v-if="isImporting && importJob" class="import-progress">
+                <ProgressBar :value="importJob.progress || 0" />
+                <small class="checkbox-help">{{ importProgressMessage }}</small>
+              </div>
+
               <!-- Import Error -->
               <div v-if="importError" class="import-error-box">
                 <div class="error-header">
@@ -100,6 +117,14 @@
                 </div>
               </div>
             </div>
+          </template>
+        </Card>
+
+        <!-- Report -->
+        <Card v-if="report" class="report-card">
+          <template #content>
+            <h2 class="section-title">{{ t('data.debugImport.report.title') }}</h2>
+            <DebugImportReport :report="report" @open-timeline="openTimeline" />
           </template>
         </Card>
 
@@ -132,6 +157,18 @@
                   <i class="pi pi-check-circle"></i>
                   <strong>favorite_areas.json</strong> - {{ t('data.debugImport.items.favoriteAreas') }}
                 </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>reverse_geocoding.json</strong> - {{ t('data.debugImport.items.reverseGeocoding') }}
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>timeline_overrides.json</strong> - {{ t('data.debugImport.items.timelineOverrides') }}
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>timeline.json</strong> - {{ t('data.debugImport.items.timeline') }}
+                </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
@@ -146,7 +183,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
@@ -156,6 +193,11 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import FileDropZone from '@/components/ui/forms/FileDropZone.vue'
+import ProgressBar from 'primevue/progressbar'
+import DebugImportReport from '@/components/data-export-import/DebugImportReport.vue'
+import { useAuthStore } from '@/stores/auth'
+import { pollJob } from '@/utils/jobPolling'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import { useExportImportStore } from '@/stores/exportImport'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
@@ -168,8 +210,24 @@ const exportImportStore = useExportImportStore()
 const selectedFile = ref(null)
 const clearExistingData = ref(true)
 const updateTimelineConfig = ref(true)
+const updateTimezone = ref(true)
 const isImporting = ref(false)
 const importError = ref(null)
+const importJob = ref(null)
+const report = ref(null)
+const authStore = useAuthStore()
+let importPolling = null
+
+const importProgressMessage = computed(() =>
+  formatMessageDescriptor(importJob.value?.progressMessage) || t('data.debugImport.importInProgress'))
+
+onUnmounted(() => {
+  importPolling?.cancel()
+})
+
+const openTimeline = (query) => {
+  router.push({ path: '/app/timeline', query })
+}
 
 const showInvalidFileToast = () => {
   toast.add({
@@ -193,12 +251,34 @@ const importData = async () => {
   importError.value = null
   isImporting.value = true
 
+  report.value = null
   try {
-    await exportImportStore.uploadDebugImport(
-      selectedFile.value,
-      clearExistingData.value,
-      updateTimelineConfig.value
-    )
+    const created = await exportImportStore.uploadDebugImport(selectedFile.value, {
+      clearExistingData: clearExistingData.value,
+      updateTimelineConfig: updateTimelineConfig.value,
+      updateTimezone: updateTimezone.value
+    })
+    importJob.value = created.job
+
+    // The import runs in the background: regenerating a long timeline can take a while
+    importPolling = pollJob({
+      fetchJob: () => exportImportStore.fetchDebugImport(created.job.importJobId),
+      statusOf: response => response?.job?.status,
+      onUpdate: response => { importJob.value = response.job }
+    })
+    const finished = await importPolling.promise
+    if (!finished) {
+      return
+    }
+    if (finished.job.status === 'failed') {
+      throw new Error(formatMessageDescriptor(finished.job.error) || t('data.debugImport.importFailedFallback'))
+    }
+
+    report.value = finished.report
+    if (finished.report?.timezoneApplied) {
+      // Days in the timeline start and end in the imported user's timezone now
+      await authStore.fetchCurrentUserProfile().catch(() => {})
+    }
 
     toast.add({
       severity: 'success',
@@ -206,11 +286,6 @@ const importData = async () => {
       detail: t('data.debugImport.importSuccessDetail'),
       life: 5000
     })
-
-    // Redirect to timeline page after successful import
-    setTimeout(() => {
-      router.push('/app/timeline')
-    }, 2000)
 
   } catch (error) {
     console.error('Failed to import debug data:', error)
@@ -227,11 +302,23 @@ const importData = async () => {
     })
   } finally {
     isImporting.value = false
+    importPolling = null
   }
 }
 </script>
 
 <style scoped>
+.import-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.report-card {
+  margin-bottom: 2rem;
+}
+
 .debug-import-page {
   max-width: 900px;
   margin: 0 auto;
@@ -404,7 +491,7 @@ const importData = async () => {
 .info-card .info-content .info-note {
   margin: 1rem 0 0 0;
   padding: 0.75rem;
-  background: var(--p-blue-50);
+  background: var(--gp-primary-soft);
   border-left: 3px solid var(--gp-primary);
   border-radius: 4px;
   color: var(--gp-text-secondary);

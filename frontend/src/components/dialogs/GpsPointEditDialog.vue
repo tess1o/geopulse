@@ -91,6 +91,8 @@
               class="w-full"
             />
           </div>
+
+          <small class="staging-hint">{{ t('tripDialogs.gpsPointEdit.stagingHint') }}</small>
         </form>
       </div>
     </div>
@@ -98,15 +100,22 @@
     <!-- Dialog Footer -->
     <template #footer>
       <Button
+        v-if="pendingChanges"
+        :label="t('tripDialogs.gpsPointEdit.revertToOriginal')"
+        icon="pi pi-undo"
+        severity="secondary"
+        text
+        class="revert-button"
+        @click="emit('revert')"
+      />
+      <Button
         :label="t('common.cancel')"
         severity="secondary"
         @click="handleCancel"
-        :disabled="loading"
       />
       <Button
-        :label="t('tripDialogs.gpsPointEdit.save')"
+        :label="t('tripDialogs.gpsPointEdit.stageChange')"
         @click="handleSave"
-        :loading="loading"
         :disabled="!isFormValid"
       />
     </template>
@@ -133,16 +142,20 @@ const props = defineProps({
   gpsPoint: {
     type: Object,
     default: () => null
+  },
+  // Staged, not yet applied values for this point; the form starts from them when present
+  pendingChanges: {
+    type: Object,
+    default: () => null
   }
 })
 
-const emit = defineEmits(['close', 'save'])
+const emit = defineEmits(['close', 'save', 'revert'])
 
 const { t } = useI18n()
 
 // State
 const internalVisible = ref(props.visible)
-const loading = ref(false)
 const mapId = ref(Math.random().toString(36).substring(2, 11))
 const mapInstance = ref(null)
 const mapAdapter = ref(null)
@@ -186,10 +199,11 @@ const isFormValid = computed(() => {
 // Methods
 const initializeForm = () => {
   if (props.gpsPoint) {
-    formData.coordinates.lat = props.gpsPoint.coordinates.lat
-    formData.coordinates.lng = props.gpsPoint.coordinates.lng
-    formData.velocity = props.gpsPoint.velocity
-    formData.accuracy = props.gpsPoint.accuracy
+    const source = props.pendingChanges || props.gpsPoint
+    formData.coordinates.lat = source.coordinates.lat
+    formData.coordinates.lng = source.coordinates.lng
+    formData.velocity = source.velocity
+    formData.accuracy = source.accuracy
     
     // Store original location for reference
     originalLocation.value = {
@@ -398,27 +412,18 @@ const syncMapViewAndMarkers = () => {
   renderMapMarkers()
 }
 
-const handleSave = async () => {
+// Stages the change; the page applies all staged changes together
+const handleSave = () => {
   if (!validateForm()) return
-  
-  loading.value = true
-  
-  try {
-    const updateData = {
-      coordinates: {
-        lat: formData.coordinates.lat,
-        lng: formData.coordinates.lng
-      },
-      velocity: formData.velocity,
-      accuracy: formData.accuracy
-    }
-    
-    emit('save', updateData)
-  } catch (error) {
-    console.error('Error saving GPS point:', error)
-  } finally {
-    loading.value = false
-  }
+
+  emit('save', {
+    coordinates: {
+      lat: formData.coordinates.lat,
+      lng: formData.coordinates.lng
+    },
+    velocity: formData.velocity,
+    accuracy: formData.accuracy
+  })
 }
 
 const handleCancel = () => {
@@ -523,6 +528,10 @@ export default {
   font-size: 0.9rem;
   text-align: center;
   padding: 0 var(--gp-spacing-md);
+}
+
+.staging-hint {
+  color: var(--gp-text-secondary);
 }
 
 .form-section {

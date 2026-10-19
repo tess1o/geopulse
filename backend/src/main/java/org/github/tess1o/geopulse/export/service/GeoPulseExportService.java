@@ -420,13 +420,14 @@ public class GeoPulseExportService {
         job.updateProgress(progressStart, "exportingTimelineOverrides", "Exporting timeline overrides...");
         var tripOverrides = dataCollectorService.collectTripMovementOverrides(job.getUserId());
         var gapOverrides = dataCollectorService.collectDataGapStayOverrides(job.getUserId());
+        var staySplitOverrides = dataCollectorService.collectTripStaySplitOverrides(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
                 ExportImportConstants.FileNames.TIMELINE_OVERRIDES,
-                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides)
+                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides)
         );
-        log.debug("Exported {} trip movement overrides and {} data-gap stay overrides",
-                tripOverrides.size(), gapOverrides.size());
+        log.debug("Exported {} trip movement overrides, {} data-gap stay overrides and {} trip stay-split overrides",
+                tripOverrides.size(), gapOverrides.size(), staySplitOverrides.size());
     }
 
     private void addTripWorkspaceData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {

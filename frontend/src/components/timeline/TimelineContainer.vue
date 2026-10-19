@@ -113,6 +113,8 @@
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <StayCard
@@ -132,6 +134,8 @@
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <!-- Trip Cards -->
@@ -154,6 +158,8 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
@@ -176,6 +182,8 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
@@ -193,6 +201,8 @@
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
 
             <DataGapCard
@@ -207,6 +217,8 @@
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              :allow-explanation="!isPublicView"
+              @show-explanation="handleShowExplanation"
             />
             </div>
           </template>
@@ -219,8 +231,18 @@
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
       :read-only="readOnly"
+      :show-explanation-link="!isPublicView"
       @movement-updated="handleMovementTypeUpdated"
+      @show-explanation="handleShowExplanationFromClassification"
       @close="handleCloseClassificationDialog"
+    />
+
+    <TimelineEventExplanationDialog
+      :visible="explanationDialogVisible"
+      :kind="selectedItemForExplanation?.type || 'stay'"
+      :item="selectedItemForExplanation"
+      @show-classification="handleShowClassificationFromExplanation"
+      @close="handleCloseExplanationDialog"
     />
 
     <TripMovementTypeQuickEditDialog
@@ -282,6 +304,9 @@ import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 const TripClassificationDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripClassificationDialog.vue')
 )
+const TimelineEventExplanationDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TimelineEventExplanationDialog.vue')
+)
 const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
 )
@@ -308,6 +333,8 @@ const displayLimit = ref(50)
 // Classification dialog state
 const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
+const explanationDialogVisible = ref(false)
+const selectedItemForExplanation = ref(null)
 const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
 const dataGapConversionDialogVisible = ref(false)
@@ -336,6 +363,11 @@ const props = defineProps({
   dateRange: {
     type: Array,
     default: () => []
+  },
+  // UTC range the shown items cover when it differs from dateRange (local days in location time mode)
+  dataWindow: {
+    type: Array,
+    default: null
   },
   loadImmichPhotos: {
     type: Boolean,
@@ -467,7 +499,10 @@ const groupedTimelineData = computed(() => {
   } else {
     itemsToProcess.forEach(item => {
       const itemStartTime = item.timestamp || item.startTime
-      const itemDate = timezone.fromUtc(itemStartTime)
+      // Location time mode dates items by their local days; profile mode by the profile timezone
+      const itemDate = timezone.isLocationTimeMode()
+        ? timezone.create(timezone.getItemLocalDaySpan(item).startDate)
+        : timezone.fromUtc(itemStartTime)
       allDates.add(itemDate.format('YYYY-MM-DD'));
       
       // Add all days this item spans to the date range
@@ -679,6 +714,27 @@ const handleCloseClassificationDialog = () => {
   selectedTripForClassification.value = null
 }
 
+const handleShowExplanation = (item) => {
+  selectedItemForExplanation.value = item
+  explanationDialogVisible.value = true
+}
+
+const handleCloseExplanationDialog = () => {
+  explanationDialogVisible.value = false
+  selectedItemForExplanation.value = null
+}
+
+// The explanation and classification dialogs of a trip link to each other; only one is open at a time
+const handleShowClassificationFromExplanation = (tripItem) => {
+  handleCloseExplanationDialog()
+  handleShowClassification(tripItem)
+}
+
+const handleShowExplanationFromClassification = (tripItem) => {
+  handleCloseClassificationDialog()
+  handleShowExplanation(tripItem)
+}
+
 const handleShowMapMatchingDetails = (tripItem) => {
   selectedTripForMapMatchingDetails.value = tripItem
   selectedMapMatchingInfo.value = props.mapMatchingByTripId.get(Number(tripItem?.id)) || null
@@ -749,16 +805,22 @@ const handleMovementTypeUpdated = (updated) => {
   }
 }
 
+// Range to load labels, photos and notes for: the data window when the page provides one
+const loadRange = computed(() => (
+  Array.isArray(props.dataWindow) && props.dataWindow.length === 2 ? props.dataWindow : props.dateRange
+))
+
 // Load timeline labels when dateRange changes
 const loadTimelineLabels = async () => {
   if (!props.showTimelineLabels) {
     return
   }
-  if (props.dateRange && props.dateRange.length === 2) {
+  const range = loadRange.value
+  if (range && range.length === 2) {
     try {
       await timelineLabelsStore.fetchTimelineLabelsForTimeRange(
-        props.dateRange[0],
-        props.dateRange[1]
+        range[0],
+        range[1]
       )
     } catch (error) {
       console.error('Failed to load timeline labels:', error)
@@ -771,11 +833,11 @@ const loadImmichPhotosForCards = async () => {
     return
   }
 
-  if (!props.dateRange || props.dateRange.length !== 2) {
+  if (!loadRange.value || loadRange.value.length !== 2) {
     return
   }
 
-  const [startDate, endDate] = props.dateRange
+  const [startDate, endDate] = loadRange.value
   if (!startDate || !endDate) {
     return
   }
@@ -800,11 +862,11 @@ const loadNotesForCards = async (forceRefresh = false) => {
     return
   }
 
-  if (!props.dateRange || props.dateRange.length !== 2) {
+  if (!loadRange.value || loadRange.value.length !== 2) {
     return
   }
 
-  const [startDate, endDate] = props.dateRange
+  const [startDate, endDate] = loadRange.value
   if (!startDate || !endDate) {
     return
   }
@@ -823,7 +885,7 @@ const loadNotesForCards = async (forceRefresh = false) => {
 }
 
 // Watch for date range changes
-watch(() => props.dateRange, () => {
+watch(loadRange, () => {
   loadTimelineLabels()
   loadImmichPhotosForCards()
   loadNotesForCards()

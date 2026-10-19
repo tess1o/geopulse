@@ -8,6 +8,11 @@ import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Point;
 
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
+import org.hibernate.type.SqlTypes;
+import java.util.LinkedHashMap;
 import java.time.Instant;
 
 /**
@@ -76,6 +81,13 @@ public class TimelineStayEntity {
      */
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /** How the timeline engine decided on this event: {start, notes, end} reason codes. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
+    @Column(name = "explanation", columnDefinition = "jsonb")
+    @ToString.Exclude
+    private LinkedHashMap<String, Object> explanation;
 
     /**
      * When this stay was last updated/regenerated

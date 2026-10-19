@@ -216,6 +216,43 @@ class TripStopHeuristicsServiceTest {
         assertFalse(match.isMatched());
     }
     @Test
+    void shouldDetectSparseStop_WhenNextPointComesAfterMinimumStayWithinRadius() {
+        config.setStaypointMinDurationMinutes(7);
+        // Both points report driving speed, as OwnTracks often does around a stop
+        GPSPoint stopStart = point("2024-01-01T09:34:47Z", 40.71480, -74.00580, 6.4);
+        GPSPoint next = point("2024-01-01T09:50:06Z", 40.71500, -74.00600, 8.9);
+
+        TripStopHeuristicsService.SparseStop stop = service.detectSparseStop(stopStart, next, config);
+
+        assertNotNull(stop);
+        assertEquals(919, stop.gap().getSeconds());
+        assertTrue(stop.distanceMeters() < 80);
+    }
+    @Test
+    void shouldNotDetectSparseStop_WhenNextPointComesBeforeMinimumStay() {
+        config.setStaypointMinDurationMinutes(7);
+        assertNull(service.detectSparseStop(
+                point("2024-01-01T09:00:00Z", 40.71480, -74.00580, 6.0),
+                point("2024-01-01T09:06:59Z", 40.71480, -74.00580, 6.0), config));
+    }
+    @Test
+    void shouldNotDetectSparseStop_WhenNextPointIsBeyondStayRadius() {
+        config.setStaypointMinDurationMinutes(7);
+        // About 110 m away with an 80 m radius
+        assertNull(service.detectSparseStop(
+                point("2024-01-01T09:00:00Z", 40.71480, -74.00580, 6.0),
+                point("2024-01-01T10:00:00Z", 40.71580, -74.00580, 6.0), config));
+    }
+    @Test
+    void shouldNotDetectSparseStop_WhenNextPointImpliesMovingFasterThanOneKmh() {
+        config.setStaypointRadiusMeters(900);
+        config.setStaypointMinDurationMinutes(7);
+        // About 780 m in 10 minutes: within the radius, but 4.7 km/h
+        assertNull(service.detectSparseStop(
+                point("2024-01-01T09:00:00Z", 40.71480, -74.00580, 6.0),
+                point("2024-01-01T09:10:00Z", 40.72180, -74.00580, 6.0), config));
+    }
+    @Test
     void shouldReadStopSpeedThresholdInKmhAndCompareInMetersPerSecond() {
         config.setStaypointVelocityThreshold(9.0);
         assertEquals(2.5, service.getStopSpeedThreshold(config), 1e-9);

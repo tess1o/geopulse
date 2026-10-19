@@ -17,6 +17,11 @@
             :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
+          <TimelineExplanationTrigger
+            v-if="allowExplanation"
+            kind="dataGap"
+            @show-explanation="emit('show-explanation', dataGapItem)"
+          />
         </div>
       </div>
     </template>
@@ -65,6 +70,7 @@
 </template>
 
 <script setup>
+import TimelineExplanationTrigger from './TimelineExplanationTrigger.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ContextMenu from 'primevue/contextmenu'
@@ -111,10 +117,15 @@ const props = defineProps({
   allowNoteCreation: {
     type: Boolean,
     default: true
+  },
+  // Whether the card may open the explanation dialog (it needs the owner's account)
+  allowExplanation: {
+    type: Boolean,
+    default: true
   }
 });
 
-const emit = defineEmits(['click', 'convert-to-stay', 'photo-show-on-map', 'note-saved']);
+const emit = defineEmits(['click', 'convert-to-stay', 'photo-show-on-map', 'note-saved', 'show-explanation']);
 
 const timezone = useTimezone();
 
@@ -174,6 +185,16 @@ const openNotesViewer = () => {
 
 const contextMenuItems = computed(() => {
   const items = []
+
+  if (props.allowExplanation) {
+    items.push({
+      label: t('timeline.explanation.toggle.dataGap'),
+      icon: 'pi pi-question-circle',
+      command: () => {
+        emit('show-explanation', props.dataGapItem)
+      }
+    })
+  }
 
   if (matchingNotes.value.length > 0) {
     items.push({

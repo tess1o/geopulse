@@ -17,10 +17,14 @@ import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.TimelineRebuildRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.service.trips.StreamingTripPostProcessor;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
@@ -37,6 +41,7 @@ import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,10 +69,13 @@ public class StreamingTimelineGenerationService {
          *     <li>Whether a trip between two stays is real, or noise between two stays at the same place that a full
          *     rebuild merges, often only becomes clear once the second stay has grown. Keeping the stay before it in
          *     the regenerated part leaves that decision open.</li>
-         *     <li>Generation starts blank at the restart. A stay's first points can be the last, still moving fixes
-         *     of the arrival; a full rebuild reaches them in trip mode and counts them to the stay, a blank start may
-         *     not. Everything new lies after the restart stay, and its start was decided when it was the latest stay,
-         *     with the trip into it in view, so that start is kept.</li>
+         *     <li>A blank start at the restart stay misreads it. A stay's first points can be the last, still moving
+         *     fixes of the arrival; a full rebuild reaches them in trip mode and counts them to the stay, a blank start
+         *     may not. So the trip into the restart stay is replayed from where the stay before it was left (see
+         *     {@link StreamingTimelineProcessor.TripReplay}), which gives the restart stay exactly the points a full
+         *     rebuild gives it. Where that point is not known, generation starts blank and the restart stay keeps the
+         *     start it had: everything new lies after it, and its start was decided when it was the latest stay, with
+         *     the trip into it in view.</li>
          * </ul>
          * The restart stay itself is where the regenerated part begins: post-processing keeps a short trip only when a
          * stay comes before it.
@@ -266,7 +274,7 @@ public class StreamingTimelineGenerationService {
             updateProgress(jobId, "preparingGpsProcessing", "Preparing GPS data processing", 3, 25, null);
 
             stageStart = metricsStart();
-            Long estimatedCount = gpsPointRepository.estimatePointCount(userId, regenerationStartTime);
+            Long estimatedCount = gpsPointRepository.estimatePointCount(userId, restart.pointsFrom());
             recordTimelineStage(stageStart, trigger, "count_points", "success");
 
             if (estimatedCount == null || estimatedCount == 0) {
@@ -292,7 +300,7 @@ public class StreamingTimelineGenerationService {
             StreamingGpsIterable gpsStream = new StreamingGpsIterable(
                     gpsPointRepository,
                     userId,
-                    regenerationStartTime,
+                    restart.pointsFrom(),
                     10_000,
                     environmentDatasetVersion
             );
@@ -305,7 +313,7 @@ public class StreamingTimelineGenerationService {
 
             // Process points using streaming iterator - loads data lazily in 10K chunks
             long stateMachineStartNanos = System.nanoTime();
-            List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId);
+            List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId, restart.replay());
             recordTimelineStage(stateMachineStartNanos, trigger, "state_machine", "success");
             countTimelineEvents(trigger, "raw", rawEvents.size());
             log.info("Timeline state-machine processing completed for user {} in {} ms (rawEvents={})",
@@ -317,12 +325,13 @@ public class StreamingTimelineGenerationService {
             updateProgress(jobId, "postProcessingTrips", "Post-processing trips and validating detections", 5, 70, null);
 
             long tripPostProcessingStartNanos = System.nanoTime();
-            List<TimelineEvent> events = keepRestartStayStart(userId, tripPostProcessor.postProcessTrips(
-                    userId,
-                    rawEvents,
-                    config,
-                    environmentDatasetVersion
-            ), restart);
+            List<TimelineEvent> events = keepRestartStayStartReason(keepRestartStayStart(userId,
+                    tripPostProcessor.postProcessTrips(
+                            userId,
+                            rawEvents,
+                            config,
+                            environmentDatasetVersion
+                    ), restart), restart);
             recordTimelineStage(tripPostProcessingStartNanos, trigger, "trip_postprocess", "success");
             countTimelineEvents(trigger, "postprocessed", events.size());
             log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
@@ -471,24 +480,109 @@ public class StreamingTimelineGenerationService {
 
     /**
      * Where to restart, and for {@link RestartPoint#BEFORE_PREVIOUS_STAY} where the restart stay ended (otherwise null).
+     *
+     * @param restartStayStart why the stay generation restarts from began, as recorded when it was generated in full
+     * @param replayFrom       where the trip into the restart stay is replayed from, or null to start blank
+     * @param replayTripStart  why that trip began
      */
-    private record Restart(Instant from, Instant restartStayEnd) {
+    private record Restart(Instant from, Instant restartStayEnd, TimelineReason restartStayStart, Instant replayFrom,
+                           TimelineReason replayTripStart) {
+        Restart(Instant from, Instant restartStayEnd) {
+            this(from, restartStayEnd, null, null, null);
+        }
+
+        Restart(Instant from, Instant restartStayEnd, TimelineReason restartStayStart) {
+            this(from, restartStayEnd, restartStayStart, null, null);
+        }
+
+        Restart withReplay(Instant replayFrom, TimelineReason replayTripStart) {
+            return new Restart(from, restartStayEnd, restartStayStart, replayFrom, replayTripStart);
+        }
+
+        /** Where reading points begins. */
+        Instant pointsFrom() {
+            return replayFrom != null ? replayFrom : from;
+        }
+
+        StreamingTimelineProcessor.TripReplay replay() {
+            return replayFrom != null ? new StreamingTimelineProcessor.TripReplay(replayTripStart, from) : null;
+        }
+    }
+
+    private static TimelineReason startReason(TimelineStayEntity stay) {
+        TimelineExplanation explanation = TimelineExplanation.fromMap(stay.getExplanation());
+        return explanation != null ? explanation.getStart() : null;
+    }
+
+    /**
+     * Gives the restart stay back the reason it began. Regenerating from its first point sees no trip before it, so it
+     * would otherwise read as starting with the first point; a full regeneration knows how it really began.
+     */
+    private List<TimelineEvent> keepRestartStayStartReason(List<TimelineEvent> events, Restart restart) {
+        if (restart.restartStayStart() == null) {
+            return events;
+        }
+        events.stream()
+                .filter(event -> event instanceof Stay && event.getStartTime().equals(restart.from()))
+                .findFirst()
+                .ifPresent(stay -> stay.getExplanation().setStart(restart.restartStayStart()));
+        return events;
     }
 
     private Optional<Restart> findRestart(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
         Optional<TimelineStayEntity> latestStay =
                 timelineStayRepository.findLatestByUserIdBeforeTimestamp(userId, affectedTimestamp);
         if (restartPoint == RestartPoint.LATEST_STAY || latestStay.isEmpty()) {
-            return latestStay.map(stay -> new Restart(stay.getTimestamp(), null));
+            return latestStay.map(stay -> new Restart(stay.getTimestamp(), null, startReason(stay)));
         }
         // The restart stay must be one generation produces itself, or it cannot come out as a stay again.
         return timelineStayRepository.findLatestGeneratedStayBefore(userId, latestStay.get().getTimestamp())
-                .map(previousStay -> new Restart(previousStay.getTimestamp(),
-                        previousStay.getTimestamp().plusSeconds(previousStay.getStayDuration())));
+                .map(previousStay -> withTripReplay(userId, new Restart(previousStay.getTimestamp(),
+                        previousStay.getTimestamp().plusSeconds(previousStay.getStayDuration()),
+                        startReason(previousStay))));
     }
 
     /**
-     * Gives the restart stay back the start it had (see {@link RestartPoint#BEFORE_PREVIOUS_STAY}). A blank start may
+     * Replays the trip into the restart stay when it is known exactly where a full regeneration began it: the stay
+     * before was left because a point was recorded outside it, and from that point on a full regeneration was in a
+     * trip holding just that point. The first trip after that stay begins with that point; when no trip was detected
+     * there, post-processing put in one that begins with the stay's last point, just before it.
+     */
+    private Restart withTripReplay(UUID userId, Restart restart) {
+        Optional<TimelineStayEntity> stayBefore =
+                timelineStayRepository.findLatestByUserIdBeforeTimestamp(userId, restart.from());
+        TimelineExplanation stayBeforeExplanation = stayBefore
+                .map(stay -> TimelineExplanation.fromMap(stay.getExplanation()))
+                .orElse(null);
+        if (stayBeforeExplanation == null || stayBeforeExplanation.getEnd() == null
+                || !TimelineReasons.MOVED_AWAY.equals(stayBeforeExplanation.getEnd().code())) {
+            return restart;
+        }
+        Optional<TimelineTripEntity> tripAfter = timelineTripRepository
+                .find("user.id = ?1 and timestamp > ?2 and timestamp < ?3 order by timestamp",
+                        userId, stayBefore.get().getTimestamp(), restart.from())
+                .firstResultOptional();
+        TimelineReason tripStart = tripAfter
+                .map(trip -> TimelineExplanation.fromMap(trip.getExplanation()))
+                .map(TimelineExplanation::getStart)
+                .orElse(null);
+        if (tripStart == null) {
+            return restart;
+        }
+        TimelineReason leftStay = new TimelineReason(TimelineReasons.LEFT_STAY,
+                stayBeforeExplanation.getEnd().params());
+        return switch (tripStart.code()) {
+            case TimelineReasons.LEFT_STAY -> restart.withReplay(tripAfter.get().getTimestamp(), leftStay);
+            // Timestamps are stored to the microsecond: the next one leaves out the stay's last point
+            case TimelineReasons.CONTINUITY -> restart.withReplay(
+                    tripAfter.get().getTimestamp().plus(1, ChronoUnit.MICROS), leftStay);
+            default -> restart;
+        };
+    }
+
+    /**
+     * Gives the restart stay back the start it had (see {@link RestartPoint#BEFORE_PREVIOUS_STAY}). A replayed trip into
+     * it gives it that start already. A blank start may
      * leave its first arrival fixes to a short trip in front of it, or start it a few fixes later; both are undone.
      * Changes nothing when something else than trips comes before the first stay.
      */

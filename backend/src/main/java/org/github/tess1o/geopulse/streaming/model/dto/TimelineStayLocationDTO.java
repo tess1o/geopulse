@@ -35,6 +35,10 @@ public class TimelineStayLocationDTO implements GpsPoint {
      */
     private Long dataGapOverrideId;
 
+    /** Why the timeline engine created this event as it is; absent until the timeline is regenerated. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private TimelineExplanationDTO explanation;
+
     /**
      * Manual Trip -> Stay -> Trip override ID that currently maps to this stay.
      * Null means this stay is not a manually inserted split stay.

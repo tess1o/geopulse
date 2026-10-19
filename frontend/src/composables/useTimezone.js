@@ -23,6 +23,8 @@ const DEFAULT_DATE_FORMAT = 'MDY'
 const DEFAULT_TIME_FORMAT = '24h'
 const DEFAULT_TIME_DISPLAY_MODE = 'profile'
 const LOCATION_TIME_DISPLAY_MODE = 'location'
+// Largest gap between two UTC offsets (+14 vs -12): a local day can start or end this far from the profile-timezone day.
+export const LOCATION_DAY_FETCH_PADDING_HOURS = 26
 const DATE_FORMAT_PATTERNS = {
     MDY: 'MM/DD/YYYY',
     DMY: 'DD/MM/YYYY',
@@ -473,6 +475,160 @@ export function useTimezone() {
     /** Zone in effect when a timeline item starts (stay location, trip origin, or the place before a data gap). */
     const getItemStartLocationTimezone = (item) => item?.locationTimezone || item?.startLocationTimezone || null
 
+    // --- Local days (location mode) ---
+    // In "location" mode a day ends at midnight wherever the user is. Stays are dated in their own zone; trips and
+    // data gaps by the local clock at each end (the dates the card shows), but only span two days when they pass
+    // midnight on the departure or arrival clock; across the date line they otherwise stay on their departure day.
+    // An item spanning several local days is split at midnight on the departure clock when that midnight falls inside
+    // it, otherwise on the arrival clock.
+    // In profile mode both zones are the profile timezone and the day helpers below keep their original code.
+
+    const getItemStartZone = (item) => getDisplayZoneId(getItemStartLocationTimezone(item))
+
+    const getItemEndZone = (item) => getDisplayZoneId(
+        item?.locationTimezone || item?.endLocationTimezone || item?.startLocationTimezone
+    )
+
+    const getItemStartInstant = (item) => dayjs.utc(item.timestamp || item.startTime)
+
+    const getItemEndInstant = (item) => (
+        item.endTime
+            ? dayjs.utc(item.endTime)
+            : getItemStartInstant(item).add(item.stayDuration ?? item.tripDuration ?? 0, 'second')
+    )
+
+    const nextDateKey = (dateKey) => dayjs.utc(dateKey).add(1, 'day').format('YYYY-MM-DD')
+
+    const computeLocalDaySpan = (item) => {
+        const start = getItemStartInstant(item)
+        const end = getItemEndInstant(item)
+        const startZone = getItemStartZone(item)
+        const endZone = getItemEndZone(item)
+        const startDate = start.tz(startZone).format('YYYY-MM-DD')
+        // An item ending exactly at local midnight does not reach the next day.
+        const lastInstant = end.isAfter(start) ? end.subtract(1, 'millisecond') : start
+        const endDate = lastInstant.tz(endZone).format('YYYY-MM-DD')
+        if (endDate <= startDate) {
+            // Arriving on an earlier calendar date (date line) keeps the item on its departure day.
+            return { startDate, endDate: startDate }
+        }
+        // A later arrival date only counts when midnight passes on one of the two clocks during the item: flying
+        // Honolulu 14:00 -> Tokyo 17:00 the next day passes neither, so the flight stays on its departure day.
+        const nextDay = nextDateKey(startDate)
+        const passesMidnight = [startZone, endZone].some((zone) => {
+            const midnight = dayjs.tz(nextDay, zone)
+            return midnight.isAfter(start) && midnight.isBefore(end)
+        })
+        return { startDate, endDate: passesMidnight ? endDate : startDate }
+    }
+
+    /**
+     * Stores each item's local day span as `localDaySpan`, keeping dates monotonic across the sorted items: an item
+     * never starts on an earlier date than the previous one ended (e.g. Tokyo -> Honolulu across the date line).
+     */
+    const annotateLocalDaySpans = (items) => {
+        let floor = null
+        for (const item of items || []) {
+            const span = computeLocalDaySpan(item)
+            const startDate = floor && span.startDate < floor ? floor : span.startDate
+            const endDate = span.endDate < startDate ? startDate : span.endDate
+            item.localDaySpan = { startDate, endDate }
+            if (!floor || endDate > floor) floor = endDate
+        }
+        return items
+    }
+
+    /** Local dates ('YYYY-MM-DD') an item belongs to, from `annotateLocalDaySpans` when available. */
+    const getItemLocalDaySpan = (item) => item?.localDaySpan || computeLocalDaySpan(item)
+
+    /** Instant and zone at which local day `dateKey` begins, as seen from this item. */
+    const getLocalDayBoundary = (item, dateKey) => {
+        const start = getItemStartInstant(item)
+        const end = getItemEndInstant(item)
+        const span = getItemLocalDaySpan(item)
+        const startZone = getItemStartZone(item)
+        const endZone = getItemEndZone(item)
+
+        if (dateKey <= span.startDate) {
+            const midnight = dayjs.tz(dateKey, startZone).utc()
+            return { at: midnight.isAfter(start) ? start : midnight, zone: startZone }
+        }
+        if (dateKey > span.endDate) {
+            const midnight = dayjs.tz(dateKey, endZone).utc()
+            return { at: midnight.isBefore(end) ? end : midnight, zone: endZone }
+        }
+
+        // The day starts while the item is in progress.
+        const departure = dayjs.tz(dateKey, startZone).utc()
+        if (departure.isAfter(start) && departure.isBefore(end)) {
+            return { at: departure, zone: startZone }
+        }
+        const arrival = dayjs.tz(dateKey, endZone).utc()
+        const clamped = arrival.isBefore(start) ? start : (arrival.isAfter(end) ? end : arrival)
+        return { at: clamped, zone: endZone }
+    }
+
+    /**
+     * Local day `dateKey` as seen from this item: `start` is when the day begins, `end` the last millisecond before
+     * the next day (like `endOf('day')`), each with the zone its clock is read in.
+     */
+    const getItemDayBounds = (item, dateKey) => {
+        const begin = getLocalDayBoundary(item, dateKey)
+        const next = getLocalDayBoundary(item, nextDateKey(dateKey))
+        return {
+            start: begin.at,
+            startZone: begin.zone,
+            end: next.at.subtract(1, 'millisecond'),
+            endZone: next.zone
+        }
+    }
+
+    /**
+     * UTC window covering local dates firstDate..lastDate for the given sorted, annotated items (pass every loaded item,
+     * not only the shown ones: the window never reaches into an item of another date). Null when no item reaches the
+     * range, so the caller keeps its profile-timezone range.
+     */
+    const getLocalDayWindowUtc = (items, firstDate, lastDate) => {
+        const list = Array.isArray(items) ? items : []
+        const firstIndex = list.findIndex((item) => getItemLocalDaySpan(item).endDate >= firstDate)
+        const lastIndex = list.findLastIndex((item) => getItemLocalDaySpan(item).startDate <= lastDate)
+        if (firstIndex < 0 || lastIndex < firstIndex) return null
+
+        let start = getItemDayBounds(list[firstIndex], firstDate).start
+        const previous = list[firstIndex - 1]
+        if (previous && getItemEndInstant(previous).isAfter(start)) {
+            // Across the date line the local midnight can come before the previous date's last item ended
+            start = getItemEndInstant(previous)
+        }
+
+        let end = getItemDayBounds(list[lastIndex], lastDate).end
+        const following = list[lastIndex + 1]
+        if (following && getItemStartInstant(following).isBefore(end)) {
+            end = getItemStartInstant(following).subtract(1, 'millisecond')
+        }
+
+        return { start: start.toISOString(), end: end.toISOString() }
+    }
+
+    /**
+     * Range to request timeline data for when the page shows the profile-timezone days of [start, end]: padded in
+     * location mode so items of the same local days in other zones are included; unchanged in profile mode.
+     */
+    const getLocalDayFetchRange = (start, end) => {
+        if (!isLocationTimeMode()) return { start, end }
+        return {
+            start: dayjs.utc(start).subtract(LOCATION_DAY_FETCH_PADDING_HOURS, 'hour').toISOString(),
+            end: dayjs.utc(end).add(LOCATION_DAY_FETCH_PADDING_HOURS, 'hour').toISOString()
+        }
+    }
+
+    /** True when an item's local day span touches any of the given dates (sorted 'YYYY-MM-DD' keys). */
+    const isItemInLocalDates = (item, dateKeys) => {
+        if (!dateKeys?.length) return false
+        const span = getItemLocalDaySpan(item)
+        return span.startDate <= dateKeys[dateKeys.length - 1] && span.endDate >= dateKeys[0]
+    }
+
     const getPrimeVueDatePickerFormat = () => DATE_FORMAT_PRIMEVUE[getDateFormat()]
     const getPrimeVueFirstDayOfWeek = () => DATE_FORMAT_FIRST_DAY_OF_WEEK[getDateFormat()]
 
@@ -519,6 +675,11 @@ export function useTimezone() {
     }
 
     const shouldItemAppearOnDate = (item, dateKey) => {
+        if (isLocationTimeMode()) {
+            const span = getItemLocalDaySpan(item)
+            return span.startDate <= dateKey && dateKey <= span.endDate
+        }
+
         const targetDate = dayjs.tz(dateKey, userTimezone.value)
         const dayStart = targetDate.startOf('day')
         const dayEnd = targetDate.endOf('day')
@@ -548,6 +709,16 @@ export function useTimezone() {
     }
 
     const getItemDisplayType = (item, dateKey) => {
+        if (isLocationTimeMode()) {
+            const span = getItemLocalDaySpan(item)
+            const isStart = span.startDate === dateKey
+            const isEnd = span.endDate === dateKey
+            if (isStart && isEnd) return 'single-day'
+            if (isStart) return 'start'
+            if (isEnd) return 'end'
+            return 'continuation'
+        }
+
         const targetDate = dayjs.tz(dateKey, userTimezone.value).startOf('day')
 
         let itemStart, itemEnd
@@ -572,6 +743,11 @@ export function useTimezone() {
     }
 
     const shouldShowAsOvernight = (item, dateKey) => {
+        if (isLocationTimeMode()) {
+            const span = getItemLocalDaySpan(item)
+            return span.startDate !== span.endDate
+        }
+
         // First check if item is truly overnight
         let durationSeconds = 0
         if (item.type === 'trip') {
@@ -589,6 +765,24 @@ export function useTimezone() {
     // --- Duration Formatting (moved to calculationsHelpers.js) ---
 
     const formatOnThisDayDuration = (item, currentDateString, itemType) => {
+        if (isLocationTimeMode()) {
+            const itemStart = getItemStartInstant(item)
+            const itemEnd = getItemEndInstant(item)
+            const bounds = getItemDayBounds(item, currentDateString)
+            const startsToday = !itemStart.isBefore(bounds.start)
+            const endsToday = !itemEnd.isAfter(bounds.end)
+            const thisDayStart = startsToday
+                ? itemStart.tz(getItemStartZone(item))
+                : bounds.start.tz(bounds.startZone)
+            const thisDayEnd = endsToday
+                ? itemEnd.tz(getItemEndZone(item))
+                : bounds.end.tz(bounds.endZone)
+
+            const timePattern = getTimeFormatPattern(false)
+            const durationFormatted = formatDurationCompact(Math.floor(thisDayEnd.diff(thisDayStart) / 1000))
+            return `${thisDayStart.format(timePattern)} - ${thisDayEnd.format(timePattern)} (${durationFormatted})`
+        }
+
         const currentDate = dayjs.tz(currentDateString, userTimezone.value)
 
         // Get item start and end times
@@ -657,6 +851,11 @@ export function useTimezone() {
     // --- Smart Duration Helpers ---
 
     const getTotalDaysSpanned = (item) => {
+        if (isLocationTimeMode()) {
+            const span = getItemLocalDaySpan(item)
+            return dayjs.utc(span.endDate).diff(dayjs.utc(span.startDate), 'day') + 1
+        }
+
         let itemStart, itemEnd
 
         if (item.type === 'dataGap') {
@@ -672,6 +871,10 @@ export function useTimezone() {
     }
 
     const getDayNumber = (item, dateKey) => {
+        if (isLocationTimeMode()) {
+            return dayjs.utc(dateKey).diff(dayjs.utc(getItemLocalDaySpan(item).startDate), 'day') + 1
+        }
+
         const targetDate = dayjs.tz(dateKey, userTimezone.value).startOf('day')
 
         let itemStart
@@ -735,11 +938,12 @@ export function useTimezone() {
 
     const getOvernightTimestampText = (item, currentDate, options = {}) => {
         const utcTimestamp = item.timestamp || item.startTime
-        const convertedTime = fromUtc(utcTimestamp)
-        const itemStartDate = convertedTime.format('YYYY-MM-DD')
+        // Location mode matches days by the item's local dates; profile mode by the profile timezone.
+        const itemStartDate = isLocationTimeMode()
+            ? getItemLocalDaySpan(item).startDate
+            : fromUtc(utcTimestamp).format('YYYY-MM-DD')
         const isStartDay = itemStartDate === currentDate
 
-        // Day matching stays in the profile timezone; only the displayed start time may use the location zone.
         const display = resolveDisplay(utcTimestamp, getItemStartLocationTimezone(item), options?.forceLabel === true)
 
         if (isStartDay) {
@@ -852,6 +1056,14 @@ export function useTimezone() {
         formatCalendarDateDisplay,
         getLocationTimezoneHint,
         getItemStartLocationTimezone,
+
+        // Local days (location mode)
+        annotateLocalDaySpans,
+        getItemLocalDaySpan,
+        getItemDayBounds,
+        getLocalDayWindowUtc,
+        getLocalDayFetchRange,
+        isItemInLocalDates,
 
         // Timeline Specific
         isOvernight,

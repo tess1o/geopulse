@@ -44,6 +44,10 @@ public class TimelineDataGapDTO {
      */
     private boolean ongoing;
 
+    /** Why the timeline engine created this event as it is; absent until the timeline is regenerated. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private TimelineExplanationDTO explanation;
+
     /**
      * Local timezones at the gap start and end, taken from the timeline items right before and after the gap
      * (absent at the edges of the requested range). Only set when the client requests location timezones.

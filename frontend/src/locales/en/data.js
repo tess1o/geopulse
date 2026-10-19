@@ -111,7 +111,7 @@ export default {
         pageTitle: 'Debug Data Export',
         pageDescription: 'Export your GPS data with privacy-preserving coordinate shifts for debugging timeline issues',
         privacyTitle: 'Privacy Protection',
-        privacyDescription: 'All GPS coordinates will be shifted by a constant offset to protect your privacy. The shift preserves relative distances and shapes for accurate timeline debugging. Your actual location coordinates will not be revealed in the export.',
+        privacyDescription: 'All GPS coordinates will be moved east or west by a constant offset to protect your privacy. Distances, speeds and shapes stay exactly the same, so your timeline can be reproduced accurately. Your actual location coordinates will not be revealed in the export.',
         demoDisabledMessage: 'Demo mode: debug data export is disabled. The form is read-only to avoid actions that are blocked in the public demo.',
         sectionTitle: 'Export Configuration',
         timeRangeLabel: 'Time Range',
@@ -119,16 +119,23 @@ export default {
         endDatePlaceholder: 'End Date',
         dateRangeSeparator: 'to',
         timeRangeHelp: 'Export includes full days in your timezone (00:00:00 to 23:59:59) to ensure no data is missed.',
-        coordinateShiftLabel: 'Coordinate Shift (degrees)',
+        coordinateShiftLabel: 'Coordinate Shift (degrees of longitude)',
         generateNewShift: 'Generate New Random Shift',
-        latitudeShiftLabel: 'Latitude Shift',
-        latitudeShiftPlaceholder: 'e.g., 12.345678',
         longitudeShiftLabel: 'Longitude Shift',
         longitudeShiftPlaceholder: 'e.g., 45.678901',
-        shiftHelp: 'A random shift has been generated automatically. You can regenerate it or modify the values manually. The same shift is applied to all coordinates to preserve relative positions.',
+        shiftHelp: 'A random shift has been generated automatically. You can regenerate it or change it manually. All coordinates move east or west by the same amount; latitude is never changed, because that would alter distances and make the timeline impossible to reproduce.',
+        issueLabel: 'What is wrong?',
+        issuePlaceholder: 'For example: on Tuesday the drive home is missing; I was at the office until 18:00 and got home at 18:40.',
+        issueTimeLabel: 'When did it happen? (optional)',
+        issueTimePlaceholder: 'Date and time of the problem',
+        issueHelp: 'Describe what you expected and what the timeline shows. This text and the time are included in the export, so the developer sees exactly what to look at.',
+        exportInProgress: 'Preparing the debug export...',
+        formatLabel: 'Debug export',
         exportOptionsLabel: 'Export Options',
         includeConfiguration: 'Include Timeline Configuration',
         includeConfigurationHelp: 'Timeline configuration helps reproduce the exact timeline generation parameters used.',
+        includeTimeline: 'Include My Current Timeline',
+        includeTimelineHelp: 'Your stays, trips and data gaps as you see them now, so the regenerated timeline can be compared with what you saw.',
         exportButton: 'Export Debug Data',
         exportFailedLabel: 'Export Failed',
         whatWillBeExportedTitle: 'What Will Be Exported?',
@@ -138,9 +145,12 @@ export default {
             gpsData: 'All GPS points in OwnTracks format with shifted coordinates',
             timelineConfig: 'Your complete timeline configuration (if selected)',
             favoriteLocations: 'Anonymized favorite locations with shifted coordinates',
-            favoriteAreas: 'Anonymized favorite areas with shifted boundaries'
+            favoriteAreas: 'Anonymized favorite areas with shifted boundaries',
+            reverseGeocoding: 'Anonymized places your stays were matched to, with shifted coordinates',
+            timelineOverrides: 'Your manual timeline corrections in the exported range',
+            timeline: 'Your current timeline with anonymized place names (if selected)'
         },
-        privacyNote: 'All coordinates are shifted by the same offset. Favorite location names are anonymized (e.g., "Home" becomes "Location 1"). This preserves timeline structure while protecting privacy. The coordinate shift values are NOT included in the export for privacy protection.',
+        privacyNote: 'All coordinates are shifted by the same offset. Place names are anonymized (e.g., "Home" becomes "Location 1", addresses become "Place 1"). This preserves timeline structure while protecting privacy. The export may include a few hours around the selected dates, so stays that started earlier keep their full length. The coordinate shift values are NOT included in the export for privacy protection.',
         validation: {
             selectDates: 'Please select start and end dates',
             startBeforeEnd: 'Start date must be before end date',
@@ -156,7 +166,7 @@ export default {
         pageTitle: 'Import Debug Data',
         pageDescription: 'Import GPS data and timeline configuration from a debug export ZIP file',
         importantTitle: 'Important',
-        importantDescription: 'This import is designed for troubleshooting purposes. It will import shifted GPS data, anonymized favorite locations, and timeline configuration. By default, it will clear all your existing data before import.',
+        importantDescription: 'This import is designed for troubleshooting purposes. It will import shifted GPS data, anonymized favorite locations, matched places, manual timeline corrections, and timeline configuration. By default, it will clear all your existing data, including favorites, before import. Use a separate account for it.',
         sectionTitle: 'Upload Debug Export ZIP',
         uploadPromptText: 'Click to select or drag & drop a ZIP file',
         uploadHint: 'Only .zip files from debug export are accepted',
@@ -166,6 +176,9 @@ export default {
         clearExistingDataHelp: 'This will delete all your GPS points, timeline data, and favorite locations before importing. Recommended for troubleshooting on a fresh user account.',
         updateTimelineConfig: 'Update timeline configuration',
         updateTimelineConfigHelp: 'This will replace your current timeline settings with the configuration from the ZIP file. Required to reproduce the exact same timeline.',
+        updateTimezone: 'Use the timezone from the export',
+        updateTimezoneHelp: 'Sets your timezone to the one of the user who exported the data, so days in the timeline start and end where theirs do.',
+        importInProgress: 'Importing and regenerating the timeline...',
         importButton: 'Import Debug Data',
         importFailedLabel: 'Import Failed',
         whatWillBeImportedTitle: 'What Will Be Imported?',
@@ -175,13 +188,112 @@ export default {
             gpsData: 'GPS points with shifted coordinates',
             timelineConfig: 'Timeline generation settings',
             favoriteLocations: 'Anonymized favorite locations',
-            favoriteAreas: 'Anonymized favorite areas'
+            favoriteAreas: 'Anonymized favorite areas',
+            reverseGeocoding: 'Anonymized places the stays were matched to',
+            timelineOverrides: 'Manual timeline corrections',
+            timeline: 'The timeline the user saw, compared with the regenerated one'
         },
-        importNote: 'After import, the timeline will be automatically regenerated using the imported data and configuration.',
+        importNote: 'After import, the timeline is regenerated from the imported data and compared with the timeline the user saw.',
+        report: {
+            title: 'Import Report',
+            openTimeline: 'Open in Timeline',
+            summary: {
+                match: {
+                    title: 'Timeline reproduced',
+                    text: 'All {matching} stays, trips and data gaps in the exported range match what the user saw.'
+                },
+                differs: {
+                    title: 'Timeline differs',
+                    text: '{matching} events match, {different} differ, {missing} are missing and {extra} are new compared with what the user saw.'
+                },
+                unavailable: {
+                    title: 'Nothing to compare',
+                    text: 'The export does not contain the user\'s timeline, so the regenerated timeline cannot be compared with it.'
+                }
+            },
+            issueTitle: 'What the user reported',
+            warningsTitle: 'Things to check',
+            comparisonTitle: 'User\'s timeline vs regenerated timeline',
+            comparisonWhyHelp: 'For events that differ, each side lists why that server\'s timeline engine created it as it did.',
+            comparisonHelp: 'Events from {from} to {to}, in the user\'s timezone. Events are paired when they start at the same moment.',
+            columns: {
+                status: 'Status',
+                event: 'Event',
+                expected: 'User saw',
+                actual: 'Regenerated'
+            },
+            status: {
+                MATCH: 'Same',
+                DIFFERENT: 'Different',
+                MISSING: 'Missing',
+                EXTRA: 'New'
+            },
+            eventType: {
+                STAY: 'Stay',
+                TRIP: 'Trip',
+                GAP: 'Data gap'
+            },
+            ongoing: 'ongoing',
+            detailsTitle: 'Export details',
+            details: {
+                exportVersion: 'Export format',
+                appVersions: 'GeoPulse version (user → this server)',
+                exportDate: 'Exported at',
+                timezone: 'User\'s timezone',
+                applied: 'applied',
+                notApplied: 'not applied',
+                requestedRange: 'Requested range',
+                exportedRange: 'Exported range',
+                imported: 'Imported',
+                importedValue: '{gpsPoints} GPS points, {favoriteLocations} favorite locations, {favoriteAreas} favorite areas, {geocodingLocations} places',
+                timelineSettings: 'Timeline settings',
+                water: 'Boat detection',
+                waterValue: '{count} GPS points carry the user\'s water classification'
+            },
+            timelineStatusTitle: 'State of the user\'s timeline',
+            timelineStatus: {
+                lastBuilt: 'Last built',
+                pointsAfterBuild: 'GPS points received after that',
+                pendingRebuild: 'Pending rebuild',
+                pendingFrom: 'from {from}, {attempts} failed attempts',
+                none: 'none'
+            },
+            campaigns: {
+                reason: 'Regeneration',
+                status: 'Status',
+                completed: 'Completed'
+            },
+            gpsSourcesTitle: 'User\'s GPS sources',
+            gpsSourcesHelp: 'Points these filters rejected were never stored, so they are not in the export either.',
+            gpsSources: {
+                source: 'Source',
+                accuracyFilter: 'Accuracy filter',
+                duplicateDetection: 'Duplicate detection',
+                accuracyValue: 'on: worse than {accuracy} m or faster than {speed} km/h is dropped',
+                duplicateValue: 'on: within {minutes} min',
+                off: 'off',
+                inactive: 'inactive'
+            },
+            warnings: {
+                TIMELINE_DIFFERS: 'The regenerated timeline differs from what the user saw: {different} different, {missing} missing, {extra} new events.',
+                TIMELINE_STALE: '{points} GPS points arrived after the user\'s timeline was last built. The user may have seen an out-of-date timeline.',
+                REBUILD_FAILING: 'The user\'s timeline rebuild from {from} keeps failing: {error}',
+                REBUILD_PENDING: 'A rebuild of the user\'s timeline from {from} was still pending, so they may have seen an out-of-date timeline.',
+                APP_VERSION_DIFFERS: 'The export comes from GeoPulse {exporterVersion}, this server runs {importerVersion}. A difference may already be fixed, or new.',
+                GPS_FILTERS_ACTIVE: 'The user\'s GPS sources filter points. Points they dropped are not in the export, which can explain a missing stay or trip.',
+                WATER_DATASET_MISSING: 'This server has no water data loaded, so boat trips cannot be detected the way they were for the user.',
+                WATER_FLAGS_NOT_EXPORTED: 'The user\'s server had no water data, so boat detection did not run there either.',
+                OLD_EXPORT_FORMAT: 'This export uses the older format {version}: it lacks millisecond timestamps, matched places and manual corrections, so small differences are expected.',
+                TIMELINE_CONFIG_NOT_APPLIED: 'The timeline settings from the export were not applied, so this server used its own.',
+                TIMELINE_CONFIG_NOT_IN_EXPORT: 'The export does not contain the user\'s timeline settings, so this server used its own.',
+                EXISTING_DATA_KEPT: 'Existing data was kept, so other GPS points may have changed the regenerated timeline.',
+                TIMELINE_NOT_IN_EXPORT: 'The export does not contain the user\'s timeline. Ask for a new export with "Include my current timeline" selected.'
+            }
+        },
         invalidFileSummary: 'Invalid File',
         invalidFileDetail: 'Please select a ZIP file',
         importSuccessSummary: 'Import Successful',
-        importSuccessDetail: 'Debug data has been imported and timeline regenerated',
+        importSuccessDetail: 'Debug data has been imported and the timeline regenerated. See the report below.',
         importFailedFallback: 'Failed to import debug data'
     },
     exportImportPage: {

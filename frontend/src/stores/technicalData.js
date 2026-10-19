@@ -119,6 +119,14 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             }
         },
 
+        async updateGpsPoints(edits) {
+            try {
+                return await apiService.put('/gps/points/bulk', { edits })
+            } catch (error) {
+                throw this.fail(error, 'Failed to update GPS points')
+            }
+        },
+
         async deleteGpsPoint(pointId) {
             try {
                 return await apiService.delete(`/gps/points/${pointId}`)

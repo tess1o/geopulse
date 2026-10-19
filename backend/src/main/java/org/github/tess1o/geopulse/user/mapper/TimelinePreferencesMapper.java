@@ -54,8 +54,6 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "staypointMaxAccuracyThreshold", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "staypointMinAccuracyRatio", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "tripDetectionAlgorithm", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "staypointRadiusMeters", 
@@ -179,7 +177,6 @@ public interface TimelinePreferencesMapper {
                     .useVelocityAccuracy(fromImport.getUseVelocityAccuracy())
                     .staypointVelocityThreshold(fromImport.getStaypointVelocityThreshold())
                     .staypointMaxAccuracyThreshold(fromImport.getStaypointMaxAccuracyThreshold())
-                    .staypointMinAccuracyRatio(fromImport.getStaypointMinAccuracyRatio())
                     .tripDetectionAlgorithm(fromImport.getTripDetectionAlgorithm())
                     .staypointRadiusMeters(fromImport.getStaypointRadiusMeters())
                     .staypointMinDurationMinutes(fromImport.getStaypointMinDurationMinutes())
@@ -238,7 +235,6 @@ public interface TimelinePreferencesMapper {
                 .useVelocityAccuracy(existing.getUseVelocityAccuracy())
                 .staypointVelocityThreshold(existing.getStaypointVelocityThreshold())
                 .staypointMaxAccuracyThreshold(existing.getStaypointMaxAccuracyThreshold())
-                .staypointMinAccuracyRatio(existing.getStaypointMinAccuracyRatio())
                 .tripDetectionAlgorithm(existing.getTripDetectionAlgorithm())
                 .staypointRadiusMeters(existing.getStaypointRadiusMeters())
                 .staypointMinDurationMinutes(existing.getStaypointMinDurationMinutes())

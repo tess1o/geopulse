@@ -80,6 +80,7 @@
               :timelineNoData="timelineNoData"
               :timelineDataLoading="timelineDataLoading"
               :dateRange="dateRange"
+              :data-window="dataWindow"
               :read-only="demoReadOnly"
               :map-matching-by-trip-id="mapMatchingByTripId"
               @timeline-item-click="handleTimelineItemClick"
@@ -214,7 +215,7 @@ const {
   }
 })
 
-const { dateRange } = storeToRefs(dateRangeStore)
+const { dateRange, dataWindow } = storeToRefs(dateRangeStore)
 const { demoReadOnly } = storeToRefs(authStore)
 const { favoritePlaces } = storeToRefs(favoritesStore)
 const { locationPath: pathData } = storeToRefs(locationStore)
@@ -827,7 +828,9 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
     // new range loads, which is confusing UX.
     highlightStore.clearAllHighlights()
 
-    const shouldProceed = await checkDatasetSize(startDate, endDate)
+    // Location time mode: count everything the local days may reach (the timeline is fetched with the same padding).
+    const countRange = timezone.getLocalDayFetchRange(startDate, endDate)
+    const shouldProceed = await checkDatasetSize(countRange.start, countRange.end)
 
     if (!shouldProceed) {
       mapDataLoading.value = false
@@ -839,14 +842,29 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
     resetMapMatching()
 
-    const locationPromise = fetchLocationData(startDate, endDate)
-    const timelinePromise = fetchTimelineData(startDate, endDate)
-    await timelinePromise
-    resolveMapMatching()
-    await locationPromise
+    let dataStart = startDate
+    let dataEnd = endDate
+    if (timezone.isLocationTimeMode()) {
+      // Local days start and end in each place's zone, so the GPS path and weather wait for the timeline's window.
+      await fetchTimelineData(startDate, endDate)
+      const window = timelineStore.localDayWindow
+      if (window) {
+        dataStart = window.start
+        dataEnd = window.end
+        dateRangeStore.setDataWindow([dataStart, dataEnd])
+      }
+      resolveMapMatching()
+      await fetchLocationData(dataStart, dataEnd)
+    } else {
+      const locationPromise = fetchLocationData(startDate, endDate)
+      const timelinePromise = fetchTimelineData(startDate, endDate)
+      await timelinePromise
+      resolveMapMatching()
+      await locationPromise
+    }
     await nextTick()
     triggerMapResize()
-    await fetchWeatherData(startDate, endDate)
+    await fetchWeatherData(dataStart, dataEnd)
     await refreshCurrentLocation()
   } finally {
     isFetching.value = false

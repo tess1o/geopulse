@@ -5,12 +5,18 @@ const timezone = useTimezone()
 
 export const useDateRangeStore = defineStore('dateRange', {
     state: () => ({
-        dateRange: null // [startDateString, endDateString] or null
+        dateRange: null, // [startDateString, endDateString] or null
+        // UTC range the shown data actually covers, when it differs from dateRange: in location time mode the
+        // timeline's local days start and end in each place's zone. Cleared whenever dateRange changes.
+        dataWindow: null
     }),
 
     getters: {
         // Direct access getter
         getCurrentDateRange: (state) => state.dateRange,
+
+        // Range to load range-bound data (GPS path, photos, notes) for: the data window, else the date range
+        getDataWindow: (state) => state.dataWindow || state.dateRange,
 
         // Convenience getters
         startDate: (state) => state.dateRange?.[0] || null,
@@ -49,12 +55,14 @@ export const useDateRangeStore = defineStore('dateRange', {
             // Validate input
             if (!range || !Array.isArray(range) || range.length !== 2) {
                 this.dateRange = null
+                this.dataWindow = null
                 return
             }
 
             let [start, end] = range
             if (!start || !end) {
                 this.dateRange = null
+                this.dataWindow = null
                 return
             }
 
@@ -71,12 +79,25 @@ export const useDateRangeStore = defineStore('dateRange', {
                 }
             }
 
+            this.dataWindow = null
+
             // Ensure start is before end
             if (timezone.isAfter(start, end)) {
                 this.dateRange = [end, start]
             } else {
                 this.dateRange = [start, end]
             }
+        },
+
+        // Set the UTC range the shown data covers (see dataWindow); null falls back to dateRange
+        setDataWindow(range) {
+            const valid = Array.isArray(range) && range.length === 2 && range[0] && range[1]
+            const next = valid ? [range[0], range[1]] : null
+            const current = this.dataWindow
+            if (current === next || (current && next && current[0] === next[0] && current[1] === next[1])) {
+                return
+            }
+            this.dataWindow = next
         },
 
         // Update just the start date
@@ -106,6 +127,7 @@ export const useDateRangeStore = defineStore('dateRange', {
         // Clear the date range
         clearDateRange() {
             this.dateRange = null
+            this.dataWindow = null
         },
 
         // Set to today

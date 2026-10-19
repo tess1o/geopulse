@@ -164,7 +164,6 @@ export default {
             useVelocityAccuracy: 'Розширена фільтрація',
             staypointVelocityThreshold: 'Поріг швидкості',
             staypointMaxAccuracyThreshold: 'Поріг точності GPS',
-            staypointMinAccuracyRatio: 'Мінімальне співвідношення точності',
             tripDetectionAlgorithm: 'Алгоритм визначення поїздок',
             walkingMaxAvgSpeed: 'Максимальна середня швидкість ходьби',
             walkingMaxMaxSpeed: 'Максимальна пікова швидкість ходьби',

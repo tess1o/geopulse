@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.streaming.model.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
@@ -30,6 +32,12 @@ public class Trip implements TimelineEvent {
     private GPSPoint endPoint;
     private TripGpsStatistics statistics;
     private TripWaterStatistics waterStatistics;
+
+    /** Why the engine created this event as it is; not part of the event's identity. */
+    @Builder.Default
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private TimelineExplanation explanation = new TimelineExplanation();
 
     @Override
     public TimelineEventType getType() {

@@ -58,7 +58,11 @@ public class GeoPulsePlacesImporter {
         }
     }
 
-    private void importReverseGeocodingDataInTransaction(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+    /**
+     * Imports geocoding rows into the caller's transaction. The debug import uses it so the whole import stays one
+     * all-or-nothing transaction.
+     */
+    void importReverseGeocodingDataInTransaction(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         ReverseGeocodingDataDto geocodingData = IMPORT_JSON.readValue(content, ReverseGeocodingDataDto.class);
         log.info("Importing {} reverse geocoding locations for user {} with user assignment logic",
                 geocodingData.getLocations().size(), job.getUserId());

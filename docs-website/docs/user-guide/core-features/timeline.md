@@ -77,6 +77,7 @@ The system supports several trip types:
 
 The classification system includes sophisticated GPS noise detection:
 - Rejects impossible supersonic speeds (>1,200 km/h)
+- Ignores short bursts of bad speed readings: the maximum speed must be held for at least 30 seconds, and the average is weighted by time
 - Validates GPS reliability by comparing against calculated speeds
 - Uses smart fallbacks when GPS data is unreliable
 - Accounts for GPS drift and signal quality issues

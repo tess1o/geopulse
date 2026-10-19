@@ -55,13 +55,6 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setStaypointMaxAccuracyThreshold,
                         Double::valueOf
                 ))
-                .register(new ConfigField<>(
-                        "geopulse.timeline.staypoint.min_accuracy_ratio",
-                        properties.getStaypointMinAccuracyRatio(),
-                        TimelineConfig::getStaypointMinAccuracyRatio,
-                        TimelineConfig::setStaypointMinAccuracyRatio,
-                        Double::valueOf
-                ))
                 // Trip Detection
                 .register(new ConfigField<>(
                         "geopulse.timeline.trip.detection.algorithm",

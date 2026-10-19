@@ -17,6 +17,8 @@ export const useTimelineStore = defineStore('timeline', {
         weatherStatus: null,
         weatherLoading: false,
         weatherError: null,
+        // Location time mode: UTC window of the local days shown (they start and end in each place's zone).
+        localDayWindow: null,
         error: null
     }),
 
@@ -135,10 +137,13 @@ export const useTimelineStore = defineStore('timeline', {
         // API Actions
         async fetchMovementTimeline(startTime, endTime) {
             this.error = null
+            this.localDayWindow = null
             try {
+                // Location mode: local days can start and end up to a day away from the profile-timezone range.
+                const fetchRange = timezone.getLocalDayFetchRange(startTime, endTime)
                 const params = {
-                    from: startTime,
-                    to: endTime
+                    from: fetchRange.start,
+                    to: fetchRange.end
                 }
                 // Only ask for per-item timezones in the opt-in "location" mode; the default request is unchanged.
                 if (timezone.isLocationTimeMode()) {
@@ -162,9 +167,19 @@ export const useTimelineStore = defineStore('timeline', {
                     timestamp: dataGap.startTime
                 }))
 
-                const results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
+                let results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
                     (a, b) => timezone.fromUtc(a.timestamp).valueOf() - timezone.fromUtc(b.timestamp).valueOf()
                 )
+
+                if (timezone.isLocationTimeMode() && startTime && endTime) {
+                    // Keep the items of the requested local days and remember the window they cover.
+                    const dateKeys = timezone.getDateRangeArray(startTime, endTime)
+                    timezone.annotateLocalDaySpans(results)
+                    this.localDayWindow = timezone.getLocalDayWindowUtc(
+                        results, dateKeys[0], dateKeys[dateKeys.length - 1]
+                    )
+                    results = results.filter(item => timezone.isItemInLocalDates(item, dateKeys))
+                }
 
                 this.setTimelineData(results)
                 return timeline
@@ -370,6 +385,17 @@ export const useTimelineStore = defineStore('timeline', {
                 return await apiService.get(`/trips/${tripId}/timeline/classification`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load classification details')
+                throw this.error
+            }
+        },
+
+        /** Why a stay, trip or data gap is as it is, with its GPS points. kind: 'stay', 'trip' or 'dataGap'. */
+        async fetchTimelineEventExplanation(kind, id) {
+            const paths = { stay: 'stays', trip: 'trips', dataGap: 'data-gaps' }
+            try {
+                return await apiService.get(`/timeline/${paths[kind]}/${id}/explanation`)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to load the explanation')
                 throw this.error
             }
         },

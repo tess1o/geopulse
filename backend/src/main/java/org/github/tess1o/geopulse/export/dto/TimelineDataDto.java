@@ -39,6 +39,8 @@ public class TimelineDataDto {
         private String address;
         private Long favoriteId;
         private Long geocodingId;
+        /** Why the timeline engine created the stay as it is ({start, notes, end} reason codes), if known. */
+        private java.util.Map<String, Object> explanation;
     }
     
     @Data
@@ -74,6 +76,8 @@ public class TimelineDataDto {
         private Double longestWaterSegmentMeters;
         private Integer waterSampleCount;
         private Boolean waterEvidenceAvailable;
+        /** Why the timeline engine created the trip as it is ({start, notes, end} reason codes), if known. */
+        private java.util.Map<String, Object> explanation;
     }
     
     @Data
@@ -86,5 +90,7 @@ public class TimelineDataDto {
         private Instant endTime;
         private long durationSeconds;
         private Instant createdAt;
+        /** Why the timeline engine created the data gap as it is ({start, notes, end} reason codes), if known. */
+        private java.util.Map<String, Object> explanation;
     }
 }

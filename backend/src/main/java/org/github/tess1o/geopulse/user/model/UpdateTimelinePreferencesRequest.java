@@ -22,10 +22,6 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMax(value = "1000.0", message = "Staypoint max accuracy threshold must be at most 1000.0")
     private Double staypointMaxAccuracyThreshold;
     
-    @DecimalMin(value = "0.1", message = "Staypoint min accuracy ratio must be at least 0.1")
-    @DecimalMax(value = "1.0", message = "Staypoint min accuracy ratio must be at most 1.0")
-    private Double staypointMinAccuracyRatio;
-    
     @Pattern(regexp = "^(single|multiple)$", message = "Trip detection algorithm must be one of: single, multiple")
     private String tripDetectionAlgorithm;
     

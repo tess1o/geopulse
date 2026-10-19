@@ -14,6 +14,14 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointsRetentionRequest;
 import org.github.tess1o.geopulse.gps.model.GpsPointDeleteResponse;
 import org.github.tess1o.geopulse.gps.model.BulkDeleteGpsPointsDto;
+import org.github.tess1o.geopulse.gps.model.BulkEditGpsPointsDto;
+import org.github.tess1o.geopulse.gps.model.EditGpsPointDto;
+import org.github.tess1o.geopulse.gps.model.GpsPointBulkUpdateResponse;
+import org.github.tess1o.geopulse.gps.model.GpsPointEditItem;
+import org.github.tess1o.geopulse.gps.model.GpsPointUpdateResponse;
+import org.github.tess1o.geopulse.gps.model.GpsPointUpdateResult;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.GpsPointDuplicateDetectionService;
@@ -26,7 +34,6 @@ import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -43,6 +50,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -152,7 +161,6 @@ class GpsPointResourceMobilePointTest {
         GpsPointRepository repository = mock(GpsPointRepository.class);
         GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
         EntityManager entityManager = mock(EntityManager.class);
-        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
@@ -163,7 +171,6 @@ class GpsPointResourceMobilePointTest {
                 repository,
                 duplicateDetectionService,
                 entityManager,
-                timelineService,
                 filteringService,
                 telemetryService,
                 geofenceService,
@@ -191,7 +198,6 @@ class GpsPointResourceMobilePointTest {
         assertEquals(Instant.parse("2026-08-13T10:18:57Z"), result.earliestAffectedTimestamp());
         verify(repository).delete(firstPoint);
         verify(repository).delete(secondPoint);
-        verifyNoInteractions(timelineService);
     }
 
     @Test
@@ -302,7 +308,6 @@ class GpsPointResourceMobilePointTest {
         GpsPointRepository repository = mock(GpsPointRepository.class);
         GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
         EntityManager entityManager = mock(EntityManager.class);
-        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
@@ -313,7 +318,6 @@ class GpsPointResourceMobilePointTest {
                 repository,
                 duplicateDetectionService,
                 entityManager,
-                timelineService,
                 filteringService,
                 telemetryService,
                 geofenceService,
@@ -369,7 +373,6 @@ class GpsPointResourceMobilePointTest {
         GpsPointRepository repository = mock(GpsPointRepository.class);
         GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
         EntityManager entityManager = mock(EntityManager.class);
-        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
@@ -380,7 +383,6 @@ class GpsPointResourceMobilePointTest {
                 repository,
                 duplicateDetectionService,
                 entityManager,
-                timelineService,
                 filteringService,
                 telemetryService,
                 geofenceService,
@@ -435,7 +437,6 @@ class GpsPointResourceMobilePointTest {
         GpsPointRepository repository = mock(GpsPointRepository.class);
         GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
         EntityManager entityManager = mock(EntityManager.class);
-        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
@@ -446,7 +447,6 @@ class GpsPointResourceMobilePointTest {
                 repository,
                 duplicateDetectionService,
                 entityManager,
-                timelineService,
                 filteringService,
                 telemetryService,
                 geofenceService,
@@ -473,12 +473,159 @@ class GpsPointResourceMobilePointTest {
                 repository,
                 duplicateDetectionService,
                 entityManager,
-                timelineService,
                 filteringService,
                 telemetryService,
                 geofenceService,
                 timelineConfigurationProvider,
                 gpsPointEnvironmentService
+        );
+    }
+
+    @Test
+    void updateGpsPoints_returnsFastResponseAndSchedulesDerivedDataRefresh() {
+        UUID userId = UUID.randomUUID();
+        UUID timelineJobId = UUID.randomUUID();
+        Instant earliestTimestamp = Instant.parse("2026-08-13T10:18:57Z");
+        List<GpsPointEditItem> edits = List.of(editItem(10L, 50.0, 30.0, 0.0), editItem(11L, 50.1, 30.1, 0.0));
+
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(gpsPointService.updateGpsPoints(edits, userId))
+                .thenReturn(new GpsPointUpdateResult(List.of(dto(10L), dto(11L)), earliestTimestamp, true));
+        when(asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(userId, earliestTimestamp))
+                .thenReturn(new AsyncTimelineGenerationService.TimelineSchedulingResult(timelineJobId, true, false));
+        when(coverageService.getCoverageStatus(userId))
+                .thenReturn(new CoverageStatus(true, true, true, null, null));
+        when(coverageProcessingService.requestFullRecalculationAsync(userId))
+                .thenReturn(new CoverageProcessingService.CoverageSchedulingResult(true, true));
+
+        GpsPointBulkUpdateResponse response = resource.updateGpsPoints(new BulkEditGpsPointsDto(edits));
+
+        assertEquals(2, response.updatedCount());
+        assertEquals(timelineJobId, response.timelineJobId());
+        assertTrue(response.timelineRegenerationScheduled());
+        assertTrue(response.coverageRebuildScheduled());
+    }
+
+    @Test
+    void updateGpsPoint_skipsCoverageRebuildWhenCoordinatesUnchanged() {
+        UUID userId = UUID.randomUUID();
+        Instant timestamp = Instant.parse("2026-08-13T10:18:57Z");
+        EditGpsPointDto edit = editItem(10L, 50.0, 30.0, 0.0);
+        GpsPointDTO updated = dto(10L);
+
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(gpsPointService.updateGpsPoint(10L, edit, userId))
+                .thenReturn(new GpsPointUpdateResult(List.of(updated), timestamp, false));
+        when(asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(userId, timestamp))
+                .thenReturn(new AsyncTimelineGenerationService.TimelineSchedulingResult(null, true, true));
+
+        GpsPointUpdateResponse response = resource.updateGpsPoint(10L, edit);
+
+        assertEquals(updated, response.point());
+        assertNull(response.timelineJobId());
+        assertTrue(response.timelineRegenerationScheduled());
+        assertFalse(response.coverageRebuildScheduled());
+        verifyNoInteractions(coverageService, coverageProcessingService);
+    }
+
+    @Test
+    void updateGpsPoints_appliesEditsAndRequestsRebuildWithoutSynchronousTimelineGeneration() {
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        TimelineRebuildRequestRepository rebuildRequests = mock(TimelineRebuildRequestRepository.class);
+        GpsPointService service = serviceForEdits(repository, rebuildRequests);
+        UUID userId = UUID.randomUUID();
+        GpsPointEntity first = entity(10L, userId, Instant.parse("2026-08-13T10:20:00Z"), 50.0, 30.0);
+        GpsPointEntity second = entity(11L, userId, Instant.parse("2026-08-13T10:18:57Z"), 50.1, 30.1);
+        when(repository.list("id in ?1", List.of(10L, 11L))).thenReturn(List.of(first, second));
+
+        GpsPointUpdateResult result = service.updateGpsPoints(
+                List.of(editItem(10L, 50.0, 30.0, 0.0), editItem(11L, 50.1, 30.1, 3.5)), userId);
+
+        assertEquals(2, result.points().size());
+        assertEquals(Instant.parse("2026-08-13T10:18:57Z"), result.earliestAffectedTimestamp());
+        assertFalse(result.coordinatesChanged());
+        assertEquals(0.0, first.getVelocity());
+        assertEquals(3.5, second.getVelocity());
+        verify(repository).persist(first);
+        verify(repository).persist(second);
+        verify(rebuildRequests).request(userId, Instant.parse("2026-08-13T10:18:57Z"));
+    }
+
+    @Test
+    void updateGpsPoints_reportsMovedCoordinates() {
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        GpsPointService service = serviceForEdits(repository, mock(TimelineRebuildRequestRepository.class));
+        UUID userId = UUID.randomUUID();
+        GpsPointEntity point = entity(10L, userId, Instant.parse("2026-08-13T10:20:00Z"), 50.0, 30.0);
+        when(repository.list("id in ?1", List.of(10L))).thenReturn(List.of(point));
+
+        GpsPointUpdateResult result = service.updateGpsPoints(List.of(editItem(10L, 50.5, 30.0, 1.0)), userId);
+
+        assertTrue(result.coordinatesChanged());
+        assertEquals(50.5, point.getCoordinates().getY());
+        assertEquals(30.0, point.getCoordinates().getX());
+    }
+
+    @Test
+    void updateGpsPoints_rejectsDuplicateMissingAndForeignPoints() {
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        TimelineRebuildRequestRepository rebuildRequests = mock(TimelineRebuildRequestRepository.class);
+        GpsPointService service = serviceForEdits(repository, rebuildRequests);
+        UUID userId = UUID.randomUUID();
+        GpsPointEntity foreign = entity(12L, UUID.randomUUID(), Instant.parse("2026-08-13T10:20:00Z"), 50.0, 30.0);
+        when(repository.list("id in ?1", List.of(11L))).thenReturn(List.of());
+        when(repository.list("id in ?1", List.of(12L))).thenReturn(List.of(foreign));
+
+        GeoPulseException duplicate = assertThrows(GeoPulseException.class, () -> service.updateGpsPoints(
+                List.of(editItem(10L, 50.0, 30.0, 0.0), editItem(10L, 50.0, 30.0, 1.0)), userId));
+        GeoPulseException missing = assertThrows(GeoPulseException.class, () -> service.updateGpsPoints(
+                List.of(editItem(11L, 50.0, 30.0, 0.0)), userId));
+        GeoPulseException denied = assertThrows(GeoPulseException.class, () -> service.updateGpsPoints(
+                List.of(editItem(12L, 50.0, 30.0, 0.0)), userId));
+
+        assertEquals(ApiErrorCode.INVALID_GPS_POINT_EDIT, duplicate.code());
+        assertEquals(ApiErrorCode.GPS_POINT_NOT_FOUND, missing.code());
+        assertEquals(ApiErrorCode.GPS_POINT_ACCESS_DENIED, denied.code());
+        verify(repository, never()).persist(any(GpsPointEntity.class));
+        verifyNoInteractions(rebuildRequests);
+    }
+
+    private static GpsPointEditItem editItem(Long id, double lat, double lng, Double velocity) {
+        return new GpsPointEditItem(id, new EditGpsPointDto(
+                new EditGpsPointDto.CoordinatesDto(lat, lng), velocity, 10.0));
+    }
+
+    private static GpsPointDTO dto(Long id) {
+        return new GpsPointDTO(id, Instant.parse("2026-08-13T10:18:57Z"),
+                new GpsPointDTO.CoordinatesDTO(50.0, 30.0), 0.0, null, null, 10.0, null);
+    }
+
+    private static GpsPointEntity entity(Long id, UUID ownerId, Instant timestamp, double lat, double lng) {
+        UserEntity owner = new UserEntity();
+        owner.setId(ownerId);
+        GpsPointEntity point = new GpsPointEntity();
+        point.setId(id);
+        point.setUser(owner);
+        point.setTimestamp(timestamp);
+        point.setCoordinates(GeoUtils.createPoint(lng, lat));
+        point.setVelocity(9.0);
+        point.setSourceType(GpsSourceType.OWNTRACKS);
+        return point;
+    }
+
+    private static GpsPointService serviceForEdits(GpsPointRepository repository,
+                                                   TimelineRebuildRequestRepository rebuildRequests) {
+        return new GpsPointService(
+                new GpsPointMapper(),
+                repository,
+                mock(GpsPointDuplicateDetectionService.class),
+                mock(EntityManager.class),
+                mock(GpsDataFilteringService.class),
+                mock(GpsTelemetryRenderingService.class),
+                mock(GeofenceEvaluationService.class),
+                mock(TimelineConfigurationProvider.class),
+                mock(GpsPointEnvironmentService.class),
+                rebuildRequests
         );
     }
 }

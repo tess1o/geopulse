@@ -6,7 +6,6 @@ export const TIMELINE_PREFERENCE_LABELS = {
   useVelocityAccuracy: 'Enhanced Filtering',
   staypointVelocityThreshold: 'Velocity Threshold',
   staypointMaxAccuracyThreshold: 'GPS Accuracy Threshold',
-  staypointMinAccuracyRatio: 'Minimum Accuracy Ratio',
   tripDetectionAlgorithm: 'Trip Detection Algorithm',
   walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
   walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
@@ -62,7 +61,6 @@ export const TIMELINE_PREFERENCE_TAB_BY_KEY = {
   useVelocityAccuracy: 'staypoints',
   staypointVelocityThreshold: 'staypoints',
   staypointMaxAccuracyThreshold: 'staypoints',
-  staypointMinAccuracyRatio: 'staypoints',
 
   tripDetectionAlgorithm: 'trips',
   walkingMaxAvgSpeed: 'trips',
@@ -118,7 +116,6 @@ export const TIMELINE_PREFERENCE_TAB_BY_KEY = {
 export const TIMELINE_PREFERENCE_VISIBILITY_HINTS = {
   staypointVelocityThreshold: 'Enable "Enhanced Filtering" to edit this setting.',
   staypointMaxAccuracyThreshold: 'Enable "Enhanced Filtering" to edit this setting.',
-  staypointMinAccuracyRatio: 'Enable "Enhanced Filtering" to edit this setting.',
   gapStayInferenceMaxGapHours: 'Enable "Gap Stay Inference" to edit this setting.',
   gapTripInferenceMinDistanceMeters: 'Enable "Gap Trip Inference" to edit this setting.',
   gapTripInferenceMinGapHours: 'Enable "Gap Trip Inference" to edit this setting.',
