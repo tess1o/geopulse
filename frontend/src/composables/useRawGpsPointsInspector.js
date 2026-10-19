@@ -37,7 +37,7 @@ export function useRawGpsPointsInspector({ enabled, isPublicView }) {
   const rawGpsLimitWarningKeys = new Set()
 
   const getRawGpsRange = () => {
-    const range = dateRangeStore.getCurrentDateRange
+    const range = dateRangeStore.getDataWindow
     return Array.isArray(range) && range.length === 2 && range[0] && range[1]
       ? range
       : null
@@ -135,7 +135,7 @@ export function useRawGpsPointsInspector({ enabled, isPublicView }) {
   }
 
   watch(
-    () => dateRangeStore.getCurrentDateRange,
+    () => dateRangeStore.getDataWindow,
     () => {
       if (enabled.value) {
         loadRawGpsPoints()

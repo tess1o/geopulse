@@ -413,7 +413,7 @@ const navigateToCountryDetails = () => {
 
 const isOvernight = computed(() => {
   if (!props.stayItem.timestamp || !props.stayItem.stayDuration) return false;
-  return timezone.isOvernightWithDuration(props.stayItem.timestamp, props.stayItem.stayDuration);
+  return timezone.shouldShowAsOvernight({ ...props.stayItem, type: 'stay' });
 });
 
 const formatOnThisDayDuration = (stayItem) => {

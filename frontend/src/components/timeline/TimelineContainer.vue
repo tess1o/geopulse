@@ -364,6 +364,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  // UTC range the shown items cover when it differs from dateRange (local days in location time mode)
+  dataWindow: {
+    type: Array,
+    default: null
+  },
   loadImmichPhotos: {
     type: Boolean,
     default: true
@@ -494,7 +499,10 @@ const groupedTimelineData = computed(() => {
   } else {
     itemsToProcess.forEach(item => {
       const itemStartTime = item.timestamp || item.startTime
-      const itemDate = timezone.fromUtc(itemStartTime)
+      // Location time mode dates items by their local days; profile mode by the profile timezone
+      const itemDate = timezone.isLocationTimeMode()
+        ? timezone.create(timezone.getItemLocalDaySpan(item).startDate)
+        : timezone.fromUtc(itemStartTime)
       allDates.add(itemDate.format('YYYY-MM-DD'));
       
       // Add all days this item spans to the date range
@@ -797,16 +805,22 @@ const handleMovementTypeUpdated = (updated) => {
   }
 }
 
+// Range to load labels, photos and notes for: the data window when the page provides one
+const loadRange = computed(() => (
+  Array.isArray(props.dataWindow) && props.dataWindow.length === 2 ? props.dataWindow : props.dateRange
+))
+
 // Load timeline labels when dateRange changes
 const loadTimelineLabels = async () => {
   if (!props.showTimelineLabels) {
     return
   }
-  if (props.dateRange && props.dateRange.length === 2) {
+  const range = loadRange.value
+  if (range && range.length === 2) {
     try {
       await timelineLabelsStore.fetchTimelineLabelsForTimeRange(
-        props.dateRange[0],
-        props.dateRange[1]
+        range[0],
+        range[1]
       )
     } catch (error) {
       console.error('Failed to load timeline labels:', error)
@@ -819,11 +833,11 @@ const loadImmichPhotosForCards = async () => {
     return
   }
 
-  if (!props.dateRange || props.dateRange.length !== 2) {
+  if (!loadRange.value || loadRange.value.length !== 2) {
     return
   }
 
-  const [startDate, endDate] = props.dateRange
+  const [startDate, endDate] = loadRange.value
   if (!startDate || !endDate) {
     return
   }
@@ -848,11 +862,11 @@ const loadNotesForCards = async (forceRefresh = false) => {
     return
   }
 
-  if (!props.dateRange || props.dateRange.length !== 2) {
+  if (!loadRange.value || loadRange.value.length !== 2) {
     return
   }
 
-  const [startDate, endDate] = props.dateRange
+  const [startDate, endDate] = loadRange.value
   if (!startDate || !endDate) {
     return
   }
@@ -871,7 +885,7 @@ const loadNotesForCards = async (forceRefresh = false) => {
 }
 
 // Watch for date range changes
-watch(() => props.dateRange, () => {
+watch(loadRange, () => {
   loadTimelineLabels()
   loadImmichPhotosForCards()
   loadNotesForCards()

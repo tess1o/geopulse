@@ -89,6 +89,10 @@ const stayCard = (page, name) => page.locator('.timeline-card--stay').filter({ h
 const tripCards = (page) => page.locator('.timeline-card--trip');
 const dataGapCards = (page) => page.locator('.timeline-card--data-gap');
 const allTimestamps = (page) => page.locator('.timeline-timestamp');
+const dateGroups = (page) => page.locator('.date-group');
+const dateGroup = (page, label) => dateGroups(page).filter({
+  has: page.locator('.date-separator-text', { hasText: label }),
+});
 
 test.describe('Location time display', () => {
   test.beforeAll(async ({ dbManager }) => {
@@ -221,12 +225,12 @@ test.describe('Location time display', () => {
       await expect(timestamp).toHaveAttribute('title', /^Local timezone unknown: .* Showing your profile timezone\.$/);
     });
 
-    test('location mode shows an overnight stay abroad in local time while days stay grouped by the profile timezone', async ({ page, isolatedUsers, dbManager }) => {
+    test('location mode dates a stay abroad by its local day, not the profile day', async ({ page, isolatedUsers, dbManager }) => {
       await createUserAndLogin(page, dbManager, isolatedUsers, {
         timezone: 'America/New_York',
         timeDisplayMode: 'location',
         seed: async (userId) => {
-          // New York: Sep 21 16:00 -> Sep 22 02:00. Tokyo: Sep 22 05:00 -> 15:00.
+          // New York: Sep 21 16:00 -> Sep 22 02:00 (overnight there). Tokyo: Sep 22 05:00 -> 15:00 (one local day).
           await insertStay(dbManager, userId, Places.TOKYO_HOTEL, {
             timestamp: '2025-09-21T20:00:00Z',
             durationSeconds: 10 * 3600,
@@ -236,17 +240,13 @@ test.describe('Location time display', () => {
 
       await page.goto(SEP_21_22);
 
-      const overnightCards = page.locator('.timeline-card--overnight-stay');
-      await expect(overnightCards).toHaveCount(2);
+      const stay = stayCard(page, 'Shinjuku Hotel');
+      await expect(stay.locator('.timeline-timestamp')).toContainText('09/22/2025 05:00 GMT+9');
+      await expect(page.locator('.timeline-card--overnight-stay')).toHaveCount(0);
 
-      // Start day (Sep 21 in New York) shows the Tokyo date and time of arrival
-      const startDayCard = overnightCards.filter({ hasNotText: 'Continued from' });
-      await expect(startDayCard.locator('.timeline-timestamp')).toContainText('09/22/2025, 05:00 GMT+9');
-      await expect(startDayCard).toContainText('On this day: 16:00 - 23:59');
-
-      const continuationCard = overnightCards.filter({ hasText: 'Continued from' });
-      await expect(continuationCard.locator('.timeline-timestamp')).toContainText('Continued from Sep 22, 05:00 GMT+9');
-      await expect(continuationCard).toContainText('On this day: 00:00 - 02:00');
+      // Only the Tokyo date has items
+      await expect(dateGroups(page)).toHaveCount(1);
+      await expect(dateGroup(page, 'September 22, 2025').locator('.timeline-card--stay')).toHaveCount(1);
     });
   });
 
@@ -333,6 +333,413 @@ test.describe('Location time display', () => {
       for (const url of gpsRequests) {
         expect(url.searchParams.get('includeLocationTimezones')).toBe('true');
       }
+    });
+  });
+
+  test.describe('Local day boundaries', () => {
+    // In local time mode a day ends at midnight wherever the user is. A trip or data gap is dated by the local clock
+    // at each end; one that spans two local days is split at midnight on the departure clock (on the arrival clock
+    // when the departure midnight is not inside it). Profile timezone mode keeps profile-timezone days.
+    //
+    // All data is in September 2025: Paris is CEST (UTC+2, "GMT+2"), Los Angeles PDT (UTC-7), New York EDT (UTC-4),
+    // Tokyo UTC+9 ("GMT+9") and Honolulu HST (UTC-10).
+
+    const day = (date) => `/app/timeline?start=${date}&end=${date}`;
+    const days = (start, end) => `/app/timeline?start=${start}&end=${end}`;
+    const SEP_21_LABEL = 'September 21, 2025';
+    const SEP_22_LABEL = 'September 22, 2025';
+
+    const cardsNamed = (scope, name) => scope.locator('.timeline-card').filter({ hasText: name });
+    const overnightStay = (scope, name) => scope.locator('.timeline-card--overnight-stay').filter({ hasText: name });
+    const overnightTrips = (scope) => scope.locator('.timeline-card--overnight-trip');
+    const overnightGaps = (scope) => scope.locator('.timeline-card--overnight-data-gap');
+    const startDayCard = (cards) => cards.filter({ hasNotText: 'Continued from' });
+    const continuationCard = (cards) => cards.filter({ hasText: 'Continued from' });
+
+    /** Waits until one of the tracked requests asked for exactly this from/to range. */
+    const expectRangeRequested = async (requests, from, to) => {
+      await expect.poll(
+        () => requests.map((url) => `${url.searchParams.get('from')} -> ${url.searchParams.get('to')}`),
+        { timeout: 15000 }
+      ).toContain(`${from} -> ${to}`);
+    };
+
+    const trackRangeRequests = (page) => ({
+      timeline: trackApiRequests(page, /\/timeline$/),
+      path: trackApiRequests(page, /\/gps\/points\/path$/),
+      notes: trackApiRequests(page, /\/notes\/search$/),
+    });
+
+    /** Paris 08:00-13:00, fly 11.5 h, Los Angeles 15:30 until 08:00 the next morning, Santa Monica at 16:00. */
+    const seedEuropeToUs = (dbManager) => async (userId) => {
+      await insertStay(dbManager, userId, Places.PARIS_HOTEL, {
+        timestamp: '2025-09-21T06:00:00Z', // Paris 08:00
+        durationSeconds: 5 * 3600,
+      });
+      await insertTrip(dbManager, userId, Places.PARIS_HOTEL, Places.LA_HOTEL, {
+        timestamp: '2025-09-21T11:00:00Z', // Paris 13:00 -> Los Angeles 15:30
+        durationSeconds: 690 * 60,
+        distanceMeters: 9100000,
+        movementType: 'FLIGHT',
+      });
+      await insertStay(dbManager, userId, Places.LA_HOTEL, {
+        timestamp: '2025-09-21T22:30:00Z', // Los Angeles Sep 21 15:30 (Paris Sep 22 00:30) -> Sep 22 08:00
+        durationSeconds: 990 * 60,
+      });
+      await insertStay(dbManager, userId, Places.LA_PIER, {
+        timestamp: '2025-09-22T23:00:00Z', // Los Angeles Sep 22 16:00 (Paris Sep 23 01:00)
+        durationSeconds: 2 * 3600,
+      });
+    };
+
+    /** Los Angeles 09:00-16:00, fly at 17:00 and land in Paris at 12:30 the next day, Left Bank Cafe after midnight. */
+    const seedUsToEurope = (dbManager) => async (userId) => {
+      await insertStay(dbManager, userId, Places.LA_HOTEL, {
+        timestamp: '2025-09-21T16:00:00Z', // Los Angeles 09:00
+        durationSeconds: 7 * 3600,
+      });
+      await insertTrip(dbManager, userId, Places.LA_HOTEL, Places.PARIS_HOTEL, {
+        timestamp: '2025-09-22T00:00:00Z', // Los Angeles Sep 21 17:00 -> Paris Sep 22 12:30
+        durationSeconds: 630 * 60,
+        distanceMeters: 9100000,
+        movementType: 'FLIGHT',
+      });
+      await insertStay(dbManager, userId, Places.PARIS_HOTEL, {
+        timestamp: '2025-09-22T10:30:00Z', // Paris 12:30 -> 22:30
+        durationSeconds: 10 * 3600,
+      });
+      await insertStay(dbManager, userId, Places.PARIS_CAFE, {
+        timestamp: '2025-09-22T22:30:00Z', // Paris Sep 23 00:30 (Los Angeles Sep 22 15:30)
+        durationSeconds: 90 * 60,
+      });
+    };
+
+    test.describe('Europe to the US (westbound)', () => {
+      test('the travel day lasts from midnight in Paris until midnight in California', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Europe/Paris',
+          timeDisplayMode: 'location',
+          seed: seedEuropeToUs(dbManager),
+        });
+
+        await page.goto(day('2025-09-21'));
+
+        await expect(stayCard(page, 'Hotel Louvre').locator('.timeline-timestamp')).toContainText('09/21/2025 08:00 GMT+2');
+        await expect(tripCards(page)).toHaveCount(1);
+        await expect(tripCards(page).locator('.timeline-timestamp')).toContainText('09/21/2025 13:00 GMT+2');
+        await expect(overnightTrips(page)).toHaveCount(0);
+
+        // The evening in California belongs to Sep 21 although it is already Sep 22 in Paris
+        const laHotel = overnightStay(page, 'Downtown LA Hotel');
+        await expect(laHotel.locator('.timeline-timestamp')).toContainText('09/21/2025, 15:30 PDT');
+        await expect(laHotel).toContainText('On this day: 15:30 - 23:59');
+        await expect(cardsNamed(page, 'Santa Monica Pier')).toHaveCount(0);
+
+        // The timeline is fetched 26 h wider than the Paris day; everything else follows the 33-hour local day
+        await expectRangeRequested(requests.timeline, '2025-09-19T20:00:00.000Z', '2025-09-22T23:59:59.999Z');
+        await expectRangeRequested(requests.path, '2025-09-20T22:00:00.000Z', '2025-09-22T06:59:59.999Z');
+        await expectRangeRequested(requests.notes, '2025-09-20T22:00:00.000Z', '2025-09-22T06:59:59.999Z');
+      });
+
+      test('the next day starts at midnight in California', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Europe/Paris',
+          timeDisplayMode: 'location',
+          seed: seedEuropeToUs(dbManager),
+        });
+
+        await page.goto(day('2025-09-22'));
+
+        const laHotel = overnightStay(page, 'Downtown LA Hotel');
+        await expect(laHotel.locator('.timeline-timestamp')).toContainText('Continued from Sep 21, 15:30 PDT');
+        await expect(laHotel).toContainText('On this day: 00:00 - 08:00');
+
+        // 16:00 in Los Angeles is Sep 23 in Paris, but still Sep 22 locally
+        await expect(stayCard(page, 'Santa Monica Pier').locator('.timeline-timestamp')).toContainText('09/22/2025 16:00 PDT');
+        await expect(cardsNamed(page, 'Hotel Louvre')).toHaveCount(0);
+        await expect(page.locator('.timeline-card--trip, .timeline-card--overnight-trip')).toHaveCount(0);
+
+        await expectRangeRequested(requests.path, '2025-09-22T07:00:00.000Z', '2025-09-23T06:59:59.999Z');
+      });
+
+      test('a range of days groups every item under its local date', async ({ page, isolatedUsers, dbManager }) => {
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Europe/Paris',
+          timeDisplayMode: 'location',
+          seed: seedEuropeToUs(dbManager),
+        });
+
+        await page.goto(days('2025-09-21', '2025-09-22'));
+
+        await expect(dateGroups(page)).toHaveCount(2);
+
+        const sep21 = dateGroup(page, SEP_21_LABEL);
+        await expect(cardsNamed(sep21, 'Hotel Louvre')).toHaveCount(1);
+        await expect(sep21.locator('.timeline-card--trip')).toHaveCount(1);
+        await expect(startDayCard(overnightStay(sep21, 'Downtown LA Hotel'))).toHaveCount(1);
+        await expect(cardsNamed(sep21, 'Santa Monica Pier')).toHaveCount(0);
+
+        const sep22 = dateGroup(page, SEP_22_LABEL);
+        await expect(continuationCard(overnightStay(sep22, 'Downtown LA Hotel'))).toHaveCount(1);
+        await expect(cardsNamed(sep22, 'Santa Monica Pier')).toHaveCount(1);
+        await expect(cardsNamed(sep22, 'Hotel Louvre')).toHaveCount(0);
+      });
+
+      test('without data during the flight the data gap stays on the travel day', async ({ page, isolatedUsers, dbManager }) => {
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Europe/Paris',
+          timeDisplayMode: 'location',
+          seed: async (userId) => {
+            await insertStay(dbManager, userId, Places.PARIS_HOTEL, {
+              timestamp: '2025-09-21T06:00:00Z', // Paris 08:00 -> 13:00
+              durationSeconds: 5 * 3600,
+            });
+            await insertDataGap(dbManager, userId, {
+              startTime: '2025-09-21T11:00:00Z', // Paris 13:00
+              endTime: '2025-09-21T19:00:00Z', // New York 15:00
+            });
+            await insertStay(dbManager, userId, Places.NEW_YORK_OFFICE, {
+              timestamp: '2025-09-21T19:00:00Z', // New York 15:00 -> 23:00 (Paris Sep 22 05:00)
+              durationSeconds: 8 * 3600,
+            });
+          },
+        });
+
+        await page.goto(days('2025-09-21', '2025-09-22'));
+
+        await expect(stayCard(page, 'Midtown Office').locator('.timeline-timestamp')).toContainText('09/21/2025 15:00 EDT');
+        const gap = dataGapCards(page);
+        await expect(gap).toHaveCount(1);
+        await expect(gap.locator('.timeline-timestamp')).toContainText('09/21/2025 13:00 GMT+2');
+        await expect(gap.locator('.detail-value').first()).toHaveText('09/21/2025 15:00 EDT');
+
+        await expect(overnightGaps(page)).toHaveCount(0);
+        await expect(page.locator('.timeline-card--overnight-stay')).toHaveCount(0);
+        await expect(dateGroups(page)).toHaveCount(1);
+        await expect(dateGroup(page, SEP_21_LABEL)).toHaveCount(1);
+      });
+
+      test('profile mode keeps Paris days and requests exactly the selected day', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Europe/Paris',
+          seed: seedEuropeToUs(dbManager),
+        });
+
+        await page.goto(day('2025-09-21'));
+
+        await expect(stayCard(page, 'Hotel Louvre').locator('.timeline-timestamp')).toContainText('09/21/2025 08:00');
+        // The flight lands at 00:30 on Sep 22 Paris time, so it crosses midnight (in local time mode it does not)
+        await expect(tripCards(page)).toHaveCount(0);
+        const flight = overnightTrips(page);
+        await expect(flight.locator('.timeline-timestamp')).toContainText('09/21/2025, 13:00');
+        await expect(flight).toContainText('On this day: 13:00 - 23:59');
+        // The California evening starts at 00:30 on Sep 22 in Paris
+        await expect(cardsNamed(page, 'Downtown LA Hotel')).toHaveCount(0);
+        for (const timestamp of await allTimestamps(page).all()) {
+          await expect(timestamp).not.toContainText(/GMT|PDT/);
+        }
+
+        await expectRangeRequested(requests.timeline, '2025-09-20T22:00:00.000Z', '2025-09-21T21:59:59.999Z');
+        await expectRangeRequested(requests.path, '2025-09-20T22:00:00.000Z', '2025-09-21T21:59:59.999Z');
+        for (const url of requests.timeline) {
+          expect(url.searchParams.has('includeLocationTimezones')).toBe(false);
+        }
+      });
+    });
+
+    test.describe('The US to Europe (eastbound)', () => {
+      test('an overnight flight is split at midnight on the departure clock', async ({ page, isolatedUsers, dbManager }) => {
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'America/Los_Angeles',
+          timeDisplayMode: 'location',
+          seed: seedUsToEurope(dbManager),
+        });
+
+        await page.goto(days('2025-09-21', '2025-09-22'));
+
+        await expect(overnightTrips(page)).toHaveCount(2);
+        await expect(dateGroups(page)).toHaveCount(2);
+
+        const departure = overnightTrips(dateGroup(page, SEP_21_LABEL));
+        await expect(departure.locator('.timeline-timestamp')).toContainText('09/21/2025, 17:00 PDT');
+        await expect(departure).toContainText('On this day: 17:00 - 23:59');
+
+        // Sep 22 begins at midnight in Los Angeles (09:00 in Paris), while still in the air
+        const sep22 = dateGroup(page, SEP_22_LABEL);
+        const arrival = overnightTrips(sep22);
+        await expect(arrival.locator('.timeline-timestamp')).toContainText('Continued from Sep 21, 17:00 PDT');
+        await expect(arrival).toContainText('On this day: 00:00 - 12:30 (3h 30m)');
+        await expect(stayCard(sep22, 'Hotel Louvre').locator('.timeline-timestamp')).toContainText('09/22/2025 12:30 GMT+2');
+
+        // After midnight in Paris it is Sep 23 there, though still Sep 22 in Los Angeles
+        await expect(cardsNamed(page, 'Left Bank Cafe')).toHaveCount(0);
+      });
+
+      test('the arrival day starts mid-flight and ends at midnight in Paris', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'America/Los_Angeles',
+          timeDisplayMode: 'location',
+          seed: seedUsToEurope(dbManager),
+        });
+
+        await page.goto(day('2025-09-22'));
+
+        await expect(stayCard(page, 'Hotel Louvre')).toHaveCount(1);
+        await expect(cardsNamed(page, 'Left Bank Cafe')).toHaveCount(0);
+        await expect(cardsNamed(page, 'Downtown LA Hotel')).toHaveCount(0);
+
+        // A 15-hour day: 00:00 in Los Angeles to 24:00 in Paris
+        await expectRangeRequested(requests.timeline, '2025-09-21T05:00:00.000Z', '2025-09-24T08:59:59.999Z');
+        await expectRangeRequested(requests.path, '2025-09-22T07:00:00.000Z', '2025-09-22T21:59:59.999Z');
+        await expectRangeRequested(requests.notes, '2025-09-22T07:00:00.000Z', '2025-09-22T21:59:59.999Z');
+
+        await page.goto(day('2025-09-23'));
+
+        await expect(stayCard(page, 'Left Bank Cafe').locator('.timeline-timestamp')).toContainText('09/23/2025 00:30 GMT+2');
+        await expect(cardsNamed(page, 'Hotel Louvre')).toHaveCount(0);
+      });
+
+      test('profile mode keeps Los Angeles days', async ({ page, isolatedUsers, dbManager }) => {
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'America/Los_Angeles',
+          seed: seedUsToEurope(dbManager),
+        });
+
+        await page.goto(day('2025-09-22'));
+
+        const arrival = overnightTrips(page);
+        await expect(arrival.locator('.timeline-timestamp')).toContainText('Continued from Sep 21, 17:00');
+        await expect(arrival).toContainText('On this day: 00:00 - 03:30');
+        await expect(stayCard(page, 'Left Bank Cafe').locator('.timeline-timestamp')).toContainText('09/22/2025 15:30');
+      });
+
+      test('without data during the flight the data gap is split at midnight in New York', async ({ page, isolatedUsers, dbManager }) => {
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'America/New_York',
+          timeDisplayMode: 'location',
+          seed: async (userId) => {
+            await insertStay(dbManager, userId, Places.NEW_YORK_OFFICE, {
+              timestamp: '2025-09-21T14:00:00Z', // New York 10:00 -> 18:00
+              durationSeconds: 8 * 3600,
+            });
+            await insertDataGap(dbManager, userId, {
+              startTime: '2025-09-21T22:00:00Z', // New York 18:00
+              endTime: '2025-09-22T08:00:00Z', // Paris Sep 22 10:00
+            });
+            await insertStay(dbManager, userId, Places.PARIS_HOTEL, {
+              timestamp: '2025-09-22T08:00:00Z', // Paris 10:00 -> 14:00
+              durationSeconds: 4 * 3600,
+            });
+          },
+        });
+
+        await page.goto(days('2025-09-21', '2025-09-22'));
+
+        await expect(overnightGaps(page)).toHaveCount(2);
+
+        const departure = overnightGaps(dateGroup(page, SEP_21_LABEL));
+        await expect(departure.locator('.timeline-timestamp')).toContainText('09/21/2025, 18:00 EDT');
+        await expect(departure).toContainText('On this day: 18:00 - 23:59');
+
+        // Midnight in New York is 06:00 in Paris; the gap ends at 10:00 Paris time, 4 hours later
+        const sep22 = dateGroup(page, SEP_22_LABEL);
+        await expect(overnightGaps(sep22)).toContainText('On this day: 00:00 - 10:00 (4h)');
+        await expect(stayCard(sep22, 'Hotel Louvre').locator('.timeline-timestamp')).toContainText('09/22/2025 10:00 GMT+2');
+      });
+    });
+
+    test.describe('Across the date line', () => {
+      test('Tokyo to Honolulu: landing on an earlier calendar date keeps the trip on the departure day', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Asia/Tokyo',
+          timeDisplayMode: 'location',
+          seed: async (userId) => {
+            await insertStay(dbManager, userId, Places.TOKYO_HOTEL, {
+              timestamp: '2025-09-21T00:00:00Z', // Tokyo Sep 21 09:00
+              durationSeconds: 3600,
+            });
+            await insertTrip(dbManager, userId, Places.TOKYO_HOTEL, Places.HONOLULU_HOTEL, {
+              timestamp: '2025-09-21T01:00:00Z', // Tokyo Sep 21 10:00 -> Honolulu Sep 20 22:00
+              durationSeconds: 7 * 3600,
+              distanceMeters: 6200000,
+              movementType: 'FLIGHT',
+            });
+            await insertStay(dbManager, userId, Places.HONOLULU_HOTEL, {
+              timestamp: '2025-09-21T08:00:00Z', // Honolulu Sep 20 22:00 -> Sep 21 08:00
+              durationSeconds: 10 * 3600,
+            });
+            await insertStay(dbManager, userId, Places.HONOLULU_LOOKOUT, {
+              timestamp: '2025-09-21T19:00:00Z', // Honolulu Sep 21 09:00 (Tokyo Sep 22 04:00)
+              durationSeconds: 3 * 3600,
+            });
+          },
+        });
+
+        await page.goto(days('2025-09-20', '2025-09-22'));
+
+        // Dates never go backwards: everything after take-off stays on Sep 21
+        await expect(dateGroups(page)).toHaveCount(1);
+        const sep21 = dateGroup(page, SEP_21_LABEL);
+        await expect(sep21.locator('.timeline-card--stay')).toHaveCount(3);
+        await expect(sep21.locator('.timeline-card--trip')).toHaveCount(1);
+        await expect(page.locator('.timeline-card--overnight-stay, .timeline-card--overnight-trip')).toHaveCount(0);
+
+        await expect(stayCard(sep21, 'Shinjuku Hotel').locator('.timeline-timestamp')).toContainText('09/21/2025 09:00 GMT+9');
+        await expect(stayCard(sep21, 'Waikiki Hotel').locator('.timeline-timestamp')).toContainText('09/20/2025 22:00 HST');
+        await expect(stayCard(sep21, 'Diamond Head Lookout').locator('.timeline-timestamp')).toContainText('09/21/2025 09:00 HST');
+
+        await page.goto(day('2025-09-21'));
+
+        // From midnight in Tokyo to midnight in Honolulu: a 43-hour day
+        await expect(stayCard(page, 'Diamond Head Lookout')).toHaveCount(1);
+        await expectRangeRequested(requests.path, '2025-09-20T15:00:00.000Z', '2025-09-22T09:59:59.999Z');
+      });
+
+      test('Honolulu to Tokyo: a flight that skips a date without passing midnight stays on its departure day', async ({ page, isolatedUsers, dbManager }) => {
+        const requests = trackRangeRequests(page);
+        await createUserAndLogin(page, dbManager, isolatedUsers, {
+          timezone: 'Pacific/Honolulu',
+          timeDisplayMode: 'location',
+          seed: async (userId) => {
+            await insertStay(dbManager, userId, Places.HONOLULU_HOTEL, {
+              timestamp: '2025-09-20T20:00:00Z', // Honolulu Sep 20 10:00 -> 14:00
+              durationSeconds: 4 * 3600,
+            });
+            // Take-off at 14:00 HST is already Sep 21 09:00 in Tokyo; landing at 17:00 JST is Sep 20 22:00 in Honolulu
+            await insertTrip(dbManager, userId, Places.HONOLULU_HOTEL, Places.TOKYO_HOTEL, {
+              timestamp: '2025-09-21T00:00:00Z',
+              durationSeconds: 8 * 3600,
+              distanceMeters: 6200000,
+              movementType: 'FLIGHT',
+            });
+            await insertStay(dbManager, userId, Places.TOKYO_HOTEL, {
+              timestamp: '2025-09-21T08:00:00Z', // Tokyo Sep 21 17:00
+              durationSeconds: 3 * 3600,
+            });
+          },
+        });
+
+        await page.goto(days('2025-09-20', '2025-09-21'));
+
+        await expect(overnightTrips(page)).toHaveCount(0);
+        const sep20 = dateGroup(page, 'September 20, 2025');
+        await expect(stayCard(sep20, 'Waikiki Hotel').locator('.timeline-timestamp')).toContainText('09/20/2025 10:00 HST');
+        await expect(sep20.locator('.timeline-card--trip .timeline-timestamp')).toContainText('09/20/2025 14:00 HST');
+
+        const sep21 = dateGroup(page, SEP_21_LABEL);
+        await expect(sep21.locator('.timeline-card')).toHaveCount(1);
+        await expect(stayCard(sep21, 'Shinjuku Hotel').locator('.timeline-timestamp')).toContainText('09/21/2025 17:00 GMT+9');
+
+        // Sep 21 starts at landing, not at the earlier midnight in Tokyo, so the flight is not on its map
+        await page.goto(day('2025-09-21'));
+        await expect(stayCard(page, 'Shinjuku Hotel')).toHaveCount(1);
+        await expectRangeRequested(requests.path, '2025-09-21T08:00:00.000Z', '2025-09-21T14:59:59.999Z');
+      });
     });
   });
 });

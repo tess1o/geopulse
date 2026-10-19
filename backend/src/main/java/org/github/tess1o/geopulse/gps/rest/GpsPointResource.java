@@ -617,7 +617,7 @@ public class GpsPointResource {
      *
      * @param pointId The ID of the GPS point to update
      * @param editDto The update data
-     * @return The updated GPS point
+     * @return The updated GPS point and background refresh scheduling status
      */
     @PUT
     @Path("/{pointId}")
@@ -625,22 +625,59 @@ public class GpsPointResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     @Operation(summary = "Update a GPS point",
-            description = "Corrects the coordinates or other fields of a GPS point. The affected part of the "
-                    + "timeline is regenerated.")
-    public GpsPointDTO updateGpsPoint(
+            description = "Corrects the coordinates or other fields of a GPS point. Timeline regeneration from the "
+                    + "point's time, and a coverage rebuild when coordinates moved and coverage is enabled, are "
+                    + "scheduled in the background; the response says what was scheduled.")
+    public GpsPointUpdateResponse updateGpsPoint(
             @Parameter(description = "GPS point ID.")
             @PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to update GPS point {} for user {}", pointId, userId);
 
         try {
-            GpsPointDTO updatedPoint = gpsPointService.updateGpsPoint(pointId, editDto, userId);
-            return updatedPoint;
+            GpsPointUpdateResult updateResult = gpsPointService.updateGpsPoint(pointId, editDto, userId);
+            BackgroundRefresh refresh = scheduleBackgroundRefresh(
+                    userId, updateResult.earliestAffectedTimestamp(), updateResult.coordinatesChanged());
+            return new GpsPointUpdateResponse(
+                    updateResult.points().getFirst(),
+                    refresh.timelineJobId(),
+                    refresh.timelineRegenerationScheduled(),
+                    refresh.coverageRebuildScheduled());
         } catch (NotFoundException e) {
             throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found", e);
         } catch (ForbiddenException e) {
             throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied", e);
         }
+    }
+
+    /**
+     * Update multiple GPS points in one request.
+     * This endpoint requires authentication.
+     *
+     * @param bulkEditDto The corrections, one per GPS point
+     * @return Number of updated points and background refresh scheduling status
+     */
+    @PUT
+    @Path("/bulk")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    @Operation(summary = "Update several GPS points",
+            description = "Applies corrections to several GPS points in one transaction (at most 1000, each point "
+                    + "once). Like single edits, schedules one timeline regeneration from the earliest edited point, "
+                    + "and a coverage rebuild when coordinates moved, in the background.")
+    public GpsPointBulkUpdateResponse updateGpsPoints(@Valid BulkEditGpsPointsDto bulkEditDto) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to update {} GPS points for user {}", bulkEditDto.getEdits().size(), userId);
+
+        GpsPointUpdateResult updateResult = gpsPointService.updateGpsPoints(bulkEditDto.getEdits(), userId);
+        BackgroundRefresh refresh = scheduleBackgroundRefresh(
+                userId, updateResult.earliestAffectedTimestamp(), updateResult.coordinatesChanged());
+        return new GpsPointBulkUpdateResponse(
+                updateResult.points().size(),
+                refresh.timelineJobId(),
+                refresh.timelineRegenerationScheduled(),
+                refresh.coverageRebuildScheduled());
     }
 
     /**
@@ -726,15 +763,32 @@ public class GpsPointResource {
             return new GpsPointDeleteResponse(0, null, false, false);
         }
 
+        BackgroundRefresh refresh = scheduleBackgroundRefresh(userId, deleteResult.earliestAffectedTimestamp(), true);
+        return new GpsPointDeleteResponse(
+                deleteResult.deletedCount(),
+                refresh.timelineJobId(),
+                refresh.timelineRegenerationScheduled(),
+                refresh.coverageRebuildScheduled());
+    }
+
+    private record BackgroundRefresh(UUID timelineJobId, boolean timelineRegenerationScheduled,
+                                     boolean coverageRebuildScheduled) {
+    }
+
+    /**
+     * Schedule the derived-data refresh after GPS points changed: timeline regeneration from the earliest affected
+     * point, plus a coverage rebuild when point locations were affected.
+     */
+    private BackgroundRefresh scheduleBackgroundRefresh(UUID userId, Instant earliestAffectedTimestamp,
+                                                        boolean coverageAffected) {
         AsyncTimelineGenerationService.TimelineSchedulingResult timelineResult =
                 asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
                         userId,
-                        deleteResult.earliestAffectedTimestamp());
+                        earliestAffectedTimestamp);
 
-        boolean coverageRebuildScheduled = scheduleCoverageRebuildIfEnabled(userId);
+        boolean coverageRebuildScheduled = coverageAffected && scheduleCoverageRebuildIfEnabled(userId);
 
-        return new GpsPointDeleteResponse(
-                deleteResult.deletedCount(),
+        return new BackgroundRefresh(
                 timelineResult.jobId(),
                 timelineResult.scheduled(),
                 coverageRebuildScheduled);
@@ -751,7 +805,7 @@ public class GpsPointResource {
                     coverageProcessingService.requestFullRecalculationAsync(userId);
             return result.scheduled();
         } catch (Exception e) {
-            log.warn("Failed to schedule coverage rebuild after GPS deletion for user {}: {}", userId, e.getMessage(), e);
+            log.warn("Failed to schedule coverage rebuild after GPS change for user {}: {}", userId, e.getMessage(), e);
             return false;
         }
     }

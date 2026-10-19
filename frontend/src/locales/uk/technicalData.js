@@ -129,6 +129,18 @@ export default {
             selectPointAriaLabel: 'Вибрати GPS-точку від {date} {time}',
             actionsAriaLabel: 'Дії для GPS-точки від {date} {time}'
         },
+        pendingEdits: {
+            message: '{count} зміну GPS-точки ще не застосовано. Застосуйте її, щоб оновити точку й перегенерувати хронологію. | {count} зміни GPS-точок ще не застосовано. Застосуйте їх разом, щоб оновити точки й перегенерувати хронологію один раз. | {count} змін GPS-точок ще не застосовано. Застосуйте їх разом, щоб оновити точки й перегенерувати хронологію один раз.',
+            revertAll: 'Скасувати всі',
+            apply: 'Застосувати зміни',
+            revertTooltip: 'Скасувати зміну',
+            leaveConfirm: {
+                header: 'Незастосовані зміни',
+                message: 'У вас є {count} незастосована зміна GPS-точки. Якщо ви покинете цю сторінку, її буде втрачено. | У вас є {count} незастосовані зміни GPS-точок. Якщо ви покинете цю сторінку, їх буде втрачено. | У вас є {count} незастосованих змін GPS-точок. Якщо ви покинете цю сторінку, їх буде втрачено.',
+                accept: 'Покинути без застосування',
+                reject: 'Залишитися'
+            }
+        },
         dialogs: {
             delete: {
                 header: 'Видалити GPS-точку',
@@ -175,8 +187,8 @@ export default {
             coverageRebuildScheduled: 'Заплановано перебудову покриття.',
             deleteFailedSummary: 'Помилка видалення',
             deleteFailedFallback: 'Не вдалося видалити GPS-точку',
-            pointUpdatedSummary: 'GPS-точку оновлено',
-            pointUpdatedDetail: 'GPS-точку успішно оновлено',
+            pointsUpdatedSummary: 'GPS-точки оновлено',
+            pointsUpdatedDetail: 'Оновлено {count} GPS-точку. | Оновлено {count} GPS-точки. | Оновлено {count} GPS-точок.',
             updateFailedSummary: 'Помилка оновлення',
             updateFailedFallback: 'Не вдалося оновити GPS-точку',
             pointsDeletedSummary: 'GPS-точки видалено',

@@ -100,7 +100,7 @@ export const useNotesStore = defineStore('notes', {
     async fetchNotes(startTime = null, endTime = null, { includeExternal = true, forceRefresh = false } = {}) {
       if (!startTime || !endTime) {
         const dateRangeStore = useDateRangeStore()
-        const dateRange = dateRangeStore.getCurrentDateRange
+        const dateRange = dateRangeStore.getDataWindow
         if (!dateRange || dateRange.length !== 2) {
           return []
         }

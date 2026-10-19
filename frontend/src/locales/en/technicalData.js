@@ -124,6 +124,18 @@ export default {
             selectPointAriaLabel: 'Select GPS point from {date} {time}',
             actionsAriaLabel: 'Actions for GPS point from {date} {time}'
         },
+        pendingEdits: {
+            message: '{count} GPS point change is not applied yet. Apply it to update the point and regenerate the timeline. | {count} GPS point changes are not applied yet. Apply them together to update the points and regenerate the timeline once.',
+            revertAll: 'Revert All',
+            apply: 'Apply Changes',
+            revertTooltip: 'Revert change',
+            leaveConfirm: {
+                header: 'Unapplied Changes',
+                message: 'You have {count} GPS point change that is not applied. If you leave this page, it will be lost. | You have {count} GPS point changes that are not applied. If you leave this page, they will be lost.',
+                accept: 'Leave without applying',
+                reject: 'Stay'
+            }
+        },
         dialogs: {
             delete: {
                 header: 'Delete GPS Point',
@@ -170,8 +182,8 @@ export default {
             coverageRebuildScheduled: 'Coverage rebuild scheduled.',
             deleteFailedSummary: 'Delete Failed',
             deleteFailedFallback: 'Failed to delete GPS point',
-            pointUpdatedSummary: 'GPS Point Updated',
-            pointUpdatedDetail: 'GPS point has been successfully updated',
+            pointsUpdatedSummary: 'GPS Points Updated',
+            pointsUpdatedDetail: 'Updated {count} GPS point. | Updated {count} GPS points.',
             updateFailedSummary: 'Update Failed',
             updateFailedFallback: 'Failed to update GPS point',
             pointsDeletedSummary: 'GPS Points Deleted',

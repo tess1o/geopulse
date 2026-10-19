@@ -169,7 +169,9 @@ export default {
         speedPlaceholder: 'Швидкість у км/год',
         accuracyLabel: 'Точність (метри)',
         accuracyPlaceholder: 'Точність у метрах',
-        save: 'Зберегти',
+        stageChange: 'Додати зміну',
+        revertToOriginal: 'Повернути оригінал',
+        stagingHint: 'Зміни не зберігаються одразу: застосуйте їх разом кнопкою «Застосувати зміни» на сторінці GPS-даних.',
         validation: {
             latitudeRequired: "Широта є обов'язковою",
             latitudeRange: 'Широта має бути в діапазоні від -90 до 90',

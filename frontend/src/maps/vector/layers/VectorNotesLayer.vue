@@ -159,7 +159,7 @@ watch(
 )
 
 watch(
-  () => dateRangeStore.getCurrentDateRange,
+  () => dateRangeStore.getDataWindow,
   async (newRange) => {
     if (newRange && props.visible) {
       await fetchAndRenderNotes()

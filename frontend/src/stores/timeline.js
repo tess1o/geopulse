@@ -17,6 +17,8 @@ export const useTimelineStore = defineStore('timeline', {
         weatherStatus: null,
         weatherLoading: false,
         weatherError: null,
+        // Location time mode: UTC window of the local days shown (they start and end in each place's zone).
+        localDayWindow: null,
         error: null
     }),
 
@@ -135,10 +137,13 @@ export const useTimelineStore = defineStore('timeline', {
         // API Actions
         async fetchMovementTimeline(startTime, endTime) {
             this.error = null
+            this.localDayWindow = null
             try {
+                // Location mode: local days can start and end up to a day away from the profile-timezone range.
+                const fetchRange = timezone.getLocalDayFetchRange(startTime, endTime)
                 const params = {
-                    from: startTime,
-                    to: endTime
+                    from: fetchRange.start,
+                    to: fetchRange.end
                 }
                 // Only ask for per-item timezones in the opt-in "location" mode; the default request is unchanged.
                 if (timezone.isLocationTimeMode()) {
@@ -162,9 +167,19 @@ export const useTimelineStore = defineStore('timeline', {
                     timestamp: dataGap.startTime
                 }))
 
-                const results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
+                let results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
                     (a, b) => timezone.fromUtc(a.timestamp).valueOf() - timezone.fromUtc(b.timestamp).valueOf()
                 )
+
+                if (timezone.isLocationTimeMode() && startTime && endTime) {
+                    // Keep the items of the requested local days and remember the window they cover.
+                    const dateKeys = timezone.getDateRangeArray(startTime, endTime)
+                    timezone.annotateLocalDaySpans(results)
+                    this.localDayWindow = timezone.getLocalDayWindowUtc(
+                        results, dateKeys[0], dateKeys[dateKeys.length - 1]
+                    )
+                    results = results.filter(item => timezone.isItemInLocalDates(item, dateKeys))
+                }
 
                 this.setTimelineData(results)
                 return timeline

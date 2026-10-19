@@ -37,8 +37,10 @@ export const useTimelineCardPhotoMatching = ({
         return []
       }
 
-      const dayStart = timezone.create(currentDate).startOf('day')
-      const dayEnd = dayStart.endOf('day')
+      // Location time mode: the item's local day; profile mode: the profile-timezone day
+      const localBounds = timezone.isLocationTimeMode() ? timezone.getItemDayBounds(item, currentDate) : null
+      const dayStart = localBounds ? localBounds.start : timezone.create(currentDate).startOf('day')
+      const dayEnd = localBounds ? localBounds.end : dayStart.endOf('day')
       windowStart = windowStart.isAfter(dayStart) ? windowStart : dayStart
       windowEnd = windowEnd.isBefore(dayEnd) ? windowEnd : dayEnd
     }

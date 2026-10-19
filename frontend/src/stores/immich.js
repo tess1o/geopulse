@@ -152,7 +152,7 @@ export const useImmichStore = defineStore('immich', {
       }
 
       if (!startDate || !endDate) {
-        const dateRange = useDateRangeStore().getCurrentDateRange
+        const dateRange = useDateRangeStore().getDataWindow
         if (!dateRange || dateRange.length !== 2) return []
         ;[startDate, endDate] = dateRange
       }

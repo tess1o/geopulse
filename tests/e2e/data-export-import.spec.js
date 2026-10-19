@@ -503,9 +503,10 @@ test.describe('Data Export & Import', () => {
             // Wait for success toast
             await exportImportPage.waitForSuccessToast('Export Started');
 
-            // Wait for job card to appear
+            // Wait for job card to appear at the top of the tab, above the form
             await exportImportPage.waitForExportJobCard();
             expect(await exportImportPage.isExportJobCardVisible()).toBe(true);
+            expect(await exportImportPage.isJobCardAboveForm('export')).toBe(true);
 
             // Wait for job to complete
             await exportImportPage.waitForExportJobStatus('Completed', 60000);
@@ -513,6 +514,13 @@ test.describe('Data Export & Import', () => {
             // Verify job completed (jobs are stored in memory, not DB)
             const status = await exportImportPage.getExportJobStatus();
             expect(status.toLowerCase()).toContain('completed');
+
+            // Completed job offers its download, unlocks the form and is listed under recent exports
+            await expect(page.locator(exportImportPage.selectors.export.downloadButton)).toBeEnabled();
+            await expect(page.locator(exportImportPage.selectors.export.jobExpiry)).toBeVisible();
+            await expect(page.locator(exportImportPage.selectors.export.jobRunningHint)).toHaveCount(0);
+            expect(await exportImportPage.isExportFormLocked()).toBe(false);
+            await expect.poll(() => exportImportPage.getExportHistoryCount()).toBe(1);
         });
 
         test('should create OwnTracks export job', async ({ page, isolatedUsers, dbManager}) => {
@@ -588,14 +596,11 @@ test.describe('Data Export & Import', () => {
                     break;
                 }
 
-                try {
-                    const currentProgress = await exportImportPage.getExportJobProgress();
-                    if (currentProgress !== previousProgress) {
-                        progressUpdated = true;
-                        previousProgress = currentProgress;
-                    }
-                } catch (e) {
-                    // Progress bar might not be visible yet
+                // Null while the progress bar is not shown (not started yet, or already completed)
+                const currentProgress = await exportImportPage.getExportJobProgress();
+                if (currentProgress !== null && currentProgress !== previousProgress) {
+                    progressUpdated = true;
+                    previousProgress = currentProgress;
                 }
 
                 await page.waitForTimeout(1000);
@@ -603,6 +608,11 @@ test.describe('Data Export & Import', () => {
 
             // Wait for completion
             await exportImportPage.waitForExportJobStatus('Completed');
+
+            // The progress bar is replaced by the download actions once the job is done
+            await expect(page.locator(exportImportPage.selectors.export.jobProgress)).toHaveCount(0);
+            expect(await exportImportPage.getExportJobProgress()).toBeNull();
+            await expect(page.locator(exportImportPage.selectors.export.downloadButton)).toBeVisible();
         });
 
         test('should disable export button when required fields are missing', async ({ page, isolatedUsers, dbManager}) => {
@@ -847,6 +857,41 @@ test.describe('Data Export & Import', () => {
             // Verify filename
             const filename = download.suggestedFilename();
             expect(filename).toContain('geopulse-export');
+
+            // The job card marks the export as downloaded; the status tag stays readable next to it
+            await expect(page.locator(exportImportPage.selectors.export.downloadedTag)).toBeVisible();
+            expect((await exportImportPage.getExportJobStatus()).toLowerCase()).toContain('completed');
+        });
+
+        test('should restore completed export job after page reload', async ({ page, isolatedUsers, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const user = await dbManager.getUserByEmail(testUser.email);
+            await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 20);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await exportImportPage.navigate();
+            await exportImportPage.waitForPageLoad();
+
+            await exportImportPage.selectExportFormat('geopulse');
+            await exportImportPage.clickDateRangePreset('last30days');
+            await exportImportPage.clickStartExport();
+            await exportImportPage.waitForSuccessToast('Export Started');
+            await exportImportPage.waitForExportJobStatus('Completed', 60000);
+
+            // Reload: the finished job is picked back up from the server with its Download button
+            await page.reload();
+            await exportImportPage.waitForPageLoad();
+            await exportImportPage.waitForExportJobCard();
+
+            expect((await exportImportPage.getExportJobStatus()).toLowerCase()).toContain('completed');
+            expect(await exportImportPage.isJobCardAboveForm('export')).toBe(true);
+            await expect(page.locator(exportImportPage.selectors.export.downloadButton)).toBeEnabled();
+            await expect.poll(() => exportImportPage.getExportHistoryCount()).toBe(1);
         });
 
         test('should allow deleting export job', async ({ page, isolatedUsers, dbManager}) => {
@@ -877,9 +922,9 @@ test.describe('Data Export & Import', () => {
             // Wait for success toast
             await exportImportPage.waitForSuccessToast('deleted');
 
-            // Job card should disappear
-            await page.waitForTimeout(1000);
-            expect(await exportImportPage.isExportJobCardVisible()).toBe(false);
+            // Job card and its recent-exports entry should disappear
+            await expect(page.locator(exportImportPage.selectors.export.jobCard)).toHaveCount(0);
+            await expect(page.locator(exportImportPage.selectors.export.historyCard)).toHaveCount(0);
         });
     });
 
@@ -916,6 +961,40 @@ test.describe('Data Export & Import', () => {
 
             // Import button should be disabled
             expect(await exportImportPage.isImportButtonDisabled()).toBe(true);
+        });
+
+        test('should show selected file in the drop zone and allow removing it', async ({ page, isolatedUsers, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await exportImportPage.navigate();
+            await exportImportPage.waitForPageLoad();
+            await exportImportPage.switchToTab('import');
+
+            await exportImportPage.selectImportFormat('owntracks');
+            const ownTracksFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'owntracks-sample.json');
+            await exportImportPage.uploadFile(ownTracksFilePath);
+
+            expect(await exportImportPage.getSelectedImportFileName()).toBe('owntracks-sample.json');
+            expect(await exportImportPage.isImportButtonDisabled()).toBe(false);
+            await expect(page.locator(exportImportPage.selectors.import.clearDataCheckbox)).toBeVisible();
+
+            // Switching to a format that does not accept .json clears the selection
+            await exportImportPage.selectImportFormat('gpx');
+            expect(await exportImportPage.getSelectedImportFileName()).toBeNull();
+            expect(await exportImportPage.isImportButtonDisabled()).toBe(true);
+
+            // Removing the file from the drop zone clears the selection as well
+            await exportImportPage.selectImportFormat('owntracks');
+            await exportImportPage.uploadFile(ownTracksFilePath);
+            await exportImportPage.removeSelectedImportFile();
+            expect(await exportImportPage.getSelectedImportFileName()).toBeNull();
+            expect(await exportImportPage.isImportButtonDisabled()).toBe(true);
+            await expect(page.locator(exportImportPage.selectors.import.clearDataCheckbox)).toHaveCount(0);
         });
     });
 
@@ -1016,15 +1095,17 @@ test.describe('Data Export & Import', () => {
             await exportImportPage.selectImportFormat('geopulse');
             await exportImportPage.uploadFile(exportFilePath);
 
-            // Wait for file to be processed
-            await page.waitForTimeout(1000);
-
             await exportImportPage.clickStartImport();
             await exportImportPage.waitForSuccessToast();
             await exportImportPage.waitForImportJobCard();
 
+            // Job card is shown at the top of the tab and the drop zone is cleared for the next file
+            expect(await exportImportPage.isJobCardAboveForm('import')).toBe(true);
+            expect(await exportImportPage.getSelectedImportFileName()).toBeNull();
+
             // Wait for import to complete
             await exportImportPage.waitForImportJobStatus('Completed', 120000);
+            await expect(page.locator(exportImportPage.selectors.import.viewTimelineButton)).toBeVisible();
 
             // Try to get import summary (may not be available if backend doesn't send it)
             const summary = await exportImportPage.getImportSummary();
@@ -1128,7 +1209,6 @@ test.describe('Data Export & Import', () => {
 
             await exportImportPage.selectImportFormat('geopulse');
             await exportImportPage.uploadFile(exportFilePath);
-            await page.waitForTimeout(1000);
 
             // Deselect all and select only rawgps
             await exportImportPage.clickSelectAllImportDataTypes(); // Deselect all
@@ -1242,7 +1322,6 @@ test.describe('Data Export & Import', () => {
             await exportImportPage.switchToTab('import');
 
             await exportImportPage.uploadFile(exportFilePath);
-            await page.waitForTimeout(1000);
 
             // Enable date filter for February only (use March 1st to include all of Feb 28)
             await exportImportPage.enableDateFilter('2024-02-01', '2024-03-01');
@@ -1367,7 +1446,6 @@ test.describe('Data Export & Import', () => {
             await exportImportPage.switchToTab('import');
 
             await exportImportPage.uploadFile(exportFilePath);
-            await page.waitForTimeout(1000);
 
             // Enable "clear data before import" to replace existing data instead of merging
             await exportImportPage.enableClearDataBeforeImport();
@@ -1528,7 +1606,6 @@ test.describe('Data Export & Import', () => {
             // Upload sample OwnTracks file
             const ownTracksFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'owntracks-sample.json');
             await exportImportPage.uploadFile(ownTracksFilePath);
-            await page.waitForTimeout(1000);
 
             // Start import
             await exportImportPage.clickStartImport();
@@ -1577,7 +1654,6 @@ test.describe('Data Export & Import', () => {
             // Upload sample GPX file
             const gpxFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'gpx-sample.gpx');
             await exportImportPage.uploadFile(gpxFilePath);
-            await page.waitForTimeout(1000);
 
             // Start import
             await exportImportPage.clickStartImport();
@@ -1639,7 +1715,6 @@ test.describe('Data Export & Import', () => {
             // Upload sample Google Timeline file
             const googleTimelineFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'google-timeline-sample.json');
             await exportImportPage.uploadFile(googleTimelineFilePath);
-            await page.waitForTimeout(1000);
 
             // Start import
             await exportImportPage.clickStartImport();
@@ -1689,7 +1764,6 @@ test.describe('Data Export & Import', () => {
             // Upload sample Google Timeline file
             const googleTimelineFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'google-timeline-new.json');
             await exportImportPage.uploadFile(googleTimelineFilePath);
-            await page.waitForTimeout(1000);
 
             // Start import
             await exportImportPage.clickStartImport();
@@ -1770,7 +1844,6 @@ test.describe('Data Export & Import', () => {
             await exportImportPage.switchToTab('import');
 
             await exportImportPage.uploadFile(exportFilePath);
-            await page.waitForTimeout(1000);
 
             await exportImportPage.clickStartImport();
             await exportImportPage.waitForSuccessToast();
@@ -1850,7 +1923,6 @@ test.describe('Data Export & Import', () => {
 
             await exportImportPage.selectImportFormat('owntracks');
             await exportImportPage.uploadFile(exportFilePath);
-            await page.waitForTimeout(1000);
 
             await exportImportPage.clickStartImport();
             await exportImportPage.waitForSuccessToast();

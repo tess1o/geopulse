@@ -16,7 +16,6 @@ import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.Tag;
@@ -188,7 +187,6 @@ class GpsPointServiceRawMapPointsTest {
                 repository,
                 mock(GpsPointDuplicateDetectionService.class),
                 mock(EntityManager.class),
-                mock(StreamingTimelineGenerationService.class),
                 mock(GpsDataFilteringService.class),
                 mock(GpsTelemetryRenderingService.class),
                 mock(GeofenceEvaluationService.class),

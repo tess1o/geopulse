@@ -16,6 +16,10 @@ export const LocationTimezoneCities = Object.freeze({
   HELSINKI: { geonameId: 990000003, name: 'Helsinki', countryCode: 'FI', timezone: 'Europe/Helsinki', lat: 60.1695, lon: 24.9354 },
   // Gives Europe/Kyiv a home country (UA), so "abroad in the same UTC offset" can be detected.
   LVIV: { geonameId: 990000004, name: 'Lviv', countryCode: 'UA', timezone: 'Europe/Kyiv', lat: 49.8397, lon: 24.0297 },
+  // Travel days between Europe, the US west coast and across the date line.
+  PARIS: { geonameId: 990000005, name: 'Paris', countryCode: 'FR', timezone: 'Europe/Paris', lat: 48.8566, lon: 2.3522 },
+  LOS_ANGELES: { geonameId: 990000006, name: 'Los Angeles', countryCode: 'US', timezone: 'America/Los_Angeles', lat: 34.0522, lon: -118.2437 },
+  HONOLULU: { geonameId: 990000007, name: 'Honolulu', countryCode: 'US', timezone: 'Pacific/Honolulu', lat: 21.3069, lon: -157.8583 },
 });
 
 // Places near the seeded cities, plus one that is far from every city (beyond the 200 km default).
@@ -25,6 +29,12 @@ export const LocationTimezonePlaces = Object.freeze({
   TOKYO_HANEDA: { lat: 35.5494, lon: 139.7798 },
   HELSINKI_CAFE: { lat: 60.1699, lon: 24.9384, name: 'Esplanadi Cafe', city: 'Helsinki', country: 'Finland' },
   MID_ATLANTIC: { lat: 35.0, lon: -45.0, name: 'Atlantic Crossing', city: 'North Atlantic Ocean', country: 'International Waters' },
+  PARIS_HOTEL: { lat: 48.8600, lon: 2.3400, name: 'Hotel Louvre', city: 'Paris', country: 'France' },
+  PARIS_CAFE: { lat: 48.8530, lon: 2.3330, name: 'Left Bank Cafe', city: 'Paris', country: 'France' },
+  LA_HOTEL: { lat: 34.0500, lon: -118.2500, name: 'Downtown LA Hotel', city: 'Los Angeles', country: 'United States' },
+  LA_PIER: { lat: 34.0100, lon: -118.4960, name: 'Santa Monica Pier', city: 'Santa Monica', country: 'United States' },
+  HONOLULU_HOTEL: { lat: 21.2800, lon: -157.8300, name: 'Waikiki Hotel', city: 'Honolulu', country: 'United States' },
+  HONOLULU_LOOKOUT: { lat: 21.2620, lon: -157.8060, name: 'Diamond Head Lookout', city: 'Honolulu', country: 'United States' },
 });
 
 /** Idempotent and safe to run from several workers at once. */
