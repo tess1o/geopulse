@@ -5,6 +5,7 @@ import lombok.Builder;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 
 @Builder
@@ -28,7 +29,7 @@ public record BoatSetupStatusDTO(
         Instant updatedAt
 ) {
     private static String normalize(String value) {
-        return value == null ? null : value.trim().toUpperCase().replaceAll("[^A-Z0-9]+", "_");
+        return value == null ? null : value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_");
     }
 
     public enum Status {

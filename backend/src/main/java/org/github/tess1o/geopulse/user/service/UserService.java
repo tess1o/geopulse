@@ -299,7 +299,7 @@ public class UserService {
             return null;
         }
 
-        String normalized = dateFormat.trim().toUpperCase();
+        String normalized = dateFormat.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
             case "MDY", "DMY", "YMD" -> normalized;
             default -> throw new IllegalArgumentException("Invalid date format. Allowed values: MDY, DMY, YMD");
@@ -374,7 +374,7 @@ public class UserService {
             return; // Allow null/empty to use default tiles
         }
 
-        String normalizedUrl = tileUrl.trim().toLowerCase();
+        String normalizedUrl = tileUrl.trim().toLowerCase(Locale.ROOT);
 
         // Security: Only allow http:// and https:// protocols
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
@@ -419,7 +419,7 @@ public class UserService {
             return; // Allow null/empty to use default style
         }
 
-        String normalizedUrl = styleUrl.trim().toLowerCase();
+        String normalizedUrl = styleUrl.trim().toLowerCase(Locale.ROOT);
 
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
             log.warn("Invalid style URL protocol: {}", styleUrl);
@@ -482,10 +482,10 @@ public class UserService {
 
         // Security: Prevent absolute URLs and external redirects
         if (normalizedUrl.startsWith("//") ||
-                normalizedUrl.toLowerCase().contains("http:") ||
-                normalizedUrl.toLowerCase().contains("https:") ||
-                normalizedUrl.toLowerCase().contains("javascript:") ||
-                normalizedUrl.toLowerCase().contains("data:")) {
+                normalizedUrl.toLowerCase(Locale.ROOT).contains("http:") ||
+                normalizedUrl.toLowerCase(Locale.ROOT).contains("https:") ||
+                normalizedUrl.toLowerCase(Locale.ROOT).contains("javascript:") ||
+                normalizedUrl.toLowerCase(Locale.ROOT).contains("data:")) {
             log.warn("Dangerous pattern detected in redirect URL: {}", redirectUrl);
             throw new IllegalArgumentException("Default redirect URL must be an internal path, not an external URL");
         }

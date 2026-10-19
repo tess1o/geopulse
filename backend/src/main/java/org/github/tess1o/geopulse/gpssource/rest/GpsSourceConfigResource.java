@@ -48,6 +48,7 @@ import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -306,7 +307,7 @@ public class GpsSourceConfigResource {
             throw new IllegalArgumentException("Source type is required");
         }
         try {
-            return GpsSourceType.valueOf(sourceTypeValue.trim().toUpperCase());
+            return GpsSourceType.valueOf(sourceTypeValue.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported source type: " + sourceTypeValue, exception);
         }

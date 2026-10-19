@@ -360,7 +360,9 @@ public class BackupMaintenanceService {
         try (PreparedStatement statement = coordination.prepareStatement("SELECT " + function + "(?)")) {
             statement.setLong(1, key);
             try (ResultSet result = statement.executeQuery()) {
-                result.next();
+                if (!result.next()) {
+                    throw new SQLException(function + " returned no row");
+                }
                 if (function.startsWith("pg_advisory_lock") && !function.startsWith("pg_advisory_unlock")
                         && !function.startsWith("pg_try_")) {
                     return true;

@@ -25,6 +25,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -620,7 +621,7 @@ public class FavoriteLocationService {
 
         } catch (Exception e) {
             log.error("Failed to reconcile favorite {}: {}", favoriteId, e.getMessage(), e);
-            throw new RuntimeException("Reconciliation failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Reconciliation failed: " + e.getMessage(), e);
         }
     }
 
@@ -644,10 +645,10 @@ public class FavoriteLocationService {
                         }
                         // Filter by search text if specified
                         if (request.getFilterBySearchText() != null && !request.getFilterBySearchText().trim().isEmpty()) {
-                            String searchLower = request.getFilterBySearchText().toLowerCase();
-                            return f.getName().toLowerCase().contains(searchLower) ||
-                                    (f.getCity() != null && f.getCity().toLowerCase().contains(searchLower)) ||
-                                    (f.getCountry() != null && f.getCountry().toLowerCase().contains(searchLower));
+                            String searchLower = request.getFilterBySearchText().toLowerCase(Locale.ROOT);
+                            return f.getName().toLowerCase(Locale.ROOT).contains(searchLower) ||
+                                    (f.getCity() != null && f.getCity().toLowerCase(Locale.ROOT).contains(searchLower)) ||
+                                    (f.getCountry() != null && f.getCountry().toLowerCase(Locale.ROOT).contains(searchLower));
                         }
                         return true;
                     })

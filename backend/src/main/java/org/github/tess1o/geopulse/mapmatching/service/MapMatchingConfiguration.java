@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.mapmatching.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import java.util.Locale;
 
 @ApplicationScoped
 public class MapMatchingConfiguration {
@@ -38,7 +39,7 @@ public class MapMatchingConfiguration {
 
     public String provider() {
         String provider = settingsService.getString(PROVIDER);
-        return provider == null || provider.isBlank() ? "valhalla" : provider.trim().toLowerCase();
+        return provider == null || provider.isBlank() ? "valhalla" : provider.trim().toLowerCase(Locale.ROOT);
     }
 
     public boolean automaticEnabled() {

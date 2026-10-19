@@ -17,6 +17,8 @@ import java.util.Map;
  */
 final class ProblemFactory {
 
+    static final String REQUIRED_SCOPE_HEADER = "X-GeoPulse-Required-Scope";
+
     private ProblemFactory() {
     }
 
@@ -44,6 +46,11 @@ final class ProblemFactory {
         }
         if (!parameters.isEmpty()) {
             builder.with("parameters", parameters);
+        }
+        // Token clients (e.g. Home Assistant) read the missing scope from the top level and from a header.
+        if (code == ApiErrorCode.API_TOKEN_SCOPE_REQUIRED
+                && parameters.get(GeoPulseException.REQUIRED_SCOPE) instanceof String scope) {
+            builder.with(GeoPulseException.REQUIRED_SCOPE, scope).withHeader(REQUIRED_SCOPE_HEADER, scope);
         }
         return builder.build();
     }

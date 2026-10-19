@@ -15,6 +15,7 @@ import java.util.UUID;
 @ApplicationScoped
 @Slf4j
 public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
+    @Override
     public List<TimelineEvent> apply(UUID userId,
                                      List<TimelineEvent> events,
                                      TimelineConfig config,

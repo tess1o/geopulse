@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.ai.model.AITimelineTripDTO;
 import org.github.tess1o.geopulse.ai.model.AITripStatsDTO;
 import org.github.tess1o.geopulse.ai.model.StayGroupBy;
 import org.github.tess1o.geopulse.ai.model.TripGroupBy;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.RoutesStatistics;
 import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
@@ -22,6 +23,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+import static org.github.tess1o.geopulse.ai.service.AIToolArguments.zone;
+
 /**
  * AI Tools class containing business logic for timeline queries.
  */
@@ -32,14 +35,17 @@ public class AITimelineTools {
     private final StreamingTimelineAggregator streamingTimelineAggregator;
     private final RoutesAnalysisService routesAnalysisService;
     private final AITimelineTargetResolver targetResolver;
+    private final CurrentUserService currentUserService;
 
     @Inject
     public AITimelineTools(StreamingTimelineAggregator streamingTimelineAggregator,
                            RoutesAnalysisService routesAnalysisService,
-                           AITimelineTargetResolver targetResolver) {
+                           AITimelineTargetResolver targetResolver,
+                           CurrentUserService currentUserService) {
         this.streamingTimelineAggregator = streamingTimelineAggregator;
         this.routesAnalysisService = routesAnalysisService;
         this.targetResolver = targetResolver;
+        this.currentUserService = currentUserService;
     }
 
     public AIMovementTimelineDTO queryTimeline(String startDate, String endDate) {
@@ -90,8 +96,9 @@ public class AITimelineTools {
 
         LocalDate startLocalDate = LocalDate.parse(startDate);
         LocalDate endLocalDate = LocalDate.parse(endDate);
-        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        ZoneId zone = userZone();
+        Instant start = startLocalDate.atStartOfDay(zone).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(zone).toInstant();
         UUID userId = resolveTimelineOwnerUserId(targetScope, targetUser);
 
         try {
@@ -118,8 +125,9 @@ public class AITimelineTools {
 
         LocalDate startLocalDate = LocalDate.parse(startDate);
         LocalDate endLocalDate = LocalDate.parse(endDate);
-        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        ZoneId zone = userZone();
+        Instant start = startLocalDate.atStartOfDay(zone).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(zone).toInstant();
         UUID userId = resolveTimelineOwnerUserId(targetScope, targetUser);
 
         try {
@@ -146,8 +154,9 @@ public class AITimelineTools {
 
         LocalDate startLocalDate = LocalDate.parse(startDate);
         LocalDate endLocalDate = LocalDate.parse(endDate);
-        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        ZoneId zone = userZone();
+        Instant start = startLocalDate.atStartOfDay(zone).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(zone).toInstant();
         UUID userId = resolveTimelineOwnerUserId(targetScope, targetUser);
 
         try {
@@ -178,8 +187,9 @@ public class AITimelineTools {
     }
 
     private AIMovementTimelineDTO getTimeline(LocalDate startDate, LocalDate endDate, String targetScope, String targetUser) {
-        Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        ZoneId zone = userZone();
+        Instant start = startDate.atStartOfDay(zone).toInstant();
+        Instant end = endDate.plusDays(1).atStartOfDay(zone).toInstant();
         UUID userId = resolveTimelineOwnerUserId(targetScope, targetUser);
 
         try {
@@ -190,6 +200,11 @@ public class AITimelineTools {
             log.error("Unable to query timeline", e);
             return new AIMovementTimelineDTO();
         }
+    }
+
+    /** The dates in a request are the signed-in user's calendar days, also when reading a friend's timeline. */
+    private ZoneId userZone() {
+        return zone(currentUserService.getCurrentUser().getTimezone());
     }
 
     private UUID resolveTimelineOwnerUserId(String targetScope, String targetUser) {

@@ -32,7 +32,7 @@ final class AIToolArguments {
         try {
             return LocalDate.parse(value.trim());
         } catch (DateTimeParseException e) {
-            throw invalid(name + " must use YYYY-MM-DD format", name);
+            throw invalid(name + " must use YYYY-MM-DD format", name, e);
         }
     }
 
@@ -111,18 +111,27 @@ final class AIToolArguments {
         try {
             return stage.toCompletableFuture().join();
         } catch (CompletionException e) {
-            Throwable cause = e.getCause() == null ? e : e.getCause();
-            if (cause instanceof AIToolException toolException) {
-                throw toolException;
-            }
-            if (cause instanceof GeoPulseException geoPulseException) {
-                throw AIToolException.from(geoPulseException);
-            }
-            throw new AIToolException("TOOL_EXECUTION_ERROR", "The request to the connected service failed.", cause);
+            throw unwrap(e);
         }
     }
 
+    /** Returns the original failure behind a completion, as a tool error. */
+    private static AIToolException unwrap(CompletionException e) {
+        Throwable cause = e.getCause() == null ? e : e.getCause();
+        if (cause instanceof AIToolException toolException) {
+            return toolException;
+        }
+        if (cause instanceof GeoPulseException geoPulseException) {
+            return AIToolException.from(geoPulseException);
+        }
+        return new AIToolException("TOOL_EXECUTION_ERROR", "The request to the connected service failed.", cause);
+    }
+
     static AIToolException invalid(String message, String argument) {
-        return new AIToolException(INVALID_ARGUMENT, message, Map.of("argument", argument));
+        return invalid(message, argument, null);
+    }
+
+    static AIToolException invalid(String message, String argument, Throwable cause) {
+        return new AIToolException(INVALID_ARGUMENT, message, Map.of("argument", argument), cause);
     }
 }

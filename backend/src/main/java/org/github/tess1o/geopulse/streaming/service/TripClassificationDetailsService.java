@@ -404,7 +404,7 @@ public class TripClassificationDetailsService {
 
         // Priority 1: FLIGHT
         ClassificationStep flightStep = checkFlight(avgSpeedKmh, maxSpeedKmh,
-                trip.getDistanceMeters(), trip.getTripDuration(), isInferredTrip, config, speedSource);
+                trip.getDistanceMeters(), isInferredTrip, config, speedSource);
         steps.add(flightStep);
         if (flightStep.checked() && flightStep.passed()) {
             foundMatch = true;
@@ -600,7 +600,7 @@ public class TripClassificationDetailsService {
     }
 
     private ClassificationStep checkFlight(double avgSpeedKmh, double maxSpeedKmh,
-                                           long distanceMeters, long tripDurationSeconds,
+                                           long distanceMeters,
                                            boolean isInferredTrip, TimelineConfig config, String speedSource) {
         if (!Boolean.TRUE.equals(config.getFlightEnabled())) {
             return new ClassificationStep("FLIGHT", false, false,

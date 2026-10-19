@@ -204,7 +204,7 @@ public class MemosClient {
                     .header("Authorization", "Bearer " + apiKey)
                     .build(MemosRestClient.class);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to build Memos REST client", e);
+            throw new IllegalStateException("Failed to build Memos REST client", e);
         }
     }
 
@@ -227,7 +227,7 @@ public class MemosClient {
         } catch (ProcessingException ignored) {
             // Keep the original HTTP status as the primary error signal.
         }
-        throw new RuntimeException("Memos API error: " + status + (body == null || body.isBlank() ? "" : " - " + body));
+        throw new IllegalStateException("Memos API error: " + status + (body == null || body.isBlank() ? "" : " - " + body));
     }
 
     private String blankToNull(String value) {
@@ -235,7 +235,7 @@ public class MemosClient {
     }
 
     private void closeClient(MemosRestClient client) {
-        if (client instanceof AutoCloseable closeable) {
+        if (client instanceof AutoCloseable closeable) { // NOPMD - quiet-close helper: closing is the whole point
             try {
                 closeable.close();
             } catch (Exception e) {

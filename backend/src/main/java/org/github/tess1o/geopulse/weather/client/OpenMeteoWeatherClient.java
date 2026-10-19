@@ -52,13 +52,12 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         return WeatherConfigurationService.PROVIDER_OPEN_METEO;
     }
 
+    @Override
     public WeatherProviderSample fetchCurrent(double latitude, double longitude) {
         String forecastUrl = configurationService.forecastUrl();
-        OpenMeteoRestClient client = null;
         try {
-            client = buildClient(forecastUrl);
-            Response response = client.forecast(latitude, longitude, WEATHER_VARIABLES, null, null, null, "UTC", apiKeyOrNull());
-            OpenMeteoResponse payload = readPayload(response);
+            OpenMeteoRestClient client = buildClient(forecastUrl);
+            OpenMeteoResponse payload = readPayload(client.forecast(latitude, longitude, WEATHER_VARIABLES, null, null, null, "UTC", apiKeyOrNull()));
             return fromCurrent(payload, latitude, longitude);
         } catch (WeatherProviderException e) {
             throw e;
@@ -72,6 +71,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         }
     }
 
+    @Override
     public WeatherProviderSample fetchHourly(double latitude, double longitude, Instant targetAt) {
         Instant hour = targetAt.truncatedTo(ChronoUnit.HOURS);
         WeatherProviderSample sample = fetchHourlyBatch(latitude, longitude, List.of(hour)).get(hour);
@@ -105,20 +105,17 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         boolean archive = lastHour.isBefore(Instant.now().minus(Duration.ofDays(2)));
         String baseUrl = archive ? configurationService.archiveUrl() : configurationService.forecastUrl();
         String endpoint = archive ? "archive hourly weather" : "forecast hourly weather";
-        OpenMeteoRestClient client = null;
         try {
-            client = buildClient(baseUrl);
+            OpenMeteoRestClient client = buildClient(baseUrl);
             OpenMeteoResponse payload;
             if (archive) {
                 LocalDate startDate = LocalDateTime.ofInstant(firstHour, ZoneOffset.UTC).toLocalDate();
                 LocalDate endDate = LocalDateTime.ofInstant(lastHour, ZoneOffset.UTC).toLocalDate();
-                Response response = client.archive(latitude, longitude, WEATHER_VARIABLES, startDate.toString(), endDate.toString(), "UTC", apiKeyOrNull());
-                payload = readPayload(response);
+                payload = readPayload(client.archive(latitude, longitude, WEATHER_VARIABLES, startDate.toString(), endDate.toString(), "UTC", apiKeyOrNull()));
             } else {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").withZone(ZoneOffset.UTC);
-                Response response = client.forecast(latitude, longitude, null, WEATHER_VARIABLES,
-                        formatter.format(firstHour), formatter.format(lastHour), "UTC", apiKeyOrNull());
-                payload = readPayload(response);
+                payload = readPayload(client.forecast(latitude, longitude, null, WEATHER_VARIABLES,
+                        formatter.format(firstHour), formatter.format(lastHour), "UTC", apiKeyOrNull()));
             }
             return fromHourlyBatch(payload, latitude, longitude, new HashSet<>(hours));
         } catch (WeatherProviderException e) {
@@ -168,9 +165,8 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     .build();
         }
 
-        OpenMeteoRestClient client = null;
         try {
-            client = buildClient(forecastUrl);
+            OpenMeteoRestClient client = buildClient(forecastUrl);
             if (!beforeExternalCall.getAsBoolean()) {
                 return quotaExceededTestResponse(forecastUrl);
             }
@@ -197,9 +193,8 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     .build();
         }
 
-        OpenMeteoRestClient client = null;
         try {
-            client = buildClient(archiveUrl);
+            OpenMeteoRestClient client = buildClient(archiveUrl);
             if (!beforeExternalCall.getAsBoolean()) {
                 return quotaExceededTestResponse(archiveUrl);
             }
@@ -275,16 +270,14 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
     }
 
     private OpenMeteoResponse readPayload(Response response) {
-        int status = response.getStatus();
-        if (status < 200 || status >= 300) {
-            Instant retryAfter = retryAfter(response);
-            String body = safeErrorBody(response);
-            throw classifyHttpError(status, body, retryAfter);
-        }
-        try {
+        try (response) {
+            int status = response.getStatus();
+            if (status < 200 || status >= 300) {
+                Instant retryAfter = retryAfter(response);
+                String body = safeErrorBody(response);
+                throw classifyHttpError(status, body, retryAfter);
+            }
             return response.readEntity(OpenMeteoResponse.class);
-        } finally {
-            response.close();
         }
     }
 
@@ -315,10 +308,6 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                 .pressure(current.getPressureMsl())
                 .rawData(null)
                 .build();
-    }
-
-    private Optional<WeatherProviderSample> fromHourly(OpenMeteoResponse payload, double requestedLatitude, double requestedLongitude, Instant targetAt) {
-        return Optional.ofNullable(fromHourlyBatch(payload, requestedLatitude, requestedLongitude, Set.of(targetAt)).get(targetAt));
     }
 
     private Map<Instant, WeatherProviderSample> fromHourlyBatch(
@@ -415,7 +404,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
 
     private WeatherProviderException classifyHttpError(int status, String body, Instant retryAfter) {
         String message = body == null || body.isBlank() ? "Open-Meteo returned HTTP " + status : body;
-        String normalized = message.toLowerCase();
+        String normalized = message.toLowerCase(Locale.ROOT);
         if (status == 429 || containsQuotaText(normalized)) {
             return new WeatherProviderException(WeatherProviderErrorKind.QUOTA_EXCEEDED, status, retryAfter, message);
         }
@@ -460,7 +449,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
     }
 
     private void closeClient(OpenMeteoRestClient client) {
-        if (client instanceof Closeable closeable) {
+        if (client instanceof Closeable closeable) { // NOPMD - quiet-close helper: closing is the whole point
             try {
                 closeable.close();
             } catch (Exception e) {

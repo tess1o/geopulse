@@ -852,7 +852,7 @@ public class StreamingGoogleTimelineParser {
                     try {
                         accuracyMeters = parser.getDoubleValue();
                     } catch (Exception e) {
-                        log.error("Error parsing accuracyMeters", e.getMessage());
+                        log.error("Error parsing accuracyMeters: {}", e.getMessage());
                         //do nothing
                     }
                 }
@@ -861,7 +861,7 @@ public class StreamingGoogleTimelineParser {
                     try {
                         altitudeMeters = parser.getDoubleValue();
                     } catch (Exception e) {
-                        log.error("Error parsing accuracyMeters", e.getMessage());
+                        log.error("Error parsing altitudeMeters: {}", e.getMessage());
                         //do nothing
                     }
                 }

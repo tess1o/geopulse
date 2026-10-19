@@ -299,34 +299,35 @@ public class DebugImportService {
                 if (!GPS_DATA_FILE.equals(entry.getName())) {
                     continue;
                 }
-                JsonParser parser = objectMapper.getFactory().createParser(zis);
-                parser.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
-                if (parser.nextToken() != JsonToken.START_ARRAY) {
-                    throw new IllegalArgumentException("gps_data.json must contain a JSON array");
-                }
-                UserEntity user = entityManager.getReference(UserEntity.class, userId);
-                while (parser.nextToken() == JsonToken.START_OBJECT) {
-                    JsonNode point = objectMapper.readTree(parser);
-                    GpsPointEntity entity = toEntity(point, user);
-                    result.read++;
-                    result.latestPoint = latest(result.latestPoint, entity.getTimestamp());
-                    if (checkDuplicates && gpsPointRepository.findByUniqueKey(userId, entity.getTimestamp(),
-                            entity.getCoordinates()).isPresent()) {
-                        log.debug("Skipping duplicate GPS point: {}", point);
-                        continue;
+                try (JsonParser parser = objectMapper.getFactory().createParser(zis)) {
+                    parser.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
+                    if (parser.nextToken() != JsonToken.START_ARRAY) {
+                        throw new IllegalArgumentException("gps_data.json must contain a JSON array");
                     }
-                    gpsPointRepository.persist(entity);
-                    batch.add(entity);
-                    batchOnWater.add(point.hasNonNull("on_water") ? point.get("on_water").asBoolean() : null);
-                    if (batch.size() >= GPS_BATCH_SIZE) {
-                        result.waterFlags += flushBatch(batch, batchOnWater, waterDatasetVersion);
-                        result.imported += batch.size();
-                        batch.clear();
-                        batchOnWater.clear();
-                        user = entityManager.getReference(UserEntity.class, userId);
-                        if (expected > 0) {
-                            progress(job, 40 + (int) Math.min(35, result.read * 35 / expected),
-                                    "Importing GPS points " + result.read + " / " + expected + "...");
+                    UserEntity user = entityManager.getReference(UserEntity.class, userId);
+                    while (parser.nextToken() == JsonToken.START_OBJECT) {
+                        JsonNode point = objectMapper.readTree(parser);
+                        GpsPointEntity entity = toEntity(point, user);
+                        result.read++;
+                        result.latestPoint = latest(result.latestPoint, entity.getTimestamp());
+                        if (checkDuplicates && gpsPointRepository.findByUniqueKey(userId, entity.getTimestamp(),
+                                entity.getCoordinates()).isPresent()) {
+                            log.debug("Skipping duplicate GPS point: {}", point);
+                            continue;
+                        }
+                        gpsPointRepository.persist(entity);
+                        batch.add(entity);
+                        batchOnWater.add(point.hasNonNull("on_water") ? point.get("on_water").asBoolean() : null);
+                        if (batch.size() >= GPS_BATCH_SIZE) {
+                            result.waterFlags += flushBatch(batch, batchOnWater, waterDatasetVersion);
+                            result.imported += batch.size();
+                            batch.clear();
+                            batchOnWater.clear();
+                            user = entityManager.getReference(UserEntity.class, userId);
+                            if (expected > 0) {
+                                progress(job, 40 + (int) Math.min(35, result.read * 35 / expected),
+                                        "Importing GPS points " + result.read + " / " + expected + "...");
+                            }
                         }
                     }
                 }
@@ -452,7 +453,7 @@ public class DebugImportService {
 
             } catch (Exception e) {
                 log.error("Failed to import favorite location: {}", location, e);
-                throw new RuntimeException("Failed to import favorite location", e);
+                throw new IllegalStateException("Failed to import favorite location", e);
             }
         }
 
@@ -484,7 +485,7 @@ public class DebugImportService {
 
             } catch (Exception e) {
                 log.error("Failed to import favorite area: {}", area, e);
-                throw new RuntimeException("Failed to import favorite area", e);
+                throw new IllegalStateException("Failed to import favorite area", e);
             }
         }
 

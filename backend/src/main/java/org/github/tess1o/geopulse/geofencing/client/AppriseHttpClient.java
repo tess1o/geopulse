@@ -32,8 +32,6 @@ public class AppriseHttpClient {
     public AppriseClientResult ping(String baseUrl, String authToken, int timeoutMs, boolean verifyTls) {
         try {
             URI uri = normalizeBaseUrl(baseUrl);
-            HttpClient client = buildHttpClient(timeoutMs, verifyTls);
-
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(uri)
                     .GET()
                     .timeout(Duration.ofMillis(timeoutMs));
@@ -42,7 +40,7 @@ public class AppriseHttpClient {
                 requestBuilder.header("X-API-Key", authToken.trim());
             }
 
-            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = send(requestBuilder.build(), timeoutMs, verifyTls);
             int status = response.statusCode();
             if (status >= 200 && status < 500 && status != 401 && status != 403) {
                 return new AppriseClientResult(true, status, "Apprise endpoint is reachable");
@@ -68,8 +66,6 @@ public class AppriseHttpClient {
                                       String body) {
         try {
             URI endpoint = normalizeNotifyUrl(baseUrl);
-            HttpClient client = buildHttpClient(timeoutMs, verifyTls);
-
             List<String> urls = NotificationDestinationParser.parseUrls(destination);
             if (urls.isEmpty()) {
                 return new AppriseClientResult(false, 0, "No destination URLs provided");
@@ -93,7 +89,7 @@ public class AppriseHttpClient {
                 requestBuilder.header("X-API-Key", authToken.trim());
             }
 
-            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = send(requestBuilder.build(), timeoutMs, verifyTls);
             int status = response.statusCode();
             if (status >= 200 && status < 300) {
                 return new AppriseClientResult(true, status, "Delivered");
@@ -129,8 +125,6 @@ public class AppriseHttpClient {
             }
 
             URI endpoint = normalizeConfigNotifyUrl(baseUrl, configKey);
-            HttpClient client = buildHttpClient(timeoutMs, verifyTls);
-
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("title", title != null ? title : "GeoPulse");
             payload.put("body", body != null ? body : "GeoPulse geofence event");
@@ -151,7 +145,7 @@ public class AppriseHttpClient {
                 requestBuilder.header("X-API-Key", authToken.trim());
             }
 
-            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = send(requestBuilder.build(), timeoutMs, verifyTls);
             int status = response.statusCode();
             if (status >= 200 && status < 300) {
                 return new AppriseClientResult(true, status, "Delivered");
@@ -232,6 +226,13 @@ public class AppriseHttpClient {
                 .replace("+", "%20");
         String raw = notifyBase.toString();
         return URI.create(raw.endsWith("/") ? raw + encodedKey : raw + "/" + encodedKey);
+    }
+
+    /** Sends with a client made for this request; closing it releases the client's selector thread at once. */
+    private HttpResponse<String> send(HttpRequest request, int timeoutMs, boolean verifyTls) throws Exception {
+        try (HttpClient client = buildHttpClient(timeoutMs, verifyTls)) {
+            return client.send(request, HttpResponse.BodyHandlers.ofString());
+        }
     }
 
     private HttpClient buildHttpClient(int timeoutMs, boolean verifyTls) throws Exception {

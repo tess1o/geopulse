@@ -58,7 +58,7 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
             return new int[]{0, 0};
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         int totalDays = (int) ChronoUnit.DAYS.between(firstDate, today) + 1;
 
         String trackedDaysSql = """

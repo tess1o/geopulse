@@ -6,6 +6,9 @@ import java.util.UUID;
 
 public final class GeoPulseException extends RuntimeException {
 
+    /** Parameter of {@link ApiErrorCode#API_TOKEN_SCOPE_REQUIRED}: the scope the token is missing. */
+    public static final String REQUIRED_SCOPE = "requiredScope";
+
     private final ApiErrorCode code;
     private final String detail;
     private final Map<String, Object> parameters;

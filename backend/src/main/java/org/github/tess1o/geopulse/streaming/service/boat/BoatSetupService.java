@@ -379,7 +379,7 @@ public class BoatSetupService {
             updateJob(jobId, null, "READY", null, "Water dataset ready", 70, null);
         } catch (Exception e) {
             updateDatasetFailure("IMPORT_FAILED", e.getMessage());
-            throw new RuntimeException("Failed to import Boat water dataset: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to import Boat water dataset: " + e.getMessage(), e);
         } finally {
             if (artifactPath != null && isTemporaryArtifact(artifactPath)) {
                 try {
@@ -860,8 +860,7 @@ public class BoatSetupService {
             try (var statement = connection.prepareStatement("SELECT pg_try_advisory_lock(?)")) {
                 statement.setLong(1, key);
                 try (var resultSet = statement.executeQuery()) {
-                    resultSet.next();
-                    if (resultSet.getBoolean(1)) {
+                    if (resultSet.next() && resultSet.getBoolean(1)) {
                         return new AdvisoryLock(connection, key);
                     }
                 }

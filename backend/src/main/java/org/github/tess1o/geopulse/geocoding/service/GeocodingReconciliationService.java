@@ -71,7 +71,7 @@ public class GeocodingReconciliationService {
         } catch (Exception e) {
             log.error("Failed to reconcile geocoding {} with provider {}: {}",
                     geocodingId, providerName, e.getMessage(), e);
-            throw new RuntimeException("Reconciliation failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Reconciliation failed: " + e.getMessage(), e);
         }
     }
 

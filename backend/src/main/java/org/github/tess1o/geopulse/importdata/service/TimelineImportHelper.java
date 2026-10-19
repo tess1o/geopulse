@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationException;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -86,7 +87,7 @@ public class TimelineImportHelper {
                         Thread.currentThread().interrupt();
                         log.warn("Timeline generation retry interrupted for user {}", job.getUserId(), ie);
                         jobProgressService.failJob(timelineJobId, "Timeline generation retry interrupted");
-                        throw new RuntimeException("Timeline generation retry interrupted", ie); // NOPMD - preserves the nested InterruptedException
+                        throw new TimelineGenerationException("Timeline generation retry interrupted", ie); // NOPMD - preserves the nested InterruptedException
                     }
                 } else {
                     log.error("Failed to trigger timeline generation for bulk import for user {} after {} attempts: {}",
@@ -99,7 +100,7 @@ public class TimelineImportHelper {
                 log.error("Failed to trigger timeline generation for bulk import for user {}: {}",
                         job.getUserId(), e.getMessage(), e);
                 jobProgressService.failJob(timelineJobId, "Timeline generation failed: " + e.getMessage());
-                throw new RuntimeException("Timeline generation failed after import", e);
+                throw new TimelineGenerationException("Timeline generation failed after import", e);
             }
         }
 

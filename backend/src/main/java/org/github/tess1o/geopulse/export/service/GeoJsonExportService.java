@@ -1,7 +1,6 @@
 package org.github.tess1o.geopulse.export.service;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -71,7 +70,7 @@ public class GeoJsonExportService {
                             batchSize,
                             batchConsumer),
                     // Write each GPS point as GeoJSON feature
-                    this::writeGpsPointAsGeoJsonFeature,
+                    (gen, gpsPoint, mapper) -> writeGpsPointAsGeoJsonFeature(gen, gpsPoint),
                     // Progress tracking
                     job,
                     totalRecords,
@@ -96,7 +95,7 @@ public class GeoJsonExportService {
      * Writes a single GPS point as a GeoJSON feature directly to the JSON stream.
      * This method is called for each GPS point without accumulating them in memory.
      */
-    private void writeGpsPointAsGeoJsonFeature(JsonGenerator gen, GpsPointEntity gpsPoint, ObjectMapper mapper)
+    private void writeGpsPointAsGeoJsonFeature(JsonGenerator gen, GpsPointEntity gpsPoint)
             throws IOException {
 
         // Extract coordinates from PostGIS Point geometry

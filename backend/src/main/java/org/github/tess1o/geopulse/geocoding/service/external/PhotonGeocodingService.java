@@ -67,7 +67,7 @@ public class PhotonGeocodingService {
                     .build(PhotonRestClient.class);
         } catch (Exception e) {
             log.error("Failed to build Photon REST client with URL: {}", url, e);
-            throw new RuntimeException("Failed to build Photon REST client", e);
+            throw new IllegalStateException("Failed to build Photon REST client", e);
         }
     }
 

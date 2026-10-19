@@ -55,7 +55,7 @@ public class TimePatternService {
     }
 
     private MessageDescriptor getMonthlyComparison(UUID userId) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = LocalDate.now(ZoneOffset.UTC);
         int dayOfMonth = now.getDayOfMonth();
 
         // For early days of the month, show encouraging message instead of misleading comparison
@@ -187,7 +187,7 @@ public class TimePatternService {
     }
 
     private int getCurrentMonthActivityCount(UUID userId) {
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate currentMonth = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1);
         Instant currentMonthStart = currentMonth.atStartOfDay().toInstant(ZoneOffset.UTC);
 
         String currentMonthSql = """

@@ -206,7 +206,7 @@ public class SharedLinkService {
             return;
         }
 
-        String normalizedUrl = tileUrl.trim().toLowerCase();
+        String normalizedUrl = tileUrl.trim().toLowerCase(Locale.ROOT);
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
             throw new IllegalArgumentException("Custom map tile URL must use HTTP or HTTPS protocol");
         }
@@ -230,7 +230,7 @@ public class SharedLinkService {
             return;
         }
 
-        String normalizedUrl = styleUrl.trim().toLowerCase();
+        String normalizedUrl = styleUrl.trim().toLowerCase(Locale.ROOT);
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
             throw new IllegalArgumentException("Custom map style URL must use HTTP or HTTPS protocol");
         }

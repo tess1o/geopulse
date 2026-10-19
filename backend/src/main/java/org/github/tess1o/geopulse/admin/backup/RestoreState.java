@@ -57,8 +57,8 @@ public class RestoreState {
 
     public void validateDurableShape() {
         UUID.fromString(operationId);
-        Instant.parse(startedAt);
-        Instant.parse(updatedAt);
+        Instant.parse(startedAt); // NOPMD - parsing validates the value
+        Instant.parse(updatedAt); // NOPMD - parsing validates the value
         if (state == null || phase == null) {
             throw new IllegalArgumentException("Restore journal state and phase are required");
         }
@@ -71,7 +71,7 @@ public class RestoreState {
             throw new IllegalArgumentException("Restore journal source file name is invalid");
         }
         if (backupCreatedAt != null) {
-            Instant.parse(backupCreatedAt);
+            Instant.parse(backupCreatedAt); // NOPMD - parsing validates the value
         }
         if (EnumSet.of(RestoreOperationState.ACTIVATING, RestoreOperationState.SWAPPED_PENDING_RESTART,
                 RestoreOperationState.COMPLETED, RestoreOperationState.ACTIVATION_RETRYABLE,

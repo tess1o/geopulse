@@ -113,7 +113,7 @@ public class GeocodingProviderFactory {
      * Call a specific provider by name.
      */
     private Uni<FormattableGeocodingResult> callProvider(String providerName, Point requestCoordinates) {
-        Uni<FormattableGeocodingResult> request = switch (providerName.toLowerCase()) {
+        Uni<FormattableGeocodingResult> request = switch (providerName.toLowerCase(Locale.ROOT)) {
             case "nominatim" -> {
                 if (!nominatimService.isEnabled()) {
                     yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
@@ -272,7 +272,7 @@ public class GeocodingProviderFactory {
 
     private Uni<List<GeocodingSearchResult>> callProviderForward(String providerName, String query, Point biasCenter, int limit) {
         log.info("Calling {} with query {}", providerName, query);
-        return switch (providerName.toLowerCase()) {
+        return switch (providerName.toLowerCase(Locale.ROOT)) {
             case "nominatim" -> {
                 if (!nominatimService.isEnabled()) {
                     yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
@@ -321,7 +321,7 @@ public class GeocodingProviderFactory {
         }
 
         CustomGeocodingProviderEntity entity = provider.get();
-        return switch (entity.getType().toLowerCase()) {
+        return switch (entity.getType().toLowerCase(Locale.ROOT)) {
             case "photon" -> callCustomPhoton(entity, requestCoordinates);
             case "nominatim" -> callCustomNominatim(entity, requestCoordinates);
             default -> Uni.createFrom().failure(new GeocodingException("Unsupported custom provider type: " + entity.getType()));
@@ -335,7 +335,7 @@ public class GeocodingProviderFactory {
         }
 
         CustomGeocodingProviderEntity entity = provider.get();
-        return switch (entity.getType().toLowerCase()) {
+        return switch (entity.getType().toLowerCase(Locale.ROOT)) {
             case "photon" -> callCustomPhotonForward(entity, query, biasCenter, limit);
             case "nominatim" -> callCustomNominatimForward(entity, query, biasCenter, limit);
             default -> Uni.createFrom().failure(new GeocodingException("Unsupported custom provider type: " + entity.getType()));

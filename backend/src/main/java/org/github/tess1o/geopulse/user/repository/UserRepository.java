@@ -69,7 +69,7 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
      * @return List of UserSearchDTO matching the criteria
      */
     public List<UserSearchDTO> searchUsersToInvite(UUID currentUserId, String searchQuery) {
-        String likeQuery = "%" + searchQuery.toLowerCase() + "%";
+        String likeQuery = "%" + searchQuery.toLowerCase(Locale.ROOT) + "%";
 
         String sql = """
                 SELECT u.id, u.email, u.full_name, u.avatar

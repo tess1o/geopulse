@@ -26,6 +26,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_POI_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.POI_IMAGE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.POI_UNAVAILABLE;
 
 /**
@@ -109,7 +110,7 @@ public class PoiResource {
 
         Optional<PoiImageService.CachedImage> image = imageService.getThumbnail(imageFile);
         if (image.isEmpty()) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+            throw new GeoPulseException(POI_IMAGE_NOT_FOUND, "No usable image for this place");
         }
 
         PoiImageService.CachedImage cached = image.get();

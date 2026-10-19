@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -576,7 +577,7 @@ public class LocationAnalyticsService {
         }
 
         // Whitelist of allowed sort fields
-        return switch (sortBy.toLowerCase()) {
+        return switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "timestamp" -> "timestamp";
             case "stayduration" -> "stayDuration";
             case "locationname" -> "locationName";

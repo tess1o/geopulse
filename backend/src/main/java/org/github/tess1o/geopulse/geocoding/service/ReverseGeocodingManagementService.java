@@ -755,7 +755,7 @@ public class ReverseGeocodingManagementService {
             providers.add(GeocodingProviderDTO.builder()
                     .name(providerName)
                     .displayName(customProvider.map(p -> p.getDisplayName()).orElse(providerName))
-                    .type(customProvider.map(p -> p.getType()).orElse(providerName.toLowerCase()))
+                    .type(customProvider.map(p -> p.getType()).orElse(providerName.toLowerCase(Locale.ROOT)))
                     .enabled(true)
                     .isPrimary(providerName.equalsIgnoreCase(primaryProvider))
                     .isFallback(providerName.equalsIgnoreCase(fallbackProvider))

@@ -137,7 +137,7 @@ public class OidcTokenVerifier {
                     log.warn("Using stale JWKS cache for provider: {} due to fetch failure", provider.getName());
                     return cached.jwkSet;
                 }
-                throw new RuntimeException("Could not load JWKS for provider: " + provider.getName(), e);
+                throw new IllegalStateException("Could not load JWKS for provider: " + provider.getName(), e);
             }
         }
 

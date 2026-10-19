@@ -11,6 +11,7 @@ import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
@@ -528,7 +529,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             return "lastAccessedAt";
         }
 
-        return switch (sortField.toLowerCase()) {
+        return switch (sortField.toLowerCase(Locale.ROOT)) {
             case "displayname" -> "displayName";
             case "city" -> "city";
             case "country" -> "country";

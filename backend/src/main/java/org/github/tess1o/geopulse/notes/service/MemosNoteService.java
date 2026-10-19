@@ -104,7 +104,7 @@ public class MemosNoteService {
             log.error("Failed to load Memos notes for user {}: {}", userId, e.getMessage(), e);
             throw e instanceof RuntimeException runtimeException
                     ? runtimeException
-                    : new RuntimeException(e);
+                    : new IllegalStateException(e);
         }
     }
 

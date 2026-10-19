@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -163,7 +164,7 @@ public class TimelineLocationLookupService {
         return LocationLookupFavoriteDTO.builder()
                 .id(favorite.getId())
                 .name(favorite.getName())
-                .type(favorite.getType() != null ? favorite.getType().name().toLowerCase() : null)
+                .type(favorite.getType() != null ? favorite.getType().name().toLowerCase(Locale.ROOT) : null)
                 .relation(area ? "inside area" : "nearby point")
                 .distanceMeters(distance)
                 .build();

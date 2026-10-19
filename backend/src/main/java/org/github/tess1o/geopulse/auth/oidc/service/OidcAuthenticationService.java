@@ -159,7 +159,7 @@ public class OidcAuthenticationService {
                     // Different user - this OIDC account is already claimed
             throw new IllegalArgumentException("This OIDC account is already linked to another user", e);
                 } else {
-                    throw new RuntimeException("Unique constraint violated but connection not found", e);
+                    throw new IllegalStateException("Unique constraint violated but connection not found", e);
                 }
             } else {
                 throw e;

@@ -13,6 +13,7 @@ import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -262,7 +263,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @return The validated database column name
      */
     private String validateSortField(String sortBy) {
-        return switch (sortBy.toLowerCase()) {
+        return switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "timestamp" -> "timestamp";
             case "altitude" -> "altitude";
             case "battery" -> "battery";

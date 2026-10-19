@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -14,7 +15,7 @@ public class CustomGeocodingProviderRepository implements PanacheRepository<Cust
         if (name == null || name.isBlank()) {
             return Optional.empty();
         }
-        return find("lower(name) = ?1", name.trim().toLowerCase()).firstResultOptional();
+        return find("lower(name) = ?1", name.trim().toLowerCase(Locale.ROOT)).firstResultOptional();
     }
 
     public boolean existsByName(String name) {

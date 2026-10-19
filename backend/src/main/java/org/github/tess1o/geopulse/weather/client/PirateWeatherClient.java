@@ -47,11 +47,9 @@ public class PirateWeatherClient implements WeatherProviderClient {
     public WeatherProviderSample fetchCurrent(double latitude, double longitude) {
         requireApiKey();
         String baseUrl = configurationService.pirateBaseUrl();
-        PirateWeatherRestClient client = null;
         try {
-            client = buildClient(baseUrl);
-            Response response = client.forecast(configurationService.pirateApiKey(), latitude, longitude, UNITS, CURRENT_EXCLUDE);
-            PirateWeatherResponse payload = readPayload(response);
+            PirateWeatherRestClient client = buildClient(baseUrl);
+            PirateWeatherResponse payload = readPayload(client.forecast(configurationService.pirateApiKey(), latitude, longitude, UNITS, CURRENT_EXCLUDE));
             PirateWeatherResponse.PirateWeatherDataPoint current = payload.getCurrently();
             if (current == null) {
                 throw new WeatherProviderException(WeatherProviderErrorKind.INVALID_RESPONSE,
@@ -99,17 +97,15 @@ public class PirateWeatherClient implements WeatherProviderClient {
         }
         Instant anchorHour = hours.getFirst();
         String baseUrl = configurationService.pirateTimeMachineUrl();
-        PirateWeatherRestClient client = null;
         try {
-            client = buildClient(baseUrl);
-            Response response = client.timeMachine(
+            PirateWeatherRestClient client = buildClient(baseUrl);
+            PirateWeatherResponse payload = readPayload(client.timeMachine(
                     configurationService.pirateApiKey(),
                     latitude,
                     longitude,
                     anchorHour.getEpochSecond(),
                     UNITS,
-                    HOURLY_EXCLUDE);
-            PirateWeatherResponse payload = readPayload(response);
+                    HOURLY_EXCLUDE));
             Set<Instant> requested = new HashSet<>(hours);
             Map<Instant, WeatherProviderSample> result = new LinkedHashMap<>();
             List<PirateWeatherResponse.PirateWeatherDataPoint> points = payload.getHourly() == null
@@ -177,9 +173,8 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     .build();
         }
 
-        PirateWeatherRestClient client = null;
         try {
-            client = buildClient(baseUrl);
+            PirateWeatherRestClient client = buildClient(baseUrl);
             if (!beforeExternalCall.getAsBoolean()) {
                 return quotaExceededTestResponse(baseUrl);
             }
@@ -207,9 +202,8 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     .build();
         }
 
-        PirateWeatherRestClient client = null;
         try {
-            client = buildClient(baseUrl);
+            PirateWeatherRestClient client = buildClient(baseUrl);
             if (!beforeExternalCall.getAsBoolean()) {
                 return quotaExceededTestResponse(baseUrl);
             }
@@ -287,16 +281,14 @@ public class PirateWeatherClient implements WeatherProviderClient {
     }
 
     private PirateWeatherResponse readPayload(Response response) {
-        int status = response.getStatus();
-        if (status < 200 || status >= 300) {
-            Instant retryAfter = retryAfter(response);
-            String body = safeErrorBody(response);
-            throw classifyHttpError(status, body, retryAfter);
-        }
-        try {
+        try (response) {
+            int status = response.getStatus();
+            if (status < 200 || status >= 300) {
+                Instant retryAfter = retryAfter(response);
+                String body = safeErrorBody(response);
+                throw classifyHttpError(status, body, retryAfter);
+            }
             return response.readEntity(PirateWeatherResponse.class);
-        } finally {
-            response.close();
         }
     }
 
@@ -319,20 +311,6 @@ public class PirateWeatherClient implements WeatherProviderClient {
                 .url(url)
                 .message(error.isBlank() ? "Pirate Weather " + endpoint + " endpoint returned HTTP " + status : error)
                 .build();
-    }
-
-    private Optional<PirateWeatherResponse.PirateWeatherDataPoint> matchingHour(PirateWeatherResponse payload, Instant targetAt) {
-        List<PirateWeatherResponse.PirateWeatherDataPoint> points = payload.getHourly() == null
-                ? List.of()
-                : payload.getHourly().getData();
-        if (points == null || points.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return points.stream()
-                .filter(point -> point.getTime() != null)
-                .min(Comparator.comparingLong(point -> Math.abs(point.getTime() - targetAt.getEpochSecond())))
-                .filter(point -> Math.abs(point.getTime() - targetAt.getEpochSecond()) <= HOURLY_MATCH_TOLERANCE_SECONDS);
     }
 
     private WeatherProviderSample fromDataPoint(PirateWeatherResponse payload,
@@ -487,7 +465,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
     }
 
     private void closeClient(PirateWeatherRestClient client) {
-        if (client instanceof Closeable closeable) {
+        if (client instanceof Closeable closeable) { // NOPMD - quiet-close helper: closing is the whole point
             try {
                 closeable.close();
             } catch (Exception e) {

@@ -1,11 +1,12 @@
 package org.github.tess1o.geopulse.auth.service;
 
-import io.quarkiverse.httpproblem.HttpProblem;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_SCOPE_REQUIRED;
@@ -16,8 +17,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_SCOPE
  */
 @ApplicationScoped
 public class ApiTokenScopeChecker {
-
-    public static final String REQUIRED_SCOPE_HEADER = "X-GeoPulse-Required-Scope";
 
     public boolean isApiToken(SecurityIdentity identity) {
         return identity != null && !identity.isAnonymous()
@@ -42,22 +41,15 @@ public class ApiTokenScopeChecker {
     }
 
     /**
-     * Throws a 403 problem naming the first scope of {@code anyOf} when the token has none of them.
+     * Throws a 403 problem naming the first scope of {@code anyOf} when the token has none of them. The problem
+     * envelope also exposes the scope as {@code requiredScope} and in a header; see {@code ProblemFactory}.
      */
     public void requireAnyScope(SecurityIdentity identity, ApiTokenScope... anyOf) {
         if (!hasAnyScope(identity, anyOf)) {
-            throw denied(anyOf[0]);
+            ApiTokenScope required = anyOf[0];
+            throw new GeoPulseException(API_TOKEN_SCOPE_REQUIRED,
+                    "This API token does not have the '" + required.value() + "' scope.",
+                    Map.of(GeoPulseException.REQUIRED_SCOPE, required.value()));
         }
-    }
-
-    public HttpProblem denied(ApiTokenScope required) {
-        return HttpProblem.builder()
-                .withStatus(API_TOKEN_SCOPE_REQUIRED.statusCode())
-                .withTitle(API_TOKEN_SCOPE_REQUIRED.title())
-                .withDetail("This API token does not have the '" + required.value() + "' scope.")
-                .with("code", API_TOKEN_SCOPE_REQUIRED)
-                .with("requiredScope", required.value())
-                .withHeader(REQUIRED_SCOPE_HEADER, required.value())
-                .build();
     }
 }

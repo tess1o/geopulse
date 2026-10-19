@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -246,7 +247,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
             }
             if (parts.length > 8 && !parts[8].trim().isEmpty()) {
                 try {
-                    row.sourceType = GpsSourceType.valueOf(parts[8].trim().toUpperCase());
+                    row.sourceType = GpsSourceType.valueOf(parts[8].trim().toUpperCase(Locale.ROOT));
                 } catch (IllegalArgumentException e) {
                     // Invalid source type - will use default (CSV)
                     row.sourceType = GpsSourceType.CSV;

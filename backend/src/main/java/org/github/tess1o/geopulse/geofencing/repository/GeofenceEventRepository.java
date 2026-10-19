@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -122,7 +123,7 @@ public class GeofenceEventRepository implements PanacheRepository<GeofenceEventE
             return "e.occurredAt";
         }
 
-        return switch (sortBy.trim().toLowerCase()) {
+        return switch (sortBy.trim().toLowerCase(Locale.ROOT)) {
             case "subject", "subjectdisplayname" -> "e.subjectDisplayName";
             case "event", "eventtype" -> "e.eventType";
             case "time", "occurredat" -> "e.occurredAt";

@@ -33,7 +33,7 @@ public final class NativeDatabaseBackup {
         log.info("Backup operation {} creating encrypted native database backup; file={}", operationId, output.getFileName());
         KeyCipher key = KeyCipher.load(context.keyLocation());
         RestoreJournal.createPrivateFile(output);
-        try (Connection snapshot = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(snapshot, deadline)) {
+        try (Connection snapshot = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline _ = new ConnectionDeadline(snapshot, deadline)) {
             snapshot.setAutoCommit(false);
             snapshot.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             snapshot.setReadOnly(true);
@@ -124,7 +124,7 @@ public final class NativeDatabaseBackup {
             phase.accept(RestorePhase.PREFLIGHT);
             List<Map<String, Object>> localSettings;
             int serverMajor;
-            try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(live, deadline)) {
+            try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline _ = new ConnectionDeadline(live, deadline)) {
                 NativeBackupManifest local = describe(live);
                 serverMajor = local.postgresMajor;
                 // A backup restores onto the same or a newer PostgreSQL major (e.g. 17 -> 18), never onto an older one.
@@ -144,7 +144,7 @@ public final class NativeDatabaseBackup {
             if (tools.major(state.operationId, "pg_restore") != serverMajor)
                 throw new IOException("pg_restore must match the server PostgreSQL major version");
             Map<String, String> extensions;
-            try (Connection admin = context.postgres().connect(context.postgres().maintenanceDatabase(), true); ConnectionDeadline guard = new ConnectionDeadline(admin, deadline)) {
+            try (Connection admin = context.postgres().connect(context.postgres().maintenanceDatabase(), true); ConnectionDeadline _ = new ConnectionDeadline(admin, deadline)) {
                 state.originalDatabase = context.postgres().database();
                 state.originalOid = databaseOid(admin, state.originalDatabase);
                 String suffix = state.operationId.replace("-", "");
@@ -159,7 +159,7 @@ public final class NativeDatabaseBackup {
             }
             phase.accept(RestorePhase.RESTORING);
             Set<String> installedSchemas = new HashSet<>();
-            try (Connection staging = context.postgres().connect(state.stagingDatabase, true); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
+            try (Connection staging = context.postgres().connect(state.stagingDatabase, true); ConnectionDeadline _ = new ConnectionDeadline(staging, deadline)) {
                 installExtensions(staging, extensions);
                 for (List<String> schema : strings(staging, "SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'"))
                     installedSchemas.add(schema.get(0));
@@ -179,7 +179,7 @@ public final class NativeDatabaseBackup {
                             "--role=" + context.postgres().username(), "--use-list=" + restoreList, extracted.resolve("database.dump").toString()),
                     state.stagingDatabase, true, OutputStream.nullOutputStream(), deadline);
             phase.accept(RestorePhase.SECRETS);
-            try (Connection staging = context.postgres().connect(state.stagingDatabase, false); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
+            try (Connection staging = context.postgres().connect(state.stagingDatabase, false); ConnectionDeadline _ = new ConnectionDeadline(staging, deadline)) {
                 staging.setAutoCommit(false);
                 try {
                     reencrypt(staging, source, destination, deadline);
@@ -435,10 +435,10 @@ public final class NativeDatabaseBackup {
      */
     public void refreshDestinationBackupSettings(RestoreState state, Instant deadline) throws Exception {
         List<Map<String, Object>> settings;
-        try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(live, deadline)) {
+        try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline _ = new ConnectionDeadline(live, deadline)) {
             settings = rows(live, "SELECT * FROM system_settings WHERE key LIKE 'backup.%' ORDER BY key");
         }
-        try (Connection staging = context.postgres().connect(state.stagingDatabase, false); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
+        try (Connection staging = context.postgres().connect(state.stagingDatabase, false); ConnectionDeadline _ = new ConnectionDeadline(staging, deadline)) {
             staging.setAutoCommit(false);
             try {
                 preserveSettings(staging, settings);

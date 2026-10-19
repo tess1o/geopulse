@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -67,7 +68,7 @@ public class GeocodingConfigurationService {
             return getDelayMs();
         }
 
-        return switch (providerName.toLowerCase()) {
+        return switch (providerName.toLowerCase(Locale.ROOT)) {
             case "geoapify" -> settingsService.getInteger("geocoding.geoapify.delay-ms");
             case "chibigeo" -> settingsService.getInteger("geocoding.chibigeo.delay-ms");
             default -> customProviderService == null ? getDelayMs() : customProviderService.findByName(providerName)

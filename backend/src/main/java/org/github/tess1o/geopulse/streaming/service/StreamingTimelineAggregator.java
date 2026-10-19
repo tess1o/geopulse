@@ -217,9 +217,7 @@ public class StreamingTimelineAggregator {
                 .orElse(null);
         var gapEntities = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
         for (var gapEntity : gapEntities) {
-            boolean ongoing = latestGpsTimestamp != null
-                    && gapEntity.getStartTime() != null
-                    && gapEntity.getStartTime().equals(latestGpsTimestamp);
+            boolean ongoing = latestGpsTimestamp != null && latestGpsTimestamp.equals(gapEntity.getStartTime());
             var gapDTO = new TimelineDataGapDTO(
                     gapEntity.getId(), gapEntity.getStartTime(), gapEntity.getEndTime(), ongoing);
             gapDTO.setExplanation(TimelineExplanationDTO.from(gapEntity.getExplanation()));
@@ -347,7 +345,7 @@ public class StreamingTimelineAggregator {
         }
 
         for (TimelineTripDTO otherTrip : trips) {
-            if (otherTrip == null || otherTrip == currentTrip || otherTrip.getTimestamp() == null) {
+            if (otherTrip == null || otherTrip == currentTrip || otherTrip.getTimestamp() == null) { // NOPMD - skip this very trip, by identity
                 continue;
             }
 

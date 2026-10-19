@@ -30,6 +30,7 @@ import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideServ
 import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -93,7 +94,7 @@ public class TripTimelineResource {
         }
         TripType movementType;
         try {
-            movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase());
+            movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid movementType",
                     Map.of("movementType", request.getMovementType(), "allowedValues",

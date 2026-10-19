@@ -19,6 +19,7 @@ import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -182,7 +183,7 @@ public class TripPlanItemService {
         TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
                 .orElseThrow(() -> new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip plan item not found"));
 
-        String action = request != null && request.getAction() != null ? request.getAction().trim().toUpperCase() : "";
+        String action = request != null && request.getAction() != null ? request.getAction().trim().toUpperCase(Locale.ROOT) : "";
 
         switch (action) {
             case "CONFIRM_VISITED" -> {

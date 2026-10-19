@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -353,7 +354,7 @@ public class MapMatchingWorker {
     private void recordMetrics(long started, String result) {
         if (workloadMetrics == null) return;
         workloadMetrics.recordTimer("geopulse.map_matching.worker.duration", started,
-                "component", "map_matching", "result", result == null ? "unknown" : result.toLowerCase());
+                "component", "map_matching", "result", result == null ? "unknown" : result.toLowerCase(Locale.ROOT));
         targetRepository.countByStatus().forEach((status, count) ->
                 workloadMetrics.setGauge("geopulse.map_matching.queue.depth", count,
                         "queue", "targets", "status", status));

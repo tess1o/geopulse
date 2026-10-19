@@ -103,7 +103,7 @@ public class AdminSettingsBackupService {
         validateFinalSettingsState(definitions, supportedSettings);
 
         int oidcImported = replaceOidcProviders(backup, adminId);
-        int oidcRemoved = removeMissingOidcProviders(backup, adminId);
+        int oidcRemoved = removeMissingOidcProviders(backup);
         int envOverridesCreated = createDisabledEnvironmentOidcOverrides(backup, adminId);
 
         removeMissingSystemSettings(supportedSettings.keySet());
@@ -278,7 +278,7 @@ public class AdminSettingsBackupService {
         return imported;
     }
 
-    private int removeMissingOidcProviders(AdminSettingsBackupDto backup, UUID adminId) {
+    private int removeMissingOidcProviders(AdminSettingsBackupDto backup) {
         Set<String> importedNames = importedOidcNames(backup);
         int removed = 0;
         for (OidcProviderConfiguration existing : oidcProviderConfigurationService.loadAllProviders()) {

@@ -23,6 +23,7 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -211,7 +212,7 @@ public class GeonamesCityImportService {
     private ZipEntry findFirstTxtEntry(ZipInputStream zis) throws IOException {
         ZipEntry entry;
         while ((entry = zis.getNextEntry()) != null) {
-            if (!entry.isDirectory() && entry.getName().toLowerCase().endsWith(".txt")) {
+            if (!entry.isDirectory() && entry.getName().toLowerCase(Locale.ROOT).endsWith(".txt")) {
                 return entry;
             }
             zis.closeEntry();

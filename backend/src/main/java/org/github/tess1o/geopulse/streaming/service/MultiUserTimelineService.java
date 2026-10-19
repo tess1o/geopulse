@@ -167,7 +167,7 @@ public class MultiUserTimelineService {
                 results.add(userTimeline);
             } catch (Exception e) {
                 log.error("Error fetching timeline for user {}", userId, e);
-                throw new RuntimeException("Failed to fetch timeline for user: " + userId, e);
+                throw new IllegalStateException("Failed to fetch timeline for user: " + userId, e);
             }
         }
 
@@ -190,7 +190,7 @@ public class MultiUserTimelineService {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             log.error("User not found: {}", userId);
-            throw new RuntimeException("User not found: " + userId);
+            throw new IllegalStateException("User not found: " + userId);
         }
 
         // Fetch timeline

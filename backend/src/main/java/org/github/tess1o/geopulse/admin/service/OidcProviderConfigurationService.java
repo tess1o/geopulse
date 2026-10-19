@@ -318,8 +318,8 @@ public class OidcProviderConfigurationService {
                 int firstDot = remaining.indexOf('.');
 
                 if (firstDot > 0) {
-                    String providerName = remaining.substring(0, firstDot).toLowerCase();
-                    String configKey = remaining.substring(firstDot + 1).toLowerCase();
+                    String providerName = remaining.substring(0, firstDot).toLowerCase(Locale.ROOT);
+                    String configKey = remaining.substring(firstDot + 1).toLowerCase(Locale.ROOT);
 
                     Optional<String> optionalValue = config.getOptionalValue(propertyName, String.class);
                     if (optionalValue.isPresent()) {
@@ -345,8 +345,8 @@ public class OidcProviderConfigurationService {
                 int firstUnderscore = remaining.indexOf('_');
 
                 if (firstUnderscore > 0) {
-                    String providerName = remaining.substring(0, firstUnderscore).toLowerCase();
-                    String configKey = remaining.substring(firstUnderscore + 1).toLowerCase().replace('_', '-');
+                    String providerName = remaining.substring(0, firstUnderscore).toLowerCase(Locale.ROOT);
+                    String configKey = remaining.substring(firstUnderscore + 1).toLowerCase(Locale.ROOT).replace('_', '-');
 
                     if (envValue != null && !envValue.trim().isEmpty()) {
                         providerConfigs.computeIfAbsent(providerName, ignored -> new ConcurrentHashMap<>())

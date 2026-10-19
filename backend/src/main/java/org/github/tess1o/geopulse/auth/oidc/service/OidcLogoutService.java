@@ -160,7 +160,7 @@ public class OidcLogoutService {
             String value = claims.getStringClaim(name);
             return value == null || value.isBlank() ? null : value;
         } catch (ParseException e) {
-            throw invalid("Logout token claim " + name + " is not a string");
+            throw invalid("Logout token claim " + name + " is not a string", e);
         }
     }
 
@@ -169,6 +169,10 @@ public class OidcLogoutService {
     }
 
     private static GeoPulseException invalid(String detail) {
-        return new GeoPulseException(OIDC_LOGOUT_TOKEN_INVALID, detail);
+        return invalid(detail, null);
+    }
+
+    private static GeoPulseException invalid(String detail, Throwable cause) {
+        return new GeoPulseException(OIDC_LOGOUT_TOKEN_INVALID, detail, cause);
     }
 }

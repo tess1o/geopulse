@@ -74,10 +74,9 @@ public class StreamingExportService {
             int progressEnd,
             String progressPrefix) throws IOException {
 
-        JsonGenerator gen = jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8);
-        gen.setCodec(objectMapper);
+        try (JsonGenerator gen = jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
+            gen.setCodec(objectMapper);
 
-        try {
             gen.writeStartArray();
 
             int progressRange = progressEnd - progressStart;
@@ -126,8 +125,6 @@ public class StreamingExportService {
             log.info("Completed streaming {} records in {} batches", totalWritten[0], batchCount[0]);
             return totalWritten[0];
 
-        } finally {
-            gen.close();
         }
     }
 
@@ -161,10 +158,9 @@ public class StreamingExportService {
             int progressEnd,
             String progressPrefix) throws IOException {
 
-        JsonGenerator gen = jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8);
-        gen.setCodec(objectMapper);
+        try (JsonGenerator gen = jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
+            gen.setCodec(objectMapper);
 
-        try {
             gen.writeStartObject();
 
             // Write object fields (metadata, type, etc.)
@@ -221,8 +217,6 @@ public class StreamingExportService {
             log.info("Completed streaming {} records in {} batches", totalWritten[0], batchCount[0]);
             return totalWritten[0];
 
-        } finally {
-            gen.close();
         }
     }
 

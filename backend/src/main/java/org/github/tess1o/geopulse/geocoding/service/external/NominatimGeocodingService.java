@@ -62,7 +62,7 @@ public class NominatimGeocodingService {
                     .build(NominatimRestClient.class);
         } catch (Exception e) {
             log.error("Failed to build Nominatim REST client with URL: {}", url, e);
-            throw new RuntimeException("Failed to build Nominatim REST client", e);
+            throw new IllegalStateException("Failed to build Nominatim REST client", e);
         }
     }
 

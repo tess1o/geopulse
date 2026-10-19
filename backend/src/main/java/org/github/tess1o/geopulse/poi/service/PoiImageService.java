@@ -241,17 +241,19 @@ public class PoiImageService {
             return null;
         }
 
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(20))
                 .header("User-Agent", config.getUserAgent())
                 .GET()
                 .build();
 
-        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        HttpResponse<byte[]> response;
+        try (HttpClient client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .connectTimeout(Duration.ofSeconds(5))
+                .build()) {
+            response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             log.warn("Commons image fetch returned HTTP {}", response.statusCode());
             return null;

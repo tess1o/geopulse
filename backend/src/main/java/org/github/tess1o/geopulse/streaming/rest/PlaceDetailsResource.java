@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -349,7 +350,7 @@ public class PlaceDetailsResource {
             // Generate filename
             String sanitizedName = placeDetails.getLocationName()
                     .replaceAll("[^a-zA-Z0-9]", "_")
-                    .toLowerCase();
+                    .toLowerCase(Locale.ROOT);
             String filename = String.format("%s_visits_%s.csv",
                     sanitizedName,
                     DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Instant.now().atZone(userZone)));

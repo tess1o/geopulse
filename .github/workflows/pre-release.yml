@@ -120,25 +120,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run PMD analysis
-        run: ./mvnw -pl backend pmd:check
-        continue-on-error: true
-
-      - name: Show PMD violations
-        if: always()
-        run: |
-          if [ -f backend/target/pmd.xml ]; then
-            echo "=== PMD Violations ==="
-            cat backend/target/pmd.xml
-          fi
-
-      - name: Upload PMD report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pmd-full-report
-          path: backend/target/pmd.xml
-          retention-days: 30
+      - name: PMD
+        # Compile first so PMD can resolve GeoPulse types (target/classes); see the Makefile backend-pmd target.
+        run: ./mvnw -pl backend compile pmd:check
 
   # Stage 2: Full E2E Suite
   full-e2e-tests:

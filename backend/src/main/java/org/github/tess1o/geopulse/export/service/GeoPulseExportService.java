@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -110,7 +111,7 @@ public class GeoPulseExportService {
 
             // Add requested data types using streaming
             for (String dataType : job.getDataTypes()) {
-                switch (dataType.toLowerCase()) {
+                switch (dataType.toLowerCase(Locale.ROOT)) {
                     case ExportImportConstants.DataTypes.RAW_GPS:
                         addRawGpsDataStreaming(zos, job, currentProgress, currentProgress + progressPerType);
                         currentProgress += progressPerType;

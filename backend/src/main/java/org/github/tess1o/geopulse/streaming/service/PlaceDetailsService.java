@@ -610,7 +610,7 @@ public class PlaceDetailsService {
 
     private String validateSortField(String sortBy) {
         // Only allow specific fields to be sorted
-        return switch (sortBy != null ? sortBy.toLowerCase() : "") {
+        return switch (sortBy != null ? sortBy.toLowerCase(Locale.ROOT) : "") {
             case "timestamp", "stayduration", "stayDuration" -> sortBy;
             default -> "timestamp"; // Default sort field
         };

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.digest.model;
 
+import java.util.Locale;
+
 public enum HeatmapLayer {
     STAYS,
     TRIPS,
@@ -10,7 +12,7 @@ public enum HeatmapLayer {
             return COMBINED;
         }
         try {
-            return HeatmapLayer.valueOf(value.trim().toUpperCase());
+            return HeatmapLayer.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return null;
         }

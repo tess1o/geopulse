@@ -196,11 +196,18 @@ backend-test-integration-one:
 	@echo "Running integration test: $(TEST)"
 	./mvnw -pl backend -DskipITs=false -Dit.test=$(TEST) clean test-compile failsafe:integration-test failsafe:verify
 
-# Full backend test suite (unit + integration)
+# Full backend test suite (unit + integration) plus the PMD gate
 .PHONY: backend-test-all
 backend-test-all:
 	@echo "Running full backend test suite"
-	./mvnw -pl backend clean verify -DskipITs=false
+	./mvnw -pl backend clean verify pmd:check -DskipITs=false
+
+# PMD gate (backend/pmd-ruleset.xml). Compiles first: without target/classes PMD cannot type our own classes
+# and reports false positives (e.g. a project exception passed to log.warn counted as a format argument).
+.PHONY: backend-pmd
+backend-pmd:
+	@echo "Running PMD checks"
+	./mvnw -pl backend compile pmd:check
 
 # Frontend unit tests (vitest, single run)
 # Filter by file name: make frontend-test TEST=timelineStore
@@ -494,7 +501,8 @@ help:
 	@echo "🧪 TESTING TARGETS:"
 	@echo "  backend-test-unit      Run backend unit tests"
 	@echo "  backend-test-integration Run backend integration tests"
-	@echo "  backend-test-all       Run all backend tests (unit + integration)"
+	@echo "  backend-test-all       Run all backend tests (unit + integration) and PMD"
+	@echo "  backend-pmd            Run the backend PMD checks"
 	@echo "  frontend-test          Run frontend vitest tests (optional TEST=<file filter>)"
 	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR + OIDC, requires E2E environment)"
 	@echo "  test-e2e-ui            Run E2E tests in UI mode (RASTER + VECTOR + OIDC)"

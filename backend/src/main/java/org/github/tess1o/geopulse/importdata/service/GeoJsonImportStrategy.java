@@ -42,7 +42,7 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
     @Override
     protected FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException {
         // Use streaming parser for validation - no memory overhead
-        log.info("Validating GeoJSON file using streaming parser (memory-efficient from {}){}",
+        log.info("Validating GeoJSON file using streaming parser (memory-efficient from {})",
                 job.hasTempFile() ? "temp file" : "memory");
 
         // Track timestamps during validation for use in clear mode

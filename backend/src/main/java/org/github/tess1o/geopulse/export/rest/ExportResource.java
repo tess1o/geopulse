@@ -46,6 +46,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -361,7 +362,7 @@ public class ExportResource {
         ExportJobResponse response = new ExportJobResponse();
         response.setExportJobId(job.getJobId());
         response.setFormat(job.getFormat());
-        response.setStatus(job.getStatus().name().toLowerCase());
+        response.setStatus(job.getStatus().name().toLowerCase(Locale.ROOT));
         response.setProgress(job.getProgress());
         response.setProgressMessage(job.getProgressMessage());
         response.setCreatedAt(job.getCreatedAt());

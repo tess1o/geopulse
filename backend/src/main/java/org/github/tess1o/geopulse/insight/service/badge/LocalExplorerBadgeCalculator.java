@@ -6,6 +6,7 @@ import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -36,7 +37,7 @@ public class LocalExplorerBadgeCalculator implements BadgeCalculator {
                 "Discover 25 places in your area",
                 "🏠️",
                 localExplorerComplete,
-                localExplorerComplete ? LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) : null,
+                localExplorerComplete ? LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) : null,
                 localExplorerComplete ? null : progress,
                 localExplorerComplete ? null : uniquePlaces,
                 localExplorerComplete ? null : target

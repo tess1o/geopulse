@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 
 @ApplicationScoped
@@ -77,7 +78,7 @@ public class WeatherIntegrationHealthNotificationService {
                                                      Map<String, Object> extraMetadata) {
         String incidentKey = event.incidentStartedAt() == null ? "unknown" : event.incidentStartedAt().toString();
         String dedupePrefix = "integration-health:%s:%s:%s:%s"
-                .formatted(type.name().toLowerCase(), event.integrationType().name(), event.providerKey(), incidentKey);
+                .formatted(type.name().toLowerCase(Locale.ROOT), event.integrationType().name(), event.providerKey(), incidentKey);
         String metadataSql = """
                 jsonb_build_object(
                     'integrationType', :integrationType,

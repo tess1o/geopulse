@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationException;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
@@ -431,7 +432,7 @@ public class StreamingTimelineGenerationService {
                 recordPendingRebuildFailure(userId, e);
             }
             failJob(jobId, "Timeline generation failed: " + e.getMessage());
-            throw new RuntimeException("Timeline generation failed", e);
+            throw new TimelineGenerationException("Timeline generation failed", e);
         } finally {
             countTimelineRun(trigger, result);
             recordTimelineDuration(metricsStart, trigger, result);

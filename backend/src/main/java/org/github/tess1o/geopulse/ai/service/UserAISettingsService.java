@@ -180,7 +180,7 @@ public class UserAISettingsService {
                     .customSystemMessage(settings.getCustomSystemMessage())
                     .build();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve AI settings", e);
+            throw new IllegalStateException("Failed to retrieve AI settings", e);
         }
     }
 

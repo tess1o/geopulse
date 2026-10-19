@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,7 +58,7 @@ public class AdminUserService {
                 : Sort.ascending(mappedSortBy);
 
         if (search != null && !search.isBlank()) {
-            String searchPattern = "%" + search.toLowerCase() + "%";
+            String searchPattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
             return userRepository.find(
                     "lower(email) like ?1 or lower(fullName) like ?1",
                     sort,
@@ -86,7 +87,7 @@ public class AdminUserService {
      */
     public long countUsers(String search) {
         if (search != null && !search.isBlank()) {
-            String searchPattern = "%" + search.toLowerCase() + "%";
+            String searchPattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
             return userRepository.count(
                     "lower(email) like ?1 or lower(fullName) like ?1",
                     searchPattern

@@ -62,10 +62,10 @@ public class ToolRegistry {
         register("getStayStats", this::invokeGetStayStats, createGetStayStatsSpec());
         register("getTripStats", this::invokeGetTripStats, createGetTripStatsSpec());
         register("getRoutePatterns", this::invokeGetRoutePatterns, createRoutePatternsSpec());
-        register("listAccessibleTimelineFriends", this::invokeListAccessibleTimelineFriends, createListAccessibleTimelineFriendsSpec());
-        register("listAccessibleLiveFriends", this::invokeListAccessibleLiveFriends, createListAccessibleLiveFriendsSpec());
+        register("listAccessibleTimelineFriends", args -> invokeListAccessibleTimelineFriends(), createListAccessibleTimelineFriendsSpec());
+        register("listAccessibleLiveFriends", args -> invokeListAccessibleLiveFriends(), createListAccessibleLiveFriendsSpec());
         register("getFriendLiveLocation", this::invokeGetFriendLiveLocation, createGetFriendLiveLocationSpec());
-        register("getTodayDate", this::invokeGetTodayDate, createGetTodayDateSpec());
+        register("getTodayDate", args -> invokeGetTodayDate(), createGetTodayDateSpec());
         registerPlacesTools();
         registerInsightsTools();
         registerContextTools();
@@ -203,7 +203,7 @@ public class ToolRegistry {
         }
     }
 
-    private String invokeListAccessibleTimelineFriends(String argumentsJson) {
+    private String invokeListAccessibleTimelineFriends() {
         try {
             Object result = aiTimelineTools.listAccessibleTimelineFriends();
             return objectMapper.writeValueAsString(result);
@@ -215,7 +215,7 @@ public class ToolRegistry {
         }
     }
 
-    private String invokeListAccessibleLiveFriends(String argumentsJson) {
+    private String invokeListAccessibleLiveFriends() {
         try {
             Object result = aiFriendLiveTools.listAccessibleLiveFriends();
             return objectMapper.writeValueAsString(result);
@@ -241,7 +241,7 @@ public class ToolRegistry {
         }
     }
 
-    private String invokeGetTodayDate(String argumentsJson) {
+    private String invokeGetTodayDate() {
         try {
             String result = simpleAITools.getTodayDate();
             return objectMapper.writeValueAsString(result);
@@ -697,7 +697,7 @@ public class ToolRegistry {
         try {
             return Long.parseLong(value.asText().trim());
         } catch (NumberFormatException e) {
-            throw new AIToolException("INVALID_ARGUMENT", fieldName + " must be a whole number", Map.of("argument", fieldName));
+            throw new AIToolException("INVALID_ARGUMENT", fieldName + " must be a whole number", Map.of("argument", fieldName), e);
         }
     }
 
@@ -712,7 +712,7 @@ public class ToolRegistry {
         try {
             return Double.parseDouble(value.asText().trim());
         } catch (NumberFormatException e) {
-            throw new AIToolException("INVALID_ARGUMENT", fieldName + " must be a number", Map.of("argument", fieldName));
+            throw new AIToolException("INVALID_ARGUMENT", fieldName + " must be a number", Map.of("argument", fieldName), e);
         }
     }
 

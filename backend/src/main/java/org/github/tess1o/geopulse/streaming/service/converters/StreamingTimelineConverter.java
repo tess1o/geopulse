@@ -254,34 +254,6 @@ public class StreamingTimelineConverter {
     }
 
     /**
-     * Convert GPS point path to JTS LineString geometry.
-     */
-    private LineString convertPathToLineString(List<? extends GpsPoint> path) {
-        if (path == null || path.size() < 2) {
-            return null;
-        }
-
-        GeometryFactory geometryFactory = new GeometryFactory();
-        Coordinate[] coordinates = path.stream()
-                .map(point -> new Coordinate(point.getLongitude(), point.getLatitude()))
-                .toArray(Coordinate[]::new);
-
-        return geometryFactory.createLineString(coordinates);
-    }
-
-    /**
-     * Convert JTS LineString to GPS points.
-     */
-    private List<GpsPoint> convertLineStringToGpsPoints(LineString lineString) {
-        return IntStream.range(0, lineString.getNumPoints())
-                .mapToObj(i -> {
-                    Coordinate coord = lineString.getCoordinateN(i);
-                    return new GPSPoint(coord.y, coord.x, 0, 0); // Note: y=lat, x=lon
-                })
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Create a minimal user reference for entity relationships.
      * This avoids loading the full user entity just for the foreign key reference.
      */

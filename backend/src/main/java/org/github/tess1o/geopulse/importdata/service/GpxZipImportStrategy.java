@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
@@ -68,8 +69,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                 // Validate this GPX file using streaming parser (no String allocation)
                 try {
                     // Create non-closing wrapper to prevent ZipInputStream from being closed
-                    InputStream nonClosingStream = new NonClosingInputStream(zipInputStream);
-                    StreamingGpxParser parser = new StreamingGpxParser(nonClosingStream);
+                    StreamingGpxParser parser = new StreamingGpxParser(new NonClosingInputStream(zipInputStream));
 
                     AtomicReference<Instant> fileFirst = new AtomicReference<>();
                     AtomicReference<Instant> fileLast = new AtomicReference<>();
@@ -190,8 +190,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                 // Parse GPX file using streaming parser (no String allocation!)
                 try {
                     // Create non-closing wrapper to prevent ZipInputStream from being closed
-                    InputStream nonClosingStream = new NonClosingInputStream(zipInputStream);
-                    StreamingGpxParser parser = new StreamingGpxParser(nonClosingStream);
+                    StreamingGpxParser parser = new StreamingGpxParser(new NonClosingInputStream(zipInputStream));
 
                     parser.parseGpsPoints((point, stats) -> {
                         totalGpsPoints.incrementAndGet();
@@ -334,7 +333,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
         if (fileName == null) {
             return false;
         }
-        String lowerName = fileName.toLowerCase();
+        String lowerName = fileName.toLowerCase(Locale.ROOT);
         return lowerName.endsWith(".gpx");
     }
 

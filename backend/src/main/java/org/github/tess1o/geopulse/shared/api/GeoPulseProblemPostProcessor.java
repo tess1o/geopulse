@@ -115,7 +115,7 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
      *
      * <p>This is deliberately not a defence against a broad catch that re-wraps an already classified exception
      * into a new {@code GeoPulseException}: the outer one wins, and the inner classification is lost. That bug
-     * class is prevented by the {@code pmd-error-handling.xml} gate, not here. Targeting the innermost instead
+     * class is prevented by the {@code pmd-ruleset.xml} gate, not here. Targeting the innermost instead
      * would silently override deliberate re-wraps.</p>
      */
     private static AppError findAppError(Throwable cause) {

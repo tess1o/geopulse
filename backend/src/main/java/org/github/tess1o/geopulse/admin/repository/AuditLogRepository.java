@@ -28,32 +28,8 @@ public class AuditLogRepository implements PanacheRepositoryBase<AuditLogEntity,
             int page,
             int size) {
 
-        StringBuilder query = new StringBuilder("1=1");
-        List<Object> params = new ArrayList<>();
-        int paramIndex = 1;
-
-        if (actionType != null) {
-            query.append(" and actionType = ?").append(paramIndex++);
-            params.add(actionType);
-        }
-        if (targetType != null) {
-            query.append(" and targetType = ?").append(paramIndex++);
-            params.add(targetType);
-        }
-        if (adminUserId != null) {
-            query.append(" and adminUserId = ?").append(paramIndex++);
-            params.add(adminUserId);
-        }
-        if (from != null) {
-            query.append(" and timestamp >= ?").append(paramIndex++);
-            params.add(from);
-        }
-        if (to != null) {
-            query.append(" and timestamp <= ?").append(paramIndex++);
-            params.add(to);
-        }
-
-        return find(query.toString(), Sort.descending("timestamp"), params.toArray())
+        Filter filter = filter(actionType, targetType, adminUserId, from, to);
+        return find(filter.query(), Sort.descending("timestamp"), filter.params())
                 .page(Page.of(page, size))
                 .list();
     }
@@ -65,31 +41,30 @@ public class AuditLogRepository implements PanacheRepositoryBase<AuditLogEntity,
             Instant from,
             Instant to) {
 
+        Filter filter = filter(actionType, targetType, adminUserId, from, to);
+        return count(filter.query(), filter.params());
+    }
+
+    /** A Panache query with positional parameters; null criteria are left out. */
+    private record Filter(String query, Object[] params) {
+    }
+
+    private static Filter filter(ActionType actionType, TargetType targetType, UUID adminUserId,
+                                 Instant from, Instant to) {
         StringBuilder query = new StringBuilder("1=1");
         List<Object> params = new ArrayList<>();
-        int paramIndex = 1;
+        addCondition(query, params, "actionType =", actionType);
+        addCondition(query, params, "targetType =", targetType);
+        addCondition(query, params, "adminUserId =", adminUserId);
+        addCondition(query, params, "timestamp >=", from);
+        addCondition(query, params, "timestamp <=", to);
+        return new Filter(query.toString(), params.toArray());
+    }
 
-        if (actionType != null) {
-            query.append(" and actionType = ?").append(paramIndex++);
-            params.add(actionType);
+    private static void addCondition(StringBuilder query, List<Object> params, String condition, Object value) {
+        if (value != null) {
+            params.add(value);
+            query.append(" and ").append(condition).append(" ?").append(params.size());
         }
-        if (targetType != null) {
-            query.append(" and targetType = ?").append(paramIndex++);
-            params.add(targetType);
-        }
-        if (adminUserId != null) {
-            query.append(" and adminUserId = ?").append(paramIndex++);
-            params.add(adminUserId);
-        }
-        if (from != null) {
-            query.append(" and timestamp >= ?").append(paramIndex++);
-            params.add(from);
-        }
-        if (to != null) {
-            query.append(" and timestamp <= ?").append(paramIndex++);
-            params.add(to);
-        }
-
-        return count(query.toString(), params.toArray());
     }
 }

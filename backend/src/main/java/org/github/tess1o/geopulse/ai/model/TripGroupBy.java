@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.ai.model;
 
+import java.util.Locale;
+
 /**
  * Enumeration of available grouping options for trip statistics.
  * Used to aggregate trips by different criteria for statistical analysis.
@@ -59,9 +61,9 @@ public enum TripGroupBy {
             throw new IllegalArgumentException("GroupBy value cannot be null");
         }
         
-        String normalizedValue = value.toLowerCase().trim();
+        String normalizedValue = value.toLowerCase(Locale.ROOT).trim();
         for (TripGroupBy groupBy : values()) {
-            if (groupBy.getValue().toLowerCase().equals(normalizedValue)) {
+            if (groupBy.getValue().toLowerCase(Locale.ROOT).equals(normalizedValue)) {
                 return groupBy;
             }
         }

@@ -70,7 +70,7 @@ public class PoiRestClientFactory {
     }
 
     private void closeQuietly(Object client) {
-        if (client instanceof AutoCloseable closeable) {
+        if (client instanceof AutoCloseable closeable) { // NOPMD - quiet-close helper: closing is the whole point
             try {
                 closeable.close();
             } catch (Exception e) {
