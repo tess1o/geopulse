@@ -284,8 +284,8 @@ class GpsPointResourcePositionIntegrationTest {
                         "accuracy", 3.0))
                 .when().put(GPS_POINTS + "/" + updatedId);
         assertThat(updated.statusCode()).isEqualTo(200);
-        assertThat(updated.jsonPath().getDouble("coordinates.lat")).isEqualTo(50.5);
-        assertThat(updated.jsonPath().getDouble("velocity")).isEqualTo(12.0);
+        assertThat(updated.jsonPath().getDouble("point.coordinates.lat")).isEqualTo(50.5);
+        assertThat(updated.jsonPath().getDouble("point.velocity")).isEqualTo(12.0);
 
         Response deleted = authenticated(accessToken).when().delete(GPS_POINTS + "/" + updatedId);
         assertThat(deleted.statusCode()).isEqualTo(200);

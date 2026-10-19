@@ -7,8 +7,8 @@ description: Connect an MCP client to GeoPulse to query the authenticated user's
 # GeoPulse MCP Server
 
 GeoPulse exposes a Streamable HTTP [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server at `/mcp`.
-It gives an AI client read-only tools for the authenticated user's timeline, stays, trips, route statistics, and eligible
-friend timeline or live-location data.
+It gives an AI client read-only tools for the authenticated user's timeline, current status, visited places, digests and
+statistics, planned trips, notes, photos, weather, and eligible friend timeline or live-location data.
 
 ## Before You Start
 
@@ -31,14 +31,26 @@ configuration file or repository. See [API Tokens](/docs/api/api-tokens) for cre
 
 ## Available Tools
 
-The server can:
+Every tool only reads data and is marked read-only, so MCP clients can run it without asking for confirmation.
 
-- Get the GeoPulse server's current date for resolving relative dates.
-- Query detailed timelines, stays, trips, and route or stay statistics for a date range.
-- List timeline and live-location sharing relationships, then query data a friend has shared with the token owner.
+| Area | Tools | Answers questions like |
+|---|---|---|
+| Timeline | `getTodayDate`, `queryTimeline`, `getVisitedLocations`, `getTripMovements`, `getStayStats`, `getTripStats`, `getRoutePatterns` | "What did I do last Saturday?", "How far did I walk this week?" |
+| Right now | `getCurrentStatus`, `getGpsStatus` | "Where am I?", "Is my phone still sending GPS data?" |
+| Places | `searchVisitedPlaces`, `getPlaceDetails`, `getPlaceVisits`, `listVisitedCities`, `listVisitedCountries`, `getCityDetails`, `getCountryDetails`, `listFavoritePlaces` | "How many times have I been to Lisbon?", "Which countries have I visited?" |
+| Summaries | `getPeriodDigest`, `getStatistics`, `getJourneyInsights`, `getCoverageSummary` | "Summarise my October", "How much of my city have I explored?" |
+| Trips and periods | `listTrips`, `getTripDetails`, `listTimelineLabels` | "What's left on my Rome itinerary?", "When was my Japan trip?" |
+| Notes, photos, weather | `searchNotes`, `searchPhotos`, `getWeather` | "What did I write on that trip?", "What was the weather on the hike?" |
+| Geofences | `listGeofenceEvents` | "When did I last leave work?" |
+| Explanations | `explainTimelineEvent` | "Why was this split into two stays?" |
+| Friends | `listAccessibleTimelineFriends`, `listAccessibleLiveFriends`, `getFriendLiveLocation` | "Where is Alex right now?" |
 
-It cannot modify timeline data, locations, or sharing settings. Friend data remains subject to the existing sharing
-permissions.
+`searchPhotos` needs the [Immich integration](/docs/user-guide/personalization/immich-integration), `getWeather` needs weather
+enabled on the server, and `getCoverageSummary` needs coverage enabled for the user. `searchPhotos` returns photo
+metadata only, not images.
+
+The tools cannot modify timeline data, locations, or sharing settings. Friend data remains subject to the existing
+sharing permissions.
 
 ## Claude Desktop
 

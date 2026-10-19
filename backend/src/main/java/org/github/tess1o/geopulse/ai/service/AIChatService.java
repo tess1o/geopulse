@@ -78,6 +78,25 @@ public class AIChatService {
             - Route frequency and diversity
             - Average or longest trip duration/distance
 
+            Use getCurrentStatus for "Where am I now?", "Am I home?" or what the user is doing right now.
+
+            Use searchVisitedPlaces first whenever the user names a place, city or country, then:
+            - getPlaceDetails / getPlaceVisits for how often, how long, first/last visit at a place
+            - getCityDetails / getCountryDetails for all-time totals of a city or country
+            Use listVisitedCities / listVisitedCountries for all-time lists ("Which countries have I been to?").
+            Use listFavoritePlaces to learn the user's named places such as Home or Work.
+
+            Use getPeriodDigest for month or year summaries ("Summarise my October", "My 2025").
+            Use getStatistics for distance, time moving and top places in any other date range.
+            Use getJourneyInsights for lifetime records and achievements, getCoverageSummary for explored area.
+
+            Use listTimelineLabels to turn a named period ("my Japan trip") into a date range.
+            Use listTrips / getTripDetails for planned trips and itineraries.
+            Use searchNotes, searchPhotos and getWeather for notes, photos and weather in a date range or near a place.
+            Use listGeofenceEvents for geofence arrivals and departures.
+            Use explainTimelineEvent with a stay or trip id from queryTimeline when asked why the timeline looks as it does.
+            Use getGpsStatus when asked whether the tracker is still sending data.
+
             Use getTodayDate for any relative date ("this month", "last week", "yesterday").
 
             DATE HANDLING:

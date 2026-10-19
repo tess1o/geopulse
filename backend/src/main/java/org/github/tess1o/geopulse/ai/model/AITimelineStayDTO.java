@@ -12,6 +12,11 @@ import java.time.Instant;
 @Data
 @NoArgsConstructor
 public class AITimelineStayDTO {
+    /**
+     * Timeline stay ID, usable with explainTimelineEvent
+     */
+    private Long id;
+
     private Instant timestamp;
 
     private String locationName;

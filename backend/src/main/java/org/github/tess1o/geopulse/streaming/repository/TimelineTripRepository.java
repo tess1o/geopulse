@@ -109,7 +109,8 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 SELECT t.timestamp,
                        t.tripDuration,
                        t.distanceMeters,
-                       t.movementType
+                       t.movementType,
+                       t.id
                 FROM TimelineTripEntity t
                 WHERE t.user.id = ?1 AND (
                     (t.timestamp >= ?2 AND t.timestamp <= ?3) OR 
@@ -132,6 +133,7 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                     dto.setTripDuration((Long) row[1]);
                     dto.setDistanceMeters((Long) row[2]);
                     dto.setMovementType((String) row[3]);
+                    dto.setId((Long) row[4]);
                     // Origin/destination will be populated by service layer
                     return dto;
                 })

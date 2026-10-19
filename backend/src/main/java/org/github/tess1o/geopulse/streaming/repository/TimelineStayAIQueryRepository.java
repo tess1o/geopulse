@@ -33,7 +33,8 @@ public class TimelineStayAIQueryRepository implements PanacheRepository<Timeline
         String query = """
                 SELECT s.timestamp, s.locationName, s.stayDuration, 
                        COALESCE(f.city, g.city) as city,
-                       COALESCE(f.country, g.country) as country
+                       COALESCE(f.country, g.country) as country,
+                       s.id
                 FROM TimelineStayEntity s
                 LEFT JOIN s.favoriteLocation f
                 LEFT JOIN s.geocodingLocation g
@@ -59,6 +60,7 @@ public class TimelineStayAIQueryRepository implements PanacheRepository<Timeline
                     dto.setStayDurationSeconds((Long) row[2]);
                     dto.setCity((String) row[3]);
                     dto.setCountry((String) row[4]);
+                    dto.setId((Long) row[5]);
                     return dto;
                 })
                 .toList();

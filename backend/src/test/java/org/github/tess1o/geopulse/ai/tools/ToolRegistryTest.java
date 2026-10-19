@@ -6,10 +6,15 @@ import org.github.tess1o.geopulse.ai.model.AIFriendLiveCandidateDTO;
 import org.github.tess1o.geopulse.ai.model.AIFriendLiveLocationDTO;
 import org.github.tess1o.geopulse.ai.model.AIMovementTimelineDTO;
 import org.github.tess1o.geopulse.ai.model.AITimelineFriendCandidateDTO;
+import org.github.tess1o.geopulse.ai.service.AIContextTools;
 import org.github.tess1o.geopulse.ai.service.AIFriendLiveTools;
+import org.github.tess1o.geopulse.ai.service.AIInsightsTools;
+import org.github.tess1o.geopulse.ai.service.AIPlacesTools;
 import org.github.tess1o.geopulse.ai.service.AITimelineTools;
 import org.github.tess1o.geopulse.ai.service.AIToolException;
 import org.github.tess1o.geopulse.ai.service.SimpleAITools;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -33,6 +38,9 @@ class ToolRegistryTest {
     private AIFriendLiveTools aiFriendLiveTools;
     private AITimelineTools aiTimelineTools;
     private SimpleAITools simpleAITools;
+    private AIPlacesTools aiPlacesTools;
+    private AIInsightsTools aiInsightsTools;
+    private AIContextTools aiContextTools;
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -40,9 +48,13 @@ class ToolRegistryTest {
         aiFriendLiveTools = Mockito.mock(AIFriendLiveTools.class);
         aiTimelineTools = Mockito.mock(AITimelineTools.class);
         simpleAITools = Mockito.mock(SimpleAITools.class);
+        aiPlacesTools = Mockito.mock(AIPlacesTools.class);
+        aiInsightsTools = Mockito.mock(AIInsightsTools.class);
+        aiContextTools = Mockito.mock(AIContextTools.class);
         objectMapper = new ObjectMapper();
 
-        toolRegistry = new ToolRegistry(aiTimelineTools, aiFriendLiveTools, simpleAITools, objectMapper);
+        toolRegistry = new ToolRegistry(aiTimelineTools, aiFriendLiveTools, simpleAITools,
+                aiPlacesTools, aiInsightsTools, aiContextTools, objectMapper);
         toolRegistry.registerTools();
     }
 
@@ -159,5 +171,57 @@ class ToolRegistryTest {
         );
 
         verify(aiFriendLiveTools).getFriendLiveLocation("alex@example.com");
+    }
+
+    @Test
+    void toolDefinitions_includeReadToolsSharedWithMcp() {
+        List<String> toolNames = toolRegistry.getAllToolDefinitions().stream()
+                .map(def -> def.function().name())
+                .toList();
+
+        assertTrue(toolNames.containsAll(List.of(
+                "getCurrentStatus", "searchVisitedPlaces", "getPlaceDetails", "getPlaceVisits",
+                "listVisitedCities", "listVisitedCountries", "getCityDetails", "getCountryDetails",
+                "listFavoritePlaces", "getPeriodDigest", "getStatistics", "getJourneyInsights",
+                "getCoverageSummary", "listTrips", "getTripDetails", "listTimelineLabels", "searchNotes",
+                "searchPhotos", "getWeather", "listGeofenceEvents", "explainTimelineEvent", "getGpsStatus")));
+        assertEquals(toolNames.size(), toolNames.stream().distinct().count());
+    }
+
+    @Test
+    void getPlaceVisits_parsesNumericArguments() {
+        toolRegistry.invokeTool("getPlaceVisits",
+                "{\"type\":\"favorite\",\"id\":42,\"page\":\"1\",\"size\":10,\"sortBy\":\"STAYDURATION\"}");
+
+        verify(aiPlacesTools).getPlaceVisits("favorite", 42L, 1, 10, "STAYDURATION", null);
+    }
+
+    @Test
+    void searchNotes_parsesDecimalArguments() {
+        toolRegistry.invokeTool("searchNotes",
+                "{\"latitude\":50.45,\"longitude\":\"30.52\",\"radiusMeters\":500}");
+
+        verify(aiContextTools).searchNotes(null, null, 50.45, 30.52, 500.0, null);
+    }
+
+    @Test
+    void invalidNumber_isReportedAsInvalidArgument() throws Exception {
+        String response = toolRegistry.invokeTool("getTripDetails", "{\"tripId\":\"abc\"}");
+
+        JsonNode json = objectMapper.readTree(response);
+        assertEquals("INVALID_ARGUMENT", json.path("error").path("code").asText());
+        assertEquals("tripId", json.path("error").path("argument").asText());
+    }
+
+    @Test
+    void domainError_isSerializedWithItsCode() throws Exception {
+        when(aiInsightsTools.getCoverageSummary(null))
+                .thenThrow(new GeoPulseException(ApiErrorCode.COVERAGE_DISABLED, "Coverage is not enabled"));
+
+        String response = toolRegistry.invokeTool("getCoverageSummary", "{}");
+
+        JsonNode json = objectMapper.readTree(response);
+        assertEquals("COVERAGE_DISABLED", json.path("error").path("code").asText());
+        assertEquals("Coverage is not enabled", json.path("error").path("message").asText());
     }
 }

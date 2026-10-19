@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.ai.service;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -28,6 +30,11 @@ public class AIToolException extends RuntimeException {
         super(message, cause);
         this.code = code;
         this.details = details == null || details.isEmpty() ? Map.of() : Map.copyOf(details);
+    }
+
+    /** Converts a domain error from a GeoPulse service into a tool error with the same code and parameters. */
+    public static AIToolException from(GeoPulseException e) {
+        return new AIToolException(e.code().name(), e.detail(), e.parameters(), e);
     }
 
     public String getCode() {
