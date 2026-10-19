@@ -11,8 +11,8 @@
  */
 import { computed } from 'vue'
 import dayjs from 'dayjs'
-import 'dayjs/locale/uk'
-import { i18n, intlLocale, loadLocale, loadPrimeVueLocale, normalizeLocale } from '@/locales'
+import { i18n, intlLocale, loadDayjsLocale, loadLocale, loadPrimeVueLocale, normalizeLocale, SUPPORTED_LOCALES } from '@/locales'
+import { LOCALE_REGISTRY } from '@/locales/registry'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 import { useTimezone } from '@/composables/useTimezone'
 import { writeCachedUserLanguage } from '@/utils/userProfileCache'
@@ -23,10 +23,10 @@ import { writeCachedGuestLocale } from '@/utils/guestLocaleCache'
  * them into the *current* locale is actively harmful here: someone who cannot read the active
  * language would see every option rendered in a script they cannot parse.
  */
-export const LOCALE_OPTIONS = [
-    { value: 'en', label: 'English' },
-    { value: 'uk', label: 'Українська' }
-]
+export const LOCALE_OPTIONS = LOCALE_REGISTRY
+    .filter(entry => SUPPORTED_LOCALES.includes(entry.code))
+    // Drafts only reach this list under `npm run dev`; the marker keeps a preview from passing as shipped.
+    .map(entry => ({ value: entry.code, label: entry.status === 'draft' ? `${entry.name} · draft` : entry.name }))
 
 let primeVueConfig = null
 let refreshDocumentTitle = null
@@ -70,6 +70,7 @@ export const applyLocale = async (locale) => {
     await loadLocale(target)
     i18n.global.locale.value = target
 
+    await loadDayjsLocale(target)
     dayjs.locale(target)
     await applyPrimeVueLocale(target)
 

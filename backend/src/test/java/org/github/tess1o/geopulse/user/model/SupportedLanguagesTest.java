@@ -11,26 +11,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class SupportedLanguagesTest {
 
     @Test
-    void patternAcceptsEveryDeclaredCode() {
-        // The class-load guard exists because PATTERN is a literal (annotations need compile-time
-        // constants) and so cannot be derived from the constants. Touching the class at all runs it,
-        // but assert the contract explicitly so a divergence names the offending constant.
+    void isExactCodeAcceptsOnlyDeclaredCodesVerbatim() {
+        // Backs @SupportedLanguage: the stored value is used as-is by the client, so unlike fromCode this
+        // must not trim or lowercase.
         for (SupportedLanguages language : SupportedLanguages.values()) {
-            assertTrue(language.getCode().matches(SupportedLanguages.PATTERN),
-                    "PATTERN must accept declared code '" + language.getCode() + "'");
+            assertTrue(SupportedLanguages.isExactCode(language.getCode()),
+                    "isExactCode must accept declared code '" + language.getCode() + "'");
         }
-    }
-
-    @Test
-    void patternMatchesTheAllowedCodesExactly() {
-        // Guards the other direction: PATTERN must not be so wide that it admits a language the enum
-        // does not declare, which would let @Pattern wave through a value validation then rejects.
-        assertTrue("en".matches(SupportedLanguages.PATTERN));
-        assertTrue("uk".matches(SupportedLanguages.PATTERN));
-        assertFalse("de".matches(SupportedLanguages.PATTERN));
-        assertFalse("".matches(SupportedLanguages.PATTERN));
-        assertFalse("EN".matches(SupportedLanguages.PATTERN));
-        assertFalse("en ".matches(SupportedLanguages.PATTERN));
+        assertFalse(SupportedLanguages.isExactCode("xx"));
+        assertFalse(SupportedLanguages.isExactCode(""));
+        assertFalse(SupportedLanguages.isExactCode("EN"));
+        assertFalse(SupportedLanguages.isExactCode("en "));
+        assertFalse(SupportedLanguages.isExactCode(null));
     }
 
     @Test
@@ -43,7 +35,7 @@ class SupportedLanguagesTest {
 
     @Test
     void reportsUnknownCodesAsEmpty() {
-        assertEquals(Optional.empty(), SupportedLanguages.fromCode("de"));
+        assertEquals(Optional.empty(), SupportedLanguages.fromCode("xx"));
         assertEquals(Optional.empty(), SupportedLanguages.fromCode(""));
         assertEquals(Optional.empty(), SupportedLanguages.fromCode("   "));
         assertEquals(Optional.empty(), SupportedLanguages.fromCode(null));
@@ -53,7 +45,7 @@ class SupportedLanguagesTest {
     void normalizeOrDefaultFallsBackRatherThanFailing() {
         // Used on read paths: an older row or a removed language must degrade to English, not throw.
         assertEquals("uk", SupportedLanguages.normalizeOrDefault("uk"));
-        assertEquals("en", SupportedLanguages.normalizeOrDefault("de"));
+        assertEquals("en", SupportedLanguages.normalizeOrDefault("xx"));
         assertEquals("en", SupportedLanguages.normalizeOrDefault(null));
         assertEquals("en", SupportedLanguages.DEFAULT.getCode());
     }

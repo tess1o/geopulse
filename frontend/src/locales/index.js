@@ -14,19 +14,18 @@ import { createI18n } from 'vue-i18n'
 import en from './en/index.js'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { readCachedGuestLocale } from '@/utils/guestLocaleCache'
+import { LOCALE_REGISTRY, SHOW_DRAFT_LOCALES, selectableLocales } from './registry.js'
 
 export const DEFAULT_LOCALE = 'en'
-export const SUPPORTED_LOCALES = ['en', 'uk']
 
-const CATALOG_LOADERS = {
-    en: () => import('./en/index.js'),
-    uk: () => import('./uk/index.js')
-}
+const registryEntry = (locale) => LOCALE_REGISTRY.find(entry => entry.code === locale)
 
-const PRIMEVUE_LOCALE_LOADERS = {
-    en: () => import('primelocale/en.json'),
-    uk: () => import('primelocale/uk.json')
-}
+/**
+ * Locales a user can select: every `ready` entry in registry.js, plus drafts under `npm run dev`.
+ * Everything else -- a saved preference or browser language pointing at a draft -- normalizes to English.
+ */
+export const SUPPORTED_LOCALES = selectableLocales(LOCALE_REGISTRY, { showDrafts: SHOW_DRAFT_LOCALES })
+    .map(entry => entry.code)
 
 export const isSupportedLocale = (value) =>
     SUPPORTED_LOCALES.includes(String(value || '').trim().toLowerCase())
@@ -77,30 +76,12 @@ export const resolvePreferredLocale = () => {
 }
 
 /**
- * Plural rules that vue-i18n does not ship.
- *
- * vue-i18n's built-in fallback for a three-form message is *not* the Ukrainian rule: it resolves
- * `0 -> one`, `21 -> few` and `3 -> many`, where Ukrainian needs `0 -> many`, `21 -> one` and
- * `3 -> few`. Without this, counts like 0, 3, 4, 21 and 22 would render visibly wrong Ukrainian.
- *
- * Index order matches the `|`-separated forms in the catalogs: 0 = one, 1 = few, 2 = many.
- * See CLDR plural rules for `uk`.
+ * Plural rules that vue-i18n does not ship, keyed by locale -- each defined next to its entry in
+ * registry.js (see the Ukrainian rule there for why one is needed).
  */
-const PLURAL_RULES = {
-    uk: (choice) => {
-        const n = Math.abs(choice)
-        const mod10 = n % 10
-        const mod100 = n % 100
-
-        if (mod10 === 1 && mod100 !== 11) {
-            return 0 // one -- 1, 21, 101
-        }
-        if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
-            return 1 // few -- 2-4, 22-24
-        }
-        return 2 // many -- 0, 5-20, 11-14
-    }
-}
+const PLURAL_RULES = Object.fromEntries(
+    LOCALE_REGISTRY.filter(entry => entry.pluralRule).map(entry => [entry.code, entry.pluralRule])
+)
 
 export const i18n = createI18n({
     // Composition API mode. v11 deprecates the Legacy API and removes `tc`/`$tc`, so pluralization
@@ -114,8 +95,8 @@ export const i18n = createI18n({
     // `pluralizationRules` is the Legacy-API alias and is silently ignored here.
     pluralRules: PLURAL_RULES,
     // Both warnings stay off. Dynamic backend keys are guarded by `te()` in formatMessageDescriptor,
-    // and catalog gaps are caught by the en/uk parity test, so console warnings would only add noise
-    // during the incremental migration.
+    // and catalog gaps are caught by the coverage tests in locales.test.js (a `ready` locale may lag
+    // English slightly and fall back to it), so console warnings would only add noise.
     missingWarn: false,
     fallbackWarn: false
 })
@@ -129,7 +110,7 @@ const primeVueLocales = new Map()
 export const loadLocale = async (locale) => {
     const target = normalizeLocale(locale)
     if (!loadedLocales.has(target)) {
-        const messages = (await CATALOG_LOADERS[target]()).default
+        const messages = (await registryEntry(target).loadCatalog()).default
         i18n.global.setLocaleMessage(target, messages)
         loadedLocales.add(target)
     }
@@ -140,16 +121,33 @@ export const loadLocale = async (locale) => {
  * Load PrimeVue's own locale pack (date pickers, paginator, confirm dialogs, empty messages).
  *
  * primelocale ships `{ <locale>: { ...72 keys } }`, so unwrap by the locale name and tolerate a
- * future shape that exports the object directly.
+ * future shape that exports the object directly. A language primelocale lacks is registered with the
+ * English pack (see `npm run i18n:add`), whose wrapper key is `en`, so that is unwrapped too.
  */
 export const loadPrimeVueLocale = async (locale) => {
     const target = normalizeLocale(locale)
     if (!primeVueLocales.has(target)) {
-        const module = await PRIMEVUE_LOCALE_LOADERS[target]()
+        const module = await registryEntry(target).loadPrimeVue()
         const pack = module?.default ?? module
-        primeVueLocales.set(target, pack[target] ?? pack)
+        primeVueLocales.set(target, pack[target] ?? pack[DEFAULT_LOCALE] ?? pack)
     }
     return primeVueLocales.get(target)
+}
+
+const dayjsLocales = new Set()
+
+/**
+ * Load dayjs's locale data. Idempotent; a no-op for locales dayjs has built in (`loadDayjs: null`).
+ * Importing a dayjs locale file registers it globally, so callers can `dayjs.locale(code)` afterwards.
+ */
+export const loadDayjsLocale = async (locale) => {
+    const target = normalizeLocale(locale)
+    const loader = registryEntry(target).loadDayjs
+    if (loader && !dayjsLocales.has(target)) {
+        await loader()
+        dayjsLocales.add(target)
+    }
+    return target
 }
 
 /**
@@ -176,10 +174,7 @@ export const te = (key) => i18n.global.te(key)
  * The UI language drives number/date formatting because the profile has no separate region setting;
  * this is a simplification to revisit if a region preference is ever added.
  */
-const INTL_LOCALES = {
-    en: 'en-US',
-    uk: 'uk-UA'
-}
+const INTL_LOCALES = Object.fromEntries(LOCALE_REGISTRY.map(entry => [entry.code, entry.intl]))
 
 /** The `Intl` tag for the active UI locale; read at call time, so it tracks the locale like `t()`. */
 export const intlLocale = () => INTL_LOCALES[i18n.global.locale.value] || INTL_LOCALES.en

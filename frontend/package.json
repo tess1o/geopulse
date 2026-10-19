@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "i18n:add": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/i18n/add-locale.mjs",
+    "i18n:status": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/i18n/status.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "7.3.1",

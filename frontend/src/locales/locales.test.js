@@ -1,44 +1,58 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, beforeEach } from 'vitest'
 import en from './en/index.js'
-import uk from './uk/index.js'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isSupportedLocale, normalizeLocale, loadLocale, loadPrimeVueLocale, i18n, te, t } from './index.js'
+import { LOCALE_REGISTRY, MIN_READY_COVERAGE, selectableLocales } from './registry.js'
+import { computeCoverage, flattenValues } from '../../scripts/i18n/catalog.mjs'
 
 /**
  * Flatten a nested catalog into dotted key paths, so catalog shapes can be compared as sets.
  */
-const flattenKeys = (value, prefix = '') =>
-    Object.entries(value).flatMap(([key, entry]) => {
-        const path = prefix ? `${prefix}.${key}` : key
-        return entry && typeof entry === 'object' && !Array.isArray(entry)
-            ? flattenKeys(entry, path)
-            : [path]
-    })
+const flattenKeys = (value) => Object.keys(flattenValues(value))
 
-const flattenValues = (value, prefix = '') =>
-    Object.entries(value).reduce((acc, [key, entry]) => {
-        const path = prefix ? `${prefix}.${key}` : key
-        if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-            Object.assign(acc, flattenValues(entry, path))
-        } else {
-            acc[path] = entry
-        }
-        return acc
-    }, {})
+/**
+ * Every registered catalog, drafts included -- a draft is hidden from users, but a broken message in it
+ * would still crash the dev preview, so it is held to the same syntax rules.
+ */
+const loadAllCatalogs = async () => Object.fromEntries(await Promise.all(
+    LOCALE_REGISTRY.map(async entry => [entry.code, (await entry.loadCatalog()).default])
+))
+const catalogs = await loadAllCatalogs()
 
 describe('locale catalogs', () => {
-    const enKeys = flattenKeys(en)
-    const ukKeys = flattenKeys(uk)
-
     it('exposes at least the fallback locale', () => {
         expect(SUPPORTED_LOCALES).toContain(DEFAULT_LOCALE)
     })
 
-    it('keeps en and uk key sets identical', () => {
-        expect([...ukKeys].sort()).toEqual([...enKeys].sort())
+    it('has no keys that English does not have', () => {
+        // A key English lacks is never rendered: it is stale or misspelled.
+        const extra = Object.entries(catalogs)
+            .flatMap(([locale, catalog]) => computeCoverage(en, catalog).extra.map(key => `${locale}:${key}`))
+        expect(extra).toEqual([])
+    })
+
+    it('translates every ready locale to at least MIN_READY_COVERAGE', () => {
+        // A ready locale may lag English slightly -- vue-i18n falls back to English per key -- but not by
+        // enough to read as half-translated. `npm run i18n:status -- <code> --list` shows the gaps.
+        const below = LOCALE_REGISTRY
+            .filter(entry => entry.status === 'ready' && entry.code !== DEFAULT_LOCALE)
+            .map(entry => [entry.code, computeCoverage(en, catalogs[entry.code]).coverage])
+            .filter(([, coverage]) => coverage < MIN_READY_COVERAGE)
+        expect(below).toEqual([])
+    })
+
+    it('keeps uk complete', () => {
+        // Ukrainian is fully translated today; the coverage threshold is headroom for new languages, not
+        // permission for uk to start dropping keys.
+        expect(computeCoverage(en, catalogs.uk).missing).toEqual([])
     })
 
     it('has no empty translation values', () => {
-        const empty = Object.entries(flattenValues(uk)).filter(([, value]) => !String(value ?? '').trim())
+        const empty = Object.entries(catalogs).flatMap(([locale, catalog]) =>
+            Object.entries(flattenValues(catalog))
+                .filter(([, value]) => !String(value ?? '').trim())
+                .map(([key]) => `${locale}:${key}`))
         expect(empty).toEqual([])
     })
 
@@ -46,12 +60,11 @@ describe('locale catalogs', () => {
         // A `@:` reference is legitimate only if translating it yields real text. Checked for every
         // locale by translating each key and asserting no `@:` survives -- a broken or circular link
         // would otherwise render the reference verbatim in the UI.
-        const locales = { en, uk }
         const unresolved = []
-        for (const [locale, catalog] of Object.entries(locales)) {
-            // Load first: uk is lazily imported, and without it i18n would resolve these keys through
-            // the English fallback, so the test would pass without ever exercising the uk links.
-            await loadLocale(locale)
+        for (const [locale, catalog] of Object.entries(catalogs)) {
+            // Set the messages directly: loadLocale refuses drafts, and without them i18n would resolve
+            // these keys through the English fallback, so the test would never exercise the locale's links.
+            i18n.global.setLocaleMessage(locale, catalog)
             const previous = i18n.global.locale.value
             i18n.global.locale.value = locale
             for (const [key, value] of Object.entries(flattenValues(catalog))) {
@@ -80,11 +93,10 @@ describe('message syntax', () => {
   // browser that surfaces as a crash deep inside a render, far from the catalog that caused it, so
   // every message in every locale is compiled here instead.
   it('compiles every message in every locale', async () => {
-    const locales = { en, uk }
     const failures = []
 
-    for (const [locale, catalog] of Object.entries(locales)) {
-      await loadLocale(locale)
+    for (const [locale, catalog] of Object.entries(catalogs)) {
+      i18n.global.setLocaleMessage(locale, catalog)
       const previous = i18n.global.locale.value
       i18n.global.locale.value = locale
       for (const key of flattenKeys(catalog)) {
@@ -166,14 +178,50 @@ describe('locale resolution', () => {
         expect(isSupportedLocale('en')).toBe(true)
         expect(isSupportedLocale('uk')).toBe(true)
         expect(isSupportedLocale('UK')).toBe(true)
-        expect(isSupportedLocale('de')).toBe(false)
+        expect(isSupportedLocale('xx')).toBe(false)
     })
 
     it('falls back to the default for anything unsupported', () => {
-        expect(normalizeLocale('de')).toBe(DEFAULT_LOCALE)
+        expect(normalizeLocale('xx')).toBe(DEFAULT_LOCALE)
         expect(normalizeLocale('')).toBe(DEFAULT_LOCALE)
         expect(normalizeLocale(null)).toBe(DEFAULT_LOCALE)
         expect(normalizeLocale(undefined)).toBe(DEFAULT_LOCALE)
+    })
+})
+
+describe('locale registry', () => {
+    const fakeRegistry = [
+        { code: 'en', status: 'ready' },
+        { code: 'uk', status: 'ready' },
+        { code: 'xx', status: 'draft' }
+    ]
+
+    it('offers only ready locales unless drafts are being previewed', () => {
+        expect(selectableLocales(fakeRegistry).map(entry => entry.code)).toEqual(['en', 'uk'])
+        expect(selectableLocales(fakeRegistry, { showDrafts: true }).map(entry => entry.code)).toEqual(['en', 'uk', 'xx'])
+    })
+
+    it('ships exactly the ready locales to the test (production-like) build', () => {
+        const ready = LOCALE_REGISTRY.filter(entry => entry.status === 'ready').map(entry => entry.code)
+        expect(SUPPORTED_LOCALES).toEqual(ready)
+    })
+
+    it('gives every entry what the rest of the app reads from it', () => {
+        for (const entry of LOCALE_REGISTRY) {
+            expect(entry.code).toMatch(/^[a-z]{2,3}$/)
+            expect(entry.name).toBeTruthy()
+            expect(() => new Intl.NumberFormat(entry.intl)).not.toThrow()
+            expect(['draft', 'ready']).toContain(entry.status)
+        }
+    })
+
+    it('matches the languages the backend accepts', () => {
+        // The backend validates the saved profile language against its own enum, so a code missing there
+        // would make the language impossible to save. `npm run i18n:add` writes both; this catches a hand edit.
+        const source = readFileSync(join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'org', 'github',
+            'tess1o', 'geopulse', 'user', 'model', 'SupportedLanguages.java'), 'utf8')
+        const backendCodes = [...source.matchAll(/^\s*[A-Z_]+\("([a-z]+)"\)[,;]/gm)].map(match => match[1])
+        expect(backendCodes.sort()).toEqual(LOCALE_REGISTRY.map(entry => entry.code).sort())
     })
 })
 
@@ -224,6 +272,6 @@ describe('lazy locale loading', () => {
     })
 
     it('falls back to the default locale for an unsupported request', async () => {
-        await expect(loadLocale('de')).resolves.toBe(DEFAULT_LOCALE)
+        await expect(loadLocale('xx')).resolves.toBe(DEFAULT_LOCALE)
     })
 })

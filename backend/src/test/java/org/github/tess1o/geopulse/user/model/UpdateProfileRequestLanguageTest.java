@@ -34,7 +34,7 @@ class UpdateProfileRequestLanguageTest {
 
     @Test
     void rejectsUnsupportedLanguages() {
-        UpdateProfileRequest request = withLanguage("de");
+        UpdateProfileRequest request = withLanguage("xx");
         assertTrue(hasLanguageViolation(request));
     }
 

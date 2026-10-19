@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.user.validation.SupportedLanguage;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 /**
@@ -33,7 +34,7 @@ public class UserRegistrationRequest {
     @Schema(examples = "Europe/Kyiv")
     private String timezone;
 
-    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @SupportedLanguage
     @Size(max = 16, message = "Language cannot exceed 16 characters")
     @Schema(examples = "en")
     private String language;

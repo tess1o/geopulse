@@ -2,10 +2,9 @@ package org.github.tess1o.geopulse.admin.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import org.github.tess1o.geopulse.user.model.SupportedLanguages;
+import org.github.tess1o.geopulse.user.validation.SupportedLanguage;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Data
@@ -29,7 +28,7 @@ public class InvitationRegisterRequest {
     @Schema(examples = "Europe/Kyiv")
     private String timezone;
 
-    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @SupportedLanguage
     @Size(max = 16)
     @Schema(examples = "en")
     private String language;

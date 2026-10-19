@@ -209,6 +209,28 @@ frontend-test:
 	@echo "Running frontend tests"
 	cd frontend && npm run test:run -- $(TEST)
 
+#==============================================================================
+# TRANSLATION TARGETS (see frontend/src/locales/README.md)
+#==============================================================================
+# LOCALE, not LANG: make imports the environment, and LANG is the shell's own locale (en_US.UTF-8).
+
+# Scaffold a new UI language as a draft (hidden in production until marked ready)
+.PHONY: i18n-add
+i18n-add:
+	@if [ -z "$(LOCALE)" ] || [ -z "$(NAME)" ] || [ -z "$(INTL)" ]; then echo "Usage: make i18n-add LOCALE=de NAME=Deutsch INTL=de-DE"; exit 1; fi
+	cd frontend && npm run --silent i18n:add -- "$(LOCALE)" --name "$(NAME)" --intl "$(INTL)"
+
+# Translation coverage per language (optional LOCALE=<code> for one language)
+.PHONY: i18n-status
+i18n-status:
+	cd frontend && npm run --silent i18n:status -- $(LOCALE)
+
+# Every string still to translate for one language, with its English text
+.PHONY: i18n-missing
+i18n-missing:
+	@if [ -z "$(LOCALE)" ]; then echo "Usage: make i18n-missing LOCALE=de"; exit 1; fi
+	cd frontend && npm run --silent i18n:status -- "$(LOCALE)" --list
+
 # Timezone matrix settings for local verification
 # Override like:
 #   make backend-test-unit-tz-matrix TZ_MATRIX="UTC Europe/Kyiv America/New_York"
@@ -480,6 +502,11 @@ help:
 	@echo "  test-e2e-debug         Debug E2E tests (RASTER + VECTOR + OIDC)"
 	@echo "  test-e2e-report        Show E2E test report"
 	@echo "  test-e2e-full          Complete E2E workflow: start → test → report"
+	@echo ""
+	@echo "🌐 TRANSLATIONS:"
+	@echo "  i18n-add               Scaffold a draft language (LOCALE=de NAME=Deutsch INTL=de-DE)"
+	@echo "  i18n-status            Show translation coverage (optional LOCALE=<code>)"
+	@echo "  i18n-missing           List strings still to translate (LOCALE=<code>)"
 	@echo ""
 	@echo "🧪 E2E ENVIRONMENT MANAGEMENT:"
 	@echo "  e2e-start              Start E2E test environment (UI + Backend + DB + fake Immich/Memos/OIDC)"
