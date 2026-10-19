@@ -439,7 +439,64 @@ public class StreamingTimelineProcessor {
             }
         }
 
+        ProcessingResult sparseStopResult = splitTripOnSparseStop(userState, config);
+        if (sparseStopResult != null) {
+            return sparseStopResult;
+        }
+
         return ProcessingResult.withStateOnly(userState);
+    }
+
+    /**
+     * End the trip at its previous point when the latest point shows the trip stopped there with no points in between
+     * (see {@link TripStopHeuristicsService#detectSparseStop}). Runs only when the stop detection found nothing, so it
+     * changes no stop that the points' speeds already show.
+     */
+    private ProcessingResult splitTripOnSparseStop(UserState userState, TimelineConfig config) {
+        List<GPSPoint> allPoints = userState.copyActivePoints();
+        if (allPoints.size() < 2) {
+            return null;
+        }
+        GPSPoint stopStart = allPoints.get(allPoints.size() - 2);
+        GPSPoint point = allPoints.getLast();
+        TripStopHeuristicsService.SparseStop stop = tripStopHeuristicsService.detectSparseStop(stopStart, point, config);
+        if (stop == null) {
+            return null;
+        }
+
+        // Slow points that are far apart in time are an ordinary arrival, only with fewer points than usual
+        TimelineReason sparseStop = stop.slow()
+                ? TimelineReason.of(TimelineReasons.ARRIVAL,
+                        "stopSeconds", stop.gap().getSeconds(), "points", 2, "stopSpeedKmh", stop.stopSpeedThresholdKmh())
+                : TimelineReason.of(TimelineReasons.SPARSE_STOP,
+                        "gapSeconds", stop.gap().getSeconds(), "distanceMeters", Math.round(stop.distanceMeters()));
+
+        // The trip ends at the point where it stopped, which also starts the stay. A trip of that one point is dropped.
+        Trip finalizedTrip = null;
+        if (allPoints.size() > 2) {
+            UserState tripState = new UserState();
+            tripState.setCurrentMode(ProcessorMode.IN_TRIP);
+            for (GPSPoint p : allPoints.subList(0, allPoints.size() - 1)) {
+                tripState.addActivePoint(p);
+            }
+            finalizedTrip = finalizationService.finalizeTrip(tripState, config);
+        }
+        TimelineExplanation tripExplanation = userState.finishExplanation(sparseStop);
+        if (finalizedTrip != null) {
+            finalizedTrip.setExplanation(tripExplanation);
+        }
+
+        userState.setCurrentMode(ProcessorMode.POTENTIAL_STAY);
+        userState.clearActivePoints();
+        userState.addActivePoint(stopStart);
+        userState.addActivePoint(point);
+        userState.startExplanation(sparseStop);
+        // The stop already lasts the minimum stay duration
+        confirmStay(userState, config);
+
+        return finalizedTrip != null
+                ? ProcessingResult.withSingleEvent(userState, finalizedTrip)
+                : ProcessingResult.withStateOnly(userState);
     }
 
     /**

@@ -12,6 +12,12 @@ public final class TimelineReasons {
     public static final String AFTER_DATA_GAP = "AFTER_DATA_GAP";
     /** Stay: the trip before it stopped (params: stopSeconds, points, stopSpeedKmh). Trip end: the same stop. */
     public static final String ARRIVAL = "ARRIVAL";
+    /**
+     * Stay: the trip before it stopped, seen only because the next point came at least the minimum stay duration later
+     * and within the stay radius, although the points reported a moving speed (params: gapSeconds, distanceMeters).
+     * Trip end: the same stop.
+     */
+    public static final String SPARSE_STOP = "SPARSE_STOP";
     /** Trip: a point beyond the stay radius (params: distanceMeters, radiusMeters). */
     public static final String LEFT_STAY = "LEFT_STAY";
     /** Trip: a stop too short to be a stay (params: stopSeconds, minMinutes). */

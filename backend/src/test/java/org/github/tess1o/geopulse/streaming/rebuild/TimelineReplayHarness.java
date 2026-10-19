@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.rebuild;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -50,6 +51,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.function.UnaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -65,6 +67,12 @@ public class TimelineReplayHarness {
 
     /** A real day recorded with OwnTracks (GitHub issue #627): office stay, drive home, data gap, home stay. */
     public static final String ISSUE_627_EXPORT = "/timeline-fixtures/issue-627-debug-export.zip";
+
+    /**
+     * A real day recorded with OwnTracks (GitHub issue #632): a drive, a stop of about two hours recorded by only a few
+     * points that all report driving speed, the drive back, and home with two points in ten hours.
+     */
+    public static final String ISSUE_632_EXPORT = "/timeline-fixtures/issue-632-debug-export.zip";
 
     @Inject
     DebugImportService debugImportService;
@@ -115,7 +123,7 @@ public class TimelineReplayHarness {
     public UUID createUserWithSettingsOf(byte[] export, String prefix) {
         UUID userId = testUserFactory.createUser(prefix).userId();
         try {
-            debugImportService.importDebugData(userId, withoutGpsPoints(export),
+            debugImportService.importDebugData(userId, withoutBoat(withoutGpsPoints(export)),
                     new DebugImportRequest(true, true));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -127,7 +135,7 @@ public class TimelineReplayHarness {
     public UUID importExport(byte[] export, String prefix) {
         UUID userId = testUserFactory.createUser(prefix).userId();
         try {
-            debugImportService.importDebugData(userId, export, new DebugImportRequest(true, true));
+            debugImportService.importDebugData(userId, withoutBoat(export), new DebugImportRequest(true, true));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -476,14 +484,34 @@ public class TimelineReplayHarness {
     }
 
     private static byte[] withoutGpsPoints(byte[] zip) throws IOException {
+        return withEntry(zip, "gps_data.json", content -> "[]".getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Boat turned off: with it on, every rebuild first downloads and imports the water dataset (hundreds of MB), which
+     * the test database does not have.
+     */
+    private byte[] withoutBoat(byte[] zip) throws IOException {
+        return withEntry(zip, "timeline_config.json", content -> {
+            try {
+                ObjectNode config = (ObjectNode) objectMapper.readTree(content);
+                config.put("boatEnabled", false);
+                return objectMapper.writeValueAsBytes(config);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
+
+    private static byte[] withEntry(byte[] zip, String name, UnaryOperator<byte[]> change) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(zip));
              ZipOutputStream copy = new ZipOutputStream(output)) {
             ZipEntry entry;
             while ((entry = input.getNextEntry()) != null) {
                 byte[] content = input.readAllBytes();
-                if (entry.getName().equals("gps_data.json")) {
-                    content = "[]".getBytes(StandardCharsets.UTF_8);
+                if (entry.getName().equals(name)) {
+                    content = change.apply(content);
                 }
                 copy.putNextEntry(new ZipEntry(entry.getName()));
                 copy.write(content);

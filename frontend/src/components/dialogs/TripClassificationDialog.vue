@@ -106,11 +106,13 @@
             icon="pi pi-chart-line"
             :label="t('classification.stats.avgSpeed')"
             :value="formatSpeed(details.statistics.avgGpsSpeedKmh)"
+            :hint="t('classification.stats.avgSpeedHint')"
           />
           <StatCard
             icon="pi pi-bolt"
             :label="t('classification.stats.maxSpeed')"
             :value="formatSpeed(details.statistics.maxGpsSpeedKmh)"
+            :hint="t('classification.stats.maxSpeedHint')"
           />
           <StatCard
             icon="pi pi-calculator"

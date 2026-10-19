@@ -32,7 +32,9 @@ export default {
     stats: {
         title: 'GPS-статистика',
         avgSpeed: 'Середня швидкість GPS',
+        avgSpeedHint: 'З урахуванням тривалості кожного показника',
         maxSpeed: 'Максимальна швидкість GPS',
+        maxSpeedHint: 'Найвища швидкість, що трималася щонайменше 30 секунд',
         calculatedAvgSpeed: 'Розрахована середня швидкість',
         calculatedAvgSpeedHint: 'На основі відстані/тривалості',
         speedVariance: 'Дисперсія швидкості',

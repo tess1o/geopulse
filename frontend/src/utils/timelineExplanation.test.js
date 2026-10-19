@@ -39,11 +39,11 @@ describe('explanationLines', () => {
   it('has a sentence for every reason code the engine records', async () => {
     await loadLocale('uk')
     const codes = {
-      start: ['FIRST_POINT', 'AFTER_DATA_GAP', 'ARRIVAL', 'LEFT_STAY', 'SHORT_STOP', 'WATER_TRANSITION_TO_WATER',
+      start: ['FIRST_POINT', 'AFTER_DATA_GAP', 'ARRIVAL', 'SPARSE_STOP', 'LEFT_STAY', 'SHORT_STOP', 'WATER_TRANSITION_TO_WATER',
         'WATER_TRANSITION_TO_LAND', 'INFERRED_DURING_GAP', 'INFERRED_TRIP_DURING_GAP', 'CONTINUITY', 'NO_POINTS', 'NO_POINTS_SINCE_LAST',
         'STOPPED_BEFORE_GAP', 'MANUAL_SPLIT', 'MANUAL_GAP_STAY'],
       note: ['CONFIRMED', 'FAVORITE_AREA', 'CONTINUED_OVER_GAP', 'MERGED', 'JOINED_SEGMENTS', 'SHORT_STOP', 'MANUAL_SPLIT', 'MANUAL_GAP_STAY'],
-      end: ['MOVED_AWAY', 'ARRIVAL', 'DATA_GAP', 'LAST_POINT', 'WATER_TRANSITION_TO_WATER', 'WATER_TRANSITION_TO_LAND',
+      end: ['MOVED_AWAY', 'ARRIVAL', 'SPARSE_STOP', 'DATA_GAP', 'LAST_POINT', 'WATER_TRANSITION_TO_WATER', 'WATER_TRANSITION_TO_LAND',
         'STOPPED_BEFORE_GAP']
     }
     for (const locale of ['en', 'uk']) {

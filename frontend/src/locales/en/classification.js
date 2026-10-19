@@ -34,7 +34,9 @@ export default {
     stats: {
         title: 'GPS Statistics',
         avgSpeed: 'Average GPS Speed',
+        avgSpeedHint: 'Weighted by how long each reading lasted',
         maxSpeed: 'Max GPS Speed',
+        maxSpeedHint: 'Highest speed held for at least 30 seconds',
         calculatedAvgSpeed: 'Calculated Avg Speed',
         calculatedAvgSpeedHint: 'From distance/duration',
         speedVariance: 'Speed Variance',

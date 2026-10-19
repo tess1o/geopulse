@@ -777,6 +777,96 @@ class StreamingTimelineProcessorTest {
         assertEquals(1, tripCount, "Short water crossings should not split a moving trip");
     }
 
+    /**
+     * GitHub issue #632: a sparse source records a stop only at its two ends, and both report a driving speed, so the
+     * stop never shows as slow points.
+     */
+    @Test
+    void shouldEndTripAtSparseStop_WhenNextPointComesLateAndCloseDespiteReportedSpeed() {
+        List<TimelineEvent> events = processor.processPoints(sparseStopDay(0.0002, 20), config, testUserId);
+
+        Stay stop = stayStartingAt(events, Instant.parse("2024-08-15T09:16:00Z"));
+        assertNotNull(stop, "The 20-minute stop should be a stay");
+        assertEquals(java.time.Duration.ofMinutes(20), stop.getDuration());
+        TimelineReason start = stop.getExplanation().getStart();
+        assertEquals(TimelineReasons.SPARSE_STOP, start.code());
+        assertEquals(1200L, ((Number) start.params().get("gapSeconds")).longValue());
+        assertTrue(stop.getExplanation().getNotes().stream()
+            .anyMatch(note -> TimelineReasons.CONFIRMED.equals(note.code())));
+        assertEquals(TimelineReasons.MOVED_AWAY, stop.getExplanation().getEnd().code());
+    }
+
+    @Test
+    void shouldExplainSparseStopAsArrival_WhenBothPointsReportStopping() {
+        List<GPSPoint> points = new java.util.ArrayList<>(sparseStopDay(0.0002, 20));
+        points.set(6, createGpsPoint(Instant.parse("2024-08-15T09:16:00Z"), 40.7400, -74.0000, 0.0, 10.0));
+        points.set(7, createGpsPoint(Instant.parse("2024-08-15T09:36:00Z"), 40.7402, -74.0000, 0.0, 10.0));
+
+        List<TimelineEvent> events = processor.processPoints(points, config, testUserId);
+
+        Stay stop = stayStartingAt(events, Instant.parse("2024-08-15T09:16:00Z"));
+        assertNotNull(stop);
+        TimelineReason start = stop.getExplanation().getStart();
+        assertEquals(TimelineReasons.ARRIVAL, start.code());
+        assertEquals(2, ((Number) start.params().get("points")).intValue());
+        assertEquals(1200L, ((Number) start.params().get("stopSeconds")).longValue());
+    }
+
+    @Test
+    void shouldNotEndTripAtSparseStop_WhenNextPointImpliesMovement() {
+        TimelineConfig wideRadius = TimelineConfig.builder()
+            .staypointRadiusMeters(900)
+            .staypointMinDurationMinutes(7)
+            .staypointMaxAccuracyThreshold(50.0)
+            .useVelocityAccuracy(true)
+            .staypointVelocityThreshold(7.2)
+            .dataGapThresholdSeconds(3600)
+            .dataGapMinDurationSeconds(60)
+            .build();
+
+        // 800 m in 10 minutes is 4.8 km/h: within the radius, but moving
+        List<TimelineEvent> events = processor.processPoints(sparseStopDay(0.0072, 10), wideRadius, testUserId);
+
+        assertNull(stayStartingAt(events, Instant.parse("2024-08-15T09:16:00Z")));
+    }
+
+    @Test
+    void shouldNotEndTripAtSparseStop_WhenNextPointComesSoonerThanMinimumStay() {
+        // A 5-minute wait, such as at a level crossing, is shorter than the 10-minute minimum stay
+        List<TimelineEvent> events = processor.processPoints(sparseStopDay(0.0002, 5), config, testUserId);
+
+        assertNull(stayStartingAt(events, Instant.parse("2024-08-15T09:16:00Z")));
+    }
+
+    /**
+     * A stay, a drive reporting 15 m/s throughout, a point at 09:16 and the next one {@code resumeMinutes} later
+     * {@code resumeLatitudeDelta} degrees north of it, then driving on.
+     */
+    private List<GPSPoint> sparseStopDay(double resumeLatitudeDelta, int resumeMinutes) {
+        Instant resume = Instant.parse("2024-08-15T09:16:00Z").plusSeconds(resumeMinutes * 60L);
+        return Arrays.asList(
+            createGpsPoint(Instant.parse("2024-08-15T09:00:00Z"), 40.7000, -74.0000, 0.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:05:00Z"), 40.7000, -74.0000, 0.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:12:00Z"), 40.7000, -74.0000, 0.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:13:00Z"), 40.7100, -74.0000, 15.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:14:00Z"), 40.7200, -74.0000, 15.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:15:00Z"), 40.7300, -74.0000, 15.0, 10.0),
+            createGpsPoint(Instant.parse("2024-08-15T09:16:00Z"), 40.7400, -74.0000, 15.0, 10.0),
+            createGpsPoint(resume, 40.7400 + resumeLatitudeDelta, -74.0000, 15.0, 10.0),
+            createGpsPoint(resume.plusSeconds(60), 40.7600, -74.0000, 15.0, 10.0),
+            createGpsPoint(resume.plusSeconds(120), 40.7700, -74.0000, 15.0, 10.0)
+        );
+    }
+
+    private static Stay stayStartingAt(List<TimelineEvent> events, Instant start) {
+        return events.stream()
+            .filter(Stay.class::isInstance)
+            .map(Stay.class::cast)
+            .filter(stay -> start.equals(stay.getStartTime()))
+            .findFirst()
+            .orElse(null);
+    }
+
     private GPSPoint createGpsPoint(Instant timestamp, double lat, double lon, double speed, double accuracy) {
         return GPSPoint.builder()
             .timestamp(timestamp)

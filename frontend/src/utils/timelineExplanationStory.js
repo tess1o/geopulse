@@ -24,6 +24,7 @@ const NOTABLE_CODES = new Set([
 /** Settings that decide each reason, by name as the timeline preferences page knows them. */
 const SETTINGS_BY_CODE = {
   ARRIVAL: ['staypointVelocityThreshold', 'tripArrivalMinPoints'],
+  SPARSE_STOP: ['staypointRadiusMeters', 'staypointMinDurationMinutes'],
   CONFIRMED: ['staypointRadiusMeters', 'staypointMinDurationMinutes'],
   MOVED_AWAY: ['staypointRadiusMeters'],
   LEFT_STAY: ['staypointRadiusMeters'],

@@ -16,13 +16,13 @@ import java.util.Map;
 @Setter
 public class TimelineExplanation {
 
-    /** Starts: FIRST_POINT, AFTER_DATA_GAP, ARRIVAL, LEFT_STAY, SHORT_STOP, WATER_TRANSITION and inferred ones. */
+    /** Starts: FIRST_POINT, AFTER_DATA_GAP, ARRIVAL, SPARSE_STOP, LEFT_STAY, SHORT_STOP, WATER_TRANSITION and inferred ones. */
     private TimelineReason start;
 
     /** Decisions made while the event was open, such as a stay being confirmed or merged. */
     private List<TimelineReason> notes = new ArrayList<>();
 
-    /** Ends: MOVED_AWAY, ARRIVAL, DATA_GAP, WATER_TRANSITION, LAST_POINT. */
+    /** Ends: MOVED_AWAY, ARRIVAL, SPARSE_STOP, DATA_GAP, WATER_TRANSITION, LAST_POINT. */
     private TimelineReason end;
 
     public TimelineExplanation() {
