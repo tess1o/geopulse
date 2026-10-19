@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 
 import java.time.Instant;
 import java.util.List;
@@ -56,8 +57,20 @@ public class TripWaterClassificationService {
         return statistics;
     }
 
+    /**
+     * Points less accurate than the timeline's accuracy threshold are left out, as timeline generation leaves them
+     * out: a network fix hundreds of meters off the real track says nothing about whether the trip was on water.
+     * Callers that reload a trip's raw interval (merged trips, reclassification) get the same evidence as the
+     * timeline generation itself this way.
+     */
     public TripWaterStatistics calculateStatistics(List<GPSPoint> gpsPoints, TimelineConfig config) {
-        if (!isBoatEnabled(config) || gpsPoints == null || gpsPoints.size() < 2) {
+        if (!isBoatEnabled(config) || gpsPoints == null) {
+            return TripWaterStatistics.unavailable();
+        }
+        List<GPSPoint> accuratePoints = gpsPoints.stream()
+                .filter(point -> TimelineGpsAccuracyFilter.shouldInclude(point, config))
+                .toList();
+        if (accuratePoints.size() < 2) {
             return TripWaterStatistics.unavailable();
         }
 
@@ -67,9 +80,9 @@ public class TripWaterClassificationService {
         double longestWaterSegmentMeters = 0.0;
         int sampleCount = 0;
 
-        for (int i = 1; i < gpsPoints.size(); i++) {
-            GPSPoint previous = gpsPoints.get(i - 1);
-            GPSPoint current = gpsPoints.get(i);
+        for (int i = 1; i < accuratePoints.size(); i++) {
+            GPSPoint previous = accuratePoints.get(i - 1);
+            GPSPoint current = accuratePoints.get(i);
             double segmentDistanceMeters = previous.distanceTo(current);
 
             if (segmentDistanceMeters < MIN_USABLE_SEGMENT_DISTANCE_METERS
