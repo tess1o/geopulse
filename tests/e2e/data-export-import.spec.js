@@ -1785,6 +1785,160 @@ test.describe('Data Export & Import', () => {
             expect(gpsPoints.rows.length).toBeGreaterThan(0);
             expect(gpsPoints.rows[0].source_type).toBe('GOOGLE_TIMELINE');
         });
+
+        test('should import GeoJSON format', async ({ page, isolatedUsers, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const userId = (await dbManager.getUserByEmail(testUser.email)).id;
+
+            // Insert reverse geocoding data to avoid Nominatim API calls
+            await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await exportImportPage.navigate();
+            await exportImportPage.waitForPageLoad();
+            await exportImportPage.switchToTab('import');
+
+            await exportImportPage.selectImportFormat('geojson');
+
+            const geoJsonFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'geojson-sample.geojson');
+            await exportImportPage.uploadFile(geoJsonFilePath);
+
+            await exportImportPage.clickStartImport();
+            await exportImportPage.waitForSuccessToast();
+            await exportImportPage.waitForImportJobStatus('Completed', 120000);
+
+            // 3 Point features + 3 LineString vertices = 6 points
+            const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+            expect(gpsCount).toBe(6);
+
+            const pointsData = await dbManager.client.query(`
+                SELECT ST_X(coordinates) as lon, ST_Y(coordinates) as lat, timestamp, altitude, device_id, source_type
+                FROM gps_points
+                WHERE user_id = $1
+                ORDER BY timestamp ASC
+            `, [userId]);
+
+            expect(pointsData.rows.every(row => row.source_type === 'GEOJSON')).toBe(true);
+
+            // First Point feature: altitude comes from the third coordinate
+            const firstPoint = pointsData.rows[0];
+            expect(firstPoint.lat).toBeCloseTo(50.4501, 6);
+            expect(firstPoint.lon).toBeCloseTo(30.5234, 6);
+            expect(new Date(firstPoint.timestamp).toISOString()).toBe('2025-08-05T09:00:00.000Z');
+            expect(firstPoint.altitude).toBeCloseTo(101.0, 3);
+            expect(firstPoint.device_id).toBe('geojson-test-device');
+
+            // Last LineString vertex: timestamp comes from the per-vertex timestamp array
+            const lastPoint = pointsData.rows[pointsData.rows.length - 1];
+            expect(lastPoint.lat).toBeCloseTo(50.4550, 6);
+            expect(lastPoint.lon).toBeCloseTo(30.5280, 6);
+            expect(new Date(lastPoint.timestamp).toISOString()).toBe('2025-08-05T09:25:00.000Z');
+        });
+
+        test('should import CSV format', async ({ page, isolatedUsers, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const userId = (await dbManager.getUserByEmail(testUser.email)).id;
+
+            // Insert reverse geocoding data to avoid Nominatim API calls
+            await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await exportImportPage.navigate();
+            await exportImportPage.waitForPageLoad();
+            await exportImportPage.switchToTab('import');
+
+            await exportImportPage.selectImportFormat('csv');
+
+            const csvFilePath = path.join(__dirname, '..', 'fixtures', 'import-samples', 'csv-sample.csv');
+            await exportImportPage.uploadFile(csvFilePath);
+
+            await exportImportPage.clickStartImport();
+            await exportImportPage.waitForSuccessToast();
+            await exportImportPage.waitForImportJobStatus('Completed', 120000);
+
+            // 6 data rows, including rows with only the required columns
+            const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+            expect(gpsCount).toBe(6);
+
+            const pointsData = await dbManager.client.query(`
+                SELECT ST_X(coordinates) as lon, ST_Y(coordinates) as lat, timestamp, accuracy, altitude, device_id, source_type
+                FROM gps_points
+                WHERE user_id = $1
+                ORDER BY timestamp ASC
+            `, [userId]);
+
+            expect(pointsData.rows.every(row => row.source_type === 'CSV')).toBe(true);
+
+            const firstPoint = pointsData.rows[0];
+            expect(firstPoint.lat).toBeCloseTo(50.4501, 6);
+            expect(firstPoint.lon).toBeCloseTo(30.5234, 6);
+            expect(new Date(firstPoint.timestamp).toISOString()).toBe('2025-08-06T10:00:00.000Z');
+            expect(firstPoint.accuracy).toBeCloseTo(5.0, 3);
+            expect(firstPoint.altitude).toBeCloseTo(100.0, 3);
+            expect(firstPoint.device_id).toBe('csv-test-device');
+
+            // Row with only timestamp,latitude,longitude
+            const lastPoint = pointsData.rows[pointsData.rows.length - 1];
+            expect(lastPoint.lat).toBeCloseTo(50.4550, 6);
+            expect(lastPoint.lon).toBeCloseTo(30.5280, 6);
+            expect(new Date(lastPoint.timestamp).toISOString()).toBe('2025-08-06T10:25:00.000Z');
+            expect(lastPoint.accuracy).toBeNull();
+            expect(lastPoint.device_id).toBeNull();
+        });
+
+        test('should fail CSV import with an invalid header and insert no GPS points', async ({ page, isolatedUsers, dbManager, testIdentity}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const userId = (await dbManager.getUserByEmail(testUser.email)).id;
+
+            const malformedCsvPath = path.join(
+                ensureDownloadsPath(),
+                `malformed-csv-import-${testIdentity.uniqueToken}.csv`
+            );
+            fs.writeFileSync(malformedCsvPath, [
+                'time,lat,lon',
+                '2025-08-06T10:00:00Z,50.4501,30.5234',
+                '2025-08-06T10:05:00Z,50.4510,30.5240'
+            ].join('\n'));
+
+            try {
+                await loginPage.navigate();
+                await loginPage.login(testUser.email, testUser.password);
+                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+                await exportImportPage.navigate();
+                await exportImportPage.waitForPageLoad();
+                await exportImportPage.switchToTab('import');
+
+                await exportImportPage.selectImportFormat('csv');
+                await exportImportPage.uploadFile(malformedCsvPath);
+
+                // The upload is accepted; the header is rejected when the job is validated
+                await exportImportPage.clickStartImport();
+                await exportImportPage.waitForSuccessToast();
+                await exportImportPage.waitForImportJobStatus('Failed', 120000);
+
+                expect(await exportImportPage.getImportJobErrorMessage()).toContain('Invalid CSV header');
+
+                const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+                expect(gpsCount).toBe(0);
+            } finally {
+                if (fs.existsSync(malformedCsvPath)) {
+                    fs.unlinkSync(malformedCsvPath);
+                }
+            }
+        });
     });
 
     test.describe('Import - Data Integrity', () => {

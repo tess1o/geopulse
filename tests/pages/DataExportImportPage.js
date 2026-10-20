@@ -97,6 +97,7 @@ export class DataExportImportPage {
         jobCard: '.job-status-card',
         jobStatus: '.job-status-card .job-header .p-tag',
         jobProgress: '.job-status-card .job-progress',
+        jobErrorMessage: '.job-status-card .job-error-message',
         jobRunningHint: '.job-status-card .job-running-hint',
         jobExpiry: '.job-status-card .job-expiry',
         downloadedTag: '.job-status-card .job-ready-info .p-tag',
@@ -115,13 +116,17 @@ export class DataExportImportPage {
           geopulse: '#import-geopulse',
           owntracks: '#import-owntracks',
           googleTimeline: '#import-google-timeline',
-          gpx: '#import-gpx'
+          gpx: '#import-gpx',
+          geojson: '#import-geojson',
+          csv: '#import-csv'
         },
         formatOptionLabels: {
           geopulse: 'label[for="import-geopulse"]',
           owntracks: 'label[for="import-owntracks"]',
           googleTimeline: 'label[for="import-google-timeline"]',
-          gpx: 'label[for="import-gpx"]'
+          gpx: 'label[for="import-gpx"]',
+          geojson: 'label[for="import-geojson"]',
+          csv: 'label[for="import-csv"]'
         },
 
         // File drop zone
@@ -166,6 +171,7 @@ export class DataExportImportPage {
         jobCard: '.job-status-card',
         jobStatus: '.job-status-card .job-header .p-tag',
         jobProgress: '.job-status-card .job-progress',
+        jobErrorMessage: '.job-status-card .job-error-message',
         viewTimelineButton: '.job-status-card button:has-text("View Timeline")',
         importSummary: '.import-summary',
         summaryItems: '.summary-item'
@@ -488,7 +494,9 @@ export class DataExportImportPage {
       'geopulse': 'geopulse',
       'owntracks': 'owntracks',
       'google-timeline': 'googleTimeline',
-      'gpx': 'gpx'
+      'gpx': 'gpx',
+      'geojson': 'geojson',
+      'csv': 'csv'
     };
 
     const selectorKey = formatMap[format.toLowerCase()] || format.toLowerCase();
@@ -669,6 +677,12 @@ export class DataExportImportPage {
       await this.page.waitForTimeout(2000);
     }
     throw new Error(`Import job did not reach status "${status}" within ${timeout}ms`);
+  }
+
+  async getImportJobErrorMessage() {
+    const errorMessage = this.page.locator(this.selectors.import.jobErrorMessage);
+    await errorMessage.waitFor({ state: 'visible' });
+    return (await errorMessage.textContent())?.trim() || '';
   }
 
   async getImportJobProgress() {

@@ -1,0 +1,54 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.5234, 50.4501, 101.0] },
+      "properties": {
+        "timestamp": "2025-08-05T09:00:00Z",
+        "accuracy": 5.0,
+        "velocity": 0.0,
+        "battery": 90,
+        "deviceId": "geojson-test-device"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.5240, 50.4510] },
+      "properties": {
+        "timestamp": "2025-08-05T09:05:00Z",
+        "accuracy": 6.0,
+        "velocity": 5.2,
+        "altitude": 103.0,
+        "deviceId": "geojson-test-device"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.5250, 50.4520] },
+      "properties": {
+        "timestamp": "2025-08-05T09:10:00Z",
+        "deviceId": "geojson-test-device"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [30.5260, 50.4530],
+          [30.5270, 50.4540],
+          [30.5280, 50.4550]
+        ]
+      },
+      "properties": {
+        "timestamp": [
+          "2025-08-05T09:15:00Z",
+          "2025-08-05T09:20:00Z",
+          "2025-08-05T09:25:00Z"
+        ],
+        "deviceId": "geojson-test-device"
+      }
+    }
+  ]
+}

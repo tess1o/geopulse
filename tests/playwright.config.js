@@ -37,6 +37,9 @@ const isolatedSpecs = [
   '**/notifications.spec.js',
   '**/admin-invitations.spec.js',
   '**/immich-integration.spec.js',
+  '**/timeline-preferences.spec.js',
+  '**/api-tokens.spec.js',
+  '**/admin-users.spec.js',
 ];
 
 // OIDC sign-in specs switch global auth settings (password login off, a single provider), which would

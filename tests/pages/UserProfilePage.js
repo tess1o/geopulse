@@ -78,8 +78,12 @@ export class UserProfilePage {
         presetOption: (preset) => `label.access-option:has(#api-token-preset-${preset})`,
         submitButton: '.p-dialog button:has-text("Create")',
         createdDialog: '.p-dialog:has-text("API Token Created")',
+        createdSecretInput: '.p-dialog:has-text("API Token Created") .token-secret input',
         createdConfirmButton: 'button:has-text("I have stored this token")',
-        rows: '.tokens-table tbody tr'
+        rows: '.tokens-table tbody tr',
+        revokeButton: 'button:has(.pi-ban)',
+        revokeDialog: '.p-dialog:has-text("Revoke API Token")',
+        revokeConfirmButton: '.p-dialog:has-text("Revoke API Token") button:has-text("Revoke")'
       },
 
       // AI Assistant tab selectors
@@ -619,8 +623,8 @@ export class UserProfilePage {
    * Check if Change Password button is enabled
    */
   /**
-   * Create an API token in the Security tab with the given preset (the dialog defaults to Read only)
-   * and close the dialog that shows its secret.
+   * Create an API token in the Security tab with the given preset (the dialog defaults to Read only),
+   * close the dialog that shows its secret, and return the secret.
    */
   async createApiToken(name, preset = 'readOnly') {
     const sel = this.selectors.apiTokens;
@@ -629,8 +633,21 @@ export class UserProfilePage {
     await this.page.locator(sel.presetOption(preset)).click();
     await this.page.locator(sel.submitButton).click();
     await this.page.locator(sel.createdDialog).waitFor({ state: 'visible' });
+    const secret = await this.page.locator(sel.createdSecretInput).inputValue();
     await this.page.locator(sel.createdConfirmButton).click();
     await this.page.locator(sel.createdDialog).waitFor({ state: 'hidden' });
+    return secret;
+  }
+
+  /**
+   * Revoke the API token with the given name from its row in the Security tab.
+   */
+  async revokeApiToken(name) {
+    const sel = this.selectors.apiTokens;
+    await this.page.locator(sel.rows, { hasText: name }).locator(sel.revokeButton).click();
+    await this.page.locator(sel.revokeDialog).waitFor({ state: 'visible' });
+    await this.page.locator(sel.revokeConfirmButton).click();
+    await this.page.locator(sel.revokeDialog).waitFor({ state: 'hidden' });
   }
 
   async isChangePasswordButtonEnabled() {

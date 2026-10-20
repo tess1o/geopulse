@@ -66,8 +66,144 @@ export class GpsDataPage {
       // Toast messages
       toast: '.p-toast',
       toastSuccess: '.p-toast-message-success',
-      toastError: '.p-toast-message-error'
+      toastError: '.p-toast-message-error',
+
+      // Write actions
+      selectionText: '.selection-text',
+      deleteSelectedButton: '.bulk-delete-button',
+      deleteAllButton: '.delete-all-button',
+      rowCheckbox: '.selection-col input.p-checkbox-input',
+      rowEditButton: '.edit-button',
+      rowDeleteButton: '.delete-button',
+      pendingEditsBanner: '.pending-edits-banner',
+      pendingEditRow: '.pending-edit-row',
+
+      // Advanced filters
+      advancedFilters: '.advanced-filters',
+      activeFilterChips: '.active-filter-chips .p-chip'
     }
+  }
+
+  /**
+   * Table row by its position on the current page (default order: newest first)
+   */
+  getRow(index) {
+    return this.page.locator(this.selectors.tableRows).nth(index);
+  }
+
+  getRowCheckbox(index) {
+    return this.getRow(index).locator(this.selectors.rowCheckbox);
+  }
+
+  /**
+   * Toggle a row's selection checkbox
+   */
+  async toggleRowCheckbox(index) {
+    await this.getRowCheckbox(index).click();
+  }
+
+  /**
+   * Click a row outside its checkbox and buttons. With shift, selects the range from the last clicked row.
+   * Shift on the checkbox itself does not select a range: its change event carries no shiftKey.
+   */
+  async clickRow(index, { shift = false } = {}) {
+    await this.getRow(index).locator('.timestamp-cell').click({ modifiers: shift ? ['Shift'] : [] });
+  }
+
+  async getRowCoordinatesText(index) {
+    return (await this.getRow(index).locator('.coordinates-cell').textContent())?.replace(/\s+/g, '');
+  }
+
+  /**
+   * Dialog by its exact header, e.g. 'Delete GPS Point' or 'Edit GPS Point'
+   */
+  getDialog(header) {
+    return this.page.getByRole('dialog', { name: header, exact: true });
+  }
+
+  async clickDialogButton(header, label) {
+    await this.getDialog(header).getByRole('button', { name: label, exact: true }).click();
+  }
+
+  async openEditDialog(index) {
+    await this.getRow(index).locator(this.selectors.rowEditButton).click();
+    await this.getDialog('Edit GPS Point').waitFor({ state: 'visible' });
+  }
+
+  async openDeleteDialog(index) {
+    await this.getRow(index).locator(this.selectors.rowDeleteButton).click();
+    await this.getDialog('Delete GPS Point').waitFor({ state: 'visible' });
+  }
+
+  async openBulkDeleteDialog() {
+    await this.page.locator(this.selectors.deleteSelectedButton).click();
+    await this.getDialog('Delete Multiple GPS Points').waitFor({ state: 'visible' });
+  }
+
+  async openDeleteAllDialog() {
+    await this.page.locator(this.selectors.deleteAllButton).click();
+    await this.getDialog('Delete All GPS Data').waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Fill a PrimeVue InputNumber; it commits the parsed value on blur.
+   */
+  async fillInputNumber(input, value) {
+    await input.click();
+    await input.fill(String(value));
+    await input.press('Tab');
+  }
+
+  /**
+   * Fill the edit dialog and stage the change ("Add Change"); nothing is saved until applyPendingEdits().
+   */
+  async stageEdit({ lat, lng, velocity, accuracy }) {
+    const dialog = this.getDialog('Edit GPS Point');
+    const fields = { latitude: lat, longitude: lng, velocity, accuracy };
+
+    for (const [id, value] of Object.entries(fields)) {
+      if (value !== undefined) {
+        await this.fillInputNumber(dialog.locator(`#${id} input`), value);
+      }
+    }
+
+    await dialog.getByRole('button', { name: 'Add Change', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+  }
+
+  async applyPendingEdits() {
+    await this.page.locator(this.selectors.pendingEditsBanner)
+      .getByRole('button', { name: 'Apply Changes', exact: true })
+      .click();
+  }
+
+  async showAdvancedFilters() {
+    await this.page.locator(this.selectors.filterSection)
+      .getByRole('button', { name: 'Show Advanced', exact: true })
+      .click();
+    await this.page.locator(this.selectors.advancedFilters).waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Set the minimum speed filter (km/h) and wait for the table to reload with it.
+   */
+  async setSpeedMinFilter(speedMin) {
+    const speedField = this.page.locator(`${this.selectors.advancedFilters} .filter-field`)
+      .filter({ hasText: 'Speed (km/h):' });
+    const reloadResponse = this.page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET'
+        && url.pathname.endsWith('/api/v1/gps/points')
+        && url.searchParams.get('speedMin') === String(speedMin);
+    });
+
+    await this.fillInputNumber(speedField.locator('.range-input input').first(), speedMin);
+    await reloadResponse;
+    await this.waitForTableReload();
+  }
+
+  async getExportButtonLabel() {
+    return (await this.page.locator(this.selectors.exportButton).textContent())?.trim();
   }
 
   /**

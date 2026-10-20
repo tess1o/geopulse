@@ -1,0 +1,7 @@
+timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+2025-08-06T10:00:00Z,50.4501,30.5234,5.0,0.0,100.0,95,csv-test-device,CSV
+2025-08-06T10:05:00Z,50.4510,30.5240,6.0,5.2,102.0,94,csv-test-device,CSV
+2025-08-06T10:10:00Z,50.4520,30.5250,5.5,4.8,105.0,93,csv-test-device,
+2025-08-06T10:15:00Z,50.4530,30.5260,,,,,csv-test-device,
+2025-08-06T10:20:00Z,50.4540,30.5270
+2025-08-06T10:25:00Z,50.4550,30.5280

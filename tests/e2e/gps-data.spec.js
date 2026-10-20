@@ -73,6 +73,69 @@ const isGpsDateRangeRequest = (request) => {
     return requestUrl.searchParams.has('from') && requestUrl.searchParams.has('to');
 };
 
+/**
+ * Seed `count` points one hour apart on 2025-08-20 (08:00Z, 09:00Z, ...), with speed i * 10 km/h.
+ * Returns them newest first, which is the table's default order, so result[i] is table row i.
+ */
+const seedHourlyPoints = async (dbManager, userId, count, { deviceId = 'write-actions-device', latBase = 51.5 } = {}) => {
+    const points = Array.from({ length: count }, (_, i) => ({
+        user_id: userId,
+        device_id: deviceId,
+        latitude: latBase + i * 0.001,
+        longitude: -0.12 - i * 0.001,
+        timestamp: `2025-08-20T${String(8 + i).padStart(2, '0')}:00:00Z`,
+        accuracy: 5 + i,
+        battery: 90 - i,
+        velocity: i * 10,
+        altitude: 20,
+        source_type: 'OWNTRACKS'
+    }));
+
+    const rows = await GpsDataFactory.insertMultipleGpsPoints(dbManager, points);
+    return rows
+        .map((row, i) => ({ ...points[i], id: Number(row.id), hour: `T${String(8 + i).padStart(2, '0')}:00:00` }))
+        .reverse();
+};
+
+const getGpsPointIds = async (dbManager, userId) => {
+    const result = await dbManager.client.query(
+        'SELECT id FROM gps_points WHERE user_id = $1 ORDER BY id',
+        [userId]
+    );
+    return result.rows.map(row => Number(row.id));
+};
+
+const getGpsPointRow = async (dbManager, pointId) => {
+    const result = await dbManager.client.query(`
+        SELECT ST_Y(coordinates) AS lat, ST_X(coordinates) AS lng, velocity, accuracy, timestamp
+        FROM gps_points
+        WHERE id = $1
+    `, [pointId]);
+    return result.rows[0] || null;
+};
+
+const isGpsPointsApiCall = (response, method, pathPattern) =>
+    response.request().method() === method && pathPattern.test(new URL(response.url()).pathname);
+
+const waitForCsvExport = (page) => page.waitForResponse(response =>
+    isGpsPointsApiCall(response, 'GET', /\/api\/v1\/gps\/points\/exports$/) && response.status() === 200
+);
+
+const csvDataLines = (csv) => csv.split('\n').slice(1).filter(line => line.trim() !== '');
+
+const loginAndOpenGpsData = async (page, testUser) => {
+    const loginPage = new LoginPage(page);
+    const gpsDataPage = new GpsDataPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login(testUser.email, testUser.password);
+    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+    await gpsDataPage.navigate();
+    await gpsDataPage.waitForPageLoad();
+    return gpsDataPage;
+};
+
 test.describe('GPS Data Page', () => {
 
     test.describe('Basic GPS Data Viewing', () => {
@@ -893,7 +956,275 @@ test.describe('GPS Data Page', () => {
         });
     });
 
+    test.describe('GPS Point Write Actions', () => {
+        test('should stage a point edit and save new coordinates, speed and accuracy on apply', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const points = await seedHourlyPoints(dbManager, user.id, 3);
+            const [target, ...untouched] = points;
+            const targetBefore = await getGpsPointRow(dbManager, target.id);
+            const untouchedBefore = await Promise.all(untouched.map(point => getGpsPointRow(dbManager, point.id)));
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+            expect(await gpsDataPage.getRowCoordinatesText(0))
+                .toBe(`${target.latitude.toFixed(6)},${target.longitude.toFixed(6)}`);
+
+            await gpsDataPage.openEditDialog(0);
+            await gpsDataPage.stageEdit({ lat: 48.8566, lng: 2.3522, velocity: 42.5, accuracy: 7.5 });
+
+            // Staged only: the row shows the new values, the database still has the old ones
+            const pendingBanner = page.locator(gpsDataPage.selectors.pendingEditsBanner);
+            await expect(pendingBanner).toContainText('1 GPS point change is not applied yet');
+            await expect(gpsDataPage.getRow(0)).toHaveClass(/pending-edit-row/);
+            expect(await gpsDataPage.getRowCoordinatesText(0)).toBe('48.856600,2.352200');
+            expect(await getGpsPointRow(dbManager, target.id)).toEqual(targetBefore);
+
+            const updateResponse = page.waitForResponse(response =>
+                isGpsPointsApiCall(response, 'PUT', /\/api\/v1\/gps\/points\/bulk$/)
+            );
+            await gpsDataPage.applyPendingEdits();
+            expect((await updateResponse).ok()).toBe(true);
+            await gpsDataPage.waitForSuccessToast();
+            await expect(pendingBanner).toHaveCount(0);
+            await gpsDataPage.waitForTableReload();
+
+            const targetAfter = await getGpsPointRow(dbManager, target.id);
+            expect(targetAfter.lat).toBeCloseTo(48.8566, 6);
+            expect(targetAfter.lng).toBeCloseTo(2.3522, 6);
+            expect(targetAfter.velocity).toBeCloseTo(42.5, 4);
+            expect(targetAfter.accuracy).toBeCloseTo(7.5, 4);
+            // The edit dialog has no timestamp field; the point keeps its time
+            expect(new Date(targetAfter.timestamp).getTime()).toBe(new Date(targetBefore.timestamp).getTime());
+
+            for (const [index, point] of untouched.entries()) {
+                expect(await getGpsPointRow(dbManager, point.id)).toEqual(untouchedBefore[index]);
+            }
+
+            expect(await gpsDataPage.getRowCoordinatesText(0)).toBe('48.856600,2.352200');
+            await expect(gpsDataPage.getRow(0)).not.toHaveClass(/pending-edit-row/);
+        });
+
+        test('should keep the point when single delete is cancelled and remove it when confirmed', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const points = await seedHourlyPoints(dbManager, user.id, 3);
+            const target = points[1];
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(3);
+
+            // Cancel keeps the row
+            await gpsDataPage.openDeleteDialog(1);
+            await expect(gpsDataPage.getDialog('Delete GPS Point'))
+                .toContainText('Are you sure you want to delete this GPS point?');
+            await gpsDataPage.clickDialogButton('Delete GPS Point', 'Cancel');
+            await expect(gpsDataPage.getDialog('Delete GPS Point')).toBeHidden();
+
+            expect(await getGpsPointIds(dbManager, user.id)).toEqual(points.map(point => point.id).sort((a, b) => a - b));
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(3);
+
+            // Confirm removes exactly that row
+            await gpsDataPage.openDeleteDialog(1);
+            const deleteResponse = page.waitForResponse(response =>
+                isGpsPointsApiCall(response, 'DELETE', new RegExp(`/api/v1/gps/points/${target.id}$`))
+            );
+            await gpsDataPage.clickDialogButton('Delete GPS Point', 'Delete');
+            expect((await deleteResponse).ok()).toBe(true);
+            await expect(gpsDataPage.getDialog('Delete GPS Point')).toBeHidden();
+            await gpsDataPage.waitForSuccessToast();
+            await gpsDataPage.waitForTableReload();
+
+            expect(await getGpsPointRow(dbManager, target.id)).toBeNull();
+            expect(await getGpsPointIds(dbManager, user.id))
+                .toEqual([points[0].id, points[2].id].sort((a, b) => a - b));
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(2);
+            expect((await gpsDataPage.getSummaryStats()).totalPoints).toBe(2);
+        });
+
+        test('should bulk delete exactly the rows picked with checkboxes and leave another user untouched', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const otherUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const otherUserRecord = await dbManager.getUserByEmail(otherUser.email);
+
+            const points = await seedHourlyPoints(dbManager, user.id, 6);
+            await seedHourlyPoints(dbManager, otherUserRecord.id, 4, { deviceId: 'other-user-device', latBase: 50.4 });
+            const otherUserIdsBefore = await getGpsPointIds(dbManager, otherUserRecord.id);
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+
+            const selectedIndexes = [0, 2, 5];
+            for (const index of selectedIndexes) {
+                await gpsDataPage.toggleRowCheckbox(index);
+            }
+            await expect(page.locator(gpsDataPage.selectors.selectionText)).toHaveText('3 selected');
+
+            await gpsDataPage.openBulkDeleteDialog();
+            await expect(gpsDataPage.getDialog('Delete Multiple GPS Points')).toContainText('delete 3 GPS points');
+
+            const bulkDeleteResponse = page.waitForResponse(response =>
+                isGpsPointsApiCall(response, 'POST', /\/api\/v1\/gps\/points\/bulk$/)
+            );
+            await gpsDataPage.clickDialogButton('Delete Multiple GPS Points', 'Delete All');
+            const response = await bulkDeleteResponse;
+            expect(response.ok()).toBe(true);
+            expect(new Set(response.request().postDataJSON().gpsPointIds))
+                .toEqual(new Set(selectedIndexes.map(index => points[index].id)));
+            await gpsDataPage.waitForSuccessToast();
+            await gpsDataPage.waitForTableReload();
+
+            const remainingIds = points
+                .filter((_, index) => !selectedIndexes.includes(index))
+                .map(point => point.id)
+                .sort((a, b) => a - b);
+            expect(await getGpsPointIds(dbManager, user.id)).toEqual(remainingIds);
+            expect(await getGpsPointIds(dbManager, otherUserRecord.id)).toEqual(otherUserIdsBefore);
+
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(3);
+            await expect(page.locator(gpsDataPage.selectors.selectionText)).toHaveCount(0);
+        });
+
+        test('should select a row range with shift-click and bulk delete only that range', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const otherUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const otherUserRecord = await dbManager.getUserByEmail(otherUser.email);
+
+            const points = await seedHourlyPoints(dbManager, user.id, 6);
+            await seedHourlyPoints(dbManager, otherUserRecord.id, 4, { deviceId: 'other-user-device', latBase: 50.4 });
+            const otherUserIdsBefore = await getGpsPointIds(dbManager, otherUserRecord.id);
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+
+            // Click row 1, then shift-click row 4: rows 1-4 are selected, rows 0 and 5 are not
+            await gpsDataPage.clickRow(1);
+            await expect(page.locator(gpsDataPage.selectors.selectionText)).toHaveText('1 selected');
+            await gpsDataPage.clickRow(4, { shift: true });
+            await expect(page.locator(gpsDataPage.selectors.selectionText)).toHaveText('4 selected');
+
+            const rangeIndexes = [1, 2, 3, 4];
+            for (let index = 0; index < points.length; index++) {
+                const checkbox = gpsDataPage.getRowCheckbox(index);
+                if (rangeIndexes.includes(index)) {
+                    await expect(checkbox).toBeChecked();
+                } else {
+                    await expect(checkbox).not.toBeChecked();
+                }
+            }
+
+            await gpsDataPage.openBulkDeleteDialog();
+            await expect(gpsDataPage.getDialog('Delete Multiple GPS Points')).toContainText('delete 4 GPS points');
+
+            const bulkDeleteResponse = page.waitForResponse(response =>
+                isGpsPointsApiCall(response, 'POST', /\/api\/v1\/gps\/points\/bulk$/)
+            );
+            await gpsDataPage.clickDialogButton('Delete Multiple GPS Points', 'Delete All');
+            expect((await bulkDeleteResponse).ok()).toBe(true);
+            await gpsDataPage.waitForSuccessToast();
+            await gpsDataPage.waitForTableReload();
+
+            expect(await getGpsPointIds(dbManager, user.id))
+                .toEqual([points[0].id, points[5].id].sort((a, b) => a - b));
+            expect(await getGpsPointIds(dbManager, otherUserRecord.id)).toEqual(otherUserIdsBefore);
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(2);
+        });
+
+        test('should delete all of the user\'s points even when filters narrow the table', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const otherUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const otherUserRecord = await dbManager.getUserByEmail(otherUser.email);
+
+            await seedHourlyPoints(dbManager, user.id, 6);
+            await seedHourlyPoints(dbManager, otherUserRecord.id, 4, { deviceId: 'other-user-device', latBase: 50.4 });
+            const otherUserIdsBefore = await getGpsPointIds(dbManager, otherUserRecord.id);
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+
+            // Speeds are 0, 10, ..., 50 km/h: a 25 km/h minimum leaves 3 rows
+            await gpsDataPage.showAdvancedFilters();
+            await gpsDataPage.setSpeedMinFilter(25);
+            await expect(page.locator(gpsDataPage.selectors.activeFilterChips).filter({ hasText: 'Speed:' })).toBeVisible();
+            expect(await gpsDataPage.getDisplayedPointsCount()).toBe(3);
+
+            // "Delete All Data" is not narrowed by filters: the dialog counts every point of the user
+            await gpsDataPage.openDeleteAllDialog();
+            await expect(gpsDataPage.getDialog('Delete All GPS Data')).toContainText('All 6 GPS points');
+
+            const deleteAllResponse = page.waitForResponse(response =>
+                isGpsPointsApiCall(response, 'DELETE', /\/api\/v1\/gps\/points$/)
+            );
+            await gpsDataPage.clickDialogButton('Delete All GPS Data', 'Delete Everything');
+            const response = await deleteAllResponse;
+            expect(response.ok()).toBe(true);
+            expect(new URL(response.url()).search).toBe('');
+            await gpsDataPage.waitForSuccessToast();
+            await gpsDataPage.waitForTableReload();
+
+            expect(await GpsDataFactory.getGpsPointsCount(dbManager, user.id)).toBe(0);
+            expect(await getGpsPointIds(dbManager, otherUserRecord.id)).toEqual(otherUserIdsBefore);
+            expect(await gpsDataPage.hasGpsData()).toBe(false);
+            await expect(page.locator(gpsDataPage.selectors.deleteAllButton)).toHaveCount(0);
+        });
+    });
+
     test.describe('CSV Export Functionality', () => {
+        test('should export manual selection over filters, filters over all data', async ({ page, isolatedUsers, dbManager }) => {
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const points = await seedHourlyPoints(dbManager, user.id, 6);
+
+            const gpsDataPage = await loginAndOpenGpsData(page, testUser);
+
+            // Priority 3: no filters, no selection -> all points
+            await expect(page.locator(gpsDataPage.selectors.exportButton)).toHaveText('Export CSV');
+            let exportResponse = waitForCsvExport(page);
+            await gpsDataPage.clickExportCsv();
+            let response = await exportResponse;
+            await gpsDataPage.waitForExportComplete();
+            let exportUrl = new URL(response.url());
+            expect(exportUrl.searchParams.has('ids')).toBe(false);
+            expect(exportUrl.searchParams.has('speedMin')).toBe(false);
+            expect(csvDataLines(await response.text())).toHaveLength(6);
+
+            // Priority 2: filters, no selection -> filtered points (speed 30, 40, 50 = table rows 0-2)
+            await gpsDataPage.showAdvancedFilters();
+            await gpsDataPage.setSpeedMinFilter(25);
+            await expect(page.locator(gpsDataPage.selectors.exportButton)).toHaveText('Export CSV (3 pts)');
+            exportResponse = waitForCsvExport(page);
+            await gpsDataPage.clickExportCsv();
+            response = await exportResponse;
+            await gpsDataPage.waitForExportComplete();
+            exportUrl = new URL(response.url());
+            expect(exportUrl.searchParams.get('speedMin')).toBe('25');
+            expect(exportUrl.searchParams.has('ids')).toBe(false);
+            let lines = csvDataLines(await response.text());
+            expect(lines).toHaveLength(3);
+            for (const point of points.slice(0, 3)) {
+                expect(lines.some(line => line.includes(point.hour))).toBe(true);
+            }
+
+            // Priority 1: selection wins over the still-active filter -> only the selected points
+            const selected = [points[0], points[2]];
+            await gpsDataPage.toggleRowCheckbox(0);
+            await gpsDataPage.toggleRowCheckbox(2);
+            await expect(page.locator(gpsDataPage.selectors.exportButton)).toHaveText('Export CSV (2 selected)');
+            exportResponse = waitForCsvExport(page);
+            await gpsDataPage.clickExportCsv();
+            response = await exportResponse;
+            await gpsDataPage.waitForExportComplete();
+            exportUrl = new URL(response.url());
+            expect(new Set(exportUrl.searchParams.get('ids').split(',').map(Number)))
+                .toEqual(new Set(selected.map(point => point.id)));
+            expect(exportUrl.searchParams.has('speedMin')).toBe(false);
+            lines = csvDataLines(await response.text());
+            expect(lines).toHaveLength(2);
+            for (const point of selected) {
+                expect(lines.some(line => line.includes(point.hour))).toBe(true);
+            }
+            expect(lines.some(line => line.includes(points[1].hour))).toBe(false);
+        });
+
         test('should export GPS data to CSV', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
