@@ -229,6 +229,18 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String flightMinDistanceKm;
 
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.altitude_detection_enabled", defaultValue = "false")
+    @StaticInitSafe
+    String flightAltitudeDetectionEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.altitude_min_height_meters", defaultValue = "300.0")
+    @StaticInitSafe
+    String flightAltitudeMinHeightMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.altitude_min_vertical_speed", defaultValue = "1.2")
+    @StaticInitSafe
+    String flightAltitudeMinVerticalSpeed;
+
     // Optional Trip Types - Boat
     @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.enabled", defaultValue = "false")
     @StaticInitSafe

@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterClassificationService;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
@@ -1539,6 +1540,95 @@ public class TimelineTripClassificationTest {
         GPSPoint gpsPoint = point(lon, lat, secondsOffset, 0.0);
         gpsPoint.setOnWater(onWater);
         return gpsPoint;
+    }
+
+    // Glider flight from the issue #621 samples: 67 km/h avg, 160 km/h sustained peak, 150 km in 2h15m
+    private static final TripGpsStatistics GLIDER_SPEEDS = new TripGpsStatistics(67.0 / 3.6, 160.0 / 3.6, 600.0, 0);
+    private static final TripAltitudeStatistics GLIDER_ALTITUDE = new TripAltitudeStatistics(1400.0, 2.2, 446);
+
+    @Test
+    void testGliderFlight_AltitudeDetectionDisabled_IsCar() {
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                GLIDER_ALTITUDE, Duration.ofMinutes(135), 150_000, altitudeFlightConfig(false, 0.0));
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testGliderFlight_AltitudeDetectionEnabled_IsFlight() {
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                GLIDER_ALTITUDE, Duration.ofMinutes(135), 150_000, altitudeFlightConfig(true, 0.0));
+        assertEquals(TripType.FLIGHT, result);
+    }
+
+    @Test
+    void testAltitudeDetection_RequiresFlightEnabled() {
+        TimelineConfig flightDisabled = altitudeFlightConfig(true, 0.0);
+        flightDisabled.setFlightEnabled(false);
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                GLIDER_ALTITUDE, Duration.ofMinutes(135), 150_000, flightDisabled);
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testMountainPassLoop_SlowClimb_IsNotFlight() {
+        // Far above the start/end for a long time, but climbing at road speeds
+        TripAltitudeStatistics mountainPass = new TripAltitudeStatistics(1200.0, 0.6, 300);
+        TripGpsStatistics carSpeeds = new TripGpsStatistics(45.0 / 3.6, 90.0 / 3.6, 200.0, 0);
+        TripType result = classification.classifyTravelType(carSpeeds, TripWaterStatistics.unavailable(),
+                mountainPass, Duration.ofHours(2), 90_000, altitudeFlightConfig(true, 0.0));
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testFastVerticalMovementNearGround_IsNotFlight() {
+        TripAltitudeStatistics lowAltitude = new TripAltitudeStatistics(40.0, 2.0, 100);
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                lowAltitude, Duration.ofMinutes(135), 150_000, altitudeFlightConfig(true, 0.0));
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testAltitudeDetection_WithoutAltitudeEvidence_IsCar() {
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                new TripAltitudeStatistics(null, null, 3), Duration.ofMinutes(135), 150_000,
+                altitudeFlightConfig(true, 0.0));
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testAltitudeDetection_RespectsMinDistance() {
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                GLIDER_ALTITUDE, Duration.ofMinutes(135), 150_000, altitudeFlightConfig(true, 200.0));
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testAltitudeDetection_UsesUserThresholds() {
+        TimelineConfig strict = altitudeFlightConfig(true, 0.0);
+        strict.setFlightAltitudeMinHeightMeters(2000.0);
+        TripType result = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                GLIDER_ALTITUDE, Duration.ofMinutes(135), 150_000, strict);
+        assertEquals(TripType.CAR, result);
+    }
+
+    private TimelineConfig altitudeFlightConfig(boolean altitudeDetectionEnabled, double minDistanceKm) {
+        return TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(350.0)
+                .flightMinMaxSpeed(500.0)
+                .flightMinDistanceKm(minDistanceKm)
+                .flightAltitudeDetectionEnabled(altitudeDetectionEnabled)
+                .flightAltitudeMinHeightMeters(300.0)
+                .flightAltitudeMinVerticalSpeed(1.2)
+                .carEnabled(true)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .bicycleEnabled(false)
+                .runningEnabled(false)
+                .trainEnabled(false)
+                .build();
     }
 
     private TimelineConfig boatConfig(boolean enabled) {

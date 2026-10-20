@@ -148,6 +148,12 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "flightMinDistanceKm",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightAltitudeDetectionEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightAltitudeMinHeightMeters",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightAltitudeMinVerticalSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     // Optional Trip Types - Boat
     @org.mapstruct.Mapping(target = "boatEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -222,6 +228,9 @@ public interface TimelinePreferencesMapper {
                     .flightMinAvgSpeed(fromImport.getFlightMinAvgSpeed())
                     .flightMinMaxSpeed(fromImport.getFlightMinMaxSpeed())
                     .flightMinDistanceKm(fromImport.getFlightMinDistanceKm())
+                    .flightAltitudeDetectionEnabled(fromImport.getFlightAltitudeDetectionEnabled())
+                    .flightAltitudeMinHeightMeters(fromImport.getFlightAltitudeMinHeightMeters())
+                    .flightAltitudeMinVerticalSpeed(fromImport.getFlightAltitudeMinVerticalSpeed())
                     .boatEnabled(fromImport.getBoatEnabled())
                     .boatMinWaterRatio(fromImport.getBoatMinWaterRatio())
                     .boatMinWaterDistanceMeters(fromImport.getBoatMinWaterDistanceMeters())
@@ -280,6 +289,9 @@ public interface TimelinePreferencesMapper {
                 .flightMinAvgSpeed(existing.getFlightMinAvgSpeed())
                 .flightMinMaxSpeed(existing.getFlightMinMaxSpeed())
                 .flightMinDistanceKm(existing.getFlightMinDistanceKm())
+                .flightAltitudeDetectionEnabled(existing.getFlightAltitudeDetectionEnabled())
+                .flightAltitudeMinHeightMeters(existing.getFlightAltitudeMinHeightMeters())
+                .flightAltitudeMinVerticalSpeed(existing.getFlightAltitudeMinVerticalSpeed())
                 .boatEnabled(existing.getBoatEnabled())
                 .boatMinWaterRatio(existing.getBoatMinWaterRatio())
                 .boatMinWaterDistanceMeters(existing.getBoatMinWaterDistanceMeters())

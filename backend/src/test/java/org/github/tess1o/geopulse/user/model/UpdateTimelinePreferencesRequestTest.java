@@ -49,4 +49,25 @@ class UpdateTimelinePreferencesRequestTest {
                 .flightMinDistanceKm(501.0)
                 .build()).size());
     }
+
+    @Test
+    void validatesFlightAltitudeRanges() {
+        assertEquals(0, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightAltitudeDetectionEnabled(true)
+                .flightAltitudeMinHeightMeters(50.0)
+                .flightAltitudeMinVerticalSpeed(0.3)
+                .build()).size());
+        assertEquals(0, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightAltitudeMinHeightMeters(5000.0)
+                .flightAltitudeMinVerticalSpeed(10.0)
+                .build()).size());
+        assertEquals(2, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightAltitudeMinHeightMeters(49.0)
+                .flightAltitudeMinVerticalSpeed(0.2)
+                .build()).size());
+        assertEquals(2, validator.validate(UpdateTimelinePreferencesRequest.builder()
+                .flightAltitudeMinHeightMeters(5001.0)
+                .flightAltitudeMinVerticalSpeed(10.1)
+                .build()).size());
+    }
 }

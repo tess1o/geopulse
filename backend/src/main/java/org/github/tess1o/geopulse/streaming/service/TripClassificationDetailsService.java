@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -326,6 +327,9 @@ public class TripClassificationDetailsService {
                 config.getFlightEnabled() ? config.getFlightMinAvgSpeed() : null,
                 config.getFlightEnabled() ? config.getFlightMinMaxSpeed() : null,
                 config.getFlightEnabled() ? config.getFlightMinDistanceKm() : null,
+                config.getFlightEnabled() ? config.getFlightAltitudeDetectionEnabled() : null,
+                TravelClassification.isAltitudeFlightDetectionEnabled(config) ? config.getFlightAltitudeMinHeightMeters() : null,
+                TravelClassification.isAltitudeFlightDetectionEnabled(config) ? config.getFlightAltitudeMinVerticalSpeed() : null,
 
                 // BOAT
                 config.getBoatEnabled(),
@@ -404,7 +408,7 @@ public class TripClassificationDetailsService {
 
         // Priority 1: FLIGHT
         ClassificationStep flightStep = checkFlight(avgSpeedKmh, maxSpeedKmh,
-                trip.getDistanceMeters(), isInferredTrip, config, speedSource);
+                trip.getDistanceMeters(), altitudeStatistics(trip), isInferredTrip, config, speedSource);
         steps.add(flightStep);
         if (flightStep.checked() && flightStep.passed()) {
             foundMatch = true;
@@ -599,8 +603,15 @@ public class TripClassificationDetailsService {
         return tripType;
     }
 
+    private TripAltitudeStatistics altitudeStatistics(TimelineTripEntity trip) {
+        return new TripAltitudeStatistics(trip.getAltitudeSustainedHeightMeters(),
+                trip.getAltitudeVerticalSpeedP90(),
+                trip.getAltitudeSampleCount());
+    }
+
     private ClassificationStep checkFlight(double avgSpeedKmh, double maxSpeedKmh,
                                            long distanceMeters,
+                                           TripAltitudeStatistics altitudeStatistics,
                                            boolean isInferredTrip, TimelineConfig config, String speedSource) {
         if (!Boolean.TRUE.equals(config.getFlightEnabled())) {
             return new ClassificationStep("FLIGHT", false, false,
@@ -668,18 +679,40 @@ public class TripClassificationDetailsService {
                         minDistanceKm, distanceKm, distanceCheck));
             }
 
+            boolean altitudeEnabled = TravelClassification.isAltitudeFlightDetectionEnabled(config);
+            boolean altitudePassed = TravelClassification.isAltitudeFlightMatch(altitudeStatistics, config);
+            if (altitudeEnabled && altitudeStatistics.hasEvidence()) {
+                double minHeight = TravelClassification.getFlightAltitudeMinHeightMeters(config);
+                double minVerticalSpeed = TravelClassification.getFlightAltitudeMinVerticalSpeed(config);
+                checks.add(new ThresholdCheck("Height above start/end (m)", ">=",
+                        minHeight, altitudeStatistics.sustainedHeightMeters(),
+                        altitudeStatistics.sustainedHeightMeters() >= minHeight));
+                checks.add(new ThresholdCheck("Vertical speed (m/s)", ">=",
+                        minVerticalSpeed, altitudeStatistics.verticalSpeedP90(),
+                        altitudeStatistics.verticalSpeedP90() >= minVerticalSpeed));
+            }
+
             boolean speedPassed = avgCheck || maxCheck; // OR logic
-            boolean passed = speedPassed && distanceCheck;
+            boolean passed = (speedPassed || altitudePassed) && distanceCheck;
             String reason;
-            if (passed) {
+            if (passed && speedPassed) {
                 reason = String.format("Flight detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds flight thresholds. %s",
                         avgSpeedKmh, maxSpeedKmh, speedSource);
-            } else if (speedPassed) {
-                reason = String.format("Not a flight: speed matches flight thresholds but distance (%.1f km) < %.1f km minimum. %s",
-                        distanceKm, minDistanceKm, speedSource);
+            } else if (passed) {
+                reason = String.format("Flight detected by altitude: the trip stayed %.0f m above its start and end with vertical speeds of %.1f m/s.",
+                        altitudeStatistics.sustainedHeightMeters(), altitudeStatistics.verticalSpeedP90());
+            } else if (speedPassed || altitudePassed) {
+                reason = String.format("Not a flight: %s matches flight thresholds but distance (%.1f km) < %.1f km minimum. %s",
+                        speedPassed ? "speed" : "altitude", distanceKm, minDistanceKm, speedSource);
             } else {
                 reason = String.format("Not a flight: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
                         avgSpeedKmh, config.getFlightMinAvgSpeed(), maxSpeedKmh, config.getFlightMinMaxSpeed(), speedSource);
+            }
+            if (!passed && altitudeEnabled && !altitudeStatistics.hasEvidence()) {
+                reason += altitudeStatistics.altitudeSampleCount() == null
+                        ? " Altitude rule not applied: altitude data was not calculated for this trip yet."
+                        : String.format(" Altitude rule not applied: too little GPS altitude data (%d points).",
+                        altitudeStatistics.altitudeSampleCount());
             }
 
             return new ClassificationStep("FLIGHT", true, passed, reason, checks);

@@ -333,7 +333,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         Query query = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
-                                environmentSelect + ", gp.id as gps_point_id " +
+                                environmentSelect + ", gp.altitude as altitude, gp.id as gps_point_id " +
                                 "FROM gps_points gp " +
                                 environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
@@ -378,7 +378,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         Query query = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
-                                environmentSelect +
+                                environmentSelect + ", gp.altitude as altitude " +
                                 "FROM gps_points gp " +
                                 environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :start AND gp.timestamp <= :end " +
@@ -456,7 +456,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
 
     /**
      * Map native SQL result array to GPSPoint object.
-     * Expected array: [timestamp, latitude, longitude, speed, accuracy, onWater, id?]
+     * Expected array: [timestamp, latitude, longitude, speed, accuracy, onWater, altitude, id?]
      */
     private GPSPoint mapToGPSPoint(Object[] row) {
         Instant timestampInstant = TimestampUtils.getInstantSafe(row[0]);
@@ -471,7 +471,10 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         GPSPoint gpsPoint = new GPSPoint(latitude, longitude, speed, accuracy, timestampInstant);
         gpsPoint.setOnWater(onWater);
         if (row.length > 6 && row[6] != null) {
-            gpsPoint.setId(((Number) row[6]).longValue());
+            gpsPoint.setAltitude(((Number) row[6]).doubleValue());
+        }
+        if (row.length > 7 && row[7] != null) {
+            gpsPoint.setId(((Number) row[7]).longValue());
         }
         return gpsPoint;
     }

@@ -287,6 +287,26 @@ export function useClassificationValidation(prefs) {
   })
 
   /**
+   * Check for a low minimum height in altitude-based flight detection
+   * Drives or rides in hilly terrain can stay this far above their start/end points and become FLIGHT
+   */
+  const flightLowAltitudeHeightWarning = computed(() => {
+    if (!prefs.value?.flightEnabled || prefs.value?.flightAltitudeDetectionEnabled !== true) return null
+
+    const minHeight = prefs.value?.flightAltitudeMinHeightMeters ?? 300.0
+
+    if (minHeight < 100) {
+      return {
+        type: 'flight',
+        severity: 'warn',
+        message: `Altitude-based flight minimum height (${minHeight} m) is low. Car or bicycle trips in hilly or mountain terrain may be classified as FLIGHT.`
+      }
+    }
+
+    return null
+  })
+
+  /**
    * Check for car min/max inversion
    */
   const carMinMaxWarning = computed(() => {
@@ -360,6 +380,7 @@ export function useClassificationValidation(prefs) {
       flightTrainOverlapWarning.value,
       flightTrainPeakOverlapWarning.value,
       flightLowPeakWithoutDistanceWarning.value,
+      flightLowAltitudeHeightWarning.value,
       carMinMaxWarning.value,
       walkingMaxWarning.value,
       boatWaterEvidenceWarning.value

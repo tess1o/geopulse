@@ -26,10 +26,16 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
 
     @Inject
     TravelClassification travelClassification;
+
     @Inject
     GpsStatisticsCalculator gpsStatisticsCalculator;
+
     @Inject
     TripWaterClassificationService tripWaterClassificationService;
+
+    @Inject
+    TripAltitudeStatisticsCalculator tripAltitudeStatisticsCalculator;
+
     @Inject
     GpsPointRepository gpsPointRepository;
 
@@ -105,6 +111,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
         // Classify the overall trip mode
         TripGpsStatistics tripGpsStatistics;
         TripWaterStatistics tripWaterStatistics;
+        TripAltitudeStatistics tripAltitudeStatistics;
         TripType overallTripType;
 
         if (hasInferredTrip) {
@@ -113,9 +120,11 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             log.debug("Merged trips include inferred trip - using distance-based classification");
             tripGpsStatistics = TripGpsStatistics.empty();
             tripWaterStatistics = TripWaterStatistics.unavailable();
-            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
+            tripAltitudeStatistics = TripAltitudeStatistics.unavailable();
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics,
+                    tripAltitudeStatistics, config);
         } else {
-            // Normal case: recalculate GPS and water statistics from one interval reload.
+            // Normal case: recalculate GPS, water and altitude statistics from one interval reload.
             MergedTripStatistics mergedTripStatistics = calculateMergedTripStatistics(
                     userId,
                     startTime,
@@ -125,7 +134,9 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             );
             tripGpsStatistics = mergedTripStatistics.gpsStatistics();
             tripWaterStatistics = mergedTripStatistics.waterStatistics();
-            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
+            tripAltitudeStatistics = mergedTripStatistics.altitudeStatistics();
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics,
+                    tripAltitudeStatistics, config);
         }
 
         Trip mergedTrip = Trip.builder()
@@ -136,6 +147,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .endPoint(lastTrip.getEndLocation())
                 .statistics(tripGpsStatistics)
                 .waterStatistics(tripWaterStatistics)
+                .altitudeStatistics(tripAltitudeStatistics)
                 .tripType(overallTripType)
                 .build();
         mergedTrip.setExplanation(TimelineExplanation.joined(trips)
@@ -151,10 +163,12 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                                           Duration tripDuration,
                                           TripGpsStatistics tripGpsStatistics,
                                           TripWaterStatistics tripWaterStatistics,
+                                          TripAltitudeStatistics tripAltitudeStatistics,
                                           TimelineConfig config) {
         return travelClassification.classifyTravelType(
                 tripGpsStatistics,
                 tripWaterStatistics,
+                tripAltitudeStatistics,
                 tripDuration,
                 Double.valueOf(totalDistance).longValue(),
                 config
@@ -262,7 +276,8 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                                                                String environmentDatasetVersion) {
         if (gpsPointRepository == null) {
             log.debug("GPS point repository unavailable during merged-trip statistics recalculation");
-            return new MergedTripStatistics(TripGpsStatistics.empty(), TripWaterStatistics.unavailable());
+            return new MergedTripStatistics(TripGpsStatistics.empty(), TripWaterStatistics.unavailable(),
+                    TripAltitudeStatistics.unavailable());
         }
 
         String effectiveEnvironmentDatasetVersion = resolveEnvironmentDatasetVersion(config, environmentDatasetVersion);
@@ -275,7 +290,8 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
 
         return new MergedTripStatistics(
                 gpsStatisticsCalculator.calculateStatistics(intervalPoints),
-                calculateWaterStatistics(intervalPoints, config)
+                calculateWaterStatistics(intervalPoints, config),
+                calculateAltitudeStatistics(intervalPoints, config)
         );
     }
 
@@ -284,6 +300,13 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             return null;
         }
         return environmentDatasetVersion;
+    }
+
+    private TripAltitudeStatistics calculateAltitudeStatistics(List<GPSPoint> gpsPoints, TimelineConfig config) {
+        if (tripAltitudeStatisticsCalculator == null) {
+            return TripAltitudeStatistics.unavailable();
+        }
+        return tripAltitudeStatisticsCalculator.calculateStatistics(gpsPoints, config);
     }
 
     private TripWaterStatistics calculateWaterStatistics(List<GPSPoint> gpsPoints, TimelineConfig config) {
@@ -297,6 +320,8 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
         return config != null && Boolean.TRUE.equals(config.getBoatEnabled());
     }
 
-    private record MergedTripStatistics(TripGpsStatistics gpsStatistics, TripWaterStatistics waterStatistics) {
+    private record MergedTripStatistics(TripGpsStatistics gpsStatistics,
+                                        TripWaterStatistics waterStatistics,
+                                        TripAltitudeStatistics altitudeStatistics) {
     }
 }

@@ -143,6 +143,24 @@ public class TimelineTripEntity {
     private Boolean waterEvidenceAvailable;
 
     /**
+     * Height above the higher of the start and end altitude that the trip stays at for at least a quarter of its time (m).
+     */
+    @Column(name = "altitude_sustained_height_meters")
+    private Double altitudeSustainedHeightMeters;
+
+    /**
+     * 90th percentile of vertical speed over windows of about a minute (m/s).
+     */
+    @Column(name = "altitude_vertical_speed_p90")
+    private Double altitudeVerticalSpeedP90;
+
+    /**
+     * Count of GPS points with a usable altitude; null when altitude evidence was never calculated.
+     */
+    @Column(name = "altitude_sample_count")
+    private Integer altitudeSampleCount;
+
+    /**
      * When this trip was last updated/regenerated
      */
     @Column(name = "last_updated", nullable = false)

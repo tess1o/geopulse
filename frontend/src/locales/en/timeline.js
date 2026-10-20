@@ -899,6 +899,25 @@ export default {
                     labelLow: '0 km (Default)',
                     labelMid: '250 km',
                     labelHigh: '500 km (Strict)'
+                },
+                altitudeDetection: {
+                    title: 'Altitude-based Detection',
+                    description: 'Also classify a trip as a flight when it stays well above its start and end points and climbs or descends strongly. Meant for gliders, balloons and light aircraft that fly too slowly for the speed rules. Needs GPS altitude data. Ski days or cable-car loops may be misdetected as flights.',
+                    ariaEnable: 'Enable altitude-based flight detection'
+                },
+                altitudeMinHeight: {
+                    label: 'Minimum Height Above Start/End',
+                    description: 'How high above the higher of its start and end altitude the trip must stay for at least a quarter of its time. Lower values catch shorter flights but may misdetect drives or rides in hilly or mountain terrain.',
+                    labelLow: '50 m (Lenient)',
+                    labelMid: '300 m (Default)',
+                    labelHigh: '5000 m (Strict)'
+                },
+                altitudeMinVerticalSpeed: {
+                    label: 'Minimum Vertical Speed',
+                    description: 'How fast the trip must climb or descend, measured over one-minute windows (90th percentile, so brief bursts do not count). Gliders and balloons usually climb or sink at 1-5 m/s; lower values may also match cable cars or ski lifts.',
+                    labelLow: '0.3 m/s (Lenient)',
+                    labelMid: '1.2 m/s (Default)',
+                    labelHigh: '10.0 m/s (Strict)'
                 }
             },
             boat: {

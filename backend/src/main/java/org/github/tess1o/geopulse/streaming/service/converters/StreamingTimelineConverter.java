@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Coordinate;
@@ -144,6 +145,13 @@ public class StreamingTimelineConverter {
         } else {
             entity.setWaterEvidenceAvailable(false);
             log.debug("No valid water evidence calculated for trip");
+        }
+
+        TripAltitudeStatistics altitudeStats = trip.getAltitudeStatistics();
+        if (altitudeStats != null) {
+            entity.setAltitudeSustainedHeightMeters(altitudeStats.sustainedHeightMeters());
+            entity.setAltitudeVerticalSpeedP90(altitudeStats.verticalSpeedP90());
+            entity.setAltitudeSampleCount(altitudeStats.altitudeSampleCount());
         }
 
         return entity;

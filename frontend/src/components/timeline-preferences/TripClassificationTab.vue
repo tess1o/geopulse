@@ -478,6 +478,50 @@
             suffix=" km" :decimal-places="0"
           />
         </div>
+
+        <div class="label-toggle" data-setting-id="flightAltitudeDetectionEnabled">
+          <div>
+            <label class="parameter-label">{{ t('timeline.preferences.tripClassification.flight.altitudeDetection.title') }}</label>
+            <p class="parameter-description">{{ t('timeline.preferences.tripClassification.flight.altitudeDetection.description') }}</p>
+          </div>
+          <ToggleSwitch
+            :model-value="modelValue.flightAltitudeDetectionEnabled === true"
+            @update:model-value="updatePref('flightAltitudeDetectionEnabled', $event)"
+            :aria-label="t('timeline.preferences.tripClassification.flight.altitudeDetection.ariaEnable')"
+          />
+        </div>
+
+        <template v-if="modelValue.flightAltitudeDetectionEnabled === true">
+          <div class="parameter-group" data-setting-id="flightAltitudeMinHeightMeters">
+            <label class="parameter-label">{{ t('timeline.preferences.tripClassification.flight.altitudeMinHeight.label') }}</label>
+            <p class="parameter-description">
+              {{ t('timeline.preferences.tripClassification.flight.altitudeMinHeight.description') }}
+            </p>
+            <SliderControl
+              v-if="modelValue.flightAltitudeMinHeightMeters !== undefined"
+              :model-value="modelValue.flightAltitudeMinHeightMeters"
+              @update:model-value="updatePref('flightAltitudeMinHeightMeters', $event)"
+              :min="50" :max="5000" :step="50"
+              :labels="threeLabels('flight.altitudeMinHeight')"
+              suffix=" m" :decimal-places="0"
+            />
+          </div>
+
+          <div class="parameter-group" data-setting-id="flightAltitudeMinVerticalSpeed">
+            <label class="parameter-label">{{ t('timeline.preferences.tripClassification.flight.altitudeMinVerticalSpeed.label') }}</label>
+            <p class="parameter-description">
+              {{ t('timeline.preferences.tripClassification.flight.altitudeMinVerticalSpeed.description') }}
+            </p>
+            <SliderControl
+              v-if="modelValue.flightAltitudeMinVerticalSpeed !== undefined"
+              :model-value="modelValue.flightAltitudeMinVerticalSpeed"
+              @update:model-value="updatePref('flightAltitudeMinVerticalSpeed', $event)"
+              :min="0.3" :max="10.0" :step="0.1"
+              :labels="threeLabels('flight.altitudeMinVerticalSpeed')"
+              suffix=" m/s" :decimal-places="1"
+            />
+          </div>
+        </template>
       </template>
     </TransportTypeCard>
 

@@ -242,7 +242,6 @@
         <!-- Confirm Dialog -->
         <ConfirmDialog group="timeline-preferences-unsaved-changes" />
         <ConfirmDialog />
-        <Toast />
         
         <!-- Timeline Regeneration Modal -->
         <TimelineRegenerationModal
@@ -306,6 +305,7 @@ const CLASSIFICATION_FIELDS = [
   'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
   'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
   'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed', 'flightMinDistanceKm',
+  'flightAltitudeDetectionEnabled', 'flightAltitudeMinHeightMeters', 'flightAltitudeMinVerticalSpeed',
   'boatEnabled', 'boatMinWaterRatio', 'boatMinWaterDistanceMeters',
   'boatMinContinuousWaterDistanceMeters', 'boatMaxPlausibleSpeed'
 ]
@@ -359,6 +359,9 @@ const PREFERENCE_VALUE_TYPES = {
   flightMinAvgSpeed: 'number',
   flightMinMaxSpeed: 'number',
   flightMinDistanceKm: 'number',
+  flightAltitudeDetectionEnabled: 'boolean',
+  flightAltitudeMinHeightMeters: 'number',
+  flightAltitudeMinVerticalSpeed: 'number',
   boatEnabled: 'boolean',
   boatMinWaterRatio: 'number',
   boatMinWaterDistanceMeters: 'number',
@@ -406,6 +409,8 @@ const PREFERENCE_UNITS = {
   flightMinAvgSpeed: 'km/h',
   flightMinMaxSpeed: 'km/h',
   flightMinDistanceKm: 'km',
+  flightAltitudeMinHeightMeters: 'm',
+  flightAltitudeMinVerticalSpeed: 'm/s',
   tripArrivalDetectionMinDurationSeconds: 's',
   tripSustainedStopMinDurationSeconds: 's',
   tripArrivalMinPoints: 'points',
@@ -1233,6 +1238,7 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       {
         modalType: 'preferences',
         successMessage: t('timelinePreferences.page.toasts.regenerationSuccessDetail'),
+        noJobMessage: t('timelinePreferences.page.toasts.regenerationQueuedDetail'),
         errorMessage: t('timelinePreferences.page.toasts.saveFailedFallback'),
         onSuccess: loadPreferences
       }
@@ -1274,6 +1280,7 @@ const resetDefaults = () => {
     {
       modalType: 'preferences',
       successMessage: t('timelinePreferences.page.toasts.resetSuccessDetail'),
+      noJobMessage: t('timelinePreferences.page.toasts.regenerationQueuedDetail'),
       errorMessage: t('timelinePreferences.page.toasts.resetFailedFallback'),
       onSuccess: loadPreferences
     }

@@ -68,4 +68,34 @@ describe('useClassificationValidation flight warnings', () => {
     expect(messages).toHaveLength(1)
     expect(messages[0]).toContain('no minimum flight distance is set')
   })
+
+  it('warns about a low altitude minimum height only when altitude detection is enabled', () => {
+    const prefs = {
+      flightEnabled: true,
+      flightMinAvgSpeed: 400,
+      flightMinMaxSpeed: 500,
+      flightMinDistanceKm: 0,
+      trainEnabled: false,
+      flightAltitudeMinHeightMeters: 50
+    }
+
+    const enabled = flightMessages({ ...prefs, flightAltitudeDetectionEnabled: true })
+    expect(enabled).toHaveLength(1)
+    expect(enabled[0]).toContain('minimum height (50 m) is low')
+
+    expect(flightMessages({ ...prefs, flightAltitudeDetectionEnabled: false })).toEqual([])
+    expect(flightMessages({ ...prefs, flightEnabled: false, flightAltitudeDetectionEnabled: true })).toEqual([])
+  })
+
+  it('does not warn for the default altitude minimum height', () => {
+    expect(flightMessages({
+      flightEnabled: true,
+      flightMinAvgSpeed: 400,
+      flightMinMaxSpeed: 500,
+      flightMinDistanceKm: 0,
+      trainEnabled: false,
+      flightAltitudeDetectionEnabled: true,
+      flightAltitudeMinHeightMeters: 300
+    })).toEqual([])
+  })
 })

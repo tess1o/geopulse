@@ -8,6 +8,7 @@ import lombok.ToString;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 
 import java.time.Duration;
@@ -32,6 +33,7 @@ public class Trip implements TimelineEvent {
     private GPSPoint endPoint;
     private TripGpsStatistics statistics;
     private TripWaterStatistics waterStatistics;
+    private TripAltitudeStatistics altitudeStatistics;
 
     /** Why the engine created this event as it is; not part of the event's identity. */
     @Builder.Default

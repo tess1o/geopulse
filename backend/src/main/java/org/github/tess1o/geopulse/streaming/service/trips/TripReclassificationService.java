@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -27,16 +28,22 @@ public class TripReclassificationService {
     private final TravelClassification travelClassification;
     private final TripWaterClassificationService tripWaterClassificationService;
     private final TimelineConfigurationProvider configProvider;
+    private final GpsPointRepository gpsPointRepository;
+    private final TripAltitudeStatisticsCalculator tripAltitudeStatisticsCalculator;
 
     @Inject
     public TripReclassificationService(TimelineTripRepository tripRepository,
                                        TravelClassification travelClassification,
                                        TripWaterClassificationService tripWaterClassificationService,
-                                       TimelineConfigurationProvider configProvider) {
+                                       TimelineConfigurationProvider configProvider,
+                                       GpsPointRepository gpsPointRepository,
+                                       TripAltitudeStatisticsCalculator tripAltitudeStatisticsCalculator) {
         this.tripRepository = tripRepository;
         this.travelClassification = travelClassification;
         this.tripWaterClassificationService = tripWaterClassificationService;
         this.configProvider = configProvider;
+        this.gpsPointRepository = gpsPointRepository;
+        this.tripAltitudeStatisticsCalculator = tripAltitudeStatisticsCalculator;
     }
 
     /**
@@ -111,6 +118,7 @@ public class TripReclassificationService {
      */
     private String reclassifyTrip(TimelineTripEntity trip, TimelineConfig config) {
         populateMissingWaterEvidence(trip, config);
+        populateMissingAltitudeEvidence(trip, config);
 
         // Use enhanced classification with GPS statistics if available
         TripType tripType = travelClassification.classifyTravelType(trip, config);
@@ -141,6 +149,29 @@ public class TripReclassificationService {
         } else {
             trip.setWaterEvidenceAvailable(false);
         }
+    }
+
+    /**
+     * Trips stored before altitude evidence existed have none. Calculate it once, when the altitude flight rule
+     * needs it; the sample count marks it as calculated even when the points carried no altitude.
+     */
+    private void populateMissingAltitudeEvidence(TimelineTripEntity trip, TimelineConfig config) {
+        if (!TravelClassification.isAltitudeFlightDetectionEnabled(config)
+                || trip.getAltitudeSampleCount() != null
+                || gpsPointRepository == null
+                || tripAltitudeStatisticsCalculator == null) {
+            return;
+        }
+
+        TripAltitudeStatistics altitudeStats = tripAltitudeStatisticsCalculator.calculateStatistics(
+                gpsPointRepository.findEssentialPointsInInterval(
+                        trip.getUser().getId(),
+                        trip.getTimestamp(),
+                        trip.getTimestamp().plusSeconds(trip.getTripDuration())),
+                config);
+        trip.setAltitudeSustainedHeightMeters(altitudeStats.sustainedHeightMeters());
+        trip.setAltitudeVerticalSpeedP90(altitudeStats.verticalSpeedP90());
+        trip.setAltitudeSampleCount(altitudeStats.altitudeSampleCount());
     }
 
 }

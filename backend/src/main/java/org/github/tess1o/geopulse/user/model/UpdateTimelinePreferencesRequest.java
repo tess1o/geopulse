@@ -182,6 +182,16 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMax(value = "500.0", message = "Flight min distance must be at most 500.0 km")
     private Double flightMinDistanceKm;
 
+    private Boolean flightAltitudeDetectionEnabled;
+
+    @DecimalMin(value = "50.0", message = "Flight altitude min height must be at least 50.0 m")
+    @DecimalMax(value = "5000.0", message = "Flight altitude min height must be at most 5000.0 m")
+    private Double flightAltitudeMinHeightMeters;
+
+    @DecimalMin(value = "0.3", message = "Flight altitude min vertical speed must be at least 0.3 m/s")
+    @DecimalMax(value = "10.0", message = "Flight altitude min vertical speed must be at most 10.0 m/s")
+    private Double flightAltitudeMinVerticalSpeed;
+
     // Optional Trip Types - Boat
     private Boolean boatEnabled;
 

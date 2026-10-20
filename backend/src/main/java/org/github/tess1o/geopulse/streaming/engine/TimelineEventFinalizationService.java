@@ -13,6 +13,8 @@ import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculato
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterClassificationService;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
+import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatisticsCalculator;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 import org.locationtech.jts.geom.Point;
 
@@ -42,6 +44,9 @@ public class TimelineEventFinalizationService {
 
     @Inject
     TripWaterClassificationService tripWaterClassificationService;
+
+    @Inject
+    TripAltitudeStatisticsCalculator tripAltitudeStatisticsCalculator;
 
     /**
      * Finalize a stay event from user state without location resolution.
@@ -187,13 +192,15 @@ public class TimelineEventFinalizationService {
         double totalDistance = calculateTripDistance(tripPath);
         TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
         TripWaterStatistics waterStatistics = calculateWaterStatistics(tripPath, config);
-        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, waterStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
+        TripAltitudeStatistics altitudeStatistics = calculateAltitudeStatistics(tripPath, config);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, waterStatistics, altitudeStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
 
         Trip trip = Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
                 .statistics(gpsStatistics)
                 .waterStatistics(waterStatistics)
+                .altitudeStatistics(altitudeStatistics)
                 .startPoint(firstPoint)
                 .endPoint(lastPoint)
                 .distanceMeters(totalDistance)
@@ -229,7 +236,8 @@ public class TimelineEventFinalizationService {
         double totalDistance = calculateTripDistance(tripPath);
         TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
         TripWaterStatistics waterStatistics = calculateWaterStatistics(tripPath, config);
-        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, waterStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
+        TripAltitudeStatistics altitudeStatistics = calculateAltitudeStatistics(tripPath, config);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, waterStatistics, altitudeStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
 
         return Trip.builder()
                 .startTime(firstPoint.getTimestamp())
@@ -238,6 +246,7 @@ public class TimelineEventFinalizationService {
                 .endPoint(lastPoint)
                 .statistics(gpsStatistics)
                 .waterStatistics(waterStatistics)
+                .altitudeStatistics(altitudeStatistics)
                 .distanceMeters(totalDistance)
                 .tripType(tripType)
                 .build();
@@ -260,6 +269,13 @@ public class TimelineEventFinalizationService {
         }
 
         return totalDistance;
+    }
+
+    private TripAltitudeStatistics calculateAltitudeStatistics(List<GPSPoint> tripPath, TimelineConfig config) {
+        if (tripAltitudeStatisticsCalculator == null) {
+            return TripAltitudeStatistics.unavailable();
+        }
+        return tripAltitudeStatisticsCalculator.calculateStatistics(tripPath, config);
     }
 
     private TripWaterStatistics calculateWaterStatistics(List<GPSPoint> tripPath, TimelineConfig config) {

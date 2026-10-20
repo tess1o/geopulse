@@ -163,4 +163,33 @@ class TimelinePreferencesMapperUnitTest {
                 .build(), null);
         assertEquals(3.0, importOnly.getFlightMinDistanceKm());
     }
+
+    @Test
+    void testFlightAltitudeMapping() {
+        TimelineConfig fromRequest = mapper.requestToConfig(UpdateTimelinePreferencesRequest.builder()
+                .flightAltitudeDetectionEnabled(true)
+                .flightAltitudeMinHeightMeters(400.0)
+                .flightAltitudeMinVerticalSpeed(1.5)
+                .build());
+        assertEquals(true, fromRequest.getFlightAltitudeDetectionEnabled());
+        assertEquals(400.0, fromRequest.getFlightAltitudeMinHeightMeters());
+        assertEquals(1.5, fromRequest.getFlightAltitudeMinVerticalSpeed());
+
+        TimelinePreferences fromConfig = mapper.configToPreferences(fromRequest);
+        assertEquals(true, fromConfig.getFlightAltitudeDetectionEnabled());
+        assertEquals(400.0, fromConfig.getFlightAltitudeMinHeightMeters());
+        assertEquals(1.5, fromConfig.getFlightAltitudeMinVerticalSpeed());
+
+        TimelinePreferences existing = TimelinePreferences.builder()
+                .flightAltitudeDetectionEnabled(true)
+                .flightAltitudeMinHeightMeters(500.0)
+                .flightAltitudeMinVerticalSpeed(2.0)
+                .build();
+        TimelinePreferences merged = mapper.mergePreferences(TimelinePreferences.builder()
+                .flightAltitudeMinHeightMeters(250.0)
+                .build(), existing);
+        assertEquals(true, merged.getFlightAltitudeDetectionEnabled());
+        assertEquals(250.0, merged.getFlightAltitudeMinHeightMeters());
+        assertEquals(2.0, merged.getFlightAltitudeMinVerticalSpeed());
+    }
 }

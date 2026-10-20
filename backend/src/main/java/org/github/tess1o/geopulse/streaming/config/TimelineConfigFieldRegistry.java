@@ -389,6 +389,27 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setFlightMinDistanceKm,
                         Double::valueOf
                 ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.altitude_detection_enabled",
+                        properties.getFlightAltitudeDetectionEnabled(),
+                        TimelineConfig::getFlightAltitudeDetectionEnabled,
+                        TimelineConfig::setFlightAltitudeDetectionEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.altitude_min_height_meters",
+                        properties.getFlightAltitudeMinHeightMeters(),
+                        TimelineConfig::getFlightAltitudeMinHeightMeters,
+                        TimelineConfig::setFlightAltitudeMinHeightMeters,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.altitude_min_vertical_speed",
+                        properties.getFlightAltitudeMinVerticalSpeed(),
+                        TimelineConfig::getFlightAltitudeMinVerticalSpeed,
+                        TimelineConfig::setFlightAltitudeMinVerticalSpeed,
+                        Double::valueOf
+                ))
                 // Optional Trip Types - Boat
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.boat.enabled",

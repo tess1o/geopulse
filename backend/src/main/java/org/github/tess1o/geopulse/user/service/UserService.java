@@ -836,6 +836,9 @@ public class UserService {
                 update.getFlightMinAvgSpeed() != null ||
                 update.getFlightMinMaxSpeed() != null ||
                 update.getFlightMinDistanceKm() != null ||
+                update.getFlightAltitudeDetectionEnabled() != null ||
+                update.getFlightAltitudeMinHeightMeters() != null ||
+                update.getFlightAltitudeMinVerticalSpeed() != null ||
                 // Boat
                 update.getBoatEnabled() != null ||
                 update.getBoatMinWaterRatio() != null ||

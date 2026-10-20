@@ -197,6 +197,21 @@ flights, which prevents short trips with GPS jumps from being detected as flight
 | `GEOPULSE_TIMELINE_FLIGHT_MIN_AVG_SPEED` | `400.0` | Minimum average speed (km/h) for flight trips. Conservative default includes ground time |
 | `GEOPULSE_TIMELINE_FLIGHT_MIN_MAX_SPEED` | `500.0` | Minimum peak speed (km/h) for flight trips. Catches flights with long taxi time          |
 | `GEOPULSE_TIMELINE_FLIGHT_MIN_DISTANCE_KM` | `0.0` | Minimum trip distance (km) for flight trips. `0` disables the check                     |
+| `GEOPULSE_TIMELINE_FLIGHT_ALTITUDE_DETECTION_ENABLED` | `false` | Also classify trips as flights by altitude (see below)                     |
+| `GEOPULSE_TIMELINE_FLIGHT_ALTITUDE_MIN_HEIGHT_METERS` | `300.0` | Minimum height (m) above the trip's start and end, held for at least a quarter of the trip |
+| `GEOPULSE_TIMELINE_FLIGHT_ALTITUDE_MIN_VERTICAL_SPEED` | `1.2` | Minimum vertical speed (m/s, 90th percentile over ~1 minute windows)       |
+
+#### Altitude-based flight detection
+
+Gliders, hot-air balloons and some light aircraft fly too slowly for the speed rules, and lowering the speed thresholds
+would turn car trips into flights. With altitude detection enabled, a trip is also a FLIGHT when it stays at least
+`FLIGHT_ALTITUDE_MIN_HEIGHT_METERS` above the higher of its start and end altitude for a quarter of its time **and** its
+vertical speed reaches `FLIGHT_ALTITUDE_MIN_VERTICAL_SPEED`. The vertical speed keeps mountain-pass drives, which gain a lot
+of height but slowly, from being detected as flights. The minimum distance still applies.
+
+It needs GPS altitude in at least half of the trip's points; trips without altitude data are classified by speed only.
+Known limitations: flights that land far below their take-off point (for example paragliding from a mountain into a
+valley) are not detected, and a ski day or cable-car loop recorded as one trip may be detected as a flight.
 
 ### Classification Priority Order
 

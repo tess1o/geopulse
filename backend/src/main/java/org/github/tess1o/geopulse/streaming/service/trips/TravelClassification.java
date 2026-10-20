@@ -193,6 +193,16 @@ public class TravelClassification {
     private static final double SHORT_FLIGHT_MIN_SPEED_KMH = 110.0;
 
     /**
+     * Default for the altitude flight rule's minimum sustained height above the trip's start and end (m).
+     */
+    private static final double DEFAULT_FLIGHT_ALTITUDE_MIN_HEIGHT_METERS = 300.0;
+
+    /**
+     * Default for the altitude flight rule's minimum 90th percentile vertical speed (m/s).
+     */
+    private static final double DEFAULT_FLIGHT_ALTITUDE_MIN_VERTICAL_SPEED = 1.2;
+
+    /**
      * Train minimum distance threshold (km).
      * Filters out very short trips that are unlikely to be train journeys.
      */
@@ -263,6 +273,7 @@ public class TravelClassification {
             TripWaterStatistics waterStatistics = createWaterStatistics(trip);
             initialClassification = classifyWithGpsStatistics(statistics,
                     waterStatistics,
+                    createAltitudeStatistics(trip),
                     Duration.ofSeconds(trip.getTripDuration()),
                     trip.getDistanceMeters(),
                     config);
@@ -304,8 +315,19 @@ public class TravelClassification {
                                        Duration tripDuration,
                                        long distanceMeters,
                                        TimelineConfig config) {
+        return classifyTravelType(statistics, waterStatistics, TripAltitudeStatistics.unavailable(),
+                tripDuration, distanceMeters, config);
+    }
+
+    public TripType classifyTravelType(TripGpsStatistics statistics,
+                                       TripWaterStatistics waterStatistics,
+                                       TripAltitudeStatistics altitudeStatistics,
+                                       Duration tripDuration,
+                                       long distanceMeters,
+                                       TimelineConfig config) {
         TripType initialClassification = classifyWithGpsStatistics(statistics,
                 waterStatistics,
+                altitudeStatistics,
                 tripDuration,
                 distanceMeters,
                 config);
@@ -322,6 +344,7 @@ public class TravelClassification {
      */
     private TripType classifyWithGpsStatistics(TripGpsStatistics statistics,
                                                TripWaterStatistics waterStatistics,
+                                               TripAltitudeStatistics altitudeStatistics,
                                                Duration tripDuration,
                                                long distanceMeters,
                                                TimelineConfig config) {
@@ -351,7 +374,7 @@ public class TravelClassification {
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
-                statistics.speedVariance(), distanceMeters, waterStatistics, config);
+                statistics.speedVariance(), distanceMeters, waterStatistics, altitudeStatistics, config);
     }
 
     /**
@@ -467,7 +490,8 @@ public class TravelClassification {
 
         // For other modes, use standard speed-based classification
         // When no max speed available, use avg speed for both
-        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, distanceMeters, waterStatistics, config);
+        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, distanceMeters, waterStatistics,
+                TripAltitudeStatistics.unavailable(), config);
     }
 
     /**
@@ -495,6 +519,7 @@ public class TravelClassification {
                                      Double speedVariance,
                                      long distanceMeters,
                                      TripWaterStatistics waterStatistics,
+                                     TripAltitudeStatistics altitudeStatistics,
                                      TimelineConfig config) {
 
         // 0. SANITY CHECK: Reject impossible speeds (GPS noise detection)
@@ -512,10 +537,12 @@ public class TravelClassification {
         //    Uses OR logic: avg >= 400 OR max >= 500
         //    Handles flights with long taxi/ground time
         //    Optional minimum distance filters short trips where a GPS jump inflates the speed
+        //    Optional altitude rule catches slow aircraft (gliders, balloons) that never reach flight speeds
         if (Boolean.TRUE.equals(config.getFlightEnabled()) &&
                 distanceMeters / 1000.0 >= getFlightMinDistanceKm(config) &&
                 (avgSpeedKmh >= config.getFlightMinAvgSpeed() ||
-                        maxSpeedKmh >= config.getFlightMinMaxSpeed())) {
+                        maxSpeedKmh >= config.getFlightMinMaxSpeed() ||
+                        isAltitudeFlightMatch(altitudeStatistics, config))) {
             return FLIGHT;
         }
 
@@ -675,6 +702,14 @@ public class TravelClassification {
         return waterStatistics.waterDistanceRatio() >= minWaterRatio
                 && waterStatistics.waterDistanceMeters() >= minWaterDistanceMeters
                 && waterStatistics.longestWaterSegmentMeters() >= minContinuousWaterDistanceMeters;
+    }
+
+    private TripAltitudeStatistics createAltitudeStatistics(TimelineTripEntity trip) {
+        return new TripAltitudeStatistics(
+                trip.getAltitudeSustainedHeightMeters(),
+                trip.getAltitudeVerticalSpeedP90(),
+                trip.getAltitudeSampleCount()
+        );
     }
 
     private TripWaterStatistics createWaterStatistics(TimelineTripEntity trip) {
@@ -957,5 +992,35 @@ public class TravelClassification {
 
     public static double getFlightMinDistanceKm(TimelineConfig config) {
         return config.getFlightMinDistanceKm() != null ? config.getFlightMinDistanceKm() : 0.0;
+    }
+
+    public static boolean isAltitudeFlightDetectionEnabled(TimelineConfig config) {
+        return config != null
+                && Boolean.TRUE.equals(config.getFlightEnabled())
+                && Boolean.TRUE.equals(config.getFlightAltitudeDetectionEnabled());
+    }
+
+    public static double getFlightAltitudeMinHeightMeters(TimelineConfig config) {
+        return config.getFlightAltitudeMinHeightMeters() != null
+                ? config.getFlightAltitudeMinHeightMeters()
+                : DEFAULT_FLIGHT_ALTITUDE_MIN_HEIGHT_METERS;
+    }
+
+    public static double getFlightAltitudeMinVerticalSpeed(TimelineConfig config) {
+        return config.getFlightAltitudeMinVerticalSpeed() != null
+                ? config.getFlightAltitudeMinVerticalSpeed()
+                : DEFAULT_FLIGHT_ALTITUDE_MIN_VERTICAL_SPEED;
+    }
+
+    /**
+     * Altitude rule for flights: the trip stays far above where it started and ended, and climbs or sinks faster
+     * than ground travel does. Height alone would match a mountain-pass loop; the vertical speed rules that out.
+     */
+    public static boolean isAltitudeFlightMatch(TripAltitudeStatistics altitudeStatistics, TimelineConfig config) {
+        return isAltitudeFlightDetectionEnabled(config)
+                && altitudeStatistics != null
+                && altitudeStatistics.hasEvidence()
+                && altitudeStatistics.sustainedHeightMeters() >= getFlightAltitudeMinHeightMeters(config)
+                && altitudeStatistics.verticalSpeedP90() >= getFlightAltitudeMinVerticalSpeed(config);
     }
 }

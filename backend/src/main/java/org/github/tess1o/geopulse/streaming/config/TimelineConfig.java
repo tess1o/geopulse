@@ -418,6 +418,26 @@ public class TimelineConfig {
      */
     private Double flightMinDistanceKm;
 
+    /**
+     * Also classify trips as flights by altitude, for aircraft too slow for the speed rules (gliders, balloons).
+     * Default: false
+     */
+    private Boolean flightAltitudeDetectionEnabled;
+
+    /**
+     * Minimum height in meters above the trip's start and end that the trip must stay at
+     * for at least a quarter of its time to count as a flight by altitude.
+     * Default: 300.0 m
+     */
+    private Double flightAltitudeMinHeightMeters;
+
+    /**
+     * Minimum vertical speed in m/s (90th percentile) for a flight by altitude.
+     * Separates flights from mountain roads, which gain height slowly.
+     * Default: 1.2 m/s
+     */
+    private Double flightAltitudeMinVerticalSpeed;
+
     // Optional Trip Types Configuration - Boat
     /**
      * Enable or disable boat trip type detection.
