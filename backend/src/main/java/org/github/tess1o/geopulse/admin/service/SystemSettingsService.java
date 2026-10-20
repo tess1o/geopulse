@@ -238,7 +238,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("map-matching.backfill.enabled",
                 new SettingDefinition("geopulse.timeline.map-matching.backfill.enabled", "false", ValueType.BOOLEAN, "map-matching", "Discover and map-match historical trips for all users"));
         SETTING_DEFINITIONS.put("map-matching.automatic.quiet-period-minutes",
-                new SettingDefinition("geopulse.timeline.map-matching.automatic.quiet-period-minutes", "15", ValueType.INTEGER, "map-matching", "Minutes a changed timeline must remain quiet before automatic matching"));
+                new SettingDefinition("geopulse.timeline.map-matching.automatic.quiet-period-minutes", "15", ValueType.INTEGER, "map-matching", "Minutes after a trip ends before it is matched automatically"));
         SETTING_DEFINITIONS.put("map-matching.provider",
                 new SettingDefinition("geopulse.timeline.map-matching.provider", "valhalla", ValueType.STRING, "map-matching", "Map matching provider"));
         SETTING_DEFINITIONS.put("map-matching.valhalla.base-url",

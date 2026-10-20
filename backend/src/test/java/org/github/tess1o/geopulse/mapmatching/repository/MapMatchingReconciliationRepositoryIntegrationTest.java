@@ -74,7 +74,8 @@ class MapMatchingReconciliationRepositoryIntegrationTest {
                 rangeStart,
                 1_616,
                 1_565,
-                null
+                null,
+                0
         );
 
         QuarkusTransaction.requiringNew().run(() ->

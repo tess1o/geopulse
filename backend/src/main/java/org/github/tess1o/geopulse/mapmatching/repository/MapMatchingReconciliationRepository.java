@@ -52,7 +52,8 @@ public class MapMatchingReconciliationRepository {
                         ELSE map_matching_reconciliations.scanned_trips
                     END,
                     completed_at = NULL,
-                    eligible_at = GREATEST(map_matching_reconciliations.eligible_at, EXCLUDED.eligible_at),
+                    eligible_at = LEAST(map_matching_reconciliations.eligible_at, EXCLUDED.eligible_at),
+                    generation = map_matching_reconciliations.generation + 1,
                     updated_at = now()
                 """)
                 .setParameter(1, userId)
@@ -96,6 +97,7 @@ public class MapMatchingReconciliationRepository {
                         ELSE map_matching_reconciliations.completed_at
                     END,
                     eligible_at = LEAST(map_matching_reconciliations.eligible_at, EXCLUDED.eligible_at),
+                    generation = map_matching_reconciliations.generation + 1,
                     updated_at = now()
                 """)
                 .setParameter(1, source.name())
@@ -124,6 +126,7 @@ public class MapMatchingReconciliationRepository {
                     scanned_trips = 0,
                     completed_at = NULL,
                     locked_at = NULL,
+                    generation = map_matching_reconciliations.generation + 1,
                     updated_at = now()
                 """)
                 .setParameter(1, source.name())
@@ -155,7 +158,7 @@ public class MapMatchingReconciliationRepository {
                 WHERE r.id = candidate.id
                 RETURNING r.id, r.user_id, r.source, r.range_start, r.range_end,
                           r.cursor_at, r.cursor_trip_id, r.eligible_at,
-                          r.total_trips, r.scanned_trips, r.completed_at
+                          r.total_trips, r.scanned_trips, r.completed_at, r.generation
                 """)
                 .setParameter(1, automaticEnabled)
                 .setParameter(2, backfillEnabled)
@@ -205,22 +208,44 @@ public class MapMatchingReconciliationRepository {
     @Transactional
     public void advance(MapMatchingReconciliation reconciliation, Instant nextCursor,
                         long nextCursorTripId, int scannedCount, boolean complete) {
-        entityManager.createNativeQuery("""
+        advance(reconciliation, nextCursor, nextCursorTripId, scannedCount, complete, reconciliation.eligibleAt());
+    }
+
+    /**
+     * Records a scanned chunk and releases the claim. When the reconciliation was enqueued again after it was
+     * claimed, the queued range may lie behind the cursor, so the chunk is not recorded: the claim is only released
+     * and the scan resumes from wherever that enqueue left the cursor.
+     *
+     * @param eligibleAt when the next chunk may be scanned
+     * @return whether the chunk was recorded
+     */
+    @Transactional
+    public boolean advance(MapMatchingReconciliation reconciliation, Instant nextCursor,
+                           long nextCursorTripId, int scannedCount, boolean complete, Instant eligibleAt) {
+        int updated = entityManager.createNativeQuery("""
                 UPDATE map_matching_reconciliations
                 SET cursor_at = ?2,
                     cursor_trip_id = ?3,
                     scanned_trips = CASE WHEN ?5 THEN total_trips ELSE LEAST(total_trips, scanned_trips + ?4) END,
                     completed_at = CASE WHEN ?5 THEN now() ELSE NULL END,
+                    eligible_at = ?6,
                     locked_at = NULL,
                     updated_at = now()
                 WHERE id = ?1
+                  AND generation = ?7
                 """)
                 .setParameter(1, reconciliation.id())
                 .setParameter(2, nextCursor)
                 .setParameter(3, nextCursorTripId)
                 .setParameter(4, Math.max(0, scannedCount))
                 .setParameter(5, complete)
+                .setParameter(6, eligibleAt == null ? Instant.now() : eligibleAt)
+                .setParameter(7, reconciliation.generation())
                 .executeUpdate();
+        if (updated == 0) {
+            release(reconciliation.id());
+        }
+        return updated > 0;
     }
 
     @Transactional
@@ -297,7 +322,8 @@ public class MapMatchingReconciliationRepository {
                 toInstant(row[3]), toInstant(row[4]), toInstant(row[5]),
                 ((Number) row[6]).longValue(), toInstant(row[7]),
                 ((Number) row[8]).longValue(), ((Number) row[9]).longValue(),
-                toInstant(row[10]));
+                toInstant(row[10]),
+                ((Number) row[11]).longValue());
     }
 
     private Instant toInstant(Object value) {

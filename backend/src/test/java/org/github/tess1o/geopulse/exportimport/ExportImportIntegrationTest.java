@@ -257,6 +257,65 @@ class ExportImportIntegrationTest {
         });
     }
 
+    /**
+     * A snapshot restore inserts the stored trips without regenerating the timeline, so nothing else tells
+     * automatic map matching about them: the restored trips would only be matched once someone opens their days.
+     */
+    @Test
+    void testSnapshotRestoreQueuesAutomaticMapMatchingForRestoredTrips() throws Exception {
+        byte[] exportedData = exportAllNativeData();
+        deleteAndVerifyUserDomainData();
+        QuarkusTransaction.requiringNew().run(() -> {
+            entityManager.createNativeQuery("DELETE FROM map_matching_reconciliations").executeUpdate();
+            entityManager.createNativeQuery("DELETE FROM system_settings WHERE key LIKE 'map-matching.%'").executeUpdate();
+            entityManager.createNativeQuery("""
+                    INSERT INTO system_settings (key, value, value_type, category, description, updated_at)
+                    VALUES ('map-matching.enabled', 'true', 'BOOLEAN', 'map-matching', 'Test', NOW()),
+                           ('map-matching.automatic.enabled', 'true', 'BOOLEAN', 'map-matching', 'Test', NOW())
+                    """).executeUpdate();
+        });
+
+        try {
+            List<String> dataTypes = new ArrayList<>(allNativeImportDataTypes());
+            dataTypes.add(ExportImportConstants.DataTypes.TIMELINE);
+            ImportOptions importOptions = new ImportOptions();
+            importOptions.setDataTypes(dataTypes);
+            importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
+            importOptions.setSnapshotRestore(true);
+            importDataService.processImportData(new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData));
+
+            Instant restoredTripStart = testTimelineTrip.getTimestamp();
+            Object[] reconciliation = null;
+            for (int attempt = 0; attempt < 50 && reconciliation == null; attempt++) {
+                List<?> rows = QuarkusTransaction.requiringNew().call(() -> entityManager.createNativeQuery("""
+                                SELECT range_start, range_end
+                                FROM map_matching_reconciliations
+                                WHERE user_id = ?1 AND source = 'AUTOMATIC'
+                                """)
+                        .setParameter(1, testUser.getId())
+                        .getResultList());
+                if (rows.isEmpty()) {
+                    Thread.sleep(100);
+                } else {
+                    reconciliation = (Object[]) rows.get(0);
+                }
+            }
+
+            assertNotNull(reconciliation, "Snapshot restore should queue automatic map matching for restored trips");
+            assertFalse(asInstant(reconciliation[0]).isAfter(restoredTripStart));
+            assertFalse(asInstant(reconciliation[1]).isBefore(restoredTripStart));
+        } finally {
+            QuarkusTransaction.requiringNew().run(() -> {
+                entityManager.createNativeQuery("DELETE FROM map_matching_reconciliations").executeUpdate();
+                entityManager.createNativeQuery("DELETE FROM system_settings WHERE key LIKE 'map-matching.%'").executeUpdate();
+            });
+        }
+    }
+
+    private static Instant asInstant(Object value) {
+        return value instanceof java.sql.Timestamp timestamp ? timestamp.toInstant() : (Instant) value;
+    }
+
     @Test
     void testExportWithoutTimelineDependencies() throws Exception {
         ExportJob exportJob = new ExportJob();

@@ -69,7 +69,6 @@ class MapMatchingWorkerStatusTest {
         when(executor.submit(submittedWork.capture())).thenReturn(CompletableFuture.completedFuture(null));
         when(configuration.isEnabled()).thenReturn(true);
         when(configuration.automaticEnabled()).thenReturn(true);
-        when(configuration.quietPeriodMinutes()).thenReturn(15);
 
         worker.executor = executor;
         worker.workerExecution = new MapMatchingWorkerExecution();

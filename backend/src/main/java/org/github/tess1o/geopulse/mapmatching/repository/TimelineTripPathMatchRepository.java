@@ -332,6 +332,13 @@ public class TimelineTripPathMatchRepository implements PanacheRepository<Timeli
                 WITH deleted AS (
                     DELETE FROM timeline_trip_path_matches
                     WHERE trip_id IS NULL
+                      -- A regeneration detaches stored results until the rescan reattaches them by input hash;
+                      -- while that rescan is pending they are still the cache it is about to reuse.
+                      AND NOT EXISTS (
+                        SELECT 1 FROM map_matching_reconciliations r
+                        WHERE r.user_id = timeline_trip_path_matches.user_id
+                          AND r.completed_at IS NULL
+                      )
                       AND (
                         (status IN ('MATCHED', 'SKIPPED', 'FAILED')
                          AND COALESCE(completed_at, updated_at, created_at) < ?1)

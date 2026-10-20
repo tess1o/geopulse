@@ -315,7 +315,7 @@ export const SETTING_METADATA = {
   },
   'map-matching.automatic.quiet-period-minutes': {
     label: 'Quiet Period',
-    description: 'Minutes after a timeline change before automatic matching starts'
+    description: 'Minutes after a trip ends before it is matched automatically'
   },
   'map-matching.provider': {
     label: 'Provider',

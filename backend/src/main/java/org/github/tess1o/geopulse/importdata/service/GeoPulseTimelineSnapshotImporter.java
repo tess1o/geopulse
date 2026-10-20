@@ -1,12 +1,14 @@
 package org.github.tess1o.geopulse.importdata.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -15,6 +17,7 @@ import org.hibernate.query.NativeQuery;
 import org.hibernate.type.StandardBasicTypes;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -42,6 +45,9 @@ public class GeoPulseTimelineSnapshotImporter {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    Event<TimelineDataChangedEvent> timelineDataChangedEvent;
+
     @Transactional
     public void importTimelineDataSnapshot(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         TimelineDataDto timelineData = IMPORT_JSON.readValue(content, TimelineDataDto.class);
@@ -54,6 +60,34 @@ public class GeoPulseTimelineSnapshotImporter {
 
         log.info("Imported timeline snapshot for user {}: {} stays, {} trips, {} data gaps",
                 job.getUserId(), stays, trips, dataGaps);
+        if (trips > 0) {
+            fireRestoredTripsChanged(user.getId());
+        }
+    }
+
+    /**
+     * A restore skips timeline generation, which is what normally announces new trips. Announce the restored range
+     * here so the timeline consumers (map matching, weather) pick the trips up once the restore commits.
+     */
+    private void fireRestoredTripsChanged(UUID userId) {
+        Object[] range = (Object[]) entityManager.createNativeQuery("""
+                        SELECT min(timestamp), max(timestamp + trip_duration * interval '1 second')
+                        FROM timeline_trips
+                        WHERE user_id = ?1
+                        """)
+                .setParameter(1, userId)
+                .getSingleResult();
+        Instant from = toInstant(range[0]);
+        Instant to = toInstant(range[1]);
+        if (from != null && to != null) {
+            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, from, to, null, true));
+        }
+    }
+
+    private static Instant toInstant(Object value) {
+        if (value instanceof Instant instant) return instant;
+        if (value instanceof Timestamp timestamp) return timestamp.toInstant();
+        return null;
     }
 
     private int importTimelineStaysSnapshot(TimelineDataDto timelineData,

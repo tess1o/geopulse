@@ -14,6 +14,7 @@ public record MapMatchingReconciliation(
         Instant eligibleAt,
         long totalTrips,
         long scannedTrips,
-        Instant completedAt
+        Instant completedAt,
+        long generation
 ) {
 }
