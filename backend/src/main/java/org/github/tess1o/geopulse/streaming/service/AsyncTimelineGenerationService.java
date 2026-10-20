@@ -24,6 +24,10 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class AsyncTimelineGenerationService {
 
+    /** OpenAPI note for endpoints that return the job ID from {@link #requestFullRegeneration(UUID)}. */
+    public static final String ALREADY_RUNNING_JOB_NOTE = " If a timeline job is already running, its job ID is "
+            + "returned instead and the regeneration runs after it finishes.";
+
     @Inject
     @Identifier("timeline-processing")
     ExecutorService executorService;
@@ -53,19 +57,31 @@ public class AsyncTimelineGenerationService {
      * Full regeneration after a change that affects the whole timeline (a favorite, timeline settings).
      * <p>
      * A rebuild request is committed first, so the timeline still catches up when the job cannot start now (another
-     * job is running for the user) or fails: the real-time job then runs it. A job that completes clears it.
+     * job is running for the user) or fails: the real-time job then runs it. A job that completes clears it. When
+     * another job is running, the regeneration is also queued, so it starts as soon as that job ends.
      *
-     * @return the job id, or null when no job could be started now
+     * @return the job to follow: the new job, or the job that was already running for the user (the change is applied
+     * after it finishes); null only when neither exists
      */
     public UUID requestFullRegeneration(UUID userId) {
         rebuildRequestRepository.requestIndependently(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE);
-        try {
-            return regenerateTimelineAsync(userId);
-        } catch (IllegalStateException e) {
-            log.info("Could not start a regeneration job for user {} now ({}); the real-time job will run it",
-                    userId, e.getMessage());
-            return null;
+        // A second attempt covers the running job finishing between the failed start and the lookup.
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                return regenerateTimelineAsync(userId);
+            } catch (IllegalStateException e) {
+                var activeJob = jobProgressService.getUserActiveJob(userId);
+                if (activeJob.isPresent()) {
+                    UUID activeJobId = activeJob.get().getJobId();
+                    log.info("Timeline job {} is already running for user {}; the regeneration runs after it",
+                            activeJobId, userId);
+                    queuePendingRegeneration(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE);
+                    return activeJobId;
+                }
+            }
         }
+        log.info("Could not start a regeneration job for user {} now; the real-time job will run it", userId);
+        return null;
     }
 
     /**

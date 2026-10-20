@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +28,9 @@ class AsyncTimelineGenerationServiceTest {
 
     @Mock
     StreamingTimelineGenerationService timelineGenerationService;
+
+    @Mock
+    TimelineRebuildRequestRepository rebuildRequestRepository;
 
     private ExecutorService executorService;
 
@@ -68,5 +73,47 @@ class AsyncTimelineGenerationServiceTest {
 
         verify(timelineGenerationService, timeout(1000))
                 .generateTimelineFromTimestamp(eq(userId), eq(earlierTimestamp), any(UUID.class), eq("manual"));
+    }
+
+    @Test
+    void requestFullRegeneration_returnsRunningJobWhenJobIsActive() {
+        UUID userId = UUID.randomUUID();
+        TimelineJobProgressService progressService = new TimelineJobProgressService();
+        UUID activeJobId = progressService.createJob(userId);
+
+        AsyncTimelineGenerationService service = new AsyncTimelineGenerationService();
+        service.timelineGenerationService = timelineGenerationService;
+        service.jobProgressService = progressService;
+        service.rebuildRequestRepository = rebuildRequestRepository;
+
+        UUID jobId = service.requestFullRegeneration(userId);
+
+        assertEquals(activeJobId, jobId);
+        verify(rebuildRequestRepository)
+                .requestIndependently(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE);
+        verifyNoInteractions(timelineGenerationService);
+    }
+
+    @Test
+    void requestFullRegeneration_startsTheRegenerationWhenTheRunningJobEnds() {
+        UUID userId = UUID.randomUUID();
+        TimelineJobProgressService progressService = new TimelineJobProgressService();
+        UUID activeJobId = progressService.createJob(userId);
+
+        AsyncTimelineGenerationService service = new AsyncTimelineGenerationService();
+        executorService = Executors.newSingleThreadExecutor();
+        service.executorService = executorService;
+        service.timelineGenerationService = timelineGenerationService;
+        service.jobProgressService = progressService;
+        service.rebuildRequestRepository = rebuildRequestRepository;
+
+        service.requestFullRegeneration(userId);
+        verifyNoInteractions(timelineGenerationService);
+
+        progressService.completeJob(activeJobId);
+        service.drainPendingRegenerations();
+
+        verify(timelineGenerationService, timeout(1000)).generateTimelineFromTimestamp(eq(userId),
+                eq(StreamingTimelineGenerationService.DEFAULT_START_DATE), any(UUID.class), eq("manual"));
     }
 }

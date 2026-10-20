@@ -48,6 +48,7 @@ import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService.ALREADY_RUNNING_JOB_NOTE;
 
 @Path("/favorites")
 @ApplicationScoped
@@ -88,7 +89,7 @@ public class FavoritesResource {
     @Operation(summary = "Update a favorite",
             description = "Changes the name, city, country, or (for areas) the bounds of a favorite. When the bounds "
                     + "change, a background timeline regeneration starts and its job ID is returned; otherwise the "
-                    + "job ID is empty.")
+                    + "job ID is empty." + ALREADY_RUNNING_JOB_NOTE)
     public JobResponse updateFavorite(
             @Parameter(description = "Favorite ID.")
             @PathParam("favoriteId") long favoriteId,
@@ -112,7 +113,7 @@ public class FavoritesResource {
     @Operation(summary = "Delete a favorite",
             description = "Deletes a favorite. Stays inside it fall back to their reverse-geocoded names. Starts a "
                     + "background timeline regeneration so existing stays pick up the change; the response contains "
-                    + "the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`.")
+                    + "the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`." + ALREADY_RUNNING_JOB_NOTE)
     public JobResponse deleteFavorite(
             @Parameter(description = "Favorite ID.")
             @PathParam("favoriteId") long favoriteId) {
@@ -133,7 +134,7 @@ public class FavoritesResource {
     @Operation(summary = "Add a favorite point",
             description = "Creates a favorite at a single location. Stays near the point use the favorite's name. "
                     + "Starts a background timeline regeneration so existing stays pick up the change; the response "
-                    + "contains the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`.")
+                    + "contains the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`." + ALREADY_RUNNING_JOB_NOTE)
     public RestResponse<JobResponse> addPointToFavorites(@NotNull @Valid AddPointToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
@@ -152,7 +153,7 @@ public class FavoritesResource {
             description = "Creates a favorite covering a rectangular area, such as a campus or a park. Stays inside "
                     + "the area use the favorite's name. Starts a background timeline regeneration so existing "
                     + "stays pick up the change; the response contains the job ID to poll with `GET "
-                    + "/api/v1/timeline/jobs/{jobId}`.")
+                    + "/api/v1/timeline/jobs/{jobId}`." + ALREADY_RUNNING_JOB_NOTE)
     public RestResponse<JobResponse> addAreaToFavorites(@NotNull @Valid AddAreaToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
         try {

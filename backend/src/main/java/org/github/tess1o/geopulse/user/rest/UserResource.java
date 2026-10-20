@@ -39,6 +39,7 @@ import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService.ALREADY_RUNNING_JOB_NOTE;
 
 /**
  * REST resource for user management.
@@ -206,7 +207,8 @@ public class UserResource {
             description = "Changes the settings that control how stays, trips, and data gaps are detected. Changes "
                     + "that affect detection start a timeline regeneration and return its job ID; enabling boat "
                     + "detection starts the boat setup job instead. Changes that only affect movement-type "
-                    + "classification reclassify existing trips in the background and return `204 No Content`.")
+                    + "classification reclassify existing trips in the background and return `204 No Content`."
+                    + ALREADY_RUNNING_JOB_NOTE)
     public Response updateTimelinePreferences(@Valid UpdateTimelinePreferencesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline preferences for user {}", userId);
@@ -240,7 +242,7 @@ public class UserResource {
     @APIResponse(responseCode = "204", description = "Preferences reset without starting a job")
     @Operation(summary = "Reset timeline settings",
             description = "Removes the user's own timeline settings so the server defaults apply again, and starts a "
-                    + "timeline regeneration when that changes anything.")
+                    + "timeline regeneration when that changes anything." + ALREADY_RUNNING_JOB_NOTE)
     public Response resetPreferencesToDefaults() {
         UUID userId = currentUserService.getCurrentUserId();
 

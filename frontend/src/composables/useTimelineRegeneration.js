@@ -18,6 +18,7 @@ export function useTimelineRegeneration() {
   const modalShowStartTime = ref(null)
   const currentJobId = ref(null)
   const trackingCallbacks = ref(null)
+  let isStarting = false
   const trackingLifecycle = ref({
     completedHandled: false,
     failedHandled: false,
@@ -172,16 +173,15 @@ export function useTimelineRegeneration() {
         return
       }
 
-    clearTrackingCallbacks()
+      clearTrackingCallbacks()
 
-    // 2. Show the regeneration modal
-    showTimelineRegenerationModal(options.modalType)
+      // 2. Show the regeneration modal
+      showTimelineRegenerationModal(options.modalType)
 
-    try {
       // 3. Execute the action
       const jobId = await action()
 
-      // 4. Start tracking the new job
+      // 4. Start tracking the job
       if (jobId) {
         currentJobId.value = jobId
         toast.add({ severity: 'success', summary: t('common.success'), detail: options.successMessage, life: 3000 })
@@ -206,6 +206,8 @@ export function useTimelineRegeneration() {
       // Close modal immediately on error
       closeTrackingModal({ clearJob: true })
       clearTrackingCallbacks()
+    } finally {
+      isStarting = false
     }
   }
 
