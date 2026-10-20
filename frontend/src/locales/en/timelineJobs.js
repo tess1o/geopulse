@@ -135,5 +135,15 @@ export default {
         durationSeconds: '{seconds}s',
         durationMinutesSeconds: '{minutes}m {seconds}s',
         durationHoursMinutesSeconds: '{hours}h {minutes}m {seconds}s'
+    },
+    // Toasts and dialogs shown while a settings change starts a timeline regeneration (useTimelineRegeneration)
+    regeneration: {
+        alreadyRunning: {
+            header: 'Timeline Job In Progress',
+            message: 'A timeline generation job is already running ({progress}% complete). Please wait for it to finish.',
+            viewProgress: 'View Progress'
+        },
+        savedSummary: 'Saved',
+        queuedDetail: 'Changes saved. Your timeline will be updated in the background.'
     }
 }

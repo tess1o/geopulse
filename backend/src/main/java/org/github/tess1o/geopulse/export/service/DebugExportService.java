@@ -335,7 +335,8 @@ public class DebugExportService {
      * OwnTracks keys each point carries what OwnTracks cannot express: the timestamp in milliseconds ({@code tst} is
      * whole seconds), when the server received the point, its source, and whether it lies on water according to the
      * server's current water dataset. The coordinates are shifted, so the importing server cannot work the last one
-     * out itself. Telemetry is left out: the timeline does not read it and it may hold private values.
+     * out itself. Telemetry and the device id are left out: the timeline does not read them and they may hold
+     * private values.
      */
     private void writeShiftedGpsData(UUID userId, ExportRange range, Shift shift, String waterDatasetVersion,
                                      OutputStream output, ExportJob progressJob, long totalPoints) throws IOException {
@@ -403,7 +404,6 @@ public class DebugExportService {
         message.put("vel", point.getVelocity());
         message.put("alt", point.getAltitude());
         message.put("batt", point.getBattery());
-        message.put("tid", point.getDeviceId());
         if (point.getCreatedAt() != null) {
             message.put("created_at", point.getCreatedAt().getEpochSecond());
             message.put("created_at_ms", point.getCreatedAt().toEpochMilli());

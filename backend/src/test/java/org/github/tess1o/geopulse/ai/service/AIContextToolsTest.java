@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.ai.service;
 
-import jakarta.ws.rs.NotFoundException;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEventService;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
@@ -36,6 +35,7 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -82,11 +82,12 @@ class AIContextToolsTest {
 
     @Test
     void getTripDetails_missingTripIsToolError() {
-        when(tripService.getTrip(USER_ID, 5L)).thenThrow(new NotFoundException("missing"));
+        when(tripService.getTrip(USER_ID, 5L)).thenThrow(new GeoPulseException(ApiErrorCode.TRIP_NOT_FOUND, "Trip not found"));
 
         AIToolException error = assertThrows(AIToolException.class, () -> tools.getTripDetails(5L));
 
         assertEquals("TRIP_NOT_FOUND", error.getCode());
+        assertTrue(error.getMessage().contains("listTrips"), error.getMessage());
     }
 
     @Test

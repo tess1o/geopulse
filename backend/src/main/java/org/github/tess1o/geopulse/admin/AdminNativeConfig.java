@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.admin.model.*;
                 MapMatchingRebuildResponse.class,
                 UserAISettings.class,
                 RestoreLocalBackupRequest.class,
+                RestoreAcceptedResponse.class,
                 BulkUpdateRequest.class,
                 CreateOidcProviderRequest.class,
                 OidcProviderResponse.class,

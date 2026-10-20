@@ -122,6 +122,9 @@ public class ExportDataMapper {
                 .longestWaterSegmentMeters(trip.getLongestWaterSegmentMeters())
                 .waterSampleCount(trip.getWaterSampleCount())
                 .waterEvidenceAvailable(trip.getWaterEvidenceAvailable())
+                .altitudeSustainedHeightMeters(trip.getAltitudeSustainedHeightMeters())
+                .altitudeVerticalSpeedP90(trip.getAltitudeVerticalSpeedP90())
+                .altitudeSampleCount(trip.getAltitudeSampleCount())
                 .explanation(trip.getExplanation());
 
         return builder.build();

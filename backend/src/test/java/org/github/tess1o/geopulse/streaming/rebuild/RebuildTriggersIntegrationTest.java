@@ -119,7 +119,8 @@ class RebuildTriggersIntegrationTest {
 
         favoriteLocationService.addFavorite(userId, area("Gym", day.gym));
         // Before rebuild requests this regeneration was only logged as "could not create" and never happened.
-        assertThat(favoriteLocationService.createTimelineRegenerationJob(userId)).isNull();
+        // The caller gets the running job to follow; the regeneration itself waits for the request below.
+        assertThat(favoriteLocationService.createTimelineRegenerationJob(userId)).isEqualTo(otherJob);
         assertThat(harness.pendingRebuild(userId).orElseThrow().rebuildFrom())
                 .isEqualTo(StreamingTimelineGenerationService.DEFAULT_START_DATE);
 

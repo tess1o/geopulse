@@ -1,5 +1,24 @@
 [
   {
+    "version": "2.1.0",
+    "title": "GeoPulse 2.1.0",
+    "highlights": [
+      "Timeline explanations: every stay, trip and data gap has a \"Why?\" view with its GPS points on a map and the steps that decided where it starts and ends",
+      "Local days when you travel: with \"Local time at each place\", the Timeline now splits days at local midnight wherever you were, including trips across time zones",
+      "MCP server and AI Assistant: 22 new read-only tools for your current status, visited places, digests and statistics, planned trips, notes, photos, weather, geofence events and timeline explanations",
+      "GPS Data page: edit several points, review the pending changes and apply them together with one timeline regeneration",
+      "More accurate stays and trips: stops recorded with only a few GPS points are recognized, stays inside a favorite area are no longer split, and short bursts of bad speed readings are ignored",
+      "Flights: optional minimum distance, peak speed threshold down to 150 km/h for light aircraft, and opt-in altitude-based detection for gliders and balloons",
+      "Boat trips are detected more reliably when the tracker mixes in inaccurate network fixes",
+      "The stay speed threshold is now a real km/h value. Existing settings are converted automatically; a customized GEOPULSE_TIMELINE_STAYPOINT_VELOCITY_THRESHOLD must be multiplied by 3.6",
+      "Removed the Minimum Accuracy Ratio stay setting, which never took effect",
+      "Data Export / Import: drag and drop files, leave the page while a job runs, and get a notification when your export is ready or your import has finished",
+      "New tooling makes it easier to contribute a translation",
+      "Reworked debug export for bug reports: describe the problem, include your current timeline, and see on import whether the timeline was reproduced"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.1.0"
+  },
+  {
     "version": "2.0.0",
     "title": "GeoPulse 2.0.0",
     "highlights": [

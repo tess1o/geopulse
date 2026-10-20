@@ -136,5 +136,15 @@ export default {
         durationSeconds: '{seconds} с',
         durationMinutesSeconds: '{minutes} хв {seconds} с',
         durationHoursMinutesSeconds: '{hours} год {minutes} хв {seconds} с'
+    },
+    // Toasts and dialogs shown while a settings change starts a timeline regeneration (useTimelineRegeneration)
+    regeneration: {
+        alreadyRunning: {
+            header: 'Завдання хронології виконується',
+            message: 'Завдання генерації хронології вже виконується (виконано {progress}%). Зачекайте, доки воно завершиться.',
+            viewProgress: 'Переглянути прогрес'
+        },
+        savedSummary: 'Збережено',
+        queuedDetail: 'Зміни збережено. Хронологію буде оновлено у фоновому режимі.'
     }
 }

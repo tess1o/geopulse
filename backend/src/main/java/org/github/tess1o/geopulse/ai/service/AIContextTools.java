@@ -2,7 +2,6 @@ package org.github.tess1o.geopulse.ai.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.ai.model.AITripDetailsDTO;
 import org.github.tess1o.geopulse.ai.model.AIWeatherDTO;
@@ -19,6 +18,8 @@ import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
 import org.github.tess1o.geopulse.immich.service.ImmichService;
 import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEventExplanationDetailsDTO;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineEventExplanationService;
@@ -128,7 +129,10 @@ public class AIContextTools {
                     tripService.getTrip(userId, tripId),
                     tripSummaryService.getSummary(userId, tripId),
                     tripPlanItemService.getTripPlanItems(userId, tripId));
-        } catch (NotFoundException e) {
+        } catch (GeoPulseException e) {
+            if (e.code() != ApiErrorCode.TRIP_NOT_FOUND) {
+                throw e;
+            }
             throw new AIToolException("TRIP_NOT_FOUND", "Trip not found. Use listTrips to find trip ids.",
                     Map.of("tripId", tripId), e);
         }

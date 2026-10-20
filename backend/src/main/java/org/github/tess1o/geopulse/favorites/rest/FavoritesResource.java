@@ -169,7 +169,7 @@ public class FavoritesResource {
     @APIResponse(responseCode = "201", description = "Favorites created")
     @Operation(summary = "Add several favorites",
             description = "Creates several favorite points and areas in one request. The response reports which ones "
-                    + "succeeded. A single timeline regeneration job is started for all of them.")
+                    + "succeeded. A single timeline regeneration job is started for all of them." + ALREADY_RUNNING_JOB_NOTE)
     public RestResponse<BulkAddFavoritesResult> bulkAddFavorites(@NotNull @Valid BulkAddFavoritesDto request) {
         if (request.getPoints().isEmpty() && request.getAreas().isEmpty()) {
             throw new GeoPulseException(NO_FAVORITES_PROVIDED, "No favorites provided for bulk add");

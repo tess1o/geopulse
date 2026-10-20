@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.user.model.*;
         UpdateUserPasswordRequest.class,
         UpdateProfileRequest.class,
         UpdateTimelinePreferencesRequest.class,
+        TimelinePreferencesUpdateResponse.class,
         UserRegistrationRequest.class,
         UserResponse.class,
         UserSearchDTO.class,

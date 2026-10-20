@@ -11,9 +11,12 @@ import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.type.StandardBasicTypes;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.importdata.service.GeoPulseImportValues.IMPORT_JSON;
@@ -56,7 +59,7 @@ public class GeoPulseTimelineSnapshotImporter {
     private int importTimelineStaysSnapshot(TimelineDataDto timelineData,
                                             UserEntity user,
                                             ImportJob job,
-                                            ImportReferenceMaps referenceMaps) {
+                                            ImportReferenceMaps referenceMaps) throws IOException {
         int imported = 0;
         for (TimelineDataDto.StayDto dto : emptyIfNull(timelineData.getStays())) {
             if (dto.getId() <= 0
@@ -74,10 +77,11 @@ public class GeoPulseTimelineSnapshotImporter {
             entityManager.createNativeQuery("""
                             INSERT INTO timeline_stays
                             (id, user_id, timestamp, stay_duration, location, location_name,
-                             favorite_id, geocoding_id, created_at, last_updated, location_source)
+                             favorite_id, geocoding_id, created_at, last_updated, location_source, explanation)
                             VALUES (:id, :userId, :timestamp, :duration,
                                     ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
-                                    :locationName, :favoriteId, :geocodingId, :createdAt, :lastUpdated, :locationSource)
+                                    :locationName, :favoriteId, :geocodingId, :createdAt, :lastUpdated, :locationSource,
+                                    CAST(:explanation AS jsonb))
                             ON CONFLICT (id) DO UPDATE SET
                                 user_id = EXCLUDED.user_id,
                                 timestamp = EXCLUDED.timestamp,
@@ -88,8 +92,11 @@ public class GeoPulseTimelineSnapshotImporter {
                                 geocoding_id = EXCLUDED.geocoding_id,
                                 created_at = EXCLUDED.created_at,
                                 last_updated = EXCLUDED.last_updated,
-                                location_source = EXCLUDED.location_source
+                                location_source = EXCLUDED.location_source,
+                                explanation = EXCLUDED.explanation
                             """)
+                    .unwrap(NativeQuery.class)
+                    .setParameter("explanation", explanationJson(dto.getExplanation()), StandardBasicTypes.STRING)
                     .setParameter("id", dto.getId())
                     .setParameter("userId", user.getId())
                     .setParameter("timestamp", dto.getTimestamp())
@@ -113,7 +120,7 @@ public class GeoPulseTimelineSnapshotImporter {
     private int importTimelineTripsSnapshot(TimelineDataDto timelineData,
                                             UserEntity user,
                                             ImportJob job,
-                                            ImportReferenceMaps referenceMaps) {
+                                            ImportReferenceMaps referenceMaps) throws IOException {
         int imported = 0;
         for (TimelineDataDto.TripDto dto : emptyIfNull(timelineData.getTrips())) {
             if (dto.getId() <= 0
@@ -133,14 +140,16 @@ public class GeoPulseTimelineSnapshotImporter {
                              distance_meters, movement_type, movement_type_source, avg_gps_speed, max_gps_speed,
                              speed_variance, low_accuracy_points_count, water_distance_meters, water_distance_ratio,
                              longest_water_segment_meters, water_sample_count, water_evidence_available,
-                             created_at, last_updated)
+                             altitude_sustained_height_meters, altitude_vertical_speed_p90, altitude_sample_count,
+                             explanation, created_at, last_updated)
                             VALUES (:id, :userId, :timestamp, :duration,
                                     ST_SetSRID(ST_MakePoint(:startLongitude, :startLatitude), 4326),
                                     ST_SetSRID(ST_MakePoint(:endLongitude, :endLatitude), 4326),
                                     :distance, :movementType, :movementTypeSource, :avgGpsSpeed, :maxGpsSpeed,
                                     :speedVariance, :lowAccuracyPointsCount, :waterDistanceMeters, :waterDistanceRatio,
                                     :longestWaterSegmentMeters, :waterSampleCount, :waterEvidenceAvailable,
-                                    :createdAt, :lastUpdated)
+                                    :altitudeSustainedHeightMeters, :altitudeVerticalSpeedP90, :altitudeSampleCount,
+                                    CAST(:explanation AS jsonb), :createdAt, :lastUpdated)
                             ON CONFLICT (id) DO UPDATE SET
                                 user_id = EXCLUDED.user_id,
                                 timestamp = EXCLUDED.timestamp,
@@ -159,9 +168,19 @@ public class GeoPulseTimelineSnapshotImporter {
                                 longest_water_segment_meters = EXCLUDED.longest_water_segment_meters,
                                 water_sample_count = EXCLUDED.water_sample_count,
                                 water_evidence_available = EXCLUDED.water_evidence_available,
+                                altitude_sustained_height_meters = EXCLUDED.altitude_sustained_height_meters,
+                                altitude_vertical_speed_p90 = EXCLUDED.altitude_vertical_speed_p90,
+                                altitude_sample_count = EXCLUDED.altitude_sample_count,
+                                explanation = EXCLUDED.explanation,
                                 created_at = EXCLUDED.created_at,
                                 last_updated = EXCLUDED.last_updated
                             """)
+                    .unwrap(NativeQuery.class)
+                    .setParameter("altitudeSustainedHeightMeters", dto.getAltitudeSustainedHeightMeters(),
+                            StandardBasicTypes.DOUBLE)
+                    .setParameter("altitudeVerticalSpeedP90", dto.getAltitudeVerticalSpeedP90(), StandardBasicTypes.DOUBLE)
+                    .setParameter("altitudeSampleCount", dto.getAltitudeSampleCount(), StandardBasicTypes.INTEGER)
+                    .setParameter("explanation", explanationJson(dto.getExplanation()), StandardBasicTypes.STRING)
                     .setParameter("id", dto.getId())
                     .setParameter("userId", user.getId())
                     .setParameter("timestamp", dto.getTimestamp())
@@ -195,7 +214,7 @@ public class GeoPulseTimelineSnapshotImporter {
     private int importTimelineDataGapsSnapshot(TimelineDataDto timelineData,
                                                UserEntity user,
                                                ImportJob job,
-                                               ImportReferenceMaps referenceMaps) {
+                                               ImportReferenceMaps referenceMaps) throws IOException {
         int imported = 0;
         for (TimelineDataDto.DataGapDto dto : emptyIfNull(timelineData.getDataGaps())) {
             if (dto.getId() <= 0
@@ -208,15 +227,19 @@ public class GeoPulseTimelineSnapshotImporter {
 
             entityManager.createNativeQuery("""
                             INSERT INTO timeline_data_gaps
-                            (id, user_id, start_time, end_time, duration_seconds, created_at)
-                            VALUES (:id, :userId, :startTime, :endTime, :durationSeconds, :createdAt)
+                            (id, user_id, start_time, end_time, duration_seconds, created_at, explanation)
+                            VALUES (:id, :userId, :startTime, :endTime, :durationSeconds, :createdAt,
+                                    CAST(:explanation AS jsonb))
                             ON CONFLICT (id) DO UPDATE SET
                                 user_id = EXCLUDED.user_id,
                                 start_time = EXCLUDED.start_time,
                                 end_time = EXCLUDED.end_time,
                                 duration_seconds = EXCLUDED.duration_seconds,
-                                created_at = EXCLUDED.created_at
+                                created_at = EXCLUDED.created_at,
+                                explanation = EXCLUDED.explanation
                             """)
+                    .unwrap(NativeQuery.class)
+                    .setParameter("explanation", explanationJson(dto.getExplanation()), StandardBasicTypes.STRING)
                     .setParameter("id", dto.getId())
                     .setParameter("userId", user.getId())
                     .setParameter("startTime", dto.getStartTime())
@@ -229,6 +252,11 @@ public class GeoPulseTimelineSnapshotImporter {
             imported++;
         }
         return imported;
+    }
+
+    /** The stored explanation as JSON for a {@code jsonb} parameter, or null when the export has none. */
+    private static String explanationJson(Map<String, Object> explanation) throws IOException {
+        return explanation == null ? null : IMPORT_JSON.writeValueAsString(explanation);
     }
 
     public void clearTimelineSnapshotData(UUID userId) {

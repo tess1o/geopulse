@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
 import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 
 export function useTimelineRegeneration() {
   const confirm = useConfirm()
@@ -150,21 +151,26 @@ export function useTimelineRegeneration() {
    * @param {Function} [options.onSuccess] - Optional callback on success.
    */
   const withTimelineRegeneration = async (action, options) => {
-    // 1. Check for existing active jobs
-    const activeJobCheck = await checkActiveJob()
-    if (activeJobCheck.hasActiveJob) {
-      confirm.require({
-        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish.`,
-        header: 'Timeline Job In Progress',
-        icon: 'pi pi-info-circle',
-        rejectLabel: 'Cancel',
-        acceptLabel: 'View Progress',
-        accept: () => {
-          router.push({ name: 'Timeline Job Details', params: { jobId: activeJobCheck.jobId } })
-        }
-      })
-      return
-    }
+    // A second call (e.g. a double click on the confirm button) would find the first one's job and fail
+    if (isStarting) return
+    isStarting = true
+
+    try {
+      // 1. Check for existing active jobs
+      const activeJobCheck = await checkActiveJob()
+      if (activeJobCheck.hasActiveJob) {
+        confirm.require({
+          message: t('timelineJobs.regeneration.alreadyRunning.message', { progress: activeJobCheck.progress || 0 }),
+          header: t('timelineJobs.regeneration.alreadyRunning.header'),
+          icon: 'pi pi-info-circle',
+          rejectLabel: t('common.cancel'),
+          acceptLabel: t('timelineJobs.regeneration.alreadyRunning.viewProgress'),
+          accept: () => {
+            router.push({ name: 'Timeline Job Details', params: { jobId: activeJobCheck.jobId } })
+          }
+        })
+        return
+      }
 
     clearTrackingCallbacks()
 
@@ -178,18 +184,25 @@ export function useTimelineRegeneration() {
       // 4. Start tracking the new job
       if (jobId) {
         currentJobId.value = jobId
-        toast.add({ severity: 'success', summary: 'Success', detail: options.successMessage, life: 3000 })
-        if (options.onSuccess) {
-          options.onSuccess()
-        }
+        toast.add({ severity: 'success', summary: t('common.success'), detail: options.successMessage, life: 3000 })
       } else {
-        // If no jobId is returned, something went wrong but it wasn't an exception
-        throw new Error('Action did not return a valid job ID.')
+        // The change is saved; the timeline catches up in the background without a job to follow
+        closeTrackingModal({ clearJob: true })
+        clearTrackingCallbacks()
+        toast.add({
+          severity: 'info',
+          summary: t('timelineJobs.regeneration.savedSummary'),
+          detail: options.noJobMessage || t('timelineJobs.regeneration.queuedDetail'),
+          life: 5000
+        })
+      }
+      if (options.onSuccess) {
+        options.onSuccess()
       }
     } catch (error) {
       console.error(`Timeline regeneration action failed: ${options.errorMessage}`, error)
-      toast.add({ severity: 'error', summary: 'Error', detail: formatApiErrorDetail(error, options.errorMessage), life: 5000 })
-      
+      toast.add({ severity: 'error', summary: t('common.error'), detail: formatApiErrorDetail(error, options.errorMessage), life: 5000 })
+
       // Close modal immediately on error
       closeTrackingModal({ clearJob: true })
       clearTrackingCallbacks()

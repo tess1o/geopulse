@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -72,7 +75,9 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -90,6 +95,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @SerializedDatabaseTest
 class ExportImportIntegrationTest {
     private static final Instant BASE_TIME = Instant.parse("2026-02-01T12:00:00Z");
+    private static final LinkedHashMap<String, Object> STAY_EXPLANATION = new TimelineExplanation(
+            TimelineReason.of(TimelineReasons.ARRIVAL, "points", 3), List.of(),
+            TimelineReason.of(TimelineReasons.LEFT_STAY)).toMap();
+    private static final LinkedHashMap<String, Object> TRIP_EXPLANATION = new TimelineExplanation(
+            TimelineReason.of(TimelineReasons.LEFT_STAY), List.of(),
+            TimelineReason.of(TimelineReasons.ARRIVAL, "points", 3)).toMap();
+    private static final LinkedHashMap<String, Object> DATA_GAP_EXPLANATION = new TimelineExplanation(
+            TimelineReason.of(TimelineReasons.NO_POINTS), List.of(), null).toMap();
 
     @Inject
     ExportDataGenerator exportDataGenerator;
@@ -212,6 +225,38 @@ class ExportImportIntegrationTest {
         verifyImportedDataMatchesOriginal(originalData);
     }
 
+    /**
+     * A full-backup restore imports the stored timeline rows instead of regenerating them, so everything the
+     * engine stored on them must come back: why each event is as it is, and the trip's altitude evidence.
+     */
+    @Test
+    void testSnapshotRestoreKeepsTimelineExplanationsAndAltitudeEvidence() throws Exception {
+        byte[] exportedData = exportAllNativeData();
+        deleteAndVerifyUserDomainData();
+
+        List<String> dataTypes = new ArrayList<>(allNativeImportDataTypes());
+        dataTypes.add(ExportImportConstants.DataTypes.TIMELINE);
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setDataTypes(dataTypes);
+        importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
+        importOptions.setSnapshotRestore(true);
+        importDataService.processImportData(new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData));
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            TimelineStayEntity stay = timelineStayRepository.findById(testStay.getId());
+            assertEquals(STAY_EXPLANATION, stay.getExplanation());
+
+            TimelineTripEntity trip = timelineTripRepository.findById(testTimelineTrip.getId());
+            assertEquals(TRIP_EXPLANATION, trip.getExplanation());
+            assertEquals(850.0, trip.getAltitudeSustainedHeightMeters(), 0.001);
+            assertEquals(2.4, trip.getAltitudeVerticalSpeedP90(), 0.001);
+            assertEquals(42, trip.getAltitudeSampleCount());
+
+            TimelineDataGapEntity gap = timelineDataGapRepository.findById(testDataGap.getId());
+            assertEquals(DATA_GAP_EXPLANATION, gap.getExplanation());
+        });
+    }
+
     @Test
     void testExportWithoutTimelineDependencies() throws Exception {
         ExportJob exportJob = new ExportJob();
@@ -270,6 +315,7 @@ class ExportImportIntegrationTest {
                 .locationSource(LocationSource.HISTORICAL)
                 .favoriteLocation(testFavorite)
                 .geocodingLocation(testGeocodingLocation)
+                .explanation(STAY_EXPLANATION)
                 .build();
         timelineStayRepository.persist(testStay);
 
@@ -291,6 +337,10 @@ class ExportImportIntegrationTest {
                 .longestWaterSegmentMeters(12.5)
                 .waterSampleCount(4)
                 .waterEvidenceAvailable(true)
+                .altitudeSustainedHeightMeters(850.0)
+                .altitudeVerticalSpeedP90(2.4)
+                .altitudeSampleCount(42)
+                .explanation(TRIP_EXPLANATION)
                 .build();
         timelineTripRepository.persist(testTimelineTrip);
 
@@ -300,6 +350,7 @@ class ExportImportIntegrationTest {
                 .endTime(BASE_TIME.minus(210, ChronoUnit.MINUTES))
                 .durationSeconds(1800)
                 .createdAt(BASE_TIME.minus(2, ChronoUnit.HOURS))
+                .explanation(DATA_GAP_EXPLANATION)
                 .build();
         timelineDataGapRepository.persist(testDataGap);
 

@@ -76,6 +76,9 @@ public class TimelineDataDto {
         private Double longestWaterSegmentMeters;
         private Integer waterSampleCount;
         private Boolean waterEvidenceAvailable;
+        private Double altitudeSustainedHeightMeters;
+        private Double altitudeVerticalSpeedP90;
+        private Integer altitudeSampleCount;
         /** Why the timeline engine created the trip as it is ({start, notes, end} reason codes), if known. */
         private java.util.Map<String, Object> explanation;
     }
