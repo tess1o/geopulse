@@ -270,7 +270,6 @@
         </div>
       </div>
 
-      <Toast />
     </div>
   </AppLayout>
 </template>
@@ -286,7 +285,6 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
-import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'

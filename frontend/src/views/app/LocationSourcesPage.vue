@@ -98,7 +98,6 @@
 
         <!-- Confirm Delete Dialog -->
         <ConfirmDialog />
-        <Toast />
       </div>
     </PageContainer>
   </AppLayout>

@@ -246,7 +246,6 @@
       </template>
     </Dialog>
 
-    <Toast />
     </div>
   </AppLayout>
 </template>
@@ -261,7 +260,6 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
-import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import { storeToRefs } from 'pinia'

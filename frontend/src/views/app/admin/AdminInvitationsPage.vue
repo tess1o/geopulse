@@ -323,7 +323,6 @@
         </template>
       </Dialog>
 
-      <Toast />
     </div>
   </AppLayout>
 </template>
@@ -337,7 +336,6 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
-import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'

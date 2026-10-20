@@ -58,7 +58,6 @@
           </div>
         </div>
 
-        <Toast />
         <ConfirmDialog group="profile-unsaved-changes" />
       </div>
     </PageContainer>

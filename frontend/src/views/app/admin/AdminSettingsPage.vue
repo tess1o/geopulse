@@ -46,7 +46,6 @@
         </section>
       </div>
 
-      <Toast />
     </div>
   </AppLayout>
 </template>
@@ -55,7 +54,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
-import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import Breadcrumb from 'primevue/breadcrumb'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
