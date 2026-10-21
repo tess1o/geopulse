@@ -191,6 +191,9 @@ export const createTimelineStackMarkerElement = ({ count, highlighted = false, d
   return {
     element: root,
     offset: [0, 0],
-    size
+    size,
+    // The element is the MapLibre Marker's root, whose style.opacity the Marker rewrites from its own `opacity`
+    // option; pass this as that option or the dimmed opacity is lost (only the grey filter would remain).
+    markerOpacity: dimmed ? TIMELINE_MARKER_DIMMED_STYLE.opacity : '1'
   }
 }

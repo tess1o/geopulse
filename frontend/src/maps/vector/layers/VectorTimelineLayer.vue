@@ -720,7 +720,8 @@ const renderClusterMarker = (cluster) => {
   const marker = new maplibregl.Marker({
     element: markerSpec.element,
     anchor: 'center',
-    offset: markerSpec.offset || [0, 0]
+    offset: markerSpec.offset || [0, 0],
+    opacity: markerSpec.markerOpacity
   })
     .setLngLat([cluster.longitude, cluster.latitude])
     .addTo(props.map)
