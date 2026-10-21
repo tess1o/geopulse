@@ -1,4 +1,5 @@
 import { createFeatureCollection, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
+import { getOutlineColor } from '@/maps/shared/mapAppearance'
 import {
   buildHighlightedTripData,
   createEmptyHighlightedTripData
@@ -29,25 +30,35 @@ export const normalizePathCoordinates = (pathGroup) => {
     .filter(Boolean)
 }
 
-export const buildPathCollection = (pathData) => {
+// pathPieces: per group, its day pieces ({ color, muted, points }). Pieces of one group share its pathIndex and
+// pathRaw, so clicks still report the whole group; `color`/`outlineColor`/`muted` drive the line paint.
+export const buildPathCollection = (pathData, pathPieces = null) => {
   const features = []
 
   ;(Array.isArray(pathData) ? pathData : []).forEach((pathGroup, pathIndex) => {
-    const coordinates = normalizePathCoordinates(pathGroup)
-    if (coordinates.length < 2) {
+    const pieces = pathPieces?.[pathIndex]
+    const lines = (pieces || [{ points: pathGroup, color: null }])
+      .map(({ points, color, muted }) => ({ coordinates: normalizePathCoordinates(points), color, muted }))
+      .filter(({ coordinates }) => coordinates.length >= 2)
+    if (!lines.length) {
       return
     }
 
-    features.push({
-      type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates
-      },
-      properties: {
-        pathIndex,
-        pathRaw: JSON.stringify(pathGroup || [])
-      }
+    const pathRaw = JSON.stringify(pathGroup || [])
+    lines.forEach(({ coordinates, color, muted }) => {
+      features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates
+        },
+        properties: {
+          pathIndex,
+          pathRaw,
+          ...(color ? { color, outlineColor: getOutlineColor(color) } : {}),
+          ...(muted ? { muted: true } : {})
+        }
+      })
     })
   })
 

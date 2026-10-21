@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
 import org.github.tess1o.geopulse.shared.map.MapColorScheme;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.shared.map.PathColorMode;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.*;
 
@@ -29,6 +30,7 @@ import org.github.tess1o.geopulse.user.model.*;
         TemperatureUnit.class,
         MapRenderMode.class,
         MapColorScheme.class,
+        PathColorMode.class,
         TripType.class,
         UserAvatarEntity.class
 })

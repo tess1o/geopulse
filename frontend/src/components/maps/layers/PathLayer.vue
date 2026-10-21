@@ -4,6 +4,7 @@
     ref="implRef"
     :map="map"
     :path-data="pathData"
+    :path-pieces="pathPieces"
     :visible="visible"
     :highlighted-trip="highlightedTrip"
     :path-options="resolvedPathOptions"
@@ -39,6 +40,11 @@ const props = defineProps({
   pathData: {
     type: Array,
     default: () => []
+  },
+  // Per pathData group, its colored pieces ({ color, points }); null draws every group in the path color.
+  pathPieces: {
+    type: Array,
+    default: null
   },
   visible: {
     type: Boolean,

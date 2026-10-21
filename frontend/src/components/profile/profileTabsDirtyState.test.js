@@ -256,6 +256,8 @@ const appearanceKeys = [
   'activePathColor',
   'speedBandPalette',
   'heatmapGradient',
+  'pathColorMode',
+  'dayPalette',
   'pathOutlineEnabled',
   'pathWidth'
 ]
@@ -266,6 +268,8 @@ const appearancePrefs = {
   activePathColor: '',
   speedBandPalette: 'OFF',
   heatmapGradient: '',
+  pathColorMode: 'DAY',
+  dayPalette: 'TOL_MUTED',
   pathOutlineEnabled: false,
   pathWidth: 4
 }
@@ -353,6 +357,9 @@ describe('appearance and timeline tabs share one preferences document', () => {
       activePathColor: '',
       speedBandPalette: '',
       heatmapGradient: '',
+      // Coloring by day is a display mode, not a color choice, so a preset keeps it.
+      pathColorMode: 'DAY',
+      dayPalette: '',
       pathOutlineEnabled: true,
       pathWidth: 4
     })

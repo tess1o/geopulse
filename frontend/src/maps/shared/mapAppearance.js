@@ -32,30 +32,53 @@ export const HEATMAP_GRADIENTS = Object.freeze({
 
 export const HEATMAP_GRADIENT_KEYS = Object.freeze(Object.keys(HEATMAP_GRADIENTS))
 
+export const PATH_COLOR_MODES = Object.freeze({ SINGLE: 'SINGLE', DAY: 'DAY' })
+
+// Distinct colors for the days of a multi-day range. Longer ranges than a palette can cover use the heatmap gradient.
+// Each palette is ordered so neighboring days, which often share streets, are far apart (delta E 65 or more, also
+// after its scheme's selected-trip color is skipped), and each starts with a different pair, so switching the
+// color scheme visibly changes the days.
+export const DAY_PALETTES = Object.freeze({
+  // Vivid everyday colors (Tableau 10 without red, which is the default selected-trip color).
+  CLASSIC: Object.freeze(['#1f77b4', '#2ca02c', '#9467bd', '#ff7f0e', '#e377c2', '#17becf', '#8c564b']),
+  // The friend trail colors (Okabe-Ito without black and yellow), reordered.
+  OKABE_ITO: Object.freeze(['#0072B2', '#D55E00', '#56B4E9', '#E69F00', '#882255', '#009E73', '#CC79A7']),
+  // Paul Tol's muted scheme without its pale sand and grey.
+  TOL_MUTED: Object.freeze(['#332288', '#88ccee', '#999933', '#aa4499', '#44aa99', '#cc6677', '#117733']),
+  // Dark and light colors from Paul Tol's schemes, alternating so neighboring days also differ in brightness.
+  CONTRAST: Object.freeze(['#882255', '#bbcc33', '#004488', '#ee99aa', '#332288', '#88ccee', '#117733'])
+})
+
+export const DAY_PALETTE_KEYS = Object.freeze(Object.keys(DAY_PALETTES))
+
 export const COLOR_SCHEME_PRESETS = Object.freeze({
   DEFAULT: Object.freeze({
     defaultPathColor: '#007bff',
     activePathColor: '#ef4444',
     speedBandPalette: 'DEFAULT',
-    heatmapGradient: 'CLASSIC'
+    heatmapGradient: 'CLASSIC',
+    dayPalette: 'CLASSIC'
   }),
   RED_GREEN_SAFE: Object.freeze({
     defaultPathColor: '#0072b2',
     activePathColor: '#ffb000',
     speedBandPalette: 'RED_GREEN_SAFE',
-    heatmapGradient: 'CIVIDIS'
+    heatmapGradient: 'CIVIDIS',
+    dayPalette: 'OKABE_ITO'
   }),
   BLUE_YELLOW_SAFE: Object.freeze({
     defaultPathColor: '#007bff',
     activePathColor: '#d81b60',
     speedBandPalette: 'BLUE_YELLOW_SAFE',
-    heatmapGradient: 'VIRIDIS'
+    heatmapGradient: 'VIRIDIS',
+    dayPalette: 'TOL_MUTED'
   }),
   HIGH_CONTRAST: Object.freeze({
     defaultPathColor: '#1a1a1a',
     activePathColor: '#ddaa33',
     speedBandPalette: 'HIGH_CONTRAST',
-    heatmapGradient: 'VIRIDIS'
+    heatmapGradient: 'VIRIDIS',
+    dayPalette: 'CONTRAST'
   })
 })
 
@@ -70,6 +93,8 @@ export const APPEARANCE_PREFERENCE_DEFAULTS = Object.freeze({
   activePathColor: '',
   speedBandPalette: '',
   heatmapGradient: '',
+  pathColorMode: PATH_COLOR_MODES.SINGLE,
+  dayPalette: '',
   pathOutlineEnabled: false,
   pathWidth: PATH_WIDTH.DEFAULT
 })
@@ -104,9 +129,11 @@ export function resolveMapAppearance(prefs = {}) {
   const explicitActivePathColor = normalizeHex(prefs?.activePathColor)
   const explicitSpeedBandPalette = SPEED_BAND_PALETTE_KEYS.includes(prefs?.speedBandPalette) ? prefs.speedBandPalette : null
   const explicitHeatmapGradient = HEATMAP_GRADIENT_KEYS.includes(prefs?.heatmapGradient) ? prefs.heatmapGradient : null
+  const explicitDayPalette = DAY_PALETTE_KEYS.includes(prefs?.dayPalette) ? prefs.dayPalette : null
 
   const speedBandPaletteKey = explicitSpeedBandPalette || preset.speedBandPalette
   const heatmapGradientKey = explicitHeatmapGradient || preset.heatmapGradient
+  const dayPaletteKey = explicitDayPalette || preset.dayPalette
   const pathWidth = clampPathWidth(isSet(prefs?.pathWidth) ? prefs.pathWidth : PATH_WIDTH.DEFAULT)
   const speedBandColors = speedBandPaletteKey === SPEED_BAND_PALETTE_OFF ? null : SPEED_BAND_PALETTES[speedBandPaletteKey]
 
@@ -119,6 +146,9 @@ export function resolveMapAppearance(prefs = {}) {
     speedBandsEnabled: speedBandColors !== null,
     heatmapGradientKey,
     heatmapGradient: HEATMAP_GRADIENTS[heatmapGradientKey],
+    pathColorMode: prefs?.pathColorMode === PATH_COLOR_MODES.DAY ? PATH_COLOR_MODES.DAY : PATH_COLOR_MODES.SINGLE,
+    dayPaletteKey,
+    dayPalette: DAY_PALETTES[dayPaletteKey],
     movementTypeColors: getMovementTypePalette(colorScheme),
     pathWidth,
     highlightedPathWidth: pathWidth + HIGHLIGHTED_PATH_EXTRA_WIDTH,
@@ -127,7 +157,8 @@ export function resolveMapAppearance(prefs = {}) {
       defaultPathColor: explicitDefaultPathColor !== null,
       activePathColor: explicitActivePathColor !== null,
       speedBandPalette: explicitSpeedBandPalette !== null,
-      heatmapGradient: explicitHeatmapGradient !== null
+      heatmapGradient: explicitHeatmapGradient !== null,
+      dayPalette: explicitDayPalette !== null
     }
   }
 }
@@ -159,6 +190,34 @@ export function getOutlineColor(hex) {
   return luminance !== null && luminance > 0.35 ? '#111827' : '#ffffff'
 }
 
+const toLab = (hex) => {
+  const rgb = hexToRgb(hex)
+  if (!rgb) {
+    return null
+  }
+  const [r, g, b] = rgb.map((channel) => {
+    const value = channel / 255
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  })
+  // sRGB -> XYZ (D65), normalized by the white point.
+  const xyz = [
+    (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047,
+    0.2126 * r + 0.7152 * g + 0.0722 * b,
+    (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+  ].map((value) => (value > 0.008856 ? Math.cbrt(value) : (7.787 * value) + (16 / 116)))
+  return [116 * xyz[1] - 16, 500 * (xyz[0] - xyz[1]), 200 * (xyz[1] - xyz[2])]
+}
+
+/** Perceptual difference between two colors (CIE76 delta E); null when either is not a hex color. */
+export function getColorDistance(first, second) {
+  const a = toLab(first)
+  const b = toLab(second)
+  if (!a || !b) {
+    return null
+  }
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+}
+
 /** MapLibre color expression for segments carrying a `speedBand` property. */
 export function buildSpeedBandColorExpression(colors, { outline = false } = {}) {
   const palette = colors || SPEED_BAND_PALETTES.DEFAULT
@@ -176,6 +235,24 @@ export function buildSpeedBandColorExpression(colors, { outline = false } = {}) 
 const gradientStops = (gradient) => Object.entries(gradient || HEATMAP_GRADIENTS.CLASSIC)
   .map(([stop, color]) => [Number(stop), color])
   .sort((a, b) => a[0] - b[0])
+
+/** Hex color at position t (0..1) of a gradient, interpolated between its stops. */
+export function sampleGradient(gradient, t) {
+  const stops = gradientStops(gradient)
+  const position = Math.min(1, Math.max(0, Number(t) || 0))
+  const upperIndex = stops.findIndex(([stop]) => stop >= position)
+  if (upperIndex <= 0) {
+    return stops[upperIndex === 0 ? 0 : stops.length - 1][1]
+  }
+  const [lowerStop, lowerColor] = stops[upperIndex - 1]
+  const [upperStop, upperColor] = stops[upperIndex]
+  const ratio = (position - lowerStop) / (upperStop - lowerStop)
+  const lower = hexToRgb(lowerColor)
+  const upper = hexToRgb(upperColor)
+  return `#${lower.map((channel, index) => Math.round(channel + (upper[index] - channel) * ratio)
+    .toString(16)
+    .padStart(2, '0')).join('')}`
+}
 
 /** CSS linear-gradient for heatmap legends. */
 export function heatmapGradientToCss(gradient, direction = 'to right') {
@@ -197,6 +274,7 @@ export function isAppearanceCustomized(prefs) {
     || Object.values(appearance.overrides).some(Boolean)
     || appearance.outlineEnabled
     || appearance.pathWidth !== PATH_WIDTH.DEFAULT
+    || appearance.pathColorMode !== PATH_COLOR_MODES.SINGLE
 }
 
 // What a viewer of a shared link can pick: the owner's look, their own profile, or one of the presets.

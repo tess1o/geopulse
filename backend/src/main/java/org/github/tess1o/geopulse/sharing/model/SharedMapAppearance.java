@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.map.MapColorScheme;
+import org.github.tess1o.geopulse.shared.map.PathColorMode;
 import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 
 /**
@@ -25,6 +26,8 @@ public class SharedMapAppearance {
     private String activePathColor;
     private String speedBandPalette;
     private String heatmapGradient;
+    private PathColorMode pathColorMode;
+    private String dayPalette;
     private Boolean pathOutlineEnabled;
     private Integer pathWidth;
 
@@ -37,6 +40,8 @@ public class SharedMapAppearance {
                 .activePathColor(resolved.getActivePathColor())
                 .speedBandPalette(resolved.getSpeedBandPalette())
                 .heatmapGradient(resolved.getHeatmapGradient())
+                .pathColorMode(resolved.getPathColorMode())
+                .dayPalette(resolved.getDayPalette())
                 .pathOutlineEnabled(resolved.getPathOutlineEnabled())
                 .pathWidth(resolved.getPathWidth())
                 .build();

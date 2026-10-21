@@ -33,6 +33,8 @@
             :show-path="showPath"
             :show-route-display-mode-control="routeDisplayModeControlAvailable"
             :route-display-mode="routeDisplayMode"
+            :show-day-colors-control="isMultiDay"
+            :day-colors-enabled="dayColorsEnabled"
             :show-raw-gps-points-control="!props.isPublicView"
             :raw-gps-points-enabled="showRawGpsPoints"
             :raw-gps-points-loading="rawGpsPointsLoading"
@@ -60,6 +62,7 @@
             @toggle-timeline="toggleTimeline"
             @toggle-path="togglePath"
             @cycle-route-display-mode="cycleRouteDisplayMode"
+            @toggle-day-colors="toggleDayColors"
             @toggle-raw-gps-points="handleToggleRawGpsPoints"
             @toggle-immich="toggleImmich"
             @toggle-notes="toggleNotes"
@@ -107,6 +110,7 @@
           ref="pathLayerRef"
           :map="map"
           :path-data="processedPathData"
+          :path-pieces="pathPieces"
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
           :replay-state="pathReplayState"
@@ -147,6 +151,7 @@
           :map="map"
           :timeline-data="processedTimelineData"
           :highlighted-item="activeTimelineHighlight"
+          :focused-day="activeFocusedDay"
           :visible="timelineLayerVisible"
           :item-weather="stayWeatherByTimelineIndex"
           @marker-click="handleTimelineMarkerClick"
@@ -342,12 +347,33 @@
       </template>
     </MapContainer>
 
-    <MapColorLegend
-      v-if="showHeatmapLegend"
-      class="heatmap-legend"
-      variant="heatmap"
-      :gradient="heatmapGradient"
-    />
+    <!-- Bottom-left, stacked: heatmap legend, day legend, and the way back from a focused day. -->
+    <div v-if="showHeatmapLegend || showDayLegend || showFocusedDayChip" class="map-bottom-left-overlays">
+      <MapColorLegend
+        v-if="showHeatmapLegend"
+        class="map-overlay-legend"
+        variant="heatmap"
+        :gradient="heatmapGradient"
+      />
+
+      <MapColorLegend
+        v-if="showDayLegend"
+        class="map-overlay-legend day-color-legend"
+        variant="days"
+        :days="dayColors.days"
+        :days-mode="dayColors.mode"
+        :days-interactive="dayColors.mode === DAY_COLOR_MODES.DISTINCT"
+        :focused-day="activeFocusedDay"
+        :outline="mapAppearance.outlineEnabled"
+        @day-click="highlightStore.toggleFocusedDay"
+      />
+
+      <FocusedDayChip
+        v-if="showFocusedDayChip"
+        class="map-focused-day-chip"
+        :day-colors="dayColorMap"
+      />
+    </div>
 
     <div v-if="mapMatchingStatusText" class="map-matching-status" aria-live="polite">
       <i class="pi pi-sync map-matching-status-icon" aria-hidden="true" />
@@ -466,6 +492,10 @@ import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDial
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import MapColorLegend from '@/components/maps/MapColorLegend.vue'
 import { useMapAppearance } from '@/composables/useMapAppearance'
+import { useDayPathColors } from '@/composables/useDayPathColors'
+import { DAY_COLOR_MODES } from '@/maps/shared/pathDayColoring'
+import FocusedDayChip from '@/components/timeline/FocusedDayChip.vue'
+import { PATH_COLOR_MODES } from '@/maps/shared/mapAppearance'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
@@ -648,6 +678,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // [startUtc, endUtc] whose days the path is colored by; defaults to the selected date range.
+  dayRange: {
+    type: Array,
+    default: null
+  },
   panoramaxEndpoint: {
     type: String,
     default: ''
@@ -661,6 +696,7 @@ const emit = defineEmits([
   'edit-favorite',
   'delete-favorite',
   'highlighted-path-click',
+  'day-colors-change',
   'timeline-marker-click',
   'map-click',
   'viewer-location-request',
@@ -1404,8 +1440,12 @@ const handleMapClick = (event) => {
   baseHandleMapClick(event)
   emit('map-click', event)
   
-  // Clear all highlights when clicking on empty map
+  // Clicking empty map steps back: first the selected item, then the focused day.
+  const hadSelection = highlightStore.hasAnyHighlight
   clearAllMapHighlights()
+  if (!hadSelection) {
+    highlightStore.clearFocusedDay()
+  }
   clearFocusedPhotoMarker()
 }
 
@@ -1936,6 +1976,62 @@ const processedPathData = computed(() => pathDataToSegments(
   routeDisplayModeUsesRawPath.value ? props.rawPathData : props.pathData
 ))
 
+// Day colors start from the saved path color mode; the map control switches them for this visit only.
+const dayColorsEnabled = ref(mapAppearance.value.pathColorMode === PATH_COLOR_MODES.DAY)
+watch(() => mapAppearance.value.pathColorMode, (mode) => {
+  dayColorsEnabled.value = mode === PATH_COLOR_MODES.DAY
+})
+const toggleDayColors = (value) => {
+  dayColorsEnabled.value = value !== undefined ? value : !dayColorsEnabled.value
+}
+
+const { isMultiDay, dayColors, dayColorMap, activeFocusedDay, pathPieces } = useDayPathColors({
+  pathData: processedPathData,
+  dayRange: computed(() => props.dayRange || (dateRangeStore.hasDateRange ? dateRangeStore.dateRange : null)),
+  enabled: dayColorsEnabled,
+  appearance: mapAppearance,
+  focusedDay: computed(() => highlightStore.focusedDay)
+})
+
+// A focused day ends when it leaves the range (a new range, or a single day) or when the path is hidden.
+watch([() => highlightStore.focusedDay, activeFocusedDay, showPath], ([requestedDay, dayKey, pathShown]) => {
+  if (requestedDay && (!dayKey || !pathShown)) {
+    highlightStore.clearFocusedDay()
+  }
+})
+
+// Set to false to keep the camera where it is when a day is focused.
+const FOCUSED_DAY_FITS_MAP = true
+
+watch(activeFocusedDay, (dayKey) => {
+  if (!FOCUSED_DAY_FITS_MAP || !dayKey || !map.value) {
+    return
+  }
+  const bounds = collectTimelineDataBounds({
+    pathData: (pathPieces.value || []).flat().filter((piece) => piece.dayKey === dayKey).map((piece) => piece.points),
+    timelineData: processedTimelineData.value.filter((item) => timezone.shouldItemAppearOnDate(item, dayKey))
+  })
+  if (bounds.length > 0) {
+    applyTimelineDataViewport(bounds)
+  }
+})
+
+// The page shows the same colors on the timeline's day headers.
+watch(dayColorMap, (colors) => emit('day-colors-change', colors), { immediate: true })
+
+const showDayLegend = computed(() => (
+  Boolean(dayColors.value)
+  && showPath.value
+  && !showHeatmapLegend.value
+  && !showTripSummary.value
+))
+
+// Where the legend cannot undo a focused day (gradient, single color, or hidden), a chip does.
+const showFocusedDayChip = computed(() => (
+  Boolean(activeFocusedDay.value)
+  && !(showDayLegend.value && dayColors.value?.mode === DAY_COLOR_MODES.DISTINCT)
+))
+
 const processedFavoritesData = computed(() => {
   const storeFavorites = favoritesStore.favoritePlaces
   const propsFavorites = props.favoritePlaces
@@ -2046,6 +2142,8 @@ onUnmounted(() => {
   }
   cleanupTripReplay()
   clearFocusedPhotoMarker()
+  // The store outlives the page; a focused day must not carry over to the next map.
+  highlightStore.clearFocusedDay()
 })
 
 const invalidateSize = () => {
@@ -2142,11 +2240,25 @@ defineExpose({
 }
 
 /* Bottom-left, clear of the attribution (bottom-right) and the docked trip summary (bottom-centre). */
-.heatmap-legend {
+.map-bottom-left-overlays {
   position: absolute;
   left: calc(0.75rem + env(safe-area-inset-left));
   bottom: calc(2.35rem + env(safe-area-inset-bottom));
   z-index: 905;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  max-width: calc(100% - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+.map-focused-day-chip {
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+}
+
+.map-overlay-legend {
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--gp-border-medium);
   border-radius: 999px;
@@ -2154,6 +2266,21 @@ defineExpose({
   color: var(--gp-text-primary);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
   pointer-events: none;
+}
+
+/* A week of dates can wrap, so it is a rounded box rather than a pill. */
+.day-color-legend {
+  max-width: 32rem;
+  border-radius: 0.75rem;
+}
+
+/* On phones the timeline sheet covers this corner: its day headers carry the colors and its handle the
+   way back from a focused day (FocusedDayChip in the sheet handle). */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .day-color-legend,
+  .map-focused-day-chip {
+    display: none;
+  }
 }
 
 .trip-summary-legend {

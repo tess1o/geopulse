@@ -40,7 +40,9 @@ export default {
         panoramaxShow: 'Show Panoramax coverage',
         heatmapStaysMenu: 'Heatmap: Stays',
         heatmapTripsMenu: 'Heatmap: Trips',
-        heatmapTurnOffMenu: 'Turn off Heatmap'
+        heatmapTurnOffMenu: 'Turn off Heatmap',
+        dayColorsShow: 'Color path by day',
+        dayColorsHide: 'Show path in one color'
     },
     tripReplay: {
         pause: 'Pause replay',
@@ -79,6 +81,10 @@ export default {
             ariaLabel: 'Heatmap color legend',
             low: 'Less',
             high: 'More'
+        },
+        days: {
+            ariaLabel: 'Day color legend',
+            gradientRange: 'from {from} to {to}'
         }
     },
     timelineMap: {

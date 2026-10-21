@@ -166,6 +166,65 @@
           </div>
         </section>
 
+        <section class="settings-group" aria-labelledby="appearance-days-heading">
+          <div class="settings-group-header">
+            <h3 id="appearance-days-heading">{{ t('profile.appearance.days.heading') }}</h3>
+            <p>{{ t('profile.appearance.days.description') }}</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.appearance.days.pathColorMode.title')"
+              :description="t('profile.appearance.days.pathColorMode.description')"
+              :details="t('profile.appearance.days.pathColorMode.details')"
+              setting-id="pathColorMode"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="colorPathsByDay"
+                  class="toggle-control"
+                  :aria-label="t('profile.appearance.days.pathColorMode.title')"
+                  :disabled="readOnly"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.appearance.days.dayPalette.title')"
+              :description="t('profile.appearance.days.dayPalette.description')"
+              :details="t('profile.appearance.days.dayPalette.details')"
+              setting-id="dayPalette"
+            >
+              <template #control>
+                <Dropdown
+                  id="dayPalette"
+                  v-model="form.dayPalette"
+                  :options="dayPaletteOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  :placeholder="dayPaletteOptions[0].label"
+                  class="w-full"
+                  :disabled="readOnly"
+                >
+                  <template #option="{ option }">
+                    <span class="palette-option">
+                      <span class="palette-option-swatches" aria-hidden="true">
+                        <span
+                          v-for="(color, index) in option.swatches"
+                          :key="index"
+                          class="palette-option-swatch"
+                          :style="{ backgroundColor: color }"
+                        ></span>
+                      </span>
+                      <span>{{ option.label }}</span>
+                    </span>
+                  </template>
+                </Dropdown>
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
         <section class="settings-group" aria-labelledby="appearance-speed-heading">
           <div class="settings-group-header">
             <h3 id="appearance-speed-heading">{{ t('profile.appearance.speedBands.heading') }}</h3>
@@ -285,9 +344,12 @@ import MapAppearancePreview from '@/components/profile/MapAppearancePreview.vue'
 import {
   APPEARANCE_PREFERENCE_DEFAULTS,
   COLOR_SCHEME_PRESETS,
+  DAY_PALETTES,
+  DAY_PALETTE_KEYS,
   HEATMAP_GRADIENTS,
   HEATMAP_GRADIENT_KEYS,
   MAP_COLOR_SCHEMES,
+  PATH_COLOR_MODES,
   PATH_WIDTH,
   SPEED_BAND_PALETTES,
   SPEED_BAND_PALETTE_KEYS,
@@ -325,6 +387,8 @@ const normalizePreferences = (preferences = {}) => ({
   activePathColor: normalizeHexColor(preferences.activePathColor),
   speedBandPalette: SPEED_BAND_PALETTE_KEYS.includes(preferences.speedBandPalette) ? preferences.speedBandPalette : '',
   heatmapGradient: HEATMAP_GRADIENT_KEYS.includes(preferences.heatmapGradient) ? preferences.heatmapGradient : '',
+  pathColorMode: preferences.pathColorMode === PATH_COLOR_MODES.DAY ? PATH_COLOR_MODES.DAY : PATH_COLOR_MODES.SINGLE,
+  dayPalette: DAY_PALETTE_KEYS.includes(preferences.dayPalette) ? preferences.dayPalette : '',
   pathOutlineEnabled: preferences.pathOutlineEnabled === true,
   pathWidth: Number.isFinite(Number(preferences.pathWidth)) && preferences.pathWidth !== '' && preferences.pathWidth !== null
     ? Math.min(PATH_WIDTH.MAX, Math.max(PATH_WIDTH.MIN, Math.round(Number(preferences.pathWidth))))
@@ -390,6 +454,27 @@ const heatmapGradientOptions = computed(() => {
   ]
 })
 
+const dayPaletteOptions = computed(() => {
+  const schemePalette = COLOR_SCHEME_PRESETS[form.value.colorScheme].dayPalette
+  return [
+    {
+      value: '',
+      label: t('profile.appearance.days.dayPalette.followScheme', { name: schemeName(form.value.colorScheme) }),
+      swatches: DAY_PALETTES[schemePalette]
+    },
+    ...DAY_PALETTE_KEYS.map((key) => ({
+      value: key,
+      label: t(`profile.appearance.days.options.${key}`),
+      swatches: DAY_PALETTES[key]
+    }))
+  ]
+})
+
+const colorPathsByDay = computed({
+  get: () => form.value.pathColorMode === PATH_COLOR_MODES.DAY,
+  set: (enabled) => { form.value.pathColorMode = enabled ? PATH_COLOR_MODES.DAY : PATH_COLOR_MODES.SINGLE }
+})
+
 // Speed limits in the user's own unit (km/h or mph), matching the legend on the map.
 const speedBandPaletteDetails = computed(() => {
   const { unit, slowBelow, mediumUpTo } = getSpeedBandThresholds(distanceUnit.value, {
@@ -426,6 +511,7 @@ const selectColorScheme = (scheme) => {
     activePathColor: '',
     speedBandPalette: '',
     heatmapGradient: '',
+    dayPalette: '',
     ...(scheme !== 'DEFAULT' ? { pathOutlineEnabled: true } : {}),
     ...(scheme === 'HIGH_CONTRAST' ? { pathWidth: Math.max(form.value.pathWidth, 6) } : {})
   }

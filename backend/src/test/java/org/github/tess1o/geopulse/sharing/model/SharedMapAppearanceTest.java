@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.sharing.model;
 
 import org.github.tess1o.geopulse.shared.map.MapColorScheme;
+import org.github.tess1o.geopulse.shared.map.PathColorMode;
 import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,8 @@ class SharedMapAppearanceTest {
                 .speedBandPalette("OFF")
                 .pathOutlineEnabled(true)
                 .pathWidth(6)
+                .pathColorMode(PathColorMode.DAY)
+                .dayPalette("CONTRAST")
                 .customMapTileUrl("https://tiles.example.com/{z}/{x}/{y}.png")
                 .build());
 
@@ -27,6 +30,8 @@ class SharedMapAppearanceTest {
         assertEquals("OFF", appearance.getSpeedBandPalette());
         assertEquals(true, appearance.getPathOutlineEnabled());
         assertEquals(6, appearance.getPathWidth());
+        assertEquals(PathColorMode.DAY, appearance.getPathColorMode());
+        assertEquals("CONTRAST", appearance.getDayPalette());
         assertNull(appearance.getDefaultPathColor());
         assertNull(appearance.getHeatmapGradient());
     }
@@ -38,6 +43,8 @@ class SharedMapAppearanceTest {
         assertEquals(MapColorScheme.DEFAULT, appearance.getColorScheme());
         assertEquals(false, appearance.getPathOutlineEnabled());
         assertEquals(4, appearance.getPathWidth());
+        assertEquals(PathColorMode.SINGLE, appearance.getPathColorMode());
+        assertNull(appearance.getDayPalette());
         assertNull(appearance.getDefaultPathColor());
     }
 }

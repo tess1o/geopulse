@@ -39,7 +39,9 @@ export default {
         panoramaxShow: 'Показати покриття Panoramax',
         heatmapStaysMenu: 'Теплова карта: зупинки',
         heatmapTripsMenu: 'Теплова карта: поїздки',
-        heatmapTurnOffMenu: 'Вимкнути теплову карту'
+        heatmapTurnOffMenu: 'Вимкнути теплову карту',
+        dayColorsShow: 'Розфарбувати маршрут за днями',
+        dayColorsHide: 'Показати маршрут одним кольором'
     },
     tripReplay: {
         pause: 'Призупинити відтворення',
@@ -78,6 +80,10 @@ export default {
             ariaLabel: 'Легенда кольорів теплової карти',
             low: 'Менше',
             high: 'Більше'
+        },
+        days: {
+            ariaLabel: 'Легенда кольорів днів',
+            gradientRange: 'від {from} до {to}'
         }
     },
     timelineMap: {

@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   COLOR_SCHEME_PRESETS,
+  DAY_PALETTES,
   HEATMAP_GRADIENTS,
   MAP_COLOR_SCHEMES,
   SPEED_BAND_PALETTES,
   buildSpeedBandColorExpression,
+  getColorDistance,
   getHeatmapZeroStopColor,
   getOutlineColor,
   heatmapGradientToCss,
   isAppearanceCustomized,
   resolveMapAppearance,
   resolveSharedAppearanceChoice,
+  sampleGradient,
   sharedAppearancePreferences
 } from './mapAppearance'
 import { MOVEMENT_TYPE_PALETTES } from '@/utils/movementTypeColors'
+import { buildDayColors } from './pathDayColoring'
 
 const HEX = /^#[0-9a-f]{6}$/i
 
@@ -43,8 +47,26 @@ describe('resolveMapAppearance', () => {
       outlineEnabled: false
     })
     expect(appearance.speedBandColors).toEqual(SPEED_BAND_PALETTES.DEFAULT)
-    expect(Object.values(appearance.overrides)).toEqual([false, false, false, false])
+    expect(Object.values(appearance.overrides)).toEqual([false, false, false, false, false])
     expect(appearance.movementTypeColors).toBe(MOVEMENT_TYPE_PALETTES.DEFAULT)
+    expect(appearance.pathColorMode).toBe('SINGLE')
+    expect(appearance.dayPaletteKey).toBe('CLASSIC')
+  })
+
+  it('takes the day palette from the color scheme unless one is picked', () => {
+    expect(resolveMapAppearance({ colorScheme: 'RED_GREEN_SAFE' }).dayPalette).toBe(DAY_PALETTES.OKABE_ITO)
+    expect(resolveMapAppearance({ colorScheme: 'BLUE_YELLOW_SAFE' }).dayPalette).toBe(DAY_PALETTES.TOL_MUTED)
+    expect(resolveMapAppearance({ colorScheme: 'HIGH_CONTRAST' }).dayPalette).toBe(DAY_PALETTES.CONTRAST)
+
+    const picked = resolveMapAppearance({ colorScheme: 'HIGH_CONTRAST', dayPalette: 'OKABE_ITO' })
+    expect(picked.dayPalette).toBe(DAY_PALETTES.OKABE_ITO)
+    expect(picked.overrides.dayPalette).toBe(true)
+    expect(resolveMapAppearance({ dayPalette: 'RAINBOW' }).dayPaletteKey).toBe('CLASSIC')
+  })
+
+  it('colors by day only when DAY is saved', () => {
+    expect(resolveMapAppearance({ pathColorMode: 'DAY' }).pathColorMode).toBe('DAY')
+    expect(resolveMapAppearance({ pathColorMode: 'WEEK' }).pathColorMode).toBe('SINGLE')
   })
 
   it('fills unset values from the color scheme', () => {
@@ -72,7 +94,8 @@ describe('resolveMapAppearance', () => {
       defaultPathColor: false,
       activePathColor: true,
       speedBandPalette: true,
-      heatmapGradient: true
+      heatmapGradient: true,
+      dayPalette: false
     })
   })
 
@@ -108,6 +131,46 @@ describe('palettes', () => {
       expect(preset.activePathColor).toMatch(HEX)
       expect(SPEED_BAND_PALETTES[preset.speedBandPalette]).toBeTruthy()
       expect(HEATMAP_GRADIENTS[preset.heatmapGradient]).toBeTruthy()
+      expect(DAY_PALETTES[preset.dayPalette]).toBeTruthy()
+    })
+  })
+
+  it('keeps neighboring days far apart in every day palette, also after skipping the selected-trip color', () => {
+    Object.entries(DAY_PALETTES).forEach(([key, palette]) => {
+      palette.slice(1).forEach((color, index) => {
+        expect(getColorDistance(palette[index], color), `${key} ${palette[index]} -> ${color}`).toBeGreaterThanOrEqual(65)
+      })
+    })
+
+    MAP_COLOR_SCHEMES.forEach((scheme) => {
+      const { dayPalette, heatmapGradient, activePathColor } = resolveMapAppearance({ colorScheme: scheme })
+      const { days } = buildDayColors(['d1', 'd2', 'd3', 'd4', 'd5', 'd6'], { dayPalette, heatmapGradient, activePathColor })
+      days.slice(1).forEach(({ color }, index) => {
+        expect(getColorDistance(days[index].color, color), `${scheme} ${days[index].color} -> ${color}`).toBeGreaterThanOrEqual(65)
+      })
+    })
+  })
+
+  it('starts every color scheme with a different pair of day colors', () => {
+    const pairs = MAP_COLOR_SCHEMES.map((scheme) => resolveMapAppearance({ colorScheme: scheme }).dayPalette.slice(0, 2))
+    pairs.forEach((pair, index) => {
+      pairs.slice(index + 1).forEach((other) => {
+        expect(Math.max(getColorDistance(pair[0], other[0]), getColorDistance(pair[1], other[1]))).toBeGreaterThanOrEqual(40)
+      })
+    })
+  })
+
+  it('alternates dark and light days in the high contrast palette', () => {
+    DAY_PALETTES.CONTRAST.slice(1).forEach((color, index) => {
+      expect(Math.abs(lightness(color) - lightness(DAY_PALETTES.CONTRAST[index]))).toBeGreaterThanOrEqual(30)
+    })
+  })
+
+  it('gives every day palette at least six valid, distinct colors', () => {
+    Object.entries(DAY_PALETTES).forEach(([key, palette]) => {
+      expect(palette.length, key).toBeGreaterThanOrEqual(6)
+      palette.forEach((color) => expect(color).toMatch(HEX))
+      expect(new Set(palette.map((color) => color.toLowerCase())).size, key).toBe(palette.length)
     })
   })
 
@@ -148,6 +211,21 @@ describe('helpers', () => {
     expect(buildSpeedBandColorExpression(colors, { outline: true })[3]).toBe('#ffffff')
   })
 
+  it('measures perceptual color distance', () => {
+    expect(getColorDistance('#ef4444', '#ef4444')).toBe(0)
+    expect(getColorDistance('#000000', '#ffffff')).toBeCloseTo(100, 0)
+    expect(getColorDistance('#e69f00', '#ffb000')).toBeLessThan(getColorDistance('#0072b2', '#ffb000'))
+    expect(getColorDistance('red', '#ffffff')).toBeNull()
+  })
+
+  it('samples gradients at their stops and between them', () => {
+    expect(sampleGradient(HEATMAP_GRADIENTS.VIRIDIS, 0)).toBe('#440154')
+    expect(sampleGradient(HEATMAP_GRADIENTS.VIRIDIS, 0.35)).toBe('#31688e')
+    expect(sampleGradient(HEATMAP_GRADIENTS.VIRIDIS, 1)).toBe('#fde725')
+    expect(sampleGradient(HEATMAP_GRADIENTS.VIRIDIS, 2)).toBe('#fde725')
+    expect(sampleGradient({ 0: '#000000', 1: '#ffffff' }, 0.5)).toBe('#808080')
+  })
+
   it('renders heatmap gradients for legends and a transparent zero stop', () => {
     expect(heatmapGradientToCss(HEATMAP_GRADIENTS.VIRIDIS)).toBe(
       'linear-gradient(to right, #440154 0%, #31688e 35%, #22a884 60%, #7ad151 80%, #fde725 100%)'
@@ -168,6 +246,7 @@ describe('shared link appearance', () => {
     expect(isAppearanceCustomized(ownerPrefs)).toBe(true)
     expect(isAppearanceCustomized({ activePathColor: '#ffcc00' })).toBe(true)
     expect(isAppearanceCustomized({ pathWidth: 7 })).toBe(true)
+    expect(isAppearanceCustomized({ pathColorMode: 'DAY' })).toBe(true)
   })
 
   it('shows guests the owner look, or Default when the owner changed nothing', () => {

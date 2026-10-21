@@ -25,6 +25,7 @@ import {
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import { buildTimelineItemPopupModel } from '@/maps/shared/popups/timelinePopupModels'
+import { isOutsideFocusedDay } from '@/maps/shared/timelineDayFocus'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH
@@ -53,6 +54,11 @@ const props = defineProps({
   },
   highlightedItem: {
     type: Object,
+    default: null
+  },
+  // 'YYYY-MM-DD' shown on its own; markers from other days are dimmed.
+  focusedDay: {
+    type: String,
     default: null
   },
   markerOptions: {
@@ -543,7 +549,7 @@ const renderStandaloneMarker = (group, hasActiveHighlight) => {
     props.highlightedItem
     && markerItems.some((item) => isSameTimelineItem(item, props.highlightedItem))
   )
-  const isDimmed = hasActiveHighlight && !isHighlighted
+  const isDimmed = !isHighlighted && (hasActiveHighlight || isOutsideFocusedDay(markerItems, props.focusedDay))
 
   const markerSpec = isStack
     ? createTimelineGroupMarkerElement({ items: markerItems, highlighted: isHighlighted, dimmed: isDimmed })
@@ -707,7 +713,7 @@ const renderClusterMarker = (cluster) => {
   const markerSpec = createTimelineStackMarkerElement({
     count: cluster.totalCount,
     highlighted: false,
-    dimmed: hasActiveHighlight
+    dimmed: hasActiveHighlight || isOutsideFocusedDay(cluster.members.flatMap((member) => member.items), props.focusedDay)
   })
   markerSpec.element.style.zIndex = '320'
 
@@ -860,7 +866,7 @@ const clearLayer = () => {
 }
 
 watch(
-  () => [props.map, props.timelineData, props.highlightedItem, props.visible, props.itemWeather, distanceUnit.value, temperatureUnit.value],
+  () => [props.map, props.timelineData, props.highlightedItem, props.focusedDay, props.visible, props.itemWeather, distanceUnit.value, temperatureUnit.value],
   () => {
     if (!isMapLibreMap(props.map)) {
       clearLayer()

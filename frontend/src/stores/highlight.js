@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
+import { isOutsideFocusedDay } from '@/maps/shared/timelineDayFocus'
 
 export const useHighlightStore = defineStore('highlight', {
     state: () => ({
         highlightedTrip: null,
-        highlightedStayPoint: null
+        highlightedStayPoint: null,
+        // 'YYYY-MM-DD' of the day shown on its own on the map (multi-day ranges); null shows every day.
+        focusedDay: null
     }),
 
     getters: {
@@ -48,6 +51,7 @@ export const useHighlightStore = defineStore('highlight', {
             // Clear stay point when highlighting a trip
             this.highlightedStayPoint = null
             this.highlightedTrip = trip
+            this.clearFocusedDayUnlessOn(trip)
         },
 
         clearHighlightedTrip() {
@@ -59,6 +63,7 @@ export const useHighlightStore = defineStore('highlight', {
             // Clear trip when highlighting a stay point
             this.highlightedTrip = null
             this.highlightedStayPoint = stayPoint
+            this.clearFocusedDayUnlessOn(stayPoint)
         },
 
         clearHighlightedStayPoint() {
@@ -82,6 +87,33 @@ export const useHighlightStore = defineStore('highlight', {
         clearAllHighlights() {
             this.highlightedTrip = null
             this.highlightedStayPoint = null
+        },
+
+        // Day focus: selecting an item from another day ends it; focusing a day drops a selection from another day.
+        focusDay(dayKey) {
+            this.focusedDay = dayKey || null
+            const current = this.highlightedTrip || this.highlightedStayPoint
+            if (current && isOutsideFocusedDay([current], this.focusedDay)) {
+                this.clearAllHighlights()
+            }
+        },
+
+        clearFocusedDay() {
+            this.focusedDay = null
+        },
+
+        toggleFocusedDay(dayKey) {
+            if (this.focusedDay === dayKey) {
+                this.clearFocusedDay()
+            } else {
+                this.focusDay(dayKey)
+            }
+        },
+
+        clearFocusedDayUnlessOn(item) {
+            if (item && isOutsideFocusedDay([item], this.focusedDay)) {
+                this.focusedDay = null
+            }
         },
 
         // Toggle highlight for an item

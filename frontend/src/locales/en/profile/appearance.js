@@ -52,7 +52,7 @@ export default {
         defaultPathColor: {
             title: 'Path color',
             description: 'Color used for trip lines that are not selected.',
-            details: 'Leave unset to follow the color scheme.'
+            details: 'Leave unset to follow the color scheme. When a multi-day range is colored by day, the day colors are used instead.'
         },
         activePathColor: {
             title: 'Selected trip color',
@@ -90,6 +90,27 @@ export default {
             BLUE_YELLOW_SAFE: 'Red / salmon / teal',
             HIGH_CONTRAST: 'Blue / rose / gold',
             OFF: 'Off (single color)'
+        }
+    },
+    days: {
+        heading: 'Multi-day ranges',
+        description: 'When you view more than one day, each day can get its own path color.',
+        pathColorMode: {
+            title: 'Color paths by day',
+            description: 'Draw each day of a multi-day range in its own color, matching the dots on the timeline day headers.',
+            details: 'You can also switch this on the map with the calendar button. Short ranges get a distinct color per day; longer ranges run from oldest to newest along the heatmap colors. Colors too close to the selected trip color are skipped.'
+        },
+        dayPalette: {
+            title: 'Day colors',
+            description: 'Colors used for the days of a multi-day range.',
+            details: 'Okabe-Ito, Muted and Light and dark stay distinguishable for common color vision types. Light and dark also alternates brightness, so neighboring days differ even in greyscale.',
+            followScheme: 'Follow color scheme ({name})'
+        },
+        options: {
+            CLASSIC: 'Classic (7 colors)',
+            OKABE_ITO: 'Okabe-Ito (7 colors)',
+            TOL_MUTED: 'Muted (7 colors)',
+            CONTRAST: 'Light and dark (7 colors)'
         }
     },
     heatmap: {

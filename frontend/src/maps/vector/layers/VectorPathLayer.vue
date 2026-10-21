@@ -30,6 +30,7 @@ import {
 } from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
+import { MUTED_DAY_OPACITY } from '@/maps/shared/pathDayColoring'
 import {
   HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
   HIGHLIGHTED_TRIP_LINE_WEIGHT,
@@ -56,6 +57,11 @@ const props = defineProps({
   pathData: {
     type: Array,
     default: () => []
+  },
+  // Per pathData group, its colored pieces ({ color, points }); null draws every group in the path color.
+  pathPieces: {
+    type: Array,
+    default: null
   },
   visible: {
     type: Boolean,
@@ -642,15 +648,22 @@ const renderLayer = () => {
     highlightedCasingWidth
   )
   const pathLineColor = props.pathOptions.color || '#007bff'
+  // Day-colored pieces carry their own colors; everything else uses the path color.
+  const pathLineColorValue = ['coalesce', ['get', 'color'], pathLineColor]
+  const pathCasingColorValue = ['coalesce', ['get', 'outlineColor'], getOutlineColor(pathLineColor)]
   const pathLineWidth = props.pathOptions.weight || 4
   const pathLineOpacity = hasFocusedHighlightedTrip()
     ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
     : (props.pathOptions.opacity ?? 0.8)
+  // Pieces of days other than the focused one stay faded, without an outline.
+  const isMutedPiece = ['==', ['get', 'muted'], true]
+  const pathLineOpacityValue = ['case', isMutedPiece, Math.min(pathLineOpacity, MUTED_DAY_OPACITY), pathLineOpacity]
+  const pathCasingOpacityValue = ['case', isMutedPiece, 0, pathLineOpacity]
   const pathLineDashArray = resolvePathLineDashArray(props.pathOptions.dashArray)
   const pathCasingWidth = pathLineWidth + PATH_OUTLINE_EXTRA_WIDTH
   const pathCasingDashArray = scaleDashArrayForCasing(pathLineDashArray || [1, 0], pathLineWidth, pathCasingWidth)
 
-  const pathCollection = buildPathCollection(props.pathData)
+  const pathCollection = buildPathCollection(props.pathData, props.pathPieces)
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
 
@@ -665,9 +678,9 @@ const renderLayer = () => {
       visibility: props.outline ? 'visible' : 'none'
     },
     paint: {
-      'line-color': getOutlineColor(pathLineColor),
+      'line-color': pathCasingColorValue,
       'line-width': pathCasingWidth,
-      'line-opacity': pathLineOpacity,
+      'line-opacity': pathCasingOpacityValue,
       'line-dasharray': pathCasingDashArray
     }
   }, state.lineLayerId)
@@ -681,24 +694,24 @@ const renderLayer = () => {
       'line-cap': 'round'
     },
     paint: {
-      'line-color': pathLineColor,
+      'line-color': pathLineColorValue,
       'line-width': pathLineWidth,
-      'line-opacity': pathLineOpacity,
+      'line-opacity': pathLineOpacityValue,
       ...(pathLineDashArray ? { 'line-dasharray': pathLineDashArray } : {})
     }
   })
 
   if (hasMapLibreLayer(props.map, state.lineLayerId)) {
-    props.map.setPaintProperty(state.lineLayerId, 'line-color', pathLineColor)
+    props.map.setPaintProperty(state.lineLayerId, 'line-color', pathLineColorValue)
     props.map.setPaintProperty(state.lineLayerId, 'line-width', pathLineWidth)
-    props.map.setPaintProperty(state.lineLayerId, 'line-opacity', pathLineOpacity)
+    props.map.setPaintProperty(state.lineLayerId, 'line-opacity', pathLineOpacityValue)
     props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
   }
 
   if (hasMapLibreLayer(props.map, state.casingLayerId)) {
-    props.map.setPaintProperty(state.casingLayerId, 'line-color', getOutlineColor(pathLineColor))
+    props.map.setPaintProperty(state.casingLayerId, 'line-color', pathCasingColorValue)
     props.map.setPaintProperty(state.casingLayerId, 'line-width', pathCasingWidth)
-    props.map.setPaintProperty(state.casingLayerId, 'line-opacity', pathLineOpacity)
+    props.map.setPaintProperty(state.casingLayerId, 'line-opacity', pathCasingOpacityValue)
     props.map.setPaintProperty(state.casingLayerId, 'line-dasharray', pathCasingDashArray)
   }
 
@@ -848,6 +861,7 @@ watch(
   () => [
     props.map,
     props.pathData,
+    props.pathPieces,
     props.highlightedTrip,
     props.pathOptions,
     props.visible,

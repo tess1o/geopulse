@@ -260,12 +260,18 @@ export default {
         loadMore: 'Завантажити більше',
         viewAllInReports: 'Або перегляньте все у звітах хронології',
         viewPeriodAria: 'Переглянути період {name}',
+        showOnlyDayOnMap: 'Показати на карті лише цей день',
+        showAllDaysOnMap: 'Показати на карті всі дні',
         exportStartedTitle: 'Експорт розпочато',
         tripExportingDetail: 'Поїздку експортується як GPX',
         stayExportingDetail: 'Зупинку експортується як GPX',
         exportFailedTitle: 'Помилка експорту',
         tripExportFailedDetail: 'Не вдалося експортувати поїздку',
         stayExportFailedDetail: 'Не вдалося експортувати зупинку'
+    },
+    focusedDay: {
+        showing: 'Показано {day}',
+        showAll: 'Показати на карті всі дні'
     },
     splitLayout: {
         defaultCollapsedLabel: 'Хронологія',

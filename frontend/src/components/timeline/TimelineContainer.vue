@@ -56,7 +56,25 @@
         <!-- Date Header Separator -->
         <div v-if="!isSingleDaySelected" class="date-separator">
           <div class="date-separator-line"></div>
-          <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
+          <!-- Toggles this day on its own on the map; the other days fade there. -->
+          <button
+            type="button"
+            class="date-separator-text"
+            :class="{ 'date-separator-text--focused': highlightStore.focusedDay === dateGroup.date }"
+            :aria-pressed="highlightStore.focusedDay === dateGroup.date"
+            :title="highlightStore.focusedDay === dateGroup.date
+              ? t('timeline.container.showAllDaysOnMap')
+              : t('timeline.container.showOnlyDayOnMap')"
+            @click="toggleFocusedDay(dateGroup.date)"
+          >
+            <span
+              v-if="dayColors?.[dateGroup.date]"
+              class="date-separator-day-color"
+              :style="{ backgroundColor: dayColors[dateGroup.date] }"
+              aria-hidden="true"
+            ></span>
+            {{ dateGroup.dateLabel }}
+          </button>
           <template v-if="showTimelineLabels">
             <span
               v-for="tag in getTimelineLabelsForDate(dateGroup.date)"
@@ -288,6 +306,7 @@ import { useExportImportStore } from '@/stores/exportImport'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useImmichStore } from '@/stores/immich'
 import { useNotesStore } from '@/stores/notes'
+import { useHighlightStore } from '@/stores/highlight'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
@@ -369,6 +388,11 @@ const props = defineProps({
     type: Array,
     default: null
   },
+  // { 'YYYY-MM-DD': color } while the map colors the path by day; shown on the day headers.
+  dayColors: {
+    type: Object,
+    default: null
+  },
   loadImmichPhotos: {
     type: Boolean,
     default: true
@@ -420,11 +444,18 @@ const emit = defineEmits([
   'timeline-refresh-requested',
   'reset-data-gap-override',
   'reset-trip-split-override',
-  'navigate-date'
+  'navigate-date',
+  'day-focus-change'
 ])
 
 // Composables
 const timezone = useTimezone()
+const highlightStore = useHighlightStore()
+
+const toggleFocusedDay = (dateKey) => {
+  highlightStore.toggleFocusedDay(dateKey)
+  emit('day-focus-change', highlightStore.focusedDay)
+}
 
 // Check if an item spans multiple days (overnight)
 const isOvernightItem = (item) => {
@@ -1077,12 +1108,46 @@ defineExpose({
 }
 
 .date-separator-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--gp-text-secondary);
+  font: inherit;
   font-weight: 600;
   font-size: 0.9rem;
-  padding: 0 var(--gp-spacing-sm);
+  padding: 0.15rem var(--gp-spacing-sm);
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: var(--gp-surface-card);
   white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.date-separator-text:hover {
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+}
+
+.date-separator-text:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
+}
+
+/* Shown by the border and weight as well as color, so the state does not rely on color alone. */
+.date-separator-text--focused {
+  border-color: var(--gp-primary);
+  color: var(--gp-text-primary);
+  font-weight: 700;
+}
+
+/* Same shape as the map legend swatch, so it reads as "this day's line". */
+.date-separator-day-color {
+  display: inline-block;
+  width: 1.1rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .date-nav-button {

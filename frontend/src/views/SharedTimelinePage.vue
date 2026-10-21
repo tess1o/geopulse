@@ -227,6 +227,7 @@
                 :is-shared-view="true"
                 :preserve-viewport-on-data-refresh="true"
                 @timeline-marker-click="handleTimelineItemClick"
+                @day-colors-change="dayColors = $event"
                 @viewer-location-request="handleViewerLocationRequest"
                 @viewer-location-stop="viewerLocation.disable"
             />
@@ -248,6 +249,7 @@
                 :load-immich-photos="false"
                 :photos="sharedPhotos"
                 :photo-auth-token="shareLinksStore.sharedAccessToken"
+                :day-colors="dayColors"
                 @timeline-item-click="handleTimelineItemClick"
             />
           </div>
@@ -327,6 +329,8 @@ const currentLocation = ref(null)
 const sharedNotes = ref([])
 const sharedPhotos = ref([])
 const timelineMapRef = ref(null)
+// Day colors from the map while it colors the path by day, for the timeline's day headers.
+const dayColors = ref(null)
 const shouldCenterViewerLocation = ref(false)
 const isMapOnlyEmbed = computed(() => route.query.embed === 'map')
 const isTimelineEmbed = computed(() => route.query.embed === 'timeline')

@@ -37,6 +37,10 @@
         @navigate-date="navigateTimelineDay"
         @layout-resize="triggerMapResize"
       >
+        <template #handle-extra>
+          <FocusedDayChip :day-colors="dayColors" />
+        </template>
+
         <template #map>
           <div v-if="mapNoData" class="loading-messages">
             {{ t('timeline.page.map.noData') }}
@@ -67,6 +71,7 @@
               :read-only="demoReadOnly"
               @timeline-marker-click="handleTimelineMarkerClick"
               @highlighted-path-click="handleHighlightedPathClick"
+              @day-colors-change="dayColors = $event"
               @edit-favorite="handleEditFavorite"
               @delete-favorite="handleFavoriteDelete"
           />
@@ -81,6 +86,8 @@
               :timelineDataLoading="timelineDataLoading"
               :dateRange="dateRange"
               :data-window="dataWindow"
+              :day-colors="dayColors"
+              @day-focus-change="handleDayFocusChange"
               :read-only="demoReadOnly"
               :map-matching-by-trip-id="mapMatchingByTripId"
               @timeline-item-click="handleTimelineItemClick"
@@ -146,6 +153,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { TimelineContainer, TimelineLocationEditDialogs, TimelineSplitLayout } from '@/components/timeline'
+import FocusedDayChip from '@/components/timeline/FocusedDayChip.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeDatasetWarning.vue'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -224,6 +232,15 @@ const { timelineData, weatherSamples } = storeToRefs(timelineStore)
 // Template refs
 const mapViewRef = ref(null)
 const timelineContainerRef = ref(null)
+// Day colors from the map while it colors the path by day, for the timeline's day headers.
+const dayColors = ref(null)
+
+// On mobile, focusing a day switches to the map, the same way selecting a trip does.
+const handleDayFocusChange = (dayKey) => {
+  if (dayKey) {
+    timelineSplitLayoutRef.value?.collapseForMobileSelection?.()
+  }
+}
 
 const {
   handleTimelineItemClick,

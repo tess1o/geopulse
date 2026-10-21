@@ -205,6 +205,20 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['speed', 'speed colors', 'car', 'driving', 'red green', 'colorblind', 'color blind', 'deuteranopia', 'protanopia', 'satellite']
   },
   {
+    id: 'pathColorMode',
+    title: 'Color Paths by Day',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['day', 'days', 'per day', 'multi-day', 'week', 'trip', 'vacation', 'path color', 'route color']
+  },
+  {
+    id: 'dayPalette',
+    title: 'Day Colors',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['day colors', 'palette', 'okabe-ito', 'colorblind', 'color blind', 'multi-day']
+  },
+  {
     id: 'heatmapGradient',
     title: 'Heatmap Colors',
     tab: 'appearance',

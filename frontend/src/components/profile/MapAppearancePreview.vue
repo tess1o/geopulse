@@ -47,21 +47,26 @@
               stroke-linecap="round"
             />
 
-            <!-- Unselected trip -->
+            <!-- Unselected path: one color, or three days when colored by day -->
+            <template v-if="appearance.outlineEnabled">
+              <path
+                v-for="line in normalLines"
+                :key="`${line.key}-casing`"
+                :d="line.d"
+                fill="none"
+                :stroke="getOutlineColor(line.color)"
+                :stroke-width="appearance.pathWidth + PATH_OUTLINE_EXTRA_WIDTH"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-opacity="0.8"
+              />
+            </template>
             <path
-              v-if="appearance.outlineEnabled"
-              :d="PATHS.normal"
+              v-for="line in normalLines"
+              :key="line.key"
+              :d="line.d"
               fill="none"
-              :stroke="getOutlineColor(appearance.defaultPathColor)"
-              :stroke-width="appearance.pathWidth + PATH_OUTLINE_EXTRA_WIDTH"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-opacity="0.8"
-            />
-            <path
-              :d="PATHS.normal"
-              fill="none"
-              :stroke="appearance.defaultPathColor"
+              :stroke="line.color"
               :stroke-width="appearance.pathWidth"
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -113,7 +118,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SelectButton from 'primevue/selectbutton'
 import MapColorLegend from '@/components/maps/MapColorLegend.vue'
-import { PATH_OUTLINE_EXTRA_WIDTH, getOutlineColor } from '@/maps/shared/mapAppearance'
+import { PATH_COLOR_MODES, PATH_OUTLINE_EXTRA_WIDTH, getOutlineColor } from '@/maps/shared/mapAppearance'
+import { buildDayColors } from '@/maps/shared/pathDayColoring'
 
 const props = defineProps({
   // Output of resolveMapAppearance() for the values being edited.
@@ -135,6 +141,8 @@ const SIMULATION_MATRICES = {
 
 const PATHS = {
   normal: 'M8 102 C 50 72, 90 116, 130 90 S 178 70, 192 80',
+  // The same line cut into three days.
+  days: ['M8 102 C 30 86, 52 86, 72 93', 'M72 93 C 95 101, 112 100, 130 90', 'M130 90 S 178 70, 192 80'],
   walk: 'M8 22 C 26 40, 46 12, 66 26',
   slow: 'M80 30 Q 92 42 106 46',
   medium: 'M106 46 Q 122 50 138 42',
@@ -189,6 +197,17 @@ const panels = computed(() => [
     ]
   }
 ])
+
+const normalLines = computed(() => {
+  const { pathColorMode, defaultPathColor } = props.appearance
+  const dayColors = pathColorMode === PATH_COLOR_MODES.DAY
+    ? buildDayColors(['day-1', 'day-2', 'day-3'], props.appearance)
+    : null
+  if (!dayColors) {
+    return [{ key: 'normal', d: PATHS.normal, color: defaultPathColor }]
+  }
+  return dayColors.days.map(({ dayKey, color }, index) => ({ key: dayKey, d: PATHS.days[index], color }))
+})
 
 const highlightedLines = computed(() => {
   const { activePathColor, highlightedPathWidth, speedBandColors } = props.appearance

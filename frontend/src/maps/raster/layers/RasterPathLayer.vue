@@ -41,6 +41,7 @@ import {
   buildReplayEmission
 } from '@/maps/shared/highlightedTripData'
 import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
+import { MUTED_DAY_OPACITY } from '@/maps/shared/pathDayColoring'
 import {
   PATH_OUTLINE_EXTRA_WIDTH,
   SPEED_BAND_PALETTES,
@@ -80,6 +81,11 @@ const props = defineProps({
   pathData: {
     type: Array,
     default: () => []
+  },
+  // Per pathData group, its colored pieces ({ color, points }); null draws every group in the path color.
+  pathPieces: {
+    type: Array,
+    default: null
   },
   visible: {
     type: Boolean,
@@ -185,7 +191,7 @@ const renderPaths = () => {
   if (!hasPathData.value) return
 
   props.pathData.forEach((pathGroup, groupIndex) => {
-    const latlngs = pathGroup.map(point => [point.latitude, point.longitude])
+    const pieces = props.pathPieces?.[groupIndex]
     const basePathOptions = hasFocusedHighlightedTrip.value
       ? {
           ...props.pathOptions,
@@ -197,21 +203,37 @@ const renderPaths = () => {
           interactive: props.inspectionEnabled
         }
 
+    const lines = (pieces || [{ points: pathGroup, color: null }]).map(({ points, color, muted }) => ({
+      latlngs: points.map(point => [point.latitude, point.longitude]),
+      color: color || basePathOptions.color,
+      muted: Boolean(muted)
+    }))
+
     if (props.outline) {
-      const casing = createCasingPolyline(latlngs, {
-        color: basePathOptions.color || '#007bff',
-        weight: basePathOptions.weight || 4,
-        opacity: basePathOptions.opacity ?? 0.8,
-        dashArray: basePathOptions.dashArray
+      // Faded days have no outline: on satellite tiles it would make them stand out again.
+      lines.filter(({ muted }) => !muted).forEach(({ latlngs, color }) => {
+        const casing = createCasingPolyline(latlngs, {
+          color: color || '#007bff',
+          weight: basePathOptions.weight || 4,
+          opacity: basePathOptions.opacity ?? 0.8,
+          dashArray: basePathOptions.dashArray
+        })
+        baseLayerRef.value.addToLayer(casing)
+        pathCasingLayers.value.push(casing)
       })
-      baseLayerRef.value.addToLayer(casing)
-      pathCasingLayers.value.push(casing)
     }
 
-    const polyline = L.polyline(latlngs, {
+    // A day-colored group is a FeatureGroup of per-day polylines, so it still takes one pathLayers slot.
+    // Pieces of days other than the focused one stay faded and ignore the pointer.
+    const createLine = ({ latlngs, color, muted }) => L.polyline(latlngs, {
       ...basePathOptions,
+      color,
+      ...(muted ? { opacity: mutedOpacity(basePathOptions.opacity), interactive: false } : {}),
+      dayColor: pieces ? color : null,
+      muted,
       pathId: pathGroup.id || groupIndex
     })
+    const polyline = pieces ? L.featureGroup(lines.map(createLine)) : createLine(lines[0])
 
     if (!hasFocusedHighlightedTrip.value && props.inspectionEnabled) {
       polyline.on('click', (e) => {
@@ -223,10 +245,10 @@ const renderPaths = () => {
       })
 
       polyline.on('mouseover', (e) => {
-        polyline.setStyle({
+        forEachLine(polyline, (line) => line.setStyle({
           weight: props.pathOptions.weight + 2,
-          opacity: 1
-        })
+          opacity: line.options.muted ? mutedOpacity(props.pathOptions.opacity) : 1
+        }))
         emit('path-hover', {
           pathData: pathGroup,
           pathIndex: groupIndex,
@@ -235,7 +257,7 @@ const renderPaths = () => {
       })
 
       polyline.on('mouseout', () => {
-        polyline.setStyle(props.pathOptions)
+        resetPathStyle(polyline)
       })
     }
 
@@ -255,6 +277,25 @@ const clearPaths = () => {
   pathCasingLayers.value = []
 }
 
+const mutedOpacity = (opacity) => Math.min(opacity ?? 0.8, MUTED_DAY_OPACITY)
+
+const forEachLine = (layer, callback) => {
+  if (typeof layer.eachLayer === 'function') {
+    layer.eachLayer(callback)
+    return
+  }
+  callback(layer)
+}
+
+// Back to the normal path style; day pieces keep their own color, and muted ones stay faded.
+const resetPathStyle = (layer) => {
+  forEachLine(layer, (line) => line.setStyle({
+    ...props.pathOptions,
+    color: line.options.dayColor || props.pathOptions.color,
+    ...(line.options.muted ? { opacity: mutedOpacity(props.pathOptions.opacity) } : {})
+  }))
+}
+
 const highlightPath = (pathIndex) => {
   if (pathLayers.value[pathIndex]) {
     pathLayers.value[pathIndex].setStyle({
@@ -267,14 +308,12 @@ const highlightPath = (pathIndex) => {
 
 const unhighlightPath = (pathIndex) => {
   if (pathLayers.value[pathIndex]) {
-    pathLayers.value[pathIndex].setStyle(props.pathOptions)
+    resetPathStyle(pathLayers.value[pathIndex])
   }
 }
 
 const unhighlightAllPaths = () => {
-  pathLayers.value.forEach(layer => {
-    layer.setStyle(props.pathOptions)
-  })
+  pathLayers.value.forEach(resetPathStyle)
 }
 
 // (value, locationTimezone): identical to the profile-timezone format unless "location" time mode is on.
@@ -908,6 +947,7 @@ watch(() => props.replayState, () => {
 watch(
   () => [
     props.pathData,
+    props.pathPieces,
     props.highlightedTrip,
     props.pathOptions,
     props.focusHighlightedTrip,

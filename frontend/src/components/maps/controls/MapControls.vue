@@ -45,6 +45,19 @@
       </button>
 
       <button
+        v-if="showDayColorsControl"
+        @click="handleToggleDayColors"
+        :class="{ active: dayColorsEnabled }"
+        :title="dayColorsButtonTitle"
+        :aria-label="dayColorsButtonTitle"
+        :aria-pressed="dayColorsEnabled"
+        class="control-button mobile-secondary-control"
+        :disabled="!map || !showPath"
+      >
+        <i class="pi pi-calendar"></i>
+      </button>
+
+      <button
         v-if="showRawGpsPointsControl"
         @click="handleToggleRawGpsPoints"
         :class="{ active: rawGpsPointsEnabled, 'raw-gps-loading': rawGpsPointsLoading }"
@@ -239,6 +252,15 @@ const props = defineProps({
     type: String,
     default: ROUTE_DISPLAY_MODES.MATCHED
   },
+  // Shown for multi-day ranges: colors the path by day.
+  showDayColorsControl: {
+    type: Boolean,
+    default: false
+  },
+  dayColorsEnabled: {
+    type: Boolean,
+    default: false
+  },
   showRawGpsPointsControl: {
     type: Boolean,
     default: false
@@ -342,6 +364,7 @@ const emit = defineEmits([
   'toggle-timeline',
   'toggle-path',
   'cycle-route-display-mode',
+  'toggle-day-colors',
   'toggle-raw-gps-points',
   'toggle-immich',
   'toggle-notes',
@@ -367,6 +390,10 @@ const handleTogglePath = () => {
 
 const handleCycleRouteDisplayMode = () => {
   emit('cycle-route-display-mode')
+}
+
+const handleToggleDayColors = () => {
+  emit('toggle-day-colors', !props.dayColorsEnabled)
 }
 
 const handleToggleRawGpsPoints = () => {
@@ -470,6 +497,10 @@ const routeDisplayModeIcon = computed(() => {
   return 'pi pi-directions'
 })
 
+const dayColorsButtonTitle = computed(() => (
+  props.dayColorsEnabled ? t('maps.controls.dayColorsHide') : t('maps.controls.dayColorsShow')
+))
+
 const rawGpsPointsButtonTitle = computed(() => {
   if (props.rawGpsPointsLoading) return t('maps.controls.rawGpsLoading')
   return props.rawGpsPointsEnabled ? t('maps.controls.rawGpsHide') : t('maps.controls.rawGpsShow')
@@ -482,6 +513,7 @@ const panoramaxButtonTitle = computed(() => {
 
 const hasMoreControls = computed(() => (
   props.showRouteDisplayModeControl
+  || props.showDayColorsControl
   || props.showHeatmap
   || props.showNotesButton
   || props.showWeatherButton
@@ -490,6 +522,7 @@ const hasMoreControls = computed(() => (
 
 const moreControlsActive = computed(() => (
   (props.showRouteDisplayModeControl && routeDisplayModeActive.value)
+  || (props.showDayColorsControl && props.dayColorsEnabled)
   || (props.showHeatmap && props.heatmapEnabled)
   || (props.showNotesButton && props.showNotes)
   || (props.showWeatherButton && props.showWeather)
@@ -505,6 +538,16 @@ const moreMenuItems = computed(() => {
       icon: routeDisplayModeIcon.value,
       disabled: !props.map || !props.showPath,
       command: handleCycleRouteDisplayMode
+    })
+  }
+
+  if (props.showDayColorsControl) {
+    if (items.length) items.push({ separator: true })
+    items.push({
+      label: dayColorsButtonTitle.value,
+      icon: 'pi pi-calendar',
+      disabled: !props.map || !props.showPath,
+      command: handleToggleDayColors
     })
   }
 

@@ -23,6 +23,7 @@ import { buildTimelineStackItems } from '@/maps/shared/timelineStackContent'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import { buildTimelineItemPopupModel } from '@/maps/shared/popups/timelinePopupModels'
+import { isOutsideFocusedDay } from '@/maps/shared/timelineDayFocus'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH_PX
@@ -48,6 +49,11 @@ const props = defineProps({
   },
   highlightedItem: {
     type: Object,
+    default: null
+  },
+  // 'YYYY-MM-DD' shown on its own; markers from other days are dimmed.
+  focusedDay: {
+    type: String,
     default: null
   },
   markerOptions: {
@@ -213,25 +219,30 @@ const getClusterSizeClass = (count) => {
   return 'small'
 }
 
+const getMarkerTimelineItems = (marker) => (
+  Array.isArray(marker?.options?.timelineItems)
+    ? marker.options.timelineItems
+    : [marker?.options?.timelineItem].filter(Boolean)
+)
+
+const getClusterTimelineItems = (cluster) => (
+  cluster?.getAllChildMarkers ? cluster.getAllChildMarkers().flatMap(getMarkerTimelineItems) : []
+)
+
 const clusterContainsHighlightedItem = (cluster) => {
   if (!props.highlightedItem || !cluster?.getAllChildMarkers) {
     return false
   }
 
-  return cluster.getAllChildMarkers().some((marker) => {
-    const timelineItems = Array.isArray(marker?.options?.timelineItems)
-      ? marker.options.timelineItems
-      : [marker?.options?.timelineItem].filter(Boolean)
-
-    return timelineItems.some((item) => isSameTimelineItem(props.highlightedItem, item))
-  })
+  return getClusterTimelineItems(cluster).some((item) => isSameTimelineItem(props.highlightedItem, item))
 }
 
 const createClusterTimelineIcon = (cluster) => {
   const count = cluster.getChildCount()
   const sizeClass = getClusterSizeClass(count)
   const containsHighlight = clusterContainsHighlightedItem(cluster)
-  const isDimmed = Boolean(props.highlightedItem) && !containsHighlight
+  const isDimmed = !containsHighlight
+    && (Boolean(props.highlightedItem) || isOutsideFocusedDay(getClusterTimelineItems(cluster), props.focusedDay))
   const clusterClass = [
     'cluster-marker',
     `cluster-marker-${sizeClass}`,
@@ -279,7 +290,8 @@ const renderTimelineMarkers = () => {
     const isStack = markerItems.length > 1
     const highlightedItem = markerItems.find(({ item }) => isSameTimelineItem(props.highlightedItem, item))
     const isHighlighted = Boolean(highlightedItem)
-    const isDimmed = hasActiveHighlight && !isHighlighted
+    const isDimmed = !isHighlighted
+      && (hasActiveHighlight || isOutsideFocusedDay(markerItems.map(({ item }) => item), props.focusedDay))
 
     const icon = isStack
       ? createStackTimelineIcon(markerItems.length, isHighlighted, isDimmed)
@@ -412,7 +424,8 @@ const updateHighlightedMarker = () => {
       props.highlightedItem &&
       items.some((item) => isSameTimelineItem(props.highlightedItem, item))
     )
-    const shouldBeDimmed = Boolean(props.highlightedItem) && !shouldBeHighlighted
+    const shouldBeDimmed = !shouldBeHighlighted
+      && (Boolean(props.highlightedItem) || isOutsideFocusedDay(items, props.focusedDay))
 
     if (shouldBeHighlighted !== isHighlighted || shouldBeDimmed !== isDimmed) {
       const focusedItem = items.find((item) => isSameTimelineItem(props.highlightedItem, item)) || items[0]
@@ -498,6 +511,10 @@ watch(() => props.timelineData, () => {
 watch(() => props.highlightedItem, (newItem, oldItem) => {
   updateHighlightedMarker()
 }, { deep: true })
+
+watch(() => props.focusedDay, () => {
+  updateHighlightedMarker()
+})
 
 watch(() => distanceUnit.value, () => {
   if (baseLayerRef.value?.isReady) {

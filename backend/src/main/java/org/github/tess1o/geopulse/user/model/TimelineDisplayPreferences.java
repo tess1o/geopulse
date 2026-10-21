@@ -13,6 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.map.MapColorScheme;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.shared.map.PathColorMode;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.io.Serializable;
@@ -101,6 +102,14 @@ public class TimelineDisplayPreferences implements Serializable {
             message = "Heatmap gradient must be one of: CLASSIC, VIRIDIS, CIVIDIS")
     private String heatmapGradient;
 
+    /** Color the path by day on multi-day ranges, or draw it in the single path color. Default: SINGLE. */
+    private PathColorMode pathColorMode;
+
+    /** Palette for day colors on multi-day ranges. Null follows colorScheme; empty string resets it. */
+    @Pattern(regexp = "^(CLASSIC|OKABE_ITO|TOL_MUTED|CONTRAST)?$",
+            message = "Day palette must be one of: CLASSIC, OKABE_ITO, TOL_MUTED, CONTRAST")
+    private String dayPalette;
+
     /** Draw a contrasting outline under timeline paths. Default: false. */
     private Boolean pathOutlineEnabled;
 
@@ -110,8 +119,8 @@ public class TimelineDisplayPreferences implements Serializable {
     private Integer pathWidth;
 
     /**
-     * A copy with every unset preference replaced by its application default. Path colors, speed band palette and
-     * heatmap gradient stay null: null means "follow colorScheme", which the frontend resolves.
+     * A copy with every unset preference replaced by its application default. Path colors, speed band palette,
+     * heatmap gradient and day palette stay null: null means "follow colorScheme", which the frontend resolves.
      */
     public TimelineDisplayPreferences withDefaults() {
         return toBuilder()
@@ -126,6 +135,7 @@ public class TimelineDisplayPreferences implements Serializable {
                 .mapMatchingExcludedMovementTypes(mapMatchingExcludedMovementTypes != null
                         ? mapMatchingExcludedMovementTypes : List.of())
                 .colorScheme(colorScheme != null ? colorScheme : MapColorScheme.DEFAULT)
+                .pathColorMode(pathColorMode != null ? pathColorMode : PathColorMode.SINGLE)
                 .pathOutlineEnabled(pathOutlineEnabled != null ? pathOutlineEnabled : false)
                 .pathWidth(pathWidth != null ? pathWidth : 4)
                 .build();

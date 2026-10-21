@@ -102,6 +102,10 @@
             handle-mobile-only
             @layout-resize="triggerWorkspaceMapResize"
           >
+            <template #handle-extra>
+              <FocusedDayChip :day-colors="dayColors" />
+            </template>
+
             <template #map>
               <div v-if="workspaceLoading" class="pane-loading">
                 <ProgressSpinner />
@@ -126,7 +130,9 @@
                 :showCurrentLocation="false"
                 :read-only="demoReadOnly"
                 @timeline-marker-click="handleWorkspaceTimelineMarkerClick"
+                :day-range="activeDateRangeArray"
                 @highlighted-path-click="handleWorkspaceHighlightedPathClick"
+                @day-colors-change="dayColors = $event"
                 @plan-to-visit="handlePlanToVisit"
                 @plan-item-edit="handlePlanItemEditFromMap"
                 @plan-item-delete="handlePlanItemDeleteFromMap"
@@ -162,6 +168,8 @@
                       :timelineNoData="!workspaceTimeline.length"
                       :timelineDataLoading="workspaceLoading"
                       :dateRange="activeDateRangeArray"
+                      :day-colors="dayColors"
+                      @day-focus-change="handleDayFocusChange"
                       :loadImmichPhotos="false"
                       :weather-samples="weatherSamples"
                       :showTimelineLabels="false"
@@ -407,6 +415,7 @@ import MapContainer from '@/components/maps/MapContainer.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 import TimelineLocationEditDialogs from '@/components/timeline/TimelineLocationEditDialogs.vue'
 import TimelineSplitLayout from '@/components/timeline/TimelineSplitLayout.vue'
+import FocusedDayChip from '@/components/timeline/FocusedDayChip.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import TripStopsRail from '@/components/trips/workspace/TripStopsRail.vue'
 import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vue'
@@ -463,6 +472,15 @@ const activeRange = ref({ start: null, end: null })
 const timelineMapRef = ref(null)
 const timelineSplitLayoutRef = ref(null)
 const timelineContainerRef = ref(null)
+// Day colors from the map while it colors the path by day, for the timeline's day headers.
+const dayColors = ref(null)
+
+// On mobile, focusing a day switches to the map, the same way selecting a trip does.
+const handleDayFocusChange = (dayKey) => {
+  if (dayKey) {
+    timelineSplitLayoutRef.value?.collapseForMobileSelection?.()
+  }
+}
 const planItemDialogMapRef = ref(null)
 const planLocationSearchRef = ref(null)
 

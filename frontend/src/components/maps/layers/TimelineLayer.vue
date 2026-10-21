@@ -6,6 +6,7 @@
     :timeline-data="timelineData"
     :visible="visible"
     :highlighted-item="highlightedItem"
+    :focused-day="focusedDay"
     :marker-options="markerOptions"
     @marker-click="(payload) => emit('marker-click', payload)"
     @marker-hover="(payload) => emit('marker-hover', payload)"
@@ -35,6 +36,11 @@ const props = defineProps({
   },
   highlightedItem: {
     type: Object,
+    default: null
+  },
+  // 'YYYY-MM-DD' shown on its own; markers from other days are dimmed.
+  focusedDay: {
+    type: String,
     default: null
   },
   markerOptions: {

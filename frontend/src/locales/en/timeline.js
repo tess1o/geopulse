@@ -261,12 +261,18 @@ export default {
         loadMore: 'Load More',
         viewAllInReports: 'Or view all in Timeline Reports',
         viewPeriodAria: 'View {name} period',
+        showOnlyDayOnMap: 'Show only this day on the map',
+        showAllDaysOnMap: 'Show all days on the map',
         exportStartedTitle: 'Export Started',
         tripExportingDetail: 'Trip is being exported as GPX',
         stayExportingDetail: 'Stay is being exported as GPX',
         exportFailedTitle: 'Export Failed',
         tripExportFailedDetail: 'Failed to export trip',
         stayExportFailedDetail: 'Failed to export stay'
+    },
+    focusedDay: {
+        showing: 'Showing {day}',
+        showAll: 'Show all days on the map'
     },
     splitLayout: {
         defaultCollapsedLabel: 'Timeline',

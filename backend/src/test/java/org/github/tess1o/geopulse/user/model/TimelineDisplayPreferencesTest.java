@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.user.model;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.github.tess1o.geopulse.shared.map.MapColorScheme;
+import org.github.tess1o.geopulse.shared.map.PathColorMode;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -38,6 +39,17 @@ class TimelineDisplayPreferencesTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"", "CLASSIC", "OKABE_ITO", "TOL_MUTED", "CONTRAST"})
+    void acceptsKnownDayPalettes(String palette) {
+        assertEquals(0, validator.validate(TimelineDisplayPreferences.builder().dayPalette(palette).build()).size());
+    }
+
+    @Test
+    void rejectsUnknownDayPalette() {
+        assertEquals(1, validator.validate(TimelineDisplayPreferences.builder().dayPalette("RAINBOW").build()).size());
+    }
+
+    @ParameterizedTest
     @ValueSource(ints = {1, 11})
     void rejectsPathWidthOutOfRange(int width) {
         assertEquals(1, validator.validate(TimelineDisplayPreferences.builder().pathWidth(width).build()).size());
@@ -56,6 +68,8 @@ class TimelineDisplayPreferencesTest {
         assertEquals(MapColorScheme.DEFAULT, resolved.getColorScheme());
         assertEquals(false, resolved.getPathOutlineEnabled());
         assertEquals(4, resolved.getPathWidth());
+        assertEquals(PathColorMode.SINGLE, resolved.getPathColorMode());
+        assertNull(resolved.getDayPalette());
         assertNull(resolved.getSpeedBandPalette());
         assertNull(resolved.getHeatmapGradient());
         assertNull(resolved.getDefaultPathColor());
@@ -69,6 +83,8 @@ class TimelineDisplayPreferencesTest {
                 .pathOutlineEnabled(true)
                 .pathWidth(7)
                 .speedBandPalette("OFF")
+                .pathColorMode(PathColorMode.DAY)
+                .dayPalette("TOL_MUTED")
                 .build()
                 .withDefaults();
 
@@ -76,5 +92,7 @@ class TimelineDisplayPreferencesTest {
         assertEquals(true, resolved.getPathOutlineEnabled());
         assertEquals(7, resolved.getPathWidth());
         assertEquals("OFF", resolved.getSpeedBandPalette());
+        assertEquals(PathColorMode.DAY, resolved.getPathColorMode());
+        assertEquals("TOL_MUTED", resolved.getDayPalette());
     }
 }

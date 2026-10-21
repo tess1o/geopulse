@@ -29,6 +29,10 @@
             <span class="timeline-sheet-label">{{ sheetLabel }}</span>
             <i class="timeline-sheet-toggle-icon" :class="toggleIcon"></i>
           </button>
+          <!-- Sheet mode only: e.g. the way back from a focused day, visible even when the sheet is collapsed. -->
+          <div v-if="$slots['handle-extra']" class="timeline-sheet-handle-extra" @pointerdown.stop>
+            <slot name="handle-extra" />
+          </div>
           <div
             v-if="showDateNavigation && dateLabel && sheetState !== 'collapsed'"
             class="timeline-sheet-date-nav"
@@ -462,6 +466,10 @@ defineExpose({
   max-width: 100%;
 }
 
+.timeline-sheet-handle-extra {
+  display: none;
+}
+
 .timeline-sheet-date-text {
   flex: 0 0 clamp(10rem, 38vw, 13rem);
   width: clamp(10rem, 38vw, 13rem);
@@ -698,7 +706,30 @@ defineExpose({
   }
 
   .timeline-sheet--compact .timeline-sheet-toggle-button {
-    width: 100%;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .timeline-sheet-handle-extra {
+    display: inline-flex;
+    justify-content: center;
+    flex-basis: 100%;
+    cursor: default;
+  }
+
+  /* Comments from a v-if'd slot do not count, so an idle slot takes no space. */
+  .timeline-sheet-handle-extra:empty {
+    display: none;
+  }
+
+  /* Collapsed, the handle is one row: label, then the extra at the end. */
+  .timeline-sheet--compact .timeline-sheet-handle {
+    flex-wrap: nowrap;
+  }
+
+  .timeline-sheet--compact .timeline-sheet-handle-extra {
+    flex: 0 0 auto;
   }
 
   .timeline-sheet--dragging .timeline-sheet-handle {
