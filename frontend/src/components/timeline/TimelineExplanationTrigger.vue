@@ -37,6 +37,8 @@ const label = computed(() => t(`timeline.explanation.trigger.${props.kind}`))
   justify-content: center;
   width: 24px;
   height: 24px;
+  /* Takes 16px in the layout, under the timestamp's line height, so the icon doesn't make the title row taller */
+  margin: -4px 0;
   padding: 0;
   border: none;
   border-radius: 999px;
