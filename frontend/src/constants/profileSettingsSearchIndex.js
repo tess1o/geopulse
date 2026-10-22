@@ -314,5 +314,19 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     subtitle: 'Memos',
     keywords: ['memos exclude tags', 'memos tags', 'notes filter', 'hide notes'],
     visibilityHint: 'Enable "Memos Integration" to edit this setting.'
+  },
+  {
+    id: 'mcpServerUrl',
+    title: 'MCP Server URL',
+    tab: 'mcp',
+    subtitle: 'MCP',
+    keywords: ['mcp', 'model context protocol', 'claude', 'chatgpt', 'ai client', 'server url']
+  },
+  {
+    id: 'mcpApiToken',
+    title: 'MCP API Token',
+    tab: 'mcp',
+    subtitle: 'MCP',
+    keywords: ['mcp token', 'mcp', 'claude desktop', 'claude code', 'ai client token']
   }
 ]

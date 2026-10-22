@@ -20,13 +20,15 @@ export default {
     apps: {
         ai: 'AI-помічник',
         immich: 'Immich',
-        memos: 'Memos'
+        memos: 'Memos',
+        mcp: 'MCP'
     },
     status: {
         enabled: 'Увімкнено',
         notEnabled: 'Не увімкнено',
         connected: 'Підключено',
-        notConfigured: 'Не налаштовано'
+        notConfigured: 'Не налаштовано',
+        available: 'Доступно'
     },
     ai: {
         availability: {
@@ -220,5 +222,63 @@ export default {
         testConnection: 'Перевірити зʼєднання',
         reset: 'Скинути',
         saveSettings: 'Зберегти налаштування'
+    },
+    // Налаштування MCP-сервера. 'MCP', 'Claude Desktop', 'Claude Code' і 'ChatGPT' -- назви продуктів, не
+    // перекладаються; самі фрагменти конфігурації будуються в mcpClientSnippets.js.
+    mcp: {
+        connection: {
+            heading: 'Підключення',
+            description: 'GeoPulse має MCP-сервер, тож AI-клієнти можуть відповідати на запитання про вашу історію переміщень. Він завжди увімкнений, і всі інструменти лише читають дані.',
+            serverUrl: {
+                title: 'URL сервера',
+                description: 'Streamable HTTP-адреса, до якої підключається ваш MCP-клієнт.'
+            },
+            token: {
+                title: 'API-токен',
+                description: 'Клієнти входять за допомогою API-токена лише для читання. Створіть окремий токен для кожного клієнта, щоб відкликати їх окремо.',
+                create: 'Створити токен лише для читання',
+                manage: 'Керувати токенами',
+                name: 'MCP ({client})',
+                shownOnce: 'Скопіюйте цей токен зараз. GeoPulse більше його не покаже.'
+            }
+        },
+        client: {
+            heading: 'Налаштування клієнта',
+            description: 'Виберіть клієнт і скопіюйте конфігурацію.',
+            options: {
+                claudeDesktop: 'Claude Desktop',
+                claudeCode: 'Claude Code',
+                other: 'Інші клієнти'
+            },
+            hints: {
+                claudeDesktop: 'Додайте це до {file}, потім перезапустіть Claude Desktop. Для npx потрібен Node.js.',
+                claudeCode: 'Виконайте це в терміналі, потім запустіть Claude Code.',
+                other: 'Використайте ці значення в будь-якому клієнті з підтримкою Streamable HTTP і власних заголовків. ChatGPT підключається через тунель.',
+                chatGptLink: 'Налаштувати ChatGPT'
+            },
+            placeholderHint: 'Замініть {placeholder} на ваш API-токен або створіть токен вище, щоб підставити його.'
+        },
+        tools: {
+            heading: 'Що може читати ваш AI-клієнт',
+            description: 'Інструменти не можуть змінювати вашу хронологію, локації чи налаштування доступу.',
+            areas: {
+                timeline: { title: 'Хронологія', example: '«Що я робив минулої суботи?»' },
+                now: { title: 'Зараз', example: '«Де я?»' },
+                places: { title: 'Місця', example: '«Які країни я відвідав?»' },
+                summaries: { title: 'Підсумки', example: '«Підсумуй мій жовтень.»' },
+                trips: { title: 'Подорожі та періоди', example: '«Коли була моя поїздка до Японії?»' },
+                notesPhotosWeather: { title: 'Нотатки, фото й погода', example: '«Яка була погода під час походу?»' },
+                geofences: { title: 'Геозони', example: '«Коли я востаннє пішов з роботи?»' },
+                friends: { title: 'Друзі', example: '«Де зараз Алекс?»' }
+            },
+            requirements: 'Пошук фото потребує інтеграції з Immich, погода -- увімкненої на сервері погоди, а покриття -- увімкненого покриття. Дані друзів підпорядковуються наявним дозволам на доступ.',
+            docsLink: 'Документація MCP'
+        },
+        copy: 'Копіювати',
+        toasts: {
+            copied: 'Скопійовано в буфер обміну',
+            copyFailed: 'Не вдалося скопіювати в буфер обміну',
+            createFailed: 'Не вдалося створити токен'
+        }
     }
 }

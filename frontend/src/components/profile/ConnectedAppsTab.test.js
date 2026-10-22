@@ -26,7 +26,8 @@ const mountTab = () => mount(ConnectedAppsTab, {
       Card: CardStub,
       AIAssistantTab: appStub('ai'),
       ImmichTab: appStub('immich'),
-      MemosTab: appStub('memos')
+      MemosTab: appStub('memos'),
+      McpTab: appStub('mcp')
     }
   }
 })
@@ -36,20 +37,28 @@ describe('ConnectedAppsTab', () => {
     const wrapper = mountTab()
     const tabs = wrapper.findAll('[role="tab"]')
 
-    expect(tabs).toHaveLength(3)
+    expect(tabs).toHaveLength(4)
     expect(tabs[0].attributes('aria-selected')).toBe('true')
     expect(tabs[0].get('.app-tab-label-text').text()).toBe('AI Assistant')
     expect(tabs[1].get('.app-tab-label-text').text()).toBe('Immich')
     expect(tabs[2].get('.app-tab-label-text').text()).toBe('Memos')
+    expect(tabs[3].get('.app-tab-label-text').text()).toBe('MCP')
     expect(tabs[0].text()).toContain('Enabled')
     expect(tabs[1].text()).toContain('Connected')
     expect(tabs[2].text()).toContain('Not configured')
+    expect(tabs[3].text()).toContain('Available')
+    expect(tabs[3].get('small').classes()).toContain('is-ready')
     expect(wrapper.find('[data-app-panel="ai"]').exists()).toBe(true)
 
     await tabs[1].trigger('click')
     expect(wrapper.emitted('select-app').at(-1)[0]).toBe('immich')
     expect(wrapper.get('#connected-app-panel-immich').attributes('aria-labelledby')).toBe('connected-app-tab-immich')
     expect(wrapper.find('[data-app-panel="immich"]').exists()).toBe(true)
+
+    await tabs[3].trigger('click')
+    expect(wrapper.emitted('select-app').at(-1)[0]).toBe('mcp')
+    expect(wrapper.find('[data-app-panel="mcp"]').exists()).toBe(true)
+    expect(wrapper.find('[data-app-panel="memos"]').exists()).toBe(false)
   })
 
   it('supports keyboard navigation between tabs', async () => {
@@ -58,5 +67,8 @@ describe('ConnectedAppsTab', () => {
     await wrapper.get('#connected-app-tab-ai').trigger('keydown', { key: 'ArrowRight' })
     expect(wrapper.emitted('select-app').at(-1)[0]).toBe('immich')
     expect(wrapper.get('#connected-app-tab-immich').attributes('aria-selected')).toBe('true')
+
+    await wrapper.get('#connected-app-tab-ai').trigger('keydown', { key: 'ArrowLeft' })
+    expect(wrapper.emitted('select-app').at(-1)[0]).toBe('mcp')
   })
 })

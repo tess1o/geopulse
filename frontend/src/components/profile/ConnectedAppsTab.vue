@@ -42,7 +42,8 @@
         >
           <AIAssistantTab v-if="activeApp === 'ai'" :read-only="readOnly" :initial-settings="aiSettings" @save="$emit('ai-save', $event)" @dirty-change="$emit('dirty-change', { key: 'ai', dirty: $event })" />
           <ImmichTab v-else-if="activeApp === 'immich'" :read-only="readOnly" :config="immichConfig" :loading="immichLoading" @save="$emit('immich-save', $event)" @dirty-change="$emit('dirty-change', { key: 'immich', dirty: $event })" />
-          <MemosTab v-else :read-only="readOnly" :config="memosConfig" :loading="memosLoading" @save="$emit('memos-save', $event)" @dirty-change="$emit('dirty-change', { key: 'memos', dirty: $event })" />
+          <MemosTab v-else-if="activeApp === 'memos'" :read-only="readOnly" :config="memosConfig" :loading="memosLoading" @save="$emit('memos-save', $event)" @dirty-change="$emit('dirty-change', { key: 'memos', dirty: $event })" />
+          <McpTab v-else :read-only="readOnly" />
         </div>
       </div>
     </template>
@@ -55,6 +56,7 @@ import { useI18n } from 'vue-i18n'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
 import MemosTab from './MemosTab.vue'
+import McpTab from './McpTab.vue'
 
 const { t } = useI18n()
 
@@ -67,13 +69,16 @@ const props = defineProps({
 })
 const emit = defineEmits(['ai-save', 'immich-save', 'memos-save', 'dirty-change', 'select-app'])
 const appButtons = ref([])
-const activeApp = ref(['ai', 'immich', 'memos'].includes(props.activeApp) ? props.activeApp : 'ai')
-watch(() => props.activeApp, (app) => { activeApp.value = ['ai', 'immich', 'memos'].includes(app) ? app : 'ai' })
+const APP_KEYS = ['ai', 'immich', 'memos', 'mcp']
+const activeApp = ref(APP_KEYS.includes(props.activeApp) ? props.activeApp : 'ai')
+watch(() => props.activeApp, (app) => { activeApp.value = APP_KEYS.includes(app) ? app : 'ai' })
 const selectApp = (app) => { activeApp.value = app; emit('select-app', app) }
 const apps = computed(() => [
   { key: 'ai', label: t('profile.connectedApps.apps.ai'), icon: 'pi pi-sparkles', enabled: props.aiSettings.enabled, status: props.aiSettings.enabled ? t('profile.connectedApps.status.enabled') : t('profile.connectedApps.status.notEnabled') },
   { key: 'immich', label: t('profile.connectedApps.apps.immich'), icon: 'pi pi-images', enabled: props.immichConfig?.enabled, status: props.immichConfig?.enabled ? t('profile.connectedApps.status.connected') : t('profile.connectedApps.status.notConfigured') },
-  { key: 'memos', label: t('profile.connectedApps.apps.memos'), icon: 'pi pi-file-edit', enabled: props.memosConfig?.enabled, status: props.memosConfig?.enabled ? t('profile.connectedApps.status.connected') : t('profile.connectedApps.status.notConfigured') }
+  { key: 'memos', label: t('profile.connectedApps.apps.memos'), icon: 'pi pi-file-edit', enabled: props.memosConfig?.enabled, status: props.memosConfig?.enabled ? t('profile.connectedApps.status.connected') : t('profile.connectedApps.status.notConfigured') },
+  // The MCP server is always on; there is nothing to enable per user
+  { key: 'mcp', label: t('profile.connectedApps.apps.mcp'), icon: 'pi pi-sitemap', enabled: true, status: t('profile.connectedApps.status.available') }
 ])
 const selectAppAt = (index) => {
   const normalizedIndex = (index + apps.value.length) % apps.value.length
@@ -85,7 +90,7 @@ const selectAppAt = (index) => {
 <style scoped>
 .apps-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--gp-spacing-xs);
   padding: var(--gp-spacing-xs);
   overflow-x: auto;
@@ -96,9 +101,10 @@ const selectAppAt = (index) => {
 
 .app-tab {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gp-spacing-md);
+  gap: var(--gp-spacing-xs) var(--gp-spacing-md);
   min-width: 0;
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   border: 1px solid transparent;
@@ -164,7 +170,7 @@ const selectAppAt = (index) => {
 
 @media (max-width: 768px) {
   .apps-list {
-    grid-template-columns: repeat(3, minmax(11.5rem, 1fr));
+    grid-template-columns: repeat(4, minmax(11.5rem, 1fr));
   }
 
   .app-tab {

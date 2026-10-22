@@ -1,5 +1,5 @@
 /**
- * Connected apps tab shell: the tab strip, per-app status chips, and the three panels.
+ * Connected apps tab shell: the tab strip, per-app status chips, and the four panels.
  *
  * 'Immich' and 'Memos' are product names and stay untranslated. 'Enabled', 'Connected' and
  * 'Not configured' are asserted verbatim by ConnectedAppsTab.test.js.
@@ -21,13 +21,15 @@ export default {
     apps: {
         ai: 'AI Assistant',
         immich: 'Immich',
-        memos: 'Memos'
+        memos: 'Memos',
+        mcp: 'MCP'
     },
     status: {
         enabled: 'Enabled',
         notEnabled: 'Not enabled',
         connected: 'Connected',
-        notConfigured: 'Not configured'
+        notConfigured: 'Not configured',
+        available: 'Available'
     },
     ai: {
         availability: {
@@ -228,5 +230,63 @@ export default {
         testConnection: 'Test Connection',
         reset: 'Reset',
         saveSettings: 'Save Settings'
+    },
+    // MCP server setup. 'MCP', 'Claude Desktop', 'Claude Code' and 'ChatGPT' are product names and stay
+    // untranslated; the config snippets themselves are built in mcpClientSnippets.js, not here.
+    mcp: {
+        connection: {
+            heading: 'Connection',
+            description: 'GeoPulse runs an MCP server, so AI clients can answer questions about your location history. It is always on, and every tool only reads data.',
+            serverUrl: {
+                title: 'Server URL',
+                description: 'The Streamable HTTP endpoint your MCP client connects to.'
+            },
+            token: {
+                title: 'API token',
+                description: 'Clients sign in with a read-only API token. Create a separate token for each client so you can revoke them one at a time.',
+                create: 'Create read-only token',
+                manage: 'Manage tokens',
+                name: 'MCP ({client})',
+                shownOnce: 'Copy this token now. GeoPulse will not show it again.'
+            }
+        },
+        client: {
+            heading: 'Client setup',
+            description: 'Choose your client and copy the configuration.',
+            options: {
+                claudeDesktop: 'Claude Desktop',
+                claudeCode: 'Claude Code',
+                other: 'Other clients'
+            },
+            hints: {
+                claudeDesktop: 'Add this to {file}, then restart Claude Desktop. It needs Node.js for npx.',
+                claudeCode: 'Run this in a terminal, then start Claude Code.',
+                other: 'Use these values in any client that supports Streamable HTTP and custom headers. ChatGPT connects through a tunnel.',
+                chatGptLink: 'Set up ChatGPT'
+            },
+            placeholderHint: 'Replace {placeholder} with your API token, or create a token above to fill it in.'
+        },
+        tools: {
+            heading: 'What your AI client can read',
+            description: 'The tools cannot change your timeline, locations or sharing settings.',
+            areas: {
+                timeline: { title: 'Timeline', example: '"What did I do last Saturday?"' },
+                now: { title: 'Right now', example: '"Where am I?"' },
+                places: { title: 'Places', example: '"Which countries have I visited?"' },
+                summaries: { title: 'Summaries', example: '"Summarise my October."' },
+                trips: { title: 'Trips and periods', example: '"When was my Japan trip?"' },
+                notesPhotosWeather: { title: 'Notes, photos and weather', example: '"What was the weather on the hike?"' },
+                geofences: { title: 'Geofences', example: '"When did I last leave work?"' },
+                friends: { title: 'Friends', example: '"Where is Alex right now?"' }
+            },
+            requirements: 'Photo search needs the Immich integration, weather needs weather enabled on the server, and coverage needs coverage enabled. Friend data follows your existing sharing permissions.',
+            docsLink: 'MCP documentation'
+        },
+        copy: 'Copy',
+        toasts: {
+            copied: 'Copied to clipboard',
+            copyFailed: 'Could not copy to clipboard',
+            createFailed: 'Could not create token'
+        }
     }
 }

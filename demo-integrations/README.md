@@ -63,6 +63,44 @@ street and landmark shots.
 
 `geopulse-demo-db.sh` itself needs no changes.
 
+## Generating the demo timelines
+
+`scripts/generate-timelines.py` writes about 60 days of OwnTracks location history for each persona.
+Each persona is described in `scripts/personas/<persona>.json`: its places (real OSM points of interest,
+so reverse geocoding names them "… Coffee", "… Park" and so on), its weekly routine and its trips.
+
+| Persona  | Everyday life                                   | Trips                                                     |
+|----------|-------------------------------------------------|-----------------------------------------------------------|
+| kyiv     | Podil → office near Zoloti Vorota, metro/walk   | Intercity train to Lviv; overnight train to Warsaw        |
+| london   | Hackney → King's Cross, bike/Tube               | Brighton day trip; LHR → JFK week; LNER to Edinburgh      |
+| new-york | Prospect Heights → Chelsea, subway              | Drive to Beacon; Amtrak to Boston; JFK → LIS week         |
+
+The London persona's New York week overlaps the New York persona once: both are at Time Out Market
+in DUMBO on the same evening.
+
+```bash
+python3 demo-integrations/scripts/generate-timelines.py            # all personas, ending yesterday
+python3 demo-integrations/scripts/generate-timelines.py --offline  # fail instead of calling a router
+python3 demo-integrations/scripts/generate-timelines.py london --plan   # print every stay and move
+```
+
+Files land in `demo-integrations/out/<persona>.owntracks.json` (gitignored). The output is the same on
+every run for the same end date. Street routes come from the public OSRM servers and are kept in
+`scripts/route-cache.json`, so only new place pairs need the network. If you add a place, give it a `"q"`
+(an OSM search string) and run `--resolve-places` to look up its coordinates.
+
+The script prints a summary for each persona and exits non-zero on a broken file. It warns when two
+consecutive stops are under 450 m apart, because GeoPulse would merge them into one stay.
+
+Loading them into the demo instance:
+
+1. In each persona's timeline settings, enable bicycle, train and flight classification. They are off
+   by default, so without them those trips show up as car trips.
+2. Log in as the persona and import its file under Data Import → OwnTracks. Wait for the timeline to build.
+3. Spot-check the timeline, then save the snapshot and roll it out:
+   `backend/scripts/demo/geopulse-demo-db.sh snapshot && backend/scripts/demo/geopulse-demo-db.sh reset`.
+   The reset shifts the dates so the data always ends within the last day.
+
 ## Fake OIDC provider (e2e tests only)
 
 `cmd/fake-oidc` is a mock OpenID Connect provider for the OIDC sign-in e2e specs

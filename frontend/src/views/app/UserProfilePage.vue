@@ -175,8 +175,8 @@ const settingsGroups = computed(() => [
   ] },
   { label: t('profile.groups.connectedApps'), items: [{ label: t('profile.tabs.connectedApps'), icon: 'pi pi-box', key: 'connectedApps' }] }
 ])
-const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', accessibility: 'appearance', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
-const legacyApps = { ai: 'ai', immich: 'immich', memos: 'memos' }
+const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', accessibility: 'appearance', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps', mcp: 'connectedApps' }
+const legacyApps = { ai: 'ai', immich: 'immich', memos: 'memos', mcp: 'mcp' }
 
 // Stable map from key → component definition so keep-alive can cache by component name
 const tabComponents = {

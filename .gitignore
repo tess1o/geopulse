@@ -71,3 +71,11 @@ npm-debug.log*
 build_native.sh
 deploy-geopulse.sh
 /charts/
+
+# Generated demo GPS timelines (demo-integrations/scripts/generate-timelines.py)
+demo-integrations/out/
+/demo-integrations/scripts/generate-timelines.py
+/demo-integrations/scripts/personas/kyiv.json
+/demo-integrations/scripts/personas/london.json
+/demo-integrations/scripts/personas/new-york.json
+/demo-integrations/scripts/route-cache.json
