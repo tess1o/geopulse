@@ -192,7 +192,7 @@ class TripMovementTypeOverrideIntegrationTest {
     }
     @Test
     @Transactional
-    void shouldNotReapplyOverrideWhenTimestampDeltaExceedsThreshold() {
+    void shouldNotReapplyOverrideWhenCandidateSharesNoTimeWithSource() {
         TimelineTripEntity source = getSortedTrips().get(0);
         movementTypeOverrideService.setManualMovementType(testUser.getId(), source.getId(), TripType.CAR);
         replaceTripsWithCandidates(List.of(
@@ -204,38 +204,29 @@ class TripMovementTypeOverrideIntegrationTest {
     }
     @Test
     @Transactional
-    void shouldNotReapplyOverrideWhenStartPointTooFar() {
+    void shouldReapplyOverrideWhenSameTimeSpanStartsElsewhereAndMeasuresLonger() {
         TimelineTripEntity source = getSortedTrips().get(0);
         movementTypeOverrideService.setManualMovementType(testUser.getId(), source.getId(), TripType.CAR);
-        replaceTripsWithCandidates(List.of(
-                // ~0.0044 lon shift at ~40 lat is > 350m
-                buildCandidateFromSource(source, 0, 0.0044, 0, 0, 0, 1.0, 1.0)
-        ));
+        TimelineTripEntity candidate = buildCandidateFromSource(
+                // ~0.0044 lon shift at ~40 lat is ~375 m; twice the distance over the same time
+                source, 0, 0.0044, 0, 0, 0, 1.0, 2.0
+        );
+        replaceTripsWithCandidates(List.of(candidate));
         int appliedCount = movementTypeOverrideService.reapplyManualOverrides(testUser.getId());
-        assertThat(appliedCount).isZero();
-        assertOverrideUnmatchedForMovementType("CAR");
+        assertThat(appliedCount).isEqualTo(1);
+        clearPersistenceContext();
+        TimelineTripEntity persisted = tripRepository.findById(candidate.getId());
+        assertThat(persisted.getMovementTypeSource()).isEqualTo(MovementTypeSource.MANUAL);
+        assertThat(persisted.getMovementType()).isEqualTo("CAR");
     }
     @Test
     @Transactional
-    void shouldNotReapplyOverrideWhenDurationRatioIsOutOfRange() {
+    void shouldNotReapplyOverrideWhenSourceIsOnlyHalfOfCandidate() {
         TimelineTripEntity source = getSortedTrips().get(0);
         movementTypeOverrideService.setManualMovementType(testUser.getId(), source.getId(), TripType.CAR);
         replaceTripsWithCandidates(List.of(
-                // 2.0x exceeds MAX_DURATION_RATIO (1.8)
+                // Same start, twice as long: the corrected trip is no more than half of the candidate
                 buildCandidateFromSource(source, 0, 0, 0, 0, 0, 2.0, 1.0)
-        ));
-        int appliedCount = movementTypeOverrideService.reapplyManualOverrides(testUser.getId());
-        assertThat(appliedCount).isZero();
-        assertOverrideUnmatchedForMovementType("CAR");
-    }
-    @Test
-    @Transactional
-    void shouldNotReapplyOverrideWhenDistanceRatioIsOutOfRange() {
-        TimelineTripEntity source = getSortedTrips().get(0);
-        movementTypeOverrideService.setManualMovementType(testUser.getId(), source.getId(), TripType.CAR);
-        replaceTripsWithCandidates(List.of(
-                // 2.0x exceeds MAX_DISTANCE_RATIO (1.8)
-                buildCandidateFromSource(source, 0, 0, 0, 0, 0, 1.0, 2.0)
         ));
         int appliedCount = movementTypeOverrideService.reapplyManualOverrides(testUser.getId());
         assertThat(appliedCount).isZero();

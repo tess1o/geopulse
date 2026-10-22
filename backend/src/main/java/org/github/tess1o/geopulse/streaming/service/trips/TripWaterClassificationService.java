@@ -96,17 +96,23 @@ public class TripWaterClassificationService {
                 return TripWaterStatistics.unavailable();
             }
 
-            boolean onWater = Boolean.TRUE.equals(previous.getOnWater())
-                    && Boolean.TRUE.equals(current.getOnWater());
+            boolean previousOnWater = Boolean.TRUE.equals(previous.getOnWater());
+            boolean currentOnWater = Boolean.TRUE.equals(current.getOnWater());
 
             usableDistanceMeters += segmentDistanceMeters;
             sampleCount++;
 
-            if (onWater) {
+            if (previousOnWater && currentOnWater) {
                 waterDistanceMeters += segmentDistanceMeters;
                 currentWaterSegmentMeters += segmentDistanceMeters;
                 longestWaterSegmentMeters = Math.max(longestWaterSegmentMeters, currentWaterSegmentMeters);
             } else {
+                // One end on water and the other on land: the shoreline is crossed somewhere along the way, and
+                // without its shape half is the fair estimate. Counting it all as land let a single fix on the shore
+                // between sparse fixes turn kilometers of a boat trip into land.
+                if (previousOnWater != currentOnWater) {
+                    waterDistanceMeters += segmentDistanceMeters / 2;
+                }
                 currentWaterSegmentMeters = 0.0;
             }
         }

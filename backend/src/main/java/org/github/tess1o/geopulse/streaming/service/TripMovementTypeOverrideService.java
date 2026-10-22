@@ -5,8 +5,6 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateResponseDTO;
@@ -20,35 +18,12 @@ import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 @ApplicationScoped
 @Slf4j
 public class TripMovementTypeOverrideService {
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.max_timestamp_delta_seconds",
-            defaultValue = "2700")
-    long maxTimestampDeltaSeconds;
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.max_point_distance_meters",
-            defaultValue = "350.0")
-    double maxPointDistanceMeters;
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.min_duration_ratio",
-            defaultValue = "0.6")
-    double minDurationRatio;
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.max_duration_ratio",
-            defaultValue = "1.8")
-    double maxDurationRatio;
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.min_distance_ratio",
-            defaultValue = "0.6")
-    double minDistanceRatio;
-
-    @ConfigProperty(name = "geopulse.timeline.trip.movement_override.matching.max_distance_ratio",
-            defaultValue = "1.8")
-    double maxDistanceRatio;
 
     private final TimelineTripRepository tripRepository;
     private final TimelineTripMovementOverrideRepository overrideRepository;
@@ -161,65 +136,38 @@ public class TripMovementTypeOverrideService {
         return appliedCount;
     }
 
+    /**
+     * The regenerated trip that shares most of its time with the corrected trip, and most of the corrected trip's
+     * time with it. Regeneration moves trip boundaries (a departure detected a few points earlier, a stop found or
+     * dropped), so start and end points and distance can change by hundreds of meters, but the time the user
+     * travelled stays the same. Requiring more than half of the corrected trip means at most one trip that does not
+     * overlap others can qualify; requiring more than half of the candidate keeps a correction off a much longer trip
+     * it became only a part of.
+     */
     private TimelineTripEntity findBestMatch(TimelineTripMovementOverrideEntity override,
                                              List<TimelineTripEntity> candidateTrips,
                                              Set<Long> matchedTripIds) {
+        Instant sourceStart = override.getSourceTripTimestamp();
+        Instant sourceEnd = sourceStart.plusSeconds(override.getSourceTripDurationSeconds());
         TimelineTripEntity bestTrip = null;
-        double bestScore = Double.MAX_VALUE;
+        long bestSharedSeconds = 0;
 
         for (TimelineTripEntity trip : candidateTrips) {
-            if (trip.getId() == null || matchedTripIds.contains(trip.getId())) {
-                continue;
-            }
-            if (trip.getStartPoint() == null || trip.getEndPoint() == null || trip.getTimestamp() == null) {
+            if (trip.getId() == null || matchedTripIds.contains(trip.getId()) || trip.getTimestamp() == null) {
                 continue;
             }
 
-            long timestampDeltaSeconds = Math.abs(Duration.between(
-                    override.getSourceTripTimestamp(),
-                    trip.getTimestamp()
-            ).getSeconds());
+            Instant tripEnd = trip.getTimestamp().plusSeconds(trip.getTripDuration());
+            Instant sharedStart = sourceStart.isAfter(trip.getTimestamp()) ? sourceStart : trip.getTimestamp();
+            Instant sharedEnd = sourceEnd.isBefore(tripEnd) ? sourceEnd : tripEnd;
+            long sharedSeconds = Duration.between(sharedStart, sharedEnd).getSeconds();
 
-            if (timestampDeltaSeconds > maxTimestampDeltaSeconds) {
+            if (!isMostOf(sharedSeconds, override.getSourceTripDurationSeconds())
+                    || !isMostOf(sharedSeconds, trip.getTripDuration())) {
                 continue;
             }
-
-            double startDistance = GeoUtils.haversine(
-                    override.getSourceStartLatitude(),
-                    override.getSourceStartLongitude(),
-                    trip.getStartPoint().getY(),
-                    trip.getStartPoint().getX()
-            );
-            double endDistance = GeoUtils.haversine(
-                    override.getSourceEndLatitude(),
-                    override.getSourceEndLongitude(),
-                    trip.getEndPoint().getY(),
-                    trip.getEndPoint().getX()
-            );
-
-            if (startDistance > maxPointDistanceMeters || endDistance > maxPointDistanceMeters) {
-                continue;
-            }
-
-            long durationDelta = Math.abs(override.getSourceTripDurationSeconds() - trip.getTripDuration());
-            long distanceDelta = Math.abs(override.getSourceDistanceMeters() - trip.getDistanceMeters());
-            if (!isWithinRatioBounds(override.getSourceTripDurationSeconds(), trip.getTripDuration(),
-                    minDurationRatio, maxDurationRatio)) {
-                continue;
-            }
-            if (!isWithinRatioBounds(override.getSourceDistanceMeters(), trip.getDistanceMeters(),
-                    minDistanceRatio, maxDistanceRatio)) {
-                continue;
-            }
-
-            // Weighted score: timestamp + geometry proximity + shape similarity.
-            double score = timestampDeltaSeconds
-                    + (startDistance + endDistance)
-                    + (durationDelta * 0.6)
-                    + (distanceDelta * 0.04);
-
-            if (score < bestScore) {
-                bestScore = score;
+            if (sharedSeconds > bestSharedSeconds) {
+                bestSharedSeconds = sharedSeconds;
                 bestTrip = trip;
             }
         }
@@ -262,11 +210,7 @@ public class TripMovementTypeOverrideService {
         return travelClassification.classifyTravelType(trip, config).name();
     }
 
-    private boolean isWithinRatioBounds(long sourceValue, long candidateValue, double minRatio, double maxRatio) {
-        if (sourceValue <= 0 || candidateValue <= 0) {
-            return false;
-        }
-        double ratio = (double) candidateValue / (double) sourceValue;
-        return ratio >= minRatio && ratio <= maxRatio;
+    private static boolean isMostOf(long sharedSeconds, long durationSeconds) {
+        return durationSeconds > 0 && sharedSeconds * 2 > durationSeconds;
     }
 }

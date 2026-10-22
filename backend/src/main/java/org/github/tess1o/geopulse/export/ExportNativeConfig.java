@@ -40,6 +40,7 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         FriendPermissionsDataDto.FriendPermissionDto.class,
         ReverseGeocodingDataDto.class,
         UserInfoDataDto.class,
+        TimelineDataDto.class,
         TimelineDataDto.StayDto.class,
         TimelineDataDto.TripDto.class,
         TimelineDataDto.DataGapDto.class,

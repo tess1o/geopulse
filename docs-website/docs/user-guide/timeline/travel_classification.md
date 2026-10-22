@@ -85,7 +85,7 @@ GeoPulse includes sophisticated GPS noise detection to ensure accurate classific
 
 Boat detection is intentionally based on water evidence, not a minimum speed. Slow movement on a lake can still classify as **BOAT** if enough of the moving trip path is over water. Stationary time on water remains a normal stay.
 
-To reduce false positives from bridges, tunnels, and shoreline GPS drift, GeoPulse requires a minimum water ratio, minimum water distance, and minimum continuous water segment over imported water-surface polygons. Ambiguous sparse trips, trips crossing short bridges, or trips near unmapped water may remain **UNKNOWN** or use another matching mode.
+To reduce false positives from bridges, tunnels, and shoreline GPS drift, GeoPulse requires a minimum water ratio, minimum water distance, and minimum continuous water segment over imported water-surface polygons. A stretch between a GPS point on water and one on land crosses the shoreline somewhere, so half of it counts as water; only stretches with both points on water count toward the continuous water segment. Ambiguous sparse trips, trips crossing short bridges, or trips near unmapped water may remain **UNKNOWN** or use another matching mode.
 - **Smart Fallbacks**  -  Automatically switches to calculated speeds when GPS data is unreliable
 
 ### Distance-Based Classification (Sparse GPS Data)
@@ -365,36 +365,22 @@ These anchors are used to reattach the override after trips are regenerated and 
 
 After timeline regeneration, GeoPulse tries to reattach unmatched overrides to regenerated trips.
 
-Candidate filters (all must pass):
+An override is reattached to the regenerated trip that shares more than half of its time with the original trip,
+and more than half of the original trip's time with it.
 
-- timestamp delta `<=` 45 minutes (default `2700` seconds)
-- start-point distance `<=` 350 m
-- end-point distance `<=` 350 m
-- duration ratio in `[0.6, 1.8]`
-- distance ratio in `[0.6, 1.8]`
+Matching is by time because that is what stays the same when trips are regenerated. A newer timeline engine, or
+changed settings, can start a trip a few points earlier or end it at a different point, so start and end coordinates
+and the distance can move by hundreds of meters, but the time you travelled does not. Both halves are required:
 
-Scoring for best match (lowest score wins):
-
-`score = timestampDeltaSeconds + (startDistanceMeters + endDistanceMeters) + (durationDeltaSeconds * 0.6) + (distanceDeltaMeters * 0.04)`
+- more than half of the original trip: at most one regenerated trip can qualify
+- more than half of the regenerated trip: a correction is not applied to a much longer trip it became only a part of
 
 Additional rules:
 
 - one regenerated trip can be matched to only one override
 - source anchor fields remain immutable (they are not updated to the new matched trip shape)
-- if no candidate passes filters, override is not applied and trip stays `AUTO`
-
-### Override Matching Configuration
-
-These thresholds are configured via environment variables (system-wide defaults, not per-user settings):
-
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_TIMESTAMP_DELTA_SECONDS` (default: `2700`)
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_POINT_DISTANCE_METERS` (default: `350.0`)
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DURATION_RATIO` (default: `0.6`)
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DURATION_RATIO` (default: `1.8`)
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DISTANCE_RATIO` (default: `0.6`)
-- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DISTANCE_RATIO` (default: `1.8`)
-
-For deployment-level configuration examples, see [Timeline Global Configuration](/docs/system-administration/configuration/timeline-global-config).
+- if no regenerated trip qualifies, the override is not applied and the trip stays `AUTO`; the override is kept and
+  tried again after the next regeneration
 
 ### Reset behavior
 

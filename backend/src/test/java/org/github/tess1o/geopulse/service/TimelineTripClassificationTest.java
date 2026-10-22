@@ -1505,7 +1505,13 @@ public class TimelineTripClassificationTest {
         TripWaterStatistics result = waterClassificationService.calculateStatistics(bridgePath, boatConfig(true));
 
         assertEquals(true, result.hasEvidence());
-        assertEquals(0.0, result.waterDistanceMeters());
+        // Each stretch crosses the shoreline, so half of it counts as water, but none is water end to end
+        assertEquals(0.5, result.waterDistanceRatio(), 0.0001);
+        assertEquals(0.0, result.longestWaterSegmentMeters());
+        double carSpeed = 33.0 / 3.6;
+        TripType type = classification.classifyTravelType(new TripGpsStatistics(carSpeed, carSpeed, 1.0, 0),
+                result, Duration.ofSeconds(240), 2_224, boatConfig(true));
+        assertNotEquals(TripType.BOAT, type);
     }
 
     @Test

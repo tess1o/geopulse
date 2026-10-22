@@ -75,6 +75,59 @@ class TripWaterClassificationServiceTest {
         assertFalse(service.calculateStatistics(points, config(true)).hasEvidence());
     }
 
+    /**
+     * The trip back in issue #631: the boat's GPS went quiet for 20 minutes and the only accurate fix in between landed
+     * on the shore. The boat crossed the shoreline somewhere along each 3 km stretch to and from that fix; counting
+     * both stretches entirely as land left the trip below the boat ratio.
+     */
+    @Test
+    void shoreFixBetweenSparseWaterFixes_countsHalfOfEachStretchAsWater() {
+        List<GPSPoint> points = new ArrayList<>();
+        Instant time = START;
+        double longitude = 15.50;
+        for (int i = 0; i < 9; i++) {
+            points.add(point(time, 40.645, longitude, 14.0, 4.0, true));
+            longitude += 0.0059; // ~500 m
+            time = time.plusSeconds(130);
+        }
+        longitude += 0.0296; // ~3 km
+        time = time.plusSeconds(600);
+        points.add(point(time, 40.645, longitude, 0.0, 46.0, false));
+        longitude += 0.0355;
+        time = time.plusSeconds(600);
+        for (int i = 0; i < 5; i++) {
+            points.add(point(time, 40.645, longitude, 14.0, 4.0, true));
+            longitude += 0.0059;
+            time = time.plusSeconds(130);
+        }
+
+        TripWaterStatistics statistics = service.calculateStatistics(points, config(true));
+
+        assertTrue(statistics.hasEvidence());
+        assertTrue(statistics.waterDistanceRatio() > 0.7, "ratio " + statistics.waterDistanceRatio());
+        // Only stretches with both fixes on water make up a continuous water segment
+        assertEquals(8 * 500, statistics.longestWaterSegmentMeters(), 50);
+        assertEquals(TripType.BOAT, classify(statistics));
+    }
+
+    /** A drive along the coast whose fixes alternate between water and land is at most half on water. */
+    @Test
+    void fixesAlternatingBetweenWaterAndLand_areNotABoatTrip() {
+        List<GPSPoint> points = new ArrayList<>();
+        Instant time = START;
+        for (int i = 0; i < 20; i++) {
+            points.add(point(time, 40.645, 15.50 + i * 0.0035, 40.0, 5.0, i % 2 == 0));
+            time = time.plusSeconds(30);
+        }
+
+        TripWaterStatistics statistics = service.calculateStatistics(points, config(true));
+
+        assertTrue(statistics.hasEvidence());
+        assertEquals(0.5, statistics.waterDistanceRatio(), 0.0001);
+        assertEquals(0.0, statistics.longestWaterSegmentMeters(), 0.0001);
+        assertNotEquals(TripType.BOAT, classify(statistics));
+    }
+
     private TripType classify(TripWaterStatistics waterStatistics) {
         double speed = 14.0 / 3.6;
         return classification.classifyTravelType(new TripGpsStatistics(speed, speed, 0.5, 0),

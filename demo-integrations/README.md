@@ -71,9 +71,9 @@ so reverse geocoding names them "… Coffee", "… Park" and so on), its weekly 
 
 | Persona  | Everyday life                                   | Trips                                                     |
 |----------|-------------------------------------------------|-----------------------------------------------------------|
-| kyiv     | Podil → office near Zoloti Vorota, metro/walk   | Intercity train to Lviv; overnight train to Warsaw        |
-| london   | Hackney → King's Cross, bike/Tube               | Brighton day trip; LHR → JFK week; LNER to Edinburgh      |
-| new-york | Prospect Heights → Chelsea, subway              | Drive to Beacon; Amtrak to Boston; JFK → LIS week         |
+| kyiv     | Podil → office near Zoloti Vorota, walk/car     | Intercity train to Lviv; overnight train to Warsaw        |
+| london   | Hackney → King's Cross, bike/car                | Brighton day trip; LHR → JFK week; LNER to Edinburgh      |
+| new-york | Prospect Heights → Chelsea, car/bike            | Drive to Beacon; Amtrak to Boston; JFK → LIS week         |
 
 The London persona's New York week overlaps the New York persona once: both are at Time Out Market
 in DUMBO on the same evening.

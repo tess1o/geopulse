@@ -74,6 +74,12 @@ public class TimelineReplayHarness {
      */
     public static final String ISSUE_632_EXPORT = "/timeline-fixtures/issue-632-debug-export.zip";
 
+    /**
+     * A real day recorded with OwnTracks (GitHub issue #631): a boat trip out, a stay, a short fast ride on the water
+     * and the boat trip back, all marked BOAT by hand on a server that ran an older timeline engine.
+     */
+    public static final String ISSUE_631_EXPORT = "/timeline-fixtures/issue-631-debug-export.zip";
+
     @Inject
     DebugImportService debugImportService;
 
@@ -140,6 +146,49 @@ public class TimelineReplayHarness {
             throw new UncheckedIOException(e);
         }
         return userId;
+    }
+
+    /**
+     * A new user with everything in the export, boat detection as the export has it, and the exporting server's water
+     * flags on the points. Needs {@link #installWaterDataset()} first, or the flags are not imported.
+     */
+    public UUID importExportWithWater(byte[] export, String prefix) {
+        UUID userId = testUserFactory.createUser(prefix).userId();
+        try {
+            debugImportService.importDebugData(userId, export, new DebugImportRequest(true, true));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return userId;
+    }
+
+    /**
+     * Registers a water dataset without polygons. Imported points keep the exporting server's water flags, and a
+     * rebuild with boat detection on uses them instead of downloading the real dataset.
+     */
+    public void installWaterDataset() {
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery("""
+                        INSERT INTO geo_dataset_metadata (dataset_name, source_url, feature_count, imported_at)
+                        VALUES ('water_surface_polygons:replay_harness', 'test', 1, NOW())
+                        ON CONFLICT (dataset_name) DO UPDATE SET feature_count = 1
+                        """).executeUpdate());
+    }
+
+    public void removeWaterDataset() {
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery(
+                        "DELETE FROM geo_dataset_metadata WHERE dataset_name = 'water_surface_polygons:replay_harness'")
+                .executeUpdate());
+    }
+
+    /** The export without the user's manual corrections, so the timeline shows what detection alone produces. */
+    public static byte[] withoutOverrides(byte[] zip) {
+        try {
+            return withEntry(zip, "timeline_overrides.json", content -> """
+                    {"dataType":"timelineoverrides","tripMovementOverrides":[],"dataGapStayOverrides":[],\
+                    "tripStaySplitOverrides":[]}""".getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** A new user with default timeline settings. */
