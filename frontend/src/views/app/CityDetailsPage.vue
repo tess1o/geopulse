@@ -365,7 +365,7 @@ watch(
 
 .top-place-item:hover {
   border-color: var(--gp-primary);
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
 }
 
 .place-info {

@@ -527,7 +527,7 @@ onMounted(() => {
 }
 
 .step-active {
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
   border-left-color: var(--gp-primary);
 }
 

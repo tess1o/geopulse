@@ -2438,7 +2438,7 @@ watch(pageSize, async () => {
   align-items: center;
   gap: var(--gp-spacing-xs);
   padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-  background: var(--p-primary-50);
+  background: var(--gp-primary-soft);
   border-radius: var(--gp-radius-small);
 }
 
