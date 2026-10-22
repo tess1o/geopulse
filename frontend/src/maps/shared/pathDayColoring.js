@@ -5,10 +5,11 @@ import { HEATMAP_GRADIENTS, getColorDistance, sampleGradient } from '@/maps/shar
 
 export const DAY_COLOR_MODES = Object.freeze({ DISTINCT: 'distinct', GRADIENT: 'gradient' })
 
-// Opacity of the other days' lines while one day is focused. Fainter than the background of a selected trip
-// (0.25) because a day spans many overlapping lines, which add up, and bright day colors stay visible on
-// satellite tiles. Their outline is dropped for the same reason.
-export const MUTED_DAY_OPACITY = 0.1
+// Opacity (0-1) of the other days' lines while one day is focused; this, not HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+// is the knob for them. Slightly fainter than the background of a selected trip (0.25) because a day spans many
+// overlapping lines, which add up, and bright day colors stay visible on satellite tiles. Their outline is
+// dropped for the same reason.
+export const MUTED_DAY_OPACITY = 0.33
 
 // Below this CIE76 delta E a day line could pass for the selected path.
 export const MIN_DISTANCE_FROM_ACTIVE_COLOR = 25
