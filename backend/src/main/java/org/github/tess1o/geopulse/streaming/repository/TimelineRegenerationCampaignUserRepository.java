@@ -27,6 +27,24 @@ public class TimelineRegenerationCampaignUserRepository implements PanacheReposi
                 TimelineRegenerationCampaignUserStatus.FAILED).list();
     }
 
+    /**
+     * Users that are running or waiting for another attempt, so an admin can see why a campaign has not finished.
+     */
+    public List<TimelineRegenerationCampaignUserEntity> findInProgressByCampaign(UUID campaignId) {
+        return find("""
+                        campaign.id = ?1
+                        and (status = ?2 or (status = ?3 and (attempts > 0 or lastError is not null)))
+                        order by updatedAt desc
+                        """,
+                campaignId,
+                TimelineRegenerationCampaignUserStatus.RUNNING,
+                TimelineRegenerationCampaignUserStatus.PENDING).list();
+    }
+
+    /**
+     * A failed user is not counted: it waits for an admin retry, and holding back its real-time timeline until
+     * then would leave the user without new stays and trips.
+     */
     public boolean hasActiveCampaignForUser(UUID userId) {
         return count("""
                         user.id = ?1
@@ -36,8 +54,7 @@ public class TimelineRegenerationCampaignUserRepository implements PanacheReposi
                 userId,
                 List.of(
                         TimelineRegenerationCampaignUserStatus.PENDING,
-                        TimelineRegenerationCampaignUserStatus.RUNNING,
-                        TimelineRegenerationCampaignUserStatus.FAILED
+                        TimelineRegenerationCampaignUserStatus.RUNNING
                 )) > 0;
     }
 
@@ -137,6 +154,27 @@ public class TimelineRegenerationCampaignUserRepository implements PanacheReposi
                 campaignUserId);
     }
 
+    /**
+     * Puts a claimed user back in the queue because another timeline generation holds it. Waiting is not a failure,
+     * so the attempt the claim counted is given back.
+     */
+    @Transactional
+    public void deferBusy(Long campaignUserId, String reason, Instant nextAttemptAt) {
+        getEntityManager().createNativeQuery("""
+                        UPDATE timeline_regeneration_campaign_users
+                        SET status = 'PENDING',
+                            attempts = GREATEST(attempts - 1, 0),
+                            last_error = :reason,
+                            next_attempt_at = :nextAttemptAt,
+                            updated_at = NOW()
+                        WHERE id = :id
+                        """)
+                .setParameter("reason", truncateError(reason))
+                .setParameter("nextAttemptAt", nextAttemptAt)
+                .setParameter("id", campaignUserId)
+                .executeUpdate();
+    }
+
     @Transactional
     public void markFailed(Long campaignUserId, String errorMessage) {
         update("status = ?1, lastError = ?2, completedAt = ?3, updatedAt = ?3 where id = ?4",
@@ -146,21 +184,58 @@ public class TimelineRegenerationCampaignUserRepository implements PanacheReposi
                 campaignUserId);
     }
 
+    public List<RunningCampaignUser> findRunningClaimedBefore(Instant cutoff) {
+        return find("status = ?1 and claimedAt < ?2", TimelineRegenerationCampaignUserStatus.RUNNING, cutoff)
+                .stream()
+                .map(entity -> new RunningCampaignUser(entity.getId(), entity.getJobId()))
+                .toList();
+    }
+
+    /**
+     * Requeues users whose run was interrupted, or fails them when that run was their last attempt, so no user is
+     * left RUNNING or PENDING without a way forward.
+     */
     @Transactional
-    public int recoverStaleRunning(Instant cutoff) {
-        return update("""
-                        status = ?1,
-                        lastError = ?2,
-                        nextAttemptAt = null,
-                        updatedAt = ?3
-                        where status = ?4
-                        and claimedAt < ?5
-                        """,
-                TimelineRegenerationCampaignUserStatus.PENDING,
-                "Recovered stale running campaign user after backend restart",
-                Instant.now(),
-                TimelineRegenerationCampaignUserStatus.RUNNING,
-                cutoff);
+    public int recoverInterrupted(List<Long> campaignUserIds, int maxAttempts) {
+        if (campaignUserIds.isEmpty()) {
+            return 0;
+        }
+        return getEntityManager().createNativeQuery("""
+                        UPDATE timeline_regeneration_campaign_users
+                        SET status = CASE WHEN attempts >= :maxAttempts THEN 'FAILED' ELSE 'PENDING' END,
+                            last_error = 'Timeline regeneration was interrupted, for example by a backend restart',
+                            next_attempt_at = NULL,
+                            completed_at = CASE WHEN attempts >= :maxAttempts THEN NOW() END,
+                            updated_at = NOW()
+                        WHERE id IN (:ids)
+                          AND status = 'RUNNING'
+                        """)
+                .setParameter("maxAttempts", maxAttempts)
+                .setParameter("ids", campaignUserIds)
+                .executeUpdate();
+    }
+
+    /**
+     * Fails pending users that can no longer be claimed because they have used all their attempts. Earlier versions
+     * left such users PENDING, which kept their campaign active and their real-time timeline on hold for good.
+     */
+    @Transactional
+    public int failExhaustedPending(int maxAttempts) {
+        return getEntityManager().createNativeQuery("""
+                        UPDATE timeline_regeneration_campaign_users cu
+                        SET status = 'FAILED',
+                            last_error = COALESCE(cu.last_error, 'No attempts left'),
+                            next_attempt_at = NULL,
+                            completed_at = NOW(),
+                            updated_at = NOW()
+                        FROM timeline_regeneration_campaigns c
+                        WHERE c.id = cu.campaign_id
+                          AND c.status = 'ACTIVE'
+                          AND cu.status = 'PENDING'
+                          AND cu.attempts >= :maxAttempts
+                        """)
+                .setParameter("maxAttempts", maxAttempts)
+                .executeUpdate();
     }
 
     @Transactional
@@ -180,6 +255,9 @@ public class TimelineRegenerationCampaignUserRepository implements PanacheReposi
                 Instant.now(),
                 campaignId,
                 TimelineRegenerationCampaignUserStatus.FAILED);
+    }
+
+    public record RunningCampaignUser(Long id, UUID jobId) {
     }
 
     private UUID toUuid(Object value) {

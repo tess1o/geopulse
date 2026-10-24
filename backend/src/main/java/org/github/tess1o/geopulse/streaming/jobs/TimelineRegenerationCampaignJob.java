@@ -34,17 +34,12 @@ public class TimelineRegenerationCampaignJob {
     @StaticInitSafe
     int maxConcurrentTasks;
 
-    @ConfigProperty(name = "geopulse.timeline.regeneration-campaign.max-attempts", defaultValue = "5")
-    @StaticInitSafe
-    int maxAttempts;
-
     private Semaphore semaphore;
 
     @PostConstruct
     void init() {
         semaphore = new Semaphore(Math.max(1, maxConcurrentTasks));
-        log.info("Initialized TimelineRegenerationCampaignJob with max {} concurrent tasks and {} attempts",
-                maxConcurrentTasks, maxAttempts);
+        log.info("Initialized TimelineRegenerationCampaignJob with max {} concurrent tasks", maxConcurrentTasks);
     }
 
     @Blocking
@@ -73,7 +68,7 @@ public class TimelineRegenerationCampaignJob {
                     return;
                 }
                 try {
-                    campaignService.processNextDueCampaignUser(maxAttempts);
+                    campaignService.processNextDueCampaignUser();
                 } catch (Exception e) {
                     log.error("Failed to process forced timeline regeneration campaign work", e);
                 } finally {

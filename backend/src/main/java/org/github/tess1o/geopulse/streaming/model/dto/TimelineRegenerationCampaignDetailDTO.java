@@ -9,5 +9,6 @@ import java.util.List;
 @Builder
 public class TimelineRegenerationCampaignDetailDTO {
     private TimelineRegenerationCampaignSummaryDTO campaign;
+    private List<TimelineRegenerationCampaignUserDTO> inProgressUsers;
     private List<TimelineRegenerationCampaignUserDTO> failedUsers;
 }

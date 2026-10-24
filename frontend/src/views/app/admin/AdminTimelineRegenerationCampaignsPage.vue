@@ -149,8 +149,11 @@
             <div class="campaign-card-reason">{{ campaign.reason }}</div>
             <div class="campaign-card-stats">
               <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.total') }}</span><strong>{{ campaign.totalUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.pending') }}</span><strong>{{ campaign.pendingUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.running') }}</span><strong>{{ campaign.runningUsers }}</strong></div>
               <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.done') }}</span><strong>{{ campaign.completedUsers }}</strong></div>
               <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.failed') }}</span><strong :class="{ danger: campaign.failedUsers > 0 }">{{ campaign.failedUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.skipped') }}</span><strong>{{ campaign.skippedUsers }}</strong></div>
             </div>
             <div class="gp-admin-list-card-actions campaign-card-actions">
               <Button
@@ -294,7 +297,7 @@
         v-model:visible="detailsVisible"
         :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.header')"
         :modal="true"
-        :style="{ width: '900px', maxWidth: '95vw' }"
+        class="gp-dialog-lg"
       >
         <div v-if="detailLoading" class="text-center p-4">
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
@@ -333,8 +336,8 @@
             <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.skipped') }}</span><strong>{{ campaignDetails.campaign.skippedUsers }}</strong></div>
           </div>
 
-          <div class="failed-users-header">
-            <h3>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.failedUsersTitle') }}</h3>
+          <div class="campaign-users-header">
+            <h3>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.usersTitle') }}</h3>
             <Button
               :label="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.retryButton')"
               icon="pi pi-replay"
@@ -346,34 +349,81 @@
             />
           </div>
 
-          <DataTable
-            :value="campaignDetails.failedUsers || []"
-            dataKey="id"
-            responsiveLayout="scroll"
-            :paginator="(campaignDetails.failedUsers || []).length > 10"
-            :rows="10"
-          >
-            <Column field="email" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.email')" style="min-width: 220px">
-              <template #body="{ data }">
-                <div>{{ data.email }}</div>
-                <div class="text-muted small">{{ data.fullName || data.userId }}</div>
+          <div class="desktop-only">
+            <DataTable
+              :value="detailUsers"
+              dataKey="id"
+              responsiveLayout="scroll"
+              :paginator="detailUsers.length > 10"
+              :rows="10"
+            >
+              <Column field="email" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.email')" style="min-width: 200px">
+                <template #body="{ data }">
+                  <div>{{ data.email }}</div>
+                  <div class="text-muted small">{{ data.fullName || data.userId }}</div>
+                </template>
+              </Column>
+              <Column field="status" :header="t('adminCampaignsAndUsers.campaignsPage.labels.status')" style="min-width: 110px">
+                <template #body="{ data }">
+                  <Tag :severity="userStatusSeverity(data.status)" :value="data.status" />
+                </template>
+              </Column>
+              <Column field="attempts" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.attempts')" style="min-width: 90px" />
+              <Column field="lastError" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.lastError')" style="min-width: 240px">
+                <template #body="{ data }">
+                  <span v-tooltip="data.lastError">{{ truncate(data.lastError || '-', 100) }}</span>
+                </template>
+              </Column>
+              <Column field="nextAttemptAt" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.nextAttempt')" style="min-width: 170px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.nextAttemptAt) }}
+                </template>
+              </Column>
+              <Column field="updatedAt" :header="t('adminCampaignsAndUsers.campaignsPage.labels.updated')" style="min-width: 170px">
+                <template #body="{ data }">
+                  {{ formatDateTime(data.updatedAt) }}
+                </template>
+              </Column>
+              <template #empty>
+                <div class="text-center p-4">{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.empty') }}</div>
               </template>
-            </Column>
-            <Column field="attempts" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.attempts')" style="min-width: 100px" />
-            <Column field="lastError" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.lastError')" style="min-width: 260px">
-              <template #body="{ data }">
-                <span v-tooltip="data.lastError">{{ truncate(data.lastError || '-', 100) }}</span>
-              </template>
-            </Column>
-            <Column field="updatedAt" :header="t('adminCampaignsAndUsers.campaignsPage.labels.updated')" style="min-width: 180px">
-              <template #body="{ data }">
-                {{ formatDateTime(data.updatedAt) }}
-              </template>
-            </Column>
-            <template #empty>
-              <div class="text-center p-4">{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.empty') }}</div>
-            </template>
-          </DataTable>
+            </DataTable>
+          </div>
+
+          <div class="mobile-only">
+            <div v-if="detailUsers.length === 0" class="campaign-users-empty">
+              {{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.empty') }}
+            </div>
+            <div v-else class="campaign-user-list">
+              <div v-for="user in detailUsers" :key="user.id" class="campaign-user-card">
+                <div class="campaign-user-card-header">
+                  <div class="campaign-user-identity">
+                    <div class="campaign-user-email">{{ user.email }}</div>
+                    <div class="text-muted small">{{ user.fullName || user.userId }}</div>
+                  </div>
+                  <Tag :severity="userStatusSeverity(user.status)" :value="user.status" />
+                </div>
+                <div class="campaign-user-facts">
+                  <div>
+                    <span>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.attempts') }}</span>
+                    <strong>{{ user.attempts }}</strong>
+                  </div>
+                  <div v-if="user.nextAttemptAt">
+                    <span>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.nextAttempt') }}</span>
+                    <strong>{{ formatDateTime(user.nextAttemptAt) }}</strong>
+                  </div>
+                  <div>
+                    <span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.updated') }}</span>
+                    <strong>{{ formatDateTime(user.updatedAt) }}</strong>
+                  </div>
+                </div>
+                <div v-if="user.lastError" class="campaign-user-error">
+                  <span>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.lastError') }}</span>
+                  <p>{{ user.lastError }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <template #footer>
@@ -447,6 +497,11 @@ const createForm = ref({
 const detailsVisible = ref(false)
 const detailLoading = ref(false)
 const campaignDetails = ref(null)
+// Users still being worked on come first, then the ones that ran out of attempts.
+const detailUsers = computed(() => [
+  ...(campaignDetails.value?.inProgressUsers || []),
+  ...(campaignDetails.value?.failedUsers || [])
+])
 
 function toApiInstant(value) {
   if (!value) {
@@ -638,6 +693,13 @@ const statusSeverity = (status) => {
   return 'secondary'
 }
 
+const userStatusSeverity = (status) => {
+  if (status === 'RUNNING') return 'info'
+  if (status === 'PENDING') return 'warn'
+  if (status === 'FAILED') return 'danger'
+  return 'secondary'
+}
+
 const sourceSeverity = (source) => {
   if (source === 'ADMIN') return 'warning'
   if (source === 'RELEASE') return 'info'
@@ -807,15 +869,79 @@ onMounted(() => {
   gap: 1rem;
 }
 
-.failed-users-header {
+.details-grid strong {
+  word-break: break-word;
+}
+
+.campaign-users-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
 
-.failed-users-header h3 {
+.campaign-users-header h3 {
   margin: 0;
+}
+
+.campaign-users-empty {
+  color: var(--gp-text-secondary);
+  text-align: center;
+  padding: 1rem;
+}
+
+.campaign-user-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.campaign-user-card {
+  border: 1px solid var(--gp-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.campaign-user-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.campaign-user-identity {
+  min-width: 0;
+}
+
+.campaign-user-email {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.campaign-user-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.campaign-user-facts span,
+.campaign-user-error span {
+  display: block;
+  color: var(--gp-text-secondary);
+  font-size: 0.75rem;
+}
+
+.campaign-user-facts strong {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.campaign-user-error p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .danger {
@@ -843,15 +969,31 @@ onMounted(() => {
 @media (max-width: 640px) {
   .preview-panel,
   .confirmation-row,
-  .failed-users-header {
+  .campaign-users-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .campaign-card-stats,
-  .details-stats,
+  .details-content {
+    gap: 1rem;
+  }
+
   .details-grid {
-    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .details-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .campaign-card-stats,
+  .details-stats {
+    gap: 0.5rem;
+  }
+
+  .campaign-card-stats div,
+  .details-stats div {
+    padding: 0.5rem;
   }
 }
 </style>

@@ -64,13 +64,14 @@ export default {
         },
         detailsDialog: {
             header: 'Timeline Regeneration Details',
-            failedUsersTitle: 'Failed Users',
+            usersTitle: 'Running, Retrying and Failed Users',
             retryButton: 'Retry Failed',
             table: {
                 email: 'Email',
                 attempts: 'Attempts',
                 lastError: 'Last Error',
-                empty: 'No failed users.'
+                nextAttempt: 'Next Attempt',
+                empty: 'No users are running, waiting to retry or failed.'
             },
             close: 'Close'
         },

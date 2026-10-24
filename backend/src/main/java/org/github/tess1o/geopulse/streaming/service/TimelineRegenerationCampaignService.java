@@ -8,6 +8,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
@@ -37,7 +38,10 @@ public class TimelineRegenerationCampaignService {
 
     private static final String NOTIFICATION_TITLE = "Timeline refresh scheduled";
     private static final String NOTIFICATION_TARGET_ROUTE = "/app/timeline/jobs";
-    private static final Duration STALE_RUNNING_AFTER = Duration.ofHours(2);
+    // Covers the moment between claiming a user and registering its job; after that a running user whose job is
+    // no longer active was interrupted.
+    private static final Duration STALE_RUNNING_AFTER = Duration.ofMinutes(10);
+    private static final Duration BUSY_RETRY_DELAY = Duration.ofMinutes(5);
 
     @Inject
     TimelineRegenerationCampaignRepository campaignRepository;
@@ -59,6 +63,9 @@ public class TimelineRegenerationCampaignService {
 
     @Inject
     BadgeRecalculationService badgeRecalculationService;
+
+    @ConfigProperty(name = "geopulse.timeline.regeneration-campaign.max-attempts", defaultValue = "5")
+    int maxAttempts;
 
     @Transactional
     public void onStartup(@Observes StartupEvent startupEvent) {
@@ -118,8 +125,14 @@ public class TimelineRegenerationCampaignService {
                 .map(this::toUserDto)
                 .toList();
 
+        List<TimelineRegenerationCampaignUserDTO> inProgressUsers = campaignUserRepository.findInProgressByCampaign(campaignId)
+                .stream()
+                .map(this::toUserDto)
+                .toList();
+
         return TimelineRegenerationCampaignDetailDTO.builder()
                 .campaign(toSummary(campaign))
+                .inProgressUsers(inProgressUsers)
                 .failedUsers(failedUsers)
                 .build();
     }
@@ -147,12 +160,16 @@ public class TimelineRegenerationCampaignService {
 
     @Transactional
     public void reconcileActiveCampaigns() {
+        int exhausted = campaignUserRepository.failExhaustedPending(maxAttempts);
+        if (exhausted > 0) {
+            log.warn("Marked {} forced timeline regeneration campaign user(s) with no attempts left as failed", exhausted);
+        }
         for (TimelineRegenerationCampaignEntity campaign : campaignRepository.findActiveCampaigns()) {
             reconcileCampaign(campaign);
         }
     }
 
-    public boolean processNextDueCampaignUser(int maxAttempts) {
+    public boolean processNextDueCampaignUser() {
         Optional<TimelineRegenerationCampaignClaim> claim = campaignUserRepository.claimNextDueUser(maxAttempts);
         if (claim.isEmpty()) {
             return false;
@@ -163,11 +180,7 @@ public class TimelineRegenerationCampaignService {
 
         try {
             if (jobProgressService.getUserActiveJob(work.userId()).isPresent()) {
-                campaignUserRepository.markRetry(
-                        work.campaignUserId(),
-                        "Another timeline generation job is already active for this user",
-                        nextAttemptAt(work.attempts())
-                );
+                deferBusyUser(work, null, "Another timeline generation job is already active for this user");
                 return true;
             }
 
@@ -189,12 +202,14 @@ public class TimelineRegenerationCampaignService {
             campaignUserRepository.markCompleted(work.campaignUserId());
             refreshCampaignCounters(work.campaignId());
             markCampaignCompletedIfFinished(work.campaignId());
-        } catch (TimelineGenerationLockException | IllegalStateException e) {
-            failOrRetry(work, jobId, maxAttempts, e.getMessage());
+        } catch (TimelineGenerationLockException e) {
+            deferBusyUser(work, jobId, e.getMessage());
+        } catch (IllegalStateException e) {
+            failOrRetry(work, jobId, e.getMessage());
         } catch (Exception e) {
             log.error("Forced timeline regeneration campaign {} failed for user {}",
                     work.campaignKey(), work.userId(), e);
-            failOrRetry(work, jobId, maxAttempts, e.getMessage());
+            failOrRetry(work, jobId, e.getMessage());
         }
 
         return true;
@@ -204,12 +219,26 @@ public class TimelineRegenerationCampaignService {
         return campaignUserRepository.hasActiveCampaignForUser(userId);
     }
 
+    /**
+     * Recovers running users whose regeneration is no longer running, for example after a backend restart. A long
+     * regeneration whose job is still active is left alone, so it is never started a second time next to itself.
+     */
     public void recoverStaleRunningCampaignUsers() {
         Instant cutoff = Instant.now().minus(STALE_RUNNING_AFTER);
-        int recovered = campaignUserRepository.recoverStaleRunning(cutoff);
+        List<Long> interrupted = campaignUserRepository.findRunningClaimedBefore(cutoff).stream()
+                .filter(running -> !isJobActive(running.jobId()))
+                .map(TimelineRegenerationCampaignUserRepository.RunningCampaignUser::id)
+                .toList();
+        int recovered = campaignUserRepository.recoverInterrupted(interrupted, maxAttempts);
         if (recovered > 0) {
             log.warn("Recovered {} stale forced timeline regeneration campaign user(s)", recovered);
         }
+    }
+
+    private boolean isJobActive(UUID jobId) {
+        return jobId != null && jobProgressService.getJobProgress(jobId)
+                .map(progress -> progress.isActive())
+                .orElse(false);
     }
 
     private void validatePreviewRequest(TimelineRegenerationCampaignPreviewRequest request) {
@@ -389,7 +418,7 @@ public class TimelineRegenerationCampaignService {
         }
     }
 
-    private void failOrRetry(TimelineRegenerationCampaignClaim work, UUID jobId, int maxAttempts, String errorMessage) {
+    private void failOrRetry(TimelineRegenerationCampaignClaim work, UUID jobId, String errorMessage) {
         failJobIfActive(jobId, errorMessage);
 
         if (work.attempts() < maxAttempts) {
@@ -399,6 +428,13 @@ public class TimelineRegenerationCampaignService {
         }
 
         refreshCampaignCounters(work.campaignId());
+    }
+
+    private void deferBusyUser(TimelineRegenerationCampaignClaim work, UUID jobId, String reason) {
+        failJobIfActive(jobId, reason);
+        campaignUserRepository.deferBusy(work.campaignUserId(), reason, Instant.now().plus(BUSY_RETRY_DELAY));
+        log.info("Deferred forced timeline regeneration campaign {} for user {}: {}",
+                work.campaignKey(), work.userId(), reason);
     }
 
     private void failJobIfActive(UUID jobId, String errorMessage) {
