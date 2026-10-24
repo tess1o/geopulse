@@ -2239,7 +2239,8 @@ defineExpose({
   50% { opacity: 1; transform: rotate(12deg); }
 }
 
-/* Bottom-left, clear of the attribution (bottom-right) and the docked trip summary (bottom-centre). */
+/* Bottom-left above the scale bar chip, clear of the attribution (bottom-right) and the docked trip summary
+   (bottom-centre). */
 .map-bottom-left-overlays {
   position: absolute;
   left: calc(0.75rem + env(safe-area-inset-left));
@@ -2459,6 +2460,11 @@ defineExpose({
     margin-bottom: 0;
     font-size: 9px;
     white-space: nowrap;
+  }
+
+  /* Keep the legend above the lifted scale bar (bottom-left control) instead of under the sheet. */
+  .map-bottom-left-overlays {
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 2.35rem + env(safe-area-inset-bottom));
   }
 
   .trip-summary {

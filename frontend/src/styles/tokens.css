@@ -153,6 +153,10 @@
     --gp-map-marker-weather-clear: #ca8a04;
     --gp-map-marker-weather-wet: #2563eb;
     --gp-map-marker-weather-snow: #0284c7;
+    /* Scale bar: a white chip like MapLibre's zoom buttons, readable on light, dark and satellite tiles alike. */
+    --gp-map-scale-ink: #334155;
+    --gp-map-scale-chip: #ffffff;
+    --gp-map-scale-ring: rgba(0, 0, 0, 0.1);
 
     /* Landing page (Home, ExploreGeoPulsePanel, TipOfDayCard): its own tinted palette and glass panels */
     --gp-landing-bg: #eef4fb;

@@ -71,7 +71,8 @@ const TIMELINE_DISPLAY_PREFERENCE_DEFAULTS = {
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],
-    // Path colors, speed bands, heatmap gradient, width and outline; resolved by maps/shared/mapAppearance.
+    // Path colors, speed bands, heatmap gradient, width and outline (resolved by maps/shared/mapAppearance),
+    // plus the scale bar toggle.
     ...APPEARANCE_PREFERENCE_DEFAULTS
 }
 
@@ -165,6 +166,7 @@ export const useAuthStore = defineStore('auth', {
         mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
         mapMatchingExcludedMovementTypes: (state) => state.user?.mapMatchingExcludedMovementTypes ?? [],
         mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
+        showMapScale: (state) => state.user?.showMapScale ?? true,
         defaultPathColor: (state) => state.user?.defaultPathColor || '',
         activePathColor: (state) => state.user?.activePathColor || '',
         userRole: (state) => state.user?.role || 'USER',

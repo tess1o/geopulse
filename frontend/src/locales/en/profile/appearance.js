@@ -128,6 +128,15 @@ export default {
             CIVIDIS: 'Cividis (navy to yellow)'
         }
     },
+    map: {
+        heading: 'Map',
+        description: 'Extra information shown on every map.',
+        scaleBar: {
+            title: 'Scale bar',
+            description: 'Show a distance scale in the bottom-left corner of maps.',
+            details: 'Uses kilometers or miles, following your distance unit setting.'
+        }
+    },
     resetToDefaults: 'Reset to Defaults',
     saveChanges: 'Save Changes'
 }

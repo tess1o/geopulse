@@ -14,6 +14,7 @@
       :is-shared-view="isSharedView"
       :enable-fullscreen="enableFullscreen"
       :fullscreen-options="fullscreenOptions"
+      :show-scale="showScale"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
       @map-contextmenu="handleMapContextMenu"
@@ -103,6 +104,10 @@ const props = defineProps({
   fullscreenOptions: {
     type: Object,
     default: () => ({})
+  },
+  showScale: {
+    type: Boolean,
+    default: true
   }
 })
 

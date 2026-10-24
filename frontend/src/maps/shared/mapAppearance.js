@@ -96,7 +96,8 @@ export const APPEARANCE_PREFERENCE_DEFAULTS = Object.freeze({
   pathColorMode: PATH_COLOR_MODES.SINGLE,
   dayPalette: '',
   pathOutlineEnabled: false,
-  pathWidth: PATH_WIDTH.DEFAULT
+  pathWidth: PATH_WIDTH.DEFAULT,
+  showMapScale: true
 })
 
 export const APPEARANCE_PREFERENCE_KEYS = Object.freeze(Object.keys(APPEARANCE_PREFERENCE_DEFAULTS))

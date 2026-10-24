@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { resolveVectorStyleSource } from '@/maps/runtime/mapSourceResolver'
 import { normalizeLeafletBoundsToMapLibre, toLngLatTuple } from '@/maps/vector/utils/maplibreLayerUtils'
+import { getScaleBarUnit, SCALE_BAR_MAX_WIDTH } from '@/maps/shared/mapEngineUtils'
 
 // MapLibre 6 locates its worker relative to import.meta.url, which breaks once Vite bundles it into /assets.
 // Import the worker as an emitted asset and point MapLibre at it explicitly.
@@ -65,6 +66,10 @@ const props = defineProps({
   fullscreenOptions: {
     type: Object,
     default: () => ({})
+  },
+  showScale: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -79,6 +84,30 @@ const LONG_PRESS_DURATION_MS = 550
 const LONG_PRESS_MOVE_THRESHOLD_PX = 12
 let lastSyntheticContextMenuTs = 0
 let touchLongPressCleanup = null
+let scaleControl = null
+
+const syncScaleControl = (mapInstance) => {
+  if (!mapInstance) {
+    return
+  }
+
+  if (!props.showScale || !authStore.showMapScale) {
+    if (scaleControl) {
+      mapInstance.removeControl(scaleControl)
+      scaleControl = null
+    }
+    return
+  }
+
+  const unit = getScaleBarUnit(authStore.distanceUnit)
+  if (scaleControl) {
+    scaleControl.setUnit(unit)
+    return
+  }
+
+  scaleControl = new maplibregl.ScaleControl({ unit, maxWidth: SCALE_BAR_MAX_WIDTH })
+  mapInstance.addControl(scaleControl, 'bottom-left')
+}
 
 const shouldExposeMapForE2E = () => {
   if (typeof window === 'undefined') {
@@ -432,6 +461,9 @@ const createMapInstance = () => {
     vectorMap.addControl(new maplibregl.FullscreenControl(props.fullscreenOptions), 'top-left')
   }
 
+  scaleControl = null
+  syncScaleControl(vectorMap)
+
   vectorMap.on('load', () => {
     if (!map.value) {
       return
@@ -682,6 +714,13 @@ watch(
   }
 )
 
+watch(
+  () => [props.showScale, authStore.showMapScale, authStore.distanceUnit],
+  () => {
+    syncScaleControl(map.value)
+  }
+)
+
 defineExpose({
   map,
   isReady,
@@ -775,6 +814,8 @@ onUnmounted(() => {
     }
     map.value = null
   }
+
+  scaleControl = null
 })
 </script>
 

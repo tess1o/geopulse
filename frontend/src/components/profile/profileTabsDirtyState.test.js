@@ -259,7 +259,8 @@ const appearanceKeys = [
   'pathColorMode',
   'dayPalette',
   'pathOutlineEnabled',
-  'pathWidth'
+  'pathWidth',
+  'showMapScale'
 ]
 
 const appearancePrefs = {
@@ -271,7 +272,8 @@ const appearancePrefs = {
   pathColorMode: 'DAY',
   dayPalette: 'TOL_MUTED',
   pathOutlineEnabled: false,
-  pathWidth: 4
+  pathWidth: 4,
+  showMapScale: true
 }
 
 describe('appearance and timeline tabs share one preferences document', () => {
@@ -361,7 +363,8 @@ describe('appearance and timeline tabs share one preferences document', () => {
       pathColorMode: 'DAY',
       dayPalette: '',
       pathOutlineEnabled: true,
-      pathWidth: 4
+      pathWidth: 4,
+      showMapScale: true
     })
   })
 

@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { fixLeafletMarkerAnimation, fixLeafletMarkerImages, fixLeafLetTooltip } from '@/utils/mapHelpers'
 import { resolveRasterTileSource } from '@/maps/runtime/mapSourceResolver'
+import { getScaleBarUnit, SCALE_BAR_MAX_WIDTH } from '@/maps/shared/mapEngineUtils'
 
 const props = defineProps({
   mapId: {
@@ -60,6 +61,10 @@ const props = defineProps({
   fullscreenOptions: {
     type: Object,
     default: () => ({})
+  },
+  showScale: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -70,6 +75,7 @@ const map = ref(null)
 const isReady = ref(false)
 const isInitializing = ref(false)
 const rasterTileLayer = ref(null)
+let scaleControl = null
 
 const shouldExposeMapForE2E = () => {
   if (typeof window === 'undefined') {
@@ -186,6 +192,28 @@ const replaceRasterTileLayer = () => {
   }
 }
 
+// Leaflet's scale control can't switch units in place, so a unit change replaces it.
+const replaceScaleControl = () => {
+  if (!map.value) {
+    return
+  }
+
+  scaleControl?.remove()
+  scaleControl = null
+
+  if (!props.showScale || !authStore.showMapScale) {
+    return
+  }
+
+  const unit = getScaleBarUnit(authStore.distanceUnit)
+  scaleControl = L.control.scale({
+    position: 'bottomleft',
+    metric: unit === 'metric',
+    imperial: unit === 'imperial',
+    maxWidth: SCALE_BAR_MAX_WIDTH
+  }).addTo(map.value)
+}
+
 const initializeMap = async () => {
   if (isInitializing.value || map.value) {
     return
@@ -252,6 +280,7 @@ const initializeMap = async () => {
         map.value.addControl(new FullScreen(props.fullscreenOptions))
       }
 
+      replaceScaleControl()
       replaceRasterTileLayer()
 
       map.value.on('click', (event) => {
@@ -389,6 +418,13 @@ watch(
   }
 )
 
+watch(
+  () => [props.showScale, authStore.showMapScale, authStore.distanceUnit],
+  () => {
+    replaceScaleControl()
+  }
+)
+
 defineExpose({
   map,
   isReady,
@@ -480,6 +516,7 @@ onUnmounted(() => {
     map.value = null
   }
 
+  scaleControl = null
   rasterTileLayer.value = null
 
   setTimeout(() => {

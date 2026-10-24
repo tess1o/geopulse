@@ -275,6 +275,34 @@
 }
 
 /* ================================
+   SCALE BAR (bottom-left on every map)
+   The ruler (the element itself: its inline width is the measured length) sits on a white chip like the zoom
+   buttons, so it reads on any basemap. The chip is a spread box-shadow rather than padding, which would make the
+   ruler longer than the distance it shows; the margin makes room for it (3px chip + 1px ring + 10px corner gap).
+   ================================ */
+
+.leaflet-control-scale-line,
+.maplibregl-ctrl-scale {
+    background: var(--gp-map-scale-chip);
+    color: var(--gp-map-scale-ink);
+    border: 1.5px solid var(--gp-map-scale-ink);
+    border-top: none;
+    border-radius: 1px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    text-shadow: none;
+    box-shadow: 0 0 0 3px var(--gp-map-scale-chip), 0 0 0 4px var(--gp-map-scale-ring);
+}
+
+.leaflet-bottom.leaflet-left .leaflet-control-scale,
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale {
+    margin: 0 0 14px 14px;
+}
+
+/* ================================
    TOOLTIPS
    ================================ */
 

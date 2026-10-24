@@ -198,6 +198,13 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['outline', 'border', 'halo', 'contrast', 'satellite', 'visibility', 'accessibility']
   },
   {
+    id: 'showMapScale',
+    title: 'Scale Bar',
+    tab: 'appearance',
+    subtitle: 'Appearance',
+    keywords: ['scale', 'scale bar', 'ruler', 'distance', 'km', 'miles', 'map']
+  },
+  {
     id: 'speedBandPalette',
     title: 'Driving Speed Colors',
     tab: 'appearance',

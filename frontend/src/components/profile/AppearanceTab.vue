@@ -304,6 +304,31 @@
           </div>
         </section>
 
+        <section class="settings-group" aria-labelledby="appearance-map-heading">
+          <div class="settings-group-header">
+            <h3 id="appearance-map-heading">{{ t('profile.appearance.map.heading') }}</h3>
+            <p>{{ t('profile.appearance.map.description') }}</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.appearance.map.scaleBar.title')"
+              :description="t('profile.appearance.map.scaleBar.description')"
+              :details="t('profile.appearance.map.scaleBar.details')"
+              setting-id="showMapScale"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.showMapScale"
+                  class="toggle-control"
+                  :aria-label="t('profile.appearance.map.scaleBar.title')"
+                  :disabled="readOnly"
+                />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
         <div class="settings-actions is-sticky">
           <Button
             type="button"
@@ -392,7 +417,8 @@ const normalizePreferences = (preferences = {}) => ({
   pathOutlineEnabled: preferences.pathOutlineEnabled === true,
   pathWidth: Number.isFinite(Number(preferences.pathWidth)) && preferences.pathWidth !== '' && preferences.pathWidth !== null
     ? Math.min(PATH_WIDTH.MAX, Math.max(PATH_WIDTH.MIN, Math.round(Number(preferences.pathWidth))))
-    : APPEARANCE_PREFERENCE_DEFAULTS.pathWidth
+    : APPEARANCE_PREFERENCE_DEFAULTS.pathWidth,
+  showMapScale: preferences.showMapScale !== false
 })
 
 const form = ref(normalizePreferences(APPEARANCE_PREFERENCE_DEFAULTS))

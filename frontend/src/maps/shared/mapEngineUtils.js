@@ -1,6 +1,13 @@
 // Engine-neutral map helpers used by both raster and vector code. They live outside src/maps/vector so that
 // raster-only pages do not load vector modules (see vectorEngineRegistry).
 
+export const SCALE_BAR_MAX_WIDTH = 90
+
+// Scale bar unit for the user's distance preference: 'imperial' for MILES, 'metric' otherwise.
+export function getScaleBarUnit(distanceUnit) {
+  return distanceUnit === 'MILES' ? 'imperial' : 'metric'
+}
+
 export function isMapLibreMap(map) {
   return Boolean(map && typeof map.addSource === 'function' && typeof map.addLayer === 'function')
 }

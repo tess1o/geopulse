@@ -118,6 +118,9 @@ public class TimelineDisplayPreferences implements Serializable {
     @Max(value = 10, message = "Path width cannot exceed 10 pixels")
     private Integer pathWidth;
 
+    /** Show a distance scale bar on every map. Default: true. */
+    private Boolean showMapScale;
+
     /**
      * A copy with every unset preference replaced by its application default. Path colors, speed band palette,
      * heatmap gradient and day palette stay null: null means "follow colorScheme", which the frontend resolves.
@@ -138,6 +141,7 @@ public class TimelineDisplayPreferences implements Serializable {
                 .pathColorMode(pathColorMode != null ? pathColorMode : PathColorMode.SINGLE)
                 .pathOutlineEnabled(pathOutlineEnabled != null ? pathOutlineEnabled : false)
                 .pathWidth(pathWidth != null ? pathWidth : 4)
+                .showMapScale(showMapScale != null ? showMapScale : true)
                 .build();
     }
 }
