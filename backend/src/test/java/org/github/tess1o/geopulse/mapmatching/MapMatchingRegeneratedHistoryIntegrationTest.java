@@ -95,7 +95,9 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
     @Test
     void regeneratedHistoryIsDiscoveredWhileLiveTrackingKeepsChangingTheTimeline() {
         enableAutomaticMatching();
-        Instant now = Instant.now();
+        // Instants compared with stored timestamps are truncated to PostgreSQL's microsecond precision: the driver
+        // rounds nanoseconds, so a stored value can land just before the Instant it was written from.
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         Instant importedFrom = now.minus(70, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
         List<Long> importedTripIds = new ArrayList<>();
         for (int day = 0; day < 3; day++) {
@@ -119,7 +121,7 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
         // ...but the user is on the move, so the real-time job keeps regenerating the trip in progress.
         Instant liveTripStart = Instant.now().minus(10, ChronoUnit.MINUTES);
         long liveTripId = persistTripWithPoints(liveTripStart, Duration.ofMinutes(8));
-        Instant liveChangeTo = Instant.now();
+        Instant liveChangeTo = Instant.now().truncatedTo(ChronoUnit.MICROS);
         fireTimelineChanged(liveTripStart, liveChangeTo);
         awaitTrue("automatic reconciliation extended by the live change",
                 () -> automaticRangeEnd().filter(end -> !end.isBefore(liveChangeTo)).isPresent());
@@ -164,7 +166,7 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
                 .call(() -> reconciliationRepository.claimNext(true, false))
                 .orElseThrow();
 
-        Instant importedFrom = Instant.now().minus(70, ChronoUnit.DAYS);
+        Instant importedFrom = Instant.now().minus(70, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MICROS);
         QuarkusTransaction.requiringNew().run(() -> reconciliationRepository.enqueue(userId,
                 importedFrom, Instant.now(), MapMatchingSource.AUTOMATIC, Instant.now()));
 
