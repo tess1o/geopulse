@@ -4,9 +4,9 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMergerImpl;
 import org.github.tess1o.geopulse.streaming.merge.TimelineMergeAnalysisService;
 import org.github.tess1o.geopulse.streaming.merge.TimelineMergeExecutionService;
-import org.github.tess1o.geopulse.streaming.merge.TripFilteringService;
-import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -15,17 +15,13 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Tag("unit")
 public class MovementTimelineMergerImplTest {
-    private UUID userId;
-    private Instant baseTime;
     private final int mergeMaxDistanceMeters = 400;
     private final int mergeMaxTimeGapMinutes = 3;
     private final TimelineConfig timelineConfig = TimelineConfig.builder()
@@ -36,307 +32,359 @@ public class MovementTimelineMergerImplTest {
     private MovementTimelineMergerImpl service;
     @BeforeEach
     void setUp() {
-        userId = UUID.randomUUID();
-        baseTime = Instant.parse("2024-01-01T10:00:00Z");
         // Create real service instances for integration testing
         TimelineMergeAnalysisService analysisService = new TimelineMergeAnalysisService();
         TimelineMergeExecutionService executionService = new TimelineMergeExecutionService();
-        TripFilteringService tripFilteringService = new TripFilteringService();
-        service = new MovementTimelineMergerImpl(analysisService, executionService, tripFilteringService);
+        service = new MovementTimelineMergerImpl(analysisService, executionService);
     }
     @Test
     void testNoMergeRequired_DifferentLocations() {
         // Arrange: Home -> Park -> Work (all different locations)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 60, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(1800), "Work", 120, 40.2, -74.2)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1680), 15, 1500)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 60)
+                .trip(15, 1500)
+                .stay("Work", 120)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(3, result.getStays().size());
-        assertEquals(2, result.getTrips().size());
+        assertEquals(3, stays(result).size());
+        assertEquals(2, trips(result).size());
     }
     @Test
-    void testMergeRequired_ShortDistance() {
+    void testMergeRequired_ShortDistanceAndTime() {
         // Arrange: Home -> Park (1h) -> Park (2min) -> Home
-        // Trip between Parks: 200m, 2min (should merge due to distance < 300m)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 60, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2040), "Park", 2, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 2, 200), // 200m trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+        // Trip between Parks: 200m, 2min (should merge - under both 400m and 3min)
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 60)
+                .trip(2, 200) // 200m trip
+                .stay("Park", 2)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(3, result.getStays().size());
-        assertEquals(2, result.getTrips().size()); // Trip between Parks is removed
+        assertEquals(3, stays(result).size());
+        assertEquals(2, trips(result).size()); // Trip between Parks is removed
         // Check that Park stays were merged
-        Stay mergedPark = result.getStays().stream()
+        Stay mergedPark = stays(result).stream()
                 .filter(s -> "Park".equals(s.getLocationName()))
                 .findFirst()
                 .orElse(null);
         assertNotNull(mergedPark);
-        assertEquals(64, mergedPark.getDuration().toSeconds()); // 60 + 2 + 2 (trip duration)
+        assertEquals(64, mergedPark.getDuration().toMinutes()); // 60 + 2 + 2 (trip duration)
     }
     @Test
-    void testMergeRequired_ShortTime() {
+    void testNoMergeRequired_ShortTimeButLongDistance() {
         // Arrange: Home -> Park (1h) -> Park (2min) -> Home
-        // Trip between Parks: 400m, 2min (should merge due to time < 3min)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 60, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2040), "Park", 2, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 2, 400), // 400m, 2min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
+        // Trip between Parks: 2000m, 2min (should NOT merge - a quick trip that went far is a real drive)
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 60)
+                .trip(2, 2000) // 2000m, 2min trip
+                .stay("Park", 2)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
-        // Assert
-        assertEquals(3, result.getStays().size());
-        assertEquals(2, result.getTrips().size()); // Trip between Parks is removed
-        // Check that Park stays were merged
-        Stay mergedPark = result.getStays().stream()
-                .filter(s -> "Park".equals(s.getLocationName()))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(mergedPark);
-        assertEquals(64, mergedPark.getDuration().toSeconds()); // 60 + 2 + 2 (trip duration)
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
+        // Assert - no merge should occur
+        assertEquals(4, stays(result).size());
+        assertEquals(3, trips(result).size());
+    }
+    @Test
+    void testNoMergeRequired_ShortDistanceButLongTime() {
+        // Arrange: Home -> Park (1h) -> Park (2min) -> Home
+        // Trip between Parks: 200m, 20min (should NOT merge - a short trip that took long is a walk around)
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 60)
+                .trip(20, 200) // 200m, 20min trip
+                .stay("Park", 2)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
+        // Act
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
+        // Assert - no merge should occur
+        assertEquals(4, stays(result).size());
+        assertEquals(3, trips(result).size());
     }
     @Test
     void testNoMergeRequired_LongDistanceAndTime() {
         // Arrange: Home -> Park (1h) -> Park (2min) -> Home
         // Trip between Parks: 500m, 5min (should NOT merge - both thresholds exceeded)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 60, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2340), "Park", 2, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 5, 500), // 500m, 5min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 60)
+                .trip(5, 500) // 500m, 5min trip
+                .stay("Park", 2)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert - no merge should occur
-        assertEquals(4, result.getStays().size());
-        assertEquals(3, result.getTrips().size());
+        assertEquals(4, stays(result).size());
+        assertEquals(3, trips(result).size());
+    }
+    @Test
+    void testTimeGapIsInMinutes() {
+        // Arrange: Park -> 300m trip -> Park. Under the 3-minute threshold a trip of 90 seconds merges and one of
+        // 4 minutes does not; a threshold read as 3 seconds would merge neither.
+        List<TimelineEvent> shortTrip = new Timeline()
+                .stay("Park", 60)
+                .trip(Duration.ofSeconds(90), 300)
+                .stay("Park", 60)
+                .events();
+        List<TimelineEvent> longTrip = new Timeline()
+                .stay("Park", 60)
+                .trip(4, 300)
+                .stay("Park", 60)
+                .events();
+        // Act + Assert
+        assertEquals(1, service.mergeSameNamedLocations(timelineConfig, shortTrip).size());
+        assertEquals(3, service.mergeSameNamedLocations(timelineConfig, longTrip).size());
     }
     @Test
     void testMergeMultipleLocations() {
         // Arrange: Home -> Park -> Park -> Park -> Home (merge 3 Park locations)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 30, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2040), "Park", 15, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2340), "Park", 45, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(3240), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 2, 150), // 150m trip
-                createTrip(baseTime.plusSeconds(2280), 1, 100),   // 100m trip
-                createTrip(baseTime.plusSeconds(3120), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 30)
+                .trip(2, 150) // 150m trip
+                .stay("Park", 15)
+                .trip(1, 100)   // 100m trip
+                .stay("Park", 45)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(3, result.getStays().size());
-        assertEquals(2, result.getTrips().size()); // All trips between Parks are removed
+        assertEquals(3, stays(result).size());
+        assertEquals(2, trips(result).size()); // All trips between Parks are removed
         // Check merged Park duration
-        Stay mergedPark = result.getStays().stream()
+        Stay mergedPark = stays(result).stream()
                 .filter(s -> "Park".equals(s.getLocationName()))
                 .findFirst()
                 .orElse(null);
         assertNotNull(mergedPark);
-        assertEquals(93, mergedPark.getDuration().toSeconds()); // 30 + 15 + 45 + 2 + 1 (trip durations)
+        assertEquals(93, mergedPark.getDuration().toMinutes()); // 30 + 15 + 45 + 2 + 1 (trip durations)
     }
     @Test
     void testPartialMerge() {
         // Arrange: Home -> Park -> Park -> Mall -> Park -> Home
         // First two Parks should merge, but third Park (after Mall) should not
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 30, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2040), "Park", 15, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2640), "Mall", 60, 40.2, -74.2),
-                createStay(baseTime.plusSeconds(4240), "Park", 20, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(5440), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 2, 200),    // Short trip between Parks
-                createTrip(baseTime.plusSeconds(2520), 10, 1500), // To Mall
-                createTrip(baseTime.plusSeconds(4120), 10, 1500), // To Park again
-                createTrip(baseTime.plusSeconds(5320), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 30)
+                .trip(2, 200)    // Short trip between Parks
+                .stay("Park", 15)
+                .trip(10, 1500) // To Mall
+                .stay("Mall", 60)
+                .trip(10, 1500) // To Park again
+                .stay("Park", 20)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(5, result.getStays().size()); // Home, Merged Park, Mall, Park, Home
-        assertEquals(4, result.getTrips().size()); // Only trip between first two Parks is removed
+        assertEquals(5, stays(result).size()); // Home, Merged Park, Mall, Park, Home
+        assertEquals(4, trips(result).size()); // Only trip between first two Parks is removed
         // Count Park occurrences
-        long parkCount = result.getStays().stream()
+        long parkCount = stays(result).stream()
                 .filter(s -> "Park".equals(s.getLocationName()))
                 .count();
         assertEquals(2, parkCount); // One merged Park and one separate Park
     }
     @Test
     void testEmptyLists() {
-        // Arrange
-        RawTimeline timeline = new RawTimeline(userId, new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, List.of());
         // Assert
-        assertEquals(0, result.getStays().size());
-        assertEquals(0, result.getTrips().size());
+        assertEquals(0, result.size());
     }
     @Test
     void testSingleStay() {
         // Arrange
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, new ArrayList<>(), new ArrayList<>());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(1, result.getStays().size());
-        assertEquals(0, result.getTrips().size());
+        assertEquals(1, stays(result).size());
+        assertEquals(0, trips(result).size());
     }
     @Test
     void testMergeWithMultipleTripsInBetween() {
         // Arrange: Home -> Park -> (multiple short trips) -> Park -> Home
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 30, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2640), "Park", 20, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(3840), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 1, 100),   // 100m, 1min
-                createTrip(baseTime.plusSeconds(2100), 1, 50),  // 50m, 1min
-                createTrip(baseTime.plusSeconds(2220), 1, 80),  // 80m, 1min
-                createTrip(baseTime.plusSeconds(3720), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 30)
+                .trip(Duration.ofSeconds(40), 100)   // 100m, 40s
+                .trip(Duration.ofSeconds(40), 50)  // 50m, 40s
+                .trip(Duration.ofSeconds(40), 80)  // 80m, 40s - 230m in 2min together
+                .stay("Park", 20)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert
-        assertEquals(3, result.getStays().size());
-        assertEquals(2, result.getTrips().size()); // Only Home->Park and Park->Home trips remain
+        assertEquals(3, stays(result).size());
+        assertEquals(2, trips(result).size()); // Only Home->Park and Park->Home trips remain
         // Check merged Park duration includes all intermediate trips
-        Stay mergedPark = result.getStays().stream()
+        Stay mergedPark = stays(result).stream()
                 .filter(s -> "Park".equals(s.getLocationName()))
                 .findFirst()
                 .orElse(null);
         assertNotNull(mergedPark);
-        assertEquals(53, mergedPark.getDuration().toSeconds()); // 30 + 20 + 1 + 1 + 1 (all trip durations)
+        assertEquals(Duration.ofMinutes(52), mergedPark.getDuration()); // 30 + 20 + 2 (all trip durations)
     }
     @Test
     void testNoMergeWhenStaysAreNotConsecutive() {
         // Arrange: Home -> Park -> Work -> Park -> Home (Parks are not consecutive)
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Park", 30, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(2100), "Work", 60, 40.2, -74.2),
-                createStay(baseTime.plusSeconds(3900), "Park", 30, 40.1, -74.1),
-                createStay(baseTime.plusSeconds(5700), "Home", 30, 40.0, -74.0)
-        );
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),
-                createTrip(baseTime.plusSeconds(1980), 10, 1500),
-                createTrip(baseTime.plusSeconds(3780), 10, 1500),
-                createTrip(baseTime.plusSeconds(5580), 10, 2000)
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)
+                .stay("Park", 30)
+                .trip(10, 1500)
+                .stay("Work", 60)
+                .trip(10, 1500)
+                .stay("Park", 30)
+                .trip(10, 2000)
+                .stay("Home", 30)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert - No merge should occur because Parks are not consecutive
-        assertEquals(5, result.getStays().size());
-        assertEquals(4, result.getTrips().size());
+        assertEquals(5, stays(result).size());
+        assertEquals(4, trips(result).size());
     }
     @Test
     void testConsecutiveStaysAtSameLocationWithNoTrips_ShouldBeMerged() {
         // Arrange: Home -> Work -> Home (first) -> Home (second - NO trip between) -> Work
-        List<Stay> stays = Arrays.asList(
-                createStay(baseTime, "Home", 60, 40.0, -74.0),
-                createStay(baseTime.plusSeconds(900), "Work", 120, 40.2, -74.2),
-                createStay(baseTime.plusSeconds(3000), "Home", 30, 40.0, -74.0),  // First Home stay
-                createStay(baseTime.plusSeconds(3900), "Home", 45, 40.0, -74.0),  // Second Home stay - NO TRIP!
-                createStay(baseTime.plusSeconds(5400), "Work", 60, 40.2, -74.2)
-        );
-        // NOTE: NO trip between the two Home stays at indices 2 and 3
-        List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000),    // Home -> Work
-                createTrip(baseTime.plusSeconds(2880), 10, 2000),   // Work -> Home (first)
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 60)
+                .trip(10, 2000)    // Home -> Work
+                .stay("Work", 120)
+                .trip(10, 2000)   // Work -> Home (first)
+                .stay("Home", 30)  // First Home stay
                 // MISSING: No trip between Home stays!
-                createTrip(baseTime.plusSeconds(5280), 10, 2000)    // Home (second) -> Work
-        );
-        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+                .stay("Home", 45)  // Second Home stay - NO TRIP!
+                .trip(10, 2000)   // Home (second) -> Work
+                .stay("Work", 60)
+                .events();
         // Act
-        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
         // Assert: The two consecutive Home stays MUST be merged into one
-        assertEquals(4, result.getStays().size(),
+        assertEquals(4, stays(result).size(),
             "Two consecutive stays at same location with no trips should be merged into one");
-        assertEquals(3, result.getTrips().size(),
+        assertEquals(3, trips(result).size(),
             "All trips should remain");
-        // Verify the merged Home stay has correct duration (30 + 45 = 75 seconds)
-        long homeStayCount = result.getStays().stream()
+        // Verify the merged Home stay has correct duration (30 + 45 = 75 minutes)
+        long homeStayCount = stays(result).stream()
                 .filter(s -> "Home".equals(s.getLocationName()))
                 .count();
         assertEquals(2, homeStayCount,
             "Should have exactly 2 Home stays total (first one, and merged consecutive ones)");
         // Find the second Home stay (the merged one)
-        Stay mergedHome = result.getStays().stream()
+        Stay mergedHome = stays(result).stream()
                 .filter(s -> "Home".equals(s.getLocationName()))
                 .skip(1)  // Skip first Home
                 .findFirst()
                 .orElse(null);
         assertNotNull(mergedHome, "Merged Home stay should exist");
-        assertEquals(75, mergedHome.getDuration().toSeconds(),
-            "Merged Home stay should have combined duration: 30 + 45 = 75 seconds");
+        assertEquals(75, mergedHome.getDuration().toMinutes(),
+            "Merged Home stay should have combined duration: 30 + 45 = 75 minutes");
+    }
+    @Test
+    void testZeroSecondTripStartingWithTheNextStayIsAbsorbed() {
+        // Arrange: a GPS glitch at home - a trip of 0 seconds, starting at the same instant as the next stay
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 117)
+                .trip(Duration.ZERO, 73)
+                .stay("Home", 62)
+                .events();
+        assertEquals(events.get(1).getStartTime(), events.get(2).getStartTime());
+        // Act
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
+        // Assert: one Home stay, and the trip is not left inside it
+        assertEquals(1, result.size());
+        assertEquals(179, stays(result).getFirst().getDuration().toMinutes()); // 117 + 62 + 0
+    }
+    @Test
+    void testNoMergeAcrossDataGap() {
+        // Arrange: Home -> (no data) -> Home
+        List<TimelineEvent> events = new Timeline()
+                .stay("Home", 10)
+                .gap(240)
+                .stay("Home", 10)
+                .events();
+        // Act
+        List<TimelineEvent> result = service.mergeSameNamedLocations(timelineConfig, events);
+        // Assert
+        assertEquals(events, result);
     }
     // Helper methods
-    private Stay createStay(Instant timestamp, String location, long duration,
-                                               double lat, double lon) {
-        return Stay.builder()
-                .startTime(timestamp)
-                .locationName(location)
-                .duration(Duration.ofSeconds(duration))
-                .latitude(lat)
-                .longitude(lon)
-                .build();
+    private static List<Stay> stays(List<TimelineEvent> events) {
+        return events.stream().filter(Stay.class::isInstance).map(Stay.class::cast).toList();
     }
-    private Trip createTrip(Instant timestamp, long duration, long distanceMeters) {
-        return Trip.builder()
-                .duration(Duration.ofSeconds(duration))
-                .startTime(timestamp)
-                .distanceMeters(distanceMeters)
-                .build();
+    private static List<Trip> trips(List<TimelineEvent> events) {
+        return events.stream().filter(Trip.class::isInstance).map(Trip.class::cast).toList();
+    }
+    /** A timeline in order, each event starting where the previous one ended. Durations are in minutes. */
+    private static class Timeline {
+        private final List<TimelineEvent> events = new ArrayList<>();
+        private Instant time = Instant.parse("2024-01-01T10:00:00Z");
+        Timeline stay(String location, long minutes) {
+            double offset = switch (location) {
+                case "Home" -> 0.0;
+                case "Park" -> 0.1;
+                default -> 0.2;
+            };
+            return add(Stay.builder()
+                    .startTime(time)
+                    .locationName(location)
+                    .duration(Duration.ofMinutes(minutes))
+                    .latitude(40.0 + offset)
+                    .longitude(-74.0 - offset)
+                    .build());
+        }
+        Timeline trip(long minutes, long distanceMeters) {
+            return trip(Duration.ofMinutes(minutes), distanceMeters);
+        }
+        Timeline trip(Duration duration, long distanceMeters) {
+            return add(Trip.builder()
+                    .duration(duration)
+                    .startTime(time)
+                    .distanceMeters(distanceMeters)
+                    .build());
+        }
+        Timeline gap(long minutes) {
+            return add(DataGap.builder().startTime(time).duration(Duration.ofMinutes(minutes)).build());
+        }
+        List<TimelineEvent> events() {
+            return List.copyOf(events);
+        }
+        private Timeline add(TimelineEvent event) {
+            events.add(event);
+            time = event.getEndTime();
+            return this;
+        }
     }
 }

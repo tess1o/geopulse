@@ -9,8 +9,6 @@ import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -22,136 +20,39 @@ import java.util.List;
 public class TimelineMergeExecutionService {
 
     /**
-     * Create a merged stay from a group of stays and calculate total duration.
+     * Create a merged stay from a group of stays and the trips between them.
      * The merged stay uses the first stay's properties but combines durations from all stays
-     * and any trips between them.
+     * and the trips it absorbs.
      *
-     * @param stays      all stays in the timeline
-     * @param mergeGroup indices of stays to merge
-     * @param trips      all trips for duration calculation
+     * @param stays         stays to merge, in timeline order
+     * @param absorbedTrips trips between the merged stays
      * @return merged stay with combined duration
      */
-    public Stay createMergedStay(List<Stay> stays,
-                                 List<Integer> mergeGroup,
-                                 List<Trip> trips) {
-        if (stays == null || mergeGroup == null || mergeGroup.isEmpty()) {
+    public Stay createMergedStay(List<Stay> stays, List<Trip> absorbedTrips) {
+        if (stays == null || stays.isEmpty() || absorbedTrips == null) {
             throw new IllegalArgumentException("Invalid parameters for stay merge");
         }
 
-        log.debug("Creating merged stay from {} stays", mergeGroup.size());
+        log.debug("Creating merged stay from {} stays", stays.size());
 
-        Stay firstStay = stays.get(mergeGroup.get(0));
+        Stay firstStay = stays.getFirst();
 
-        // Calculate total duration of all stays in the group
-        long totalDuration = calculateStayGroupDuration(stays, mergeGroup);
+        Duration stayDuration = stays.stream().map(Stay::getDuration).reduce(Duration.ZERO, Duration::plus);
+        Duration tripDuration = absorbedTrips.stream().map(Trip::getDuration).reduce(Duration.ZERO, Duration::plus);
 
-        // Add duration of trips between merged stays
-        long tripDuration = calculateInterStayTripDuration(stays, mergeGroup, trips);
-
-        long finalDuration = totalDuration + tripDuration;
-
-        log.debug("Merged stay duration: stays={}min, trips={}min, total={}min",
-                totalDuration, tripDuration, finalDuration);
+        log.debug("Merged stay duration: stays={}s, trips={}s", stayDuration.getSeconds(), tripDuration.getSeconds());
 
         Stay mergedStay = Stay.builder()
                 .startTime(firstStay.getStartTime())
                 .locationName(firstStay.getLocationName())
-                .duration(Duration.of(finalDuration, ChronoUnit.SECONDS))
+                .duration(stayDuration.plus(tripDuration))
                 .latitude(firstStay.getLatitude())
                 .longitude(firstStay.getLongitude())
                 .favoriteId(firstStay.getFavoriteId())
                 .geocodingId(firstStay.getGeocodingId())
                 .build();
-        List<Stay> merged = mergeGroup.stream().map(stays::get).toList();
-        mergedStay.setExplanation(TimelineExplanation.joined(merged)
-                .note(TimelineReason.of(TimelineReasons.MERGED, "stays", merged.size())));
+        mergedStay.setExplanation(TimelineExplanation.joined(stays)
+                .note(TimelineReason.of(TimelineReasons.MERGED, "stays", stays.size())));
         return mergedStay;
     }
-
-    /**
-     * Calculate the total duration of all stays in a merge group.
-     *
-     * @param stays      all stays
-     * @param mergeGroup indices of stays to include
-     * @return total duration in minutes
-     */
-    public long calculateStayGroupDuration(List<Stay> stays,
-                                           List<Integer> mergeGroup) {
-        if (stays == null || mergeGroup == null) {
-            return 0;
-        }
-
-        long totalDuration = 0;
-        for (Integer index : mergeGroup) {
-            if (index >= 0 && index < stays.size()) {
-                totalDuration += stays.get(index).getDuration().getSeconds();
-            }
-        }
-
-        log.debug("Total stay group duration: {}sec from {} stays", totalDuration, mergeGroup.size());
-        return totalDuration;
-    }
-
-    /**
-     * Calculate the total duration of trips between merged stays.
-     * This includes all travel time that will be absorbed into the merged stay.
-     *
-     * @param stays      all stays
-     * @param mergeGroup indices of stays being merged
-     * @param trips      all trips
-     * @return total trip duration in minutes
-     */
-    public long calculateInterStayTripDuration(List<Stay> stays,
-                                               List<Integer> mergeGroup,
-                                               List<Trip> trips) {
-        if (stays == null || mergeGroup == null || trips == null || mergeGroup.size() < 2) {
-            return 0;
-        }
-
-        long totalTripDuration = 0;
-
-        // Add duration of trips between consecutive merged stays
-        for (int i = 0; i < mergeGroup.size() - 1; i++) {
-            Stay currentStay = stays.get(mergeGroup.get(i));
-            Stay nextStay = stays.get(mergeGroup.get(i + 1));
-
-            long tripDuration = findTripDurationBetweenStays(currentStay, nextStay, trips);
-            totalTripDuration += tripDuration;
-
-            log.debug("Trip duration between stay {} and {}: {}min",
-                    mergeGroup.get(i), mergeGroup.get(i + 1), tripDuration);
-        }
-
-        log.debug("Total inter-stay trip duration: {}min", totalTripDuration);
-        return totalTripDuration;
-    }
-
-    /**
-     * Find the total duration of trips occurring between two specific stays.
-     *
-     * @param currentStay first stay
-     * @param nextStay    second stay
-     * @param trips       all trips to search
-     * @return total duration of trips between the stays in minutes
-     */
-    public long findTripDurationBetweenStays(Stay currentStay, Stay nextStay, List<Trip> trips) {
-        if (currentStay == null || nextStay == null || trips == null) {
-            return 0;
-        }
-
-        Instant currentStayTime = currentStay.getStartTime();
-        Instant nextStayTime = nextStay.getStartTime();
-
-        long totalDuration = 0;
-
-        for (Trip trip : trips) {
-            if (trip.getStartTime().isAfter(currentStayTime) &&
-                    trip.getStartTime().isBefore(nextStayTime)) {
-                totalDuration += trip.getDuration().getSeconds();
-            }
-        }
-
-        return totalDuration;
-    }
-
 }

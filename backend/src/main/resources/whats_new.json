@@ -1,5 +1,20 @@
 [
   {
+    "version": "2.1.1",
+    "title": "GeoPulse 2.1.1",
+    "highlights": [
+      "Color paths by day: on multi-day ranges each day can get its own path color, matching the dots on the timeline day headers. Turn it on with the calendar button on the map or in Profile -> Appearance, with four palettes to choose from",
+      "Show only one day on the map from a timeline day header; the other days fade out until you choose \"Show all days\"",
+      "Maps now show a distance scale bar in kilometers or miles. It can be turned off in Profile -> Appearance",
+      "New MCP tab in Connected Apps with the server URL, one-click read-only token, and ready-to-copy setup for Claude Desktop, Claude Code and other clients",
+      "Boat trips with sparse GPS points near the shore are no longer misclassified as land trips",
+      "Manual trip type corrections are now matched by time after a timeline regeneration, so they are kept even when the trip starts or ends at a slightly different point. The GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_* settings were removed",
+      "Fixed timeline regeneration campaigns that could stay unfinished after a backend restart and hold back the real-time timeline. The Admin page now also shows running and retrying users",
+      "Dark mode fixes on City, Country, Technical Data and Timeline Job pages"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.1.1"
+  },
+  {
     "version": "2.1.0",
     "title": "GeoPulse 2.1.0",
     "highlights": [

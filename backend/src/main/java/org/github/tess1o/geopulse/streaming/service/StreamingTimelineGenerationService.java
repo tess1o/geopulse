@@ -341,19 +341,18 @@ public class StreamingTimelineGenerationService {
             RawTimeline generatedTimeline = null;
 
             if (!events.isEmpty()) {
-                // Create RawTimeline from events to preserve rich GPS data
-                RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
-
                 // Step 6: Merging and simplification (75%)
-                // Apply optional merge pass on raw objects (includes same-location integrity merge behavior)
+                // Apply optional merge pass on the ordered events (includes same-location integrity merge behavior)
                 // when merge is enabled by configuration.
                 if (config.getIsMergeEnabled()) {
                     updateProgress(jobId, "mergingTimeline", "Merging timeline", 6, 75, null);
                     stageStart = metricsStart();
-                    rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
+                    events = timelineMerger.mergeSameNamedLocations(config, events);
                     recordTimelineStage(stageStart, trigger, "merge", "success");
                 }
 
+                // Create RawTimeline from events to preserve rich GPS data
+                RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
                 generatedTimeline = rawTimeline;
 
                 // Step 7: Persisting timeline to database (80%)
