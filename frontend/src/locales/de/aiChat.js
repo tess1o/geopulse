@@ -1,68 +1,70 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
+/**
+ * AI chat assistant page (German).
+ */
 export default {
     page: {
-        title: 'AI Chat Assistant',
-        description: 'Ask questions about your location data and get intelligent insights',
-        disclaimer: 'AI responses are based on data analysis but may contain errors. Please verify important information independently.',
-        clearHistoryTooltip: 'Clear conversation history',
-        clearHistoryAriaLabel: 'Clear conversation history'
+        title: 'KI-Chat-Assistent',
+        description: 'Stell Fragen zu deinen Standortdaten und erhalte kluge Einblicke',
+        disclaimer: 'Die Antworten der KI beruhen auf einer Datenanalyse, können aber Fehler enthalten. Prüf wichtige Informationen bitte selbst.',
+        clearHistoryTooltip: 'Gesprächsverlauf löschen',
+        clearHistoryAriaLabel: 'Gesprächsverlauf löschen'
     },
     status: {
-        checking: 'Checking AI status...',
+        checking: 'Status der KI wird geprüft …',
         unavailable: {
-            title: 'AI Chat Unavailable',
-            disabled: 'AI Assistant is currently disabled.',
-            apiKeyMissing: 'OpenAI API key is not configured.',
-            notConfigured: 'AI Assistant is not properly configured.',
-            configureButton: 'Configure AI Settings',
-            demoDisabledTooltip: 'AI settings are read-only in demo mode',
-            demoDisabledText: 'AI settings are read-only in demo mode, so this configuration action is disabled.'
+            title: 'KI-Chat nicht verfügbar',
+            disabled: 'Der KI-Assistent ist derzeit deaktiviert.',
+            apiKeyMissing: 'Es ist kein OpenAI-API-Schlüssel eingerichtet.',
+            notConfigured: 'Der KI-Assistent ist nicht richtig eingerichtet.',
+            configureButton: 'KI-Einstellungen öffnen',
+            demoDisabledTooltip: 'Die KI-Einstellungen sind im Demo-Modus schreibgeschützt',
+            demoDisabledText: 'Die KI-Einstellungen sind im Demo-Modus schreibgeschützt, daher ist diese Aktion deaktiviert.'
         }
     },
     examples: {
-        startTitle: 'Start a conversation',
-        startDescription: 'Ask me about your location data. For example:',
-        expiredTitle: 'Ready for a new conversation!',
-        expiredDescription: 'Your previous conversation has expired. Ask me about your location data:',
-        walkOrDrive: 'Do I walk more or drive more?',
-        busiestDay: 'Which day of the week do I travel most?',
-        citiesVisited: 'How many different cities did I visit this month?',
-        commonRoute: "What's my most common route?"
+        startTitle: 'Gespräch beginnen',
+        startDescription: 'Frag mich zu deinen Standortdaten, zum Beispiel:',
+        expiredTitle: 'Bereit für ein neues Gespräch!',
+        expiredDescription: 'Dein letztes Gespräch ist abgelaufen. Frag mich zu deinen Standortdaten:',
+        walkOrDrive: 'Gehe ich mehr zu Fuß oder fahre ich mehr Auto?',
+        busiestDay: 'An welchem Wochentag bin ich am meisten unterwegs?',
+        citiesVisited: 'Wie viele verschiedene Städte habe ich diesen Monat besucht?',
+        commonRoute: 'Was ist meine häufigste Route?'
     },
     message: {
-        error: 'Error'
+        error: 'Fehler'
     },
     loading: {
-        title: 'AI is thinking...',
-        subtitle: 'Analyzing your request and location data'
+        title: 'Die KI denkt nach …',
+        subtitle: 'Deine Anfrage und deine Standortdaten werden ausgewertet'
     },
     input: {
-        placeholder: 'Ask me about your location data...',
-        placeholderUnavailable: 'AI Assistant is not available',
-        warningDisabled: 'AI Assistant is disabled.',
-        warningApiKeyMissing: 'API key not configured.',
-        warningUnavailable: 'AI Assistant not available.'
+        placeholder: 'Frag mich zu deinen Standortdaten …',
+        placeholderUnavailable: 'Der KI-Assistent ist nicht verfügbar',
+        warningDisabled: 'Der KI-Assistent ist deaktiviert.',
+        warningApiKeyMissing: 'Kein API-Schlüssel eingerichtet.',
+        warningUnavailable: 'KI-Assistent nicht verfügbar.'
     },
     timestamp: {
-        justNow: 'Just now',
-        minutesAgo: '{count}m ago',
-        yesterday: 'Yesterday {time}'
+        justNow: 'Gerade eben',
+        minutesAgo: 'vor {count} Min.',
+        yesterday: 'Gestern {time}'
     },
     toasts: {
-        chatClearedSummary: 'Chat Cleared',
-        chatClearedDetail: 'Your conversation history has been cleared.',
-        chatErrorSummary: 'Chat Error',
-        genericError: 'Sorry, I encountered an error while processing your request.',
-        aiDisabledError: 'AI Assistant is disabled. Enable it in your profile settings.',
-        apiKeyRequiredError: 'Add your AI provider API key in your profile settings.',
-        contextTooLargeError: 'The conversation or data is too large. Try a narrower question or clear the chat history.',
-        rateLimitedError: 'The AI provider rate limit was reached. Please try again later.',
-        authFailedError: 'The AI provider rejected the configured credentials.',
-        invalidRequestError: 'The AI provider rejected this request.',
-        unavailableSummary: 'AI Chat Unavailable',
-        unavailableDemoDetail: 'AI settings are read-only in demo mode, so they cannot be configured from this demo account.',
-        unavailableDisabledDetail: 'AI Assistant is disabled. Please enable it in your profile settings.',
-        unavailableApiKeyDetail: 'Please configure your OpenAI API key in your profile to use the chat assistant.',
-        unavailableDefaultDetail: 'Please configure your AI settings in your profile to use the chat assistant.'
+        chatClearedSummary: 'Chat gelöscht',
+        chatClearedDetail: 'Dein Gesprächsverlauf wurde gelöscht.',
+        chatErrorSummary: 'Fehler im Chat',
+        genericError: 'Beim Verarbeiten deiner Anfrage ist leider ein Fehler aufgetreten.',
+        aiDisabledError: 'Der KI-Assistent ist deaktiviert. Aktiviere ihn in deinen Profileinstellungen.',
+        apiKeyRequiredError: 'Trag den API-Schlüssel deines KI-Anbieters in deinen Profileinstellungen ein.',
+        contextTooLargeError: 'Das Gespräch oder die Daten sind zu umfangreich. Stell eine engere Frage oder lösche den Verlauf.',
+        rateLimitedError: 'Das Anfragelimit des KI-Anbieters ist erreicht. Bitte versuch es später noch einmal.',
+        authFailedError: 'Der KI-Anbieter hat die eingerichteten Zugangsdaten abgelehnt.',
+        invalidRequestError: 'Der KI-Anbieter hat diese Anfrage abgelehnt.',
+        unavailableSummary: 'KI-Chat nicht verfügbar',
+        unavailableDemoDetail: 'Die KI-Einstellungen sind im Demo-Modus schreibgeschützt und lassen sich mit diesem Demo-Konto nicht einrichten.',
+        unavailableDisabledDetail: 'Der KI-Assistent ist deaktiviert. Bitte aktiviere ihn in deinen Profileinstellungen.',
+        unavailableApiKeyDetail: 'Richte in deinem Profil deinen OpenAI-API-Schlüssel ein, um den Chat-Assistenten zu nutzen.',
+        unavailableDefaultDetail: 'Richte in deinem Profil die KI-Einstellungen ein, um den Chat-Assistenten zu nutzen.'
     }
 }

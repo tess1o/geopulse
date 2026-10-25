@@ -1,188 +1,184 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Trip-related dialogs: trip details, trip/stay split, map-matching details, movement-type quick
- * edit, data-gap-to-stay conversion, and GPS point edit.
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
+ * Trip-related dialogs (German): trip details, trip/stay split, map-matching details, movement-type
+ * quick edit, data-gap-to-stay conversion, and GPS point edit.
  */
 export default {
     tripDetails: {
-        dialogTitleDefault: 'Trip Details',
-        dialogTitleWithType: 'Trip Details - {type}',
+        dialogTitleDefault: 'Details zur Fahrt',
+        dialogTitleWithType: 'Details zur Fahrt – {type}',
         sections: {
-            route: 'Trip Route',
-            timing: 'Timing',
-            tripInfo: 'Trip Details',
+            route: 'Strecke der Fahrt',
+            timing: 'Zeit',
+            tripInfo: 'Details zur Fahrt',
             routeInfo: 'Route',
-            coordinates: 'Coordinates'
+            coordinates: 'Koordinaten'
         },
         labels: {
-            start: 'Start:',
-            end: 'End:',
-            duration: 'Duration:',
-            distance: 'Distance:',
-            averageSpeed: 'Average Speed:',
-            routePoints: 'Route Points:',
-            routePointsValue: '{count} points',
-            origin: 'Origin:',
-            destination: 'Destination:'
+            start: 'Beginn:',
+            end: 'Ende:',
+            duration: 'Dauer:',
+            distance: 'Strecke:',
+            averageSpeed: 'Ø Geschwindigkeit:',
+            routePoints: 'Routenpunkte:',
+            routePointsValue: '{count} Punkte',
+            origin: 'Start:',
+            destination: 'Ziel:'
         },
-        unknownOrigin: 'Unknown Origin',
-        unknownDestination: 'Unknown Destination',
-        notAvailable: 'N/A',
-        close: 'Close',
+        unknownOrigin: 'Unbekannter Start',
+        unknownDestination: 'Unbekanntes Ziel',
+        notAvailable: 'k. A.',
+        close: 'Schließen',
         toasts: {
-            copiedSummary: 'Copied!',
-            copiedDetail: 'Coordinates copied to clipboard',
-            copyFailedSummary: 'Copy Failed',
-            copyFailedDetail: 'Could not copy coordinates',
-            gpsUnavailableSummary: 'GPS Data Unavailable',
-            gpsUnavailableDetail: 'Could not load GPS points for this trip'
+            copiedSummary: 'Kopiert!',
+            copiedDetail: 'Koordinaten in die Zwischenablage kopiert',
+            copyFailedSummary: 'Kopieren fehlgeschlagen',
+            copyFailedDetail: 'Koordinaten konnten nicht kopiert werden',
+            gpsUnavailableSummary: 'GPS-Daten nicht verfügbar',
+            gpsUnavailableDetail: 'GPS-Punkte für diese Fahrt konnten nicht geladen werden'
         }
     },
     staySplit: {
-        header: 'Split Trip with Stay',
-        loadingPath: 'Loading trip path...',
-        clickToSetStay: 'Click on the route to set your stay location.',
-        stayStartLabel: 'Stay start',
-        stayEndLabel: 'Stay end',
-        placeNameLabel: 'Place name',
-        placeNameResolving: 'Resolving place...',
-        placeNamePlaceholder: 'Resolved automatically when empty',
-        updatingPreview: 'Updating split result...',
+        header: 'Fahrt mit Aufenthalt teilen',
+        loadingPath: 'Strecke wird geladen …',
+        clickToSetStay: 'Klicke auf die Route, um den Ort des Aufenthalts festzulegen.',
+        stayStartLabel: 'Beginn des Aufenthalts',
+        stayEndLabel: 'Ende des Aufenthalts',
+        placeNameLabel: 'Ortsname',
+        placeNameResolving: 'Ort wird ermittelt …',
+        placeNamePlaceholder: 'Wird automatisch ermittelt, wenn leer',
+        updatingPreview: 'Ergebnis der Teilung wird aktualisiert …',
         preview: {
-            originalTrip: 'Original trip',
-            splitResult: 'Split result',
-            tripFor: 'Trip for {duration}',
-            to: 'to {name}',
-            stayAt: 'Stay at {name}',
-            forDuration: 'for {duration}',
-            from: 'from {name}'
+            originalTrip: 'Ursprüngliche Fahrt',
+            splitResult: 'Ergebnis der Teilung',
+            tripFor: 'Fahrt ({duration})',
+            to: 'zu {name}',
+            stayAt: 'Aufenthalt: {name}',
+            forDuration: 'für {duration}',
+            from: 'von {name}'
         },
-        saveSplit: 'Save Split',
-        unknownTimeRange: 'Unknown time range',
-        selectedStayFallback: 'Selected stay',
-        selectedPlaceFallback: 'selected place',
+        saveSplit: 'Teilung speichern',
+        unknownTimeRange: 'Unbekannter Zeitraum',
+        selectedStayFallback: 'Ausgewählter Aufenthalt',
+        selectedPlaceFallback: 'ausgewählter Ort',
         validation: {
-            tripMissing: 'Trip is missing.',
-            readOnly: 'Timeline edits are disabled.',
-            selectStayLocation: 'Select the stay location on the trip map.',
-            selectValidTimes: 'Select valid start and end times.',
-            endAfterStart: 'Stay end must be after stay start.',
-            minDuration: 'Stay duration must be at least 60 seconds.',
-            startAfterTripStart: 'Stay must start after the trip starts.',
-            endBeforeTripEnd: 'Stay must end before the trip ends.',
-            placeNameTooLong: 'Place name is too long.',
-            selectValidStayLocation: 'Select a valid stay location.'
+            tripMissing: 'Die Fahrt fehlt.',
+            readOnly: 'Änderungen an der Zeitleiste sind deaktiviert.',
+            selectStayLocation: 'Wähle den Ort des Aufenthalts auf der Karte der Fahrt.',
+            selectValidTimes: 'Wähle gültige Start- und Endzeiten.',
+            endAfterStart: 'Das Ende des Aufenthalts muss nach dem Beginn liegen.',
+            minDuration: 'Der Aufenthalt muss mindestens 60 Sekunden dauern.',
+            startAfterTripStart: 'Der Aufenthalt muss nach dem Start der Fahrt beginnen.',
+            endBeforeTripEnd: 'Der Aufenthalt muss vor dem Ende der Fahrt enden.',
+            placeNameTooLong: 'Der Ortsname ist zu lang.',
+            selectValidStayLocation: 'Wähle einen gültigen Ort für den Aufenthalt.'
         },
         pathErrors: {
-            noPoints: 'No path points available for this trip.',
-            loadFailed: 'Failed to load trip path'
+            noPoints: 'Für diese Fahrt gibt es keine Streckenpunkte.',
+            loadFailed: 'Strecke konnte nicht geladen werden'
         },
-        previewErrorFallback: 'Could not preview trip split',
+        previewErrorFallback: 'Vorschau der Teilung nicht möglich',
         toasts: {
-            splitSummary: 'Trip Split',
-            splitDetail: 'Stay was inserted into the trip.',
-            splitFailedSummary: 'Split Failed',
-            splitFailedFallback: 'Could not split trip'
+            splitSummary: 'Fahrt geteilt',
+            splitDetail: 'Der Aufenthalt wurde in die Fahrt eingefügt.',
+            splitFailedSummary: 'Teilen fehlgeschlagen',
+            splitFailedFallback: 'Fahrt konnte nicht geteilt werden'
         },
-        distanceFromClickMeters: '{value}m from click',
-        distanceFromClickKm: '{value}km from click'
+        distanceFromClickMeters: '{value} m vom Klickpunkt',
+        distanceFromClickKm: '{value} km vom Klickpunkt'
     },
     mapMatchingDetails: {
-        header: 'Map Matching Details',
+        header: 'Details zum Map-Matching',
         statusLabels: {
-            completed: 'MATCHED',
-            queued: 'QUEUED',
-            processing: 'MATCHING',
-            failed: 'FAILED',
-            skipped: 'SKIPPED'
+            completed: 'ANGEPASST',
+            queued: 'WARTET',
+            processing: 'WIRD ANGEPASST',
+            failed: 'FEHLGESCHLAGEN',
+            skipped: 'ÜBERSPRUNGEN'
         },
-        neverQueuedNote: 'This trip was skipped before it reached the map-matching queue, so there is no stored result to retry.',
-        detailCaption: 'Reported by the routing engine',
-        lastAttemptedOn: 'Last attempted on {when}',
-        refinedOn: 'Refined on {when}',
-        openSettings: 'Open map matching settings',
-        adminHint: 'An administrator can re-run map matching from Admin → Settings → Map Matching.',
-        close: 'Close'
+        neverQueuedNote: 'Diese Fahrt wurde übersprungen, bevor sie in die Warteschlange fürs Map-Matching kam. Es gibt also kein gespeichertes Ergebnis, das sich erneut versuchen ließe.',
+        detailCaption: 'Gemeldet von der Routing-Engine',
+        lastAttemptedOn: 'Zuletzt versucht am {when}',
+        refinedOn: 'Angepasst am {when}',
+        openSettings: 'Einstellungen zum Map-Matching öffnen',
+        adminHint: 'Die Administration kann das Map-Matching unter Admin → Einstellungen → Map-Matching erneut ausführen.',
+        close: 'Schließen'
     },
     movementTypeQuickEdit: {
-        header: 'Edit Movement Type',
-        unknownAlgorithmWarning: 'Algorithm did not recognize this movement type. Set it manually.',
-        readOnlyWarning: 'Movement type edits are read-only in demo mode.',
-        selectPlaceholder: 'Select movement type',
-        save: 'Save',
-        reset: 'Reset',
-        close: 'Close',
-        unknownTime: 'Unknown time',
+        header: 'Fortbewegungsart bearbeiten',
+        unknownAlgorithmWarning: 'Der Algorithmus hat die Fortbewegungsart nicht erkannt. Leg sie manuell fest.',
+        readOnlyWarning: 'Die Fortbewegungsart lässt sich im Demo-Modus nicht ändern.',
+        selectPlaceholder: 'Fortbewegungsart wählen',
+        save: 'Speichern',
+        reset: 'Zurücksetzen',
+        close: 'Schließen',
+        unknownTime: 'Unbekannte Zeit',
         toasts: {
-            updatedSummary: 'Movement Updated',
-            updatedDetail: 'Trip set to {type}',
-            updateFailedSummary: 'Update Failed',
-            updateFailedFallback: 'Could not update movement type',
-            resetSummary: 'Movement Reset',
-            resetDetail: 'Trip reset to {type}',
-            resetFailedSummary: 'Reset Failed',
-            resetFailedFallback: 'Could not reset movement type'
+            updatedSummary: 'Fortbewegung aktualisiert',
+            updatedDetail: 'Fahrt auf {type} gesetzt',
+            updateFailedSummary: 'Aktualisieren fehlgeschlagen',
+            updateFailedFallback: 'Fortbewegungsart konnte nicht aktualisiert werden',
+            resetSummary: 'Fortbewegung zurückgesetzt',
+            resetDetail: 'Fahrt auf {type} zurückgesetzt',
+            resetFailedSummary: 'Zurücksetzen fehlgeschlagen',
+            resetFailedFallback: 'Fortbewegungsart konnte nicht zurückgesetzt werden'
         }
     },
     dataGapToStay: {
-        header: 'Convert Data Gap to Stay',
-        gapTag: 'Data Gap',
-        unknownTimeRange: 'Unknown time range',
-        locationSourceLabel: 'Stay location source',
-        resolvingLocation: 'Resolving latest known point location...',
-        defaultLocationLabel: 'Default location:',
-        unknownLocation: 'Unknown location',
-        selectedLocationTypeLabel: 'Selected location type',
-        searchPlaceLabel: 'Search Favorite or Geocoding place',
-        searchPlaceholder: 'Type at least 2 characters...',
-        latitudePlaceholder: 'Latitude',
-        longitudePlaceholder: 'Longitude',
-        customNamePlaceholder: 'Optional custom location name',
-        convert: 'Convert to Stay',
+        header: 'Datenlücke in Aufenthalt umwandeln',
+        gapTag: 'Datenlücke',
+        unknownTimeRange: 'Unbekannter Zeitraum',
+        locationSourceLabel: 'Quelle für den Ort des Aufenthalts',
+        resolvingLocation: 'Ort des letzten bekannten Punkts wird ermittelt …',
+        defaultLocationLabel: 'Standardort:',
+        unknownLocation: 'Unbekannter Ort',
+        selectedLocationTypeLabel: 'Art des gewählten Orts',
+        searchPlaceLabel: 'Favorit oder Geocoding-Ort suchen',
+        searchPlaceholder: 'Mindestens 2 Zeichen eingeben …',
+        latitudePlaceholder: 'Breitengrad',
+        longitudePlaceholder: 'Längengrad',
+        customNamePlaceholder: 'Optionaler eigener Ortsname',
+        convert: 'In Aufenthalt umwandeln',
         strategyOptions: {
-            latestPoint: 'Latest known point (default)',
-            selectedLocation: 'Selected location'
+            latestPoint: 'Letzter bekannter Punkt (Standard)',
+            selectedLocation: 'Gewählter Ort'
         },
         selectedSourceOptions: {
-            place: 'Favorite or geocoding place',
-            custom: 'Custom coordinates'
+            place: 'Favorit oder Geocoding-Ort',
+            custom: 'Eigene Koordinaten'
         },
         errors: {
-            previewFailed: 'Failed to resolve latest point preview',
-            searchFailed: 'Failed to search places'
+            previewFailed: 'Vorschau des letzten Punkts konnte nicht ermittelt werden',
+            searchFailed: 'Ortssuche fehlgeschlagen'
         },
         toasts: {
-            convertedSummary: 'Converted',
-            convertedDetail: 'Data gap was converted to stay.',
-            failedSummary: 'Conversion Failed',
-            failedFallback: 'Could not convert data gap'
+            convertedSummary: 'Umgewandelt',
+            convertedDetail: 'Die Datenlücke wurde in einen Aufenthalt umgewandelt.',
+            failedSummary: 'Umwandeln fehlgeschlagen',
+            failedFallback: 'Datenlücke konnte nicht umgewandelt werden'
         }
     },
     gpsPointEdit: {
-        header: 'Edit GPS Point',
-        mapInstructions: 'Click on the map to select a new location for this GPS point.',
-        locationLabel: 'Location',
-        latitudeLabel: 'Latitude',
-        longitudeLabel: 'Longitude',
-        speedLabel: 'Speed (km/h)',
-        speedPlaceholder: 'Speed in km/h',
-        accuracyLabel: 'Accuracy (meters)',
-        accuracyPlaceholder: 'Accuracy in meters',
-        stageChange: 'Add Change',
-        revertToOriginal: 'Revert to Original',
-        stagingHint: 'Changes are not saved right away: apply them together with "Apply Changes" on the GPS Data page.',
+        header: 'GPS-Punkt bearbeiten',
+        mapInstructions: 'Klicke auf die Karte, um einen neuen Ort für diesen GPS-Punkt zu wählen.',
+        locationLabel: 'Ort',
+        latitudeLabel: 'Breitengrad',
+        longitudeLabel: 'Längengrad',
+        speedLabel: 'Geschwindigkeit (km/h)',
+        speedPlaceholder: 'Geschwindigkeit in km/h',
+        accuracyLabel: 'Genauigkeit (Meter)',
+        accuracyPlaceholder: 'Genauigkeit in Metern',
+        stageChange: 'Änderung vormerken',
+        revertToOriginal: 'Auf Original zurücksetzen',
+        stagingHint: 'Änderungen werden nicht sofort gespeichert: Wende sie gemeinsam mit „Änderungen anwenden“ auf der Seite GPS-Daten an.',
         validation: {
-            latitudeRequired: 'Latitude is required',
-            latitudeRange: 'Latitude must be between -90 and 90',
-            longitudeRequired: 'Longitude is required',
-            longitudeRange: 'Longitude must be between -180 and 180'
+            latitudeRequired: 'Breitengrad ist erforderlich',
+            latitudeRange: 'Der Breitengrad muss zwischen -90 und 90 liegen',
+            longitudeRequired: 'Längengrad ist erforderlich',
+            longitudeRange: 'Der Längengrad muss zwischen -180 und 180 liegen'
         },
         mapPopups: {
-            currentLocation: 'Current Location - Click on map to move',
-            originalLocation: 'Original Location'
+            currentLocation: 'Aktueller Ort – zum Verschieben auf die Karte klicken',
+            originalLocation: 'Ursprünglicher Ort'
         }
     }
 }

@@ -1,107 +1,100 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * The favorite-location and geocoding-result dialogs: add/edit a favorite, reconcile favorites or
- * geocoding results against a provider, and edit a single geocoding result.
- *
- * The two reconcile dialogs (`FavoriteReconcileDialog.vue` / `GeocodingReconcileDialog.vue`) share
- * a near-identical layout and copy (provider select, progress section, footer buttons), so their
- * shared strings live directly under `reconcile.*` and only the wording that actually differs
- * (dialog titles, warning list, filter labels) is split into `reconcile.favorite.*` /
- * `reconcile.geocoding.*`.
+ * The favorite-location and geocoding-result dialogs (German): add/edit a favorite, reconcile favorites
+ * or geocoding results against a provider, and edit a single geocoding result.
  */
 export default {
     addFavorite: {
-        locationNamePlaceholder: 'Location name',
-        save: 'Save'
+        locationNamePlaceholder: 'Name des Orts',
+        save: 'Speichern'
     },
     editFavorite: {
         nameLabel: 'Name',
-        namePlaceholder: 'Enter location name',
-        cityLabel: 'City',
-        cityPlaceholder: 'Enter city (optional)',
-        countryLabel: 'Country',
-        countryPlaceholder: 'Enter country (optional)',
-        areaBoundariesTitle: 'Area Boundaries',
-        drawing: 'Drawing...',
-        redrawArea: 'Redraw Area',
-        drawInstruction: 'Click and drag on the map to draw a new rectangular area',
-        currentBoundsLabel: 'Current Bounds:',
-        neLabel: 'NE:',
+        namePlaceholder: 'Name des Orts eingeben',
+        cityLabel: 'Stadt',
+        cityPlaceholder: 'Stadt eingeben (optional)',
+        countryLabel: 'Land',
+        countryPlaceholder: 'Land eingeben (optional)',
+        areaBoundariesTitle: 'Grenzen des Bereichs',
+        drawing: 'Wird gezeichnet …',
+        redrawArea: 'Bereich neu zeichnen',
+        drawInstruction: 'Klicke und zieh auf der Karte, um einen neuen rechteckigen Bereich zu zeichnen',
+        currentBoundsLabel: 'Aktuelle Grenzen:',
+        neLabel: 'NO:',
         swLabel: 'SW:',
-        save: 'Save'
+        save: 'Speichern'
     },
     reconcile: {
-        selectProvider: 'Select Provider',
-        providerPlaceholder: 'Choose a geocoding provider',
-        primaryTag: 'Primary',
-        fallbackTag: 'Fallback',
-        providerHint: 'The provider will be used to fetch new geocoding data',
-        detailsTitle: 'Reconciliation Details',
-        filteredBadge: '(filtered)',
-        allBadge: '(all)',
-        activeFiltersLabel: 'Active filters:',
-        searchFilter: 'Search: "{search}"',
-        actionLabel: 'Action:',
-        importantLabel: 'Important:',
-        originalKeptOnFailure: 'If reconciliation fails, original data will be kept',
-        cannotBeUndone: 'This operation cannot be undone',
-        progressTitle: 'Reconciliation Progress',
-        processedLabel: 'Processed:',
-        successfulLabel: 'Successful:',
-        errorsLabel: 'Errors:',
-        completedSuccessfully: 'Reconciliation completed successfully!',
-        completedWithErrors: 'Completed with {count} error. | Completed with {count} errors.',
-        itemsReconciledSuccessfully: '{count} item reconciled successfully. | {count} items reconciled successfully.',
-        jobFailed: 'Reconciliation job failed',
-        unexpectedError: 'An unexpected error occurred',
-        reconcileButton: 'Reconcile',
-        favoritesToReconcileLabel: 'Favorites to reconcile:',
-        typeFilter: 'Type: {type}',
-        favoriteActionValue: 'Update city and country from provider',
+        selectProvider: 'Anbieter wählen',
+        providerPlaceholder: 'Geocoding-Anbieter wählen',
+        primaryTag: 'Primär',
+        fallbackTag: 'Ersatz',
+        providerHint: 'Über diesen Anbieter werden neue Geocoding-Daten abgerufen',
+        detailsTitle: 'Details zum Abgleich',
+        filteredBadge: '(gefiltert)',
+        allBadge: '(alle)',
+        activeFiltersLabel: 'Aktive Filter:',
+        searchFilter: 'Suche: „{search}“',
+        actionLabel: 'Aktion:',
+        importantLabel: 'Wichtig:',
+        originalKeptOnFailure: 'Schlägt der Abgleich fehl, bleiben die ursprünglichen Daten erhalten',
+        cannotBeUndone: 'Das lässt sich nicht rückgängig machen',
+        progressTitle: 'Fortschritt des Abgleichs',
+        processedLabel: 'Verarbeitet:',
+        successfulLabel: 'Erfolgreich:',
+        errorsLabel: 'Fehler:',
+        completedSuccessfully: 'Abgleich erfolgreich abgeschlossen!',
+        completedWithErrors: 'Mit {count} Fehler abgeschlossen. | Mit {count} Fehlern abgeschlossen.',
+        itemsReconciledSuccessfully: '{count} Eintrag abgeglichen. | {count} Einträge abgeglichen.',
+        jobFailed: 'Abgleich fehlgeschlagen',
+        unexpectedError: 'Ein unerwarteter Fehler ist aufgetreten',
+        reconcileButton: 'Abgleichen',
+        favoritesToReconcileLabel: 'Abzugleichende Favoriten:',
+        typeFilter: 'Typ: {type}',
+        favoriteActionValue: 'Stadt und Land vom Anbieter übernehmen',
         favoriteWarnings: {
-            cityCountryOnly: 'This will update the city and country fields only',
-            nameUnchanged: 'Name and location coordinates will remain unchanged',
-            areaCenterPoint: 'For areas, the center point will be used for geocoding'
+            cityCountryOnly: 'Nur die Felder Stadt und Land werden aktualisiert',
+            nameUnchanged: 'Name und Koordinaten bleiben unverändert',
+            areaCenterPoint: 'Bei Bereichen wird der Mittelpunkt für das Geocoding verwendet'
         },
         favorite: {
-            dialogTitleFiltered: 'Reconcile {count} Filtered Favorites',
-            dialogTitleAll: 'Reconcile All {count} Favorites',
-            dialogTitleSingle: 'Reconcile Favorite Location',
-            dialogTitleMultiple: 'Reconcile {count} Selected Favorites'
+            dialogTitleFiltered: '{count} gefilterte Favoriten abgleichen',
+            dialogTitleAll: 'Alle {count} Favoriten abgleichen',
+            dialogTitleSingle: 'Favorit abgleichen',
+            dialogTitleMultiple: '{count} ausgewählte Favoriten abgleichen'
         },
         geocoding: {
-            providerSwitchHint: 'Use Reconcile Selected/Reconcile All to refresh old records with the selected provider after switching providers.',
-            resultsToReconcileLabel: 'Results to reconcile:',
-            providerFilter: 'Provider: {provider}',
-            actionValue: 'Fetch fresh data from selected provider',
+            providerSwitchHint: 'Nach einem Wechsel des Anbieters aktualisierst du alte Einträge mit „Auswahl abgleichen“ bzw. „Alle abgleichen“.',
+            resultsToReconcileLabel: 'Abzugleichende Ergebnisse:',
+            providerFilter: 'Anbieter: {provider}',
+            actionValue: 'Aktuelle Daten vom gewählten Anbieter abrufen',
             warnings: {
-                displayNameCityCountry: 'This will update the display name, city, and country fields',
-                syncedAcrossStays: 'Changes will be synchronized across all timeline stays',
-                cachedEntriesNotAuto: 'Provider changes in settings do not rewrite existing cached entries automatically'
+                displayNameCityCountry: 'Anzeigename, Stadt und Land werden aktualisiert',
+                syncedAcrossStays: 'Die Änderungen werden in allen Aufenthalten der Zeitleiste übernommen',
+                cachedEntriesNotAuto: 'Ein Anbieterwechsel in den Einstellungen ändert vorhandene Einträge im Cache nicht automatisch'
             },
-            dialogTitleFiltered: 'Reconcile {count} Filtered Results',
-            dialogTitleAll: 'Reconcile All {count} Results',
-            dialogTitleSingle: 'Reconcile Geocoding Result',
-            dialogTitleMultiple: 'Reconcile {count} Selected Results'
+            dialogTitleFiltered: '{count} gefilterte Ergebnisse abgleichen',
+            dialogTitleAll: 'Alle {count} Ergebnisse abgleichen',
+            dialogTitleSingle: 'Geocoding-Ergebnis abgleichen',
+            dialogTitleMultiple: '{count} ausgewählte Ergebnisse abgleichen'
         }
     },
     geocodingEdit: {
-        header: 'Edit Geocoding Result',
-        mapLabel: 'Location Map',
-        mapHint: 'Read-only map showing the geocoding location',
-        displayNameLabel: 'Display Name',
-        displayNamePlaceholder: 'Enter location display name',
-        displayNameHint: 'The main display name shown for this location',
-        cityLabel: 'City',
-        cityPlaceholder: 'Enter city name',
-        cityHint: 'Optional city name',
-        countryLabel: 'Country',
-        countryPlaceholder: 'Enter country name',
-        countryHint: 'Optional country name',
-        providerLabel: 'Provider:',
-        coordinatesLabel: 'Coordinates:',
-        noteLabel: 'Note:',
-        syncNoteMessage: 'Changes will be synchronized across all timeline stays using this geocoding result.',
-        saveChanges: 'Save Changes'
+        header: 'Geocoding-Ergebnis bearbeiten',
+        mapLabel: 'Karte',
+        mapHint: 'Schreibgeschützte Karte mit dem Ort des Geocoding-Ergebnisses',
+        displayNameLabel: 'Anzeigename',
+        displayNamePlaceholder: 'Anzeigenamen des Orts eingeben',
+        displayNameHint: 'Der Hauptname, unter dem dieser Ort angezeigt wird',
+        cityLabel: 'Stadt',
+        cityPlaceholder: 'Stadt eingeben',
+        cityHint: 'Optionaler Name der Stadt',
+        countryLabel: 'Land',
+        countryPlaceholder: 'Land eingeben',
+        countryHint: 'Optionaler Name des Lands',
+        providerLabel: 'Anbieter:',
+        coordinatesLabel: 'Koordinaten:',
+        noteLabel: 'Hinweis:',
+        syncNoteMessage: 'Die Änderungen werden in allen Aufenthalten der Zeitleiste übernommen, die dieses Geocoding-Ergebnis nutzen.',
+        saveChanges: 'Änderungen speichern'
     }
 }

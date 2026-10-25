@@ -1,47 +1,43 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Location analytics: the city-details and country-details pages.
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
+ * Location analytics (German): the city-details and country-details pages.
  */
 export default {
     cityPage: {
-        loading: 'Loading city details...',
-        errorTitle: 'Failed to Load City Details',
-        loadFailed: 'Failed to load city details',
-        subtitle: 'City insights and visit history',
-        visitsCount: '{count} visits',
-        topPlacesTitle: 'Top Places in {name}',
-        placeStats: '{count} visits • {duration}',
-        latestPhotosTitle: 'Latest photos in {name}',
-        noPhotosMessage: 'No Immich photos found for this city.',
-        loadVisitsFailed: 'Failed to load visit history',
-        exportSuccessSummary: 'Export Successful',
-        exportSuccessDetail: 'Exported visits to {name}',
-        exportFailedSummary: 'Export Failed',
-        exportFailedDetail: 'Failed to export visits'
+        loading: 'Stadtdetails werden geladen …',
+        errorTitle: 'Stadtdetails nicht geladen',
+        loadFailed: 'Stadtdetails konnten nicht geladen werden',
+        subtitle: 'Einblicke und Besuchsverlauf der Stadt',
+        visitsCount: '{count} Besuche',
+        topPlacesTitle: 'Top-Orte in {name}',
+        placeStats: '{count} Besuche • {duration}',
+        latestPhotosTitle: 'Neueste Fotos in {name}',
+        noPhotosMessage: 'Keine Immich-Fotos für diese Stadt gefunden.',
+        loadVisitsFailed: 'Besuchsverlauf konnte nicht geladen werden',
+        exportSuccessSummary: 'Export erfolgreich',
+        exportSuccessDetail: 'Besuche in {name} exportiert',
+        exportFailedSummary: 'Export fehlgeschlagen',
+        exportFailedDetail: 'Besuche konnten nicht exportiert werden'
     },
     countryPage: {
-        loading: 'Loading country details...',
-        errorTitle: 'Failed to Load Country Details',
-        loadFailed: 'Failed to load country details',
-        subtitle: 'Country insights and visit history',
-        citiesVisitedCount: '{count} cities visited',
-        visitsCount: '{count} visits',
-        citiesTitle: 'Cities in {name}',
-        cityStats: '{count} visits • {duration} • {places} places',
-        showTop5: 'Show top 5',
-        showAllCities: 'Show all {count} cities',
-        topPlacesTitle: 'Top Places in {name}',
-        placeStats: '{count} visits • {duration}',
-        photoLocationsTitle: 'Photo locations in {name}',
-        latestPhotosTitle: 'Latest photos in {name}',
-        noPhotosMessage: 'No Immich photos found for this country.',
-        loadVisitsFailed: 'Failed to load visit history',
-        exportSuccessSummary: 'Export Successful',
-        exportSuccessDetail: 'Exported visits to {name}',
-        exportFailedSummary: 'Export Failed',
-        exportFailedDetail: 'Failed to export visits'
+        loading: 'Landesdetails werden geladen …',
+        errorTitle: 'Landesdetails nicht geladen',
+        loadFailed: 'Landesdetails konnten nicht geladen werden',
+        subtitle: 'Einblicke und Besuchsverlauf des Lands',
+        citiesVisitedCount: '{count} Städte besucht',
+        visitsCount: '{count} Besuche',
+        citiesTitle: 'Städte in {name}',
+        cityStats: '{count} Besuche • {duration} • {places} Orte',
+        showTop5: 'Top 5 zeigen',
+        showAllCities: 'Alle {count} Städte zeigen',
+        topPlacesTitle: 'Top-Orte in {name}',
+        placeStats: '{count} Besuche • {duration}',
+        photoLocationsTitle: 'Fotoorte in {name}',
+        latestPhotosTitle: 'Neueste Fotos in {name}',
+        noPhotosMessage: 'Keine Immich-Fotos für dieses Land gefunden.',
+        loadVisitsFailed: 'Besuchsverlauf konnte nicht geladen werden',
+        exportSuccessSummary: 'Export erfolgreich',
+        exportSuccessDetail: 'Besuche in {name} exportiert',
+        exportFailedSummary: 'Export fehlgeschlagen',
+        exportFailedDetail: 'Besuche konnten nicht exportiert werden'
     }
 }

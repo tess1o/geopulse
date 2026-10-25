@@ -1,81 +1,76 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Trip Classification dialog (components/dialogs/TripClassificationDialog.vue and its
- * components/dialogs/classification/* presentational sub-components).
- *
- * Movement-type labels for the Select/options and the "current"/"algorithm" classification tags
- * reuse the shared `movementTypes.*` catalog rather than duplicating them here.
+ * Trip Classification dialog (German). Movement-type labels reuse `movementTypes.*`.
  */
 export default {
     dialog: {
-        header: 'Trip Classification Details',
-        loading: 'Loading classification details...',
-        explanationLink: 'Why does this trip start and end here?',
-        close: 'Close'
+        header: 'Details zur Einstufung',
+        loading: 'Details zur Einstufung werden geladen …',
+        explanationLink: 'Warum beginnt und endet diese Fahrt hier?',
+        close: 'Schließen'
     },
     overview: {
-        title: 'Trip Overview',
-        startTime: 'Start Time',
-        duration: 'Duration',
-        distance: 'Distance',
-        effectiveClassification: 'Effective Classification',
-        automaticClassification: 'Automatic Classification',
-        classificationSource: 'Classification Source',
-        manualOverrideActive: 'Manual override is active for this trip.'
+        title: 'Überblick über die Fahrt',
+        startTime: 'Beginn',
+        duration: 'Dauer',
+        distance: 'Strecke',
+        effectiveClassification: 'Gültige Einstufung',
+        automaticClassification: 'Automatische Einstufung',
+        classificationSource: 'Quelle der Einstufung',
+        manualOverrideActive: 'Für diese Fahrt gilt eine manuelle Einstufung.'
     },
     editSection: {
-        title: 'Edit Movement Type',
-        unrecognizedWarning: 'Algorithm did not recognize this movement type. Set it manually below.',
-        overrideInfo: 'If this looks incorrect, override it manually.',
-        readOnlyError: 'Movement type edits are read-only in demo mode.',
-        selectPlaceholder: 'Select movement type',
-        saveButton: 'Save Override',
-        resetButton: 'Reset to Automatic'
+        title: 'Fortbewegungsart bearbeiten',
+        unrecognizedWarning: 'Der Algorithmus hat die Fortbewegungsart nicht erkannt. Leg sie unten manuell fest.',
+        overrideInfo: 'Wenn das falsch aussieht, leg die Art manuell fest.',
+        readOnlyError: 'Die Fortbewegungsart lässt sich im Demo-Modus nicht ändern.',
+        selectPlaceholder: 'Fortbewegungsart wählen',
+        saveButton: 'Manuell festlegen',
+        resetButton: 'Auf automatisch zurücksetzen'
     },
     stats: {
-        title: 'GPS Statistics',
-        avgSpeed: 'Average GPS Speed',
-        avgSpeedHint: 'Weighted by how long each reading lasted',
-        maxSpeed: 'Max GPS Speed',
-        maxSpeedHint: 'Highest speed held for at least 30 seconds',
-        calculatedAvgSpeed: 'Calculated Avg Speed',
-        calculatedAvgSpeedHint: 'From distance/duration',
-        speedVariance: 'Speed Variance',
-        lowAccuracyPoints: 'Low Accuracy Points',
-        gpsReliability: 'GPS Reliability',
-        reliable: 'Reliable',
-        unreliable: 'Unreliable',
-        reliableHint: 'GPS speeds are within expected range and used for classification',
-        unreliableHint: 'GPS speeds unreliable - using calculated speed from distance/duration instead'
+        title: 'GPS-Statistik',
+        avgSpeed: 'Ø GPS-Geschwindigkeit',
+        avgSpeedHint: 'Gewichtet nach der Dauer jedes Messwerts',
+        maxSpeed: 'Max. GPS-Geschwindigkeit',
+        maxSpeedHint: 'Höchste Geschwindigkeit, die mindestens 30 Sekunden gehalten wurde',
+        calculatedAvgSpeed: 'Berechnete Ø Geschwindigkeit',
+        calculatedAvgSpeedHint: 'Aus Strecke/Dauer',
+        speedVariance: 'Geschwindigkeitsschwankung',
+        lowAccuracyPoints: 'Ungenaue Punkte',
+        gpsReliability: 'Zuverlässigkeit des GPS',
+        reliable: 'Zuverlässig',
+        unreliable: 'Unzuverlässig',
+        reliableHint: 'Die GPS-Geschwindigkeiten liegen im erwarteten Bereich und werden für die Einstufung genutzt',
+        unreliableHint: 'GPS-Geschwindigkeiten unzuverlässig – stattdessen wird die aus Strecke/Dauer berechnete Geschwindigkeit genutzt'
     },
     priority: {
-        title: 'Classification Priority Order',
-        description: 'Trips are classified in priority order from left to right. Once a match is found, classification stops.',
-        learnMore: 'Learn more'
+        title: 'Reihenfolge der Einstufung',
+        description: 'Fahrten werden in dieser Reihenfolge von links nach rechts geprüft. Sobald eine passt, ist die Einstufung fertig.',
+        learnMore: 'Mehr erfahren'
     },
     steps: {
-        title: 'Classification Analysis',
-        description: 'Detailed threshold checks for automatic classification.'
+        title: 'Analyse der Einstufung',
+        description: 'Detaillierte Schwellenprüfungen der automatischen Einstufung.'
     },
-    finalDecisionLabel: 'Final Decision:',
-    na: 'N/A',
+    finalDecisionLabel: 'Ergebnis:',
+    na: 'k. A.',
     toasts: {
-        loadFailedFallback: 'Failed to load classification details',
-        loadFailedDetail: 'Could not load trip classification details',
-        movementUpdatedSummary: 'Movement Type Updated',
-        movementUpdatedDetail: 'Trip marked as {type}',
-        updateFailedSummary: 'Update Failed',
-        updateFailedFallback: 'Could not update movement type',
-        movementResetSummary: 'Movement Type Reset',
-        movementResetDetail: 'Trip classification reset to {type}',
-        resetFailedSummary: 'Reset Failed',
-        resetFailedFallback: 'Could not reset movement type'
+        loadFailedFallback: 'Details zur Einstufung konnten nicht geladen werden',
+        loadFailedDetail: 'Details zur Einstufung der Fahrt konnten nicht geladen werden',
+        movementUpdatedSummary: 'Fortbewegungsart aktualisiert',
+        movementUpdatedDetail: 'Fahrt als {type} markiert',
+        updateFailedSummary: 'Aktualisieren fehlgeschlagen',
+        updateFailedFallback: 'Fortbewegungsart konnte nicht aktualisiert werden',
+        movementResetSummary: 'Fortbewegungsart zurückgesetzt',
+        movementResetDetail: 'Einstufung der Fahrt auf {type} zurückgesetzt',
+        resetFailedSummary: 'Zurücksetzen fehlgeschlagen',
+        resetFailedFallback: 'Fortbewegungsart konnte nicht zurückgesetzt werden'
     },
     stepCard: {
-        notEnabled: 'Not Enabled',
-        passed: 'Passed',
-        failed: 'Failed',
-        thresholdChecksHeader: 'Threshold Checks:',
-        actual: '(actual: {value})'
+        notEnabled: 'Nicht aktiviert',
+        passed: 'Erfüllt',
+        failed: 'Nicht erfüllt',
+        thresholdChecksHeader: 'Schwellenprüfungen:',
+        actual: '(tatsächlich: {value})'
     }
 }

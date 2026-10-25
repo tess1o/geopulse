@@ -1,78 +1,80 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
+/**
+ * Help & Support page (German).
+ */
 export default {
     page: {
-        title: 'Help & Support',
-        description: 'Get help, access documentation, and report issues',
+        title: 'Hilfe & Support',
+        description: 'Hilfe bekommen, Dokumentation lesen und Probleme melden',
         issues: {
-            title: 'Having Issues?',
-            description: "If you're experiencing problems with timeline generation, trip classification, or other features, you can export anonymized debug data to help us troubleshoot.",
+            title: 'Probleme?',
+            description: 'Wenn es Probleme mit der Erstellung der Zeitleiste, der Einstufung von Fahrten oder anderen Funktionen gibt, kannst du anonymisierte Debug-Daten exportieren, die bei der Fehlersuche helfen.',
             debugExport: {
-                title: 'Export Debug Data',
-                description: 'Export your GPS data with privacy-preserving coordinate shifts. All coordinates are anonymized by shifting them by a random offset, making it safe to share for troubleshooting.',
+                title: 'Debug-Daten exportieren',
+                description: 'Exportiere deine GPS-Daten mit verschobenen Koordinaten. Alle Koordinaten werden um einen zufälligen Wert verschoben und so anonymisiert, sodass du sie gefahrlos zur Fehlersuche weitergeben kannst.',
                 bullets: [
-                    'Coordinates are shifted to protect your privacy',
-                    'Location names are anonymized',
-                    'Includes timeline configuration for analysis',
-                    'Lets you describe what is wrong and when it happened'
+                    'Koordinaten werden zum Schutz deiner Privatsphäre verschoben',
+                    'Ortsnamen werden anonymisiert',
+                    'Enthält die Zeitleisten-Konfiguration für die Analyse',
+                    'Du kannst beschreiben, was nicht stimmt und wann es passiert ist'
                 ],
-                demoDisabledText: 'Debug data export is disabled in demo mode to protect the shared demo dataset.',
-                demoDisabledTooltip: 'Debug data export is disabled in demo mode',
-                button: 'Export Debug Data'
+                demoDisabledText: 'Der Debug-Datenexport ist im Demo-Modus deaktiviert, um den gemeinsamen Demo-Datensatz zu schützen.',
+                demoDisabledTooltip: 'Der Debug-Datenexport ist im Demo-Modus deaktiviert',
+                button: 'Debug-Daten exportieren'
             },
             reportIssue: {
-                title: 'Report an Issue',
-                description: 'Found a bug or have a feature request? Report it on GitHub.',
-                stepsTitle: 'How to report effectively:',
+                title: 'Problem melden',
+                description: 'Einen Fehler gefunden oder einen Funktionswunsch? Melde ihn auf GitHub.',
+                stepsTitle: 'So meldest du am besten:',
                 steps: [
-                    'Export debug data using the button above',
-                    'Create a new issue on GitHub',
-                    'Attach the debug export ZIP file',
-                    'Describe the problem and expected behavior'
+                    'Exportiere Debug-Daten über den Button oben',
+                    'Erstelle ein neues Issue auf GitHub',
+                    'Hänge die ZIP-Datei des Debug-Exports an',
+                    'Beschreib das Problem und das erwartete Verhalten'
                 ],
-                button: 'Create GitHub Issue'
+                button: 'GitHub-Issue erstellen'
             },
-            demoModeToast: 'Debug data export is disabled in demo mode.'
+            demoModeToast: 'Der Debug-Datenexport ist im Demo-Modus deaktiviert.'
         },
         docs: {
-            title: 'Documentation',
-            description: 'Comprehensive guides and documentation for all GeoPulse features',
+            title: 'Dokumentation',
+            description: 'Ausführliche Anleitungen und Dokumentation zu allen Funktionen von GeoPulse',
             gettingStarted: {
-                title: 'Getting Started',
-                description: 'Quick start guide and initial setup'
+                title: 'Erste Schritte',
+                description: 'Schnellstart und Ersteinrichtung'
             },
             timelineFeatures: {
-                title: 'Timeline Features',
-                description: 'How timeline generation and processing works'
+                title: 'Funktionen der Zeitleiste',
+                description: 'Wie die Zeitleiste erstellt und berechnet wird'
             },
             tripClassification: {
-                title: 'Trip Classification',
-                description: 'Understanding how trips are classified'
+                title: 'Einstufung von Fahrten',
+                description: 'Wie Fahrten eingestuft werden'
             },
             locationSources: {
-                title: 'Location Sources',
-                description: 'Supported GPS tracking sources and setup'
+                title: 'Standortquellen',
+                description: 'Unterstützte GPS-Quellen und ihre Einrichtung'
             },
             faq: {
                 title: 'FAQ',
-                description: 'Frequently asked questions'
+                description: 'Häufige Fragen'
             },
             fullDocumentation: {
-                title: 'Full Documentation',
-                description: 'Complete documentation with search'
+                title: 'Gesamte Dokumentation',
+                description: 'Vollständige Dokumentation mit Suche'
             }
         },
         about: {
-            title: 'About GeoPulse',
-            description: 'Application information and credits',
+            title: 'Über GeoPulse',
+            description: 'Informationen zur Anwendung und Mitwirkende',
             version: 'Version',
-            loading: 'Loading...',
-            license: 'License',
-            licenseLinkText: 'BSL 1.1 License',
+            loading: 'Wird geladen …',
+            license: 'Lizenz',
+            licenseLinkText: 'BSL-1.1-Lizenz',
             repository: 'Repository',
             repositoryLinkText: 'GitHub',
-            author: 'Author',
+            author: 'Autor',
             authorLinkText: 'tess1o',
-            builtWith: 'Built With'
+            builtWith: 'Erstellt mit'
         }
     }
 }

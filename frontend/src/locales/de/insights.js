@@ -1,98 +1,87 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Journey Insights page.
- *
- * EN values are verbatim from the previous literals -- the page's test asserts on this exact copy.
- *
- * Not included here: achievement badge titles and descriptions. Those are served by the backend and
- * persisted in `user_badges` with English text baked in, so they are translated separately, by badge
- * id, in `./badges.js` (see the lookup in JourneyInsights.vue) rather than through this file's page
- * chrome.
+ * Journey Insights page (German). Badge titles and descriptions live in ./badges.js.
  */
 export default {
     page: {
-        title: 'Journey Insights',
-        subtitle: 'Your location story, all in one place.'
+        title: 'Reise-Einblicke',
+        subtitle: 'Deine Standortgeschichte an einem Ort.'
     },
-    loading: 'Building your journey insights…',
+    loading: 'Deine Reise-Einblicke werden erstellt …',
     empty: {
-        title: 'No Journey Data Available',
-        description: 'Start tracking your location to unlock insights about your travel patterns and achievements.'
+        title: 'Keine Reisedaten vorhanden',
+        description: 'Starte die Standortaufzeichnung, um Einblicke in deine Reisemuster und Erfolge zu bekommen.'
     },
     hero: {
-        eyebrow: 'All-time journey',
-        // '{distance} of movement.' -- the distance is a formatted value, not a sentence fragment.
-        movementSummary: '{distance} of movement.',
-        movementTitle: 'How you moved',
-        movementAria: 'Distance split by transport type',
-        noMovement: 'No movement has been recorded yet.'
+        eyebrow: 'Gesamte Reise',
+        movementSummary: '{distance} unterwegs.',
+        movementTitle: 'So warst du unterwegs',
+        movementAria: 'Strecke nach Fortbewegungsart',
+        noMovement: 'Noch keine Bewegung aufgezeichnet.'
     },
     movement: {
-        byCar: 'Car',
-        byMotorcycle: 'Motorcycle',
-        byPublicTransport: 'Public Transportation',
-        byWalk: 'Walk',
-        byBicycle: 'Bicycle',
-        byRunning: 'Running',
-        byTrain: 'Train',
-        byFlight: 'Flight',
-        byBoat: 'Boat',
-        byUnknown: 'Unclassified'
+        byCar: 'Auto',
+        byMotorcycle: 'Motorrad',
+        byPublicTransport: 'Öffentliche Verkehrsmittel',
+        byWalk: 'Zu Fuß',
+        byBicycle: 'Fahrrad',
+        byRunning: 'Laufen',
+        byTrain: 'Zug',
+        byFlight: 'Flug',
+        byBoat: 'Boot',
+        byUnknown: 'Nicht eingestuft'
     },
     places: {
-        title: "Where you've been",
-        countries: 'Countries explored',
-        noCountries: 'Start exploring to discover countries!',
-        cities: 'Cities visited',
-        noCities: 'Start tracking to discover cities!',
-        countryFlagAria: '{country} flag',
-        // Plural: previously a bare `{{ visits }} visits`, which read "1 visits".
-        visits: '{count} visit | {count} visits'
+        title: 'Wo du warst',
+        countries: 'Erkundete Länder',
+        noCountries: 'Geh auf Entdeckungstour und sammle Länder!',
+        cities: 'Besuchte Städte',
+        noCities: 'Starte die Aufzeichnung und sammle Städte!',
+        countryFlagAria: 'Flagge von {country}',
+        visits: '{count} Besuch | {count} Besuche'
     },
     patterns: {
-        title: 'Time patterns',
-        mostActiveMonth: 'Most active month',
-        mostActiveMonthDetail: 'Your historical peak activity period',
-        currentMonth: 'Current month',
-        busiestDay: 'Busiest day',
-        mostActiveTime: 'Most active time',
-        // Resolved from a backend `MessageDescriptor` via `formatMessageDescriptor()` -- see
-        // TimePatternService.java for when each key is chosen.
+        title: 'Zeitliche Muster',
+        mostActiveMonth: 'Aktivster Monat',
+        mostActiveMonthDetail: 'Dein bisheriger Spitzenzeitraum',
+        currentMonth: 'Aktueller Monat',
+        busiestDay: 'Aktivster Tag',
+        mostActiveTime: 'Aktivste Tageszeit',
+        // Resolved from a backend `MessageDescriptor` via `formatMessageDescriptor()`.
         monthlyComparison: {
-            earlyDays: 'Early days - keep exploring!',
-            noActivity: 'No activity recorded this month yet',
-            noBaseline: 'First month of tracking',
-            noRate: 'Building your activity history',
-            similar: 'Similar pace to your best month',
-            faster: '{percent}% faster pace than your best month!',
-            slower: '{percent}% slower pace than your best month'
+            earlyDays: 'Noch am Anfang – entdecke weiter!',
+            noActivity: 'Diesen Monat noch keine Aktivität',
+            noBaseline: 'Erster Monat der Aufzeichnung',
+            noRate: 'Dein Aktivitätsverlauf entsteht gerade',
+            similar: 'Ähnliches Tempo wie in deinem besten Monat',
+            faster: '{percent} % schneller als in deinem besten Monat!',
+            slower: '{percent} % langsamer als in deinem besten Monat'
         },
         dayInsight: {
-            noActivity: 'Keep exploring to find your pattern!',
-            weekend: 'Perfect for weekend adventures!',
-            friday: 'Ready for the weekend!',
-            monday: 'Starting the week strong!',
-            midweek: 'Making the most of midweek!'
+            noActivity: 'Entdecke weiter, um dein Muster zu finden!',
+            weekend: 'Perfekt für Wochenendabenteuer!',
+            friday: 'Bereit fürs Wochenende!',
+            monday: 'Starker Start in die Woche!',
+            midweek: 'Du holst das Beste aus der Wochenmitte!'
         },
         timeInsight: {
-            noActivity: 'Keep exploring to find your pattern!',
-            earlyBird: 'Early bird explorer',
-            evening: 'Evening adventurer'
+            noActivity: 'Entdecke weiter, um dein Muster zu finden!',
+            earlyBird: 'Frühaufsteher',
+            evening: 'Abendmensch'
         }
     },
     milestones: {
-        title: 'Journey milestones',
-        earned: 'Earned',
-        earnedOn: 'Earned {date}',
-        empty: 'Keep exploring to unlock milestones!',
+        title: 'Meilensteine',
+        earned: 'Erreicht',
+        earnedOn: 'Erreicht am {date}',
+        empty: 'Entdecke weiter, um Meilensteine freizuschalten!',
         groups: {
-            distance: 'Distance milestones',
-            exploration: 'Exploration',
-            modes: 'Travel modes',
-            consistency: 'Consistency streaks',
-            time: 'Time of day',
-            weather: 'Weather explorer',
-            other: 'Other achievements'
+            distance: 'Strecke',
+            exploration: 'Entdecken',
+            modes: 'Fortbewegungsarten',
+            consistency: 'Serien',
+            time: 'Tageszeit',
+            weather: 'Wetter',
+            other: 'Weitere Erfolge'
         }
     }
 }
