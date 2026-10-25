@@ -72,7 +72,7 @@ export const LOCALE_REGISTRY = [
         code: 'de',
         name: 'Deutsch',
         intl: 'de-DE',
-        status: 'draft',
+        status: 'ready',
         loadCatalog: () => import('./de/index.js'),
         loadPrimeVue: () => import('primelocale/de.json'),
         loadDayjs: () => import('dayjs/locale/de')
