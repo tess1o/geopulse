@@ -1,133 +1,127 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * The admin settings catalog (metadata table plus settings tabs).
+ * The admin settings catalog (German): metadata table plus settings tabs.
  *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
- *
- * `metadata.*` mirrors `SETTING_METADATA` in `src/constants/adminSettingsMetadata.js` one-to-one: each
- * dotted backend setting key (e.g. `map-matching.provider`) becomes a nested path
- * (`metadata.map-matching.provider.label`), so `getSettingMetadata()` can build the t() key by simply
- * interpolating the setting key into the path -- no separate key-mapping table to keep in sync.
+ * `metadata.*` mirrors `SETTING_METADATA` in `src/constants/adminSettingsMetadata.js` one-to-one; see
+ * en/adminSettings.js. Environment variable names and setting keys are never translated.
  */
 export default {
     metadata: {
         system: {
             logging: {
                 'application-level': {
-                    label: 'Application Log Level',
-                    description: 'ERROR, WARN, INFO, or DEBUG. Reset to use GEOPULSE_LOG_LEVEL or the application default; TRACE is unavailable in production.'
+                    label: 'Log-Level der Anwendung',
+                    description: 'ERROR, WARN, INFO oder DEBUG. Zurücksetzen, um GEOPULSE_LOG_LEVEL oder den Standard der Anwendung zu nutzen; TRACE ist im Produktivbetrieb nicht verfügbar.'
                 }
             },
             user: {
                 'default-distance-unit': {
-                    label: 'Default Distance Unit',
-                    description: 'Distance unit assigned to newly created users'
+                    label: 'Standard-Entfernungseinheit',
+                    description: 'Entfernungseinheit für neu angelegte Benutzer'
                 },
                 'default-temperature-unit': {
-                    label: 'Default Temperature Unit',
-                    description: 'Temperature unit assigned to newly created users'
+                    label: 'Standard-Temperatureinheit',
+                    description: 'Temperatureinheit für neu angelegte Benutzer'
                 }
             },
             timeline: {
                 view: {
                     'item-limit': {
-                        label: 'Timeline View Item Limit',
-                        description: 'Maximum number of timeline items returned in a single view request'
+                        label: 'Einträge pro Zeitleistenansicht',
+                        description: 'Höchstzahl an Einträgen, die eine einzelne Anfrage der Zeitleiste zurückgibt'
                     }
                 },
                 processing: {
                     'thread-pool-size': {
-                        label: 'Timeline Processing Threads',
-                        description: 'Number of worker threads used for timeline processing'
+                        label: 'Threads für die Zeitleiste',
+                        description: 'Anzahl der Worker-Threads für die Berechnung der Zeitleiste'
                     }
                 }
             },
             'version-check': {
                 'github-api-url': {
-                    label: 'Release API URL',
-                    description: 'GitHub-compatible API URL used to check for GeoPulse updates'
+                    label: 'URL der Release-API',
+                    description: 'GitHub-kompatible API-URL, über die nach GeoPulse-Updates gesucht wird'
                 },
                 'release-url': {
-                    label: 'Release Page URL',
-                    description: 'Fallback release page URL shown with update information'
+                    label: 'URL der Release-Seite',
+                    description: 'Ersatz-URL der Release-Seite, die mit Update-Informationen angezeigt wird'
                 },
                 'cache-ttl-minutes': {
-                    label: 'Update Cache TTL',
-                    description: 'Minutes to cache version update checks'
+                    label: 'Cache-Dauer für Updates',
+                    description: 'Minuten, die das Ergebnis der Update-Prüfung zwischengespeichert wird'
                 },
                 'connect-timeout-seconds': {
-                    label: 'Update Connect Timeout',
-                    description: 'Seconds to wait while connecting to the update API'
+                    label: 'Verbindungs-Timeout für Updates',
+                    description: 'Sekunden, die beim Verbinden mit der Update-API gewartet wird'
                 },
                 'read-timeout-seconds': {
-                    label: 'Update Read Timeout',
-                    description: 'Seconds to wait for update API responses'
+                    label: 'Lese-Timeout für Updates',
+                    description: 'Sekunden, die auf Antworten der Update-API gewartet wird'
                 }
             },
             'water-dataset': {
                 url: {
-                    label: 'Water Dataset URL',
-                    description: 'Water dataset archive URL used for Boat setup'
+                    label: 'URL des Gewässerdatensatzes',
+                    description: 'URL des Archivs mit dem Gewässerdatensatz für die Boot-Einrichtung'
                 },
                 sha256: {
-                    label: 'Water Dataset Checksum',
-                    description: 'Optional expected SHA-256 checksum for the water dataset archive'
+                    label: 'Prüfsumme des Gewässerdatensatzes',
+                    description: 'Optionale erwartete SHA-256-Prüfsumme des Archivs'
                 },
                 'auto-import': {
-                    label: 'Water Auto-Import',
-                    description: 'Automatically import the water dataset when Boat setup requires it'
+                    label: 'Gewässer automatisch importieren',
+                    description: 'Den Gewässerdatensatz automatisch importieren, wenn die Boot-Einrichtung ihn braucht'
                 },
                 'connect-timeout-seconds': {
-                    label: 'Water Connect Timeout',
-                    description: 'Seconds to wait while connecting to the water dataset download'
+                    label: 'Verbindungs-Timeout für Gewässerdaten',
+                    description: 'Sekunden, die beim Verbinden zum Download des Gewässerdatensatzes gewartet wird'
                 },
                 'download-timeout-hours': {
-                    label: 'Water Download Timeout',
-                    description: 'Maximum duration for a water dataset download'
+                    label: 'Download-Timeout für Gewässerdaten',
+                    description: 'Höchstdauer für den Download des Gewässerdatensatzes'
                 },
                 'download-stall-timeout-seconds': {
-                    label: 'Water Stall Timeout',
-                    description: 'Seconds without downloaded bytes before the water download fails'
+                    label: 'Timeout bei stockendem Download',
+                    description: 'Sekunden ohne empfangene Daten, bevor der Download der Gewässerdaten abbricht'
                 },
                 'setup-start-timeout-minutes': {
-                    label: 'Boat Setup Start Timeout',
-                    description: 'Minutes before a queued Boat setup job is treated as failed to start'
+                    label: 'Start-Timeout der Boot-Einrichtung',
+                    description: 'Minuten, nach denen ein wartender Job der Boot-Einrichtung als nicht gestartet gilt'
                 }
             },
             notifications: {
                 apprise: {
                     enabled: {
-                        label: 'Enable Apprise Notifications',
-                        description: 'Enable delivery of geofence alerts to Apprise destinations'
+                        label: 'Apprise-Benachrichtigungen aktivieren',
+                        description: 'Geofence-Hinweise an Apprise-Ziele zustellen'
                     },
                     'api-url': {
-                        label: 'Apprise API URL',
-                        description: 'Base URL of the Apprise API service (for example http://apprise-api:8000)'
+                        label: 'Apprise-API-URL',
+                        description: 'Basis-URL des Apprise-API-Dienstes (zum Beispiel http://apprise-api:8000)'
                     },
                     'auth-token': {
-                        label: 'Apprise API Token',
-                        description: 'Optional API token/key used for authenticating with Apprise (encrypted)'
+                        label: 'Apprise-API-Token',
+                        description: 'Optionales API-Token bzw. Schlüssel für die Anmeldung bei Apprise (verschlüsselt)'
                     },
                     'timeout-ms': {
-                        label: 'Apprise Timeout (ms)',
-                        description: 'HTTP request timeout when sending notifications to Apprise'
+                        label: 'Apprise-Timeout (ms)',
+                        description: 'Timeout für HTTP-Anfragen beim Senden an Apprise'
                     },
                     'verify-tls': {
-                        label: 'Verify TLS Certificates',
-                        description: 'Whether HTTPS certificate validation is enabled for Apprise requests'
+                        label: 'TLS-Zertifikate prüfen',
+                        description: 'Ob HTTPS-Zertifikate bei Anfragen an Apprise geprüft werden'
                     }
                 },
                 'geofence-events': {
                     cleanup: {
                         enabled: {
-                            label: 'Enable Geofence Event Cleanup',
-                            description: 'Enable automatic cleanup of old geofence notification events'
+                            label: 'Geofence-Ereignisse aufräumen',
+                            description: 'Alte Geofence-Ereignisse automatisch löschen'
                         }
                     },
                     'retention-days': {
-                        label: 'Retention (Days)',
-                        description: 'Delete geofence notification events older than this number of days'
+                        label: 'Aufbewahrung (Tage)',
+                        description: 'Geofence-Ereignisse löschen, die älter als diese Anzahl Tage sind'
                     }
                 }
             }
@@ -135,947 +129,947 @@ export default {
         auth: {
             registration: {
                 enabled: {
-                    label: 'Registration Enabled',
-                    description: 'Allow new users to register (master switch)'
+                    label: 'Registrierung aktiviert',
+                    description: 'Neue Benutzer dürfen sich registrieren (Hauptschalter)'
                 }
             },
             'password-registration': {
                 enabled: {
-                    label: 'Password Registration',
-                    description: 'Allow registration with email/password'
+                    label: 'Registrierung mit Passwort',
+                    description: 'Registrierung mit E-Mail und Passwort erlauben'
                 }
             },
             oidc: {
                 registration: {
                     enabled: {
-                        label: 'OIDC Registration',
-                        description: 'Allow registration via OIDC providers'
+                        label: 'Registrierung über OIDC',
+                        description: 'Registrierung über OIDC-Anbieter erlauben'
                     }
                 },
                 'auto-link-accounts': {
-                    label: 'Auto-Link OIDC Accounts',
-                    description: 'Automatically link OIDC accounts by email (security risk)'
+                    label: 'OIDC-Konten automatisch verknüpfen',
+                    description: 'OIDC-Konten automatisch anhand der E-Mail-Adresse verknüpfen (Sicherheitsrisiko)'
                 },
                 'callback-base-url': {
-                    label: 'OIDC Callback Base URL',
-                    description: 'Optional public base URL used to build OIDC callback redirects'
+                    label: 'Basis-URL für OIDC-Callbacks',
+                    description: 'Optionale öffentliche Basis-URL für die Weiterleitungen nach der OIDC-Anmeldung'
                 },
                 'rp-logout': {
                     enabled: {
-                        label: 'Sign Out of OIDC Provider',
-                        description: 'When signing out of GeoPulse, also sign out of the OIDC provider if it supports it'
+                        label: 'Auch beim OIDC-Anbieter abmelden',
+                        description: 'Beim Abmelden von GeoPulse auch beim OIDC-Anbieter abmelden, sofern er das unterstützt'
                     }
                 },
                 'jwks-cache': {
                     'ttl-hours': {
-                        label: 'JWKS Cache TTL',
-                        description: 'Hours to cache OIDC provider signing keys'
+                        label: 'Cache-Dauer für JWKS',
+                        description: 'Stunden, die die Signaturschlüssel der OIDC-Anbieter zwischengespeichert werden'
                     }
                 },
                 cleanup: {
                     'session-states': {
                         enabled: {
-                            label: 'OIDC Session Cleanup',
-                            description: 'Clean up expired OIDC login session state records'
+                            label: 'OIDC-Sitzungen aufräumen',
+                            description: 'Abgelaufene Sitzungsdaten von OIDC-Anmeldungen löschen'
                         }
                     }
                 },
                 login: {
                     enabled: {
-                        label: 'OIDC Login',
-                        description: 'Allow login via OIDC providers'
+                        label: 'Anmeldung über OIDC',
+                        description: 'Anmeldung über OIDC-Anbieter erlauben'
                     }
                 },
                 'auto-launch': {
                     enabled: {
-                        label: 'Auto-Launch OIDC Login',
-                        description: 'With password login disabled and exactly one OIDC provider, go straight to that provider from the login page. Open /login?autoLaunch=0 to see the login page.'
+                        label: 'OIDC-Anmeldung automatisch starten',
+                        description: 'Ist die Anmeldung mit Passwort deaktiviert und genau ein OIDC-Anbieter eingerichtet, geht es von der Anmeldeseite direkt zu diesem Anbieter. Öffne /login?autoLaunch=0, um die Anmeldeseite zu sehen.'
                     }
                 }
             },
             login: {
                 enabled: {
-                    label: 'Login Enabled',
-                    description: 'Allow users to log in (master switch)'
+                    label: 'Anmeldung aktiviert',
+                    description: 'Benutzer dürfen sich anmelden (Hauptschalter)'
                 }
             },
             'password-login': {
                 enabled: {
-                    label: 'Password Login',
-                    description: 'Allow login with email/password'
+                    label: 'Anmeldung mit Passwort',
+                    description: 'Anmeldung mit E-Mail und Passwort erlauben'
                 }
             },
             'admin-login-bypass': {
                 enabled: {
-                    label: 'Admin Login Bypass',
-                    description: 'Allow admins to bypass login restrictions (prevents lockout)'
+                    label: 'Anmeldesperre für Admins umgehen',
+                    description: 'Admins dürfen Anmeldebeschränkungen umgehen (verhindert, dass man sich aussperrt)'
                 }
             },
             'guest-root-redirect-to-login': {
                 enabled: {
-                    label: 'Redirect Guests From Root',
-                    description: 'Redirect signed-out users from "/" to "/login" instead of showing Home'
+                    label: 'Gäste von der Startseite umleiten',
+                    description: 'Abgemeldete Besucher von „/“ zu „/login“ umleiten, statt die Startseite zu zeigen'
                 }
             }
         },
         ai: {
             logging: {
                 enabled: {
-                    label: 'Enable AI Request/Response Logging',
-                    description: 'Log detailed AI requests and responses for debugging (changes apply immediately)'
+                    label: 'KI-Anfragen und -Antworten protokollieren',
+                    description: 'Ausführliche KI-Anfragen und -Antworten zur Fehlersuche protokollieren (gilt sofort)'
                 }
             },
             'chat-memory': {
                 'max-messages': {
-                    label: 'Chat Memory Size',
-                    description: 'Maximum number of messages to keep in conversation history per user'
+                    label: 'Größe des Chat-Gedächtnisses',
+                    description: 'Höchstzahl an Nachrichten, die pro Benutzer im Gesprächsverlauf behalten werden'
                 }
             },
             'tool-result': {
                 'max-length': {
-                    label: 'Tool Result Max Length',
-                    description: 'Maximum characters in tool results to prevent token limit errors (12000 ≈ 3000 tokens)'
+                    label: 'Maximale Länge von Tool-Ergebnissen',
+                    description: 'Höchstzahl an Zeichen in Tool-Ergebnissen, um Token-Limits nicht zu überschreiten (12000 ≈ 3000 Tokens)'
                 }
             }
         },
         geocoding: {
             'primary-provider': {
-                label: 'Primary Provider',
-                description: 'Primary geocoding service for new lookups only; existing cached records stay unchanged until reconciled'
+                label: 'Primärer Anbieter',
+                description: 'Primärer Geocoding-Dienst, nur für neue Abfragen; vorhandene Cache-Einträge bleiben unverändert, bis sie abgeglichen werden'
             },
             'fallback-provider': {
-                label: 'Fallback Provider',
-                description: 'Fallback for new provider calls only; does not rewrite existing cached records'
+                label: 'Ersatzanbieter',
+                description: 'Ersatz nur für neue Anbieterabfragen; ändert vorhandene Cache-Einträge nicht'
             },
             'delay-ms': {
-                label: 'Request Delay',
-                description: 'Delay between geocoding requests (milliseconds)'
+                label: 'Verzögerung zwischen Anfragen',
+                description: 'Verzögerung zwischen Geocoding-Anfragen (Millisekunden)'
             },
             nominatim: {
                 enabled: {
                     label: 'Nominatim',
-                    description: 'Enable Nominatim geocoding provider'
+                    description: 'Geocoding-Anbieter Nominatim aktivieren'
                 },
                 'public-host-forward-search-enabled': {
-                    label: 'Nominatim Forward Search',
-                    description: 'Allow Nominatim search/autocomplete on public nominatim.openstreetmap.org (self-hosted Nominatim is always allowed)'
+                    label: 'Vorwärtssuche mit Nominatim',
+                    description: 'Suche und Autovervollständigung über das öffentliche nominatim.openstreetmap.org erlauben (selbst gehostetes Nominatim ist immer erlaubt)'
                 },
                 url: {
-                    label: 'Nominatim URL',
-                    description: 'Custom Nominatim server URL (optional)'
+                    label: 'Nominatim-URL',
+                    description: 'Eigene URL des Nominatim-Servers (optional)'
                 },
                 language: {
-                    label: 'Nominatim Language',
-                    description: 'Language preference (BCP 47: en-US, de, uk, ja, etc.)'
+                    label: 'Sprache für Nominatim',
+                    description: 'Bevorzugte Sprache (BCP 47: en-US, de, uk, ja usw.)'
                 }
             },
             photon: {
                 enabled: {
                     label: 'Photon',
-                    description: 'Enable Photon geocoding provider'
+                    description: 'Geocoding-Anbieter Photon aktivieren'
                 },
                 url: {
-                    label: 'Photon URL',
-                    description: 'Custom Photon server URL (optional)'
+                    label: 'Photon-URL',
+                    description: 'Eigene URL des Photon-Servers (optional)'
                 },
                 language: {
-                    label: 'Photon Language',
-                    description: 'Photon language code (allowed: de, pl, el, en, es, fa, fr, it, ja, ko). Leave empty for provider default'
+                    label: 'Sprache für Photon',
+                    description: 'Sprachcode für Photon (erlaubt: de, pl, el, en, es, fa, fr, it, ja, ko). Leer lassen für den Standard des Anbieters'
                 }
             },
             googlemaps: {
                 enabled: {
                     label: 'Google Maps',
-                    description: 'Enable Google Maps geocoding provider'
+                    description: 'Geocoding-Anbieter Google Maps aktivieren'
                 },
                 'api-key': {
-                    label: 'Google Maps API Key',
-                    description: 'API key for Google Maps (encrypted, enter to update)'
+                    label: 'Google-Maps-API-Schlüssel',
+                    description: 'API-Schlüssel für Google Maps (verschlüsselt, zum Ändern neu eingeben)'
                 },
                 language: {
-                    label: 'Google Maps Language',
-                    description: 'See supported languages: https://developers.google.com/maps/faq#languagesupport'
+                    label: 'Sprache für Google Maps',
+                    description: 'Unterstützte Sprachen: https://developers.google.com/maps/faq#languagesupport'
                 }
             },
             mapbox: {
                 enabled: {
                     label: 'Mapbox',
-                    description: 'Enable Mapbox geocoding provider'
+                    description: 'Geocoding-Anbieter Mapbox aktivieren'
                 },
                 'access-token': {
-                    label: 'Mapbox Access Token',
-                    description: 'Access token for Mapbox (encrypted, enter to update)'
+                    label: 'Mapbox-Zugriffstoken',
+                    description: 'Zugriffstoken für Mapbox (verschlüsselt, zum Ändern neu eingeben)'
                 }
             },
             geoapify: {
                 enabled: {
                     label: 'Geoapify',
-                    description: 'Enable Geoapify geocoding provider'
+                    description: 'Geocoding-Anbieter Geoapify aktivieren'
                 },
                 'api-key': {
-                    label: 'Geoapify API Key',
-                    description: 'API key for Geoapify (encrypted, enter to update)'
+                    label: 'Geoapify-API-Schlüssel',
+                    description: 'API-Schlüssel für Geoapify (verschlüsselt, zum Ändern neu eingeben)'
                 },
                 language: {
-                    label: 'Geoapify Language',
-                    description: 'Language preference for Geoapify responses (optional)'
+                    label: 'Sprache für Geoapify',
+                    description: 'Bevorzugte Sprache für Antworten von Geoapify (optional)'
                 },
                 'delay-ms': {
-                    label: 'Geoapify Delay',
-                    description: 'Delay between Geoapify requests (milliseconds)'
+                    label: 'Verzögerung für Geoapify',
+                    description: 'Verzögerung zwischen Anfragen an Geoapify (Millisekunden)'
                 }
             },
             chibigeo: {
                 enabled: {
                     label: 'ChibiGeo',
-                    description: 'Enable ChibiGeo geocoding provider'
+                    description: 'Geocoding-Anbieter ChibiGeo aktivieren'
                 },
                 url: {
-                    label: 'ChibiGeo URL',
-                    description: 'Photon-compatible ChibiGeo URL'
+                    label: 'ChibiGeo-URL',
+                    description: 'Photon-kompatible URL von ChibiGeo'
                 },
                 'api-key': {
-                    label: 'ChibiGeo API Key',
-                    description: 'API key for ChibiGeo (encrypted, enter to update)'
+                    label: 'ChibiGeo-API-Schlüssel',
+                    description: 'API-Schlüssel für ChibiGeo (verschlüsselt, zum Ändern neu eingeben)'
                 },
                 language: {
-                    label: 'ChibiGeo Language',
-                    description: 'Photon-compatible language code (allowed: de, pl, el, en, es, fa, fr, it, ja, ko). Leave empty for provider default'
+                    label: 'Sprache für ChibiGeo',
+                    description: 'Photon-kompatibler Sprachcode (erlaubt: de, pl, el, en, es, fa, fr, it, ja, ko). Leer lassen für den Standard des Anbieters'
                 },
                 'delay-ms': {
-                    label: 'ChibiGeo Delay',
-                    description: 'Delay between ChibiGeo requests (milliseconds)'
+                    label: 'Verzögerung für ChibiGeo',
+                    description: 'Verzögerung zwischen Anfragen an ChibiGeo (Millisekunden)'
                 }
             },
             cache: {
                 'max-bbox-area-km2': {
-                    label: 'Cache BBox Limit',
-                    description: 'Maximum provider bounding box area accepted for geocoding cache matching'
+                    label: 'BBox-Limit für den Cache',
+                    description: 'Größte Fläche einer Bounding Box des Anbieters, die für Cache-Treffer akzeptiert wird'
                 }
             },
             reconcile: {
                 item: {
                     'max-attempts': {
-                        label: 'Reconcile Attempts',
-                        description: 'Maximum attempts when reconciling one cached geocoding record'
+                        label: 'Versuche beim Abgleich',
+                        description: 'Höchstzahl an Versuchen beim Abgleich eines Cache-Eintrags'
                     }
                 },
                 'circuit-open-wait-ms': {
-                    label: 'Circuit Open Wait',
-                    description: 'Milliseconds to wait when provider circuit breaker is open during reconciliation'
+                    label: 'Wartezeit bei offenem Circuit',
+                    description: 'Millisekunden Wartezeit, wenn der Circuit Breaker des Anbieters während des Abgleichs offen ist'
                 },
                 'inter-item-delay-ms': {
-                    label: 'Reconcile Pacing',
-                    description: 'Delay between reconciled geocoding records in milliseconds'
+                    label: 'Tempo des Abgleichs',
+                    description: 'Verzögerung zwischen abgeglichenen Geocoding-Einträgen in Millisekunden'
                 }
             }
         },
         weather: {
             enabled: {
-                label: 'Enable Weather',
-                description: 'Enable weather samples for timeline stays and trips'
+                label: 'Wetter aktivieren',
+                description: 'Wettermesswerte für Aufenthalte und Fahrten der Zeitleiste aktivieren'
             },
             'primary-provider': {
-                label: 'Primary Provider',
-                description: 'Weather provider used first for new weather samples'
+                label: 'Primärer Anbieter',
+                description: 'Wetteranbieter, der für neue Messwerte zuerst genutzt wird'
             },
             'secondary-provider': {
-                label: 'Secondary Provider',
-                description: 'Optional fallback provider used when the primary provider cannot return a sample'
+                label: 'Zweiter Anbieter',
+                description: 'Optionaler Ersatz, wenn der primäre Anbieter keinen Messwert liefern kann'
             },
             'open-meteo': {
                 enabled: {
-                    label: 'Enable Open-Meteo',
-                    description: 'Enable Open-Meteo as a selectable weather provider'
+                    label: 'Open-Meteo aktivieren',
+                    description: 'Open-Meteo als auswählbaren Wetteranbieter aktivieren'
                 },
                 'forecast-url': {
-                    label: 'Forecast URL',
-                    description: 'Open-Meteo forecast API base URL'
+                    label: 'URL für Vorhersagen',
+                    description: 'Basis-URL der Vorhersage-API von Open-Meteo'
                 },
                 'archive-url': {
-                    label: 'Archive URL',
-                    description: 'Open-Meteo historical archive API base URL'
+                    label: 'URL für das Archiv',
+                    description: 'Basis-URL der historischen Archiv-API von Open-Meteo'
                 },
                 'api-key': {
-                    label: 'Open-Meteo API Key',
-                    description: 'Optional Open-Meteo API key (encrypted)'
+                    label: 'Open-Meteo-API-Schlüssel',
+                    description: 'Optionaler API-Schlüssel für Open-Meteo (verschlüsselt)'
                 },
                 'connect-timeout-seconds': {
-                    label: 'Open-Meteo Connect Timeout',
-                    description: 'Seconds to wait while opening an Open-Meteo connection'
+                    label: 'Verbindungs-Timeout für Open-Meteo',
+                    description: 'Sekunden, die beim Verbinden mit Open-Meteo gewartet wird'
                 },
                 'read-timeout-seconds': {
-                    label: 'Open-Meteo Read Timeout',
-                    description: 'Seconds to wait for Open-Meteo responses'
+                    label: 'Lese-Timeout für Open-Meteo',
+                    description: 'Sekunden, die auf Antworten von Open-Meteo gewartet wird'
                 }
             },
             pirate: {
                 enabled: {
-                    label: 'Enable Pirate Weather',
-                    description: 'Enable Pirate Weather as a selectable weather provider'
+                    label: 'Pirate Weather aktivieren',
+                    description: 'Pirate Weather als auswählbaren Wetteranbieter aktivieren'
                 },
                 'base-url': {
-                    label: 'Pirate Weather Forecast URL',
-                    description: 'Pirate Weather forecast API base URL'
+                    label: 'Vorhersage-URL von Pirate Weather',
+                    description: 'Basis-URL der Vorhersage-API von Pirate Weather'
                 },
                 'time-machine-url': {
-                    label: 'Pirate Weather Time Machine URL',
-                    description: 'Pirate Weather historical time machine API base URL'
+                    label: 'Time-Machine-URL von Pirate Weather',
+                    description: 'Basis-URL der historischen Time-Machine-API von Pirate Weather'
                 },
                 'api-key': {
-                    label: 'Pirate Weather API Key',
-                    description: 'Pirate Weather API key (encrypted)'
+                    label: 'Pirate-Weather-API-Schlüssel',
+                    description: 'API-Schlüssel für Pirate Weather (verschlüsselt)'
                 },
                 'connect-timeout-seconds': {
-                    label: 'Pirate Connect Timeout',
-                    description: 'Seconds to wait while opening a Pirate Weather connection'
+                    label: 'Verbindungs-Timeout für Pirate',
+                    description: 'Sekunden, die beim Verbinden mit Pirate Weather gewartet wird'
                 },
                 'read-timeout-seconds': {
-                    label: 'Pirate Read Timeout',
-                    description: 'Seconds to wait for Pirate Weather responses'
+                    label: 'Lese-Timeout für Pirate',
+                    description: 'Sekunden, die auf Antworten von Pirate Weather gewartet wird'
                 }
             },
             ongoing: {
                 enabled: {
-                    label: 'Ongoing Weather',
-                    description: 'Create weather targets for active latest stays and trips'
+                    label: 'Laufende Wettererfassung',
+                    description: 'Wetterziele für die aktuellen Aufenthalte und Fahrten anlegen'
                 },
                 'interval-minutes': {
-                    label: 'Ongoing Interval',
-                    description: 'Minimum minutes between ongoing weather samples (minimum 30)'
+                    label: 'Intervall der laufenden Erfassung',
+                    description: 'Mindestabstand in Minuten zwischen laufenden Wettermesswerten (mindestens 30)'
                 }
             },
             backfill: {
                 enabled: {
-                    label: 'Historical Weather Backfill',
-                    description: 'Discover historical weather targets automatically'
+                    label: 'Historische Wetterdaten nachladen',
+                    description: 'Historische Wetterziele automatisch ermitteln'
                 }
             },
             quota: {
                 'daily-request-limit': {
-                    label: 'Daily Request Limit',
-                    description: 'Maximum provider requests per UTC day'
+                    label: 'Tägliches Anfragelimit',
+                    description: 'Höchstzahl an Anbieteranfragen pro UTC-Tag'
                 },
                 'ongoing-reserve': {
-                    label: 'Ongoing Reserve',
-                    description: 'Requests reserved for ongoing weather samples each day'
+                    label: 'Reserve für laufende Erfassung',
+                    description: 'Täglich für laufende Wettermesswerte reservierte Anfragen'
                 }
             },
             'coordinate-precision': {
-                label: 'Coordinate Precision',
-                description: 'Decimal precision for weather location buckets'
+                label: 'Koordinatengenauigkeit',
+                description: 'Nachkommastellen für die Ortsgruppen der Wetterdaten'
             },
             'failed-target-retry': {
                 enabled: {
-                    label: 'Retry Failed Targets',
-                    description: 'Retry stale failed weather targets after cooldown'
+                    label: 'Fehlgeschlagene Ziele erneut versuchen',
+                    description: 'Veraltete fehlgeschlagene Wetterziele nach einer Wartezeit erneut versuchen'
                 },
                 'cooldown-hours': {
-                    label: 'Failed Retry Cooldown',
-                    description: 'Hours before a failed weather target can be retried'
+                    label: 'Wartezeit bis zur Wiederholung',
+                    description: 'Stunden, bevor ein fehlgeschlagenes Wetterziel erneut versucht werden darf'
                 }
             },
             targets: {
                 'completed-retention-days': {
-                    label: 'Completed Target Retention',
-                    description: 'Days to retain completed weather target records'
+                    label: 'Aufbewahrung abgeschlossener Ziele',
+                    description: 'Tage, die abgeschlossene Wetterziele aufbewahrt werden'
                 },
                 'failed-retention-days': {
-                    label: 'Failed Target Retention',
-                    description: 'Days to retain failed weather target records'
+                    label: 'Aufbewahrung fehlgeschlagener Ziele',
+                    description: 'Tage, die fehlgeschlagene Wetterziele aufbewahrt werden'
                 },
                 'in-progress-timeout-minutes': {
-                    label: 'In-Progress Target Timeout',
-                    description: 'Minutes before in-progress weather targets are considered stale'
+                    label: 'Timeout für laufende Ziele',
+                    description: 'Minuten, nach denen laufende Wetterziele als veraltet gelten'
                 }
             }
         },
         'map-matching': {
             enabled: {
-                label: 'Enable Map Matching',
-                description: 'Global prerequisite for user opt-in map matching'
+                label: 'Map-Matching aktivieren',
+                description: 'Globale Voraussetzung dafür, dass Benutzer Map-Matching einschalten können'
             },
             automatic: {
                 enabled: {
-                    label: 'Automatic Future Matching',
-                    description: 'Map-match stable new trips for all users after the quiet period'
+                    label: 'Neue Fahrten automatisch anpassen',
+                    description: 'Abgeschlossene neue Fahrten aller Benutzer nach der Ruhezeit anpassen'
                 },
                 'quiet-period-minutes': {
-                    label: 'Quiet Period',
-                    description: 'Minutes after a trip ends before it is matched automatically'
+                    label: 'Ruhezeit',
+                    description: 'Minuten nach dem Ende einer Fahrt, bevor sie automatisch angepasst wird'
                 }
             },
             backfill: {
                 enabled: {
-                    label: 'Historical Backfill',
-                    description: 'Discover historical trips for all users in the background; progress is resumable'
+                    label: 'Historisches Nachladen',
+                    description: 'Vergangene Fahrten aller Benutzer im Hintergrund ermitteln; der Fortschritt lässt sich fortsetzen'
                 }
             },
             provider: {
-                label: 'Provider',
-                description: 'Map matching engine used for trip route refinement'
+                label: 'Anbieter',
+                description: 'Engine für das Map-Matching der Fahrtrouten'
             },
             valhalla: {
                 'base-url': {
-                    label: 'Valhalla Base URL',
-                    description: 'Base URL for the self-hosted Valhalla service'
+                    label: 'Basis-URL von Valhalla',
+                    description: 'Basis-URL des selbst gehosteten Valhalla-Dienstes'
                 },
                 'connect-timeout-seconds': {
-                    label: 'Connect Timeout',
-                    description: 'Seconds to wait while opening a Valhalla connection'
+                    label: 'Verbindungs-Timeout',
+                    description: 'Sekunden, die beim Verbinden mit Valhalla gewartet wird'
                 },
                 'read-timeout-seconds': {
-                    label: 'Read Timeout',
-                    description: 'Seconds to wait for Valhalla map matching responses'
+                    label: 'Lese-Timeout',
+                    description: 'Sekunden, die auf Antworten von Valhalla gewartet wird'
                 }
             },
             'max-input-points': {
-                label: 'Max Input Points',
-                description: 'Maximum GPS points sent to Valhalla per trip'
+                label: 'Maximale Eingabepunkte',
+                description: 'Höchstzahl an GPS-Punkten, die pro Fahrt an Valhalla gehen'
             },
             'max-trip-duration-hours': {
-                label: 'Max Trip Duration',
-                description: 'Trips longer than this many hours are skipped'
+                label: 'Maximale Fahrtdauer',
+                description: 'Fahrten, die länger als so viele Stunden dauern, werden übersprungen'
             },
             worker: {
                 'batch-size': {
-                    label: 'Worker Batch Size',
-                    description: 'Map matching targets processed per scheduled worker run'
+                    label: 'Stapelgröße des Workers',
+                    description: 'Ziele, die pro geplantem Worker-Durchlauf verarbeitet werden'
                 }
             },
             'max-attempts': {
-                label: 'Max Attempts',
-                description: 'Maximum retry attempts for each map matching target'
+                label: 'Maximale Versuche',
+                description: 'Höchstzahl an Wiederholungen pro Map-Matching-Ziel'
             },
             quality: {
                 'min-raw-distance-meters': {
-                    label: 'Quality Check Distance',
-                    description: 'Minimum raw chunk distance before partial-match quality checks apply'
+                    label: 'Strecke für die Qualitätsprüfung',
+                    description: 'Mindeststrecke eines Rohabschnitts, ab der die Prüfung auf Teiltreffer greift'
                 },
                 'min-distance-coverage-percent': {
-                    label: 'Minimum Coverage',
-                    description: 'Minimum matched distance as a percent of raw chunk distance'
+                    label: 'Mindestabdeckung',
+                    description: 'Angepasste Strecke mindestens in Prozent der Rohstrecke'
                 },
                 'max-discontinuity-percent': {
-                    label: 'Maximum Gap Percent',
-                    description: 'Maximum unmatched gap distance between matched fragments as a percent of raw chunk distance'
+                    label: 'Maximale Lücke in Prozent',
+                    description: 'Größte nicht angepasste Lücke zwischen angepassten Teilen in Prozent der Rohstrecke'
                 },
                 'max-short-discontinuity-meters': {
-                    label: 'Short Gap Allowance',
-                    description: 'Minimum absolute gap allowance between matched fragments'
+                    label: 'Erlaubte kurze Lücke',
+                    description: 'Absolute Mindestlücke, die zwischen angepassten Teilen erlaubt ist'
                 }
             }
         },
         panoramax: {
             enabled: {
-                label: 'Enable Panoramax Coverage',
-                description: 'Show Panoramax street-level imagery coverage on Timeline maps'
+                label: 'Panoramax-Abdeckung aktivieren',
+                description: 'Abdeckung mit Straßenbildern von Panoramax auf den Zeitleistenkarten anzeigen'
             },
             endpoint: {
-                label: 'Panoramax STAC Endpoint',
-                description: 'Public Panoramax STAC API endpoint used for coverage and imagery'
+                label: 'Panoramax-STAC-Endpunkt',
+                description: 'Öffentlicher STAC-API-Endpunkt von Panoramax für Abdeckung und Bilder'
             }
         },
         poi: {
             enabled: {
-                label: 'Enable Place Discovery',
-                description: 'Suggest places worth visiting, with photos, when planning a trip'
+                label: 'Ortssuche aktivieren',
+                description: 'Beim Planen einer Reise sehenswerte Orte mit Fotos vorschlagen'
             },
             'user-agent': {
                 label: 'User-Agent',
-                description: 'Sent to Wikidata and Commons. Keep it identifying: an anonymous client is the one that gets rate-limited or blocked'
+                description: 'Wird an Wikidata und Commons gesendet. Er sollte dich erkennbar machen: anonyme Clients werden gedrosselt oder gesperrt'
             },
             language: {
-                label: 'Preferred Language',
-                description: 'Language for place names and descriptions (e.g. en, de, uk)'
+                label: 'Bevorzugte Sprache',
+                description: 'Sprache für Ortsnamen und Beschreibungen (z. B. en, de, uk)'
             },
             attribution: {
                 enabled: {
-                    label: 'Show Attribution',
-                    description: 'Display photo credits and data attribution. Required by the Wikimedia licences'
+                    label: 'Quellenangaben zeigen',
+                    description: 'Bildnachweise und Datenquellen anzeigen. Die Wikimedia-Lizenzen verlangen das'
                 }
             },
             wikidata: {
                 endpoint: {
-                    label: 'Wikidata Endpoint',
-                    description: 'Wikidata Query Service base URL. Point at a self-hosted instance to avoid the public rate limits'
+                    label: 'Wikidata-Endpunkt',
+                    description: 'Basis-URL des Wikidata Query Service. Zeig auf eine selbst gehostete Instanz, um die öffentlichen Limits zu umgehen'
                 }
             },
             commons: {
                 endpoint: {
-                    label: 'Commons Endpoint',
-                    description: 'Wikimedia Commons API base URL, used to resolve photo credits'
+                    label: 'Commons-Endpunkt',
+                    description: 'Basis-URL der Wikimedia-Commons-API, über die Bildnachweise ermittelt werden'
                 },
                 'thumb-width': {
-                    label: 'Photo Thumbnail Width',
-                    description: 'Requested thumbnail width in pixels. Commons does the resizing, so larger means slower'
+                    label: 'Breite der Vorschaubilder',
+                    description: 'Angeforderte Breite der Vorschaubilder in Pixeln. Commons skaliert, größer heißt also langsamer'
                 }
             },
             'max-results': {
-                label: 'Max Results Per Area',
-                description: 'Upper limit on places fetched from Wikidata for one area'
+                label: 'Maximale Treffer pro Gegend',
+                description: 'Obergrenze an Orten, die für eine Gegend von Wikidata abgerufen werden'
             },
             cache: {
                 'ttl-days': {
-                    label: 'Place Cache TTL (days)',
-                    description: 'How long cached place data is reused before refetching. Longer is kinder to the shared API'
+                    label: 'Cache-Dauer für Orte (Tage)',
+                    description: 'Wie lange zwischengespeicherte Ortsdaten genutzt werden, bevor sie neu abgerufen werden. Länger schont die gemeinsame API'
                 },
                 'image-ttl-days': {
-                    label: 'Photo Cache TTL (days)',
-                    description: 'How long cached photo bytes are reused before refetching'
+                    label: 'Cache-Dauer für Fotos (Tage)',
+                    description: 'Wie lange zwischengespeicherte Fotos genutzt werden, bevor sie neu abgerufen werden'
                 }
             }
         },
         import: {
             'bulk-insert-batch-size': {
-                label: 'Bulk Insert Batch Size',
-                description: 'Number of GPS points to insert in a single database batch'
+                label: 'Stapelgröße beim Masseneinfügen',
+                description: 'Anzahl der GPS-Punkte, die in einem Datenbank-Stapel eingefügt werden'
             },
             'merge-batch-size': {
-                label: 'Merge Batch Size',
-                description: 'Batch size when merging data with duplicate detection'
+                label: 'Stapelgröße beim Zusammenführen',
+                description: 'Stapelgröße beim Zusammenführen mit Duplikaterkennung'
             },
             'large-file-threshold-mb': {
-                label: 'Large File Threshold (MB)',
-                description: 'Files larger than this are stored as temp files instead of in memory'
+                label: 'Schwelle für große Dateien (MB)',
+                description: 'Größere Dateien werden als temporäre Dateien statt im Speicher gehalten'
             },
             'temp-file-retention-hours': {
-                label: 'Temp File Retention (Hours)',
-                description: 'How long to keep temporary import files before cleanup'
+                label: 'Aufbewahrung temporärer Dateien (Stunden)',
+                description: 'Wie lange temporäre Importdateien vor dem Aufräumen behalten werden'
             },
             'drop-folder': {
                 enabled: {
-                    label: 'Drop Folder Enabled',
-                    description: 'Enable drop folder imports'
+                    label: 'Ablageordner aktiviert',
+                    description: 'Import über den Ablageordner aktivieren'
                 },
                 path: {
-                    label: 'Drop Folder Path',
-                    description: 'Filesystem path for drop folder imports'
+                    label: 'Pfad des Ablageordners',
+                    description: 'Dateisystempfad für Importe über den Ablageordner'
                 },
                 'poll-interval-seconds': {
-                    label: 'Drop Scan Interval (Seconds)',
-                    description: 'How often to scan the drop folder'
+                    label: 'Prüfintervall (Sekunden)',
+                    description: 'Wie oft der Ablageordner geprüft wird'
                 },
                 'stable-age-seconds': {
-                    label: 'Drop File Stable Age (Seconds)',
-                    description: 'Minimum file age before import begins'
+                    label: 'Mindestalter der Datei (Sekunden)',
+                    description: 'Wie alt eine Datei mindestens sein muss, bevor der Import beginnt'
                 },
                 'geopulse-max-size-mb': {
-                    label: 'Drop GeoPulse Max Size (MB)',
-                    description: 'Max GeoPulse ZIP size for drop imports'
+                    label: 'Maximale GeoPulse-Größe (MB)',
+                    description: 'Maximale Größe einer GeoPulse-ZIP-Datei im Ablageordner'
                 },
                 'runtime-identity': {
-                    label: 'Drop Folder Process Identity',
-                    description: 'Effective user/group running the backend process (read-only)'
+                    label: 'Prozessidentität für den Ablageordner',
+                    description: 'Benutzer/Gruppe, unter der der Backend-Prozess läuft (schreibgeschützt)'
                 }
             },
             'chunk-size-mb': {
-                label: 'Chunk Size (MB)',
-                description: 'Size of each upload chunk for large file uploads'
+                label: 'Teilgröße (MB)',
+                description: 'Größe jedes Teils beim Hochladen großer Dateien'
             },
             'max-file-size-gb': {
-                label: 'Max File Size (GB)',
-                description: 'Maximum file size allowed for imports'
+                label: 'Maximale Dateigröße (GB)',
+                description: 'Größte erlaubte Dateigröße für Importe'
             },
             'upload-timeout-hours': {
-                label: 'Upload Timeout (Hours)',
-                description: 'How long an upload session remains valid'
+                label: 'Upload-Timeout (Stunden)',
+                description: 'Wie lange eine Upload-Sitzung gültig bleibt'
             },
             'transaction-timeout-minutes': {
-                label: 'Import Transaction Timeout',
-                description: 'Maximum transaction duration for one import job'
+                label: 'Transaktions-Timeout beim Import',
+                description: 'Höchstdauer einer Transaktion pro Importjob'
             },
             'upload-cleanup-minutes': {
-                label: 'Upload Cleanup Interval',
-                description: 'How often expired chunked upload sessions are cleaned up'
+                label: 'Aufräumintervall für Uploads',
+                description: 'Wie oft abgelaufene Upload-Sitzungen aufgeräumt werden'
             },
             geonames: {
                 cities: {
                     enabled: {
-                        label: 'City Import Enabled',
-                        description: 'Enable GeoNames city dataset import'
+                        label: 'Import der Städte aktiviert',
+                        description: 'Import des GeoNames-Städtedatensatzes aktivieren'
                     },
                     url: {
-                        label: 'City Dataset URL',
-                        description: 'GeoNames city dataset ZIP archive URL'
+                        label: 'URL des Städtedatensatzes',
+                        description: 'URL des ZIP-Archivs mit dem GeoNames-Städtedatensatz'
                     },
                     'batch-size': {
-                        label: 'City Batch Size',
-                        description: 'Rows processed per GeoNames city import batch'
+                        label: 'Stapelgröße für Städte',
+                        description: 'Zeilen pro Stapel beim Import der GeoNames-Städte'
                     },
                     'min-row-threshold': {
-                        label: 'City Row Threshold',
-                        description: 'Minimum staged GeoNames city rows required before replacing data'
+                        label: 'Mindestzeilen für Städte',
+                        description: 'Mindestzahl vorbereiteter Städtezeilen, bevor vorhandene Daten ersetzt werden'
                     },
                     'force-refresh': {
-                        label: 'Force City Refresh',
-                        description: 'Reimport city data even when existing data passes the threshold'
+                        label: 'Städte neu importieren erzwingen',
+                        description: 'Städtedaten neu importieren, auch wenn die vorhandenen Daten die Schwelle erfüllen'
                     },
                     'connect-timeout-seconds': {
-                        label: 'City Connect Timeout',
-                        description: 'Seconds to wait while connecting to the GeoNames city download'
+                        label: 'Verbindungs-Timeout für Städte',
+                        description: 'Sekunden, die beim Verbinden zum Download der GeoNames-Städte gewartet wird'
                     },
                     'read-timeout-seconds': {
-                        label: 'City Read Timeout',
-                        description: 'Seconds to wait for GeoNames city download reads'
+                        label: 'Lese-Timeout für Städte',
+                        description: 'Sekunden, die beim Lesen des Downloads der GeoNames-Städte gewartet wird'
                     }
                 },
                 countries: {
                     enabled: {
-                        label: 'Country Import Enabled',
-                        description: 'Enable GeoNames country dataset import'
+                        label: 'Import der Länder aktiviert',
+                        description: 'Import des GeoNames-Länderdatensatzes aktivieren'
                     },
                     url: {
-                        label: 'Country Dataset URL',
-                        description: 'GeoNames country dataset URL'
+                        label: 'URL des Länderdatensatzes',
+                        description: 'URL des GeoNames-Länderdatensatzes'
                     },
                     'batch-size': {
-                        label: 'Country Batch Size',
-                        description: 'Rows processed per GeoNames country import batch'
+                        label: 'Stapelgröße für Länder',
+                        description: 'Zeilen pro Stapel beim Import der GeoNames-Länder'
                     },
                     'min-row-threshold': {
-                        label: 'Country Row Threshold',
-                        description: 'Minimum staged GeoNames country rows required before replacing data'
+                        label: 'Mindestzeilen für Länder',
+                        description: 'Mindestzahl vorbereiteter Länderzeilen, bevor vorhandene Daten ersetzt werden'
                     },
                     'force-refresh': {
-                        label: 'Force Country Refresh',
-                        description: 'Reimport country data even when existing data passes the threshold'
+                        label: 'Länder neu importieren erzwingen',
+                        description: 'Länderdaten neu importieren, auch wenn die vorhandenen Daten die Schwelle erfüllen'
                     },
                     'connect-timeout-seconds': {
-                        label: 'Country Connect Timeout',
-                        description: 'Seconds to wait while connecting to the GeoNames country download'
+                        label: 'Verbindungs-Timeout für Länder',
+                        description: 'Sekunden, die beim Verbinden zum Download der GeoNames-Länder gewartet wird'
                     },
                     'read-timeout-seconds': {
-                        label: 'Country Read Timeout',
-                        description: 'Seconds to wait for GeoNames country download reads'
+                        label: 'Lese-Timeout für Länder',
+                        description: 'Sekunden, die beim Lesen des Downloads der GeoNames-Länder gewartet wird'
                     }
                 }
             },
             'geojson-streaming-batch-size': {
-                label: 'GeoJSON Batch Size',
-                description: 'Batch size for streaming GeoJSON parser'
+                label: 'Stapelgröße für GeoJSON',
+                description: 'Stapelgröße beim Einlesen von GeoJSON'
             },
             'googletimeline-streaming-batch-size': {
-                label: 'Google Timeline Batch Size',
-                description: 'Batch size for streaming Google Timeline parser'
+                label: 'Stapelgröße für Google Timeline',
+                description: 'Stapelgröße beim Einlesen von Google Timeline'
             },
             'gpx-streaming-batch-size': {
-                label: 'GPX Batch Size',
-                description: 'Batch size for streaming GPX parser'
+                label: 'Stapelgröße für GPX',
+                description: 'Stapelgröße beim Einlesen von GPX'
             },
             'csv-streaming-batch-size': {
-                label: 'CSV Batch Size',
-                description: 'Batch size for streaming CSV parser'
+                label: 'Stapelgröße für CSV',
+                description: 'Stapelgröße beim Einlesen von CSV'
             },
             'owntracks-streaming-batch-size': {
-                label: 'OwnTracks Batch Size',
-                description: 'Batch size for streaming OwnTracks parser'
+                label: 'Stapelgröße für OwnTracks',
+                description: 'Stapelgröße beim Einlesen von OwnTracks'
             }
         },
         export: {
             'max-jobs-per-user': {
-                label: 'Max Jobs Per User',
-                description: 'Maximum number of export jobs a user can have at once'
+                label: 'Maximale Jobs pro Benutzer',
+                description: 'Höchstzahl gleichzeitiger Exportjobs pro Benutzer'
             },
             'job-expiry-hours': {
-                label: 'Job Expiry (Hours)',
-                description: 'Hours before completed export jobs are automatically deleted'
+                label: 'Ablauf der Jobs (Stunden)',
+                description: 'Stunden, nach denen abgeschlossene Exportjobs automatisch gelöscht werden'
             },
             'concurrent-jobs-limit': {
-                label: 'Concurrent Jobs Limit',
-                description: 'Maximum number of export jobs processed simultaneously'
+                label: 'Limit gleichzeitiger Jobs',
+                description: 'Höchstzahl an Exportjobs, die gleichzeitig verarbeitet werden'
             },
             'batch-size': {
-                label: 'Batch Size',
-                description: 'Number of records to process in each batch during export'
+                label: 'Stapelgröße',
+                description: 'Anzahl der Datensätze pro Stapel beim Export'
             },
             'trip-point-limit': {
-                label: 'Trip Point Limit',
-                description: 'Maximum GPS points per single trip export'
+                label: 'Punktlimit pro Fahrt',
+                description: 'Höchstzahl an GPS-Punkten beim Export einer einzelnen Fahrt'
             },
             'temp-file-retention-hours': {
-                label: 'Temp File Retention (Hours)',
-                description: 'How long to keep temporary export files before cleanup'
+                label: 'Aufbewahrung temporärer Dateien (Stunden)',
+                description: 'Wie lange temporäre Exportdateien vor dem Aufräumen behalten werden'
             }
         },
         backup: {
             scheduled: {
                 enabled: {
-                    label: 'Scheduled Backups',
-                    description: 'Enable automatic full backups written to the local backup folder'
+                    label: 'Geplante Backups',
+                    description: 'Automatische vollständige Backups in den lokalen Backup-Ordner schreiben'
                 },
                 cron: {
-                    label: 'Backup Schedule Cron',
-                    description: 'Cron expression used to schedule automatic full backups'
+                    label: 'Cron-Zeitplan für Backups',
+                    description: 'Cron-Ausdruck für automatische vollständige Backups'
                 }
             },
             local: {
                 path: {
-                    label: 'Backup Folder Path',
-                    description: 'Backend container folder where local full backup ZIP files are written'
+                    label: 'Pfad des Backup-Ordners',
+                    description: 'Ordner im Backend-Container, in den die ZIP-Dateien der vollständigen Backups geschrieben werden'
                 }
             },
             retention: {
                 count: {
-                    label: 'Backup Retention Count',
-                    description: 'Number of local full backup files to keep'
+                    label: 'Anzahl aufbewahrter Backups',
+                    description: 'Wie viele lokale vollständige Backups behalten werden'
                 }
             },
             operation: {
                 'timeout-minutes': {
-                    label: 'Backup Timeout Minutes',
-                    description: 'Maximum duration for full backup and restore operations'
+                    label: 'Backup-Timeout (Minuten)',
+                    description: 'Höchstdauer für vollständige Backups und Wiederherstellungen'
                 }
             }
         }
     },
     unitOptions: {
-        distanceKilometers: 'Kilometers (km, m)',
-        distanceMiles: 'Miles (mi, ft)',
+        distanceKilometers: 'Kilometer (km, m)',
+        distanceMiles: 'Meilen (mi, ft)',
         temperatureCelsius: 'Celsius (°C)',
         temperatureFahrenheit: 'Fahrenheit (°F)'
     },
     shell: {
-        readOnly: 'Read-only',
-        default: 'Default',
-        reset: 'Reset',
-        plannedFeatures: 'Planned Features:',
-        comingSoon: 'Coming Soon'
+        readOnly: 'Schreibgeschützt',
+        default: 'Standard',
+        reset: 'Zurücksetzen',
+        plannedFeatures: 'Geplante Funktionen:',
+        comingSoon: 'Demnächst'
     },
     gpsProcessingTab: {
-        title: 'GPS Processing Settings',
-        description: 'Configure default GPS data processing behavior',
+        title: 'GPS-Verarbeitung',
+        description: 'Standardverhalten bei der Verarbeitung von GPS-Daten festlegen',
         features: {
             stayDetection: {
-                name: 'Stay Detection Algorithm',
-                description: 'Default algorithm for detecting stays from GPS points'
+                name: 'Algorithmus zur Erkennung von Aufenthalten',
+                description: 'Standardalgorithmus, der Aufenthalte aus GPS-Punkten erkennt'
             },
             accuracyFiltering: {
-                name: 'Accuracy Filtering',
-                description: 'Minimum GPS accuracy threshold for processing'
+                name: 'Filterung nach Genauigkeit',
+                description: 'Mindestgenauigkeit der GPS-Punkte für die Verarbeitung'
             },
             batchSize: {
-                name: 'Batch Size',
-                description: 'Number of GPS points to process in each batch'
+                name: 'Stapelgröße',
+                description: 'Anzahl der GPS-Punkte pro Verarbeitungsstapel'
             },
             distanceThresholds: {
-                name: 'Distance Thresholds',
-                description: 'Configure stay/trip distance parameters'
+                name: 'Abstandsschwellen',
+                description: 'Abstandsparameter für Aufenthalte und Fahrten'
             },
             timeWindows: {
-                name: 'Time Windows',
-                description: 'Minimum/maximum time for stay detection'
+                name: 'Zeitfenster',
+                description: 'Mindest- und Höchstdauer für die Erkennung von Aufenthalten'
             }
         }
     },
     panoramaxTab: {
-        testEndpoint: 'Test endpoint',
-        testSuccess: 'Panoramax STAC vector tiles found',
-        testFailedFallback: 'Endpoint test failed'
+        testEndpoint: 'Endpunkt testen',
+        testSuccess: 'Panoramax-STAC-Vektorkacheln gefunden',
+        testFailedFallback: 'Test des Endpunkts fehlgeschlagen'
     },
     authenticationTab: {
-        title: 'Authentication Settings',
-        oidcAdvanced: 'OIDC Advanced'
+        title: 'Anmeldeeinstellungen',
+        oidcAdvanced: 'OIDC (erweitert)'
     },
     exportTab: {
-        jobManagement: 'Job Management',
-        batchProcessing: 'Batch Processing',
-        tempFileStorage: 'Temporary File Storage'
+        jobManagement: 'Jobverwaltung',
+        batchProcessing: 'Stapelverarbeitung',
+        tempFileStorage: 'Temporäre Dateien'
     },
     poiTab: {
-        testEndpoints: 'Test endpoints',
-        advancedSettings: 'Advanced settings',
-        endpointsLimitsCaching: 'Endpoints, limits and caching',
-        advancedHint: 'Endpoints can be pointed at self-hosted instances. Longer cache lifetimes mean fewer requests to shared public infrastructure.',
+        testEndpoints: 'Endpunkte testen',
+        advancedSettings: 'Erweiterte Einstellungen',
+        endpointsLimitsCaching: 'Endpunkte, Limits und Cache',
+        advancedHint: 'Die Endpunkte können auf selbst gehostete Instanzen zeigen. Längere Cache-Dauern bedeuten weniger Anfragen an gemeinsam genutzte öffentliche Infrastruktur.',
         wikidataOk: 'Wikidata OK',
-        wikidataFailed: 'Wikidata failed: {detail}',
+        wikidataFailed: 'Wikidata fehlgeschlagen: {detail}',
         commonsOk: 'Commons OK',
-        commonsFailed: 'Commons failed: {detail}',
-        testFailedFallback: 'Endpoint test failed'
+        commonsFailed: 'Commons fehlgeschlagen: {detail}',
+        testFailedFallback: 'Test des Endpunkts fehlgeschlagen'
     },
     systemTab: {
-        selectDefaultUnit: 'Select default unit',
-        observability: 'Observability',
-        applicationLogging: 'Application Logging',
-        useEnvironmentDefault: 'Use environment/default',
-        selectLogLevel: 'Select log level',
-        configuredLabel: 'Configured:',
-        effectiveLabel: 'Effective:',
-        sourceLabel: 'Source:',
-        debugLoggingWarning: 'DEBUG logging is verbose and should only be enabled temporarily in production.',
-        updateCheck: 'Update Check',
-        releaseMetadata: 'Release Metadata',
-        waterDataset: 'Water Dataset',
-        datasetSource: 'Dataset Source',
-        noSettingsTitle: 'No General System Settings',
-        noSettingsDescription: 'Notification settings were moved to the Notifications tab.'
+        selectDefaultUnit: 'Standardeinheit wählen',
+        observability: 'Beobachtbarkeit',
+        applicationLogging: 'Protokollierung der Anwendung',
+        useEnvironmentDefault: 'Umgebung/Standard verwenden',
+        selectLogLevel: 'Log-Level wählen',
+        configuredLabel: 'Eingestellt:',
+        effectiveLabel: 'Wirksam:',
+        sourceLabel: 'Quelle:',
+        debugLoggingWarning: 'DEBUG-Protokollierung ist sehr ausführlich und sollte im Produktivbetrieb nur vorübergehend aktiviert werden.',
+        updateCheck: 'Update-Prüfung',
+        releaseMetadata: 'Release-Metadaten',
+        waterDataset: 'Gewässerdatensatz',
+        datasetSource: 'Quelle des Datensatzes',
+        noSettingsTitle: 'Keine allgemeinen Systemeinstellungen',
+        noSettingsDescription: 'Die Benachrichtigungseinstellungen sind in den Tab Benachrichtigungen umgezogen.'
     },
     backupTab: {
         exportSection: {
-            title: 'Admin Settings Export',
-            subtitle: 'Portable admin-managed settings and provider configuration.',
-            panelTitle: 'Export Settings',
-            panelDescription: 'Download a JSON backup with portable admin-managed behavior and provider credentials.',
-            button: 'Export Settings'
+            title: 'Export der Admin-Einstellungen',
+            subtitle: 'Übertragbare Admin-Einstellungen und Anbieterkonfiguration.',
+            panelTitle: 'Einstellungen exportieren',
+            panelDescription: 'Lade ein JSON-Backup mit den übertragbaren Admin-Einstellungen und den Zugangsdaten der Anbieter herunter.',
+            button: 'Einstellungen exportieren'
         },
         importSection: {
-            panelTitle: 'Import Settings',
-            panelDescription: 'Restore a JSON backup and replace current admin-managed settings.',
-            chooseFile: 'Choose Backup File',
-            button: 'Import Settings'
+            panelTitle: 'Einstellungen importieren',
+            panelDescription: 'Stell ein JSON-Backup wieder her und ersetze die aktuellen Admin-Einstellungen.',
+            chooseFile: 'Backup-Datei wählen',
+            button: 'Einstellungen importieren'
         },
-        warnMessage: 'The settings export includes plaintext API keys, OIDC client secrets, tokens, and custom provider headers.',
-        infoMessage: 'Settings export scope is admin-managed app behavior plus OIDC/custom provider configs.',
+        warnMessage: 'Der Export der Einstellungen enthält API-Schlüssel, OIDC-Client-Secrets, Tokens und eigene Anbieter-Header im Klartext.',
+        infoMessage: 'Der Export umfasst das von der Administration gesteuerte Verhalten der App sowie OIDC- und eigene Anbieterkonfigurationen.',
         importDialog: {
-            header: 'Replace Admin Settings?',
-            message: 'Importing this file will replace current global settings, OIDC providers, and custom geocoding providers.',
-            note: 'Deployment infrastructure and user data exports are not affected.',
-            import: 'Import'
+            header: 'Admin-Einstellungen ersetzen?',
+            message: 'Der Import dieser Datei ersetzt die aktuellen globalen Einstellungen, OIDC-Anbieter und eigenen Geocoding-Anbieter.',
+            note: 'Die Infrastruktur der Installation und Exporte von Benutzerdaten sind nicht betroffen.',
+            import: 'Importieren'
         },
         toasts: {
-            exportStarted: 'Export Started',
-            exportStartedDetail: 'Admin settings backup download has started.',
-            exportFailed: 'Export Failed',
-            exportFailedFallback: 'Failed to export admin settings backup',
-            importComplete: 'Import Complete',
-            importCompleteDetail: 'Restored {settings} settings, {oidc} OIDC providers, and {custom} custom geocoding providers.',
-            importFailed: 'Import Failed',
-            importFailedFallback: 'Failed to import admin settings backup'
+            exportStarted: 'Export gestartet',
+            exportStartedDetail: 'Der Download des Backups der Admin-Einstellungen hat begonnen.',
+            exportFailed: 'Export fehlgeschlagen',
+            exportFailedFallback: 'Backup der Admin-Einstellungen konnte nicht exportiert werden',
+            importComplete: 'Import abgeschlossen',
+            importCompleteDetail: '{settings} Einstellungen, {oidc} OIDC-Anbieter und {custom} eigene Geocoding-Anbieter wiederhergestellt.',
+            importFailed: 'Import fehlgeschlagen',
+            importFailedFallback: 'Backup der Admin-Einstellungen konnte nicht importiert werden'
         }
     },
     fullBackupSection: {
-        title: 'Full App Backup',
-        subtitle: 'Password-encrypted PostgreSQL backup of application data and secrets.',
+        title: 'Vollständiges App-Backup',
+        subtitle: 'Passwortverschlüsseltes PostgreSQL-Backup der Anwendungsdaten und Geheimnisse.',
         downloadPanel: {
-            title: 'Download Full Backup',
-            description: 'Generate a full backup and download it in this browser.',
-            button: 'Download Full Backup'
+            title: 'Vollständiges Backup herunterladen',
+            description: 'Ein vollständiges Backup erstellen und in diesem Browser herunterladen.',
+            button: 'Vollständiges Backup herunterladen'
         },
         runNowPanel: {
-            title: 'Run Backup Now',
-            description: 'Create a backup file in the mounted local folder.',
-            button: 'Run Backup Now'
+            title: 'Backup jetzt ausführen',
+            description: 'Eine Backup-Datei im eingebundenen lokalen Ordner erstellen.',
+            button: 'Backup jetzt ausführen'
         },
-        warnMessage: 'Full backups are encrypted with your backup password. Save that password outside GeoPulse: without it, the backup cannot be recovered. Restore only trusted backups. Restore preparation runs online; activation briefly stops GeoPulse and restarts the backend automatically.',
-        restorePreparationFailedTitle: 'Restore preparation failed',
-        restorePreparationFailedFallback: 'Restore preparation failed.',
-        originalDatabaseActive: 'The original database remains active and no restored data was applied.',
-        backupFileLabel: 'Backup file: {fileName}',
-        activationRetryableFallback: 'Activation did not complete. The original database is active and the prepared restore is retained.',
-        retryActivation: 'Retry Activation',
-        discardPreparedRestore: 'Discard Prepared Restore',
+        warnMessage: 'Vollständige Backups werden mit deinem Backup-Passwort verschlüsselt. Bewahre dieses Passwort außerhalb von GeoPulse auf: Ohne es lässt sich das Backup nicht wiederherstellen. Stell nur vertrauenswürdige Backups wieder her. Die Vorbereitung läuft im laufenden Betrieb; bei der Aktivierung hält GeoPulse kurz an und startet das Backend automatisch neu.',
+        restorePreparationFailedTitle: 'Vorbereitung der Wiederherstellung fehlgeschlagen',
+        restorePreparationFailedFallback: 'Vorbereitung der Wiederherstellung fehlgeschlagen.',
+        originalDatabaseActive: 'Die ursprüngliche Datenbank ist weiter aktiv, es wurden keine wiederhergestellten Daten übernommen.',
+        backupFileLabel: 'Backup-Datei: {fileName}',
+        activationRetryableFallback: 'Die Aktivierung wurde nicht abgeschlossen. Die ursprüngliche Datenbank ist aktiv, die vorbereitete Wiederherstellung bleibt erhalten.',
+        retryActivation: 'Aktivierung erneut versuchen',
+        discardPreparedRestore: 'Vorbereitete Wiederherstellung verwerfen',
         progress: {
-            restoreInProgress: 'Restore in progress',
-            restorePreparationFailed: 'Restore preparation failed',
-            backupInProgress: 'Backup in progress',
-            lastBackupCompleted: 'Last backup operation completed',
-            lastBackupFailed: 'Last backup operation failed',
-            backupStatus: 'Backup status',
-            restorePreparingMessage: 'Restoration is being prepared in the background. GeoPulse remains available until activation.',
-            waitingForStatus: 'Waiting for status'
+            restoreInProgress: 'Wiederherstellung läuft',
+            restorePreparationFailed: 'Vorbereitung der Wiederherstellung fehlgeschlagen',
+            backupInProgress: 'Backup läuft',
+            lastBackupCompleted: 'Letzter Backup-Vorgang abgeschlossen',
+            lastBackupFailed: 'Letzter Backup-Vorgang fehlgeschlagen',
+            backupStatus: 'Backup-Status',
+            restorePreparingMessage: 'Die Wiederherstellung wird im Hintergrund vorbereitet. GeoPulse bleibt bis zur Aktivierung verfügbar.',
+            waitingForStatus: 'Warte auf Status'
         },
         scheduledSection: {
-            title: 'Scheduled Local Backups',
-            description: 'Configure automatic backups written to the mounted backup folder.',
-            backupPassword: 'Backup password',
-            changePasswordLabel: 'Change password (leave empty to keep)',
-            passwordRequiredLabel: 'Password required for all full backups',
-            confirmNewPassword: 'Confirm new password',
-            passwordLengthHint: 'New passwords must contain 12–1024 characters.',
-            schedule: 'Schedule',
-            enabled: 'Enabled',
+            title: 'Geplante lokale Backups',
+            description: 'Automatische Backups in den eingebundenen Backup-Ordner einrichten.',
+            backupPassword: 'Backup-Passwort',
+            changePasswordLabel: 'Passwort ändern (leer lassen, um es zu behalten)',
+            passwordRequiredLabel: 'Passwort für alle vollständigen Backups erforderlich',
+            confirmNewPassword: 'Neues Passwort bestätigen',
+            passwordLengthHint: 'Neue Passwörter müssen 12–1024 Zeichen lang sein.',
+            schedule: 'Zeitplan',
+            enabled: 'Aktiviert',
             cron: 'Cron',
-            storage: 'Storage',
-            folderPath: 'Folder Path',
-            backupsToKeep: 'Backups to Keep',
-            timeoutMinutes: 'Timeout Minutes',
-            healthAlerts: 'Health Alerts',
-            warnAfterDays: 'Warn After Days',
-            healthWarningHint: 'Set to 0 to disable backup freshness warnings and notifications. Active admins receive in-app alerts when enabled.',
-            sendExternalAlert: 'Send External Alert',
-            appriseRouting: 'Apprise Routing',
+            storage: 'Speicherort',
+            folderPath: 'Ordnerpfad',
+            backupsToKeep: 'Aufbewahrte Backups',
+            timeoutMinutes: 'Timeout (Minuten)',
+            healthAlerts: 'Statushinweise',
+            warnAfterDays: 'Warnen nach Tagen',
+            healthWarningHint: '0 schaltet Warnungen und Benachrichtigungen zum Alter der Backups ab. Wenn aktiviert, bekommen aktive Admins Hinweise in der App.',
+            sendExternalAlert: 'Externen Hinweis senden',
+            appriseRouting: 'Apprise-Zustellung',
             appriseRoutingOptions: {
-                destinationUrls: 'Destination URLs',
-                configKeyAndTag: 'Config Key and Tag'
+                destinationUrls: 'Ziel-URLs',
+                configKeyAndTag: 'Konfigurationsschlüssel und Tag'
             },
-            configKey: 'Config Key',
-            destinationUrls: 'Destination URLs',
+            configKey: 'Konfigurationsschlüssel',
+            destinationUrls: 'Ziel-URLs',
             tagOptional: 'Tag (optional)',
-            saveButton: 'Save Backup Settings'
+            saveButton: 'Backup-Einstellungen speichern'
         },
         localBackups: {
-            title: 'Local Backups',
-            description: 'Files available in the configured server-side backup folder.',
-            refreshAriaLabel: 'Refresh local backups',
-            columnFile: 'File',
-            columnSize: 'Size',
-            columnModified: 'Modified',
-            columnActions: 'Actions',
-            downloadAriaLabel: 'Download backup',
-            restoreAriaLabel: 'Restore backup',
-            deleteAriaLabel: 'Delete backup'
+            title: 'Lokale Backups',
+            description: 'Dateien im eingerichteten Backup-Ordner auf dem Server.',
+            refreshAriaLabel: 'Lokale Backups aktualisieren',
+            columnFile: 'Datei',
+            columnSize: 'Größe',
+            columnModified: 'Geändert',
+            columnActions: 'Aktionen',
+            downloadAriaLabel: 'Backup herunterladen',
+            restoreAriaLabel: 'Backup wiederherstellen',
+            deleteAriaLabel: 'Backup löschen'
         },
         restoreUploadSection: {
-            title: 'Restore Uploaded Full Backup',
-            description: 'Upload an encrypted .gpb backup. Preparation runs in the background while GeoPulse stays available; activation then replaces newer data and restarts the backend.',
-            chooseFile: 'Choose Full Backup',
-            button: 'Restore Uploaded Backup'
+            title: 'Hochgeladenes Backup wiederherstellen',
+            description: 'Lade ein verschlüsseltes .gpb-Backup hoch. Die Vorbereitung läuft im Hintergrund, während GeoPulse verfügbar bleibt; die Aktivierung ersetzt dann neuere Daten und startet das Backend neu.',
+            chooseFile: 'Vollständiges Backup wählen',
+            button: 'Hochgeladenes Backup wiederherstellen'
         },
         restoreDialog: {
-            header: 'Restore Full Backup?',
-            warning: 'Restoring a full backup can replace users, app settings, GPS data, friends, and permissions.',
-            note: 'Preparation runs while GeoPulse remains available. Activation briefly blocks application work, replaces newer data, and restarts the backend automatically.',
-            sourcePasswordLabel: 'Source backup password',
-            restore: 'Restore',
-            restoring: 'Restoring'
+            header: 'Vollständiges Backup wiederherstellen?',
+            warning: 'Ein vollständiges Backup kann Benutzer, App-Einstellungen, GPS-Daten, Freunde und Freigaben ersetzen.',
+            note: 'Die Vorbereitung läuft, während GeoPulse verfügbar bleibt. Die Aktivierung blockiert die Anwendung kurz, ersetzt neuere Daten und startet das Backend automatisch neu.',
+            sourcePasswordLabel: 'Passwort des Backups',
+            restore: 'Wiederherstellen',
+            restoring: 'Wird wiederhergestellt'
         },
         deleteDialog: {
-            header: 'Delete Backup?',
-            message: 'Delete {fileName} from the configured local backup folder?',
-            note: 'This only removes the server-side backup file.',
-            delete: 'Delete'
+            header: 'Backup löschen?',
+            message: '{fileName} aus dem lokalen Backup-Ordner löschen?',
+            note: 'Dabei wird nur die Backup-Datei auf dem Server entfernt.',
+            delete: 'Löschen'
         },
         toasts: {
-            loadFilesFailed: 'Load Failed',
-            loadFilesFailedFallback: 'Failed to load local backups',
-            loadConfigFailedFallback: 'Failed to load backup settings',
-            downloadStarted: 'Download Started',
-            downloadStartedDetail: 'Full backup download has started.',
-            downloadFailed: 'Download Failed',
-            downloadFailedFallback: 'Failed to download full backup',
-            backupComplete: 'Backup Complete',
-            backupCompleteDetail: 'Created {fileName}',
-            backupFailed: 'Backup Failed',
-            backupFailedFallback: 'Failed to run backup',
-            saveFailed: 'Save Failed',
-            passwordsDoNotMatch: 'Backup passwords do not match',
-            passwordLengthError: 'New backup password must contain 12–1024 characters',
-            saveConfigFailedFallback: 'Failed to save backup settings',
-            settingsSaved: 'Settings Saved',
-            settingsSavedDetail: 'Backup settings updated.',
-            downloadLocalFailedFallback: 'Failed to download local backup',
-            backupDeleted: 'Backup Deleted',
-            backupDeletedDetail: 'Deleted {fileName}',
-            deleteFailed: 'Delete Failed',
-            deleteFailedFallback: 'Failed to delete backup',
-            restoreFailed: 'Restore Failed',
-            restorePasswordLengthError: 'Restore password must contain 1–1024 characters',
-            restoreFailedFallback: 'Failed to restore full backup',
-            activationRetryFailed: 'Activation Retry Failed',
-            activationRetryFailedFallback: 'Failed to retry activation',
-            discardFailed: 'Discard Failed',
-            discardFailedFallback: 'Failed to discard prepared restore'
+            loadFilesFailed: 'Laden fehlgeschlagen',
+            loadFilesFailedFallback: 'Lokale Backups konnten nicht geladen werden',
+            loadConfigFailedFallback: 'Backup-Einstellungen konnten nicht geladen werden',
+            downloadStarted: 'Download gestartet',
+            downloadStartedDetail: 'Der Download des vollständigen Backups hat begonnen.',
+            downloadFailed: 'Download fehlgeschlagen',
+            downloadFailedFallback: 'Vollständiges Backup konnte nicht heruntergeladen werden',
+            backupComplete: 'Backup abgeschlossen',
+            backupCompleteDetail: '{fileName} erstellt',
+            backupFailed: 'Backup fehlgeschlagen',
+            backupFailedFallback: 'Backup konnte nicht ausgeführt werden',
+            saveFailed: 'Speichern fehlgeschlagen',
+            passwordsDoNotMatch: 'Die Backup-Passwörter stimmen nicht überein',
+            passwordLengthError: 'Das neue Backup-Passwort muss 12–1024 Zeichen lang sein',
+            saveConfigFailedFallback: 'Backup-Einstellungen konnten nicht gespeichert werden',
+            settingsSaved: 'Einstellungen gespeichert',
+            settingsSavedDetail: 'Backup-Einstellungen aktualisiert.',
+            downloadLocalFailedFallback: 'Lokales Backup konnte nicht heruntergeladen werden',
+            backupDeleted: 'Backup gelöscht',
+            backupDeletedDetail: '{fileName} gelöscht',
+            deleteFailed: 'Löschen fehlgeschlagen',
+            deleteFailedFallback: 'Backup konnte nicht gelöscht werden',
+            restoreFailed: 'Wiederherstellung fehlgeschlagen',
+            restorePasswordLengthError: 'Das Passwort für die Wiederherstellung muss 1–1024 Zeichen lang sein',
+            restoreFailedFallback: 'Vollständiges Backup konnte nicht wiederhergestellt werden',
+            activationRetryFailed: 'Erneute Aktivierung fehlgeschlagen',
+            activationRetryFailedFallback: 'Aktivierung konnte nicht erneut versucht werden',
+            discardFailed: 'Verwerfen fehlgeschlagen',
+            discardFailedFallback: 'Vorbereitete Wiederherstellung konnte nicht verworfen werden'
         }
     },
     composable: {
-        loadFailedSummary: 'Error',
-        loadFailedDetail: 'Failed to load {category} settings',
-        validationErrorSummary: 'Validation Error',
-        updateSuccessSummary: 'Success',
-        settingUpdatedDetail: '{label} updated',
-        updateErrorSummary: 'Error',
-        updateFailedFallback: 'Failed to update setting',
-        resetSuccessDetail: '{label} reset to default',
-        resetFailedDetail: 'Failed to reset setting'
+        loadFailedSummary: 'Fehler',
+        loadFailedDetail: 'Einstellungen für {category} konnten nicht geladen werden',
+        validationErrorSummary: 'Eingaben prüfen',
+        updateSuccessSummary: 'Gespeichert',
+        settingUpdatedDetail: '{label} aktualisiert',
+        updateErrorSummary: 'Fehler',
+        updateFailedFallback: 'Einstellung konnte nicht aktualisiert werden',
+        resetSuccessDetail: '{label} auf Standard zurückgesetzt',
+        resetFailedDetail: 'Einstellung konnte nicht zurückgesetzt werden'
     }
 }
