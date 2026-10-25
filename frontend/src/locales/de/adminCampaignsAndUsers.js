@@ -1,173 +1,169 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Admin pages: timeline regeneration campaigns, user details.
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
+ * Admin pages (German): timeline regeneration campaigns, user details.
  */
 export default {
     campaignsPage: {
         breadcrumb: {
-            title: 'Timeline Regeneration'
+            title: 'Zeitleisten-Neuberechnung'
         },
         header: {
-            title: 'Timeline Regeneration',
-            subtitle: 'Create and monitor forced timeline regeneration campaigns'
+            title: 'Zeitleisten-Neuberechnung',
+            subtitle: 'Kampagnen zur erzwungenen Neuberechnung der Zeitleisten erstellen und überwachen'
         },
-        createCampaign: 'Create Campaign',
+        createCampaign: 'Kampagne erstellen',
         labels: {
-            campaign: 'Campaign',
-            source: 'Source',
+            campaign: 'Kampagne',
+            source: 'Quelle',
             status: 'Status',
-            affectedFrom: 'Affected From',
-            progress: 'Progress',
-            reason: 'Reason',
-            affectedUsers: 'Affected Users',
-            total: 'Total',
-            pending: 'Pending',
-            running: 'Running',
-            completed: 'Completed',
-            failed: 'Failed',
-            skipped: 'Skipped',
-            created: 'Created',
-            updated: 'Updated',
-            actions: 'Actions',
-            done: 'Done'
+            affectedFrom: 'Betroffen ab',
+            progress: 'Fortschritt',
+            reason: 'Grund',
+            affectedUsers: 'Betroffene Benutzer',
+            total: 'Gesamt',
+            pending: 'Ausstehend',
+            running: 'Läuft',
+            completed: 'Abgeschlossen',
+            failed: 'Fehlgeschlagen',
+            skipped: 'Übersprungen',
+            created: 'Erstellt',
+            updated: 'Aktualisiert',
+            actions: 'Aktionen',
+            done: 'Fertig'
         },
         table: {
-            currentPageReport: 'Showing {first} to {last} of {totalRecords} campaigns',
-            empty: 'No timeline regeneration campaigns found.',
-            retryTooltip: 'Retry Failed Users',
-            progressText: '{processed} / {total} processed',
-            pendingCount: '{count} pending',
-            runningCount: '{count} running',
-            doneCount: '{count} done'
+            currentPageReport: '{first} bis {last} von {totalRecords} Kampagnen',
+            empty: 'Keine Kampagnen zur Neuberechnung gefunden.',
+            retryTooltip: 'Fehlgeschlagene Benutzer erneut versuchen',
+            progressText: '{processed} / {total} verarbeitet',
+            pendingCount: '{count} ausstehend',
+            runningCount: '{count} laufen',
+            doneCount: '{count} fertig'
         },
         mobile: {
             detailsButton: 'Details',
-            retryButton: 'Retry Failed'
+            retryButton: 'Fehlgeschlagene wiederholen'
         },
         createDialog: {
-            header: 'Create Timeline Regeneration Campaign',
-            campaignKeyLabel: 'Campaign Key',
+            header: 'Kampagne zur Neuberechnung erstellen',
+            campaignKeyLabel: 'Schlüssel der Kampagne',
             campaignKeyPlaceholder: 'july-12-timeline-repair',
-            regenerateFromLabel: 'Regenerate From',
-            regenerateFromPlaceholder: 'Select cutoff date and time',
-            reasonLabel: 'Reason',
-            reasonPlaceholder: 'Explain why timelines must be regenerated. Users will see this message.',
-            previewRequired: 'Preview required',
-            previewHelp: 'Preview counts users with GPS data at or after the selected timestamp.',
-            runPreview: 'Run Preview',
-            reviewCreate: 'Review Create'
+            regenerateFromLabel: 'Neu berechnen ab',
+            regenerateFromPlaceholder: 'Stichtag und Uhrzeit wählen',
+            reasonLabel: 'Grund',
+            reasonPlaceholder: 'Erkläre, warum die Zeitleisten neu berechnet werden müssen. Die Benutzer sehen diese Nachricht.',
+            previewRequired: 'Vorschau erforderlich',
+            previewHelp: 'Die Vorschau zählt Benutzer mit GPS-Daten ab dem gewählten Zeitpunkt.',
+            runPreview: 'Vorschau starten',
+            reviewCreate: 'Prüfen & erstellen'
         },
         confirmDialog: {
-            header: 'Confirm Timeline Regeneration'
+            header: 'Neuberechnung bestätigen'
         },
         detailsDialog: {
-            header: 'Timeline Regeneration Details',
-            usersTitle: 'Running, Retrying and Failed Users',
-            retryButton: 'Retry Failed',
+            header: 'Details zur Neuberechnung',
+            usersTitle: 'Laufende, wartende und fehlgeschlagene Benutzer',
+            retryButton: 'Fehlgeschlagene wiederholen',
             table: {
-                email: 'Email',
-                attempts: 'Attempts',
-                lastError: 'Last Error',
-                nextAttempt: 'Next Attempt',
-                empty: 'No users are running, waiting to retry or failed.'
+                email: 'E-Mail',
+                attempts: 'Versuche',
+                lastError: 'Letzter Fehler',
+                nextAttempt: 'Nächster Versuch',
+                empty: 'Keine Benutzer laufen, warten auf einen erneuten Versuch oder sind fehlgeschlagen.'
             },
-            close: 'Close'
+            close: 'Schließen'
         },
         toasts: {
-            loadFailed: 'Failed to load timeline regeneration campaigns',
-            previewFailedSummary: 'Preview Failed',
-            previewFailedDetail: 'Failed to preview affected users',
-            createdSummary: 'Campaign Created',
-            createdDetail: 'Timeline regeneration campaign was created.',
-            createFailedSummary: 'Create Failed',
-            createFailedDetail: 'Failed to create timeline regeneration campaign',
-            detailsLoadFailed: 'Failed to load campaign details',
-            retryQueuedSummary: 'Retry Queued',
-            retryQueuedDetail: 'Failed campaign users were queued for retry.',
-            retryFailedSummary: 'Retry Failed',
-            retryFailedDetail: 'Failed to retry campaign users'
+            loadFailed: 'Kampagnen zur Neuberechnung konnten nicht geladen werden',
+            previewFailedSummary: 'Vorschau fehlgeschlagen',
+            previewFailedDetail: 'Betroffene Benutzer konnten nicht ermittelt werden',
+            createdSummary: 'Kampagne erstellt',
+            createdDetail: 'Die Kampagne zur Neuberechnung wurde erstellt.',
+            createFailedSummary: 'Erstellen fehlgeschlagen',
+            createFailedDetail: 'Kampagne zur Neuberechnung konnte nicht erstellt werden',
+            detailsLoadFailed: 'Details zur Kampagne konnten nicht geladen werden',
+            retryQueuedSummary: 'Wiederholung eingeplant',
+            retryQueuedDetail: 'Die fehlgeschlagenen Benutzer wurden für einen erneuten Versuch eingeplant.',
+            retryFailedSummary: 'Wiederholung fehlgeschlagen',
+            retryFailedDetail: 'Benutzer der Kampagne konnten nicht erneut versucht werden'
         }
     },
     userDetailsPage: {
-        title: 'User Details',
+        title: 'Benutzerdetails',
         breadcrumb: {
-            users: 'Users',
-            loading: 'Loading...',
-            notFound: 'User Not Found'
+            users: 'Benutzer',
+            loading: 'Wird geladen …',
+            notFound: 'Benutzer nicht gefunden'
         },
-        noName: 'No name',
-        never: 'Never',
+        noName: 'Kein Name',
+        never: 'Nie',
         infoCard: {
-            title: 'User Information',
-            authentication: 'Authentication',
-            password: 'Password',
-            oidcOnly: 'OIDC only',
-            timezone: 'Timezone',
-            linkedOidcProviders: 'Linked OIDC Providers'
+            title: 'Benutzerinformationen',
+            authentication: 'Anmeldung',
+            password: 'Passwort',
+            oidcOnly: 'Nur OIDC',
+            timezone: 'Zeitzone',
+            linkedOidcProviders: 'Verknüpfte OIDC-Anbieter'
         },
         statsCard: {
-            title: 'Activity & Statistics',
-            gpsPoints: 'GPS Points',
-            lastGpsPoint: 'Last GPS Point',
-            accountCreated: 'Account Created',
-            lastUpdated: 'Last Updated'
+            title: 'Aktivität & Statistik',
+            gpsPoints: 'GPS-Punkte',
+            lastGpsPoint: 'Letzter GPS-Punkt',
+            accountCreated: 'Konto erstellt',
+            lastUpdated: 'Zuletzt aktualisiert'
         },
         actionsCard: {
-            title: 'Administrative Actions',
-            demoteToUser: 'Demote to User',
-            promoteToAdmin: 'Promote to Admin',
-            resetPassword: 'Reset Password',
-            warningMessage: 'You cannot disable or delete your own account.'
+            title: 'Administrative Aktionen',
+            demoteToUser: 'Zum Benutzer herabstufen',
+            promoteToAdmin: 'Zum Admin machen',
+            resetPassword: 'Passwort zurücksetzen',
+            warningMessage: 'Dein eigenes Konto kannst du nicht deaktivieren oder löschen.'
         },
         apiTokensCard: {
-            title: 'API Tokens',
+            title: 'API-Tokens',
             columnName: 'Name',
             columnStatus: 'Status',
-            columnExpires: 'Expires',
-            columnLastUsed: 'Last Used',
-            columnActions: 'Actions',
-            revokeTooltip: 'Revoke token',
-            empty: 'No API tokens found.',
+            columnExpires: 'Läuft ab',
+            columnLastUsed: 'Zuletzt verwendet',
+            columnActions: 'Aktionen',
+            revokeTooltip: 'Token widerrufen',
+            empty: 'Keine API-Tokens gefunden.',
             status: {
-                active: 'Active',
-                expired: 'Expired',
-                revoked: 'Revoked'
+                active: 'Aktiv',
+                expired: 'Abgelaufen',
+                revoked: 'Widerrufen'
             }
         },
         notFound: {
-            message: 'User not found',
-            backButton: 'Back to Users'
+            message: 'Benutzer nicht gefunden',
+            backButton: 'Zurück zu den Benutzern'
         },
         deleteDialog: {
-            message: 'Are you sure you want to delete user {email}?',
-            detail: 'This will permanently delete all their data.'
+            message: 'Möchtest du den Benutzer {email} wirklich löschen?',
+            detail: 'Dabei werden alle Daten dauerhaft gelöscht.'
         },
         passwordDialog: {
-            header: 'Password Reset',
-            message: 'Temporary password for {email}:',
-            copyHint: 'Share this password with the user securely.',
-            close: 'Close'
+            header: 'Passwort zurückgesetzt',
+            message: 'Temporäres Passwort für {email}:',
+            copyHint: 'Gib dieses Passwort sicher an die Person weiter.',
+            close: 'Schließen'
         },
         revokeDialog: {
-            header: 'Revoke API Token',
-            message: 'Revoke {tokenName} for {email}? Automation using this token will stop immediately.',
-            revokeButton: 'Revoke'
+            header: 'API-Token widerrufen',
+            message: '{tokenName} von {email} widerrufen? Automatisierungen mit diesem Token funktionieren dann sofort nicht mehr.',
+            revokeButton: 'Widerrufen'
         },
         toasts: {
-            loadUserFailed: 'Failed to load user details',
-            loadTokensFailed: 'Failed to load API tokens',
-            roleChanged: 'User role changed to {role}',
-            roleChangeFailed: 'Failed to change user role',
-            passwordResetSuccess: 'Password reset successfully',
-            passwordResetFailed: 'Failed to reset password',
-            passwordCopied: 'Password copied to clipboard',
-            passwordCopyFailed: 'Failed to copy password to clipboard',
-            tokenRevokedSummary: 'Revoked',
-            tokenRevokedDetail: 'API token revoked',
-            tokenRevokeFailed: 'Failed to revoke API token'
+            loadUserFailed: 'Benutzerdetails konnten nicht geladen werden',
+            loadTokensFailed: 'API-Tokens konnten nicht geladen werden',
+            roleChanged: 'Rolle des Benutzers auf {role} geändert',
+            roleChangeFailed: 'Rolle des Benutzers konnte nicht geändert werden',
+            passwordResetSuccess: 'Passwort zurückgesetzt',
+            passwordResetFailed: 'Passwort konnte nicht zurückgesetzt werden',
+            passwordCopied: 'Passwort in die Zwischenablage kopiert',
+            passwordCopyFailed: 'Passwort konnte nicht in die Zwischenablage kopiert werden',
+            tokenRevokedSummary: 'Widerrufen',
+            tokenRevokedDetail: 'API-Token widerrufen',
+            tokenRevokeFailed: 'API-Token konnte nicht widerrufen werden'
         }
     }
 }
