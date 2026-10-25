@@ -1,150 +1,150 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
+/**
+ * Timeline generation jobs (German): live progress messages, the jobs list, and the job details page.
+ */
 export default {
-    // Live progress messages sent by the backend as a MessageDescriptor ({key, parameters, fallback}) via
-    // `formatMessageDescriptor()`. Keys here are the `timelineJobs.progressMessages.*` suffixes the
-    // backend appends (see TimelineJobProgressService.step()). Not every backend-recognized key has an
-    // entry -- an unmapped key safely falls back to the backend's English `fallback` text.
+    // Live progress messages sent by the backend as a MessageDescriptor; unmapped keys fall back to the
+    // backend's English `fallback` text.
     progressMessages: {
-        initializing: 'Initializing timeline generation',
-        acquiringLock: 'Acquiring timeline lock',
-        cleaningUp: 'Cleaning up old timeline data',
-        preparingGpsProcessing: 'Preparing GPS data processing',
-        noGpsData: 'No GPS data to process',
-        readyToProcess: 'Ready to process {totalGpsPoints} GPS points',
-        processingStateMachine: 'Processing GPS points through state machine',
-        postProcessingTrips: 'Post-processing trips and validating detections',
-        mergingTimeline: 'Merging timeline',
-        persistingTimeline: 'Persisting timeline events to database',
-        detectingDataGaps: 'Detecting data gaps',
-        finalizing: 'Finalizing timeline generation',
-        autoMatchingVisits: 'Auto-matching planned visits',
-        recalculatingBadges: 'Recalculating achievement badges',
-        completed: 'Timeline generation completed',
-        preparingBoatSetup: 'Preparing Boat setup',
-        boatEvidenceReady: 'Boat water evidence ready',
-        regenerationQueued: 'Forced timeline regeneration queued',
-        startingLocationResolution: 'Starting location resolution',
-        allResolvedFromFavorites: 'All locations resolved from favorites',
-        resolvedFromFavorites: 'Resolved {favoritesResolved} locations from favorites',
-        resolvedFromCache: 'Resolved {cachedResolved} from cache ({batchResolved} from batch, {individualResolved} from individual lookup)',
-        geocodingLocationProgress: 'Geocoding location {current}/{total}',
-        geocodingComplete: 'Geocoding complete: {favoritesResolved} favorites, {cachedResolved} cached, {externalCompleted} external API calls'
+        initializing: 'Erstellung der Zeitleiste wird vorbereitet',
+        acquiringLock: 'Zeitleiste wird gesperrt',
+        cleaningUp: 'Alte Zeitleistendaten werden entfernt',
+        preparingGpsProcessing: 'Verarbeitung der GPS-Daten wird vorbereitet',
+        noGpsData: 'Keine GPS-Daten zu verarbeiten',
+        readyToProcess: 'Bereit, {totalGpsPoints} GPS-Punkte zu verarbeiten',
+        processingStateMachine: 'GPS-Punkte werden verarbeitet',
+        postProcessingTrips: 'Fahrten werden nachbearbeitet und Erkennungen geprüft',
+        mergingTimeline: 'Zeitleiste wird zusammengeführt',
+        persistingTimeline: 'Ereignisse der Zeitleiste werden gespeichert',
+        detectingDataGaps: 'Datenlücken werden erkannt',
+        finalizing: 'Erstellung der Zeitleiste wird abgeschlossen',
+        autoMatchingVisits: 'Geplante Besuche werden automatisch zugeordnet',
+        recalculatingBadges: 'Abzeichen werden neu berechnet',
+        completed: 'Zeitleiste erstellt',
+        preparingBoatSetup: 'Boot-Einrichtung wird vorbereitet',
+        boatEvidenceReady: 'Wasserdaten für die Booterkennung bereit',
+        regenerationQueued: 'Erzwungene Neuberechnung der Zeitleiste eingeplant',
+        startingLocationResolution: 'Ortsermittlung wird gestartet',
+        allResolvedFromFavorites: 'Alle Orte aus Favoriten ermittelt',
+        resolvedFromFavorites: '{favoritesResolved} Orte aus Favoriten ermittelt',
+        resolvedFromCache: '{cachedResolved} aus dem Cache ermittelt ({batchResolved} per Sammelabfrage, {individualResolved} einzeln)',
+        geocodingLocationProgress: 'Geocoding von Ort {current}/{total}',
+        geocodingComplete: 'Geocoding abgeschlossen: {favoritesResolved} Favoriten, {cachedResolved} aus dem Cache, {externalCompleted} externe API-Aufrufe'
     },
     listPage: {
-        title: 'Timeline Generation Jobs',
-        description: 'View timeline generation work that is running now or finished recently.',
-        loading: 'Looking for active jobs...',
+        title: 'Zeitleisten-Jobs',
+        description: 'Sieh dir laufende und kürzlich beendete Erstellungen der Zeitleiste an.',
+        loading: 'Laufende Jobs werden gesucht …',
         noJob: {
-            title: 'No timeline jobs are running now',
-            message: 'If you opened this from a notification, the scheduled refresh may already be complete. Recent completed or failed jobs are shown below when available.',
-            hint: 'Timeline jobs can be started by timeline preference changes, favorite updates, manual regeneration, or scheduled GeoPulse maintenance.',
-            viewTimelineButton: 'View Timeline'
+            title: 'Gerade läuft kein Zeitleisten-Job',
+            message: 'Wenn du über eine Benachrichtigung hier bist, ist die geplante Aktualisierung vielleicht schon fertig. Kürzlich beendete oder fehlgeschlagene Jobs stehen unten, sofern vorhanden.',
+            hint: 'Zeitleisten-Jobs starten durch Änderungen an den Zeitleisten-Einstellungen, geänderte Favoriten, eine manuelle Neuberechnung oder geplante Wartung von GeoPulse.',
+            viewTimelineButton: 'Zeitleiste ansehen'
         },
         error: {
-            title: 'Failed to check for active jobs'
+            title: 'Laufende Jobs konnten nicht geprüft werden'
         },
         history: {
-            title: 'Job History',
-            description: 'Recent timeline generation jobs',
-            loading: 'Loading job history...',
-            empty: 'No recent timeline jobs found.',
-            duration: 'Duration: {duration}',
-            gpsPoints: '{count} GPS points',
-            viewDetails: 'View Details'
+            title: 'Verlauf',
+            description: 'Letzte Zeitleisten-Jobs',
+            loading: 'Verlauf wird geladen …',
+            empty: 'Keine aktuellen Zeitleisten-Jobs gefunden.',
+            duration: 'Dauer: {duration}',
+            gpsPoints: '{count} GPS-Punkte',
+            viewDetails: 'Details ansehen'
         },
-        notAvailable: 'N/A',
-        durationSeconds: '{seconds}s',
-        durationMinutesSeconds: '{minutes}m {seconds}s'
+        notAvailable: 'k. A.',
+        durationSeconds: '{seconds} s',
+        durationMinutesSeconds: '{minutes} Min. {seconds} s'
     },
     detailsPage: {
-        title: 'Timeline Generation Progress',
-        description: 'Real-time progress tracking for timeline regeneration job.',
-        backButton: 'Back to Timeline',
-        loading: 'Loading job details...',
+        title: 'Fortschritt der Zeitleiste',
+        description: 'Fortschritt der Neuberechnung in Echtzeit.',
+        backButton: 'Zurück zur Zeitleiste',
+        loading: 'Job-Details werden geladen …',
         error: {
-            title: 'Failed to load job details'
+            title: 'Job-Details konnten nicht geladen werden'
         },
-        jobIdLabel: 'Job ID: {jobId}',
+        jobIdLabel: 'Job-ID: {jobId}',
         status: {
-            loading: 'Loading...',
-            queued: 'Queued for Processing',
-            running: 'Processing Timeline',
-            completed: 'Completed Successfully',
-            failed: 'Failed'
+            loading: 'Wird geladen …',
+            queued: 'In der Warteschlange',
+            running: 'Zeitleiste wird berechnet',
+            completed: 'Erfolgreich abgeschlossen',
+            failed: 'Fehlgeschlagen'
         },
         details: {
-            started: 'Started:',
-            completed: 'Completed:',
-            duration: 'Duration:',
-            currentStep: 'Current Step:',
-            stepOf: '{current} of {total}'
+            started: 'Gestartet:',
+            completed: 'Abgeschlossen:',
+            duration: 'Dauer:',
+            currentStep: 'Aktueller Schritt:',
+            stepOf: '{current} von {total}'
         },
-        stepsTitle: 'Processing Steps',
+        stepsTitle: 'Verarbeitungsschritte',
         steps: {
             acquiringLock: {
-                title: 'Acquiring Lock',
-                description: 'Ensuring exclusive access to timeline data'
+                title: 'Sperren',
+                description: 'Exklusiven Zugriff auf die Zeitleistendaten sicherstellen'
             },
             cleaningUp: {
-                title: 'Cleaning Up',
-                description: 'Removing old timeline events'
+                title: 'Aufräumen',
+                description: 'Alte Ereignisse der Zeitleiste entfernen'
             },
             preparingGpsProcessing: {
-                title: 'Preparing GPS Processing',
-                description: 'Counting GPS points and preparing streaming iterator'
+                title: 'GPS-Verarbeitung vorbereiten',
+                description: 'GPS-Punkte zählen und Verarbeitung vorbereiten'
             },
             processingGeocoding: {
-                title: 'Processing & Geocoding',
-                description: 'Streaming and processing GPS points through state machine, then resolving location names'
+                title: 'Verarbeitung & Geocoding',
+                description: 'GPS-Punkte verarbeiten und anschließend Ortsnamen ermitteln'
             },
             postProcessingTrips: {
-                title: 'Post-Processing Trips',
-                description: 'Validating and refining trip detection'
+                title: 'Fahrten nachbearbeiten',
+                description: 'Erkennung von Fahrten prüfen und verfeinern'
             },
             mergingSimplifying: {
-                title: 'Merging & Simplifying',
-                description: 'Applying timeline optimizations'
+                title: 'Zusammenführen & Vereinfachen',
+                description: 'Optimierungen der Zeitleiste anwenden'
             },
             persistingTimeline: {
-                title: 'Persisting Timeline',
-                description: 'Saving timeline events to database'
+                title: 'Zeitleiste speichern',
+                description: 'Ereignisse der Zeitleiste in der Datenbank speichern'
             },
             dataGapDetection: {
-                title: 'Data Gap Detection',
-                description: 'Identifying gaps in GPS coverage'
+                title: 'Datenlücken erkennen',
+                description: 'Lücken in der GPS-Abdeckung finden'
             },
             finalizing: {
-                title: 'Finalizing',
-                description: 'Calculating milestones and completing generation'
+                title: 'Abschließen',
+                description: 'Meilensteine berechnen und Erstellung abschließen'
             }
         },
         detail: {
-            gpsPoints: 'GPS Points: {loaded} / {total}',
-            processingHeader: 'Processing GPS Points: {processed} / {total}',
-            remaining: 'Remaining: {count} points',
-            geocodingHeader: 'Reverse Geocoding: {resolved} / {total} locations',
-            favoritesInstant: 'Favorites (Instant): {count}',
-            cachedInDatabase: 'Cached in Database: {count}',
-            externalApiCalls: 'External API Calls: {count}',
-            pending: 'Pending: {count}'
+            gpsPoints: 'GPS-Punkte: {loaded} / {total}',
+            processingHeader: 'GPS-Punkte verarbeitet: {processed} / {total}',
+            remaining: 'Verbleibend: {count} Punkte',
+            geocodingHeader: 'Reverse Geocoding: {resolved} / {total} Orte',
+            favoritesInstant: 'Favoriten (sofort): {count}',
+            cachedInDatabase: 'Aus der Datenbank: {count}',
+            externalApiCalls: 'Externe API-Aufrufe: {count}',
+            pending: 'Ausstehend: {count}'
         },
         completion: {
-            title: 'Timeline Generation Complete!',
-            message: 'Your timeline has been successfully regenerated with all the latest GPS data.'
+            title: 'Zeitleiste erstellt!',
+            message: 'Deine Zeitleiste wurde mit allen aktuellen GPS-Daten neu berechnet.'
         },
-        durationZero: '0s',
-        durationSeconds: '{seconds}s',
-        durationMinutesSeconds: '{minutes}m {seconds}s',
-        durationHoursMinutesSeconds: '{hours}h {minutes}m {seconds}s'
+        durationZero: '0 s',
+        durationSeconds: '{seconds} s',
+        durationMinutesSeconds: '{minutes} Min. {seconds} s',
+        durationHoursMinutesSeconds: '{hours} Std. {minutes} Min. {seconds} s'
     },
     // Toasts and dialogs shown while a settings change starts a timeline regeneration (useTimelineRegeneration)
     regeneration: {
         alreadyRunning: {
-            header: 'Timeline Job In Progress',
-            message: 'A timeline generation job is already running ({progress}% complete). Please wait for it to finish.',
-            viewProgress: 'View Progress'
+            header: 'Zeitleisten-Job läuft',
+            message: 'Es läuft bereits ein Zeitleisten-Job ({progress} % fertig). Bitte warte, bis er abgeschlossen ist.',
+            viewProgress: 'Fortschritt ansehen'
         },
-        savedSummary: 'Saved',
-        queuedDetail: 'Changes saved. Your timeline will be updated in the background.'
+        savedSummary: 'Gespeichert',
+        queuedDetail: 'Änderungen gespeichert. Deine Zeitleiste wird im Hintergrund aktualisiert.'
     }
 }
