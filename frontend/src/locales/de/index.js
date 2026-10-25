@@ -53,8 +53,10 @@ import exports_ from './exports.js'
  * Glossary -- keep these consistent across all files:
  *   Timeline            -> Zeitleiste
  *   Stay                -> Aufenthalt
- *   Trip                -> Fahrt
+ *   Trip                -> Fahrt (timeline segment); Reise (in Trip Plans)
  *   Trip plan           -> Reiseplan
+ *   Stop (trip plan)    -> Stopp
+ *   Collaborator        -> Mitwirkende
  *   Data gap            -> Datenlücke
  *   Location source     -> Standortquelle
  *   GPS points          -> GPS-Punkte
@@ -72,6 +74,7 @@ import exports_ from './exports.js'
  *   Import / Export     -> Import / Export (verbs: importieren / exportieren)
  *   Geocoding           -> Geocoding
  *   Backup              -> Backup
+ *   Admin / administrator -> Admin / Administration ("wende dich an deine Administration")
  */
 export default {
     nav,
