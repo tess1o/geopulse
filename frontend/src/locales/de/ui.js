@@ -1,426 +1,422 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Shared UI components, search, dashboard, and home content.
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
+ * Shared UI components, search, dashboard, and home content (German).
  */
 export default {
     mainApp: {
-        shareLabel: 'Share',
-        shareAria: 'Share timeline',
-        reconstructTooltip: 'Generate GPS points from manual stays and trips. Existing GPS points are preserved.',
-        reconstructLabel: 'Add Missing Timeline Data',
-        reconstructAria: 'Add missing timeline data',
-        timelineReportsTab: 'Timeline Reports'
+        shareLabel: 'Teilen',
+        shareAria: 'Zeitleiste teilen',
+        reconstructTooltip: 'GPS-Punkte aus manuell angelegten Aufenthalten und Fahrten erzeugen. Vorhandene GPS-Punkte bleiben erhalten.',
+        reconstructLabel: 'Fehlende Zeitleistendaten ergänzen',
+        reconstructAria: 'Fehlende Zeitleistendaten ergänzen',
+        timelineReportsTab: 'Zeitleisten-Berichte'
     },
     dashboard: {
         page: {
-            title: 'Dashboard',
-            subtitle: 'Overview of your location data and analytics',
-            selectedPeriodSummary: 'Selected Period Summary',
-            sevenDaysOverview: '7 Days Overview',
-            thirtyDaysOverview: '30 Days Overview',
-            topPlacesSelected: 'Top Places for selected period',
-            topPlacesLast7: 'Top Places for last 7 days',
-            topPlacesLast30: 'Top Places for last 30 days',
-            routeStatsSelected: 'Route Stats for selected period',
-            routeStatsLast7: 'Route Stats or last 7 days',
-            routeStatsLast30: 'Route Stats for last 30 days',
-            noDataTitle: 'No Data Available',
-            noDataMessage: 'No location data found for the selected time periods. Check your GPS sources or select a different date range.',
+            title: 'Übersicht',
+            subtitle: 'Überblick über deine Standortdaten und Auswertungen',
+            selectedPeriodSummary: 'Zusammenfassung des Zeitraums',
+            sevenDaysOverview: 'Letzte 7 Tage',
+            thirtyDaysOverview: 'Letzte 30 Tage',
+            topPlacesSelected: 'Top-Orte im gewählten Zeitraum',
+            topPlacesLast7: 'Top-Orte der letzten 7 Tage',
+            topPlacesLast30: 'Top-Orte der letzten 30 Tage',
+            routeStatsSelected: 'Routenstatistik im gewählten Zeitraum',
+            routeStatsLast7: 'Routenstatistik der letzten 7 Tage',
+            routeStatsLast30: 'Routenstatistik der letzten 30 Tage',
+            noDataTitle: 'Keine Daten vorhanden',
+            noDataMessage: 'Für die gewählten Zeiträume wurden keine Standortdaten gefunden. Prüf deine GPS-Quellen oder wähle einen anderen Zeitraum.',
             toasts: {
-                selectedRangeFailed: 'Failed to fetch selected range stats',
-                weeklyFailed: 'Failed to fetch weekly stats',
-                monthlyFailed: 'Failed to fetch monthly stats'
+                selectedRangeFailed: 'Statistik für den gewählten Zeitraum konnte nicht abgerufen werden',
+                weeklyFailed: 'Wochenstatistik konnte nicht abgerufen werden',
+                monthlyFailed: 'Monatsstatistik konnte nicht abgerufen werden'
             }
         },
         metrics: {
-            totalDistance: 'Total Distance',
-            timeMoving: 'Time Moving',
-            dailyAverage: 'Daily Average',
-            averageSpeed: 'Average Speed',
-            mostActiveDay: 'Most Active Day',
-            uniqueLocations: 'Unique Locations',
-            notAvailable: 'N/A'
+            totalDistance: 'Gesamtstrecke',
+            timeMoving: 'Zeit in Bewegung',
+            dailyAverage: 'Tagesdurchschnitt',
+            averageSpeed: 'Durchschnittsgeschwindigkeit',
+            mostActiveDay: 'Aktivster Tag',
+            uniqueLocations: 'Verschiedene Orte',
+            notAvailable: 'k. A.'
         },
-        distanceActivityChart: 'Distance Activity',
-        distanceAxisTitle: 'Distance ({unit})',
+        distanceActivityChart: 'Strecke pro Tag',
+        distanceAxisTitle: 'Strecke ({unit})',
         tooltip: {
-            distance: 'Distance: {value}',
-            travelTime: 'Travel Time: {value}',
-            locations: 'Locations: {value}'
+            distance: 'Strecke: {value}',
+            travelTime: 'Unterwegs: {value}',
+            locations: 'Orte: {value}'
         },
         routeAnalysis: {
-            noDataTitle: 'No Route Data',
-            noDataMessage: 'There are no routes analyzed for this period.',
-            uniqueRoutes: 'Unique Routes',
-            mostCommonRoute: 'Most Common Route',
-            tripsCount: '{count} trips',
-            avgTripDuration: 'Avg Trip Duration',
-            longestTripDuration: 'Longest Trip (duration)',
-            longestTripDistance: 'Longest Trip (distance)',
-            notAvailable: 'N/A'
+            noDataTitle: 'Keine Routendaten',
+            noDataMessage: 'Für diesen Zeitraum wurden keine Routen ausgewertet.',
+            uniqueRoutes: 'Verschiedene Routen',
+            mostCommonRoute: 'Häufigste Route',
+            tripsCount: '{count} Fahrten',
+            avgTripDuration: 'Ø Dauer einer Fahrt',
+            longestTripDuration: 'Längste Fahrt (Dauer)',
+            longestTripDistance: 'Längste Fahrt (Strecke)',
+            notAvailable: 'k. A.'
         },
         topPlaces: {
-            noDataTitle: 'No Places Data',
-            noDataMessage: 'There are no places visited during this period.',
-            visitsCount: '{count} visits',
-            totalDuration: '{duration} total',
-            defaultLocationName: 'Selected Location'
+            noDataTitle: 'Keine Ortsdaten',
+            noDataMessage: 'In diesem Zeitraum wurden keine Orte besucht.',
+            visitsCount: '{count} Besuche',
+            totalDuration: '{duration} insgesamt',
+            defaultLocationName: 'Ausgewählter Ort'
         }
     },
     home: {
-        loadContentFailed: 'Failed to load home content',
+        loadContentFailed: 'Inhalte der Startseite konnten nicht geladen werden',
         nav: {
-            resourcesAriaLabel: 'Project resources',
-            documentation: 'Documentation',
+            resourcesAriaLabel: 'Projektressourcen',
+            documentation: 'Dokumentation',
             github: 'GitHub',
-            whatsNewAriaLabel: "What's new",
-            updateAvailable: 'New: {version} available',
-            updateAvailableShort: 'New: {version}',
-            whatsNewTitle: "What's New in {version}",
-            whatsNewEmpty: 'No release notes are available for this version yet.',
-            releaseNotesLink: 'Full release notes on GitHub'
+            whatsNewAriaLabel: 'Was ist neu',
+            updateAvailable: 'Neu: {version} verfügbar',
+            updateAvailableShort: 'Neu: {version}',
+            whatsNewTitle: 'Neu in {version}',
+            whatsNewEmpty: 'Für diese Version gibt es noch keine Versionshinweise.',
+            releaseNotesLink: 'Vollständige Versionshinweise auf GitHub'
         },
         hero: {
-            eyebrow: 'Self-hosted Google Timeline alternative',
-            titleWelcomeBack: 'Welcome back',
-            titleDefault: 'Own Your Location Timeline',
-            subtitle: 'GeoPulse turns raw GPS points into a private location timeline with stays, trips, maps, and insights, all under your control.',
-            accessDisabled: 'Login and registration are currently disabled by the administrator.',
-            registrationDisabled: 'Registration is disabled. Existing users can still sign in.',
-            tryDemo: 'Try Demo',
-            startJourney: 'Start Your Journey',
-            goToTimeline: 'Go to Timeline',
-            loadingWorkspace: 'Loading workspace...',
-            socialProofText: 'Source available on GitHub · Free for personal use',
-            stars: 'Stars',
+            eyebrow: 'Selbst gehostete Alternative zu Google Timeline',
+            titleWelcomeBack: 'Willkommen zurück',
+            titleDefault: 'Deine Standort-Zeitleiste gehört dir',
+            subtitle: 'GeoPulse macht aus GPS-Rohdaten eine private Zeitleiste mit Aufenthalten, Fahrten, Karten und Einblicken – alles unter deiner Kontrolle.',
+            accessDisabled: 'Anmeldung und Registrierung sind derzeit von der Administration deaktiviert.',
+            registrationDisabled: 'Die Registrierung ist deaktiviert. Bestehende Konten können sich weiterhin anmelden.',
+            tryDemo: 'Demo ausprobieren',
+            startJourney: 'Jetzt loslegen',
+            goToTimeline: 'Zur Zeitleiste',
+            loadingWorkspace: 'Arbeitsbereich wird geladen …',
+            socialProofText: 'Quellcode auf GitHub · Kostenlos für den privaten Gebrauch',
+            stars: 'Sterne',
             forks: 'Forks'
         },
         features: {
-            liveTracking: 'Live Tracking',
-            smartImport: 'Smart Import',
-            autoTimeline: 'Auto-Timeline',
-            deepInsights: 'Deep Insights',
-            immichIntegration: 'Immich Integration',
-            friends: 'Friends',
+            liveTracking: 'Live-Tracking',
+            smartImport: 'Smarter Import',
+            autoTimeline: 'Automatische Zeitleiste',
+            deepInsights: 'Tiefe Einblicke',
+            immichIntegration: 'Immich-Anbindung',
+            friends: 'Freunde',
             geofences: 'Geofences',
-            ai: 'AI'
+            ai: 'KI'
         },
         panel: {
-            exploreAriaLabel: 'Explore GeoPulse and tips',
-            tabsAriaLabel: 'Mobile section tabs',
-            featuresTab: 'Features',
-            tipTab: 'Tip',
-            tipOfDayTitle: 'Tip of the day',
-            tipOfDayAriaLabel: 'Tip of the day'
+            exploreAriaLabel: 'GeoPulse und Tipps entdecken',
+            tabsAriaLabel: 'Bereiche (mobil)',
+            featuresTab: 'Funktionen',
+            tipTab: 'Tipp',
+            tipOfDayTitle: 'Tipp des Tages',
+            tipOfDayAriaLabel: 'Tipp des Tages'
         },
         footer: {
-            copyright: '© GeoPulse. All rights reserved.'
+            copyright: '© GeoPulse. Alle Rechte vorbehalten.'
         }
     },
     mobileAuth: {
-        title: 'Mobile',
-        preparing: 'Preparing mobile authentication...',
-        payloadMissing: 'Mobile authentication payload was not returned.',
-        opening: 'Opening the app...',
-        timedOut: 'Opening the app timed out. Please return to the app and try again.',
-        failed: 'Failed to complete mobile authentication handoff.'
+        title: 'Mobil',
+        preparing: 'Mobile Anmeldung wird vorbereitet …',
+        payloadMissing: 'Die Daten für die mobile Anmeldung wurden nicht zurückgegeben.',
+        opening: 'App wird geöffnet …',
+        timedOut: 'Das Öffnen der App hat zu lange gedauert. Wechsle zurück in die App und versuch es noch einmal.',
+        failed: 'Die Übergabe der mobilen Anmeldung ist fehlgeschlagen.'
     },
     notFound: {
-        subtitle: 'Location Not Found',
-        title: "Oops! You've wandered off the map",
-        description: "The page you're looking for doesn't exist or has been moved to a different location. Let's get you back on track.",
-        optionsTitle: 'Where would you like to go?',
+        subtitle: 'Ort nicht gefunden',
+        title: 'Hoppla! Du bist vom Weg abgekommen',
+        description: 'Die gesuchte Seite gibt es nicht oder sie wurde verschoben. Wir bringen dich zurück auf Kurs.',
+        optionsTitle: 'Wohin möchtest du?',
         options: {
             home: {
-                title: 'Home',
-                description: 'Start your journey from the beginning'
+                title: 'Startseite',
+                description: 'Ganz von vorn beginnen'
             },
             timeline: {
-                title: 'Timeline',
-                description: 'View your location timeline'
+                title: 'Zeitleiste',
+                description: 'Deine Standort-Zeitleiste ansehen'
             },
             signIn: {
-                title: 'Sign In',
-                description: 'Access your GeoPulse account'
+                title: 'Anmelden',
+                description: 'Zu deinem GeoPulse-Konto'
             },
             dashboard: {
-                title: 'Dashboard',
-                description: 'Check your location insights'
+                title: 'Übersicht',
+                description: 'Einblicke in deine Standortdaten'
             },
             signUp: {
-                title: 'Sign Up',
-                description: 'Create a new account'
+                title: 'Registrieren',
+                description: 'Ein neues Konto erstellen'
             }
         },
-        goBack: 'Go Back',
-        helpSummary: "Need help finding what you're looking for?",
-        helpIntro: 'Here are some common pages you might be looking for:',
+        goBack: 'Zurück',
+        helpSummary: 'Brauchst du Hilfe beim Finden?',
+        helpIntro: 'Diese Seiten suchst du vielleicht:',
         helpLinks: {
-            timeline: 'Timeline',
-            timelineDesc: 'View your location history',
-            dashboard: 'Dashboard',
-            dashboardDesc: 'Location insights and analytics',
-            journeyInsights: 'Journey Insights',
-            journeyInsightsDesc: 'Discover travel patterns',
-            friends: 'Friends',
-            friendsDesc: 'Manage your friend connections',
-            signIn: 'Sign In',
-            signInDesc: 'Access your account'
+            timeline: 'Zeitleiste',
+            timelineDesc: 'Deinen Standortverlauf ansehen',
+            dashboard: 'Übersicht',
+            dashboardDesc: 'Einblicke und Auswertungen zu deinen Standorten',
+            journeyInsights: 'Reise-Einblicke',
+            journeyInsightsDesc: 'Reisemuster entdecken',
+            friends: 'Freunde',
+            friendsDesc: 'Deine Freunde verwalten',
+            signIn: 'Anmelden',
+            signInDesc: 'Zu deinem Konto'
         },
-        helpNote: "If you believe this is a broken link, please contact support and we'll fix it."
+        helpNote: 'Wenn du glaubst, dass der Link kaputt ist, melde dich beim Support, dann beheben wir das.'
     },
     darkModeSwitcher: {
-        themeTooltip: 'Theme: {label}',
-        themeAriaLabel: 'Theme mode: {label}',
-        light: 'Light',
-        dark: 'Dark',
+        themeTooltip: 'Design: {label}',
+        themeAriaLabel: 'Design-Modus: {label}',
+        light: 'Hell',
+        dark: 'Dunkel',
         system: 'System',
-        currentSuffix: '{label} (Current)'
+        currentSuffix: '{label} (aktuell)'
     },
     errorReferenceToast: {
-        copyAriaLabel: 'Copy error reference id'
+        copyAriaLabel: 'Fehler-Referenz-ID kopieren'
     },
     providerIcon: {
-        defaultAlt: 'Provider icon'
+        defaultAlt: 'Anbieter-Symbol'
     },
     gpsFiltering: {
-        title: 'GPS Data Filtering',
-        filterLabel: 'Filter inaccurate data points',
-        filterHint: 'Enable to filter out GPS points with accuracy or speed beyond the defined limits.',
-        maxAccuracyLabel: 'Max Allowed Accuracy (meters)',
-        maxAccuracyPlaceholder: 'e.g., 100',
-        maxAccuracyHint: 'Points with accuracy above this value will be rejected.',
-        maxSpeedLabel: 'Max Allowed Speed (km/h)',
-        maxSpeedPlaceholder: 'e.g., 250',
-        maxSpeedHint: 'Points with speed above this value will be rejected.',
-        duplicateDetectionTitle: 'Duplicate Detection',
-        duplicateDetectionLabel: 'Enable duplicate detection',
-        duplicateDetectionHint: 'Skip GPS points that have the same location within a time window. Useful for devices that send repeated locations when stationary.',
-        thresholdLabel: 'Time threshold (minutes)',
-        thresholdPlaceholder: 'e.g., 2',
-        thresholdHint: 'Points with the same coordinates (within ~11m) in this time window will be skipped. Leave empty to use global default.'
+        title: 'Filterung der GPS-Daten',
+        filterLabel: 'Ungenaue Punkte herausfiltern',
+        filterHint: 'Aktivieren, um GPS-Punkte mit Genauigkeit oder Geschwindigkeit außerhalb der Grenzen zu verwerfen.',
+        maxAccuracyLabel: 'Maximal erlaubte Ungenauigkeit (Meter)',
+        maxAccuracyPlaceholder: 'z. B. 100',
+        maxAccuracyHint: 'Punkte mit einem höheren Genauigkeitswert werden verworfen.',
+        maxSpeedLabel: 'Maximal erlaubte Geschwindigkeit (km/h)',
+        maxSpeedPlaceholder: 'z. B. 250',
+        maxSpeedHint: 'Punkte mit höherer Geschwindigkeit werden verworfen.',
+        duplicateDetectionTitle: 'Duplikaterkennung',
+        duplicateDetectionLabel: 'Duplikaterkennung aktivieren',
+        duplicateDetectionHint: 'GPS-Punkte am selben Ort innerhalb eines Zeitfensters überspringen. Nützlich für Geräte, die im Stillstand wiederholt denselben Standort senden.',
+        thresholdLabel: 'Zeitfenster (Minuten)',
+        thresholdPlaceholder: 'z. B. 2',
+        thresholdHint: 'Punkte mit denselben Koordinaten (innerhalb von ca. 11 m) in diesem Zeitfenster werden übersprungen. Leer lassen für den globalen Standard.'
     },
     pullToRefresh: {
-        pullText: 'Pull to refresh',
-        readyText: 'Release to refresh',
-        refreshingText: 'Refreshing...'
+        pullText: 'Zum Aktualisieren ziehen',
+        readyText: 'Zum Aktualisieren loslassen',
+        refreshingText: 'Wird aktualisiert …'
     },
     tipOfDayCard: {
-        nextTip: 'Next tip',
-        noTipTitle: 'No tip available yet',
-        noTipDescription: 'Tips will appear here when home content is available.'
+        nextTip: 'Nächster Tipp',
+        noTipTitle: 'Noch kein Tipp verfügbar',
+        noTipDescription: 'Tipps erscheinen hier, sobald Inhalte für die Startseite verfügbar sind.'
     },
     dateRangePicker: {
-        labelDefault: 'Select Dates',
-        placeholderDefault: 'Select date range',
-        presetPlaceholderDefault: 'Select Preset',
+        labelDefault: 'Datum wählen',
+        placeholderDefault: 'Zeitraum wählen',
+        presetPlaceholderDefault: 'Vorlage wählen',
         presets: {
-            today: 'Today',
-            yesterday: 'Yesterday',
-            last7Days: 'Last 7 days',
-            last30Days: 'Last 30 days'
+            today: 'Heute',
+            yesterday: 'Gestern',
+            last7Days: 'Letzte 7 Tage',
+            last30Days: 'Letzte 30 Tage'
         },
-        maxRangeError: 'Maximum range is {days} days',
-        periodFallbackName: 'Period',
+        maxRangeError: 'Der Zeitraum darf höchstens {days} Tage lang sein',
+        periodFallbackName: 'Zeitraum',
         labelFallbackName: 'Label',
-        timelineLabelsGroup: 'Timeline Labels',
-        presetsGroup: 'Presets'
+        timelineLabelsGroup: 'Zeitleisten-Labels',
+        presetsGroup: 'Vorlagen'
     },
     transportTypeCard: {
-        enableAriaLabel: 'Enable {title} detection',
-        alwaysActive: 'Always Active',
-        expandAriaLabel: 'Expand {title}',
-        collapseAriaLabel: 'Collapse {title}',
-        disabledMessage: '{title} detection is currently disabled. Enable to configure thresholds.'
+        enableAriaLabel: '{title}: Erkennung aktivieren',
+        alwaysActive: 'Immer aktiv',
+        expandAriaLabel: '{title} aufklappen',
+        collapseAriaLabel: '{title} einklappen',
+        disabledMessage: '{title}: Die Erkennung ist derzeit deaktiviert. Aktiviere sie, um die Schwellen einzustellen.'
     },
     appLayout: {
-        viewTimelineJob: 'View timeline job',
-        whatsNew: "What's new",
-        readFullReleaseNotes: 'Read full release notes',
-        gotIt: 'Got it',
-        notificationDefaultSummary: 'Notification',
-        viewAllNotifications: 'View all notifications',
-        openNotification: 'Open Notification'
+        viewTimelineJob: 'Zeitleisten-Job ansehen',
+        whatsNew: 'Was ist neu',
+        readFullReleaseNotes: 'Vollständige Versionshinweise lesen',
+        gotIt: 'Verstanden',
+        notificationDefaultSummary: 'Benachrichtigung',
+        viewAllNotifications: 'Alle Benachrichtigungen ansehen',
+        openNotification: 'Benachrichtigung öffnen'
     },
     exploreFeatures: {
-        ariaLabel: 'Explore GeoPulse',
-        kicker: 'Explore GeoPulse',
-        tabsAriaLabel: 'GeoPulse features',
-        readDocs: 'Read docs',
-        openInApp: 'Open in app',
+        ariaLabel: 'GeoPulse entdecken',
+        kicker: 'GeoPulse entdecken',
+        tabsAriaLabel: 'Funktionen von GeoPulse',
+        readDocs: 'Dokumentation lesen',
+        openInApp: 'In der App öffnen',
         liveTracking: {
-            tabLabel: 'Live Tracking',
-            title: 'Real-time Source Integrations',
-            description: 'Connect OwnTracks, Overland, Traccar, GPSLogger, Dawarich, Home Assistant, and Colota into one timeline.',
+            tabLabel: 'Live-Tracking',
+            title: 'Quellen in Echtzeit',
+            description: 'Führe OwnTracks, Overland, Traccar, GPSLogger, Dawarich, Home Assistant und Colota in einer Zeitleiste zusammen.',
             highlights: [
-                'Supports HTTP and MQTT ingestion across supported trackers',
-                'Per-source GPS filtering improves timeline quality',
-                'Combine multiple devices/sources into a single history'
+                'Empfang per HTTP und MQTT für die unterstützten Tracker',
+                'GPS-Filter pro Quelle verbessern die Qualität der Zeitleiste',
+                'Mehrere Geräte und Quellen in einem Verlauf kombinieren'
             ]
         },
         imports: {
-            tabLabel: 'Imports',
-            title: 'Import & Migrate History',
-            description: 'Import legacy and backup data with background processing and timeline regeneration.',
+            tabLabel: 'Importe',
+            title: 'Verlauf importieren & umziehen',
+            description: 'Importiere alte Daten und Backups mit Verarbeitung im Hintergrund und neu berechneter Zeitleiste.',
             highlights: [
-                'Supports GeoPulse, OwnTracks, Google Timeline, GPX, GeoJSON, and CSV',
-                'Date-range filtering for partial imports',
-                'Replace-or-merge workflow for safe reimports'
+                'Unterstützt GeoPulse, OwnTracks, Google Timeline, GPX, GeoJSON und CSV',
+                'Filter nach Zeitraum für Teilimporte',
+                'Ersetzen oder Zusammenführen für sichere erneute Importe'
             ]
         },
         timeline: {
-            tabLabel: 'Timeline',
-            title: 'Stays, Trips, and Gaps',
-            description: 'GeoPulse turns raw points into timeline events, then lets you refine routes and correct missed stops.',
+            tabLabel: 'Zeitleiste',
+            title: 'Aufenthalte, Fahrten und Lücken',
+            description: 'GeoPulse macht aus Rohpunkten Ereignisse in der Zeitleiste. Routen kannst du verfeinern und verpasste Halte korrigieren.',
             highlights: [
-                'Automatic stay/trip/gap detection',
-                'Configurable travel modes from walking and cycling to motorcycle, train, flight, and boat',
-                'Split a missed stop into Trip → Stay → Trip; the correction survives regeneration',
-                'Optional Valhalla Map Matching follows roads while raw GPS remains authoritative'
+                'Automatische Erkennung von Aufenthalten, Fahrten und Lücken',
+                'Einstellbare Fortbewegungsarten von zu Fuß und Fahrrad bis Motorrad, Zug, Flug und Boot',
+                'Einen verpassten Halt in Fahrt → Aufenthalt → Fahrt teilen; die Korrektur bleibt bei Neuberechnungen erhalten',
+                'Optionales Map-Matching mit Valhalla folgt Straßen, die GPS-Rohdaten bleiben maßgeblich'
             ]
         },
         insight: {
-            tabLabel: 'Insights',
-            title: 'Dashboard & Journey Insights && Location Analytics  ',
-            description: 'Track movement patterns, places, routes, and achievements across multiple time windows.',
+            tabLabel: 'Einblicke',
+            title: 'Übersicht, Reise-Einblicke & Ortsanalyse',
+            description: 'Verfolge Bewegungsmuster, Orte, Routen und Erfolge über verschiedene Zeiträume.',
             highlights: [
-                'Selected period + 7-day + 30-day overviews',
-                'Top places, route analysis, and activity breakdowns',
-                'Journey Insights for countries/cities/travel milestones'
+                'Überblick über gewählten Zeitraum, 7 Tage und 30 Tage',
+                'Top-Orte, Routenanalyse und Aufschlüsselung der Aktivitäten',
+                'Reise-Einblicke zu Ländern, Städten und Meilensteinen'
             ]
         },
         friends: {
-            tabLabel: 'Friends',
-            title: 'Friends & Sharing Controls',
-            description: 'Connect with friends and control exactly what you share.',
+            tabLabel: 'Freunde',
+            title: 'Freunde & Freigaben',
+            description: 'Verbinde dich mit Freunden und lege genau fest, was du teilst.',
             highlights: [
-                'Invite, accept, reject, and cancel friend requests',
-                'Separate permissions for live location and timeline history',
-                'Live map and shared timeline views, including embeddable shared locations'
+                'Freundschaftsanfragen senden, annehmen, ablehnen und zurückziehen',
+                'Getrennte Freigaben für Live-Standort und Zeitleistenverlauf',
+                'Live-Karte und geteilte Zeitleisten, auch als einbettbare geteilte Standorte'
             ]
         },
         geofences: {
             tabLabel: 'Geofences',
-            title: 'Geofence Rules & Events',
-            description: 'Create enter/leave rules with in-app notifications and optional external delivery.',
+            title: 'Geofence-Regeln & Ereignisse',
+            description: 'Erstelle Regeln für Betreten und Verlassen mit Benachrichtigungen in der App und optionaler externer Zustellung.',
             highlights: [
-                'Track selected subjects with configurable rule conditions',
-                'Template-based notifications with macro support',
-                'Events tab with unread filtering and seen management'
+                'Ausgewählte Personen mit einstellbaren Bedingungen verfolgen',
+                'Benachrichtigungen aus Vorlagen mit Makros',
+                'Ereignis-Tab mit Filter für Ungelesenes und Gelesen-Verwaltung'
             ]
         },
         immich: {
             tabLabel: 'Immich',
-            title: 'Immich Photo Overlay',
-            description: 'Display Immich photos directly on the timeline map for the selected date range.',
+            title: 'Immich-Fotos auf der Karte',
+            description: 'Zeige Immich-Fotos für den gewählten Zeitraum direkt auf der Zeitleistenkarte.',
             highlights: [
-                'Configure URL + API key in Profile',
-                'Toggle photo layer on Timeline map',
-                'Open photos in-app and download originals'
+                'URL und API-Schlüssel im Profil einrichten',
+                'Fotoebene auf der Zeitleistenkarte ein- und ausschalten',
+                'Fotos in der App öffnen und Originale herunterladen'
             ]
         },
         weather: {
-            tabLabel: 'Weather',
-            title: 'Weather Along Your Timeline',
-            description: 'Add local conditions to the places and journeys in your location history.',
+            tabLabel: 'Wetter',
+            title: 'Wetter entlang deiner Zeitleiste',
+            description: 'Ergänze die Orte und Reisen in deinem Standortverlauf um das Wetter vor Ort.',
             highlights: [
-                'See temperature, precipitation, wind, and conditions on stays, trips, and Timeline maps',
-                'Compare weather patterns in Journey Insights and earn weather-related badges',
-                'Ongoing collection uses Open-Meteo by default; admins can opt into historical backfill'
+                'Temperatur, Niederschlag, Wind und Wetterlage bei Aufenthalten, Fahrten und auf der Zeitleistenkarte',
+                'Wettermuster in den Reise-Einblicken vergleichen und Wetter-Abzeichen sammeln',
+                'Die laufende Erfassung nutzt standardmäßig Open-Meteo; Admins können Verlaufsdaten nachladen'
             ]
         },
         ai: {
-            tabLabel: 'AI',
-            title: 'AI Assistant & MCP',
-            description: 'Ask natural-language questions or connect an AI client to your personal movement history.',
+            tabLabel: 'KI',
+            title: 'KI-Assistent & MCP',
+            description: 'Stell Fragen in natürlicher Sprache oder verbinde einen KI-Client mit deinem Bewegungsverlauf.',
             highlights: [
-                'Bring your own OpenAI-compatible API key/model with encrypted per-user settings',
-                'Query stays, trips, places, and travel patterns',
-                'MCP is enabled by default for API-token-authenticated, read-only AI tools'
+                'Eigener OpenAI-kompatibler API-Schlüssel und eigenes Modell, verschlüsselt pro Nutzer gespeichert',
+                'Aufenthalte, Fahrten, Orte und Reisemuster abfragen',
+                'MCP ist standardmäßig aktiv – für KI-Werkzeuge mit Lesezugriff über API-Tokens'
             ]
         }
     },
     onboardingTour: {
-        welcomeTitle: '🎉 Welcome to GeoPulse!',
-        welcomeDescription: "Ready to start tracking your location journey? Let's set up your first location source.",
-        startTour: '🚀 Start Tour',
-        exploreOnMyOwn: "I'll explore myself",
-        closeTour: 'Close tour',
-        stepCounter: '{current} of {total}',
-        previous: 'Previous',
-        next: 'Next',
-        getStarted: 'Get Started!',
+        welcomeTitle: '🎉 Willkommen bei GeoPulse!',
+        welcomeDescription: 'Bereit, deine Wege aufzuzeichnen? Richten wir deine erste Standortquelle ein.',
+        startTour: '🚀 Tour starten',
+        exploreOnMyOwn: 'Ich schau mich selbst um',
+        closeTour: 'Tour schließen',
+        stepCounter: '{current} von {total}',
+        previous: 'Zurück',
+        next: 'Weiter',
+        getStarted: 'Los geht’s!',
         steps: {
             welcome: {
-                title: 'Welcome to GeoPulse!',
-                description: "First, let's set up your location sources so we can start tracking your journey."
+                title: 'Willkommen bei GeoPulse!',
+                description: 'Richte zuerst deine Standortquellen ein, damit die Aufzeichnung starten kann.'
             },
             addSource: {
-                title: 'Add Your First Location Source',
-                description: 'Click the "Add New Source" button to add OwnTracks or Overland as your location source.'
+                title: 'Erste Standortquelle hinzufügen',
+                description: 'Klicke auf „Neue Quelle hinzufügen“, um OwnTracks oder Overland als Standortquelle einzurichten.'
             },
             followInstructions: {
-                title: 'Follow Setup Instructions',
-                description: "Once you add a source, you'll see detailed setup instructions with your unique endpoint and token."
+                title: 'Anleitung folgen',
+                description: 'Nach dem Hinzufügen siehst du eine ausführliche Anleitung mit deinem persönlichen Endpunkt und Token.'
             },
             allSet: {
-                title: "You're All Set!",
-                description: 'Once your location source is configured, visit your Timeline to see your location history and explore GeoPulse!'
+                title: 'Alles bereit!',
+                description: 'Sobald deine Standortquelle eingerichtet ist, schau in deine Zeitleiste und entdecke GeoPulse!'
             }
         }
     },
     appNavbar: {
         demoBadge: 'DEMO',
-        locationSharingEnabledTooltip: 'Location sharing enabled',
-        locationSharingDisabledTooltip: 'Location sharing disabled',
-        shareLocation: 'Share Location',
-        inviteFriend: 'Invite Friend',
-        inviteFriendDisabledAriaLabel: 'Invite Friend disabled in demo mode',
-        inviteFriendDisabledTooltip: 'Invitations are disabled in demo mode'
+        locationSharingEnabledTooltip: 'Standortfreigabe aktiv',
+        locationSharingDisabledTooltip: 'Standortfreigabe aus',
+        shareLocation: 'Standort teilen',
+        inviteFriend: 'Freund einladen',
+        inviteFriendDisabledAriaLabel: 'Freund einladen ist im Demo-Modus deaktiviert',
+        inviteFriendDisabledTooltip: 'Einladungen sind im Demo-Modus deaktiviert'
     },
     globalSearch: {
         bar: {
-            placeholder: 'Search locations, pages, settings...',
-            groupPages: 'Pages',
-            groupSettings: 'Settings',
-            groupLocations: 'Locations',
-            visitsCount: '{count} visit | {count} visits',
-            sinceDate: 'Since {date}'
+            placeholder: 'Orte, Seiten, Einstellungen suchen …',
+            groupPages: 'Seiten',
+            groupSettings: 'Einstellungen',
+            groupLocations: 'Orte',
+            visitsCount: '{count} Besuch | {count} Besuche',
+            sinceDate: 'Seit {date}'
         },
         settingsTrigger: {
-            defaultPlaceholder: 'Search settings...',
-            defaultButtonLabel: 'Find Setting'
+            defaultPlaceholder: 'Einstellungen suchen …',
+            defaultButtonLabel: 'Einstellung finden'
         },
         registry: {
-            tabAuthentication: 'Authentication',
+            tabAuthentication: 'Anmeldung',
             tabGeocoding: 'Geocoding',
-            tabWeather: 'Weather',
-            tabPlaceDiscovery: 'Place discovery',
-            tabMapMatching: 'Map Matching',
-            tabAiAssistant: 'AI Assistant',
+            tabWeather: 'Wetter',
+            tabPlaceDiscovery: 'Ortssuche',
+            tabMapMatching: 'Map-Matching',
+            tabAiAssistant: 'KI-Assistent',
             tabImport: 'Import',
             tabExport: 'Export',
-            tabBackup: 'Backup and Restore',
-            tabNotifications: 'Notifications',
+            tabBackup: 'Backup & Wiederherstellung',
+            tabNotifications: 'Benachrichtigungen',
             tabSystem: 'System',
-            timelineTabStayPoints: 'Stay Point Detection',
-            timelineTabTrips: 'Trip Classification',
-            timelineTabGpsGaps: 'GPS Gaps Detection',
-            timelineTabMerging: 'Stay Point Merging',
-            subtitleTimelinePreferences: 'Timeline Preferences / {tab}',
-            subtitleProfile: 'Profile / {subtitle}',
-            subtitleSystemSettings: 'System Settings / {tab}',
-            subtitlePage: 'Page',
+            timelineTabStayPoints: 'Erkennung von Aufenthalten',
+            timelineTabTrips: 'Einstufung von Fahrten',
+            timelineTabGpsGaps: 'Erkennung von GPS-Lücken',
+            timelineTabMerging: 'Zusammenführen von Aufenthalten',
+            subtitleTimelinePreferences: 'Zeitleisten-Einstellungen / {tab}',
+            subtitleProfile: 'Profil / {subtitle}',
+            subtitleSystemSettings: 'Systemeinstellungen / {tab}',
+            subtitlePage: 'Seite',
             subtitleAdministration: 'Administration'
         }
     },
     charts: {
         barChart: {
-            defaultTitle: 'Data',
-            seriesFallback: 'Series {number}',
+            defaultTitle: 'Daten',
+            seriesFallback: 'Reihe {number}',
             valueKm: '{value} km'
         }
     }
