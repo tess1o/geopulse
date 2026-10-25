@@ -1,123 +1,119 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Notifications page (in-app notification inbox).
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
+ * Notifications page (in-app notification inbox) (German).
  */
 export default {
     page: {
-        title: 'Notifications',
-        description: 'Stay on top of what GeoPulse has noticed for you.',
-        refresh: 'Refresh',
-        markAllSeen: 'Mark All Seen'
+        title: 'Benachrichtigungen',
+        description: 'Behalte im Blick, was GeoPulse für dich bemerkt hat.',
+        refresh: 'Aktualisieren',
+        markAllSeen: 'Alle als gelesen markieren'
     },
     filters: {
-        unread: 'Unread',
-        all: 'All'
+        unread: 'Ungelesen',
+        all: 'Alle'
     },
     sourceOptions: {
-        all: 'All sources',
+        all: 'Alle Quellen',
         geofence: 'Geofences',
-        timeline: 'Timeline',
+        timeline: 'Zeitleiste',
         import: 'Import',
         export: 'Export',
-        friends: 'Friend Invites'
+        friends: 'Freundschaftsanfragen'
     },
     table: {
-        source: 'Source',
-        notification: 'Notification',
-        time: 'Time',
+        source: 'Quelle',
+        notification: 'Benachrichtigung',
+        time: 'Zeit',
         status: 'Status',
-        actions: 'Actions'
+        actions: 'Aktionen'
     },
     status: {
-        seen: 'Seen',
-        unread: 'Unread'
+        seen: 'Gelesen',
+        unread: 'Ungelesen'
     },
-    newNotification: 'New notification',
-    markSeen: 'Mark Seen',
-    titleFallback: 'Notification',
+    newNotification: 'Neue Benachrichtigung',
+    markSeen: 'Als gelesen markieren',
+    titleFallback: 'Benachrichtigung',
     empty: {
-        unread: "You're all caught up! No unread notifications.",
-        none: 'No notifications yet.'
+        unread: 'Alles erledigt! Keine ungelesenen Benachrichtigungen.',
+        none: 'Noch keine Benachrichtigungen.'
     },
     toast: {
-        errorSummary: 'Notifications Error',
-        loadFailed: 'Failed to load notifications',
-        markSeenFailed: 'Failed to mark notification as seen',
-        markAllSeenFailed: 'Failed to mark all notifications as seen'
+        errorSummary: 'Fehler bei Benachrichtigungen',
+        loadFailed: 'Benachrichtigungen konnten nicht geladen werden',
+        markSeenFailed: 'Benachrichtigung konnte nicht als gelesen markiert werden',
+        markAllSeenFailed: 'Benachrichtigungen konnten nicht als gelesen markiert werden'
     },
     store: {
-        loadUnreadCountFailed: 'Failed to load unread notification count',
-        loadPreferencesFailed: 'Failed to load notification preferences',
-        savePreferencesFailed: 'Failed to save notification preferences',
-        loadReleaseAnnouncementFailed: 'Failed to load release announcement',
-        unreadToastSummary: 'Unread notifications',
-        unreadToastDetail: 'You have {count} unread notification. | You have {count} unread notifications.',
-        viewAllNotifications: 'View all notifications',
-        browserBlockedSummary: 'Browser notifications blocked',
-        browserBlockedDetail: 'Enable notification permission in your browser settings to use desktop alerts.',
-        browserNotSentSummary: 'Browser notification not sent',
-        browserNotSentDetail: 'Browser permission is not granted. Enable Browser alerts from the bell menu again.',
-        browserFailedSummary: 'Browser notification failed',
-        browserFailedDetail: 'Your browser or OS blocked desktop alerts. In-app notifications are still active.'
+        loadUnreadCountFailed: 'Anzahl ungelesener Benachrichtigungen konnte nicht geladen werden',
+        loadPreferencesFailed: 'Benachrichtigungseinstellungen konnten nicht geladen werden',
+        savePreferencesFailed: 'Benachrichtigungseinstellungen konnten nicht gespeichert werden',
+        loadReleaseAnnouncementFailed: 'Versionshinweis konnte nicht geladen werden',
+        unreadToastSummary: 'Ungelesene Benachrichtigungen',
+        unreadToastDetail: 'Du hast {count} ungelesene Benachrichtigung. | Du hast {count} ungelesene Benachrichtigungen.',
+        viewAllNotifications: 'Alle Benachrichtigungen ansehen',
+        browserBlockedSummary: 'Browser-Benachrichtigungen blockiert',
+        browserBlockedDetail: 'Erlaube Benachrichtigungen in den Browser-Einstellungen, um Desktop-Hinweise zu nutzen.',
+        browserNotSentSummary: 'Browser-Benachrichtigung nicht gesendet',
+        browserNotSentDetail: 'Der Browser hat keine Berechtigung. Aktiviere Browser-Hinweise im Glocken-Menü erneut.',
+        browserFailedSummary: 'Browser-Benachrichtigung fehlgeschlagen',
+        browserFailedDetail: 'Dein Browser oder Betriebssystem blockiert Desktop-Hinweise. Benachrichtigungen in der App funktionieren weiterhin.'
     },
     bell: {
-        openAriaLabel: 'Open notifications inbox',
-        unreadTag: '{count} unread',
-        browserAlerts: 'Browser alerts',
-        browserNotSupported: 'Browser notifications are not available in this browser.',
-        noUnread: 'No unread notifications.',
-        noNotifications: 'No notifications found.',
-        defaultMessage: 'New notification.',
-        markSeen: 'Mark seen',
-        markAllSeen: 'Mark all seen',
-        errorSummary: 'Notification Error'
+        openAriaLabel: 'Benachrichtigungen öffnen',
+        unreadTag: '{count} ungelesen',
+        browserAlerts: 'Browser-Hinweise',
+        browserNotSupported: 'Dieser Browser unterstützt keine Benachrichtigungen.',
+        noUnread: 'Keine ungelesenen Benachrichtigungen.',
+        noNotifications: 'Keine Benachrichtigungen gefunden.',
+        defaultMessage: 'Neue Benachrichtigung.',
+        markSeen: 'Als gelesen markieren',
+        markAllSeen: 'Alle als gelesen markieren',
+        errorSummary: 'Fehler bei Benachrichtigung'
     },
-    sourceNotificationSuffix: '{source} notification',
+    sourceNotificationSuffix: 'Benachrichtigung: {source}',
     display: {
         sources: {
             geofence: 'Geofence',
-            timeline: 'Timeline',
+            timeline: 'Zeitleiste',
             import: 'Import',
             export: 'Export',
-            friendInvite: 'Friends',
-            weather: 'Weather',
-            backupHealth: 'Backup health',
-            gpsHealth: 'GPS health',
-            product: 'Product',
-            rewind: 'Rewind'
+            friendInvite: 'Freunde',
+            weather: 'Wetter',
+            backupHealth: 'Backup-Status',
+            gpsHealth: 'GPS-Status',
+            product: 'Produkt',
+            rewind: 'Rückblick'
         },
         types: {
-            geofenceEnter: 'Geofence enter',
-            geofenceLeave: 'Geofence leave',
-            timelineRegenerationRequired: 'Timeline refresh scheduled',
-            importCompleted: 'Import completed',
-            importFailed: 'Import failed',
-            exportCompleted: 'Export completed',
-            exportFailed: 'Export failed',
-            friendInviteReceived: 'Friend invitation',
-            friendInviteAccepted: 'Friend accepted',
-            weatherQuotaReached: 'Weather quota reached',
-            weatherQuotaRestored: 'Weather quota restored',
-            gpsHealthIncidentOpened: 'GPS tracking is quiet',
-            gpsHealthIncidentResolved: 'GPS tracking resumed',
-            productReleaseAvailable: 'What’s new',
-            rewindReady: 'Rewind ready'
+            geofenceEnter: 'Geofence betreten',
+            geofenceLeave: 'Geofence verlassen',
+            timelineRegenerationRequired: 'Aktualisierung der Zeitleiste geplant',
+            importCompleted: 'Import abgeschlossen',
+            importFailed: 'Import fehlgeschlagen',
+            exportCompleted: 'Export abgeschlossen',
+            exportFailed: 'Export fehlgeschlagen',
+            friendInviteReceived: 'Freundschaftsanfrage',
+            friendInviteAccepted: 'Freundschaft angenommen',
+            weatherQuotaReached: 'Wetter-Kontingent erreicht',
+            weatherQuotaRestored: 'Wetter-Kontingent wieder verfügbar',
+            gpsHealthIncidentOpened: 'GPS-Aufzeichnung ist still',
+            gpsHealthIncidentResolved: 'GPS-Aufzeichnung läuft wieder',
+            productReleaseAvailable: 'Was ist neu',
+            rewindReady: 'Rückblick bereit'
         },
         actions: {
-            openGeofenceEvents: 'Open Geofence Events',
-            viewTimelineStatus: 'View Timeline Status',
-            openImports: 'Open Imports',
-            openExports: 'Open Exports',
-            openInvitations: 'Open Invitations',
-            openFriends: 'Open Friends',
-            openAdminDashboard: 'Open Admin Dashboard',
-            openBackupSettings: 'Open backup settings',
-            openNotifications: 'Open Notifications',
-            openRewind: 'Open Rewind',
-            openNotification: 'Open Notification'
+            openGeofenceEvents: 'Geofence-Ereignisse öffnen',
+            viewTimelineStatus: 'Status der Zeitleiste ansehen',
+            openImports: 'Importe öffnen',
+            openExports: 'Exporte öffnen',
+            openInvitations: 'Einladungen öffnen',
+            openFriends: 'Freunde öffnen',
+            openAdminDashboard: 'Admin-Übersicht öffnen',
+            openBackupSettings: 'Backup-Einstellungen öffnen',
+            openNotifications: 'Benachrichtigungen öffnen',
+            openRewind: 'Rückblick öffnen',
+            openNotification: 'Benachrichtigung öffnen'
         }
     }
 }
