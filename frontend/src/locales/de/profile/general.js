@@ -6,7 +6,7 @@
  */
 export default {
     title: 'Allgemein',
-    description: 'Verwalte dein Profil und deine Anzeigeeinstellungen für jeden Tag.',
+    description: 'Verwalte dein Profil und deine wichtigsten Anzeigeeinstellungen.',
     profile: {
         heading: 'Profil',
         description: 'Wähle den Namen und das Bild, die in GeoPulse angezeigt werden.',
