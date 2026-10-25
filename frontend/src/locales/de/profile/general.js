@@ -1,124 +1,116 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * General tab (ProfileTab.vue): identity, regional preferences, and the default landing page.
+ * General tab (German): identity, regional preferences, and the default landing page.
  *
- * EN values are verbatim from the previous literals -- profileTabsDirtyState.test.js asserts
- * 'General', 'Profile', 'Regional preferences' and 'Navigation' exactly.
- *
- * The destination picker reuses the `nav.items.*` keys rather than restating the names: the entries
- * are the same destinations the navigation shows, so a shared key keeps the two in step. Only
- * 'Custom URL...' is specific to this picker.
- *
- * Timezone city names are deliberately NOT in the catalog -- they are IANA identifiers shown in Latin
- * script by convention, and translating them would make the stored value harder to match.
+ * The destination picker reuses the `nav.items.*` keys; timezone city names are IANA identifiers
+ * and deliberately not translated (see en/profile/general.js).
  */
 export default {
-    title: 'General',
-    description: 'Manage your identity and everyday display preferences.',
+    title: 'Allgemein',
+    description: 'Verwalte dein Profil und deine Anzeigeeinstellungen für jeden Tag.',
     profile: {
-        heading: 'Profile',
-        description: 'Choose the name and image shown across GeoPulse.',
+        heading: 'Profil',
+        description: 'Wähle den Namen und das Bild, die in GeoPulse angezeigt werden.',
         fullName: {
-            title: 'Full name',
-            description: 'The name shown on your account.',
-            placeholder: 'Enter your full name'
+            title: 'Vollständiger Name',
+            description: 'Der Name, der zu deinem Konto angezeigt wird.',
+            placeholder: 'Dein vollständiger Name'
         },
         image: {
-            heading: 'Profile image',
+            heading: 'Profilbild',
             optional: 'Optional',
-            description: 'Customize the image used for map markers.',
-            upload: 'Upload Custom Avatar',
-            formats: 'PNG, JPEG, or WEBP; resized automatically before upload.',
-            selected: 'Selected: {name}',
-            chooseAria: 'Choose profile image {index}'
+            description: 'Passe das Bild für deine Kartenmarker an.',
+            upload: 'Eigenen Avatar hochladen',
+            formats: 'PNG, JPEG oder WEBP; wird vor dem Hochladen automatisch verkleinert.',
+            selected: 'Ausgewählt: {name}',
+            chooseAria: 'Profilbild {index} wählen'
         }
     },
     regional: {
-        heading: 'Regional preferences',
-        description: 'Control timezone, formats, and measurement units.',
+        heading: 'Regionale Einstellungen',
+        description: 'Zeitzone, Formate und Maßeinheiten festlegen.',
         timezone: {
-            title: 'Timezone',
-            description: 'Used for dates, times, and statistics.',
-            placeholder: 'Select your timezone'
+            title: 'Zeitzone',
+            description: 'Wird für Datum, Uhrzeit und Statistiken verwendet.',
+            placeholder: 'Zeitzone wählen'
         },
         dateFormat: {
-            title: 'Date format',
-            description: 'Choose how numeric dates appear.',
-            details: 'URL date parameters continue to use a stable ISO format.',
-            placeholder: 'Select your preferred date format'
+            title: 'Datumsformat',
+            description: 'Lege fest, wie Datumsangaben in Ziffern erscheinen.',
+            details: 'Datumsparameter in URLs nutzen weiterhin ein festes ISO-Format.',
+            placeholder: 'Datumsformat wählen'
         },
         timeFormat: {
-            title: 'Time format',
-            description: 'Choose whether times use a 12- or 24-hour clock.',
-            placeholder: 'Select your preferred time format'
+            title: 'Uhrzeitformat',
+            description: 'Wähle zwischen 12- und 24-Stunden-Anzeige.',
+            placeholder: 'Uhrzeitformat wählen'
         },
         timeDisplayMode: {
-            title: 'Timeline time zone',
-            description: 'Show timeline and GPS data times in your profile timezone, or in the local time where each place was visited.',
-            details: 'Days are still grouped by your profile timezone. The local timezone comes from the nearest city, so times near timezone borders may be approximate. Hover a time to see where its timezone came from.',
-            unavailable: 'Local time is unavailable because GeoNames city data is not loaded on this server. Times are shown in your profile timezone.'
+            title: 'Zeitzone der Zeitleiste',
+            description: 'Zeige Zeiten in Zeitleiste und GPS-Daten in der Zeitzone deines Profils oder in der Ortszeit des jeweiligen Orts.',
+            details: 'Die Tage werden weiterhin nach der Zeitzone deines Profils gruppiert. Die Ortszeitzone stammt von der nächstgelegenen Stadt, nahe an Zeitzonengrenzen können Zeiten also ungenau sein. Fahr mit der Maus über eine Uhrzeit, um zu sehen, woher ihre Zeitzone stammt.',
+            unavailable: 'Die Ortszeit ist nicht verfügbar, weil die GeoNames-Städtedaten auf diesem Server nicht geladen sind. Zeiten werden in der Zeitzone deines Profils angezeigt.'
         },
         distanceUnit: {
-            title: 'Distance unit',
-            description: 'Controls displayed distances and speeds.',
-            placeholder: 'Select your distance unit'
+            title: 'Entfernungseinheit',
+            description: 'Gilt für angezeigte Entfernungen und Geschwindigkeiten.',
+            placeholder: 'Entfernungseinheit wählen'
         },
         temperatureUnit: {
-            title: 'Temperature unit',
-            description: 'Controls temperatures shown in weather views.',
-            placeholder: 'Select your temperature unit'
+            title: 'Temperatureinheit',
+            description: 'Gilt für Temperaturen in den Wetteranzeigen.',
+            placeholder: 'Temperatureinheit wählen'
         }
     },
     navigation: {
         heading: 'Navigation',
-        description: 'Choose where GeoPulse opens after sign-in.',
+        description: 'Lege fest, wo GeoPulse nach der Anmeldung startet.',
         homePage: {
-            title: 'Default home page',
-            description: 'Select the first page shown after sign-in.',
-            details: "Clear the selection to use GeoPulse's default behavior. Custom destinations must be internal paths beginning with /.",
-            placeholder: 'Select your default page',
-            customOption: 'Custom URL...',
-            customLabel: 'Custom internal path',
-            customPlaceholder: '/app/your-custom-page'
+            title: 'Startseite',
+            description: 'Die erste Seite nach der Anmeldung.',
+            details: 'Leere die Auswahl, um das Standardverhalten von GeoPulse zu nutzen. Eigene Ziele müssen interne Pfade sein, die mit / beginnen.',
+            placeholder: 'Startseite wählen',
+            customOption: 'Eigene URL …',
+            customLabel: 'Eigener interner Pfad',
+            customPlaceholder: '/app/deine-eigene-seite'
         }
     },
     dateFormatOptions: {
-        dmy: 'DD/MM/YYYY (European)',
-        mdy: 'MM/DD/YYYY (US)',
-        ymd: 'YYYY-MM-DD (ISO)'
+        dmy: 'TT/MM/JJJJ (europäisch)',
+        mdy: 'MM/TT/JJJJ (US)',
+        ymd: 'JJJJ-MM-TT (ISO)'
     },
     timeFormatOptions: {
-        h24: '24-hour (13:45)',
-        h12: '12-hour (1:45 PM)'
+        h24: '24 Stunden (13:45)',
+        h12: '12 Stunden (1:45 PM)'
     },
     timeDisplayModeOptions: {
-        profile: 'Profile timezone',
-        location: 'Local time at each place'
+        profile: 'Zeitzone des Profils',
+        location: 'Ortszeit am jeweiligen Ort'
     },
     distanceUnitOptions: {
-        kilometers: 'Kilometers (km, m)',
-        miles: 'Miles (mi, ft)'
+        kilometers: 'Kilometer (km, m)',
+        miles: 'Meilen (mi, ft)'
     },
     temperatureUnitOptions: {
         celsius: 'Celsius (°C)',
         fahrenheit: 'Fahrenheit (°F)'
     },
     actions: {
-        reset: 'Reset',
-        save: 'Save Changes'
+        reset: 'Zurücksetzen',
+        save: 'Änderungen speichern'
     },
     errors: {
-        fullNameRequired: 'Full name is required',
-        fullNameTooShort: 'Full name must be at least 2 characters',
-        customUrlRequired: 'Custom URL is required',
-        customUrlInternal: 'URL must be an internal path starting with /',
-        customUrlInvalid: 'Invalid URL format',
-        customUrlTooLong: 'URL is too long (max 1000 characters)',
-        imageLoad: 'Failed to load image',
-        imageTooLarge: 'Image is too large after compression. Try a different image.',
-        imageFormat: 'Unsupported image format. Use PNG, JPEG, or WEBP.',
-        imageUnsupported: 'Image processing is not supported in this browser',
-        imageProcess: 'Unable to process selected image',
-        avatarTooLarge: 'Avatar is too large after compression'
+        fullNameRequired: 'Name ist erforderlich',
+        fullNameTooShort: 'Der Name muss mindestens 2 Zeichen lang sein',
+        customUrlRequired: 'Eigene URL ist erforderlich',
+        customUrlInternal: 'Die URL muss ein interner Pfad sein, der mit / beginnt',
+        customUrlInvalid: 'Ungültiges URL-Format',
+        customUrlTooLong: 'Die URL ist zu lang (höchstens 1000 Zeichen)',
+        imageLoad: 'Bild konnte nicht geladen werden',
+        imageTooLarge: 'Das Bild ist auch nach der Komprimierung zu groß. Versuch ein anderes Bild.',
+        imageFormat: 'Nicht unterstütztes Bildformat. Verwende PNG, JPEG oder WEBP.',
+        imageUnsupported: 'Bildverarbeitung wird in diesem Browser nicht unterstützt',
+        imageProcess: 'Das ausgewählte Bild konnte nicht verarbeitet werden',
+        avatarTooLarge: 'Der Avatar ist auch nach der Komprimierung zu groß'
     }
 }

@@ -1,155 +1,146 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Security tab's access surfaces: OIDC sign-in providers and API tokens.
+ * Security tab's access surfaces (German): OIDC sign-in providers and API tokens.
  *
- * EN values are verbatim from the previous literals.
- *
- * Toast pairs follow the page catalog's shape: a summary/detail pair is nested as `.title`/`.detail`,
- * while a summary shared by several toasts stays a flat key. 'OIDC', 'MCP' and 'API' stay as proper
- * nouns in every locale.
+ * 'OIDC', 'MCP' and 'API' stay as proper nouns.
  */
 export default {
     oidc: {
-        heading: 'Connected accounts',
-        description: 'Manage social or corporate OIDC sign-in methods.',
-        linkedHeading: 'Linked accounts',
+        heading: 'Verknüpfte Konten',
+        description: 'Verwalte Anmeldemethoden über soziale Netzwerke oder Firmen-OIDC.',
+        linkedHeading: 'Verknüpfte Konten',
         // Screen-reader text for the provider avatar, e.g. 'GitHub icon'.
-        providerIconAlt: '{provider} icon',
-        unlink: 'Unlink',
+        providerIconAlt: '{provider}-Symbol',
+        unlink: 'Trennen',
         tooltips: {
-            demoDisabled: 'Disabled in demo mode',
-            unlinkBlocked: 'Cannot unlink the only authentication method without a password set.',
-            unlink: 'Unlink this account'
+            demoDisabled: 'Im Demo-Modus deaktiviert',
+            unlinkBlocked: 'Die einzige Anmeldemethode lässt sich nicht trennen, solange kein Passwort festgelegt ist.',
+            unlink: 'Dieses Konto trennen'
         },
-        linkHeading: 'Link another account',
-        link: 'Link',
-        noPasswordWarning: 'You have no password set. You must add another login method before unlinking your only connected account.',
+        linkHeading: 'Weiteres Konto verknüpfen',
+        link: 'Verknüpfen',
+        noPasswordWarning: 'Du hast kein Passwort festgelegt. Füge eine weitere Anmeldemethode hinzu, bevor du dein einziges verknüpftes Konto trennst.',
         confirm: {
-            header: 'Confirm Unlink',
-            message: 'Are you sure you want to unlink your {provider} account? This action cannot be undone.'
+            header: 'Trennen bestätigen',
+            message: 'Möchtest du dein {provider}-Konto wirklich trennen? Das lässt sich nicht rückgängig machen.'
         },
         toasts: {
             // Summary shared by the load failure below.
-            error: 'Error',
-            loadFailed: 'Could not load connected account information.',
+            error: 'Fehler',
+            loadFailed: 'Die verknüpften Konten konnten nicht geladen werden.',
             linkFailed: {
-                title: 'Link Failed',
-                detail: 'Failed to initiate linking for {provider}'
+                title: 'Verknüpfen fehlgeschlagen',
+                detail: 'Verknüpfen mit {provider} konnte nicht gestartet werden'
             },
             unlinked: {
-                title: 'Account Unlinked',
-                detail: 'Successfully unlinked your {provider} account.'
+                title: 'Konto getrennt',
+                detail: 'Dein {provider}-Konto wurde getrennt.'
             },
             unlinkFailed: {
-                title: 'Unlink Failed',
-                detail: 'Failed to unlink account'
+                title: 'Trennen fehlgeschlagen',
+                detail: 'Konto konnte nicht getrennt werden'
             }
         }
     },
     apiTokens: {
-        heading: 'API tokens',
-        description: 'Create named tokens for bots, MCP clients, and automation.',
-        create: 'Create Token',
+        heading: 'API-Tokens',
+        description: 'Erstelle benannte Tokens für Bots, MCP-Clients und Automatisierungen.',
+        create: 'Token erstellen',
         columns: {
             name: 'Name',
             status: 'Status',
-            expires: 'Expires',
-            lastUsed: 'Last Used',
-            actions: 'Actions',
-            access: 'Access'
+            expires: 'Läuft ab',
+            lastUsed: 'Zuletzt verwendet',
+            actions: 'Aktionen',
+            access: 'Zugriff'
         },
         // Token scopes. Preset and scope titles also label tokens in the table.
         access: {
-            label: 'Access',
-            fixedHint: 'Access can\'t be changed later. To change it, create a new token and revoke this one.',
+            label: 'Zugriff',
+            fixedHint: 'Der Zugriff lässt sich später nicht ändern. Erstelle dafür ein neues Token und widerrufe dieses.',
             presets: {
-                full: { title: 'Full access', description: 'Everything you can do, including managing API tokens and, for admins, the admin area.' },
-                readOnly: { title: 'Read only', description: 'View your data and use MCP clients. Cannot change anything.' },
-                homeAssistant: { title: 'Home Assistant', description: 'Read your data and send locations from Home Assistant.' },
-                backup: { title: 'Backup', description: 'Read your data and create and download exports.' },
-                custom: { title: 'Custom', description: 'Choose individual permissions.' }
+                full: { title: 'Vollzugriff', description: 'Alles, was du tun kannst, auch API-Tokens verwalten und, für Admins, den Admin-Bereich.' },
+                readOnly: { title: 'Nur lesen', description: 'Deine Daten ansehen und MCP-Clients nutzen. Kann nichts ändern.' },
+                homeAssistant: { title: 'Home Assistant', description: 'Deine Daten lesen und Standorte aus Home Assistant senden.' },
+                backup: { title: 'Backup', description: 'Deine Daten lesen sowie Exporte erstellen und herunterladen.' },
+                custom: { title: 'Benutzerdefiniert', description: 'Einzelne Berechtigungen wählen.' }
             },
             scopes: {
-                read: { title: 'Read', description: 'View timeline, places, statistics, friends and settings.' },
-                write: { title: 'Write', description: 'Change or delete data and settings.' },
-                gpsIngest: { title: 'Send locations', description: 'Send GPS points with this token.' },
-                export: { title: 'Export', description: 'Create and download exports.' },
-                import: { title: 'Import', description: 'Import files that add data. Imports that replace existing data also need Write.' }
+                read: { title: 'Lesen', description: 'Zeitleiste, Orte, Statistiken, Freunde und Einstellungen ansehen.' },
+                write: { title: 'Schreiben', description: 'Daten und Einstellungen ändern oder löschen.' },
+                gpsIngest: { title: 'Standorte senden', description: 'GPS-Punkte mit diesem Token senden.' },
+                export: { title: 'Export', description: 'Exporte erstellen und herunterladen.' },
+                import: { title: 'Import', description: 'Dateien importieren, die Daten hinzufügen. Importe, die vorhandene Daten ersetzen, brauchen zusätzlich Schreiben.' }
             }
         },
         // Stands in for a missing expiry or last-used timestamp in the table.
-        never: 'Never',
-        // Backend `TokenStatus` values rendered as a label. The enum itself is compared in code and is
-        // never translated.
+        never: 'Nie',
+        // Backend `TokenStatus` values rendered as a label.
         status: {
-            active: 'Active',
-            expired: 'Expired',
-            revoked: 'Revoked'
+            active: 'Aktiv',
+            expired: 'Abgelaufen',
+            revoked: 'Widerrufen'
         },
         tooltips: {
-            edit: 'Edit token',
-            revoke: 'Revoke token'
+            edit: 'Token bearbeiten',
+            revoke: 'Token widerrufen'
         },
-        empty: 'No API tokens created.',
+        empty: 'Noch keine API-Tokens erstellt.',
         // Shared by the edit and revoke dialogs.
-        cancel: 'Cancel',
+        cancel: 'Abbrechen',
         editDialog: {
-            editHeader: 'Edit API Token',
-            createHeader: 'Create API Token',
+            editHeader: 'API-Token bearbeiten',
+            createHeader: 'API-Token erstellen',
             nameLabel: 'Name',
-            namePlaceholder: 'Automation token',
-            expirationLabel: 'Expiration',
-            expirationPlaceholder: 'No expiration',
-            expirationHint: 'Leave empty for no expiration.',
-            save: 'Save',
-            create: 'Create'
+            namePlaceholder: 'Token für Automatisierung',
+            expirationLabel: 'Ablauf',
+            expirationPlaceholder: 'Kein Ablauf',
+            expirationHint: 'Leer lassen für kein Ablaufdatum.',
+            save: 'Speichern',
+            create: 'Erstellen'
         },
         createdDialog: {
-            header: 'API Token Created',
-            message: 'This token is shown once. Store it securely before closing this dialog.',
-            confirm: 'I have stored this token',
-            homeAssistantNext: 'Next: add a Home Assistant location source for this token, so locations from Home Assistant show up in GeoPulse. Copy the token first; it is shown only once.',
-            homeAssistantLink: 'Add Home Assistant source'
+            header: 'API-Token erstellt',
+            message: 'Dieses Token wird nur einmal angezeigt. Bewahre es sicher auf, bevor du den Dialog schließt.',
+            confirm: 'Ich habe das Token gespeichert',
+            homeAssistantNext: 'Nächster Schritt: Lege für dieses Token eine Home-Assistant-Standortquelle an, damit Standorte aus Home Assistant in GeoPulse erscheinen. Kopiere vorher das Token, es wird nur einmal angezeigt.',
+            homeAssistantLink: 'Home-Assistant-Quelle hinzufügen'
         },
         revokeDialog: {
-            header: 'Revoke API Token',
-            // The token name sits between the two halves inside <strong>, so the sentence is split
-            // around that element rather than interpolated -- see the template.
-            confirmPrefix: 'Revoke ',
-            confirmSuffix: '? Automation using this token will stop immediately.',
-            confirm: 'Revoke'
+            header: 'API-Token widerrufen',
+            // The token name sits between the two halves inside <strong> -- see the template.
+            confirmPrefix: 'Token ',
+            confirmSuffix: ' widerrufen? Automatisierungen mit diesem Token funktionieren dann sofort nicht mehr.',
+            confirm: 'Widerrufen'
         },
         validation: {
-            nameRequired: 'Token name is required',
-            scopeRequired: 'Choose at least one permission'
+            nameRequired: 'Name des Tokens ist erforderlich',
+            scopeRequired: 'Wähle mindestens eine Berechtigung'
         },
         toasts: {
             // Summary shared by the failure toasts below.
-            error: 'Error',
-            loadFailed: 'Failed to load API tokens',
-            saveFailed: 'Failed to save API token',
-            revokeFailed: 'Failed to revoke API token',
+            error: 'Fehler',
+            loadFailed: 'API-Tokens konnten nicht geladen werden',
+            saveFailed: 'API-Token konnte nicht gespeichert werden',
+            revokeFailed: 'API-Token konnte nicht widerrufen werden',
             saved: {
-                title: 'Saved',
-                detail: 'API token updated'
+                title: 'Gespeichert',
+                detail: 'API-Token aktualisiert'
             },
             created: {
-                title: 'Created',
-                detail: 'API token created'
+                title: 'Erstellt',
+                detail: 'API-Token erstellt'
             },
             revoked: {
-                title: 'Revoked',
-                detail: 'API token revoked'
+                title: 'Widerrufen',
+                detail: 'API-Token widerrufen'
             },
-            // These two mirror `common.clipboard.copied`/`copyFailed`; the detail lines name the token,
-            // so they stay here rather than in the shared block.
             copied: {
-                title: 'Copied',
-                detail: 'Token copied to clipboard'
+                title: 'Kopiert',
+                detail: 'Token in die Zwischenablage kopiert'
             },
             copyFailed: {
-                title: 'Copy failed',
-                detail: 'Select the token and copy it manually'
+                title: 'Kopieren fehlgeschlagen',
+                detail: 'Markiere das Token und kopiere es manuell'
             }
         }
     }

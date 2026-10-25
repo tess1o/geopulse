@@ -1,80 +1,76 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Notifications tab, plus the shared channel settings block it renders per event group.
- *
- * 'GPS health', 'Monthly Rewind', 'Product updates', 'Destination URLs', 'Configuration key' and
- * 'Configuration tag' are asserted verbatim by NotificationsPreferencesTab.test.js.
+ * Notifications tab, plus the shared channel settings block it renders per event group (German).
  */
 export default {
-    title: 'Notifications',
-    description: 'Choose which events create alerts and how they are delivered.',
+    title: 'Benachrichtigungen',
+    description: 'Lege fest, welche Ereignisse Hinweise auslösen und wie sie zugestellt werden.',
     gpsHealth: {
-        heading: 'GPS health',
-        description: 'Get alerted when every active live GPS source stops sending data.',
+        heading: 'GPS-Status',
+        description: 'Werde benachrichtigt, wenn alle aktiven Live-GPS-Quellen keine Daten mehr senden.',
         monitor: {
-            title: 'Monitor GPS arrivals',
-            description: 'Detect extended gaps across all active live sources.'
+            title: 'GPS-Eingang überwachen',
+            description: 'Längere Lücken bei allen aktiven Live-Quellen erkennen.'
         },
         silence: {
-            title: 'Silence threshold',
-            description: 'Wait this many minutes before creating the first alert.',
-            details: 'Choose a value from 1 minute to 7 days.',
-            ariaLabel: 'GPS silence threshold in minutes'
+            title: 'Schwelle für Funkstille',
+            description: 'So viele Minuten warten, bevor der erste Hinweis erstellt wird.',
+            details: 'Wähle einen Wert zwischen 1 Minute und 7 Tagen.',
+            ariaLabel: 'Schwelle für GPS-Funkstille in Minuten'
         },
-        channelLabel: 'GPS health delivery'
+        channelLabel: 'Zustellung GPS-Status'
     },
     rewind: {
-        heading: 'Monthly Rewind',
-        description: 'Get a reminder when the previous month is ready to explore.',
+        heading: 'Monatlicher Rückblick',
+        description: 'Erhalte eine Erinnerung, wenn der Vormonat zum Ansehen bereit ist.',
         notify: {
-            title: 'Notify when Rewind is ready',
-            description: 'Create an alert on the first day of each month.'
+            title: 'Benachrichtigen, wenn der Rückblick bereit ist',
+            description: 'Am ersten Tag jedes Monats einen Hinweis erstellen.'
         },
-        channelLabel: 'Rewind delivery'
+        channelLabel: 'Zustellung Rückblick'
     },
     productUpdates: {
-        heading: 'Product updates',
-        description: 'Control in-app announcements about new GeoPulse features.',
+        heading: 'Produkt-Neuigkeiten',
+        description: 'Hinweise in der App zu neuen GeoPulse-Funktionen steuern.',
         whatsNew: {
-            title: 'Show release highlights',
-            description: 'Show What’s New once after an upgrade.',
-            details: 'Release highlights appear only inside GeoPulse and are never sent externally.'
+            title: 'Highlights neuer Versionen anzeigen',
+            description: '„Was ist neu“ einmal nach einem Update anzeigen.',
+            details: 'Die Highlights erscheinen nur in GeoPulse und werden nie extern versendet.'
         }
     },
     // Trailing unit for the silence-threshold number input.
-    silenceSuffix: ' min',
-    saveChanges: 'Save Changes',
+    silenceSuffix: ' Min.',
+    saveChanges: 'Änderungen speichern',
     channels: {
         inApp: {
-            title: 'Show in inbox',
-            description: 'Create an alert in the GeoPulse notification inbox.'
+            title: 'Im Posteingang anzeigen',
+            description: 'Einen Hinweis im Benachrichtigungs-Posteingang von GeoPulse erstellen.'
         },
         apprise: {
-            title: 'Send through Apprise',
-            description: 'Forward this alert to configured external destinations.'
+            title: 'Über Apprise senden',
+            description: 'Diesen Hinweis an eingerichtete externe Ziele weiterleiten.'
         },
         routing: {
-            title: 'Apprise routing',
-            description: 'Choose how GeoPulse addresses the destination.',
-            urls: 'Destination URL(s)',
-            keyTag: 'Apprise config key and tag'
+            title: 'Apprise-Zustellung',
+            description: 'Lege fest, wie GeoPulse das Ziel adressiert.',
+            urls: 'Ziel-URL(s)',
+            keyTag: 'Apprise-Konfigurationsschlüssel und -Tag'
         },
         destinationUrls: {
-            title: 'Destination URLs',
-            description: 'Enter one or more Apprise destination URLs.',
-            ariaLabel: 'Apprise destination URLs'
+            title: 'Ziel-URLs',
+            description: 'Gib eine oder mehrere Apprise-Ziel-URLs ein.',
+            ariaLabel: 'Apprise-Ziel-URLs'
         },
         configKey: {
-            title: 'Configuration key',
-            description: 'Name of the stored Apprise configuration.',
-            placeholder: 'Apprise config key',
-            ariaLabel: 'Apprise configuration key'
+            title: 'Konfigurationsschlüssel',
+            description: 'Name der gespeicherten Apprise-Konfiguration.',
+            placeholder: 'Apprise-Konfigurationsschlüssel',
+            ariaLabel: 'Apprise-Konfigurationsschlüssel'
         },
         configTag: {
-            title: 'Configuration tag',
-            description: 'Optional tag used to select configured destinations.',
-            placeholder: 'Optional Apprise tag',
-            ariaLabel: 'Apprise configuration tag'
+            title: 'Konfigurations-Tag',
+            description: 'Optionales Tag zur Auswahl eingerichteter Ziele.',
+            placeholder: 'Optionales Apprise-Tag',
+            ariaLabel: 'Apprise-Konfigurations-Tag'
         }
     }
 }

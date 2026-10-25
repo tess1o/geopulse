@@ -1,127 +1,123 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Timeline & Map tab.
- *
- * EN values verbatim from the previous literals. Note `mapMatching.descriptionUnavailable` starts with
- * 'Unavailable', which profileTabsDirtyState.test.js asserts on.
+ * Timeline & Map tab (German).
  */
 export default {
-    title: 'Timeline & Map',
-    description: 'Customize timeline and map presentation without regenerating timeline data.',
+    title: 'Zeitleiste & Karte',
+    description: 'Passe die Darstellung von Zeitleiste und Karte an, ohne die Zeitleistendaten neu zu berechnen.',
     behavior: {
-        heading: 'Timeline behavior',
-        description: 'Choose what appears when you open and interact with the timeline.',
+        heading: 'Verhalten der Zeitleiste',
+        description: 'Lege fest, was du beim Öffnen und Bedienen der Zeitleiste siehst.',
         defaultDateRange: {
-            title: 'Default date range',
-            description: 'Choose the initial range for Timeline, Dashboard, and Timeline Reports.',
-            details: 'Clear the selection to use the app default: Today.',
-            placeholder: 'Use app default (Today)'
+            title: 'Standardzeitraum',
+            description: 'Der anfängliche Zeitraum für Zeitleiste, Übersicht und Zeitleisten-Berichte.',
+            details: 'Leere die Auswahl, um den App-Standard zu nutzen: Heute.',
+            placeholder: 'App-Standard verwenden (Heute)'
         },
         telemetry: {
-            title: 'Current-location telemetry',
-            description: 'Show telemetry values in the current-location map popup.',
-            details: 'This affects only popup visibility. Telemetry storage and GPS Data table are unchanged.'
+            title: 'Telemetrie beim aktuellen Standort',
+            description: 'Telemetriewerte im Karten-Popup des aktuellen Standorts anzeigen.',
+            details: 'Betrifft nur die Anzeige im Popup. Speicherung der Telemetrie und GPS-Datentabelle bleiben unverändert.'
         }
     },
     sources: {
-        heading: 'Map display & sources',
-        description: 'Choose how maps are rendered and where their visual data comes from.',
+        heading: 'Kartenanzeige & Quellen',
+        description: 'Lege fest, wie Karten dargestellt werden und woher ihre Daten kommen.',
         renderMode: {
-            title: 'Map render mode',
-            description: 'Choose the renderer used throughout the map views.',
-            details: 'Switching modes keeps both custom source URLs.'
+            title: 'Darstellungsmodus der Karte',
+            description: 'Der Renderer für alle Kartenansichten.',
+            details: 'Beim Wechsel bleiben beide eigenen Quell-URLs erhalten.'
         },
         buildings3d: {
-            title: '3D buildings',
-            description: 'Show building shapes on compatible vector maps.',
-            details: 'Available only for MapTiler styles with building height data. Buildings appear when you zoom in to street level.'
+            title: '3D-Gebäude',
+            description: 'Gebäudeformen auf kompatiblen Vektorkarten anzeigen.',
+            details: 'Nur für MapTiler-Stile mit Gebäudehöhen verfügbar. Gebäude erscheinen, wenn du bis auf Straßenebene heranzoomst.'
         },
         rasterTiles: {
-            title: 'Custom raster tiles',
-            description: 'Optional source used when Raster mode is selected.',
-            details: "The URL template must use HTTP or HTTPS and include {'{z}'}, {'{x}'}, and {'{y}'}. Leave empty to use OpenStreetMap.",
-            ariaLabel: 'Custom raster tile URL'
+            title: 'Eigene Raster-Kacheln',
+            description: 'Optionale Quelle für den Raster-Modus.',
+            details: "Die URL-Vorlage muss HTTP oder HTTPS nutzen und {'{z}'}, {'{x}'} und {'{y}'} enthalten. Leer lassen für OpenStreetMap.",
+            ariaLabel: 'URL für eigene Raster-Kacheln'
         },
         vectorStyle: {
-            title: 'Custom vector style',
-            description: 'Optional style used when Vector mode is selected.',
-            details: 'Enter an HTTP or HTTPS style JSON URL. Leave empty to use OpenFreeMap.',
-            ariaLabel: 'Custom vector style URL'
+            title: 'Eigener Vektorstil',
+            description: 'Optionaler Stil für den Vektor-Modus.',
+            details: 'Gib eine HTTP- oder HTTPS-URL zu einer Stil-JSON ein. Leer lassen für OpenFreeMap.',
+            ariaLabel: 'URL für eigenen Vektorstil'
         }
     },
     processing: {
-        heading: 'Map processing',
-        description: 'Control optional route matching and display performance.',
+        heading: 'Kartenverarbeitung',
+        description: 'Optionales Map-Matching und Darstellungsleistung steuern.',
         mapMatching: {
-            title: 'Map matching',
-            descriptionAvailable: 'Display cached matched trip geometry when available',
-            descriptionUnavailable: 'Unavailable until an administrator configures a Valhalla service.',
-            detailsAvailable: 'Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged.',
-            detailsUnavailable: 'An administrator must enable Map Matching and configure Valhalla before you can turn this on.'
+            title: 'Map-Matching',
+            descriptionAvailable: 'Zwischengespeicherte, an Straßen angepasste Strecken anzeigen, sofern vorhanden',
+            descriptionUnavailable: 'Nicht verfügbar, bis die Administration einen Valhalla-Dienst einrichtet.',
+            detailsAvailable: 'Erfordert eine eingerichtete Valhalla-Instanz. GPS-Rohdaten, Exporte und die Erkennung der Zeitleiste bleiben unverändert.',
+            detailsUnavailable: 'Die Administration muss Map-Matching aktivieren und Valhalla einrichten, bevor du das einschalten kannst.'
         },
         rawGps: {
-            title: 'Show raw GPS for',
-            description: 'Keep the original GPS path for selected movement types.',
-            details: 'Matching may still run in the background, but matched geometry, progress, comparison controls, and details stay hidden.',
-            placeholder: 'Use matched routes for all supported types',
-            ariaLabel: 'Movement types that show raw GPS'
+            title: 'Rohes GPS zeigen für',
+            description: 'Die ursprüngliche GPS-Strecke für ausgewählte Fortbewegungsarten behalten.',
+            details: 'Das Matching kann im Hintergrund trotzdem laufen, angepasste Strecken, Fortschritt, Vergleich und Details bleiben aber ausgeblendet.',
+            placeholder: 'Angepasste Routen für alle unterstützten Arten verwenden',
+            ariaLabel: 'Fortbewegungsarten mit rohem GPS'
         },
         simplification: {
-            title: 'Path simplification',
-            description: 'Reduce the number of points drawn for a trip.',
-            details: 'Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data.'
+            title: 'Streckenvereinfachung',
+            description: 'Weniger Punkte pro Fahrt zeichnen.',
+            details: 'Vereinfacht Strecken mit dem Douglas-Peucker-Algorithmus, ohne deine Zeitleistendaten zu ändern.'
         },
         tolerance: {
-            title: 'Simplification tolerance',
-            description: 'Set the distance threshold used to simplify paths.',
-            detailLowerLabel: 'Lower values (1-10m)',
-            detailLowerValue: 'Preserve more detail, show more points',
-            detailHigherLabel: 'Higher values (20-100m)',
-            detailHigherValue: 'More compression, show fewer points'
+            title: 'Toleranz der Vereinfachung',
+            description: 'Abstandsschwelle für die Vereinfachung von Strecken.',
+            detailLowerLabel: 'Niedrigere Werte (1–10 m)',
+            detailLowerValue: 'Mehr Details, mehr Punkte',
+            detailHigherLabel: 'Höhere Werte (20–100 m)',
+            detailHigherValue: 'Stärkere Komprimierung, weniger Punkte'
         },
         maxPoints: {
-            title: 'Maximum points',
-            description: 'Limit how many GPS points are displayed in a path.',
-            details: 'If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit.'
+            title: 'Maximale Punktzahl',
+            description: 'Wie viele GPS-Punkte eine Strecke höchstens zeigt.',
+            details: 'Liegt eine Strecke über diesem Limit, wird die Toleranz automatisch erhöht. 0 bedeutet kein Limit.'
         },
         adaptive: {
-            title: 'Adaptive simplification',
-            description: 'Adjust simplification automatically based on trip length.',
-            details: 'Longer trips use higher tolerance for better performance; shorter trips retain more detail.'
+            title: 'Adaptive Vereinfachung',
+            description: 'Vereinfachung automatisch an die Länge der Fahrt anpassen.',
+            details: 'Längere Fahrten nutzen eine höhere Toleranz für bessere Leistung, kürzere behalten mehr Details.'
         }
     },
     toggleAria: {
-        mapMatching: 'Enable map matching'
+        mapMatching: 'Map-Matching aktivieren'
     },
     // Trailing units appended to slider values by SliderControl.
-    pointsSuffix: ' points',
+    pointsSuffix: ' Punkte',
     toleranceLabels: {
-        low: '1m (High detail)',
-        mid: '15m (Balanced)',
-        high: '50m (High compression)'
+        low: '1 m (viele Details)',
+        mid: '15 m (ausgewogen)',
+        high: '50 m (starke Komprimierung)'
     },
     maxPointsLabels: {
-        none: '0 (No limit)',
-        balanced: '100 (Balanced)',
-        high: '500 (High limit)'
+        none: '0 (kein Limit)',
+        balanced: '100 (ausgewogen)',
+        high: '500 (hohes Limit)'
     },
     dateRangeOptions: {
-        today: 'Today',
-        yesterday: 'Yesterday',
-        lastWeek: 'Last 7 days',
-        lastMonth: 'Last 30 days'
+        today: 'Heute',
+        yesterday: 'Gestern',
+        lastWeek: 'Letzte 7 Tage',
+        lastMonth: 'Letzte 30 Tage'
     },
     renderModeOptions: {
-        vector: 'Vector (MapLibre)',
+        vector: 'Vektor (MapLibre)',
         raster: 'Raster (Leaflet)'
     },
-    resetToDefaults: 'Reset to Defaults',
-    saveChanges: 'Save Changes',
+    resetToDefaults: 'Auf Standard zurücksetzen',
+    saveChanges: 'Änderungen speichern',
     validation: {
-        tilePlaceholders: "URL must contain {'{z}'}, {'{x}'}, and {'{y}'} placeholders",
-        protocol: 'URL must use HTTP or HTTPS protocol',
-        invalidProtocol: 'Invalid URL protocol',
-        invalidFormat: 'Invalid URL format',
-        styleEndpoint: 'URL should point to a style JSON endpoint'
+        tilePlaceholders: "Die URL muss die Platzhalter {'{z}'}, {'{x}'} und {'{y}'} enthalten",
+        protocol: 'Die URL muss HTTP oder HTTPS nutzen',
+        invalidProtocol: 'Ungültiges URL-Protokoll',
+        invalidFormat: 'Ungültiges URL-Format',
+        styleEndpoint: 'Die URL sollte auf eine Stil-JSON zeigen'
     }
 }

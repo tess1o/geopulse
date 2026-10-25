@@ -1,40 +1,36 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Security tab: password form.
- *
- * 'Security' and 'Change password' are asserted verbatim by profileTabsDirtyState.test.js, so those
- * two values are a snapshot rather than a chance to reword.
+ * Security tab: password form (German).
  */
 export default {
-    title: 'Security',
-    description: 'Manage passwords, connected sign-in methods, and API access.',
-    changePasswordHeading: 'Change password',
-    setPasswordHeading: 'Set password',
-    changePasswordDescription: 'Update the password used to sign in to your account.',
-    setPasswordDescription: 'Add a password as a sign-in method for your account.',
+    title: 'Sicherheit',
+    description: 'Verwalte Passwörter, verknüpfte Anmeldemethoden und API-Zugriff.',
+    changePasswordHeading: 'Passwort ändern',
+    setPasswordHeading: 'Passwort festlegen',
+    changePasswordDescription: 'Ändere das Passwort, mit dem du dich anmeldest.',
+    setPasswordDescription: 'Füge ein Passwort als Anmeldemethode für dein Konto hinzu.',
     currentPassword: {
-        title: 'Current password',
-        description: 'Confirm your existing password.',
-        placeholder: 'Enter current password'
+        title: 'Aktuelles Passwort',
+        description: 'Bestätige dein bisheriges Passwort.',
+        placeholder: 'Aktuelles Passwort eingeben'
     },
     newPassword: {
-        title: 'New password',
-        description: 'Use at least six characters.',
-        placeholder: 'Enter new password'
+        title: 'Neues Passwort',
+        description: 'Mindestens sechs Zeichen.',
+        placeholder: 'Neues Passwort eingeben'
     },
     confirmPassword: {
-        title: 'Confirm new password',
-        description: 'Enter the same new password again.',
-        placeholder: 'Confirm new password'
+        title: 'Neues Passwort bestätigen',
+        description: 'Gib das neue Passwort noch einmal ein.',
+        placeholder: 'Neues Passwort wiederholen'
     },
-    cancel: 'Cancel',
-    changePasswordSubmit: 'Change Password',
-    setPasswordSubmit: 'Set Password',
+    cancel: 'Abbrechen',
+    changePasswordSubmit: 'Passwort ändern',
+    setPasswordSubmit: 'Passwort festlegen',
     validation: {
-        currentRequired: 'Current password is required',
-        newRequired: 'New password is required',
-        newTooShort: 'Password must be at least 6 characters',
-        confirmRequired: 'Please confirm your new password',
-        mismatch: 'Passwords do not match'
+        currentRequired: 'Aktuelles Passwort ist erforderlich',
+        newRequired: 'Neues Passwort ist erforderlich',
+        newTooShort: 'Das Passwort muss mindestens 6 Zeichen lang sein',
+        confirmRequired: 'Bitte bestätige dein neues Passwort',
+        mismatch: 'Die Passwörter stimmen nicht überein'
     }
 }

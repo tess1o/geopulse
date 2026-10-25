@@ -1,182 +1,167 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Connected apps tab shell: the tab strip, per-app status chips, and the four panels.
+ * Connected apps tab shell (German): the tab strip, per-app status chips, and the four panels.
  *
- * 'Immich' and 'Memos' are product names and stay untranslated. 'Enabled', 'Connected' and
- * 'Not configured' are asserted verbatim by ConnectedAppsTab.test.js.
- *
- * Every value under `ai`, `immich` and `memos` is the literal that used to sit in the matching panel
- * (AIAssistantTab, ImmichTab, MemosTab) or in its status/validation tables, copied verbatim --
- * profileTabsDirtyState.test.js matches some of them ('Test Connection', 'Reset', 'Timeline
- * defaults', 'Filtering & performance', 'Refresh provider models'), so none may be reworded.
- *
- * `messages.assetsAvailable` and `messages.memoCount` are the only values that are not a straight
- * literal: the panels built them with a JS template string, so the count is a named parameter here.
- * Both carry proper plural forms -- the originals read "1 assets available." and "1 memo(s)", which
- * Ukrainian's three required forms made impossible to preserve anyway.
+ * 'Immich', 'Memos' and 'MCP' are product names and stay untranslated.
  */
 export default {
-    title: 'Connected apps',
-    description: 'Configure services that add AI, photos, and notes to GeoPulse.',
-    listAria: 'Connected apps',
+    title: 'Verbundene Apps',
+    description: 'Richte Dienste ein, die GeoPulse um KI, Fotos und Notizen erweitern.',
+    listAria: 'Verbundene Apps',
     apps: {
-        ai: 'AI Assistant',
+        ai: 'KI-Assistent',
         immich: 'Immich',
         memos: 'Memos',
         mcp: 'MCP'
     },
     status: {
-        enabled: 'Enabled',
-        notEnabled: 'Not enabled',
-        connected: 'Connected',
-        notConfigured: 'Not configured',
-        available: 'Available'
+        enabled: 'Aktiviert',
+        notEnabled: 'Nicht aktiviert',
+        connected: 'Verbunden',
+        notConfigured: 'Nicht eingerichtet',
+        available: 'Verfügbar'
     },
     ai: {
         availability: {
-            heading: 'Assistant availability',
-            description: 'Control whether AI chat is available in GeoPulse.',
+            heading: 'Verfügbarkeit des Assistenten',
+            description: 'Lege fest, ob der KI-Chat in GeoPulse verfügbar ist.',
             enabled: {
-                title: 'Enable AI Assistant',
-                description: 'Allow AI-powered chat and timeline assistance.'
+                title: 'KI-Assistent aktivieren',
+                description: 'KI-gestützten Chat und Hilfe zur Zeitleiste erlauben.'
             }
         },
         provider: {
-            heading: 'Provider',
-            description: 'Configure the OpenAI or OpenAI-compatible service used by the assistant.',
+            heading: 'Anbieter',
+            description: 'Richte den OpenAI- oder OpenAI-kompatiblen Dienst für den Assistenten ein.',
             apiKeyRequired: {
-                title: 'API key required',
-                description: 'Turn off only when the provider accepts unauthenticated requests.'
+                title: 'API-Schlüssel erforderlich',
+                description: 'Nur ausschalten, wenn der Anbieter Anfragen ohne Authentifizierung annimmt.'
             },
             apiKey: {
-                title: 'API key',
-                description: 'Enter a new key only when adding or replacing credentials.',
-                placeholder: 'Enter your OpenAI API key',
-                placeholderConfigured: 'API key is configured (enter new key to replace)',
-                ariaLabel: 'OpenAI API key',
-                configuredNote: 'API key is configured. Leave empty to keep it.',
-                missingNote: 'Enter an API key to enable authenticated requests.'
+                title: 'API-Schlüssel',
+                description: 'Gib nur dann einen neuen Schlüssel ein, wenn du Zugangsdaten hinzufügst oder ersetzt.',
+                placeholder: 'Deinen OpenAI-API-Schlüssel eingeben',
+                placeholderConfigured: 'API-Schlüssel ist eingerichtet (neuen Schlüssel eingeben, um ihn zu ersetzen)',
+                ariaLabel: 'OpenAI-API-Schlüssel',
+                configuredNote: 'API-Schlüssel ist eingerichtet. Leer lassen, um ihn zu behalten.',
+                missingNote: 'Gib einen API-Schlüssel ein, um authentifizierte Anfragen zu ermöglichen.'
             },
-            // The base URL field's aria-label is the same sentence as its title, so it reuses
-            // `baseUrl.title` rather than duplicating the value -- matching the GPS-health channel.
             baseUrl: {
-                title: 'API base URL',
-                description: 'Use OpenAI’s endpoint or another compatible service.'
+                title: 'API-Basis-URL',
+                description: 'Nutze den Endpunkt von OpenAI oder einen anderen kompatiblen Dienst.'
             },
             model: {
-                title: 'Model',
-                description: 'Choose a listed model or enter its identifier.',
-                placeholder: 'Select or enter model name',
-                ariaLabel: 'AI model'
+                title: 'Modell',
+                description: 'Wähle ein Modell aus der Liste oder gib seine Kennung ein.',
+                placeholder: 'Modellnamen wählen oder eingeben',
+                ariaLabel: 'KI-Modell'
             },
             refreshModels: {
-                ariaLabel: 'Refresh provider models',
-                tooltip: 'Fetch models from server'
+                ariaLabel: 'Modelle des Anbieters aktualisieren',
+                tooltip: 'Modelle vom Server abrufen'
             }
         },
         behavior: {
-            heading: 'Assistant behavior',
-            description: 'Customize the instruction sent with every conversation.',
+            heading: 'Verhalten des Assistenten',
+            description: 'Passe die Anweisung an, die mit jedem Gespräch gesendet wird.',
             systemMessage: {
-                title: 'System message',
-                description: 'Clear the message to restore the server default.',
-                details: 'The system message guides the assistant’s tone and behavior.',
-                placeholder: 'Loading system message...',
-                ariaLabel: 'AI system message'
+                title: 'Systemnachricht',
+                description: 'Leere die Nachricht, um den Server-Standard wiederherzustellen.',
+                details: 'Die Systemnachricht bestimmt Ton und Verhalten des Assistenten.',
+                placeholder: 'Systemnachricht wird geladen …',
+                ariaLabel: 'KI-Systemnachricht'
             }
         },
         test: {
-            success: 'Connection successful!',
-            failure: 'Connection failed. Check URL and API key.'
+            success: 'Verbindung erfolgreich!',
+            failure: 'Verbindung fehlgeschlagen. Prüf URL und API-Schlüssel.'
         },
-        testConnection: 'Test Connection',
-        saveSettings: 'Save AI Settings'
+        testConnection: 'Verbindung testen',
+        saveSettings: 'KI-Einstellungen speichern'
     },
     immich: {
         availability: {
-            heading: 'Photo integration',
-            description: 'Control whether Immich photos appear on your timeline.',
+            heading: 'Foto-Anbindung',
+            description: 'Lege fest, ob Immich-Fotos in deiner Zeitleiste erscheinen.',
             enabled: {
-                title: 'Enable Immich',
-                description: 'Sync timeline photos from your Immich server.',
-                ariaLabel: 'Enable Immich integration'
+                title: 'Immich aktivieren',
+                description: 'Fotos für die Zeitleiste von deinem Immich-Server abrufen.',
+                ariaLabel: 'Immich-Anbindung aktivieren'
             }
         },
         connection: {
-            heading: 'Connection',
-            description: 'Provide the server address and credentials used to access Immich.',
+            heading: 'Verbindung',
+            description: 'Gib Serveradresse und Zugangsdaten für Immich an.',
             serverUrl: {
-                title: 'Server URL',
-                description: 'Enter the full address of your Immich server.',
-                ariaLabel: 'Immich server URL'
+                title: 'Server-URL',
+                description: 'Die vollständige Adresse deines Immich-Servers.',
+                ariaLabel: 'Immich-Server-URL'
             },
             apiKey: {
-                title: 'API key',
-                description: 'Create an API key in your Immich server settings.',
-                placeholder: 'Enter your Immich API key',
-                placeholderConfigured: 'API key is set (enter new key to replace)',
-                ariaLabel: 'Immich API key',
-                configuredNote: 'API key is configured. Leave empty to keep it.'
+                title: 'API-Schlüssel',
+                description: 'Erstelle einen API-Schlüssel in den Einstellungen deines Immich-Servers.',
+                placeholder: 'Deinen Immich-API-Schlüssel eingeben',
+                placeholderConfigured: 'API-Schlüssel ist gesetzt (neuen Schlüssel eingeben, um ihn zu ersetzen)',
+                ariaLabel: 'Immich-API-Schlüssel',
+                configuredNote: 'API-Schlüssel ist eingerichtet. Leer lassen, um ihn zu behalten.'
             }
         },
-        // Backend status code -> sentence. The codes are the keys the store returns and are never
-        // translated; see the matching table in ImmichTab.vue.
+        // Backend status code -> sentence; see the matching table in ImmichTab.vue.
         messages: {
-            connected: 'Successfully connected to Immich server. ',
-            userNotFound: 'The configured Immich user could not be found',
-            apiKeyRequired: 'An Immich API key is required',
-            authenticationFailed: 'Immich rejected the API key',
-            serverNotFound: 'The Immich server could not be found',
-            connectionTimeout: 'The Immich connection timed out',
-            connectionFailed: 'Failed to connect to the Immich server',
-            testFailed: 'Failed to test connection',
-            testError: 'Connection test failed',
-            unexpected: 'An unexpected error occurred',
-            assetsAvailable: '{count} asset available. | {count} assets available.'
+            connected: 'Mit dem Immich-Server verbunden. ',
+            userNotFound: 'Der eingerichtete Immich-Benutzer wurde nicht gefunden',
+            apiKeyRequired: 'Ein Immich-API-Schlüssel ist erforderlich',
+            authenticationFailed: 'Immich hat den API-Schlüssel abgelehnt',
+            serverNotFound: 'Der Immich-Server wurde nicht gefunden',
+            connectionTimeout: 'Zeitüberschreitung bei der Verbindung zu Immich',
+            connectionFailed: 'Verbindung zum Immich-Server fehlgeschlagen',
+            testFailed: 'Verbindung konnte nicht getestet werden',
+            testError: 'Verbindungstest fehlgeschlagen',
+            unexpected: 'Ein unerwarteter Fehler ist aufgetreten',
+            assetsAvailable: '{count} Medium verfügbar. | {count} Medien verfügbar.'
         },
         errors: {
-            serverUrlRequired: 'Server URL is required when integration is enabled',
-            serverUrlInvalid: 'Please enter a valid URL (e.g., https://photos.example.com)',
-            apiKeyRequired: 'API Key is required when integration is enabled'
+            serverUrlRequired: 'Bei aktivierter Anbindung ist eine Server-URL erforderlich',
+            serverUrlInvalid: 'Bitte gib eine gültige URL ein (z. B. https://photos.example.com)',
+            apiKeyRequired: 'Bei aktivierter Anbindung ist ein API-Schlüssel erforderlich'
         },
-        testConnection: 'Test Connection',
-        reset: 'Reset',
-        saveSettings: 'Save Settings'
+        testConnection: 'Verbindung testen',
+        reset: 'Zurücksetzen',
+        saveSettings: 'Einstellungen speichern'
     },
     memos: {
         availability: {
-            heading: 'Notes integration',
-            description: 'Control whether timestamped Memos notes appear on your timeline.',
+            heading: 'Notiz-Anbindung',
+            description: 'Lege fest, ob Memos-Notizen mit Zeitstempel in deiner Zeitleiste erscheinen.',
             enabled: {
-                title: 'Enable Memos',
-                description: 'Fetch timeline notes from your Memos server.',
-                ariaLabel: 'Enable Memos integration'
+                title: 'Memos aktivieren',
+                description: 'Notizen für die Zeitleiste von deinem Memos-Server abrufen.',
+                ariaLabel: 'Memos-Anbindung aktivieren'
             }
         },
         connection: {
-            heading: 'Connection',
-            description: 'Provide the server address and credentials used to access Memos.',
+            heading: 'Verbindung',
+            description: 'Gib Serveradresse und Zugangsdaten für Memos an.',
             serverUrl: {
-                title: 'Server URL',
-                description: 'Enter the full address of your Memos server.',
-                ariaLabel: 'Memos server URL'
+                title: 'Server-URL',
+                description: 'Die vollständige Adresse deines Memos-Servers.',
+                ariaLabel: 'Memos-Server-URL'
             },
             apiKey: {
-                title: 'API key',
-                description: 'Create an API token in your Memos settings.',
-                placeholder: 'Enter your Memos API key',
-                placeholderConfigured: 'API key is set (enter new key to replace)',
-                ariaLabel: 'Memos API key',
-                configuredNote: 'API key is configured. Leave empty to keep it.'
+                title: 'API-Schlüssel',
+                description: 'Erstelle ein API-Token in deinen Memos-Einstellungen.',
+                placeholder: 'Deinen Memos-API-Schlüssel eingeben',
+                placeholderConfigured: 'API-Schlüssel ist gesetzt (neuen Schlüssel eingeben, um ihn zu ersetzen)',
+                ariaLabel: 'Memos-API-Schlüssel',
+                configuredNote: 'API-Schlüssel ist eingerichtet. Leer lassen, um ihn zu behalten.'
             }
         },
         defaults: {
-            heading: 'Timeline defaults',
-            description: 'Choose how notes created from GeoPulse are stored in Memos.',
+            heading: 'Standards für die Zeitleiste',
+            description: 'Lege fest, wie in GeoPulse erstellte Notizen in Memos gespeichert werden.',
             destination: {
-                title: 'Default save destination',
-                description: 'Choose where new notes are saved by default.',
-                ariaLabel: 'Default save destination',
+                title: 'Standard-Speicherort',
+                description: 'Wo neue Notizen standardmäßig gespeichert werden.',
+                ariaLabel: 'Standard-Speicherort',
                 // Labels only: the Select's optionValue keeps the backend enum strings.
                 options: {
                     geopulse: 'GeoPulse',
@@ -184,110 +169,108 @@ export default {
                 }
             },
             visibility: {
-                title: 'Default visibility',
-                description: 'Choose the initial Memos visibility for new notes.',
-                ariaLabel: 'Default Memos visibility',
+                title: 'Standard-Sichtbarkeit',
+                description: 'Die anfängliche Sichtbarkeit neuer Notizen in Memos.',
+                ariaLabel: 'Standard-Sichtbarkeit in Memos',
                 options: {
-                    private: 'Private',
-                    protected: 'Protected',
-                    public: 'Public'
+                    private: 'Privat',
+                    protected: 'Geschützt',
+                    public: 'Öffentlich'
                 }
             }
         },
         filtering: {
-            heading: 'Filtering & performance',
-            description: 'Control cached searches and which tagged notes appear on the timeline.',
+            heading: 'Filter & Leistung',
+            description: 'Steuere zwischengespeicherte Suchen und welche getaggten Notizen in der Zeitleiste erscheinen.',
             searchCache: {
-                title: 'Search cache',
-                description: 'Reuse recent searches for faster timeline note loading.',
-                ariaLabel: 'Enable Memos search cache'
+                title: 'Such-Cache',
+                description: 'Letzte Suchen wiederverwenden, damit Notizen in der Zeitleiste schneller laden.',
+                ariaLabel: 'Such-Cache für Memos aktivieren'
             },
             includeTags: {
-                title: 'Include tags',
-                description: 'Only load notes containing at least one of these tags.',
-                placeholder: 'Add a tag and press Enter'
+                title: 'Tags einschließen',
+                description: 'Nur Notizen laden, die mindestens eines dieser Tags enthalten.',
+                placeholder: 'Tag eingeben und Enter drücken'
             },
             excludeTags: {
-                title: 'Exclude tags',
-                description: 'Hide notes containing any of these tags.',
-                placeholder: 'Add a tag and press Enter'
+                title: 'Tags ausschließen',
+                description: 'Notizen ausblenden, die eines dieser Tags enthalten.',
+                placeholder: 'Tag eingeben und Enter drücken'
             }
         },
-        // Backend status code -> sentence. The codes are the keys the store returns and are never
-        // translated; see the matching table in MemosTab.vue.
+        // Backend status code -> sentence; see the matching table in MemosTab.vue.
         messages: {
-            connected: 'Successfully connected to Memos server',
-            userNotFound: 'User not found',
-            apiKeyRequired: 'API key is required',
-            connectionFailed: 'Connection failed',
-            testError: 'Connection test failed',
-            memoCount: 'Server returned {count} memo | Server returned {count} memos'
+            connected: 'Mit dem Memos-Server verbunden',
+            userNotFound: 'Benutzer nicht gefunden',
+            apiKeyRequired: 'API-Schlüssel ist erforderlich',
+            connectionFailed: 'Verbindung fehlgeschlagen',
+            testError: 'Verbindungstest fehlgeschlagen',
+            memoCount: 'Der Server hat {count} Notiz geliefert | Der Server hat {count} Notizen geliefert'
         },
         errors: {
-            serverUrlRequired: 'Server URL is required when integration is enabled',
-            serverUrlInvalid: 'Please enter a valid URL',
-            apiKeyRequired: 'API key is required when integration is enabled'
+            serverUrlRequired: 'Bei aktivierter Anbindung ist eine Server-URL erforderlich',
+            serverUrlInvalid: 'Bitte gib eine gültige URL ein',
+            apiKeyRequired: 'Bei aktivierter Anbindung ist ein API-Schlüssel erforderlich'
         },
-        testConnection: 'Test Connection',
-        reset: 'Reset',
-        saveSettings: 'Save Settings'
+        testConnection: 'Verbindung testen',
+        reset: 'Zurücksetzen',
+        saveSettings: 'Einstellungen speichern'
     },
-    // MCP server setup. 'MCP', 'Claude Desktop', 'Claude Code' and 'ChatGPT' are product names and stay
-    // untranslated; the config snippets themselves are built in mcpClientSnippets.js, not here.
+    // MCP server setup. 'MCP', 'Claude Desktop', 'Claude Code' and 'ChatGPT' are product names.
     mcp: {
         connection: {
-            heading: 'Connection',
-            description: 'GeoPulse runs an MCP server, so AI clients can answer questions about your location history. It is always on, and every tool only reads data.',
+            heading: 'Verbindung',
+            description: 'GeoPulse betreibt einen MCP-Server, damit KI-Clients Fragen zu deinem Standortverlauf beantworten können. Er ist immer aktiv, und alle Werkzeuge lesen nur Daten.',
             serverUrl: {
-                title: 'Server URL',
-                description: 'The Streamable HTTP endpoint your MCP client connects to.'
+                title: 'Server-URL',
+                description: 'Der Streamable-HTTP-Endpunkt, mit dem sich dein MCP-Client verbindet.'
             },
             token: {
-                title: 'API token',
-                description: 'Clients sign in with a read-only API token. Create a separate token for each client so you can revoke them one at a time.',
-                create: 'Create read-only token',
-                manage: 'Manage tokens',
+                title: 'API-Token',
+                description: 'Clients melden sich mit einem API-Token mit Lesezugriff an. Erstelle für jeden Client ein eigenes Token, damit du sie einzeln widerrufen kannst.',
+                create: 'Token mit Lesezugriff erstellen',
+                manage: 'Tokens verwalten',
                 name: 'MCP ({client})',
-                shownOnce: 'Copy this token now. GeoPulse will not show it again.'
+                shownOnce: 'Kopiere dieses Token jetzt. GeoPulse zeigt es nicht noch einmal an.'
             }
         },
         client: {
-            heading: 'Client setup',
-            description: 'Choose your client and copy the configuration.',
+            heading: 'Client einrichten',
+            description: 'Wähle deinen Client und kopiere die Konfiguration.',
             options: {
                 claudeDesktop: 'Claude Desktop',
                 claudeCode: 'Claude Code',
-                other: 'Other clients'
+                other: 'Andere Clients'
             },
             hints: {
-                claudeDesktop: 'Add this to {file}, then restart Claude Desktop. It needs Node.js for npx.',
-                claudeCode: 'Run this in a terminal, then start Claude Code.',
-                other: 'Use these values in any client that supports Streamable HTTP and custom headers. ChatGPT connects through a tunnel.',
-                chatGptLink: 'Set up ChatGPT'
+                claudeDesktop: 'Füge das in {file} ein und starte Claude Desktop neu. Für npx wird Node.js benötigt.',
+                claudeCode: 'Führe das in einem Terminal aus und starte dann Claude Code.',
+                other: 'Nutze diese Werte in jedem Client, der Streamable HTTP und eigene Header unterstützt. ChatGPT verbindet sich über einen Tunnel.',
+                chatGptLink: 'ChatGPT einrichten'
             },
-            placeholderHint: 'Replace {placeholder} with your API token, or create a token above to fill it in.'
+            placeholderHint: 'Ersetze {placeholder} durch dein API-Token oder erstelle oben ein Token, um es einzufügen.'
         },
         tools: {
-            heading: 'What your AI client can read',
-            description: 'The tools cannot change your timeline, locations or sharing settings.',
+            heading: 'Was dein KI-Client lesen kann',
+            description: 'Die Werkzeuge können deine Zeitleiste, Standorte und Freigaben nicht ändern.',
             areas: {
-                timeline: { title: 'Timeline', example: '"What did I do last Saturday?"' },
-                now: { title: 'Right now', example: '"Where am I?"' },
-                places: { title: 'Places', example: '"Which countries have I visited?"' },
-                summaries: { title: 'Summaries', example: '"Summarise my October."' },
-                trips: { title: 'Trips and periods', example: '"When was my Japan trip?"' },
-                notesPhotosWeather: { title: 'Notes, photos and weather', example: '"What was the weather on the hike?"' },
-                geofences: { title: 'Geofences', example: '"When did I last leave work?"' },
-                friends: { title: 'Friends', example: '"Where is Alex right now?"' }
+                timeline: { title: 'Zeitleiste', example: '„Was habe ich letzten Samstag gemacht?“' },
+                now: { title: 'Gerade jetzt', example: '„Wo bin ich?“' },
+                places: { title: 'Orte', example: '„Welche Länder habe ich besucht?“' },
+                summaries: { title: 'Zusammenfassungen', example: '„Fass meinen Oktober zusammen.“' },
+                trips: { title: 'Reisen und Zeiträume', example: '„Wann war meine Japanreise?“' },
+                notesPhotosWeather: { title: 'Notizen, Fotos und Wetter', example: '„Wie war das Wetter bei der Wanderung?“' },
+                geofences: { title: 'Geofences', example: '„Wann habe ich zuletzt die Arbeit verlassen?“' },
+                friends: { title: 'Freunde', example: '„Wo ist Alex gerade?“' }
             },
-            requirements: 'Photo search needs the Immich integration, weather needs weather enabled on the server, and coverage needs coverage enabled. Friend data follows your existing sharing permissions.',
-            docsLink: 'MCP documentation'
+            requirements: 'Die Fotosuche braucht die Immich-Anbindung, Wetter muss auf dem Server aktiviert sein, ebenso die Abdeckung. Daten von Freunden folgen deinen bestehenden Freigaben.',
+            docsLink: 'MCP-Dokumentation'
         },
-        copy: 'Copy',
+        copy: 'Kopieren',
         toasts: {
-            copied: 'Copied to clipboard',
-            copyFailed: 'Could not copy to clipboard',
-            createFailed: 'Could not create token'
+            copied: 'In die Zwischenablage kopiert',
+            copyFailed: 'Kopieren in die Zwischenablage fehlgeschlagen',
+            createFailed: 'Token konnte nicht erstellt werden'
         }
     }
 }

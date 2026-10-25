@@ -1,4 +1,3 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 import page from './page.js'
 import access from './access.js'
 import appearance from './appearance.js'
