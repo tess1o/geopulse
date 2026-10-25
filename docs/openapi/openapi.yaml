@@ -5450,6 +5450,11 @@ components:
       properties:
         hasPassword:
           type: boolean
+    PathColorMode:
+      enum:
+      - SINGLE
+      - DAY
+      type: string
     PeriodComparison:
       type: object
       properties:
@@ -6312,6 +6317,10 @@ components:
           type: string
         heatmapGradient:
           type: string
+        pathColorMode:
+          $ref: "#/components/schemas/PathColorMode"
+        dayPalette:
+          type: string
         pathOutlineEnabled:
           type: boolean
         pathWidth:
@@ -6835,6 +6844,11 @@ components:
         heatmapGradient:
           pattern: ^(CLASSIC|VIRIDIS|CIVIDIS)?$
           type: string
+        pathColorMode:
+          $ref: "#/components/schemas/PathColorMode"
+        dayPalette:
+          pattern: ^(CLASSIC|OKABE_ITO|TOL_MUTED|CONTRAST)?$
+          type: string
         pathOutlineEnabled:
           type: boolean
         pathWidth:
@@ -6842,6 +6856,8 @@ components:
           maximum: 10
           minimum: 2
           type: integer
+        showMapScale:
+          type: boolean
     TimelineDisplaySettings:
       type: object
       properties:
@@ -7190,6 +7206,10 @@ components:
       properties:
         campaign:
           $ref: "#/components/schemas/TimelineRegenerationCampaignSummaryDTO"
+        inProgressUsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineRegenerationCampaignUserDTO"
         failedUsers:
           type: array
           items:
@@ -22797,7 +22817,7 @@ paths:
       - apiKey: []
 info:
   title: GeoPulse API
-  version: 2.1.0
+  version: 2.1.1
   description: "REST API of GeoPulse, a self-hosted location timeline. Authentication,\
     \ examples, and guides: https://geopulse.cc/docs/api/intro"
   contact:
