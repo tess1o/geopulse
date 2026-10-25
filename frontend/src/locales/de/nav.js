@@ -1,86 +1,79 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Navigation labels.
+ * Navigation labels (German).
  *
- * `items.*` is keyed by the stable `key` field already present on every entry in AppNavigation.vue,
- * and route `meta.titleKey` reuses the same paths -- so a nav label and its page title can never
- * drift apart.
- *
- * EN values are copied verbatim from the previous hardcoded literals: the test suite is pinned to
- * English and asserts on exact copy, so this file is a snapshot, not an opportunity to reword.
+ * Keys mirror en/nav.js exactly -- `items.*` matches the `key` field on each AppNavigation entry and
+ * is shared with route `meta.titleKey`.
  */
 export default {
     sections: {
-        timeline: 'Timeline',
-        explore: 'Explore',
-        organizeAndShare: 'Organize & Share',
-        data: 'Data',
+        timeline: 'Zeitleiste',
+        explore: 'Entdecken',
+        organizeAndShare: 'Organisieren & Teilen',
+        data: 'Daten',
         administration: 'Administration'
     },
     items: {
-        timeline: 'Timeline',
-        dashboard: 'Dashboard',
-        'timeline-labels': 'Timeline Labels',
-        trips: 'Trip Plans',
-        'location-analytics': 'Location Analytics',
-        'journey-insights': 'Journey Insights',
-        rewind: 'Rewind',
-        'coverage-explorer': 'Coverage Explorer',
-        'ai-chat': 'AI Assistant',
-        'favorites-management': 'Favorites',
+        timeline: 'Zeitleiste',
+        dashboard: 'Übersicht',
+        'timeline-labels': 'Zeitleisten-Labels',
+        trips: 'Reisepläne',
+        'location-analytics': 'Ortsanalyse',
+        'journey-insights': 'Reise-Einblicke',
+        rewind: 'Rückblick',
+        'coverage-explorer': 'Abdeckungskarte',
+        'ai-chat': 'KI-Assistent',
+        'favorites-management': 'Favoriten',
         geofences: 'Geofences',
-        friends: 'Friends',
-        'share-links': 'Share Links',
-        profile: 'Profile',
-        notifications: 'Notifications',
-        'location-sources': 'Location Sources',
-        preferences: 'Timeline Preferences',
-        'gps-data': 'GPS Data',
+        friends: 'Freunde',
+        'share-links': 'Freigabelinks',
+        profile: 'Profil',
+        notifications: 'Benachrichtigungen',
+        'location-sources': 'Standortquellen',
+        preferences: 'Zeitleisten-Einstellungen',
+        'gps-data': 'GPS-Daten',
         'geocoding-management': 'Geocoding',
         export: 'Export / Import',
-        help: 'Help & Support',
-        'admin-dashboard': 'Overview',
-        'admin-backups': 'Backups & Restore',
-        'admin-timeline-regeneration': 'Timeline Regeneration Campaigns',
-        'admin-users': 'Manage Users',
-        'admin-invitations': 'Invitations',
-        'admin-oidc-providers': 'OIDC Providers',
-        'admin-audit-logs': 'Audit Logs',
-        'admin-settings': 'System Settings'
+        help: 'Hilfe & Support',
+        'admin-dashboard': 'Übersicht',
+        'admin-backups': 'Backup & Wiederherstellung',
+        'admin-timeline-regeneration': 'Zeitleisten-Neuberechnung',
+        'admin-users': 'Benutzer verwalten',
+        'admin-invitations': 'Einladungen',
+        'admin-oidc-providers': 'OIDC-Anbieter',
+        'admin-audit-logs': 'Audit-Logs',
+        'admin-settings': 'Systemeinstellungen'
     },
     theme: {
-        title: 'Theme',
+        title: 'Design',
         modes: {
-            light: 'Light',
-            dark: 'Dark',
+            light: 'Hell',
+            dark: 'Dunkel',
             system: 'System'
         }
     },
     // Account menu behind the avatar in the top bar.
     userMenu: {
-        open: 'Account menu',
+        open: 'Kontomenü',
         adminBadge: 'Admin',
-        // The drawer calls this page 'Overview' under its Administration header; the menu has no header.
-        adminDashboard: 'Admin Dashboard',
-        language: 'Language',
-        languageSaveFailed: 'Could not save your language preference',
-        // One-time pointer for people used to the pre-2.0 side menu (UserMenuHint.vue).
+        adminDashboard: 'Admin-Übersicht',
+        language: 'Sprache',
+        languageSaveFailed: 'Deine Spracheinstellung konnte nicht gespeichert werden',
         hint: {
-            title: 'New: your account menu',
-            body: 'Profile, timeline preferences, theme, language and logout have moved here.'
+            title: 'Neu: dein Kontomenü',
+            body: 'Profil, Zeitleisten-Einstellungen, Design, Sprache und Abmelden findest du jetzt hier.'
         }
     },
-    logout: 'Logout',
+    logout: 'Abmelden',
     version: 'Version',
-    newVersionAvailable: 'New: {version} available',
+    newVersionAvailable: 'Neu: {version} verfügbar',
     // Browser-tab titles (route meta.titleKey) for pages with no sidebar entry of their own.
     pageTitles: {
-        home: 'Home',
-        cityDetails: 'City Details',
-        countryDetails: 'Country Details',
-        sharedLocation: 'Shared Location',
-        sharedTimeline: 'Shared Timeline',
-        error: 'Error',
-        pageNotFound: 'Page Not Found'
+        home: 'Startseite',
+        cityDetails: 'Stadtdetails',
+        countryDetails: 'Landesdetails',
+        sharedLocation: 'Geteilter Standort',
+        sharedTimeline: 'Geteilte Zeitleiste',
+        error: 'Fehler',
+        pageNotFound: 'Seite nicht gefunden'
     }
 }

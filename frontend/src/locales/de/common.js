@@ -1,28 +1,24 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Strings reused across many features.
- *
- * Kept deliberately small and grown as pages are migrated, rather than pre-populated with
- * speculative entries.
+ * Shared strings (German).
  */
 export default {
     clipboard: {
-        copied: 'Copied',
-        copyFailed: 'Copy failed',
-        referenceIdCopied: 'Reference id copied to clipboard',
-        copyManually: 'Select the id and copy it manually'
+        copied: 'Kopiert',
+        copyFailed: 'Kopieren fehlgeschlagen',
+        referenceIdCopied: 'Referenz-ID in die Zwischenablage kopiert',
+        copyManually: 'Markiere die ID und kopiere sie manuell'
     },
     locale: {
-        ariaLabel: 'Language: {language}',
-        current: '(current)'
+        ariaLabel: 'Sprache: {language}',
+        current: '(aktuell)'
     },
-    unknown: 'Unknown',
-    notAvailable: 'N/A',
-    cancel: 'Cancel',
-    back: 'Back',
-    tryAgain: 'Try Again',
-    error: 'Error',
-    success: 'Success',
+    unknown: 'Unbekannt',
+    notAvailable: 'k. A.',
+    cancel: 'Abbrechen',
+    back: 'Zurück',
+    tryAgain: 'Erneut versuchen',
+    error: 'Fehler',
+    success: 'Erfolg',
     units: {
         km: 'km',
         m: 'm',
@@ -32,16 +28,16 @@ export default {
         mph: 'mph'
     },
     duration: {
-        compactDays: '{count}d',
-        compactHours: '{count}h',
-        compactMinutes: '{count}m',
-        compactZero: '0m',
-        zeroSeconds: '0 seconds',
-        lessThanMinute: 'less than a minute',
-        minutes: '{count} minute | {count} minutes',
-        hours: '{count} hour | {count} hours',
-        days: '{count} day | {count} days',
-        weeks: '{count} week | {count} weeks',
-        months: '{count} month | {count} months'
+        compactDays: '{count} T',
+        compactHours: '{count} Std.',
+        compactMinutes: '{count} Min.',
+        compactZero: '0 Min.',
+        zeroSeconds: '0 Sekunden',
+        lessThanMinute: 'weniger als eine Minute',
+        minutes: '{count} Minute | {count} Minuten',
+        hours: '{count} Stunde | {count} Stunden',
+        days: '{count} Tag | {count} Tage',
+        weeks: '{count} Woche | {count} Wochen',
+        months: '{count} Monat | {count} Monate'
     }
 }

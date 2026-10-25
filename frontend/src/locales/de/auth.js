@@ -1,189 +1,181 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Sign-in, registration, invitations, and the guest-facing entry pages.
+ * Sign-in, registration, invitations, and the guest-facing entry pages (German).
  *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy.
- *
- * `validation.*` and `toasts.registrationDisabled*` are shared by the sign-in and registration forms,
- * which showed the same sentences. `shareNote`-style duplication is avoided; update both call sites
- * if either form's wording needs to diverge.
- *
- * The clipboard toasts reuse `common.clipboard.*`, which already held those exact sentences.
+ * `validation.*` and `toasts.registrationDisabled*` are shared by the sign-in and registration forms.
  */
 export default {
     validation: {
-        emailRequired: 'Email is required',
-        emailInvalid: 'Please enter a valid email address',
-        passwordRequired: 'Password is required',
-        confirmRequired: 'Please confirm your password',
-        mismatch: 'Passwords do not match'
+        emailRequired: 'E-Mail-Adresse ist erforderlich',
+        emailInvalid: 'Bitte gib eine gültige E-Mail-Adresse ein',
+        passwordRequired: 'Passwort ist erforderlich',
+        confirmRequired: 'Bitte bestätige dein Passwort',
+        mismatch: 'Die Passwörter stimmen nicht überein'
     },
     toasts: {
-        registrationDisabled: 'Registration Disabled',
-        registrationDisabledDetail: 'New user registration is currently disabled. Please log in if you already have an account.'
+        registrationDisabled: 'Registrierung deaktiviert',
+        registrationDisabledDetail: 'Neue Registrierungen sind derzeit deaktiviert. Wenn du schon ein Konto hast, melde dich an.'
     },
     oidc: {
-        continueWith: 'Continue with {provider}',
-        dividerDefault: 'Or continue with',
-        providerIconAlt: '{provider} icon'
+        continueWith: 'Weiter mit {provider}',
+        dividerDefault: 'Oder weiter mit',
+        providerIconAlt: '{provider}-Symbol'
     },
     callback: {
-        processingTitle: 'Completing authentication...',
-        processingDescription: 'Please wait while we securely log you in.',
-        errorTitle: 'Authentication Failed',
-        returnToLogin: 'Return to Login',
-        missingParams: 'Invalid callback request. Missing required parameters.',
-        genericError: 'An unknown authentication error occurred.',
+        processingTitle: 'Anmeldung wird abgeschlossen …',
+        processingDescription: 'Einen Moment, du wirst sicher angemeldet.',
+        errorTitle: 'Anmeldung fehlgeschlagen',
+        returnToLogin: 'Zurück zur Anmeldung',
+        missingParams: 'Ungültige Callback-Anfrage. Erforderliche Parameter fehlen.',
+        genericError: 'Bei der Anmeldung ist ein unbekannter Fehler aufgetreten.',
         toasts: {
-            welcomeNew: 'Welcome to GeoPulse!',
-            welcomeBack: 'Welcome back!',
-            authenticated: 'Successfully authenticated',
+            welcomeNew: 'Willkommen bei GeoPulse!',
+            welcomeBack: 'Willkommen zurück!',
+            authenticated: 'Erfolgreich angemeldet',
             linked: {
-                title: 'Account Linked Successfully!',
-                detail: 'Your accounts have been linked and you are now logged in.'
+                title: 'Konten verknüpft!',
+                detail: 'Deine Konten wurden verknüpft und du bist jetzt angemeldet.'
             }
         }
     },
     linking: {
-        dialogHeader: 'Link Your Account',
-        title: 'Account Already Exists',
-        description: 'An account with {email} already exists. To continue, please verify your identity and we\'ll link your {provider} account.',
-        verifyPassword: 'Verify with Password',
-        linkAndContinue: 'Link Account & Continue',
-        verifyWithLinked: 'Verify with Linked Account',
-        or: 'OR',
-        cancel: 'Cancel',
+        dialogHeader: 'Konto verknüpfen',
+        title: 'Konto existiert bereits',
+        description: 'Es gibt bereits ein Konto mit {email}. Bestätige deine Identität, dann verknüpfen wir dein {provider}-Konto damit.',
+        verifyPassword: 'Mit Passwort bestätigen',
+        linkAndContinue: 'Konto verknüpfen & weiter',
+        verifyWithLinked: 'Mit verknüpftem Konto bestätigen',
+        or: 'ODER',
+        cancel: 'Abbrechen',
         errors: {
-            passwordVerificationFailed: 'Password verification failed'
+            passwordVerificationFailed: 'Passwort konnte nicht bestätigt werden'
         }
     },
     login: {
-        disabledMessage: 'Login is currently disabled. Please contact your administrator.',
-        emailDisabledMessage: 'Email/password login is disabled. Please use OIDC providers below.',
-        autoLaunchRedirecting: 'Redirecting to {provider}…',
-        adminAccess: 'Administrator Access',
-        adminBypassNotice: 'Administrator access - login restrictions bypassed',
-        demoTitle: 'Try GeoPulse',
-        title: 'Welcome Back',
-        demoSubtitle: 'Choose a demo profile',
-        subtitle: 'Sign in to continue your journey',
-        emailLabel: 'Email Address',
-        emailPlaceholder: 'Enter your email',
-        passwordLabel: 'Password',
-        passwordPlaceholder: 'Enter your password',
-        signIn: 'Sign In',
-        noAccount: "Don't have an account?",
-        createAccount: 'Create account',
-        copyReferenceAria: 'Copy error reference id',
+        disabledMessage: 'Die Anmeldung ist derzeit deaktiviert. Wende dich an deine Administration.',
+        emailDisabledMessage: 'Die Anmeldung mit E-Mail und Passwort ist deaktiviert. Nutze einen der OIDC-Anbieter unten.',
+        autoLaunchRedirecting: 'Weiterleitung zu {provider} …',
+        adminAccess: 'Administratorzugang',
+        adminBypassNotice: 'Administratorzugang – Anmeldebeschränkungen werden umgangen',
+        demoTitle: 'GeoPulse ausprobieren',
+        title: 'Willkommen zurück',
+        demoSubtitle: 'Wähle ein Demo-Profil',
+        subtitle: 'Melde dich an, um weiterzumachen',
+        emailLabel: 'E-Mail-Adresse',
+        emailPlaceholder: 'Deine E-Mail-Adresse',
+        passwordLabel: 'Passwort',
+        passwordPlaceholder: 'Dein Passwort',
+        signIn: 'Anmelden',
+        noAccount: 'Noch kein Konto?',
+        createAccount: 'Konto erstellen',
+        copyReferenceAria: 'Fehler-Referenz-ID kopieren',
         toasts: {
             signedIn: {
-                title: 'Welcome Back!',
-                detail: 'You have successfully signed in'
+                title: 'Willkommen zurück!',
+                detail: 'Du bist jetzt angemeldet'
             },
-            demoFailed: 'Demo Login Failed',
-            loginFailed: 'Login Failed',
-            optionsLoadFailed: 'Could not load login options',
-            optionsLoadFailedDetail: 'Failed to retrieve external login providers. You can still log in with email and password.',
-            oidcInitFailed: 'Failed to initialize login with {provider}. Please try again.'
+            demoFailed: 'Demo-Anmeldung fehlgeschlagen',
+            loginFailed: 'Anmeldung fehlgeschlagen',
+            optionsLoadFailed: 'Anmeldeoptionen konnten nicht geladen werden',
+            optionsLoadFailedDetail: 'Externe Anmeldeanbieter konnten nicht abgerufen werden. Du kannst dich weiterhin mit E-Mail und Passwort anmelden.',
+            oidcInitFailed: 'Anmeldung mit {provider} konnte nicht gestartet werden. Bitte versuch es noch einmal.'
         },
         errors: {
-            invalidCredentials: 'Invalid email or password. Please check your credentials and try again.',
-            lockedOut: 'Your account is locked or suspended. Please contact support.',
-            tooManyAttempts: 'Too many login attempts. Please wait a few minutes before trying again.',
-            badFormat: 'Please check your email and password format.',
-            chooseProfile: 'Please choose a demo profile and try again.',
-            demoDisabled: 'Demo login is currently disabled.',
-            profileUnavailable: 'This demo profile is not available right now.',
-            demoGeneric: 'Demo login failed. Please try again.'
+            invalidCredentials: 'E-Mail-Adresse oder Passwort ist falsch. Prüf deine Angaben und versuch es noch einmal.',
+            lockedOut: 'Dein Konto ist gesperrt. Bitte wende dich an den Support.',
+            tooManyAttempts: 'Zu viele Anmeldeversuche. Warte ein paar Minuten und versuch es dann noch einmal.',
+            badFormat: 'Prüf das Format von E-Mail-Adresse und Passwort.',
+            chooseProfile: 'Wähle ein Demo-Profil und versuch es noch einmal.',
+            demoDisabled: 'Die Demo-Anmeldung ist derzeit deaktiviert.',
+            profileUnavailable: 'Dieses Demo-Profil ist gerade nicht verfügbar.',
+            demoGeneric: 'Demo-Anmeldung fehlgeschlagen. Bitte versuch es noch einmal.'
         }
     },
     register: {
-        disabledMessage: 'Sign up using email/password is currently disabled. Use OIDC for registration',
-        disabledMessageShort: 'Sign up using email/password is currently disabled.',
-        title: 'Create Account',
-        subtitle: 'Join GeoPulse to start tracking and analyzing your location journey',
-        emailLabel: 'Email Address',
-        fullNameLabel: 'Full Name',
-        passwordLabel: 'Password',
-        confirmPasswordLabel: 'Confirm Password',
-        emailPlaceholder: 'Enter your email',
-        fullNamePlaceholder: 'Enter your full name',
-        passwordPlaceholder: 'Create a password',
-        confirmPasswordPlaceholder: 'Confirm your password',
-        createAccount: 'Create Account',
-        alreadyHaveAccount: 'Already have an account?',
-        signIn: 'Sign In',
-        localisationNote: 'Auto-detected from your browser. Change it later from your profile.',
-        timezoneLabel: 'Timezone',
+        disabledMessage: 'Die Registrierung mit E-Mail und Passwort ist derzeit deaktiviert. Registriere dich über OIDC.',
+        disabledMessageShort: 'Die Registrierung mit E-Mail und Passwort ist derzeit deaktiviert.',
+        title: 'Konto erstellen',
+        subtitle: 'Registriere dich bei GeoPulse und behalte deine Wege im Blick',
+        emailLabel: 'E-Mail-Adresse',
+        fullNameLabel: 'Vollständiger Name',
+        passwordLabel: 'Passwort',
+        confirmPasswordLabel: 'Passwort bestätigen',
+        emailPlaceholder: 'Deine E-Mail-Adresse',
+        fullNamePlaceholder: 'Dein vollständiger Name',
+        passwordPlaceholder: 'Passwort festlegen',
+        confirmPasswordPlaceholder: 'Passwort wiederholen',
+        createAccount: 'Konto erstellen',
+        alreadyHaveAccount: 'Schon ein Konto?',
+        signIn: 'Anmelden',
+        localisationNote: 'Automatisch aus deinem Browser übernommen. Du kannst das später im Profil ändern.',
+        timezoneLabel: 'Zeitzone',
         validation: {
-            fullNameRequired: 'Full name is required',
-            fullNameTooShort: 'Full name must be at least 2 characters',
-            passwordTooShort: 'Password must be at least 6 characters'
+            fullNameRequired: 'Name ist erforderlich',
+            fullNameTooShort: 'Der Name muss mindestens 2 Zeichen lang sein',
+            passwordTooShort: 'Das Passwort muss mindestens 6 Zeichen lang sein'
         },
         toasts: {
             created: {
-                title: 'Welcome to GeoPulse!',
-                detail: 'Your account has been created successfully'
+                title: 'Willkommen bei GeoPulse!',
+                detail: 'Dein Konto wurde erstellt'
             },
-            failed: 'Registration Failed',
-            optionsLoadFailed: 'Could not load registration options',
-            optionsLoadFailedDetail: 'Failed to retrieve registration configuration.',
-            oidcInitFailed: 'Failed to initialize registration with {provider}. Please try again.',
+            failed: 'Registrierung fehlgeschlagen',
+            optionsLoadFailed: 'Registrierungsoptionen konnten nicht geladen werden',
+            optionsLoadFailedDetail: 'Die Registrierungseinstellungen konnten nicht abgerufen werden.',
+            oidcInitFailed: 'Registrierung mit {provider} konnte nicht gestartet werden. Bitte versuch es noch einmal.',
             // The account exists but the automatic sign-in after it did not go through.
             signInRequired: {
-                title: 'Account created',
-                detail: 'Your account is ready. Please sign in to continue.'
+                title: 'Konto erstellt',
+                detail: 'Dein Konto ist bereit. Bitte melde dich an, um weiterzumachen.'
             }
         },
         errors: {
-            emailExists: 'An account with this email already exists',
-            checkInformation: 'Please check your information and try again',
-            serverError: 'Server error. Please try again later',
-            failed: 'Registration failed. Please try again.',
-            emailTooLong: 'Email is too long (maximum {max} characters)',
-            fullNameLength: 'Full name must be between {min} and {max} characters',
-            passwordLength: 'Password must be between {min} and {max} characters'
+            emailExists: 'Es gibt bereits ein Konto mit dieser E-Mail-Adresse',
+            checkInformation: 'Prüf deine Angaben und versuch es noch einmal',
+            serverError: 'Serverfehler. Bitte versuch es später noch einmal',
+            failed: 'Registrierung fehlgeschlagen. Bitte versuch es noch einmal.',
+            emailTooLong: 'Die E-Mail-Adresse ist zu lang (höchstens {max} Zeichen)',
+            fullNameLength: 'Der Name muss zwischen {min} und {max} Zeichen lang sein',
+            passwordLength: 'Das Passwort muss zwischen {min} und {max} Zeichen lang sein'
         }
     },
     invitation: {
         brand: 'GeoPulse',
-        title: 'Complete your registration',
-        validating: 'Validating invitation...',
-        invalidTitle: 'Invalid Invitation',
-        invalidMessage: 'This invitation is not valid',
-        emailLabel: 'Email',
-        fullNameLabel: 'Full Name',
-        passwordLabel: 'Password',
-        confirmPasswordLabel: 'Confirm Password',
-        timezoneLabel: 'Timezone',
-        emailPlaceholder: 'Enter your email',
-        fullNamePlaceholder: 'Enter your full name',
-        passwordPlaceholder: 'Enter password',
-        confirmPasswordPlaceholder: 'Confirm password',
-        createAccount: 'Create Account',
-        goToLogin: 'Go to Login',
-        timezoneDetected: 'Detected: {timezone}',
-        loginLink: 'Already have an account? Sign in',
+        title: 'Registrierung abschließen',
+        validating: 'Einladung wird geprüft …',
+        invalidTitle: 'Ungültige Einladung',
+        invalidMessage: 'Diese Einladung ist nicht gültig',
+        emailLabel: 'E-Mail-Adresse',
+        fullNameLabel: 'Vollständiger Name',
+        passwordLabel: 'Passwort',
+        confirmPasswordLabel: 'Passwort bestätigen',
+        timezoneLabel: 'Zeitzone',
+        emailPlaceholder: 'Deine E-Mail-Adresse',
+        fullNamePlaceholder: 'Dein vollständiger Name',
+        passwordPlaceholder: 'Passwort eingeben',
+        confirmPasswordPlaceholder: 'Passwort wiederholen',
+        createAccount: 'Konto erstellen',
+        goToLogin: 'Zur Anmeldung',
+        timezoneDetected: 'Erkannt: {timezone}',
+        loginLink: 'Schon ein Konto? Anmelden',
         validation: {
-            emailInvalid: 'Invalid email format',
-            passwordTooShort: 'Password must be at least 3 characters'
+            emailInvalid: 'Ungültiges E-Mail-Format',
+            passwordTooShort: 'Das Passwort muss mindestens 3 Zeichen lang sein'
         },
         toasts: {
             created: {
-                title: 'Welcome to GeoPulse!',
-                detail: 'Your account has been created successfully'
+                title: 'Willkommen bei GeoPulse!',
+                detail: 'Dein Konto wurde erstellt'
             }
         },
         // Why an invitation can no longer be used, keyed by the backend's invitation status.
         status: {
-            used: 'This invitation has already been used',
-            expired: 'This invitation has expired',
-            revoked: 'This invitation has been revoked'
+            used: 'Diese Einladung wurde bereits verwendet',
+            expired: 'Diese Einladung ist abgelaufen',
+            revoked: 'Diese Einladung wurde widerrufen'
         },
         errors: {
-            validateFailed: 'Failed to validate invitation',
-            notFound: 'This invitation link is not valid. Please ask your administrator for a new one.'
+            validateFailed: 'Einladung konnte nicht geprüft werden',
+            notFound: 'Dieser Einladungslink ist nicht gültig. Bitte deine Administration um einen neuen.'
         }
     }
 }

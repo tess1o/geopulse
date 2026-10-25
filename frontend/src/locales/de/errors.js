@@ -1,146 +1,139 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Error copy.
- *
- * Keyed by the shape `utils/errorHandler.js` `formatError()` already had: a `{title, message}` pair
- * per HTTP status, plus network/timeout/session branches. Keeping the key structure aligned with
- * that switch means extraction is a straight substitution with no mapping layer.
- *
- * EN values are verbatim from the previous literals -- tests assert on this exact copy.
+ * Error copy (German). Keys mirror en/errors.js, which follows `utils/errorHandler.js` `formatError()`.
  */
 export default {
     generic: {
-        title: 'Something went wrong',
-        message: 'An unexpected error occurred. Please try again.'
+        title: 'Etwas ist schiefgelaufen',
+        message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuch es noch einmal.'
     },
-    unexpected: 'An unexpected error occurred',
+    unexpected: 'Ein unerwarteter Fehler ist aufgetreten',
     network: {
-        title: 'Connection Problem',
-        message: 'Unable to connect to GeoPulse servers. Please check your internet connection and try again.',
+        title: 'Verbindungsproblem',
+        message: 'Keine Verbindung zu den GeoPulse-Servern. Prüf deine Internetverbindung und versuch es noch einmal.',
         // Slightly shorter than `message`; the connection-error toast uses this one.
-        shortMessage: 'Unable to connect to GeoPulse servers. Please check your internet connection.'
+        shortMessage: 'Keine Verbindung zu den GeoPulse-Servern. Prüf deine Internetverbindung.'
     },
     timeout: {
-        title: 'Request Timeout',
-        message: 'The request is taking longer than expected. Please try again.'
+        title: 'Zeitüberschreitung',
+        message: 'Die Anfrage dauert länger als erwartet. Bitte versuch es noch einmal.'
     },
-    // Shared by the HTTP 401 branch and the auth-expiry branch, which showed identical copy.
+    // Shared by the HTTP 401 branch and the auth-expiry branch.
     session: {
-        title: 'Session Expired',
-        message: 'Your session has expired. Please sign in again.'
+        title: 'Sitzung abgelaufen',
+        message: 'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.'
     },
     http: {
         400: {
-            title: 'Invalid Request',
-            message: 'The request could not be processed. Please check your input and try again.'
+            title: 'Ungültige Anfrage',
+            message: 'Die Anfrage konnte nicht verarbeitet werden. Prüf deine Eingaben und versuch es noch einmal.'
         },
         401: {
-            title: 'Authentication Required',
+            title: 'Anmeldung erforderlich',
             message: '@:errors.session.message'
         },
         403: {
-            title: 'Access Denied',
-            message: "You don't have permission to perform this action."
+            title: 'Zugriff verweigert',
+            message: 'Du hast keine Berechtigung für diese Aktion.'
         },
         404: {
-            title: 'Not Found',
-            message: 'The requested resource could not be found.'
+            title: 'Nicht gefunden',
+            message: 'Die angeforderte Ressource wurde nicht gefunden.'
         },
         409: {
-            title: 'Conflict',
-            message: 'This action conflicts with the current state. Please refresh and try again.'
+            title: 'Konflikt',
+            message: 'Diese Aktion widerspricht dem aktuellen Stand. Lade die Seite neu und versuch es noch einmal.'
         },
         429: {
-            title: 'Too Many Requests',
-            message: "You're making requests too quickly. Please wait a moment and try again."
+            title: 'Zu viele Anfragen',
+            message: 'Du sendest Anfragen zu schnell. Warte einen Moment und versuch es noch einmal.'
         },
         500: {
-            title: 'Server Error',
-            message: 'Internal Server Error'
+            title: 'Serverfehler',
+            message: 'Interner Serverfehler'
         },
         502: {
-            title: 'Service Unavailable',
-            message: 'GeoPulse is temporarily unavailable. Please try again in a few minutes.'
+            title: 'Dienst nicht verfügbar',
+            message: 'GeoPulse ist vorübergehend nicht erreichbar. Versuch es in ein paar Minuten noch einmal.'
         },
         503: {
-            title: 'Service Unavailable',
+            title: 'Dienst nicht verfügbar',
             message: '@:errors.http.502.message'
         },
         504: {
-            title: 'Service Unavailable',
+            title: 'Dienst nicht verfügbar',
             message: '@:errors.http.502.message'
         },
-        // Fallback for any status without its own entry: `Error {status}` / `An error occurred ({status}).`
+        // Fallback for any status without its own entry.
         unknown: {
-            title: 'Error {status}',
-            message: 'An error occurred ({status}). Please try again.'
+            title: 'Fehler {status}',
+            message: 'Ein Fehler ist aufgetreten ({status}). Bitte versuch es noch einmal.'
         }
     },
     backendUnavailable: {
-        title: 'Backend Unavailable',
-        message: 'GeoPulse servers are currently unavailable. Please try again later.'
+        title: 'Backend nicht erreichbar',
+        message: 'Die GeoPulse-Server sind gerade nicht erreichbar. Bitte versuch es später noch einmal.'
     },
     reference: {
-        hint: 'Check backend logs for ID: {id}'
+        hint: 'Suche in den Backend-Logs nach der ID: {id}'
     },
     retry: {
-        available: 'Retry Available',
-        hint: 'Click here to try again'
+        available: 'Erneuter Versuch möglich',
+        hint: 'Hier klicken, um es noch einmal zu versuchen'
     },
     // Copy for the full-page error screen, keyed by its `type` discriminator.
     page: {
         connection: {
-            title: 'Connection Problem',
-            message: 'Unable to connect to GeoPulse servers. This might be due to a network issue or server maintenance.'
+            title: 'Verbindungsproblem',
+            message: 'Keine Verbindung zu den GeoPulse-Servern. Das kann an einem Netzwerkproblem oder an Wartungsarbeiten liegen.'
         },
         server: {
-            title: 'Server Error',
-            message: 'GeoPulse servers are experiencing issues. Our team has been notified and is working on a fix.'
+            title: 'Serverfehler',
+            message: 'Bei den GeoPulse-Servern gibt es Probleme. Das Team ist informiert und arbeitet an einer Lösung.'
         },
         generic: {
-            title: 'Something went wrong',
-            message: 'An unexpected error occurred. Please try again or contact support if the problem persists.'
+            title: 'Etwas ist schiefgelaufen',
+            message: 'Ein unerwarteter Fehler ist aufgetreten. Versuch es noch einmal oder wende dich an den Support, wenn das Problem bleibt.'
         },
         actions: {
-            checkConnection: 'Check Connection',
-            goHome: 'Go to Home'
+            checkConnection: 'Verbindung prüfen',
+            goHome: 'Zur Startseite'
         },
         details: {
-            summary: 'Technical Details',
-            requestHeading: 'Request Information',
-            method: 'Method:',
+            summary: 'Technische Details',
+            requestHeading: 'Anfrage',
+            method: 'Methode:',
             url: 'URL:',
             status: 'Status:',
-            timestamp: 'Timestamp:',
-            errorHeading: 'Error Information',
-            requestId: 'Request ID:',
-            errorId: 'Error ID:'
+            timestamp: 'Zeitpunkt:',
+            errorHeading: 'Fehler',
+            requestId: 'Anfrage-ID:',
+            errorId: 'Fehler-ID:'
         },
         tips: {
-            heading: 'What can you do?',
-            wait: 'Wait a few minutes and click "Check Connection" - servers may be restarting',
-            internet: 'Check your internet connection',
-            refresh: 'Try refreshing the page or clearing browser cache',
-            maintenance: 'If the problem persists, GeoPulse servers may be under maintenance',
-            checkBack: 'Check back in 10-15 minutes'
+            heading: 'Was kannst du tun?',
+            wait: 'Warte ein paar Minuten und klick auf „Verbindung prüfen“ – die Server starten vielleicht gerade neu',
+            internet: 'Prüf deine Internetverbindung',
+            refresh: 'Lade die Seite neu oder leere den Browser-Cache',
+            maintenance: 'Wenn das Problem bleibt, werden die GeoPulse-Server vielleicht gerade gewartet',
+            checkBack: 'Schau in 10–15 Minuten wieder vorbei'
         },
         status: {
-            internetConnection: 'Internet Connection:',
-            backend: 'GeoPulse Backend:',
-            lastChecked: 'Last Checked:',
-            online: 'Backend Online',
-            offline: 'Backend Offline',
+            internetConnection: 'Internetverbindung:',
+            backend: 'GeoPulse-Backend:',
+            lastChecked: 'Zuletzt geprüft:',
+            online: 'Backend online',
+            offline: 'Backend offline',
             // The connectivity row vs the short form inside it.
-            connected: 'Connected',
+            connected: 'Verbunden',
             offlineShort: 'Offline'
         },
         restored: {
-            title: 'Connection Restored!',
-            detail: 'GeoPulse servers are back online. Redirecting...'
+            title: 'Verbindung wiederhergestellt!',
+            detail: 'Die GeoPulse-Server sind wieder online. Du wirst weitergeleitet …'
         },
         stillUnavailable: {
-            title: 'Still Unavailable',
-            detail: 'GeoPulse servers are still experiencing issues. Please try again in a few minutes.'
+            title: 'Weiterhin nicht erreichbar',
+            detail: 'Bei den GeoPulse-Servern gibt es weiterhin Probleme. Versuch es in ein paar Minuten noch einmal.'
         }
     }
 }

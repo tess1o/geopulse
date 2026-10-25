@@ -1,4 +1,3 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 import nav from './nav.js'
 import common from './common.js'
 import errors from './errors.js'
@@ -43,10 +42,36 @@ import imports from './imports.js'
 import exports_ from './exports.js'
 
 /**
- * English catalog.
+ * German catalog (Deutsch).
  *
- * Statically imported by `locales/index.js` because it is both the fallback locale and the locale
- * tests are pinned to. Every other locale is loaded on demand.
+ * Loaded on demand; any key missing here falls back to English.
+ *
+ * Style: informal "du", short and natural like modern German apps. Dates and numbers are formatted
+ * through `de-DE`, never written into the strings. Product and format names stay as they are
+ * (GeoPulse, GPX, GeoJSON, OwnTracks, Immich, Home Assistant, OIDC, MCP, ...).
+ *
+ * Glossary -- keep these consistent across all files:
+ *   Timeline            -> Zeitleiste
+ *   Stay                -> Aufenthalt
+ *   Trip                -> Fahrt
+ *   Trip plan           -> Reiseplan
+ *   Data gap            -> Datenlücke
+ *   Location source     -> Standortquelle
+ *   GPS points          -> GPS-Punkte
+ *   Friends             -> Freunde
+ *   Favorites           -> Favoriten
+ *   Dashboard           -> Übersicht
+ *   Settings            -> Einstellungen
+ *   Preferences         -> Einstellungen (Timeline Preferences -> Zeitleisten-Einstellungen)
+ *   Geofence            -> Geofence
+ *   Share link          -> Freigabelink
+ *   Sign in / Sign out  -> Anmelden / Abmelden (also for Login / Logout)
+ *   Sign up / Register  -> Registrieren
+ *   Account             -> Konto
+ *   Invitation          -> Einladung
+ *   Import / Export     -> Import / Export (verbs: importieren / exportieren)
+ *   Geocoding           -> Geocoding
+ *   Backup              -> Backup
  */
 export default {
     nav,

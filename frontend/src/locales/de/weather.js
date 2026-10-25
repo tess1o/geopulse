@@ -1,44 +1,40 @@
-// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
 /**
- * Weather display.
- *
- * `conditions.*` mirrors the WMO weather-code groups in `utils/weatherDisplay.js`; the backend sends
- * a locale-neutral `weatherCode`, so components translate by code and use the server's English
- * `label` only as a fallback -- the same key-based contract used for backend messages.
+ * Weather display (German). `conditions.*` mirrors the WMO weather-code groups in
+ * `utils/weatherDisplay.js`.
  */
 export default {
     conditions: {
-        clear: 'Clear',
-        partlyCloudy: 'Partly cloudy',
-        cloudy: 'Cloudy',
-        fog: 'Fog',
-        drizzle: 'Drizzle',
-        rain: 'Rain',
-        snow: 'Snow',
-        rainShowers: 'Rain showers',
-        snowShowers: 'Snow showers',
-        storm: 'Storm',
-        unknown: 'Weather'
+        clear: 'Klar',
+        partlyCloudy: 'Teilweise bewölkt',
+        cloudy: 'Bewölkt',
+        fog: 'Nebel',
+        drizzle: 'Nieselregen',
+        rain: 'Regen',
+        snow: 'Schnee',
+        rainShowers: 'Regenschauer',
+        snowShowers: 'Schneeschauer',
+        storm: 'Gewitter',
+        unknown: 'Wetter'
     },
     summary: {
-        temperatureLabel: 'Temperature',
-        rangeLabel: 'Range',
-        precipitationLabel: 'Precipitation',
+        temperatureLabel: 'Temperatur',
+        rangeLabel: 'Spanne',
+        precipitationLabel: 'Niederschlag',
         windLabel: 'Wind',
-        notAvailable: 'n/a',
-        titleRange: 'range {range}',
-        titlePrecipitation: 'precipitation {precipitation}',
-        titleWind: 'wind {wind}'
+        notAvailable: 'k. A.',
+        titleRange: 'Spanne {range}',
+        titlePrecipitation: 'Niederschlag {precipitation}',
+        titleWind: 'Wind {wind}'
     },
     insights: {
-        title: 'Weather Along the Way',
-        hottestMoment: 'Hottest Moment',
-        coldestMoment: 'Coldest Moment',
-        wettestDay: 'Wettest Day',
-        mostCommon: 'Most Common Weather',
-        dateUnavailable: 'Date unavailable',
-        rainySamples: '{count} rainy sample | {count} rainy samples',
-        samplesWithAverage: '{count} sample · Avg {temperature} | {count} samples · Avg {temperature}',
-        maxWind: 'Max wind {speed}'
+        title: 'Wetter unterwegs',
+        hottestMoment: 'Wärmster Moment',
+        coldestMoment: 'Kältester Moment',
+        wettestDay: 'Nassester Tag',
+        mostCommon: 'Häufigstes Wetter',
+        dateUnavailable: 'Datum nicht verfügbar',
+        rainySamples: '{count} Messwert mit Regen | {count} Messwerte mit Regen',
+        samplesWithAverage: '{count} Messwert · Ø {temperature} | {count} Messwerte · Ø {temperature}',
+        maxWind: 'Max. Wind {speed}'
     }
 }
