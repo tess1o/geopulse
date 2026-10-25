@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -20,6 +21,8 @@ import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
+import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -31,6 +34,8 @@ import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
@@ -98,6 +103,9 @@ public class TripStaySplitOverrideService {
     TimelineTripMovementOverrideRepository movementOverrideRepository;
 
     @Inject
+    TripMovementTypeOverrideService movementTypeOverrideService;
+
+    @Inject
     GpsPointRepository gpsPointRepository;
 
     @Inject
@@ -124,6 +132,12 @@ public class TripStaySplitOverrideService {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    TimelineUserLock userLock;
+
+    @Inject
+    Event<TimelineDataChangedEvent> timelineDataChangedEvent;
+
     @Transactional
     public Optional<TripStaySplitResponse> previewSplit(UUID userId, Long tripId, TripStaySplitRequest request) {
         Optional<TimelineTripEntity> tripOptional = findTripOwnedByUser(userId, tripId);
@@ -136,19 +150,41 @@ public class TripStaySplitOverrideService {
         return Optional.of(toResponse(null, trip.getId(), split, null));
     }
 
+    /**
+     * Splits the trip and saves the split, to be re-applied after every regeneration.
+     *
+     * @throws TimelineGenerationLockException while the user's timeline is being regenerated: the split rewrites the
+     *                                         stored timeline around the trip, as the regeneration does
+     */
     @Transactional
     public Optional<TripStaySplitResponse> splitTrip(UUID userId, Long tripId, TripStaySplitRequest request) {
+        if (!userLock.tryLock(userId)) {
+            throw new TimelineGenerationLockException(userId);
+        }
         Optional<TimelineTripEntity> tripOptional = findTripOwnedByUser(userId, tripId);
         if (tripOptional.isEmpty()) {
             return Optional.empty();
         }
 
         TimelineTripEntity trip = tripOptional.get();
+        String manualMovementType = trip.getMovementTypeSource() == MovementTypeSource.MANUAL
+                ? trip.getMovementType()
+                : null;
         PreparedSplit split = prepareSplit(userId, trip, request);
-        TimelineTripStaySplitOverrideEntity override = upsertOverride(userId, trip, split.location());
+        TimelineTripStaySplitOverrideEntity override = upsertOverride(userId, trip, split.location(), manualMovementType);
 
         applySplit(trip, split, override);
+        if (manualMovementType != null) {
+            // The type was set for the time travelled, which both legs are part of. Each leg gets its own
+            // correction, re-attached to it after every regeneration like any other.
+            TripType movementType = TripType.valueOf(manualMovementType);
+            movementTypeOverrideService.setManualMovementType(userId, split.firstTrip().getId(), movementType);
+            movementTypeOverrideService.setManualMovementType(userId, split.secondTrip().getId(), movementType);
+        }
         timelineNoteService.reattachAnchoredNotes(userId);
+        // Map matching, weather and visit matching follow the timeline through this event, as after a regeneration.
+        timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, split.firstTrip().getTimestamp(),
+                tripEnd(split.secondTrip()), null, true));
 
         return Optional.of(toResponse(override, tripId, split, null));
     }
@@ -162,6 +198,32 @@ public class TripStaySplitOverrideService {
 
         TimelineTripStaySplitOverrideEntity override = overrideOptional.get();
         Instant regenerationStartTime = override.getSourceTripTimestamp();
+        Instant sourceTripEnd = regenerationStartTime.plusSeconds(override.getSourceTripDurationSeconds());
+
+        // The legs go away with the split, and so do what was made on them: child splits of a leg, which can no
+        // longer be matched, and movement types set on a leg, which would otherwise land on the whole trip. Child
+        // splits are found by their source interval, not by id: an old export can give a child a lower id than its
+        // parent.
+        for (TimelineTripStaySplitOverrideEntity child : overrideRepository.findByUserId(userId)) {
+            if (!child.getId().equals(override.getId())
+                    && child.getSourceTripDurationSeconds() < override.getSourceTripDurationSeconds()
+                    && isMostlyWithin(child, regenerationStartTime, sourceTripEnd)) {
+                overrideRepository.delete(child);
+            }
+        }
+        movementTypeOverrideService.removeOverridesWithin(userId, regenerationStartTime, sourceTripEnd);
+        if (override.getSourceTripMovementType() != null) {
+            try {
+                movementTypeOverrideService.addPendingOverride(userId, new TripMovementTypeOverrideService.SourceTrip(
+                        override.getSourceTripTimestamp(), override.getSourceTripDurationSeconds(),
+                        override.getSourceDistanceMeters(), override.getSourceStartLatitude(),
+                        override.getSourceStartLongitude(), override.getSourceEndLatitude(),
+                        override.getSourceEndLongitude()), TripType.valueOf(override.getSourceTripMovementType()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Skipping invalid stored movement type '{}' on split override {}",
+                        override.getSourceTripMovementType(), override.getId());
+            }
+        }
         overrideRepository.delete(override);
 
         return Optional.of(TripStaySplitResponse.builder()
@@ -216,9 +278,18 @@ public class TripStaySplitOverrideService {
         return override.getStayStartTime().plus(Duration.between(override.getStayStartTime(), override.getStayEndTime()).dividedBy(2));
     }
 
+    private static boolean isMostlyWithin(TimelineTripStaySplitOverrideEntity override, Instant from, Instant to) {
+        Instant start = override.getSourceTripTimestamp();
+        Instant end = start.plusSeconds(override.getSourceTripDurationSeconds());
+        Instant sharedStart = start.isAfter(from) ? start : from;
+        Instant sharedEnd = end.isBefore(to) ? end : to;
+        return Duration.between(sharedStart, sharedEnd).getSeconds() * 2 > override.getSourceTripDurationSeconds();
+    }
+
     private TimelineTripStaySplitOverrideEntity upsertOverride(UUID userId,
                                                                TimelineTripEntity trip,
-                                                               ResolvedLocation location) {
+                                                               ResolvedLocation location,
+                                                               String manualMovementType) {
         Instant stayStart = location.stayStartTime();
         Instant stayEnd = location.stayEndTime();
         TimelineTripStaySplitOverrideEntity override = overrideRepository
@@ -235,6 +306,7 @@ public class TripStaySplitOverrideService {
             override.setSourceStartLongitude(trip.getStartPoint().getX());
             override.setSourceEndLatitude(trip.getEndPoint().getY());
             override.setSourceEndLongitude(trip.getEndPoint().getX());
+            override.setSourceTripMovementType(manualMovementType);
         }
 
         syncLocation(override, location);
@@ -262,18 +334,55 @@ public class TripStaySplitOverrideService {
     private PreparedSplit prepareSplit(UUID userId,
                                        TimelineTripEntity trip,
                                        TimelineTripStaySplitOverrideEntity override) {
-        ResolvedLocation location = new ResolvedLocation(
+        return prepareSplit(userId, trip, resolveLocation(userId, override));
+    }
+
+    /**
+     * Where the split stay is, as of now: a stay named after its place takes the place's current name, and a stay
+     * whose place was deleted is placed again at its coordinates, the way any other stay there would be.
+     */
+    private ResolvedLocation resolveLocation(UUID userId, TimelineTripStaySplitOverrideEntity override) {
+        FavoritesEntity favorite = override.getFavoriteLocation();
+        ReverseGeocodingLocationEntity geocoding = override.getGeocodingLocation();
+        Long favoriteId = favorite != null ? favorite.getId() : null;
+        Long geocodingId = geocoding != null ? geocoding.getId() : null;
+        LocationSource source = override.getStayLocationSource();
+        String locationName = override.getStayLocationName();
+        boolean placeDeleted = favorite == null && geocoding == null && source != LocationSource.HISTORICAL;
+        if (placeDeleted) {
+            LocationResolutionResult result = locationPointResolver.resolveLocationWithReferences(userId,
+                    GeoUtils.createPoint(override.getStayLongitude(), override.getStayLatitude()));
+            favoriteId = result.getFavoriteId();
+            geocodingId = result.getGeocodingId();
+            source = sourceOf(result);
+            if (!override.isStayLocationNameCustom()) {
+                locationName = normalizeLocationName(result.getLocationName());
+            }
+        } else if (!override.isStayLocationNameCustom()) {
+            locationName = favorite != null ? favorite.getName()
+                    : geocoding != null ? geocoding.getDisplayName()
+                    : locationName;
+        }
+        return new ResolvedLocation(
                 override.getStayStartTime(),
                 override.getStayEndTime(),
                 resolveOverrideAnchorTimestamp(override),
                 override.getStayLatitude(),
                 override.getStayLongitude(),
-                override.getStayLocationName(),
-                override.getFavoriteLocation() != null ? override.getFavoriteLocation().getId() : null,
-                override.getGeocodingLocation() != null ? override.getGeocodingLocation().getId() : null,
-                override.getStayLocationSource()
+                locationName,
+                override.isStayLocationNameCustom(),
+                favoriteId,
+                geocodingId,
+                source
         );
-        return prepareSplit(userId, trip, location);
+    }
+
+    private static LocationSource sourceOf(LocationResolutionResult result) {
+        return result.getFavoriteId() != null
+                ? LocationSource.FAVORITE
+                : result.getGeocodingId() != null
+                ? LocationSource.GEOCODING
+                : LocationSource.HISTORICAL;
     }
 
     private PreparedSplit prepareSplit(UUID userId,
@@ -401,16 +510,10 @@ public class TripStaySplitOverrideService {
         Point point = GeoUtils.createPoint(longitude, latitude);
         LocationResolutionResult result = locationPointResolver.resolveLocationWithReferences(userId, point);
 
-        LocationSource source = result.getFavoriteId() != null
-                ? LocationSource.FAVORITE
-                : result.getGeocodingId() != null
-                ? LocationSource.GEOCODING
-                : LocationSource.HISTORICAL;
-
-        String locationName = trimToNull(requestedLocationName);
-        if (locationName == null) {
-            locationName = normalizeLocationName(result.getLocationName());
-        }
+        LocationSource source = sourceOf(result);
+        String placeName = normalizeLocationName(result.getLocationName());
+        String typedName = trimToNull(requestedLocationName);
+        String locationName = typedName != null ? typedName : placeName;
 
         return new ResolvedLocation(
                 stayStartTime,
@@ -419,6 +522,7 @@ public class TripStaySplitOverrideService {
                 point.getY(),
                 point.getX(),
                 locationName,
+                !locationName.equals(placeName),
                 result.getFavoriteId(),
                 result.getGeocodingId(),
                 source
@@ -487,6 +591,7 @@ public class TripStaySplitOverrideService {
         override.setStayLatitude(location.latitude());
         override.setStayLongitude(location.longitude());
         override.setStayLocationName(normalizeLocationName(location.locationName()));
+        override.setStayLocationNameCustom(location.locationNameCustom());
         override.setStayLocationSource(location.locationSource() != null ? location.locationSource() : LocationSource.HISTORICAL);
         override.setFavoriteLocation(location.favoriteId() != null
                 ? entityManager.getReference(FavoritesEntity.class, location.favoriteId())
@@ -690,6 +795,7 @@ public class TripStaySplitOverrideService {
             double latitude,
             double longitude,
             String locationName,
+            boolean locationNameCustom,
             Long favoriteId,
             Long geocodingId,
             LocationSource locationSource

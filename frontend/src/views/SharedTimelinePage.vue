@@ -244,6 +244,7 @@
                 v-else
                 :timeline-data="timelineData"
                 :is-public-view="true"
+                :read-only="true"
                 :load-notes="false"
                 :notes="sharedNotes"
                 :load-immich-photos="false"

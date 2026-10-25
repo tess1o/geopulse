@@ -125,6 +125,9 @@ public class StreamingTimelineGenerationService {
     TripStaySplitOverrideService tripStaySplitOverrideService;
 
     @Inject
+    StayNameOverrideService stayNameOverrideService;
+
+    @Inject
     TimelineNoteService timelineNoteService;
 
     @Inject
@@ -167,19 +170,26 @@ public class StreamingTimelineGenerationService {
         generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null, "unknown");
     }
 
+    /**
+     * Removes a trip split and asks for the timeline to be regenerated from the trip it was made on (see
+     * {@link TimelineRebuildRequestRepository}). The regeneration is not run here: it reaches to the present, can take
+     * as long as a full rebuild, and another one may be running. Start it in the background after this commits; the
+     * request makes the real-time job run it should that not happen.
+     */
     @Transactional
     public Optional<TripStaySplitResponse> resetTripStaySplitOverride(UUID userId, Long overrideId) {
         Optional<TripStaySplitResponse> result = tripStaySplitOverrideService.removeManualOverride(userId, overrideId);
         result.map(TripStaySplitResponse::regenerationStartTime)
-                .ifPresent(timestamp -> generateTimelineFromTimestamp(userId, timestamp));
+                .ifPresent(timestamp -> rebuildRequestRepository.request(userId, timestamp));
         return result;
     }
 
+    /** Removes a data gap conversion; regenerating is left as for {@link #resetTripStaySplitOverride}. */
     @Transactional
     public Optional<DataGapStayOverrideResponseDTO> resetDataGapStayOverride(UUID userId, Long overrideId) {
         Optional<DataGapStayOverrideResponseDTO> result = dataGapStayOverrideService.removeManualOverride(userId, overrideId);
         result.map(DataGapStayOverrideResponseDTO::regenerationStartTime)
-                .ifPresent(timestamp -> generateTimelineFromTimestamp(userId, timestamp));
+                .ifPresent(timestamp -> rebuildRequestRepository.request(userId, timestamp));
         return result;
     }
 
@@ -370,6 +380,9 @@ public class StreamingTimelineGenerationService {
                         rawTimeline.getDataGaps().size(),
                         rawTimeline.getTotalEventCount());
 
+                // Generation has events to replace the manual stays with: the corrections recreate them below.
+                deleteManualStaysFrom(userId, regenerationStartTime);
+
                 // Re-apply manual Trip -> Stay -> Trip splits before movement overrides reattach.
                 stageStart = metricsStart();
                 tripStaySplitOverrideService.reapplyManualOverrides(userId);
@@ -382,6 +395,10 @@ public class StreamingTimelineGenerationService {
                 stageStart = metricsStart();
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
                 recordTimelineStage(stageStart, trigger, "data_gap_overrides", "success");
+                // Names given to single stays, last: they apply to whichever stay ends up there.
+                stageStart = metricsStart();
+                stayNameOverrideService.reapplyManualOverrides(userId);
+                recordTimelineStage(stageStart, trigger, "stay_name_overrides", "success");
                 // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
                 stageStart = metricsStart();
                 timelineNoteService.reattachAnchoredNotes(userId);
@@ -530,10 +547,17 @@ public class StreamingTimelineGenerationService {
     }
 
     private Optional<Restart> findRestart(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
+        if (restartPoint == RestartPoint.LATEST_STAY) {
+            // A stay made by a manual override is recreated from the event it was made from (the trip it was cut
+            // out of, the data gap it filled); restarting at it would keep that event's start out of the
+            // regenerated part, and the override could not be re-applied.
+            return timelineStayRepository.findLatestGeneratedStayBefore(userId, affectedTimestamp)
+                    .map(stay -> new Restart(stay.getTimestamp(), null, startReason(stay)));
+        }
         Optional<TimelineStayEntity> latestStay =
                 timelineStayRepository.findLatestByUserIdBeforeTimestamp(userId, affectedTimestamp);
-        if (restartPoint == RestartPoint.LATEST_STAY || latestStay.isEmpty()) {
-            return latestStay.map(stay -> new Restart(stay.getTimestamp(), null, startReason(stay)));
+        if (latestStay.isEmpty()) {
+            return Optional.empty();
         }
         // The restart stay must be one generation produces itself, or it cannot come out as a stay again.
         return timelineStayRepository.findLatestGeneratedStayBefore(userId, latestStay.get().getTimestamp())
@@ -626,51 +650,53 @@ public class StreamingTimelineGenerationService {
      */
     private Restart deleteFromRestartPoint(UUID userId, Instant affectedTimestamp, RestartPoint restartPoint) {
         Optional<Restart> restart = findRestart(userId, affectedTimestamp, restartPoint);
+        Instant from = restart.map(Restart::from).orElse(DEFAULT_START_DATE);
         if (restart.isEmpty()) {
             log.debug("No restart point for user {} before {}, falling back to complete regeneration", userId,
                     affectedTimestamp);
-            return new Restart(deleteAllTimelineEventsAndStartFromScratch(userId), null);
+        } else {
+            log.debug("Cleaning up timeline of user {} from {}", userId, from);
         }
-        Instant from = restart.get().from();
-        log.debug("Cleaning up timeline of user {} from {}", userId, from);
-        long deletedStays = timelineStayRepository.delete("user.id = :userId and timestamp >= :timestamp",
+        // Manual stays are not derived from the points and stay until generation has something to replace them with;
+        // a pass that produces no events leaves them in place.
+        deleteGeneratedTimelineFrom(userId, from);
+        return restart.orElse(new Restart(from, null));
+    }
+
+    /** Generated events from {@code from} go; stays owned by a manual split or gap conversion stay. */
+    private void deleteGeneratedTimelineFrom(UUID userId, Instant from) {
+        long deletedStays = timelineStayRepository.delete("""
+                        user.id = :userId and timestamp >= :timestamp
+                        and id not in (select splitOverride.stay.id
+                                       from TimelineTripStaySplitOverrideEntity splitOverride
+                                       where splitOverride.user.id = :userId and splitOverride.stay is not null)
+                        and id not in (select gapOverride.stay.id
+                                       from TimelineDataGapStayOverrideEntity gapOverride
+                                       where gapOverride.user.id = :userId and gapOverride.stay is not null)
+                        """,
                 Map.of("userId", userId, "timestamp", from));
         long deletedTrips = timelineTripRepository.delete("user.id = :userId and timestamp >= :timestamp",
                 Map.of("userId", userId, "timestamp", from));
         long deletedGaps = timelineDataGapRepository.delete("user.id = :userId and startTime >= :timestamp",
                 Map.of("userId", userId, "timestamp", from));
-        log.debug("Cleaned up {} stays, {} trips and {} data gaps of user {} from {}", deletedStays, deletedTrips,
-                deletedGaps, userId, from);
-        return restart.get();
+        log.debug("Cleaned up {} generated stays, {} trips and {} data gaps of user {} from {}, keeping manual stays",
+                deletedStays, deletedTrips, deletedGaps, userId, from);
     }
 
-    /**
-     * Fallback method when no stays are found before the affected timestamp.
-     * Deletes all timeline events and starts regeneration from the beginning.
-     */
-    private Instant deleteAllTimelineEventsAndStartFromScratch(UUID userId) {
-        log.debug("Fallback: clearing all timeline data for user {} and starting from scratch", userId);
-
-        // Delete all stays for this user
-        long deletedStays = timelineStayRepository.delete("user.id = :userId", Map.of("userId", userId));
-        if (deletedStays > 0) {
-            log.debug("Deleted {} stays for user {}", deletedStays, userId);
-        }
-
-        // Delete all trips for this user
-        long deletedTrips = timelineTripRepository.delete("user.id = :userId", Map.of("userId", userId));
-        if (deletedTrips > 0) {
-            log.debug("Deleted {} trips for user {}", deletedTrips, userId);
-        }
-
-        // Delete all data gaps for this user
-        long deletedGaps = timelineDataGapRepository.delete("user.id = :userId", Map.of("userId", userId));
-        if (deletedGaps > 0) {
-            log.debug("Deleted {} data gaps for user {}", deletedGaps, userId);
-        }
-
-        // Return early date to ensure we process all GPS points from the beginning
-        return DEFAULT_START_DATE;
+    /** Removes the manual stays a finished generation replaces, just before their corrections recreate them. */
+    private void deleteManualStaysFrom(UUID userId, Instant from) {
+        long deletedStays = timelineStayRepository.delete("""
+                        user.id = :userId and timestamp >= :timestamp
+                        and (id in (select splitOverride.stay.id
+                                    from TimelineTripStaySplitOverrideEntity splitOverride
+                                    where splitOverride.user.id = :userId and splitOverride.stay is not null)
+                             or id in (select gapOverride.stay.id
+                                       from TimelineDataGapStayOverrideEntity gapOverride
+                                       where gapOverride.user.id = :userId and gapOverride.stay is not null))
+                        """,
+                Map.of("userId", userId, "timestamp", from));
+        log.debug("Deleted {} manual stays of user {} from {} before re-applying their corrections",
+                deletedStays, userId, from);
     }
 
     /**

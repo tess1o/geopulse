@@ -43,6 +43,11 @@ public class TimelineDataGapRepository implements PanacheRepositoryBase<Timeline
         return find("user.id = ?1 order by startTime", userId).list();
     }
 
+    /** The user's data gaps starting from {@code from} to {@code to}, both inclusive. */
+    public List<TimelineDataGapEntity> findStartingBetween(UUID userId, Instant from, Instant to) {
+        return find("user.id = ?1 and startTime >= ?2 and startTime <= ?3 order by startTime", userId, from, to).list();
+    }
+
     /**
      * Find data gaps with boundary expansion - includes gaps that start before range but extend into it.
      *

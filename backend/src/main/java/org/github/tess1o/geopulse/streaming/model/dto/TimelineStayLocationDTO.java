@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.geocoding.dto.LocationTimezoneDTO;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -30,10 +31,10 @@ public class TimelineStayLocationDTO implements GpsPoint {
     private String country;
 
     /**
-     * Manual Data Gap -> Stay override ID that currently maps to this stay.
-     * Null means this stay is fully automatic.
+     * Manual Data Gap -> Stay overrides that currently map to this stay, oldest first: more than one when several
+     * data gaps were turned into stays at the place of this stay. Null when there are none.
      */
-    private Long dataGapOverrideId;
+    private List<Long> dataGapOverrideIds;
 
     /** Why the timeline engine created this event as it is; absent until the timeline is regenerated. */
     @JsonInclude(JsonInclude.Include.NON_NULL)

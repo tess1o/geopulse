@@ -173,6 +173,7 @@
                       :loadImmichPhotos="false"
                       :weather-samples="weatherSamples"
                       :showTimelineLabels="false"
+                      :read-only="demoReadOnly || !isOwner"
                       @timeline-item-click="handleWorkspaceTimelineItemClick"
                       @rename-stay="handleWorkspaceRenameStay"
                       @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
@@ -551,6 +552,7 @@ const {
   jobProgress: timelineJobProgress,
   jobError: timelineJobError,
   trackExistingTimelineJob,
+  trackCorrectionRegeneration,
   refreshCurrentJobProgress,
   clearTrackedTimelineJob
 } = useTimelineRegeneration()
@@ -1027,8 +1029,7 @@ const handleWorkspaceTimelineRefreshRequested = async () => {
   await refreshVisitComparisons()
 }
 
-const handleWorkspaceResetDataGapOverride = (stayItem) => {
-  const overrideId = stayItem?.dataGapOverrideId
+const handleWorkspaceResetDataGapOverride = (stayItem, overrideId) => {
   if (!overrideId) {
     return
   }
@@ -1039,13 +1040,19 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await timelineStore.resetDataGapStayOverride(overrideId)
-        await handleWorkspaceTimelineRefreshRequested()
-        toast.add({
-          severity: 'success',
-          summary: t('trips.workspacePage.toasts.overrideResetSummary'),
-          detail: t('trips.workspacePage.toasts.overrideResetDetail'),
-          life: 3000
+        const result = await timelineStore.resetDataGapStayOverride(overrideId)
+        await trackCorrectionRegeneration(result, {
+          failureSummary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          failedDetail: t('trips.workspacePage.toasts.resetOverrideFailedFallback'),
+          onCompleted: async () => {
+            await handleWorkspaceTimelineRefreshRequested()
+            toast.add({
+              severity: 'success',
+              summary: t('trips.workspacePage.toasts.overrideResetSummary'),
+              detail: t('trips.workspacePage.toasts.overrideResetDetail'),
+              life: 3000
+            })
+          }
         })
       } catch (error) {
         toast.add({
@@ -1059,8 +1066,7 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
   })
 }
 
-const handleWorkspaceResetTripSplitOverride = (stayItem) => {
-  const overrideId = stayItem?.tripSplitOverrideId
+const handleWorkspaceResetTripSplitOverride = (stayItem, overrideId) => {
   if (!overrideId) {
     return
   }
@@ -1071,13 +1077,19 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await timelineStore.resetTripStaySplitOverride(overrideId)
-        await handleWorkspaceTimelineRefreshRequested()
-        toast.add({
-          severity: 'success',
-          summary: t('trips.workspacePage.toasts.splitResetSummary'),
-          detail: t('trips.workspacePage.toasts.splitResetDetail'),
-          life: 3000
+        const result = await timelineStore.resetTripStaySplitOverride(overrideId)
+        await trackCorrectionRegeneration(result, {
+          failureSummary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          failedDetail: t('trips.workspacePage.toasts.resetSplitFailedFallback'),
+          onCompleted: async () => {
+            await handleWorkspaceTimelineRefreshRequested()
+            toast.add({
+              severity: 'success',
+              summary: t('trips.workspacePage.toasts.splitResetSummary'),
+              detail: t('trips.workspacePage.toasts.splitResetDetail'),
+              life: 3000
+            })
+          }
         })
       } catch (error) {
         toast.add({

@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateResponseDTO;
@@ -30,6 +31,12 @@ public class TripMovementTypeOverrideService {
     private final TimelineConfigurationProvider configProvider;
     private final TravelClassification travelClassification;
     private final EntityManager entityManager;
+
+    /**
+     * Regeneration can start a trip hundreds of metres earlier (see the issue #631 replay) but not kilometres away;
+     * another trip elsewhere in the same time window is not the corrected one.
+     */
+    private static final double MAX_ANCHOR_DISTANCE_METERS = 2_000.0;
 
     @Inject
     public TripMovementTypeOverrideService(TimelineTripRepository tripRepository,
@@ -90,6 +97,84 @@ public class TripMovementTypeOverrideService {
     }
 
     /**
+     * Removes one correction. The trip it is attached to, if any, gets its detected movement type back.
+     *
+     * @return false when the user has no such correction
+     */
+    @Transactional
+    public boolean removeOverride(UUID userId, Long overrideId) {
+        Optional<TimelineTripMovementOverrideEntity> override = overrideRepository.find("id = ?1 and user.id = ?2",
+                overrideId, userId).firstResultOptional();
+        if (override.isEmpty()) {
+            return false;
+        }
+        TimelineTripEntity trip = override.get().getTrip();
+        if (trip != null) {
+            trip.setMovementType(classifyAutomatically(userId, trip));
+            trip.setMovementTypeSource(MovementTypeSource.AUTO);
+        }
+        overrideRepository.delete(override.get());
+        return true;
+    }
+
+    /**
+     * Removes the corrections made on trips that lay mostly within {@code from}..{@code to}, such as the legs of a
+     * split that is undone: those trips no longer exist once the split is gone.
+     *
+     * @return number of corrections removed
+     */
+    @Transactional
+    public int removeOverridesWithin(UUID userId, Instant from, Instant to) {
+        int removed = 0;
+        for (TimelineTripMovementOverrideEntity override : overrideRepository.findByUserId(userId)) {
+            Instant start = override.getSourceTripTimestamp();
+            long shared = sharedSeconds(start, start.plusSeconds(override.getSourceTripDurationSeconds()), from, to);
+            if (isMostOf(shared, override.getSourceTripDurationSeconds())) {
+                overrideRepository.delete(override);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    /**
+     * Records a movement type for the trip travelled during {@code source}, not attached to any trip yet: the next
+     * regeneration attaches it to the trip it produces there, as it does for corrections whose trip was rebuilt.
+     */
+    @Transactional
+    public void addPendingOverride(UUID userId, SourceTrip source, TripType movementType) {
+        List<TimelineTripMovementOverrideEntity> existing = new ArrayList<>(
+                overrideRepository.findByUserIdAndSource(userId, source.start(), source.durationSeconds()));
+        // A repeated reconstruction or undo must update the one correction for this travelled interval, not add
+        // another one that can never attach. Older duplicates are folded into the row we keep.
+        existing.sort(Comparator.comparing(TimelineTripMovementOverrideEntity::getId));
+        TimelineTripMovementOverrideEntity override = existing.isEmpty()
+                ? TimelineTripMovementOverrideEntity.builder()
+                        .user(entityManager.getReference(UserEntity.class, userId))
+                        .build()
+                : existing.removeLast();
+        for (TimelineTripMovementOverrideEntity duplicate : existing) {
+            overrideRepository.delete(duplicate);
+        }
+        override.setMovementType(movementType.name());
+        override.setSourceTripTimestamp(source.start());
+        override.setSourceTripDurationSeconds(source.durationSeconds());
+        override.setSourceDistanceMeters(source.distanceMeters());
+        override.setSourceStartLatitude(source.startLatitude());
+        override.setSourceStartLongitude(source.startLongitude());
+        override.setSourceEndLatitude(source.endLatitude());
+        override.setSourceEndLongitude(source.endLongitude());
+        if (override.getId() == null) {
+            overrideRepository.persist(override);
+        }
+    }
+
+    /** Where and when a trip was travelled, as recorded with a correction. */
+    public record SourceTrip(Instant start, long durationSeconds, long distanceMeters,
+                             double startLatitude, double startLongitude, double endLatitude, double endLongitude) {
+    }
+
+    /**
      * Re-attach and re-apply manual overrides after timeline trips were regenerated.
      *
      * @return number of overrides successfully applied to regenerated trips
@@ -101,18 +186,18 @@ public class TripMovementTypeOverrideService {
             return 0;
         }
 
-        List<TimelineTripEntity> candidateTrips = tripRepository.findByUser(userId).stream()
-                .filter(trip -> trip.getMovementTypeSource() == null || trip.getMovementTypeSource() == MovementTypeSource.AUTO)
-                .toList();
-
-        if (candidateTrips.isEmpty()) {
-            return 0;
-        }
-
         Set<Long> matchedTripIds = new HashSet<>();
         int appliedCount = 0;
 
         for (TimelineTripMovementOverrideEntity override : unmatchedOverrides) {
+            // Only a trip sharing time with the corrected one can match. Reading just those keeps a correction whose
+            // trip is gone for good from making every regeneration read all of the user's trips.
+            Instant sourceStart = override.getSourceTripTimestamp();
+            List<TimelineTripEntity> candidateTrips = tripRepository
+                    .findOverlapping(userId, sourceStart, sourceStart.plusSeconds(override.getSourceTripDurationSeconds()))
+                    .stream()
+                    .filter(trip -> trip.getMovementTypeSource() == null || trip.getMovementTypeSource() == MovementTypeSource.AUTO)
+                    .toList();
             TimelineTripEntity bestMatch = findBestMatch(override, candidateTrips, matchedTripIds);
             if (bestMatch == null) {
                 continue;
@@ -157,13 +242,16 @@ public class TripMovementTypeOverrideService {
                 continue;
             }
 
-            Instant tripEnd = trip.getTimestamp().plusSeconds(trip.getTripDuration());
-            Instant sharedStart = sourceStart.isAfter(trip.getTimestamp()) ? sourceStart : trip.getTimestamp();
-            Instant sharedEnd = sourceEnd.isBefore(tripEnd) ? sourceEnd : tripEnd;
-            long sharedSeconds = Duration.between(sharedStart, sharedEnd).getSeconds();
+            long sharedSeconds = sharedSeconds(sourceStart, sourceEnd, trip.getTimestamp(),
+                    trip.getTimestamp().plusSeconds(trip.getTripDuration()));
 
             if (!isMostOf(sharedSeconds, override.getSourceTripDurationSeconds())
                     || !isMostOf(sharedSeconds, trip.getTripDuration())) {
+                continue;
+            }
+            // The time can be the same for a different trip: the corrected trip's points were replaced by another
+            // drive in that window. Its ends stay where they were unless the trip is the same one.
+            if (!endsNear(override, trip)) {
                 continue;
             }
             if (sharedSeconds > bestSharedSeconds) {
@@ -208,6 +296,23 @@ public class TripMovementTypeOverrideService {
     private String classifyAutomatically(UUID userId, TimelineTripEntity trip) {
         TimelineConfig config = configProvider.getConfigurationForUser(userId);
         return travelClassification.classifyTravelType(trip, config).name();
+    }
+
+    private static boolean endsNear(TimelineTripMovementOverrideEntity override, TimelineTripEntity trip) {
+        if (trip.getStartPoint() == null || trip.getEndPoint() == null) {
+            return false;
+        }
+        double startDistance = GeoUtils.haversine(override.getSourceStartLatitude(),
+                override.getSourceStartLongitude(), trip.getStartPoint().getY(), trip.getStartPoint().getX());
+        double endDistance = GeoUtils.haversine(override.getSourceEndLatitude(),
+                override.getSourceEndLongitude(), trip.getEndPoint().getY(), trip.getEndPoint().getX());
+        return startDistance <= MAX_ANCHOR_DISTANCE_METERS && endDistance <= MAX_ANCHOR_DISTANCE_METERS;
+    }
+
+    private static long sharedSeconds(Instant firstStart, Instant firstEnd, Instant secondStart, Instant secondEnd) {
+        Instant sharedStart = firstStart.isAfter(secondStart) ? firstStart : secondStart;
+        Instant sharedEnd = firstEnd.isBefore(secondEnd) ? firstEnd : secondEnd;
+        return Duration.between(sharedStart, sharedEnd).getSeconds();
     }
 
     private static boolean isMostOf(long sharedSeconds, long durationSeconds) {

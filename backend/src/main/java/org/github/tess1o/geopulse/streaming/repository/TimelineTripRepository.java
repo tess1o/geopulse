@@ -63,6 +63,16 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return find("user.id = ?1 order by timestamp", userId).list();
     }
 
+    /** The user's trips sharing some time with {@code from}..{@code to}. */
+    public List<TimelineTripEntity> findOverlapping(UUID userId, Instant from, Instant to) {
+        return find("""
+                        user.id = ?1
+                        and timestamp < ?3
+                        and FUNCTION('TIMESTAMPADD', SECOND, tripDuration, timestamp) > ?2
+                        order by timestamp
+                        """, userId, from, to).list();
+    }
+
     public List<TimelineTripEntity> findMapMatchingChunk(UUID userId, Instant cursorAt,
                                                          long cursorTripId, Instant endTime, int limit) {
         if (limit <= 0) {

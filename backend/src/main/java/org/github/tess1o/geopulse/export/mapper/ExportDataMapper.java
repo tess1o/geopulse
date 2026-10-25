@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
@@ -365,13 +366,26 @@ public class ExportDataMapper {
     public TimelineOverridesDataDto toTimelineOverridesDataDto(
             List<TimelineTripMovementOverrideEntity> tripOverrides,
             List<TimelineDataGapStayOverrideEntity> gapOverrides,
-            List<TimelineTripStaySplitOverrideEntity> staySplitOverrides) {
+            List<TimelineTripStaySplitOverrideEntity> staySplitOverrides,
+            List<TimelineStayNameOverrideEntity> stayNameOverrides) {
         return TimelineOverridesDataDto.builder()
                 .dataType(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES)
                 .exportDate(Instant.now())
                 .tripMovementOverrides(tripOverrides.stream().map(this::toTripMovementOverrideDto).collect(Collectors.toList()))
                 .dataGapStayOverrides(gapOverrides.stream().map(this::toDataGapStayOverrideDto).collect(Collectors.toList()))
                 .tripStaySplitOverrides(staySplitOverrides.stream().map(this::toTripStaySplitOverrideDto).collect(Collectors.toList()))
+                .stayNameOverrides(stayNameOverrides.stream().map(this::toStayNameOverrideDto).collect(Collectors.toList()))
+                .build();
+    }
+
+    private TimelineOverridesDataDto.StayNameOverrideDto toStayNameOverrideDto(TimelineStayNameOverrideEntity override) {
+        return TimelineOverridesDataDto.StayNameOverrideDto.builder()
+                .id(override.getId())
+                .stayStartTime(override.getStayStartTime())
+                .stayEndTime(override.getStayEndTime())
+                .locationName(override.getLocationName())
+                .createdAt(override.getCreatedAt())
+                .updatedAt(override.getUpdatedAt())
                 .build();
     }
 
@@ -425,6 +439,7 @@ public class ExportDataMapper {
                 .stayLatitude(override.getStayLatitude())
                 .stayLongitude(override.getStayLongitude())
                 .stayLocationName(override.getStayLocationName())
+                .stayLocationNameCustom(override.isStayLocationNameCustom())
                 .stayLocationSource(override.getStayLocationSource() != null ? override.getStayLocationSource().name() : null)
                 .favoriteId(override.getFavoriteLocation() != null ? override.getFavoriteLocation().getId() : null)
                 .geocodingId(override.getGeocodingLocation() != null ? override.getGeocodingLocation().getId() : null)
@@ -435,6 +450,7 @@ public class ExportDataMapper {
                 .sourceStartLongitude(override.getSourceStartLongitude())
                 .sourceEndLatitude(override.getSourceEndLatitude())
                 .sourceEndLongitude(override.getSourceEndLongitude())
+                .sourceTripMovementType(override.getSourceTripMovementType())
                 .createdAt(override.getCreatedAt())
                 .updatedAt(override.getUpdatedAt())
                 .build();

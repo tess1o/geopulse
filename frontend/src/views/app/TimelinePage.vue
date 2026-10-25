@@ -325,7 +325,8 @@ const {
   timelineRegenerationType: reconstructionRegenerationType,
   currentJobId: reconstructionJobId,
   jobProgress: reconstructionJobProgress,
-  trackExistingTimelineJob
+  trackExistingTimelineJob,
+  trackCorrectionRegeneration
 } = useTimelineRegeneration()
 
 // Large dataset warning state
@@ -659,8 +660,7 @@ const handleTimelineRefreshRequested = async () => {
   await reloadCurrentRange()
 }
 
-const handleResetDataGapOverride = (stayItem) => {
-  const overrideId = stayItem?.dataGapOverrideId
+const handleResetDataGapOverride = (stayItem, overrideId) => {
   if (!overrideId) {
     return
   }
@@ -671,13 +671,18 @@ const handleResetDataGapOverride = (stayItem) => {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await timelineStore.resetDataGapStayOverride(overrideId)
-        await reloadCurrentRange()
-        toast.add({
-          severity: 'success',
-          summary: t('timeline.page.resetDataGapOverride.successSummary'),
-          detail: t('timeline.page.resetDataGapOverride.successDetail'),
-          life: 3000
+        const result = await timelineStore.resetDataGapStayOverride(overrideId)
+        await trackCorrectionRegeneration(result, {
+          failedDetail: t('timeline.page.resetDataGapOverride.failedDetail'),
+          onCompleted: async () => {
+            await reloadCurrentRange()
+            toast.add({
+              severity: 'success',
+              summary: t('timeline.page.resetDataGapOverride.successSummary'),
+              detail: t('timeline.page.resetDataGapOverride.successDetail'),
+              life: 3000
+            })
+          }
         })
       } catch (error) {
         toast.add({
@@ -691,8 +696,7 @@ const handleResetDataGapOverride = (stayItem) => {
   })
 }
 
-const handleResetTripSplitOverride = (stayItem) => {
-  const overrideId = stayItem?.tripSplitOverrideId
+const handleResetTripSplitOverride = (stayItem, overrideId) => {
   if (!overrideId) {
     return
   }
@@ -703,13 +707,18 @@ const handleResetTripSplitOverride = (stayItem) => {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await timelineStore.resetTripStaySplitOverride(overrideId)
-        await reloadCurrentRange()
-        toast.add({
-          severity: 'success',
-          summary: t('timeline.page.resetTripSplitOverride.successSummary'),
-          detail: t('timeline.page.resetTripSplitOverride.successDetail'),
-          life: 3000
+        const result = await timelineStore.resetTripStaySplitOverride(overrideId)
+        await trackCorrectionRegeneration(result, {
+          failedDetail: t('timeline.page.resetTripSplitOverride.failedDetail'),
+          onCompleted: async () => {
+            await reloadCurrentRange()
+            toast.add({
+              severity: 'success',
+              summary: t('timeline.page.resetTripSplitOverride.successSummary'),
+              detail: t('timeline.page.resetTripSplitOverride.successDetail'),
+              life: 3000
+            })
+          }
         })
       } catch (error) {
         toast.add({

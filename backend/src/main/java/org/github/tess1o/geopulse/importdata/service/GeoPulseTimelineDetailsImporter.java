@@ -20,9 +20,11 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -233,6 +235,8 @@ public class GeoPulseTimelineDetailsImporter {
             entity.setStayLatitude(defaultDouble(dto.getStayLatitude()));
             entity.setStayLongitude(defaultDouble(dto.getStayLongitude()));
             entity.setStayLocationName(dto.getStayLocationName() != null ? dto.getStayLocationName() : "Unknown Location");
+            // Older exports do not say; keeping the stored name is what they did.
+            entity.setStayLocationNameCustom(dto.getStayLocationNameCustom() == null || dto.getStayLocationNameCustom());
             entity.setStayLocationSource(parseEnum(LocationSource.class, dto.getStayLocationSource(), LocationSource.GEOCODING));
             entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
             entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
@@ -241,6 +245,7 @@ public class GeoPulseTimelineDetailsImporter {
             entity.setSourceStartLongitude(defaultDouble(dto.getSourceStartLongitude()));
             entity.setSourceEndLatitude(defaultDouble(dto.getSourceEndLatitude()));
             entity.setSourceEndLongitude(defaultDouble(dto.getSourceEndLongitude()));
+            entity.setSourceTripMovementType(validTripTypeOrNull(dto.getSourceTripMovementType()));
             if (entity.getCreatedAt() == null) {
                 entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
             }
@@ -248,8 +253,37 @@ public class GeoPulseTimelineDetailsImporter {
             entityManager.persist(entity);
             staySplitOverrides++;
         }
-        log.info("Imported/updated {} trip overrides, {} gap overrides and {} stay-split overrides for user {}",
-                tripOverrides, gapOverrides, staySplitOverrides, job.getUserId());
+        int stayNames = 0;
+        for (TimelineOverridesDataDto.StayNameOverrideDto dto : emptyIfNull(data.getStayNameOverrides())) {
+            if (dto.getStayStartTime() == null || dto.getStayEndTime() == null || dto.getLocationName() == null
+                    || shouldSkipDueToDateFilter(dto.getStayStartTime(), job)) {
+                continue;
+            }
+            TimelineStayNameOverrideEntity entity = entityManager.createQuery("""
+                            SELECT override FROM TimelineStayNameOverrideEntity override
+                            WHERE override.user.id = :userId
+                              AND override.stayStartTime = :stayStart
+                              AND override.stayEndTime = :stayEnd
+                            """, TimelineStayNameOverrideEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("stayStart", dto.getStayStartTime())
+                    .setParameter("stayEnd", dto.getStayEndTime())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineStayNameOverrideEntity::new);
+            entity.setUser(user);
+            entity.setStayStartTime(dto.getStayStartTime());
+            entity.setStayEndTime(dto.getStayEndTime());
+            entity.setLocationName(dto.getLocationName());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            stayNames++;
+        }
+        log.info("Imported/updated {} trip overrides, {} gap overrides, {} stay-split overrides and {} stay names "
+                + "for user {}", tripOverrides, gapOverrides, staySplitOverrides, stayNames, job.getUserId());
     }
 
     @Transactional
@@ -427,5 +461,17 @@ public class GeoPulseTimelineDetailsImporter {
                 .setParameter("inputHash", dto.getInputHash())
                 .getResultStream()
                 .findFirst();
+    }
+
+    /** Imported data is untrusted; an unknown movement type would otherwise fail an undo with a 500. */
+    private static String validTripTypeOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return TripType.valueOf(value).name();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

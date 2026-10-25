@@ -4,6 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,13 @@ public class TimelineTripMovementOverrideRepository implements PanacheRepository
 
     public List<TimelineTripMovementOverrideEntity> findByUserId(UUID userId) {
         return find("user.id = ?1 order by sourceTripTimestamp", userId).list();
+    }
+
+    /** Corrections recorded for the same travelled interval, whether linked to a trip yet or not. */
+    public List<TimelineTripMovementOverrideEntity> findByUserIdAndSource(UUID userId, Instant sourceStart,
+                                                                          long sourceDurationSeconds) {
+        return find("user.id = ?1 and sourceTripTimestamp = ?2 and sourceTripDurationSeconds = ?3",
+                userId, sourceStart, sourceDurationSeconds).list();
     }
 
     public List<TimelineTripMovementOverrideEntity> findUnmatchedByUserId(UUID userId) {

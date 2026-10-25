@@ -24,8 +24,13 @@ public class TimelineTripStaySplitOverrideRepository implements PanacheRepositor
                 userId, sourceTripTimestamp, stayStartTime, stayEndTime).firstResultOptional();
     }
 
+    /**
+     * The user's splits parent first: a split made on a leg of an already split trip has a shorter source trip than
+     * its parent, so ordering by source duration makes the leg exist before the child split is matched. This is
+     * independent of ids, which import assigns in file order (old exports were ordered by stay start time).
+     */
     public List<TimelineTripStaySplitOverrideEntity> findByUserId(UUID userId) {
-        return find("user.id = ?1 order by stayStartTime", userId).list();
+        return find("user.id = ?1 order by sourceTripDurationSeconds desc, id", userId).list();
     }
 
     public List<TimelineTripStaySplitOverrideEntity> findByUserIdAndStayIds(UUID userId, List<Long> stayIds) {

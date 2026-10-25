@@ -18,6 +18,16 @@ import java.util.UUID;
 @ApplicationScoped
 public class TimelineStayRepository implements PanacheRepository<TimelineStayEntity> {
 
+    /** The user's stays sharing some time with {@code from}..{@code to}. */
+    public List<TimelineStayEntity> findOverlapping(UUID userId, Instant from, Instant to) {
+        return find("""
+                        user.id = ?1
+                        and timestamp < ?3
+                        and FUNCTION('TIMESTAMPADD', SECOND, stayDuration, timestamp) > ?2
+                        order by timestamp
+                        """, userId, from, to).list();
+    }
+
     /**
      * Find timeline stays for a user within a date range.
      *

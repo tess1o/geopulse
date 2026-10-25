@@ -5,7 +5,9 @@
  */
 export default {
     locationEdit: {
-        editFavoriteHeader: 'Редагувати обране місце'
+        editFavoriteHeader: 'Редагувати обране місце',
+        renameStayHeader: 'Перейменувати місце зупинки',
+        renameStayMessage: 'Перейменування "{name}" оновить усі зупинки в цьому місці. Продовжити?'
     },
     notes: {
         openSingle: 'Відкрити нотатку',
@@ -40,6 +42,7 @@ export default {
         viewAllVisits: 'Переглянути всі відвідування цього місця',
         renamePlace: 'Перейменувати місце...',
         resetDataGap: 'Скинути до автоматичної прогалини в даних',
+        resetDataGapOfMany: 'Скинути виправлення прогалини {index} з {count}',
         undoTripSplit: 'Скасувати ручний поділ поїздки',
         manageNoteSingle: 'Керувати нотаткою...',
         manageNotesMultiple: 'Керувати нотатками ({count})...',
@@ -470,6 +473,8 @@ export default {
             failedDetail: 'Не вдалося скинути перевизначення прогалини в даних.'
         },
         resetFailedSummary: 'Не вдалося скинути',
+        correctionQueuedSummary: 'Оновлення хронології в черзі',
+        correctionQueuedDetail: 'Виправлення збережено. Хронологія оновиться, коли завершиться поточна регенерація.',
         resetTripSplitOverride: {
             confirmHeader: 'Скасувати поділ поїздки',
             confirmMessage: 'Ви впевнені, що хочете скасувати цей ручний поділ поїздки?',

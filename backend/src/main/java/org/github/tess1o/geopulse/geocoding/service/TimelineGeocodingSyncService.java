@@ -84,6 +84,29 @@ public class TimelineGeocodingSyncService {
         log.info("Switched {} timeline stays for user {} from geocoding {} to {}",
                 updatedCount, userId, oldGeocodingId, newGeocodingId);
 
+        // Stays made by hand (part of a trip or a data gap turned into a stay) are recreated from their override
+        // after every regeneration, so the override follows the place to the user's copy too.
+        entityManager.createNativeQuery("""
+                        UPDATE timeline_trip_stay_split_overrides
+                        SET geocoding_id = :newGeocodingId
+                        WHERE geocoding_id = :oldGeocodingId
+                          AND user_id = :userId
+                        """)
+                .setParameter("oldGeocodingId", oldGeocodingId)
+                .setParameter("newGeocodingId", newGeocodingId)
+                .setParameter("userId", userId)
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                        UPDATE timeline_data_gap_stay_overrides
+                        SET selected_geocoding_id = :newGeocodingId
+                        WHERE selected_geocoding_id = :oldGeocodingId
+                          AND user_id = :userId
+                        """)
+                .setParameter("oldGeocodingId", oldGeocodingId)
+                .setParameter("newGeocodingId", newGeocodingId)
+                .setParameter("userId", userId)
+                .executeUpdate();
+
         return updatedCount;
     }
 }

@@ -45,12 +45,13 @@
           <i class="pi pi-pencil"></i>
         </button>
         <button
-          v-if="isManualStay"
+          v-for="action in resetActions"
+          :key="action.key"
           class="location-reset-icon-btn"
-          :aria-label="resetManualStayLabel"
-          :title="readOnly ? t('timeline.card.resetDisabledDemo') : resetManualStayLabel"
+          :aria-label="resetActionLabel(action)"
+          :title="readOnly ? t('timeline.card.resetDisabledDemo') : resetActionLabel(action)"
           :disabled="readOnly"
-          @click.stop="handleResetManualStay"
+          @click.stop="handleResetAction(action)"
         >
           <i class="pi pi-refresh"></i>
         </button>
@@ -204,24 +205,13 @@ const contextMenuItems = computed(() => {
     })
   }
 
-  if (canResetDataGapOverride.value) {
+  for (const action of resetActions.value) {
     items.push({
-      label: t('timeline.card.resetDataGap'),
+      label: resetActionLabel(action),
       icon: 'pi pi-refresh',
       disabled: props.readOnly,
       command: () => {
-        handleResetDataGapOverride()
-      }
-    })
-  }
-
-  if (canResetTripSplitOverride.value) {
-    items.push({
-      label: t('timeline.card.undoTripSplit'),
-      icon: 'pi pi-refresh',
-      disabled: props.readOnly,
-      command: () => {
-        handleResetTripSplitOverride()
+        handleResetAction(action)
       }
     })
   }
@@ -318,19 +308,40 @@ const canRenameStay = computed(() => {
   return canViewPlaceDetails.value
 })
 
-const canResetDataGapOverride = computed(() => {
-  return Boolean(props.stayItem.dataGapOverrideId)
+// A stay can hold corrections from several sources at once: the split that cut it out of a trip, and each data gap
+// turned into a stay at the same place. Each correction gets its own reset action.
+const resetActions = computed(() => {
+  const actions = []
+  if (props.stayItem.tripSplitOverrideId) {
+    actions.push({
+      key: `split-${props.stayItem.tripSplitOverrideId}`,
+      kind: 'tripSplit',
+      overrideId: props.stayItem.tripSplitOverrideId
+    })
+  }
+  const gapOverrideIds = props.stayItem.dataGapOverrideIds || []
+  gapOverrideIds.forEach((overrideId, index) => {
+    actions.push({
+      key: `gap-${overrideId}`,
+      kind: 'dataGap',
+      overrideId,
+      index: index + 1,
+      count: gapOverrideIds.length
+    })
+  })
+  return actions
 })
 
-const canResetTripSplitOverride = computed(() => {
-  return Boolean(props.stayItem.tripSplitOverrideId)
-})
+const isManualStay = computed(() => resetActions.value.length > 0)
 
-const isManualStay = computed(() => canResetDataGapOverride.value || canResetTripSplitOverride.value)
-
-const resetManualStayLabel = computed(() => (
-  canResetTripSplitOverride.value ? t('timeline.card.undoTripSplit') : t('timeline.card.resetDataGap')
-))
+const resetActionLabel = (action) => {
+  if (action.kind === 'tripSplit') {
+    return t('timeline.card.undoTripSplit')
+  }
+  return action.count > 1
+    ? t('timeline.card.resetDataGapOfMany', { index: action.index, count: action.count })
+    : t('timeline.card.resetDataGap')
+}
 
 const canManageMatchingNotes = computed(() => {
   return props.allowNoteCreation && matchingNotes.value.some((note) => (
@@ -371,22 +382,10 @@ const handleRenameStay = () => {
   emit('rename-stay', props.stayItem)
 }
 
-const handleResetDataGapOverride = () => {
-  if (!canResetDataGapOverride.value || props.readOnly) return
-  emit('reset-data-gap-override', props.stayItem)
-}
-
-const handleResetTripSplitOverride = () => {
-  if (!canResetTripSplitOverride.value || props.readOnly) return
-  emit('reset-trip-split-override', props.stayItem)
-}
-
-const handleResetManualStay = () => {
-  if (canResetTripSplitOverride.value) {
-    handleResetTripSplitOverride()
-    return
-  }
-  handleResetDataGapOverride()
+const handleResetAction = (action) => {
+  if (props.readOnly || !action?.overrideId) return
+  const event = action.kind === 'tripSplit' ? 'reset-trip-split-override' : 'reset-data-gap-override'
+  emit(event, props.stayItem, action.overrideId)
 }
 
 const navigateToPlaceDetails = () => {

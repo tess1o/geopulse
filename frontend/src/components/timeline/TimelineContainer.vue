@@ -122,8 +122,8 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
@@ -143,8 +143,8 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
@@ -166,8 +166,8 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
@@ -190,8 +190,8 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
@@ -214,7 +214,8 @@
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
-              :allow-note-creation="!isPublicView"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
@@ -230,7 +231,8 @@
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
-              :allow-note-creation="!isPublicView"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
@@ -248,7 +250,7 @@
     <TripClassificationDialog
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
-      :read-only="readOnly"
+      :read-only="effectiveReadOnly"
       :show-explanation-link="!isPublicView"
       @movement-updated="handleMovementTypeUpdated"
       @show-explanation="handleShowExplanationFromClassification"
@@ -266,7 +268,7 @@
     <TripMovementTypeQuickEditDialog
       :visible="quickEditDialogVisible"
       :trip="selectedTripForQuickEdit"
-      :read-only="readOnly"
+      :read-only="effectiveReadOnly"
       @movement-updated="handleMovementTypeUpdated"
       @close="handleCloseQuickEditDialog"
     />
@@ -274,6 +276,7 @@
     <DataGapToStayDialog
       :visible="dataGapConversionDialogVisible"
       :data-gap="selectedDataGapForConversion"
+      :read-only="effectiveReadOnly"
       @converted="handleDataGapConverted"
       @close="handleCloseDataGapConversionDialog"
     />
@@ -281,7 +284,7 @@
     <TripStaySplitDialog
       :visible="tripSplitDialogVisible"
       :trip="selectedTripForSplit"
-      :read-only="readOnly"
+      :read-only="effectiveReadOnly"
       @split="handleTripSplitSaved"
       @close="handleCloseTripSplitDialog"
     />
@@ -447,6 +450,9 @@ const emit = defineEmits([
   'navigate-date',
   'day-focus-change'
 ])
+
+// A public share is read-only even if a caller forgets to pass read-only explicitly.
+const effectiveReadOnly = computed(() => props.readOnly || props.isPublicView)
 
 // Composables
 const timezone = useTimezone()
@@ -672,27 +678,27 @@ const scrollToTimelineItem = (item) => {
 }
 
 const handleRenameStay = (stayItem) => {
-  if (props.readOnly) {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
   emit('rename-stay', stayItem)
 }
 
-const handleResetDataGapOverride = (stayItem) => {
-  if (props.readOnly) {
+const handleResetDataGapOverride = (stayItem, overrideId) => {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
-  emit('reset-data-gap-override', stayItem)
+  emit('reset-data-gap-override', stayItem, overrideId)
 }
 
-const handleResetTripSplitOverride = (stayItem) => {
-  if (props.readOnly) {
+const handleResetTripSplitOverride = (stayItem, overrideId) => {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
-  emit('reset-trip-split-override', stayItem)
+  emit('reset-trip-split-override', stayItem, overrideId)
 }
 
 const handleExportTripAsGpx = async (tripItem) => {
@@ -779,7 +785,7 @@ const handleCloseMapMatchingDetails = () => {
 }
 
 const handleQuickEditMovementType = (tripItem) => {
-  if (props.readOnly) {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
@@ -793,6 +799,10 @@ const handleCloseQuickEditDialog = () => {
 }
 
 const handleConvertDataGapToStay = (dataGapItem) => {
+  if (effectiveReadOnly.value) {
+    showReadOnlyToast()
+    return
+  }
   selectedDataGapForConversion.value = dataGapItem
   dataGapConversionDialogVisible.value = true
 }
@@ -807,7 +817,7 @@ const handleDataGapConverted = () => {
 }
 
 const handleSplitTripWithStay = (tripItem) => {
-  if (props.readOnly) {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }

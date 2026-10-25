@@ -49,6 +49,53 @@ const options = {
 
 const toastSeverities = () => mocks.toastAdd.mock.calls.map(([toast]) => toast.severity)
 
+describe('useTimelineRegeneration.trackCorrectionRegeneration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.checkActiveJob.mockResolvedValue({ hasActiveJob: false, jobId: null })
+  })
+
+  it('reports a queued correction without reloading the stale timeline', async () => {
+    const onCompleted = vi.fn()
+    const { trackCorrectionRegeneration, currentJobId } = useTimelineRegeneration()
+
+    await trackCorrectionRegeneration(
+      { timelineJobId: null, timelineJobQueued: true },
+      { onCompleted, failedDetail: 'failed' }
+    )
+
+    expect(onCompleted).not.toHaveBeenCalled()
+    expect(mocks.startPolling).not.toHaveBeenCalled()
+    expect(currentJobId.value).toBeNull()
+    expect(mocks.toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'info' }))
+  })
+
+  it('reloads immediately when no regeneration is needed', async () => {
+    const onCompleted = vi.fn()
+    const { trackCorrectionRegeneration } = useTimelineRegeneration()
+
+    await trackCorrectionRegeneration(
+      { timelineJobId: null, timelineJobQueued: false },
+      { onCompleted, failedDetail: 'failed' }
+    )
+
+    expect(onCompleted).toHaveBeenCalledOnce()
+    expect(mocks.toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('follows the returned regeneration job', async () => {
+    const { trackCorrectionRegeneration, currentJobId } = useTimelineRegeneration()
+
+    await trackCorrectionRegeneration(
+      { timelineJobId: 'job-1', timelineJobQueued: false },
+      { onCompleted: vi.fn(), failedDetail: 'failed' }
+    )
+
+    expect(currentJobId.value).toBe('job-1')
+    await vi.waitFor(() => expect(mocks.startPolling).toHaveBeenCalledWith('job-1'))
+  })
+})
+
 describe('useTimelineRegeneration.withTimelineRegeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks()

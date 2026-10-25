@@ -5,6 +5,7 @@ import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useGeocodingStore } from '@/stores/geocoding'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 
 const findFavoriteById = (favoritePlaces, favoriteId) => {
   const points = favoritePlaces?.points || []
@@ -127,8 +128,8 @@ export function useTimelineLocationEditing(options = {}) {
     const locationName = stayItem.locationName || 'this location'
 
     confirm.require({
-      header: 'Rename Stay Location',
-      message: `Renaming "${locationName}" will update all stays with this name. Continue?`,
+      header: t('timeline.locationEdit.renameStayHeader'),
+      message: t('timeline.locationEdit.renameStayMessage', { name: locationName }),
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
         if (stayItem.favoriteId) {

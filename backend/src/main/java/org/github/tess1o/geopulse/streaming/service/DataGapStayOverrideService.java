@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -15,9 +16,12 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
 import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
+import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayConversionPreviewDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
@@ -73,6 +77,9 @@ public class DataGapStayOverrideService {
     private final FavoritesRepository favoritesRepository;
     private final ReverseGeocodingLocationRepository geocodingRepository;
     private final EntityManager entityManager;
+    private final TimelineUserLock userLock;
+    private final Event<TimelineDataChangedEvent> timelineDataChangedEvent;
+    private final TimelineNoteService timelineNoteService;
 
     @Inject
     public DataGapStayOverrideService(TimelineDataGapRepository dataGapRepository,
@@ -82,7 +89,10 @@ public class DataGapStayOverrideService {
                                       LocationPointResolver locationPointResolver,
                                       FavoritesRepository favoritesRepository,
                                       ReverseGeocodingLocationRepository geocodingRepository,
-                                      EntityManager entityManager) {
+                                      EntityManager entityManager,
+                                      TimelineUserLock userLock,
+                                      Event<TimelineDataChangedEvent> timelineDataChangedEvent,
+                                      TimelineNoteService timelineNoteService) {
         this.dataGapRepository = dataGapRepository;
         this.stayRepository = stayRepository;
         this.overrideRepository = overrideRepository;
@@ -91,6 +101,9 @@ public class DataGapStayOverrideService {
         this.favoritesRepository = favoritesRepository;
         this.geocodingRepository = geocodingRepository;
         this.entityManager = entityManager;
+        this.userLock = userLock;
+        this.timelineDataChangedEvent = timelineDataChangedEvent;
+        this.timelineNoteService = timelineNoteService;
     }
 
     public Optional<DataGapStayConversionPreviewDTO> previewLatestPointConversion(UUID userId, Long gapId) {
@@ -119,10 +132,19 @@ public class DataGapStayOverrideService {
                 .build());
     }
 
+    /**
+     * Turns the data gap into a stay and saves the conversion, to be re-applied after every regeneration.
+     *
+     * @throws TimelineGenerationLockException while the user's timeline is being regenerated: the conversion rewrites
+     *                                         the stored timeline around the gap, as the regeneration does
+     */
     @Transactional
     public Optional<DataGapStayOverrideResponseDTO> convertGapToStay(UUID userId,
                                                                      Long gapId,
                                                                      DataGapStayOverrideRequest request) {
+        if (!userLock.tryLock(userId)) {
+            throw new TimelineGenerationLockException(userId);
+        }
         Optional<TimelineDataGapEntity> gapOptional = dataGapRepository.findByIdAndUserId(gapId, userId);
         if (gapOptional.isEmpty()) {
             return Optional.empty();
@@ -138,6 +160,11 @@ public class DataGapStayOverrideService {
         ResolvedLocation resolvedLocation = resolveLocationForRequest(userId, strategy, request, boundaries.beforePoint());
 
         TimelineDataGapStayOverrideEntity override = upsertOverride(userId, gap, strategy, request, boundaries);
+        if (override.getSelectedFavoriteId() != null || override.getSelectedGeocodingId() != null) {
+            // The place's coordinates too: the stay is recreated there should the place be deleted.
+            override.setSelectedLatitude(resolvedLocation.latitude());
+            override.setSelectedLongitude(resolvedLocation.longitude());
+        }
         TimelineStayEntity resultingStay = applyGapConversionAndNormalize(userId, gap, resolvedLocation);
 
         override.setStay(resultingStay);
@@ -146,6 +173,12 @@ public class DataGapStayOverrideService {
         override.setDataGap(null);
 
         dataGapRepository.delete(gap);
+        // Notes waiting for a stay (an anchor without a row after a timeline rewrite) can find the new stay now,
+        // as they do after a regeneration or a split.
+        timelineNoteService.reattachAnchoredNotes(userId);
+        // Map matching, weather and visit matching follow the timeline through this event, as after a regeneration.
+        timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, resultingStay.getTimestamp(),
+                stayEnd(resultingStay), null, false));
 
         return Optional.of(toResponse(override, gapId, resultingStay, null));
     }
@@ -181,15 +214,15 @@ public class DataGapStayOverrideService {
             return 0;
         }
 
-        List<TimelineDataGapEntity> candidateGaps = dataGapRepository.findByUserId(userId);
-        if (candidateGaps.isEmpty()) {
-            return 0;
-        }
-
         Set<Long> matchedGapIds = new HashSet<>();
         int appliedCount = 0;
 
         for (TimelineDataGapStayOverrideEntity override : overrides) {
+            // Only a gap starting close to the converted one can match. Reading just those keeps a conversion whose
+            // gap is gone for good from making every regeneration read all of the user's data gaps.
+            Instant sourceStart = override.getSourceGapStartTime();
+            List<TimelineDataGapEntity> candidateGaps = dataGapRepository.findStartingBetween(userId,
+                    sourceStart.minusSeconds(maxTimestampDeltaSeconds), sourceStart.plusSeconds(maxTimestampDeltaSeconds));
             GapMatch bestMatch = findBestMatch(userId, override, candidateGaps, matchedGapIds);
             if (bestMatch == null) {
                 continue;
@@ -337,12 +370,17 @@ public class DataGapStayOverrideService {
                                                         TimelineDataGapStayOverrideEntity override,
                                                         GpsPointEntity candidateBeforePoint) {
         if (override.getLocationStrategy() == DataGapStayOverrideLocationStrategy.SELECTED_LOCATION) {
+            // The chosen place, or where it was once it has been deleted.
             DataGapStayOverrideRequest request = new DataGapStayOverrideRequest();
-            request.setFavoriteId(override.getSelectedFavoriteId());
-            request.setGeocodingId(override.getSelectedGeocodingId());
-            request.setLatitude(override.getSelectedLatitude());
-            request.setLongitude(override.getSelectedLongitude());
-            request.setLocationName(override.getSelectedLocationName());
+            if (override.getSelectedFavoriteId() != null) {
+                request.setFavoriteId(override.getSelectedFavoriteId());
+            } else if (override.getSelectedGeocodingId() != null) {
+                request.setGeocodingId(override.getSelectedGeocodingId());
+            } else {
+                request.setLatitude(override.getSelectedLatitude());
+                request.setLongitude(override.getSelectedLongitude());
+                request.setLocationName(override.getSelectedLocationName());
+            }
             return resolveSelectedLocation(userId, request);
         }
 

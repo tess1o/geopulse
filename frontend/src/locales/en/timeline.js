@@ -6,7 +6,10 @@
  */
 export default {
     locationEdit: {
-        editFavoriteHeader: 'Edit Favorite Location'
+        editFavoriteHeader: 'Edit Favorite Location',
+        renameStayHeader: 'Rename Stay Location',
+        // The rename updates the place itself, so every stay there changes, not only stays sharing its name.
+        renameStayMessage: 'Renaming "{name}" will update every stay at this place. Continue?'
     },
     notes: {
         openSingle: 'Open note',
@@ -41,6 +44,7 @@ export default {
         viewAllVisits: 'View all visits to this place',
         renamePlace: 'Rename place...',
         resetDataGap: 'Reset to automatic data gap',
+        resetDataGapOfMany: 'Reset data gap correction {index} of {count}',
         undoTripSplit: 'Undo manual trip split',
         manageNoteSingle: 'Manage note...',
         manageNotesMultiple: 'Manage notes ({count})...',
@@ -471,6 +475,8 @@ export default {
             failedDetail: 'Failed to reset the data gap override.'
         },
         resetFailedSummary: 'Reset Failed',
+        correctionQueuedSummary: 'Timeline update queued',
+        correctionQueuedDetail: 'The correction is saved. The timeline will update when the running regeneration finishes.',
         resetTripSplitOverride: {
             confirmHeader: 'Undo Trip Split',
             confirmMessage: 'Are you sure you want to undo this manual trip split?',

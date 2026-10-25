@@ -43,7 +43,7 @@
         </p>
 
         <button
-          v-if="dataGapItem.id && !dataGapItem.ongoing"
+          v-if="dataGapItem.id && !dataGapItem.ongoing && !readOnly"
           class="convert-gap-btn"
           :title="t('timeline.dataGap.convertTooltip')"
           @click.stop="handleConvertToStay"
@@ -122,6 +122,10 @@ const props = defineProps({
   allowExplanation: {
     type: Boolean,
     default: true
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -248,6 +252,7 @@ const handleClick = (event) => {
 };
 
 const handleConvertToStay = () => {
+  if (props.readOnly) return;
   emit('convert-to-stay', props.dataGapItem);
 };
 

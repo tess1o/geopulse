@@ -193,8 +193,10 @@ public class MultiUserTimelineService {
             throw new IllegalStateException("User not found: " + userId);
         }
 
-        // Fetch timeline
-        MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDb(userId, startTime, endTime);
+        // Fetch timeline as a read-only comparison view; corrections and location timezones are not needed here.
+        boolean includeLocationTimezones = false;
+        MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDbForViewer(
+                userId, startTime, endTime, includeLocationTimezones);
 
         // Calculate stats
         MultiUserTimelineDTO.TimelineStats stats = calculateStats(timeline);

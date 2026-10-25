@@ -55,7 +55,21 @@ public class StreamingTimelineAggregator {
     TimelineLocationTimezoneEnricher locationTimezoneEnricher;
 
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime) {
-        return getExistingTimelineEvents(userId, startTime, endTime);
+        return getExistingTimelineEvents(userId, startTime, endTime, true);
+    }
+
+    /**
+     * The user's timeline as shown to someone else: through a share link, to a friend, to a trip collaborator. The
+     * same stays, trips and gaps, without the user's manual corrections behind them, which only the user sees and
+     * can undo.
+     */
+    public MovementTimelineDTO getTimelineFromDbForViewer(UUID userId, Instant startTime, Instant endTime,
+                                                          boolean includeLocationTimezones) {
+        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime, false);
+        if (includeLocationTimezones) {
+            locationTimezoneEnricher.enrich(timeline);
+        }
+        return timeline;
     }
 
     /**
@@ -64,7 +78,7 @@ public class StreamingTimelineAggregator {
      */
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime,
                                                  boolean includeLocationTimezones) {
-        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime);
+        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime, true);
         if (includeLocationTimezones) {
             locationTimezoneEnricher.enrich(timeline);
         }
@@ -185,7 +199,8 @@ public class StreamingTimelineAggregator {
         }
     }
 
-    private MovementTimelineDTO getExistingTimelineEvents(UUID userId, Instant startTime, Instant endTime) {
+    private MovementTimelineDTO getExistingTimelineEvents(UUID userId, Instant startTime, Instant endTime,
+                                                          boolean includeCorrections) {
         log.debug("Retrieving existing timeline events for user {} from {} to {}", userId, startTime, endTime);
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
@@ -197,8 +212,10 @@ public class StreamingTimelineAggregator {
             TimelineStayLocationDTO stayDTO = converter.convertStayEntityToDto(stayEntity);
             timeline.getStays().add(stayDTO);
         }
-        attachDataGapOverrideMetadata(userId, timeline.getStays());
-        attachTripSplitOverrideMetadata(userId, timeline.getStays());
+        if (includeCorrections) {
+            attachDataGapOverrideMetadata(userId, timeline.getStays());
+            attachTripSplitOverrideMetadata(userId, timeline.getStays());
+        }
 
         // Get trips with boundary expansion
         var tripEntities = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
@@ -243,15 +260,16 @@ public class StreamingTimelineAggregator {
             return;
         }
 
-        Map<Long, Long> firstOverrideByStayId = new HashMap<>();
+        Map<Long, List<Long>> overridesByStayId = new HashMap<>();
         dataGapStayOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
             if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
                 return;
             }
-            firstOverrideByStayId.putIfAbsent(override.getStay().getId(), override.getId());
+            overridesByStayId.computeIfAbsent(override.getStay().getId(), ignored -> new ArrayList<>())
+                    .add(override.getId());
         });
 
-        if (firstOverrideByStayId.isEmpty()) {
+        if (overridesByStayId.isEmpty()) {
             return;
         }
 
@@ -259,7 +277,11 @@ public class StreamingTimelineAggregator {
             if (stay.getId() == null) {
                 return;
             }
-            stay.setDataGapOverrideId(firstOverrideByStayId.get(stay.getId()));
+            List<Long> overrideIds = overridesByStayId.get(stay.getId());
+            if (overrideIds != null) {
+                overrideIds.sort(Comparator.naturalOrder());
+                stay.setDataGapOverrideIds(overrideIds);
+            }
         });
     }
 

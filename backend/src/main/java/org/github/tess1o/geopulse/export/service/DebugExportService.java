@@ -24,6 +24,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -249,6 +250,7 @@ public class DebugExportService {
         counts.put("trip_movement_override_count", overrides.getTripMovementOverrides().size());
         counts.put("data_gap_stay_override_count", overrides.getDataGapStayOverrides().size());
         counts.put("trip_stay_split_override_count", overrides.getTripStaySplitOverrides().size());
+        counts.put("stay_name_override_count", overrides.getStayNameOverrides().size());
         if (timeline != null) {
             counts.put("timeline_stay_count", timeline.getStays().size());
             counts.put("timeline_trip_count", timeline.getTrips().size());
@@ -327,7 +329,12 @@ public class DebugExportService {
                 .filter(override -> range.overlaps(override.getSourceTripTimestamp(),
                         override.getSourceTripTimestamp().plusSeconds(override.getSourceTripDurationSeconds())))
                 .toList();
-        return exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides);
+        List<TimelineStayNameOverrideEntity> stayNameOverrides = dataCollectorService.collectStayNameOverrides(userId)
+                .stream()
+                .filter(override -> range.overlaps(override.getStayStartTime(), override.getStayEndTime()))
+                .toList();
+        return exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides,
+                stayNameOverrides);
     }
 
     /**
@@ -764,6 +771,9 @@ public class DebugExportService {
             override.setSourceEndLongitude(shift.longitude(override.getSourceEndLongitude()));
             override.setStayLocationName(anonymizer.location(override.getFavoriteId(), override.getGeocodingId(),
                     override.getStayLocationName()));
+        }
+        for (TimelineOverridesDataDto.StayNameOverrideDto override : overrides.getStayNameOverrides()) {
+            override.setLocationName(anonymizer.location(null, null, override.getLocationName()));
         }
     }
 
