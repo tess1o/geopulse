@@ -68,6 +68,15 @@ export const LOCALE_REGISTRY = [
         loadDayjs: () => import('dayjs/locale/uk'),
         pluralRule: ukPluralRule
     },
+    {
+        code: 'de',
+        name: 'Deutsch',
+        intl: 'de-DE',
+        status: 'draft',
+        loadCatalog: () => import('./de/index.js'),
+        loadPrimeVue: () => import('primelocale/de.json'),
+        loadDayjs: () => import('dayjs/locale/de')
+    },
     // add-locale:entries -- `npm run i18n:add` inserts new entries above this line.
 ]
 

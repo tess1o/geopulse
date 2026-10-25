@@ -1,0 +1,86 @@
+// DRAFT (Deutsch): copied from English -- translate the values, keep the keys. Progress: npm run i18n:status -- de
+/**
+ * Navigation labels.
+ *
+ * `items.*` is keyed by the stable `key` field already present on every entry in AppNavigation.vue,
+ * and route `meta.titleKey` reuses the same paths -- so a nav label and its page title can never
+ * drift apart.
+ *
+ * EN values are copied verbatim from the previous hardcoded literals: the test suite is pinned to
+ * English and asserts on exact copy, so this file is a snapshot, not an opportunity to reword.
+ */
+export default {
+    sections: {
+        timeline: 'Timeline',
+        explore: 'Explore',
+        organizeAndShare: 'Organize & Share',
+        data: 'Data',
+        administration: 'Administration'
+    },
+    items: {
+        timeline: 'Timeline',
+        dashboard: 'Dashboard',
+        'timeline-labels': 'Timeline Labels',
+        trips: 'Trip Plans',
+        'location-analytics': 'Location Analytics',
+        'journey-insights': 'Journey Insights',
+        rewind: 'Rewind',
+        'coverage-explorer': 'Coverage Explorer',
+        'ai-chat': 'AI Assistant',
+        'favorites-management': 'Favorites',
+        geofences: 'Geofences',
+        friends: 'Friends',
+        'share-links': 'Share Links',
+        profile: 'Profile',
+        notifications: 'Notifications',
+        'location-sources': 'Location Sources',
+        preferences: 'Timeline Preferences',
+        'gps-data': 'GPS Data',
+        'geocoding-management': 'Geocoding',
+        export: 'Export / Import',
+        help: 'Help & Support',
+        'admin-dashboard': 'Overview',
+        'admin-backups': 'Backups & Restore',
+        'admin-timeline-regeneration': 'Timeline Regeneration Campaigns',
+        'admin-users': 'Manage Users',
+        'admin-invitations': 'Invitations',
+        'admin-oidc-providers': 'OIDC Providers',
+        'admin-audit-logs': 'Audit Logs',
+        'admin-settings': 'System Settings'
+    },
+    theme: {
+        title: 'Theme',
+        modes: {
+            light: 'Light',
+            dark: 'Dark',
+            system: 'System'
+        }
+    },
+    // Account menu behind the avatar in the top bar.
+    userMenu: {
+        open: 'Account menu',
+        adminBadge: 'Admin',
+        // The drawer calls this page 'Overview' under its Administration header; the menu has no header.
+        adminDashboard: 'Admin Dashboard',
+        language: 'Language',
+        languageSaveFailed: 'Could not save your language preference',
+        // One-time pointer for people used to the pre-2.0 side menu (UserMenuHint.vue).
+        hint: {
+            title: 'New: your account menu',
+            body: 'Profile, timeline preferences, theme, language and logout have moved here.'
+        }
+    },
+    logout: 'Logout',
+    version: 'Version',
+    newVersionAvailable: 'New: {version} available',
+    // Browser-tab titles (route meta.titleKey) for pages with no sidebar entry of their own.
+    pageTitles: {
+        home: 'Home',
+        cityDetails: 'City Details',
+        countryDetails: 'Country Details',
+        sharedLocation: 'Shared Location',
+        sharedTimeline: 'Shared Timeline',
+        error: 'Error',
+        pageNotFound: 'Page Not Found'
+    }
+}
