@@ -368,3 +368,230 @@ reconstruction names and movement types, shared DTO hardening, multiple correcti
 
 - Area rules (“never a stay here”) and route rules (“A ↔ B is TRAIN”).
 - Rules are stored as edits with a rule kind and a scope, and are evaluated in the same applier pass.
+
+## 10. Open questions
+
+These decisions were found reviewing this design against the current generation, real-time and safety-net code. Each
+changes the schema, the applier, the API or the rollout, so it should be settled before Phase 1 implementation. The
+recommendation is a starting point, not a decision.
+
+| # | Question | Blocks |
+|---|---|---|
+| 10.1 | Anchor interval vs target interval | Schema, undo, chained edits |
+| 10.2 | Is the applier a fold or a match pass? | Applier contract, nesting |
+| 10.3 | May attributes target structurally produced events? | Conflict rules, split flow |
+| 10.4 | Does `DELETE` revert or delete? | Undo/restore, schema |
+| 10.5 | Is `SET_PLACE` attribute or structural? | Ordering, merge locks |
+| 10.6 | How are several edits on one event represented? | Schema, DTOs, panel |
+| 10.7 | Do merge locks belong to the domain model? | Merge pass, tests |
+| 10.8 | Payload versioning and interval-less rules | Schema evolution, Phase 4 |
+| 10.9 | How are manual events built without GPS points? | Phase 2 feasibility |
+| 10.10 | How do structural edits interact with data gaps? | Pass ordering, gap service |
+| 10.11 | How are edits filtered to the regeneration window? | Performance, repository |
+| 10.12 | How is the safety net made edits-aware? | Test strategy, data loss |
+| 10.13 | How does the parked/latest-only path preserve edits? | Real-time correctness |
+| 10.14 | Is the undo regeneration durable? | Write path, restart |
+| 10.15 | One explicit pass request? | Phase 1 files, testability |
+| 10.16 | Migration and coexistence per phase | Phase 1/2 scope, §7 |
+| 10.17 | Importing edits into an existing user | §6 importer |
+| 10.18 | Authorization of edit-adjacent helpers | §4, §5.5 |
+
+### 10.1 Anchor interval vs target interval
+
+`interval_start/end` is defined as "the time the user acted on", but `SET_TIMES` has a source interval and target times,
+`MERGE` covers several events, and `REMOVE_EVENT` changes neighbours outside the event's interval. Re-applying against
+the target instead of the source changes which event matches after regeneration; chained edits (edit times twice, then
+name) have the same problem.
+
+- Options: store the source/anchor interval and put target values in `payload`; add `anchor_*` and `target_*` columns;
+  store a snapshot of the source events.
+- Recommendation: store `anchor_start/end` in engine time, target values in `payload`, and an `affected_from/to` range
+  for undo and restart. State that re-anchoring always uses the anchor, never the target.
+- Decides: schema, §3.4, §3.5, undo range, chained edits.
+
+### 10.2 Is the applier a fold or a match pass?
+
+§3.4 says to re-read the events the engine produced and match each edit against them. If every edit matches the engine
+output independently, the second edit on an already-edited event (a second `SET_TIMES`, a name on a split-produced stay,
+a nested split) anchors against an event that no longer exists or against the wrong one. This is the generalized W2.
+
+- Options: match every edit against engine events; apply edits as a `seq`-ordered fold over a mutable event list.
+- Recommendation: fold. Each edit anchors against the list as left by the previous edits. Document this as the applier
+  contract, not an implementation detail.
+- Decides: applier design, conflict rules, test matrix.
+
+### 10.3 May attributes target structurally produced events?
+
+§3.6 returns `409` when a new edit overlaps an older `ACTIVE` structural edit. Read literally, naming or placing the
+stay produced by `FORCE_STAY`/`SPLIT_STAY` would be rejected — that is the existing split-with-stay flow.
+
+- Options: keep the rule and require `supersede=true` (which would remove the split); define an explicit matrix.
+- Recommendation: structural × structural conflicts/supersedes; attribute edits may target a structurally produced
+  event and order after it; same-field attributes on the same event supersede; an attribute whose target is consumed
+  by a later structural edit becomes `applied=false` or conflicts explicitly.
+- Decides: §3.6, API error semantics, UI flows.
+
+### 10.4 Does `DELETE` revert or delete?
+
+§3.1 has a `REVERTED` status and §4 has `POST /{id}/restore`, but `DELETE /timeline/edits/{id}` says it deletes the edit.
+A deleted row cannot be restored.
+
+- Options: soft revert (`status=REVERTED`, keep the row, hard-delete after a retention period); explicit `/revert` and
+  `/restore` endpoints with `DELETE` reserved for cleanup; drop restore.
+- Recommendation: soft revert. Keep the row for the corrections panel and undo; purge after a retention window or on
+  export cleanup.
+- Decides: schema, §4, undo semantics.
+
+### 10.5 Is `SET_PLACE` attribute or structural?
+
+§3.2 calls it "attribute (structural when it changes the event source)". Attributes run after merge, but changing the
+event source can turn a generated stay into a manual, merge-locked one, which merge must see.
+
+- Options: always structural (runs before merge); attribute without changing merge identity; split into `SET_PLACE`
+  (attribute) and `MAKE_MANUAL` (structural).
+- Recommendation: always structural if it can change the event source/merge lock; otherwise keep it attribute and state
+  that place changes never affect merging.
+- Decides: §3.2, §3.3, applier ordering.
+
+### 10.6 How are several edits on one event represented?
+
+§3.1 adds `edit_id`/`edit_ids` to generated events, but does not say what an id means when a structural edit produces an
+event and an attribute edit later changes it, or when a merge combines edited events.
+
+- Options: one owning edit (`edit_id`, the event producer) plus a computed `edited_by` list in the API; a join table;
+  an `edit_ids` array on the row.
+- Recommendation: `edit_id` = the edit that produced the event (null for engine events); the API exposes every active
+  edit targeting it. Keep storage simple and derive the list.
+- Decides: schema, DTOs, corrections panel.
+
+### 10.7 Do merge locks belong to the domain model?
+
+§3.3 says a `FORCE_STAY`/`MERGE` stay is `merge_locked` and is skipped by `TimelineMergeAnalysisService.canMergeStays`,
+but that method only sees domain `Stay` objects, which have no such flag.
+
+- Options: add a flag to `Stay` (and maybe `Trip`); keep a side set of locked event identities passed to the merge pass;
+  lock by edit interval in the merger.
+- Recommendation: add `mergeLocked` to the domain event (excluded from equality) and pass it through merge; specify what
+  happens when merge is disabled in config.
+- Decides: merge pass, domain model, tests.
+
+### 10.8 Payload versioning and interval-less rules
+
+`payload` is JSONB validated by sealed types, but has no schema version; Phase 4 rules have no natural interval, while
+`interval_start/end` is `NOT NULL`.
+
+- Options: add `payload_version`; keep a kind-specific version inside the payload; make the interval nullable for rules
+  or store rules in a separate table.
+- Recommendation: add `payload_version` now; either make the interval nullable for rule kinds or give rules a scope that
+  maps to an interval. Do not overload the payload silently across releases.
+- Decides: schema evolution, Phase 4.
+
+### 10.9 How are manual events built without GPS points?
+
+`FORCE_TRIP` and manual stays have no GPS path, but persistence expects rich `Trip` data: distance, duration, GPS
+statistics, altitude, water classification and movement type (`StreamingPersistenceManager.persistTripsWithGpsStats`).
+`TimelineEventFinalizationService.finalizeTripForGap` can build a trip from gap boundary points, but not from an
+arbitrary user-drawn interval.
+
+- Options: derive what is possible from points inside the interval and use explicit unknown/zero values otherwise;
+  require at least boundary points; store a manual flag and render statistics as unavailable.
+- Recommendation: specify the fallbacks and mark manual events explicitly in the API; spike this before Phase 2, since
+  it is the largest unknown in `FORCE_TRIP`.
+- Decides: Phase 2 feasibility, DTOs, UI.
+
+### 10.10 How do structural edits interact with data gaps?
+
+Data gaps are already `TimelineEvent`s in the event list (`RawTimeline.fromEvents` partitions `DATA_GAP`), so structural
+edits can carve or replace them. The remaining gap is the ongoing gap: `checkAndCreateOngoingDataGap` runs after
+persistence and can recreate a gap over a `FORCE_STAY`/`FORCE_TRIP`, or over a `REMOVE_EVENT` resolved as `GAP`.
+
+- Options: make the ongoing-gap check edit-aware and exclude edited intervals; let the applier create the gap event for
+  `REMOVE_EVENT`/`GAP`; run the ongoing-gap check before structural edits and let edits carve it.
+- Recommendation: keep gap events in the pass, have `REMOVE_EVENT`/`GAP` create a gap event, and make the post-persist
+  ongoing-gap check skip intervals claimed by an active edit.
+- Decides: pass ordering, data gap service, tests.
+
+### 10.11 How are edits filtered to the regeneration window?
+
+The applier must load only edits intersecting the regeneration window. The existing re-apply methods iterate all
+corrections for the user (`TripStaySplitOverrideService.reapplyManualOverrides`,
+`StayNameOverrideService.reapplyManualOverrides`), so a real-time pass would otherwise replay all history.
+
+- Options: query edits by interval overlap; maintain a per-window cache; apply all and filter in memory.
+- Recommendation: query by overlap with an index on `(user_id, interval_end, interval_start)`, and widen by one event on
+  each side for structural effects. Add this to §3.5 and the test plan.
+- Decides: performance, index, repository API.
+
+### 10.12 How is the safety net made edits-aware?
+
+The edits invariant names immediate, `fullRebuild` and `replayLive`. The nightly safety net is a third generation path
+that rebuilds and compares snapshots. For an edited timeline it must report `UNCHANGED`; if the applier misses an edit,
+the safety net will "correct" the timeline by removing the edit's effect.
+
+- Options: exclude edited users from the safety net; include edit ownership in the snapshot and fail loudly; add a
+  dedicated invariant test and keep the safety net.
+- Recommendation: keep the safety net, add the `UNCHANGED` invariant, and include edit ids/place/name/movement in the
+  snapshot so edit loss is detected rather than silently corrected.
+- Decides: §8 test strategy, safety net changes.
+
+### 10.13 How does the parked/latest-only path preserve edits?
+
+When a rebuild request keeps failing, `RealtimeTimelineProcessor` rebuilds only from `now` with
+`includePendingRebuild=false`. Edits anchored near the present must still apply in that path, and an edit-produced stay
+must not be deleted by cleanup.
+
+- Recommendation: apply edits in every pass, including the parked/latest-only path; add a test for an edit anchored in
+  the latest window while a request is parked.
+- Decides: §3.5 cleanup rules, real-time tests.
+
+### 10.14 Is the undo regeneration durable?
+
+Creating, reverting and restoring an edit must write the durable `timeline_rebuild_requests` row in the same
+transaction, not only schedule an async job; otherwise a restart between commit and scheduling loses the regeneration.
+
+- Recommendation: state this explicitly for all three write paths, matching the existing GPS edit/delete and override
+  reset flows.
+- Decides: §3.6, §4, reliability.
+
+### 10.15 One explicit pass request?
+
+`StreamingTimelineGenerationService` has six overloads with implicit `restartPoint`/`includePendingRebuild` defaults; the
+real-time job and safety net use `BEFORE_PREVIOUS_STAY`, while manual/async jobs use `LATEST_STAY`. The edits layer adds
+more call sites and makes this divergence harder to see.
+
+- Options: keep the overloads; add a single `TimelinePassRequest` record with required policy fields and pass the loaded
+  edits through it.
+- Recommendation: consolidate before Phase 1. Make restart policy, `includePendingRebuild`, replay mode and the edit set
+  explicit.
+- Decides: Phase 1 critical files, testability.
+
+### 10.16 Migration and coexistence per phase
+
+Phase 1 ports `SET_MOVEMENT_TYPE` and `SET_VISIT_NAME` while split/gap stay on the old tables; §7 later copies all four.
+The document does not say which model is authoritative during the window, what happens to legacy movement/name rows, or
+how relative order across the old tables is reconstructed. Current runtime order is split → movement → gap → name; the
+proposed copy order is split → gap → movement → name.
+
+- Options: keep all old tables authoritative until Phase 2 and introduce the new table read-only; per-kind backfill with
+  dual-write and snapshot comparison; migrate all four in one step.
+- Recommendation: infrastructure + one structural slice in Phase 1, old tables authoritative; migrate all four in
+  Phase 2 with a seeded equivalence test and a full regeneration.
+- Decides: Phase 1/2 scope, §7, rollback plan.
+
+### 10.17 Importing edits into an existing user
+
+`timeline_edits.json` is imported in `seq` order into a fresh user, but the document does not define import into an
+existing user, id remapping, or conflicts with existing edits.
+
+- Recommendation: define merge-vs-replace semantics, remap ids, preserve `seq` order, and reject/flag conflicts the same
+  way as create.
+- Decides: §6, importer.
+
+### 10.18 Authorization of edit-adjacent helpers
+
+The owner-only rule is stated, but the event-scoped helpers (`POST /timeline/stays/{id}/edits`, etc.) and
+`GET /timeline/location-lookup` also need the same owner/shared-timeline checks.
+
+- Recommendation: reuse one authorization helper and add contract tests for shared links, `VIEW` collaborators and the
+  demo user.
+- Decides: §4, §5.5.
