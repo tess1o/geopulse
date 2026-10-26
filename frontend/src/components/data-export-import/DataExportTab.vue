@@ -368,7 +368,7 @@
             <div class="date-range-controls">
               <div class="date-control">
                 <label for="startDate" class="date-label">{{ t('data.exportTab.startDateLabel') }}</label>
-                <Calendar
+                <DatePicker
                     id="startDate"
                     v-model="exportStartDate"
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
@@ -380,7 +380,7 @@
               </div>
               <div class="date-control">
                 <label for="endDate" class="date-label">{{ t('data.exportTab.endDateLabel') }}</label>
-                <Calendar
+                <DatePicker
                     id="endDate"
                     v-model="exportEndDate"
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"

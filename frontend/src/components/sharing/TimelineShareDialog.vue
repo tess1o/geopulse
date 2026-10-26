@@ -22,7 +22,7 @@
 
       <div class="field">
         <label for="start-date">{{ t('sharing.timelineDialog.fields.startDate') }}</label>
-        <Calendar id="start-date" v-model="formData.start_date"
+        <DatePicker id="start-date" v-model="formData.start_date"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full" :class="{'p-invalid': errors.start_date}"
                   :placeholder="t('sharing.timelineDialog.fields.startDatePlaceholder')" />
@@ -31,7 +31,7 @@
 
       <div class="field">
         <label for="end-date">{{ t('sharing.timelineDialog.fields.endDate') }}</label>
-        <Calendar id="end-date" v-model="formData.end_date"
+        <DatePicker id="end-date" v-model="formData.end_date"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full" :class="{'p-invalid': errors.end_date}"
                   :placeholder="t('sharing.timelineDialog.fields.endDatePlaceholder')" />
@@ -40,7 +40,7 @@
 
       <div class="field">
         <label for="expires-at">{{ t('sharing.timelineDialog.fields.expiresAt') }}</label>
-        <Calendar id="expires-at" v-model="formData.expires_at"
+        <DatePicker id="expires-at" v-model="formData.expires_at"
                   dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full"
                   :placeholder="t('sharing.timelineDialog.fields.expiresAtPlaceholder')" />
@@ -183,7 +183,7 @@ import { useImmichStore } from '@/stores/immich'
 import { useTimezone } from '@/composables/useTimezone'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
 import Dropdown from 'primevue/dropdown'
 import Password from 'primevue/password'

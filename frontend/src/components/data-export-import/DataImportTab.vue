@@ -367,7 +367,7 @@
               <div v-if="enableDateFilter" class="date-filter-controls">
                 <div class="date-control">
                   <label for="importStartDate" class="date-label">{{ t('data.importTab.startDateLabel') }}</label>
-                  <Calendar
+                  <DatePicker
                       id="importStartDate"
                       v-model="importStartDate"
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"
@@ -379,7 +379,7 @@
                 </div>
                 <div class="date-control">
                   <label for="importEndDate" class="date-label">{{ t('data.importTab.endDateLabel') }}</label>
-                  <Calendar
+                  <DatePicker
                       id="importEndDate"
                       v-model="importEndDate"
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"

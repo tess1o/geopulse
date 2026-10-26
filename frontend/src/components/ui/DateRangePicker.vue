@@ -15,7 +15,7 @@
           :showWeek="false"
           :dateFormat="primeVueDatePickerFormat"
           :maxDate="maxDate"
-          :placeholder="placeholder"
+          :placeholder="inputPlaceholder"
       >
         <template #footer>
           <DateRangePresetSelect
@@ -45,7 +45,7 @@
         :showWeek="false"
         :dateFormat="primeVueDatePickerFormat"
         :maxDate="maxDate"
-        :placeholder="placeholder"
+        :placeholder="inputPlaceholder"
     >
       <template #footer>
         <DateRangePresetSelect
@@ -136,7 +136,7 @@ const props = defineProps({
   },
   manualInput: {
     type: Boolean,
-    default: false
+    default: true
   },
   pickerId: {
     type: String,
@@ -156,6 +156,11 @@ const validationMessage = ref('')
 
 const variantClass = computed(() => `date-range-picker--${props.variant}`)
 const primeVueDatePickerFormat = computed(() => timezone.getPrimeVueDatePickerFormat())
+// A typed range needs both dates in PrimeVue's exact `start - end` shape; show that shape while the
+// field is empty instead of a generic "select" prompt. Picker-only consumers keep their own copy.
+const inputPlaceholder = computed(() => (props.manualInput
+  ? timezone.getDateRangeInputPlaceholder()
+  : props.placeholder))
 
 const maxDate = computed(() => new Date())
 const periodPresetPrefix = 'period:'

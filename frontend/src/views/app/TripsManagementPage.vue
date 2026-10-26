@@ -537,15 +537,7 @@ const tripDateRangeHint = computed(() => {
   if (editingTripWasUnplanned.value) return t('trips.managementPage.dialog.dateRangeHintUnplanned')
   return t('trips.managementPage.dialog.dateRangeHintRequired')
 })
-const tripDateRangePlaceholder = computed(() => {
-  const dateTokenByFormat = {
-    MDY: 'MM/DD/YYYY',
-    DMY: 'DD/MM/YYYY',
-    YMD: 'YYYY-MM-DD'
-  }
-  const token = dateTokenByFormat[timezone.getDateFormat()] || 'MM/DD/YYYY'
-  return `${token} - ${token}`
-})
+const tripDateRangePlaceholder = computed(() => timezone.getDateRangeInputPlaceholder())
 
 const filteredTrips = computed(() => {
   let items = Array.isArray(trips.value) ? [...trips.value] : []

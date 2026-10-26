@@ -131,6 +131,7 @@ export function useTripReconstructionSegments({
       segmentType,
       startTime: resolvedStart,
       endTime: resolvedEnd,
+      endTimeEdited: false,
       locationName: '',
       locationSourceType: null,
       locationFavoriteId: null,
@@ -164,7 +165,18 @@ export function useTripReconstructionSegments({
 
     segment[field] = value
 
-    if (field === 'startTime' && value instanceof Date && !Number.isNaN(value.getTime())) {
+    if (field === 'endTime') {
+      segment.endTimeEdited = true
+    }
+
+    // The end time is a derived default (start + 30 min) until the user edits it. Once edited, it is
+    // user-owned: a later start-time change must not silently discard it.
+    if (
+      field === 'startTime'
+      && value instanceof Date
+      && !Number.isNaN(value.getTime())
+      && !segment.endTimeEdited
+    ) {
       segment.endTime = new Date(value.getTime() + 30 * 60 * 1000)
     }
 

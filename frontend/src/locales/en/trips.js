@@ -22,6 +22,8 @@ export default {
             tripOption: 'Trip',
             startTimeLabel: 'Start Time *',
             endTimeLabel: 'End Time *',
+            dateTimeInputHint: 'Tip: you can type dates and times directly into the fields.',
+            endTimeBeforeStartHint: 'End time must be after the start time.',
             locationNameLabel: 'Location Name',
             locationNamePlaceholder: 'Location will be resolved from map point',
             locationNameHint: 'Edited name is applied to the linked location source on Commit.',

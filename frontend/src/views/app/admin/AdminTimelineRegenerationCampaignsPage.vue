@@ -202,7 +202,7 @@
               id="affectedFrom"
               v-model="createForm.affectedFrom"
               showTime
-              hourFormat="24"
+              :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
               :placeholder="t('adminCampaignsAndUsers.campaignsPage.createDialog.regenerateFromPlaceholder')"
               class="w-full"

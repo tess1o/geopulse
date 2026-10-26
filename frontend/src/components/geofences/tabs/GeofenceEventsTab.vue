@@ -57,7 +57,7 @@
           <DatePicker
             v-model="customDateFrom"
             showTime
-            hourFormat="24"
+            :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
             dateFormat="yy-mm-dd"
             @update:modelValue="onCustomDateChange"
           />
@@ -68,7 +68,7 @@
           <DatePicker
             v-model="customDateTo"
             showTime
-            hourFormat="24"
+            :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
             dateFormat="yy-mm-dd"
             @update:modelValue="onCustomDateChange"
           />
@@ -335,8 +335,10 @@ import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import DatePicker from 'primevue/datepicker'
 import ProgressSpinner from 'primevue/progressspinner'
+import { useTimezone } from '@/composables/useTimezone'
 
 const { t } = useI18n()
+const timezone = useTimezone()
 
 const props = defineProps({
   events: {

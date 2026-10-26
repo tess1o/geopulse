@@ -107,7 +107,7 @@
               id="api-token-expiry"
               v-model="form.expiresAt"
               showTime
-              hourFormat="24"
+              :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
               showButtonBar
               :minDate="new Date()"
               dateFormat="yy-mm-dd"
@@ -236,6 +236,7 @@ import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useTimezone } from '@/composables/useTimezone'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 import {
@@ -251,6 +252,7 @@ const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 const router = useRouter()
+const timezone = useTimezone()
 
 const props = defineProps({
   readOnly: {

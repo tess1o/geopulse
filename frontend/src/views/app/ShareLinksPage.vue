@@ -412,12 +412,12 @@
 
             <div class="form-group">
               <label for="expires_at" class="form-label">{{ t('sharing.shareLinksPage.dialog.expiresAtLabel') }}</label>
-              <Calendar
+              <DatePicker
                   id="expires_at"
                   v-model="linkForm.expires_at"
                   :minDate="minDate"
                   showTime
-                  hourFormat="24"
+                  :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
                   :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                   class="form-input"
               />

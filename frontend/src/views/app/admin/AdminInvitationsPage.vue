@@ -236,7 +236,7 @@
               id="expiresAt"
               v-model="newInvitation.expiresAt"
               showTime
-              hourFormat="24"
+              :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
               :minDate="new Date()"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
               :placeholder="t('adminAuditInvitations.invitationsPage.createDialog.expirationDatePlaceholder')"

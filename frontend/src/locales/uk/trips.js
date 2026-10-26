@@ -21,6 +21,8 @@ export default {
             tripOption: 'Поїздка',
             startTimeLabel: 'Час початку *',
             endTimeLabel: 'Час завершення *',
+            dateTimeInputHint: 'Порада: дати й час можна вводити безпосередньо в полях.',
+            endTimeBeforeStartHint: 'Час завершення має бути пізніше часу початку.',
             locationNameLabel: 'Назва місця',
             locationNamePlaceholder: 'Місцезнаходження буде визначено з точки на карті',
             locationNameHint: 'Відредаговану назву буде застосовано до пов\'язаного джерела місцезнаходження при підтвердженні.',

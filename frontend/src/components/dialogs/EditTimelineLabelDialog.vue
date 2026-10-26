@@ -40,9 +40,9 @@
           id="dateRange"
           v-model="dateRange"
           selectionMode="range"
-          :manualInput="false"
-          dateFormat="M d, yy"
-          :placeholder="t('miscDialogs.timelineLabelForm.dateRangePlaceholder')"
+          :manualInput="true"
+          :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+          :placeholder="timezone.getDateRangeInputPlaceholder()"
           class="w-full"
           :class="{ 'p-invalid': errors.dateRange }"
           :disabled="isActiveOwnTracksTag"
@@ -117,6 +117,7 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTimelineLabel } from '@/composables/useTimelineLabel'
+import { useTimezone } from '@/composables/useTimezone'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -139,6 +140,7 @@ const emit = defineEmits(['update:visible', 'updated'])
 
 const toast = useToast()
 const store = useTimelineLabelsStore()
+const timezone = useTimezone()
 
 // Use timeline label composable
 const {

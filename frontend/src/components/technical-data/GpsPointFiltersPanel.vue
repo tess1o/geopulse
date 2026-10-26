@@ -45,7 +45,7 @@
             input-id="gps-start-date-time-input"
             v-model="startDateTime"
             show-time
-            hour-format="24"
+            :hour-format="timezone.getTimeFormat() === '12h' ? '12' : '24'"
             show-icon
             icon-display="input"
             :date-format="timezone.getPrimeVueDatePickerFormat()"
@@ -59,7 +59,7 @@
             input-id="gps-end-date-time-input"
             v-model="endDateTime"
             show-time
-            hour-format="24"
+            :hour-format="timezone.getTimeFormat() === '12h' ? '12' : '24'"
             show-icon
             icon-display="input"
             :date-format="timezone.getPrimeVueDatePickerFormat()"

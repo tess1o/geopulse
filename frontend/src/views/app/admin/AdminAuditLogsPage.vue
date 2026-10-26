@@ -21,9 +21,10 @@
               id="dateRange"
               v-model="dateRange"
               selectionMode="range"
+              :manualInput="true"
               :maxDate="new Date()"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              :placeholder="t('adminAuditInvitations.auditLogsPage.filters.dateRangePlaceholder')"
+              :placeholder="timezone.getDateRangeInputPlaceholder()"
               showButtonBar
               @update:modelValue="onFilterChange"
               class="w-full"

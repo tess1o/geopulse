@@ -632,6 +632,16 @@ export function useTimezone() {
     const getPrimeVueDatePickerFormat = () => DATE_FORMAT_PRIMEVUE[getDateFormat()]
     const getPrimeVueFirstDayOfWeek = () => DATE_FORMAT_FIRST_DAY_OF_WEEK[getDateFormat()]
 
+    /**
+     * The user's date pattern in display tokens (e.g. `MM/DD/YYYY`), for hints that explain typed input.
+     */
+    const getDateFormatPattern = () => DATE_FORMAT_PATTERNS[getDateFormat()]
+
+    /**
+     * The exact text PrimeVue accepts for a typed date range, e.g. `MM/DD/YYYY - MM/DD/YYYY`.
+     */
+    const getDateRangeInputPlaceholder = () => `${getDateFormatPattern()} - ${getDateFormatPattern()}`
+
     const formatDateLong = (date) => {
         // Handle YYYY-MM-DD strings directly in user timezone
         const dateObj = dayjs.tz(date, userTimezone.value);
@@ -1042,6 +1052,8 @@ export function useTimezone() {
         formatUrlDate,
         getPrimeVueDatePickerFormat,
         getPrimeVueFirstDayOfWeek,
+        getDateFormatPattern,
+        getDateRangeInputPlaceholder,
         timeAgo,
 
         // Location-local time

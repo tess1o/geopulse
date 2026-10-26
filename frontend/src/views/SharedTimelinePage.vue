@@ -32,12 +32,12 @@
               v-model="dateRange"
               selectionMode="range"
               class="header-datepicker"
-              :manualInput="false"
+              :manualInput="true"
               iconDisplay="input"
               showIcon
               :showOnFocus="true"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              :placeholder="t('sharing.sharedTimelinePage.dateRangePlaceholder')"
+              :placeholder="timezone.getDateRangeInputPlaceholder()"
               :minDate="shareStartDate"
               :maxDate="shareEndDate"
           />

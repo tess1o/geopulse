@@ -45,9 +45,9 @@
               <div class="form-group">
                 <label class="form-label">{{ t('data.debugExport.timeRangeLabel') }}</label>
                 <div class="date-range-selector">
-                  <Calendar
+                  <DatePicker
                       v-model="startDate"
-                      hourFormat="24"
+                      :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
                       dateFormat="yy-mm-dd"
                       :placeholder="t('data.debugExport.startDatePlaceholder')"
                       :maxDate="new Date()"
@@ -55,9 +55,9 @@
                       class="date-input"
                   />
                   <span class="date-separator">{{ t('data.debugExport.dateRangeSeparator') }}</span>
-                  <Calendar
+                  <DatePicker
                       v-model="endDate"
-                      hourFormat="24"
+                      :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
                       dateFormat="yy-mm-dd"
                       :placeholder="t('data.debugExport.endDatePlaceholder')"
                       :maxDate="new Date()"
@@ -84,11 +84,11 @@
                     class="issue-input"
                 />
                 <label class="input-label issue-time-label" for="issueTime">{{ t('data.debugExport.issueTimeLabel') }}</label>
-                <Calendar
+                <DatePicker
                     v-model="issueTime"
                     inputId="issueTime"
                     showTime
-                    hourFormat="24"
+                    :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
                     dateFormat="yy-mm-dd"
                     showButtonBar
                     :placeholder="t('data.debugExport.issueTimePlaceholder')"
@@ -263,7 +263,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
-import Calendar from 'primevue/calendar'
+import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'

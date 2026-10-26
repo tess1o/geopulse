@@ -30,8 +30,9 @@
             v-if="!isUnplannedTrip"
             v-model="selectedDateRange"
             selectionMode="range"
-            :manualInput="false"
+            :manualInput="true"
             :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+            :placeholder="timezone.getDateRangeInputPlaceholder()"
             :minDate="tripMinDate"
             :maxDate="tripMaxDate"
             @update:model-value="handleDateRangeChange"
@@ -243,7 +244,7 @@
               <DatePicker
                 id="planDate"
                 v-model="planItemForm.plannedDay"
-                :manualInput="false"
+                :manualInput="true"
                 :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                 class="w-full"
               />

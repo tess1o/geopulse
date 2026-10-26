@@ -19,6 +19,8 @@
       />
     </div>
 
+    <small class="field-hint">{{ t('trips.reconstruction.segmentsPanel.dateTimeInputHint') }}</small>
+
     <div v-if="segments.length === 0" class="segments-empty">
       {{ t('trips.reconstruction.segmentsPanel.noSegments') }}
     </div>
@@ -81,12 +83,13 @@
           </div>
 
           <div class="field-row">
-            <label>{{ t('trips.reconstruction.segmentsPanel.startTimeLabel') }}</label>
+            <label :for="startTimeInputId(segment)">{{ t('trips.reconstruction.segmentsPanel.startTimeLabel') }}</label>
             <DatePicker
+              :inputId="startTimeInputId(segment)"
               :model-value="segment.startTime"
               showTime
-              hourFormat="24"
-              :manualInput="false"
+              :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
+              :manualInput="true"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
               class="w-full"
               @update:model-value="emit('update-segment-field', index, 'startTime', $event)"
@@ -94,16 +97,21 @@
           </div>
 
           <div class="field-row">
-            <label>{{ t('trips.reconstruction.segmentsPanel.endTimeLabel') }}</label>
+            <label :for="endTimeInputId(segment)">{{ t('trips.reconstruction.segmentsPanel.endTimeLabel') }}</label>
             <DatePicker
+              :inputId="endTimeInputId(segment)"
               :model-value="segment.endTime"
               showTime
-              hourFormat="24"
-              :manualInput="false"
+              :hourFormat="timezone.getTimeFormat() === '12h' ? '12' : '24'"
+              :manualInput="true"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+              :invalid="isEndTimeInvalid(segment)"
               class="w-full"
               @update:model-value="emit('update-segment-field', index, 'endTime', $event)"
             />
+            <small v-if="isEndTimeInvalid(segment)" class="p-error">
+              {{ t('trips.reconstruction.segmentsPanel.endTimeBeforeStartHint') }}
+            </small>
           </div>
 
           <template v-if="segment.segmentType === 'STAY'">
@@ -285,6 +293,24 @@ const localizedSegmentTypeOptions = computed(() => (props.segmentTypeOptions || 
   label: option.labelKey ? t(option.labelKey) : option.label,
   value: option.value
 })))
+
+const startTimeInputId = (segment) => `trip-reconstruction-segment-${segment.id}-start-time`
+const endTimeInputId = (segment) => `trip-reconstruction-segment-${segment.id}-end-time`
+
+/**
+ * The end time is validated inline once both values are readable. Validation on Commit stays the
+ * final gate, but a start-time edit can leave a user-owned end time behind the start, and the user
+ * should see that immediately rather than only in a toast after clicking Validate.
+ */
+const isEndTimeInvalid = (segment) => {
+  const start = segment?.startTime
+  const end = segment?.endTime
+  return start instanceof Date
+    && end instanceof Date
+    && !Number.isNaN(start.getTime())
+    && !Number.isNaN(end.getTime())
+    && end <= start
+}
 
 const emit = defineEmits([
   'set-active-segment',
