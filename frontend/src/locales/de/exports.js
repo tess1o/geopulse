@@ -1,0 +1,52 @@
+/**
+ * Live progress messages for export jobs (German), sent by the backend as a MessageDescriptor;
+ * unmapped keys fall back to the backend's English `fallback` text.
+ */
+export default {
+    progressMessages: {
+        initializingCsv: 'CSV-Export wird vorbereitet …',
+        collectingTimeline: 'Zeitleistendaten werden gesammelt …',
+        exportingGpsPoints: 'GPS-Punkte werden exportiert …',
+        startingStreamGps: 'Übertragung der GPS-Daten beginnt …',
+        exportingGpsPointsCount: 'GPS-Punkte werden exportiert: {count} Datensätze',
+        finalizingCsv: 'CSV-Export wird abgeschlossen …',
+        exportCompleted: 'Export abgeschlossen',
+        initializingGeoJson: 'GeoJSON-Export wird vorbereitet …',
+        finalizingGeoJson: 'GeoJSON-Export wird abgeschlossen …',
+        streamingRecordsProgress: 'Export läuft: {written} / {total} Datensätze',
+        initializingOwnTracks: 'OwnTracks-Export wird vorbereitet …',
+        finalizingOwnTracks: 'OwnTracks-Export wird abgeschlossen …',
+        initializingGpx: 'GPX-Export wird vorbereitet …',
+        startingGpxGeneration: 'GPX-Erstellung beginnt …',
+        finalizingGpx: 'GPX-Export wird abgeschlossen …',
+        streamingRawGps: 'GPS-Rohdaten werden übertragen …',
+        streamedGpsPointsCount: '{count} GPS-Punkte übertragen …',
+        completedStreamingRawGps: '{count} GPS-Rohpunkte übertragen',
+        exportingTimelineTrips: 'Fahrten der Zeitleiste werden exportiert …',
+        exportingTimelineStays: 'Aufenthalte der Zeitleiste werden exportiert …',
+        loadingTripsAndStays: 'Fahrten und Aufenthalte werden geladen …',
+        exportingGpxFilesCount: 'GPX-Dateien werden exportiert: {processed} / {total}',
+        finalizingZip: 'ZIP-Archiv wird abgeschlossen …',
+        gpxZipExportCompleted: 'GPX-ZIP-Export abgeschlossen',
+        creatingDailyGpxFiles: '{count} GPX-Dateien pro Tag werden erstellt …',
+        createdDailyGpxFilesCount: '{created} / {total} GPX-Dateien pro Tag erstellt',
+        streamingRecordsToZipProgress: 'Übertragung: {written} Datensätze',
+        initializingExport: 'Export wird vorbereitet …',
+        addingMetadata: 'Metadaten werden hinzugefügt …',
+        exportingGpsData: 'GPS-Daten werden exportiert …',
+        exportingTimelineData: 'Zeitleistendaten werden exportiert …',
+        exportingDataGaps: 'Datenlücken werden exportiert …',
+        exportingFavorites: 'Favoriten werden exportiert …',
+        exportingReverseGeocodingData: 'Reverse-Geocoding-Daten werden exportiert …',
+        exportingTimelineLabels: 'Zeitleisten-Labels werden exportiert …',
+        exportingTimelineOverrides: 'Zeitleisten-Korrekturen werden exportiert …',
+        exportingTripWorkspace: 'Reisepläne werden exportiert …',
+        exportingNotificationTemplates: 'Benachrichtigungsvorlagen werden exportiert …',
+        exportingGeofencingRules: 'Geofence-Regeln werden exportiert …',
+        exportingNotes: 'Notizen werden exportiert …',
+        exportingWeatherSamples: 'Wetterdaten werden exportiert …',
+        exportingMapMatchingData: 'Map-Matching-Daten werden exportiert …',
+        exportingFriends: 'Freunde werden exportiert …',
+        exportingFriendPermissions: 'Freigaben für Freunde werden exportiert …'
+    }
+}
