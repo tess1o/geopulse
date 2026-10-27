@@ -2,6 +2,7 @@
   <AppLayout variant="default">
     <PageContainer :title="t('analytics.timeDigestPage.title')" :subtitle="t('analytics.timeDigestPage.subtitle')" max-width="large" :loading="isLoading">
       <template #actions>
+        <Button v-if="canPlayCinematic" :label="t('analytics.cinematicRewind.playYear', { year: selectedYear })" icon="pi pi-play-circle" @click="cinematicVisible = true" />
         <Button :label="t('analytics.timeDigestPage.exportPdf')" icon="pi pi-file-pdf" outlined :disabled="!currentDigest" @click="exportDialogVisible = true" />
       </template>
 
@@ -15,7 +16,7 @@
 
       <div v-else-if="currentDigest" class="digest-content">
         <DigestMetrics :title="displayPeriod" :metrics="currentDigest.metrics" :comparison="currentDigest.comparison" :highlights="currentDigest.highlights" />
-        <DigestMemories :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" @availability="immichAvailable = $event" />
+        <DigestMemories :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" @availability="immichAvailable = $event" @photos-change="rewindPhotosPayload = $event" />
         <DigestHighlights :highlights="currentDigest.highlights" />
         <div class="digest-feature-grid">
           <DigestTrends :chart-data="currentDigest.activityChart" :view-mode="viewMode" />
@@ -40,6 +41,13 @@
       </template>
     </Dialog>
   </AppLayout>
+
+  <CinematicRewindDialog
+    v-model:visible="cinematicVisible"
+    :year="selectedYear"
+    :digest="currentDigest"
+    :photos-payload="rewindPhotosPayload"
+  />
 </template>
 
 <script setup>
@@ -64,6 +72,7 @@ import DigestPlaces from '@/components/digest/DigestPlaces.vue'
 import DigestTrends from '@/components/digest/DigestTrends.vue'
 import DigestMilestones from '@/components/digest/DigestMilestones.vue'
 import DigestHeatmap from '@/components/digest/DigestHeatmap.vue'
+import CinematicRewindDialog from '@/components/digest/CinematicRewindDialog.vue'
 import { useDigestStore } from '@/stores/digest'
 import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
@@ -84,10 +93,18 @@ const exportDialogVisible = ref(false)
 const exporting = ref(false)
 const includePhotos = ref(false)
 const immichAvailable = ref(false)
+const cinematicVisible = ref(false)
+const rewindPhotosPayload = ref({ photos: [], settled: false })
 
 const hasError = computed(() => digestStore.hasError)
 const errorMessage = computed(() => formatApiErrorDetail(digestError.value, t('analytics.timeDigestPage.loadFailedFallback')))
 const displayPeriod = computed(() => viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value))
+const canPlayCinematic = computed(() => viewMode.value === 'yearly' && Boolean(currentDigest.value) && (
+  Number(currentDigest.value?.metrics?.tripCount || 0) > 0
+  || currentDigest.value?.topPlaces?.some((place) => Array.isArray(place?.coordinates)
+    && Number.isFinite(place.coordinates[0]) && place.coordinates[0] >= -90 && place.coordinates[0] <= 90
+    && Number.isFinite(place.coordinates[1]) && place.coordinates[1] >= -180 && place.coordinates[1] <= 180)
+))
 
 const loadDigest = async () => {
   try {
@@ -109,6 +126,8 @@ const handlePeriodChange = async (period) => {
   selectedMonth.value = period.month || selectedMonth.value
   immichAvailable.value = false
   includePhotos.value = false
+  cinematicVisible.value = false
+  rewindPhotosPayload.value = { photos: [], settled: false }
   await loadDigest()
   updateURL()
 }

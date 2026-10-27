@@ -22,6 +22,47 @@ const toTimestampMs = (value) => {
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
+export const normalizeReplayLongitude = (longitude) => {
+  if (!Number.isFinite(longitude)) return longitude
+  return ((longitude + 180) % 360 + 360) % 360 - 180
+}
+
+export const interpolateReplayLongitude = (startLongitude, endLongitude, progress) => {
+  const delta = ((endLongitude - startLongitude + 540) % 360) - 180
+  return normalizeReplayLongitude(startLongitude + (delta * clamp01(progress)))
+}
+
+// Shifts [longitude, latitude] pairs by whole turns so consecutive points never jump more than 180°,
+// letting lines and bounds cross ±180° by the short route.
+export const unwrapReplayLongitudes = (coordinates) => {
+  const points = (Array.isArray(coordinates) ? coordinates : [])
+    .map((coordinate) => [Number(coordinate?.[0]), Number(coordinate?.[1])])
+    .filter(([longitude, latitude]) => Number.isFinite(longitude) && Number.isFinite(latitude))
+  if (points.length === 0) return []
+
+  const unwrapped = [points[0]]
+  points.slice(1).forEach(([rawLongitude, latitude]) => {
+    const previousLongitude = unwrapped.at(-1)[0]
+    let longitude = rawLongitude
+    while (longitude - previousLongitude > 180) longitude -= 360
+    while (longitude - previousLongitude < -180) longitude += 360
+    unwrapped.push([longitude, latitude])
+  })
+  return unwrapped
+}
+
+export const buildAntimeridianReplayBounds = (coordinates) => {
+  const unwrapped = unwrapReplayLongitudes(coordinates)
+  if (unwrapped.length === 0) return null
+
+  const longitudes = unwrapped.map(([longitude]) => longitude)
+  const latitudes = unwrapped.map(([, latitude]) => latitude)
+  return [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)]
+  ]
+}
+
 const resolveBearingDegrees = (startPoint, endPoint) => {
   const startLatitude = toFiniteNumber(startPoint?.latitude)
   const startLongitude = toFiniteNumber(startPoint?.longitude)
@@ -315,7 +356,7 @@ export const resolveTripReplayCursor = (timeline, elapsedMs) => {
   const endPoint = timeline.points[segmentIndex + 1]
 
   const latitude = startPoint.latitude + ((endPoint.latitude - startPoint.latitude) * segmentProgress)
-  const longitude = startPoint.longitude + ((endPoint.longitude - startPoint.longitude) * segmentProgress)
+  const longitude = interpolateReplayLongitude(startPoint.longitude, endPoint.longitude, segmentProgress)
 
   const altitude = (
     Number.isFinite(startPoint.altitude) && Number.isFinite(endPoint.altitude)

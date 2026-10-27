@@ -116,6 +116,14 @@ export const useDigestStore = defineStore('digest', {
             }
         },
 
+        async fetchYearlyReplay(year) {
+            try {
+                return await apiService.get('/digests/yearly-replay', { year })
+            } catch (error) {
+                throw normalizeApiError(error, 'Failed to load cinematic Rewind')
+            }
+        },
+
         // Clear all caches
         clearCache() {
             this.monthlyDigests = {}

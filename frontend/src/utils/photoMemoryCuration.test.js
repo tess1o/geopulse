@@ -1,4 +1,9 @@
-import { getPhotoQualityScore, selectTimeSpreadPhotoMemories, shufflePhotoMemories } from './photoMemoryCuration'
+import {
+  getPhotoQualityScore,
+  selectTimeSpreadPhotoMemories,
+  selectTripPhotos,
+  shufflePhotoMemories
+} from './photoMemoryCuration'
 
 const formatDay = (takenAt) => takenAt.slice(0, 10)
 
@@ -37,5 +42,60 @@ describe('photo memory curation', () => {
     }))
 
     expect(shufflePhotoMemories(photos).map((photo) => photo.id).sort()).toEqual(photos.map((photo) => photo.id).sort())
+  })
+
+  describe('trip photos', () => {
+    // Kraków → Sofia by car, 10 March 08:00–16:00 UTC.
+    const trip = {
+      startTime: '2026-03-10T08:00:00Z',
+      endTime: '2026-03-10T16:00:00Z',
+      path: [{ latitude: 50.06, longitude: 19.94 }, { latitude: 42.696, longitude: 23.31 }]
+    }
+    const photo = (id, takenAt, extra = {}) => ({ id, takenAt, width: 1600, height: 1200, ...extra })
+    const inSofia = { latitude: 42.6962, longitude: 23.3101 }
+    const ids = (photos) => photos.map((entry) => entry.id)
+
+    it('takes the photos of the visit, not only of the drive: destination photos from the next 48 h count', () => {
+      const photos = [
+        photo('arrival-evening', '2026-03-10T17:40:00Z', inSofia),
+        photo('next-morning', '2026-03-11T06:05:00Z', inSofia),
+        photo('day-two-evening', '2026-03-11T20:05:00Z', inSofia),
+        photo('too-late', '2026-03-12T17:00:00Z', inSofia),
+        photo('back-in-krakow', '2026-03-11T10:00:00Z', { latitude: 50.06, longitude: 19.94 }),
+        photo('no-geotag-after', '2026-03-10T18:00:00Z'),
+        photo('before-leaving', '2026-03-10T07:00:00Z', inSofia)
+      ]
+
+      expect(ids(selectTripPhotos(trip, photos))).toEqual(['arrival-evening', 'next-morning', 'day-two-evening'])
+    })
+
+    it('includes photos taken during the trip, geotagged or not', () => {
+      const photos = [photo('from-the-passenger-seat', '2026-03-10T11:00:00Z'), photo('arrival', '2026-03-10T17:00:00Z', inSofia)]
+
+      expect(ids(selectTripPhotos(trip, photos))).toEqual(['from-the-passenger-seat', 'arrival'])
+    })
+
+    it('picks four spread over the photographed time rather than one burst, in the order they were taken', () => {
+      // A burst of six shots on arrival, then one photo each on the next day.
+      const burst = Array.from({ length: 6 }, (_, index) => photo(`burst-${index}`, `2026-03-10T16:3${index}:00Z`, inSofia))
+      const photos = [
+        ...burst,
+        photo('morning', '2026-03-11T06:00:00Z', { ...inSofia, isFavorite: true }),
+        photo('noon', '2026-03-11T12:00:00Z', inSofia),
+        photo('evening', '2026-03-11T20:00:00Z', inSofia)
+      ]
+
+      expect(ids(selectTripPhotos(trip, photos))).toEqual(['burst-0', 'morning', 'noon', 'evening'])
+    })
+
+    it('never takes photos from elsewhere in the month, and skips photos used by another trip', () => {
+      const photos = [
+        photo('day-before', '2026-03-09T12:00:00Z', inSofia),
+        photo('weeks-later', '2026-03-25T12:00:00Z', inSofia),
+        photo('used', '2026-03-10T17:00:00Z', inSofia)
+      ]
+
+      expect(selectTripPhotos(trip, photos, new Set(['used']))).toEqual([])
+    })
   })
 })

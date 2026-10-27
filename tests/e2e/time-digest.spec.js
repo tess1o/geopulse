@@ -368,6 +368,74 @@ test.describe('Time Digest', () => {
         expect(highlights.length).toBeGreaterThan(0);
       }
     });
+
+    test('should play, seek, and close a map-only cinematic Rewind', async ({page, isolatedUsers, dbManager}) => {
+      await page.addInitScript(() => {
+        window.__GP_E2E_MAP_DEBUG_ENABLED__ = true;
+      });
+      await openSeededYearlyRewind(page, isolatedUsers, dbManager);
+      await page.getByRole('button', {name: 'Play 2024 Rewind'}).click();
+
+      await expect(page.locator('.cinematic-player')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => (
+        window.__GP_E2E_MAPS?.['cinematic-rewind-map']?.getProjection?.()?.type
+      )), {timeout: 15000}).toBe('globe');
+
+      await page.getByRole('button', {name: 'Pause'}).click();
+      await page.getByRole('button', {name: 'Next scene'}).click();
+      await page.getByRole('button', {name: 'Next scene'}).click();
+      await expect(page.locator('.cinematic-card--chapter')).toContainText('January');
+      await expect(page.locator('.cinematic-months button[aria-current="step"]')).toHaveText('Jan');
+      // intro 3 s + overview 3 s, then the January trip runs from 6 s to 13 s of a 17 s film.
+      await page.locator('.cinematic-controls input[type="range"]').fill(String(Math.round(9500 / 17000 * 1000)));
+      await expect(page.locator('.cinematic-card--caption h2')).toHaveText('January');
+      await expect(page.locator('.cinematic-card--caption')).toContainText('Car');
+      await expect(page.locator('.cinematic-photo')).toHaveCount(0);
+      await page.locator('.cinematic-controls input[type="range"]').fill('750');
+      await page.getByRole('button', {name: 'Close cinematic Rewind'}).click();
+      await expect(page.locator('.cinematic-player')).toBeHidden();
+    });
+
+    test('should play the trip\'s Immich photos while travelling in a cinematic Rewind', async ({page, isolatedUsers, dbManager}) => {
+      await mockImmichRewindPhotos(page, [
+        // Taken during the 08:00–10:00 drive, and in Lviv an hour after arrival.
+        {id: 'on-the-way', takenAt: '2024-01-10T09:00:00Z'},
+        {id: 'in-lviv', takenAt: '2024-01-10T11:00:00Z', latitude: 49.842, longitude: 24.031}
+      ]);
+      await openSeededYearlyRewind(page, isolatedUsers, dbManager);
+      await page.getByRole('button', {name: 'Play 2024 Rewind'}).click();
+
+      await expect(page.locator('.cinematic-player')).toBeVisible();
+      await page.getByRole('button', {name: 'Pause'}).click();
+      // The January trip runs from 6 s to 13 s of a 17 s film: it flies in until 7.5 s and travels until 11 s,
+      // showing each of the two photos for 1.75 s; both stay in the strip on the finished route.
+      const scrubber = page.locator('.cinematic-controls input[type="range"]');
+      await scrubber.fill(String(Math.round(8000 / 17000 * 1000)));
+      await expect(page.locator('.cinematic-reel-current img')).toHaveAttribute('src', /^blob:/);
+      await expect(page.locator('.cinematic-reel-strip li')).toHaveCount(1);
+
+      await scrubber.fill(String(Math.round(12000 / 17000 * 1000)));
+      await expect(page.locator('.cinematic-reel-strip li')).toHaveCount(2);
+      await expect(page.locator('.cinematic-card--caption h2')).toHaveText('January');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.cinematic-player')).toBeHidden();
+    });
+
+    test('should explain that cinematic Rewind needs WebGL', async ({page, isolatedUsers, dbManager}) => {
+      await page.addInitScript(() => {
+        const getContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+          return String(type).includes('webgl') ? null : getContext.call(this, type, ...args);
+        };
+      });
+      await openSeededYearlyRewind(page, isolatedUsers, dbManager);
+      await page.getByRole('button', {name: 'Play 2024 Rewind'}).click();
+
+      await expect(page.locator('.cinematic-player')).toContainText('3D Rewind is not supported on this device.', {timeout: 15000});
+      await expect(page.locator('.cinematic-controls')).toHaveCount(0);
+      await page.getByRole('button', {name: 'Close cinematic Rewind'}).click();
+      await expect(page.locator('.cinematic-player')).toBeHidden();
+    });
   });
 
   test.describe('Data Integration and Consistency', () => {
@@ -630,6 +698,80 @@ async function insertMonthlyDigestTestDataWithMilestones(dbManager, userId, year
       'CAR'
     ]);
   }
+}
+
+const CINEMATIC_REPLAY_2024 = {
+  year: 2024,
+  trips: [{
+    id: 1,
+    startTime: '2024-01-10T08:00:00Z',
+    endTime: '2024-01-10T10:00:00Z',
+    tripDuration: 7200,
+    distanceMeters: 180000,
+    movementType: 'CAR',
+    startLatitude: 50.45,
+    startLongitude: 30.52,
+    endLatitude: 49.84,
+    endLongitude: 24.03,
+    path: [
+      {latitude: 50.45, longitude: 30.52, timestamp: '2024-01-10T08:00:00Z'},
+      {latitude: 49.84, longitude: 24.03, timestamp: '2024-01-10T10:00:00Z'}
+    ]
+  }]
+};
+
+// Logs in a fresh user with a seeded 2024 digest and a one-trip cinematic replay, and opens the yearly Rewind.
+async function openSeededYearlyRewind(page, isolatedUsers, dbManager) {
+  const loginPage = new LoginPage(page);
+  const digestPage = new TimeDigestPage(page);
+  const testUser = await isolatedUsers.create(page);
+  await loginPage.navigate();
+  await loginPage.login(testUser.email, testUser.password);
+  await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+  const user = await dbManager.getUserByEmail(testUser.email);
+  await insertYearlyDigestTestData(dbManager, user.id, 2024);
+  await page.route('**/api/v1/digests/yearly-replay*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(CINEMATIC_REPLAY_2024)
+  }));
+
+  await digestPage.navigate(2024, null, 'yearly');
+  await digestPage.waitForLoadingComplete();
+}
+
+// Serves `photos` as the year's Immich photos, each as a 1×1 PNG.
+async function mockImmichRewindPhotos(page, photos) {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.route('**/api/v1/integrations/immich', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({serverUrl: 'http://immich.test', enabled: true})
+  }));
+  await page.route('**/api/v1/integrations/immich/photos/search*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      totalCount: photos.length,
+      photos: photos.map(({id, takenAt, latitude = null, longitude = null}) => ({
+        id,
+        takenAt,
+        latitude,
+        longitude,
+        width: 1200,
+        height: 800,
+        thumbnailUrl: `/api/v1/integrations/immich/photos/${id}/thumbnail`,
+        previewUrl: `/api/v1/integrations/immich/photos/${id}/preview`,
+        downloadUrl: `/api/v1/integrations/immich/photos/${id}/download`
+      }))
+    })
+  }));
+  await page.route('**/api/v1/integrations/immich/photos/*/*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: png
+  }));
 }
 
 async function insertYearlyDigestTestData(dbManager, userId, year) {

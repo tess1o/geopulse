@@ -31,6 +31,7 @@ import {
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
 import { MUTED_DAY_OPACITY } from '@/maps/shared/pathDayColoring'
+import { buildAntimeridianReplayBounds } from '@/maps/shared/tripReplayMath'
 import {
   HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
   HIGHLIGHTED_TRIP_LINE_WEIGHT,
@@ -348,10 +349,8 @@ const fitHighlightedTripBounds = (lineCoordinates) => {
     return
   }
 
-  const bounds = new maplibregl.LngLatBounds(lineCoordinates[0], lineCoordinates[0])
-  lineCoordinates.forEach((coord) => {
-    bounds.extend(coord)
-  })
+  const bounds = buildAntimeridianReplayBounds(lineCoordinates)
+  if (!bounds) return
 
   props.map.fitBounds(bounds, {
     // Extra room at the bottom keeps the route clear of the docked trip summary

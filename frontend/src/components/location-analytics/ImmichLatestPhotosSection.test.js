@@ -119,17 +119,20 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     const disabled = mountSection()
     await flushPromises()
     expect(disabled.find('.immich-photos-card').exists()).toBe(false)
+    expect(disabled.emitted('latest-photos-settled')).toContainEqual([[]])
 
     configured = true
     searchPhotos.mockResolvedValueOnce({ totalCount: 0, photos: [] })
     const empty = mountSection()
     await flushPromises()
     expect(empty.find('.immich-photos-card').exists()).toBe(false)
+    expect(empty.emitted('latest-photos-settled')).toContainEqual([[]])
 
     searchPhotos.mockRejectedValueOnce(new Error('Immich unavailable'))
     const unavailable = mountSection()
     await flushPromises()
     expect(unavailable.find('.immich-photos-card').exists()).toBe(false)
+    expect(unavailable.emitted('latest-photos-settled')).toContainEqual([[]])
   })
 
   it('keeps standard shared galleries on the existing photo-search contract', async () => {

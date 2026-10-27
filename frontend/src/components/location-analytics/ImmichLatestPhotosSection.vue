@@ -258,7 +258,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['latest-photos-change', 'map-markers-change', 'show-on-map'])
+const emit = defineEmits(['latest-photos-change', 'latest-photos-settled', 'map-markers-change', 'show-on-map'])
 
 const toast = useToast()
 const immichStore = useImmichStore()
@@ -942,6 +942,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
     if (requestToken === latestRequestToken) {
       latestPhotosLoading.value = false
       latestPhotosLoadingMode.value = null
+      emit('latest-photos-settled', latestPhotos.value)
     }
   }
 }
@@ -1054,6 +1055,9 @@ const ensureImmichConfig = async () => {
     console.warn('Failed to fetch Immich config:', err)
   } finally {
     immichConfigChecked.value = true
+    if (!immichStore.isConfigured) {
+      emit('latest-photos-settled', [])
+    }
   }
 }
 
@@ -1281,6 +1285,9 @@ watch(
   async ([visible]) => {
     resetPhotoState()
     if (!visible || !hasValidSearchParams.value) {
+      if (immichConfigChecked.value) {
+        emit('latest-photos-settled', [])
+      }
       return
     }
     const requests = [fetchLatestPhotos({ append: false, mode: 'initial' })]

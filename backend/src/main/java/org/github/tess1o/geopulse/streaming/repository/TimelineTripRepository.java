@@ -33,6 +33,12 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 userId, from, to).list();
     }
 
+    /** The user's trips starting in {@code [from, toExclusive)}, oldest first. */
+    public List<TimelineTripEntity> findStartedBetween(UUID userId, Instant from, Instant toExclusive) {
+        return find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3 order by timestamp",
+                userId, from, toExclusive).list();
+    }
+
     public Optional<TimelineTripEntity> findLatestByUserIdAtOrBefore(UUID userId, Instant timestamp) {
         return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
                 .firstResultOptional();

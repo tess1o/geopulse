@@ -1,12 +1,12 @@
 <template>
   <ImmichLatestPhotosSection
-    class="digest-memories"
     :title="t('analytics.digest.memories.title')"
     presentation="rewind"
     :search-params="periodParams"
     :show-on-map-enabled="false"
     :load-map-markers="false"
-    @latest-photos-change="emit('availability', $event.length > 0)"
+    @latest-photos-change="handlePhotosChange"
+    @latest-photos-settled="handlePhotosSettled"
   />
 </template>
 
@@ -24,8 +24,16 @@ const props = defineProps({
   month: { type: Number, default: null }
 })
 
-const emit = defineEmits(['availability'])
+const emit = defineEmits(['availability', 'photos-change'])
 const timezone = useTimezone()
+const handlePhotosChange = (photos) => {
+  emit('availability', photos.length > 0)
+  emit('photos-change', { photos, settled: false })
+}
+const handlePhotosSettled = (photos) => {
+  emit('availability', photos.length > 0)
+  emit('photos-change', { photos, settled: true })
+}
 const periodParams = computed(() => {
   const start = props.viewMode === 'monthly'
     ? timezone.create(`${props.year}-${String(props.month).padStart(2, '0')}-01`)

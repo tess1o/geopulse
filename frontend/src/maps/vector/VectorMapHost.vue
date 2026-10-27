@@ -51,6 +51,11 @@ const props = defineProps({
     type: String,
     default: null
   },
+  // A MapLibre style (URL or style object) used instead of the profile's style, which then no longer follows it.
+  styleOverride: {
+    type: [String, Object],
+    default: null
+  },
   mapRenderMode: {
     type: String,
     default: null
@@ -420,7 +425,7 @@ const createMapInstance = () => {
 
   const options = {
     container: props.mapId,
-    style: source.styleUrl,
+    style: props.styleOverride || source.styleUrl,
     center: initialCenter,
     zoom: Number.isFinite(props.zoom) ? props.zoom : 13,
     attributionControl: true,
@@ -659,7 +664,7 @@ watch(() => props.zoom, (newZoom) => {
 watch(
   () => [props.customStyleUrl, props.isSharedView, authStore.customMapStyleUrl],
   ([customStyleUrl, isSharedView, authCustomStyle], [prevCustomStyleUrl, prevIsSharedView, prevAuthCustomStyle]) => {
-    if (!map.value) {
+    if (!map.value || props.styleOverride) {
       return
     }
 
