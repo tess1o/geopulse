@@ -61,20 +61,20 @@
         <div v-if="projectionFallback && !unsupported" class="cinematic-notice">
           {{ t('analytics.cinematicRewind.mercatorFallback') }}
         </div>
-        <div v-if="buffering && !unsupported" class="cinematic-buffering">
+        <div v-if="(buffering || waitingForPhotos) && !unsupported" class="cinematic-buffering">
           <i class="pi pi-spin pi-spinner"></i>
-          {{ t('analytics.cinematicRewind.loadingMap') }}
+          {{ buffering ? t('analytics.cinematicRewind.loadingMap') : t('analytics.cinematicRewind.loadingPhotos') }}
         </div>
 
         <Transition name="cinematic-card" mode="out-in">
         <section v-if="currentScene?.type === 'intro'" :key="currentSceneIndex" class="cinematic-card cinematic-card--hero">
-          <p>{{ t('analytics.cinematicRewind.yourYear') }}</p>
-          <h1>{{ year }}</h1>
+          <p>{{ isMonthly ? t('analytics.cinematicRewind.yourMonth') : t('analytics.cinematicRewind.yourYear') }}</p>
+          <h1>{{ periodTitle }}</h1>
           <span>{{ t('analytics.cinematicRewind.introSummary', { distance: formatDistanceRounded(metrics.totalDistance || 0), trips: metrics.tripCount || 0 }) }}</span>
         </section>
 
         <section v-else-if="currentScene?.type === 'overview'" :key="currentSceneIndex" class="cinematic-card cinematic-card--caption">
-          <p>{{ t('analytics.cinematicRewind.overview') }}</p>
+          <p>{{ isMonthly ? t('analytics.cinematicRewind.overviewMonth') : t('analytics.cinematicRewind.overview') }}</p>
           <h2>{{ t('analytics.cinematicRewind.placesAndRoutes', { places: metrics.citiesVisited || 0, trips: metrics.tripCount || 0 }) }}</h2>
         </section>
 
@@ -83,16 +83,14 @@
           :key="`${currentSceneIndex}-chapter`"
           class="cinematic-card cinematic-card--chapter"
         >
-          <h1>{{ formatMonthLabel(currentScene.trip.startTime) }}</h1>
+          <h1>{{ chapterLabel(currentScene.trip) }}</h1>
+          <p v-if="tripTitle(currentScene.trip)">{{ tripTitle(currentScene.trip) }}</p>
         </section>
 
         <section v-else-if="currentScene?.type === 'trip'" :key="currentSceneIndex" class="cinematic-card cinematic-card--caption">
-          <h2>{{ formatMonthLabel(currentScene.trip.startTime) }}</h2>
-          <span>
-            {{ movementLabel(currentScene.trip.movementType) }}
-            · {{ formatDistanceRounded(currentScene.trip.distanceMeters || 0) }}
-            · {{ formatDuration(currentScene.trip.tripDuration || 0) }}
-          </span>
+          <h2>{{ chapterLabel(currentScene.trip) }}</h2>
+          <p v-if="tripTitle(currentScene.trip)" class="cinematic-route">{{ tripTitle(currentScene.trip) }}</p>
+          <span>{{ tripDetails(currentScene.trip) }}</span>
         </section>
 
         <section v-else-if="currentScene?.type === 'place'" :key="currentSceneIndex" class="cinematic-card cinematic-card--caption">
@@ -102,7 +100,7 @@
         </section>
 
         <section v-else-if="currentScene?.type === 'closing'" :key="currentSceneIndex" class="cinematic-card cinematic-card--hero">
-          <p>{{ t('analytics.cinematicRewind.yearInMotion') }}</p>
+          <p>{{ isMonthly ? t('analytics.cinematicRewind.monthInMotion') : t('analytics.cinematicRewind.yearInMotion') }}</p>
           <h1>{{ formatDistanceRounded(metrics.totalDistance || 0) }}</h1>
           <span>{{ t('analytics.cinematicRewind.closingSummary', { cities: metrics.citiesVisited || 0, trips: metrics.tripCount || 0, days: metrics.activeDays || 0 }) }}</span>
         </section>
@@ -111,10 +109,15 @@
         <figure v-if="photoReel" class="cinematic-reel">
           <Transition name="cinematic-reel-photo" mode="out-in">
             <div :key="photoReel.current.photo.id" class="cinematic-reel-current">
-              <div class="cinematic-photo-frame">
-                <img :src="photoReel.current.url" :alt="t('analytics.cinematicRewind.photoAlt', { month: formatMonthLabel(currentScene.trip.startTime) })">
-              </div>
-              <figcaption>{{ formatPhotoDate(photoReel.current.photo.takenAt) }}</figcaption>
+              <button
+                type="button"
+                class="cinematic-photo-frame"
+                :aria-label="t('analytics.cinematicRewind.openPhoto')"
+                @click="openPhoto(photoReel.index)"
+              >
+                <img :src="photoReel.current.url" :alt="photoAlt">
+              </button>
+              <p class="cinematic-photo-caption">{{ formatPhotoDate(photoReel.current.photo.takenAt) }}</p>
             </div>
           </Transition>
           <ol v-if="photoReel.total > 1" class="cinematic-reel-strip" :aria-label="t('analytics.cinematicRewind.photoCount', { current: photoReel.index + 1, total: photoReel.total })">
@@ -123,20 +126,27 @@
               :key="entry.photo.id"
               :class="{ current: index === photoReel.index }"
             >
-              <img :src="entry.url" alt="">
+              <button type="button" :aria-label="t('analytics.cinematicRewind.openPhoto')" @click="openPhoto(index)">
+                <img :src="entry.url" alt="">
+              </button>
             </li>
           </ol>
         </figure>
 
-        <nav v-if="!unsupported" class="cinematic-months" :aria-label="t('analytics.cinematicRewind.months')">
+        <nav
+          v-if="!unsupported"
+          class="cinematic-months"
+          :style="{ '--chapter-count': chapterStrip.length }"
+          :aria-label="isMonthly ? t('analytics.cinematicRewind.chapters') : t('analytics.cinematicRewind.months')"
+        >
           <button
-            v-for="entry in monthStrip"
-            :key="entry.month"
+            v-for="entry in chapterStrip"
+            :key="entry.chapter"
             type="button"
-            :class="{ 'has-trip': entry.scene, active: entry.month === activeMonth }"
+            :class="{ 'has-trip': entry.scene, active: entry.chapter === activeChapter }"
             :disabled="!entry.scene"
             :aria-label="t('analytics.cinematicRewind.jumpToMonth', { month: entry.name })"
-            :aria-current="entry.month === activeMonth ? 'step' : undefined"
+            :aria-current="entry.chapter === activeChapter ? 'step' : undefined"
             @click="seekToMs(entry.scene.startMs)"
           >
             {{ entry.short }}
@@ -165,6 +175,14 @@
       </template>
     </div>
   </Dialog>
+
+  <PhotoViewerDialog
+    v-model:visible="viewerVisible"
+    :photos="viewerPhotos"
+    :initial-photo-index="viewerIndex"
+    :allow-show-on-map="false"
+    :preloaded-blob-url-resolver="(photoId) => photoUrls.get(photoId)"
+  />
 </template>
 
 <script setup>
@@ -174,9 +192,10 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import BaseMap from '@/components/maps/BaseMap.vue'
+import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import { useDigestStore } from '@/stores/digest'
 import { useTimezone } from '@/composables/useTimezone'
-import { buildCinematicStory, useCinematicRewind } from '@/composables/useCinematicRewind'
+import { PLACE_PHOTO_WINDOW, buildCinematicStory, isValidRewindPlace, useCinematicRewind } from '@/composables/useCinematicRewind'
 import { buildTripReplayTimeline, resolveTripReplayCursor, unwrapReplayLongitudes } from '@/maps/shared/tripReplayMath'
 import {
   buildCinematicCameraPlan,
@@ -206,6 +225,8 @@ import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 const props = defineProps({
   visible: { type: Boolean, default: false },
   year: { type: Number, required: true },
+  // The month of a monthly Rewind; null plays the whole year.
+  month: { type: Number, default: null },
   digest: { type: Object, default: () => ({}) },
   photosPayload: { type: Object, default: () => ({ photos: [], settled: true }) }
 })
@@ -226,7 +247,11 @@ const projectionFallback = ref(false)
 const photoUrls = ref(new Map())
 // The photos the film was opened with; later gallery updates must not rebuild (and restart) the story.
 const sessionPhotos = ref(null)
-const photosReady = ref(false)
+// Per scene index: 'loading' or 'done'. Photos load a few scenes ahead of the film rather than all up front.
+const scenePhotoStatus = ref(new Map())
+const viewerVisible = ref(false)
+const viewerPhotos = ref([])
+const viewerIndex = ref(0)
 const reducedMotion = ref(false)
 let loadToken = 0
 let photoLoadToken = 0
@@ -244,6 +269,10 @@ const initialMapCenter = ref([0, 0])
 const TILE_STALL_MS = 900
 const TILE_WAIT_MAX_MS = 2500
 const INITIAL_IDLE_MAX_MS = 4000
+// Immich can stall on an asset; a photo it has not served by then is left out rather than holding the film.
+const PHOTO_PRELOAD_MAX_MS = 8000
+// The scene playing and the next scenes with photos that load alongside it.
+const PHOTO_LOOKAHEAD_SCENES = 2
 // The user's own map look: the tiles of their timeline map and the path colours, width and outline of
 // Profile → Appearance (the trip being replayed uses the highlighted-trip colour).
 const appearance = useMapAppearance()
@@ -276,8 +305,12 @@ const story = computed(() => buildCinematicStory({
   topPlaces: topPlaces.value,
   photos: sessionPhotos.value || []
 }))
-const hasStoryContent = computed(() => (replayData.value?.trips?.length || 0) > 0 || topPlaces.value.some(validTopPlace))
-const controllerReady = computed(() => props.visible && mapReady.value && initialMapIdle.value && photosReady.value && !unsupported.value)
+const hasStoryContent = computed(() => (replayData.value?.trips?.length || 0) > 0 || topPlaces.value.some(isValidRewindPlace))
+const controllerReady = computed(() => props.visible && mapReady.value && initialMapIdle.value && sessionPhotos.value !== null && !unsupported.value)
+const scenePhotos = (scene) => (scene?.photos || []).filter((photo) => photo?.id && (photo.previewUrl || photo.thumbnailUrl))
+// Read lazily by the film clock, after useCinematicRewind below has defined the current scene.
+const currentScenePhotosReady = computed(() => scenePhotos(currentScene.value).length === 0
+  || scenePhotoStatus.value.get(currentSceneIndex.value) === 'done')
 const {
   elapsedMs,
   isPlaying,
@@ -295,7 +328,12 @@ const {
   seekToMs,
   seekToRatio,
   setBuffering
-} = useCinematicRewind({ story, ready: controllerReady })
+} = useCinematicRewind({ story, ready: controllerReady, hold: computed(() => !currentScenePhotosReady.value) })
+const waitingForPhotos = computed(() => isPlaying.value && !currentScenePhotosReady.value)
+
+const isMonthly = computed(() => Number.isInteger(props.month))
+const midMonth = (month) => `${props.year}-${String(month).padStart(2, '0')}-15T12:00:00Z`
+const periodTitle = computed(() => isMonthly.value ? timezone.format(midMonth(props.month), 'MMMM YYYY') : String(props.year))
 
 const activeTimeline = computed(() => currentScene.value?.type === 'trip'
   ? buildTripReplayTimeline(currentScene.value.trip.path, {
@@ -310,43 +348,77 @@ const activeCursor = computed(() => activeTimeline.value
   : null)
 // The trip's photos play one after another, large, while the camera travels to the destination; a strip below
 // collects each one as it appears and stays for the rest on the finished route.
+// A place's photos play the same way once the camera has arrived.
+const photoWindow = (scene) => {
+  if (scene?.type === 'trip') return { start: scene.phases.flightEnd, end: scene.phases.followEnd }
+  if (scene?.type === 'place') return PLACE_PHOTO_WINDOW
+  return null
+}
+const loadedScenePhotos = (scene) => (scene?.photos || [])
+  .map((photo) => ({ photo, url: photoUrls.value.get(photo.id) }))
+  .filter((entry) => entry.url)
 const photoReel = computed(() => {
   const scene = currentScene.value
-  if (scene?.type !== 'trip' || sceneProgress.value < scene.phases.flightEnd) return null
-  const loaded = scene.photos
-    .map((photo) => ({ photo, url: photoUrls.value.get(photo.id) }))
-    .filter((entry) => entry.url)
+  const window = photoWindow(scene)
+  if (!window || sceneProgress.value < window.start) return null
+  const loaded = loadedScenePhotos(scene)
   if (loaded.length === 0) return null
-  const travel = (sceneProgress.value - scene.phases.flightEnd) / (scene.phases.followEnd - scene.phases.flightEnd)
+  const travel = (sceneProgress.value - window.start) / (window.end - window.start)
   const index = Math.min(loaded.length - 1, Math.floor(travel * loaded.length))
   return { current: loaded[index], index, shown: loaded.slice(0, index + 1), total: loaded.length }
 })
+const photoAlt = computed(() => currentScene.value?.type === 'place'
+  ? t('analytics.cinematicRewind.photoAltPlace', { place: currentScene.value.place.name })
+  : t('analytics.cinematicRewind.photoAlt', { month: chapterLabel(currentScene.value?.trip) }))
 // The month fills the screen while the camera flies to the trip, then becomes the caption headline.
 const showChapterCard = computed(() => currentScene.value?.type === 'trip' && sceneProgress.value < currentScene.value.phases.flightEnd)
-const monthOf = (value) => Number(timezone.format(value, 'YYYY-MM').slice(5, 7))
-const monthStrip = computed(() => Array.from({ length: 12 }, (_, index) => {
-  const month = index + 1
-  const midMonth = `${props.year}-${String(month).padStart(2, '0')}-15T12:00:00Z`
-  return {
-    month,
-    short: timezone.format(midMonth, 'MMM'),
-    name: timezone.format(midMonth, 'MMMM'),
-    scene: story.value.find((scene) => scene.type === 'trip' && monthOf(scene.trip.startTime) === month) || null
-  }
-}))
-const activeMonth = computed(() => currentScene.value?.type === 'trip' ? monthOf(currentScene.value.trip.startTime) : null)
-
-function validTopPlace(place) {
-  const [latitude, longitude] = Array.isArray(place?.coordinates) ? place.coordinates : []
-  return Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
-    && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
+// A yearly Rewind has a chapter per month; a monthly one per seven days (1–7, 8–14, …), as the replay API picks them.
+const DAYS_PER_MONTHLY_CHAPTER = 7
+const chapterOf = (value) => {
+  const [, month, day] = timezone.format(value, 'YYYY-MM-DD').split('-').map(Number)
+  return isMonthly.value ? Math.floor((day - 1) / DAYS_PER_MONTHLY_CHAPTER) : month
 }
+const chapterScene = (chapter) => story.value.find((scene) => scene.type === 'trip' && chapterOf(scene.trip.startTime) === chapter) || null
+const chapterStrip = computed(() => {
+  if (!isMonthly.value) {
+    return Array.from({ length: 12 }, (_, index) => ({
+      chapter: index + 1,
+      short: timezone.format(midMonth(index + 1), 'MMM'),
+      name: timezone.format(midMonth(index + 1), 'MMMM'),
+      scene: chapterScene(index + 1)
+    }))
+  }
+  const daysInMonth = new Date(Date.UTC(props.year, props.month, 0)).getUTCDate()
+  const monthName = timezone.format(midMonth(props.month), 'MMMM')
+  return Array.from({ length: Math.ceil(daysInMonth / DAYS_PER_MONTHLY_CHAPTER) }, (_, chapter) => {
+    const days = `${chapter * DAYS_PER_MONTHLY_CHAPTER + 1}–${Math.min(daysInMonth, (chapter + 1) * DAYS_PER_MONTHLY_CHAPTER)}`
+    return { chapter, short: days, name: `${days} ${monthName}`, scene: chapterScene(chapter) }
+  })
+})
+const activeChapter = computed(() => currentScene.value?.type === 'trip' ? chapterOf(currentScene.value.trip.startTime) : null)
 
 const formatClock = (value) => {
   const seconds = Math.max(0, Math.floor((Number(value) || 0) / 1000))
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
-const formatMonthLabel = (value) => timezone.format(value, 'MMMM')
+const chapterLabel = (trip) => trip ? timezone.format(trip.startTime, isMonthly.value ? 'D MMMM' : 'MMMM') : ''
+// A named trip shows its name; a single trip where it went, as far as the timeline knows.
+const tripTitle = (trip) => {
+  if (trip?.name) return trip.name
+  const from = trip?.originName
+  const to = trip?.destinationName
+  if (from && to) return from === to ? from : t('analytics.cinematicRewind.route', { from, to })
+  if (to) return t('analytics.cinematicRewind.routeTo', { place: to })
+  if (from) return t('analytics.cinematicRewind.routeFrom', { place: from })
+  return ''
+}
+const tripDetails = (trip) => {
+  const distance = formatDistanceRounded(trip?.distanceMeters || 0)
+  const duration = formatDuration(trip?.tripDuration || 0)
+  return trip?.name
+    ? `${t('analytics.cinematicRewind.legs', { count: trip.legCount || 0 })} · ${distance} · ${duration}`
+    : `${movementLabel(trip?.movementType)} · ${distance} · ${duration}`
+}
 const formatPhotoDate = (value) => value ? timezone.formatDateDisplay(value) : ''
 const movementLabel = (movementType) => {
   const type = String(movementType || 'UNKNOWN').toUpperCase()
@@ -360,7 +432,9 @@ const loadReplay = async () => {
   loadError.value = ''
   replayData.value = null
   try {
-    const data = await digestStore.fetchYearlyReplay(props.year)
+    const data = isMonthly.value
+      ? await digestStore.fetchMonthlyReplay(props.year, props.month)
+      : await digestStore.fetchYearlyReplay(props.year)
     if (requestToken === loadToken) {
       replayData.value = data
       // Open over home so the first frame is never somewhere the user has not been.
@@ -392,37 +466,85 @@ const verifyPhotoDecodes = async (url) => {
   })
 }
 
-const preloadPhotos = async () => {
-  const requestToken = ++photoLoadToken
-  photosReady.value = false
-  revokePhotoUrls()
-  if (sessionPhotos.value === null) return
-  const photos = [...new Map(story.value
-    .flatMap((scene) => scene.photos || [])
-    .filter((photo) => photo?.id && (photo.previewUrl || photo.thumbnailUrl))
-    .map((photo) => [photo.id, photo])).values()]
-
-  const loaded = await Promise.all(photos.map(async (photo) => {
+/** A decodable blob URL for the photo, or null when Immich cannot serve it. */
+const loadPhotoUrl = async (photo) => {
+  try {
+    // The reel shows photos up to ~28rem wide, so the larger preview beats the ~480 px thumbnail.
+    const url = await imageService.loadAuthenticatedImage(photo.previewUrl || photo.thumbnailUrl)
     try {
-      // The reel shows photos up to ~28rem wide, so the larger preview beats the ~480 px thumbnail.
-      const url = await imageService.loadAuthenticatedImage(photo.previewUrl || photo.thumbnailUrl)
-      try {
-        await verifyPhotoDecodes(url)
-        return [photo.id, url]
-      } catch {
-        imageService.revokeBlobUrl(url)
-        return [photo.id, null]
-      }
+      await verifyPhotoDecodes(url)
+      return url
     } catch {
-      return [photo.id, null]
+      imageService.revokeBlobUrl(url)
+      return null
     }
-  }))
+  } catch {
+    return null
+  }
+}
+
+// A photo Immich has not served within the limit resolves to null, and its late blob is freed.
+const loadPhotoWithin = (photo) => new Promise((resolve) => {
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    resolve([photo.id, null])
+  }, PHOTO_PRELOAD_MAX_MS)
+  loadPhotoUrl(photo).then((url) => {
+    if (timedOut) {
+      if (url) imageService.revokeBlobUrl(url)
+      return
+    }
+    clearTimeout(timer)
+    resolve([photo.id, url])
+  })
+})
+
+const setScenePhotoStatus = (index, status) => {
+  scenePhotoStatus.value = new Map(scenePhotoStatus.value).set(index, status)
+}
+
+const loadScenePhotos = async (index) => {
+  const scene = story.value[index]
+  if (!scene || scenePhotoStatus.value.has(index)) return
+  const requestToken = photoLoadToken
+  setScenePhotoStatus(index, 'loading')
+  const loaded = await Promise.all(scenePhotos(scene)
+    .filter((photo) => !photoUrls.value.has(photo.id))
+    .map(loadPhotoWithin))
   if (requestToken !== photoLoadToken) {
-    loaded.forEach(([, url]) => imageService.revokeBlobUrl(url))
+    loaded.forEach(([, url]) => { if (url) imageService.revokeBlobUrl(url) })
     return
   }
-  photoUrls.value = new Map(loaded.filter(([, url]) => url))
-  photosReady.value = true
+  const urls = new Map(photoUrls.value)
+  loaded.forEach(([id, url]) => { if (url) urls.set(id, url) })
+  photoUrls.value = urls
+  setScenePhotoStatus(index, 'done')
+}
+
+// Loads the scene at `index` and the next scenes that have photos, so they are ready before the film gets there.
+const loadPhotosFrom = (index) => {
+  if (sessionPhotos.value === null || index < 0) return
+  let withPhotos = 0
+  for (let next = index; next < story.value.length && withPhotos <= PHOTO_LOOKAHEAD_SCENES; next += 1) {
+    if (scenePhotos(story.value[next]).length === 0) continue
+    withPhotos += 1
+    loadScenePhotos(next)
+  }
+}
+
+const restartPhotoLoading = () => {
+  photoLoadToken += 1
+  revokePhotoUrls()
+  scenePhotoStatus.value = new Map()
+  loadPhotosFrom(Math.max(0, currentSceneIndex.value))
+}
+
+const openPhoto = (index) => {
+  pause()
+  viewerPhotos.value = loadedScenePhotos(currentScene.value).map((entry) => entry.photo)
+  viewerIndex.value = index
+  viewerVisible.value = true
 }
 
 const pathCoordinates = (trip) => unwrapReplayLongitudes((Array.isArray(trip?.path) ? trip.path : [])
@@ -432,7 +554,7 @@ const staticRouteData = () => createFeatureCollection((replayData.value?.trips |
   .map((trip) => pathCoordinates(trip))
   .filter((coordinates) => coordinates.length >= 2)
   .map((coordinates) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: {} })))
-const placeData = () => createFeatureCollection(topPlaces.value.filter(validTopPlace).map((place) => ({
+const placeData = () => createFeatureCollection(topPlaces.value.filter(isValidRewindPlace).map((place) => ({
   type: 'Feature',
   geometry: { type: 'Point', coordinates: [place.coordinates[1], place.coordinates[0]] },
   properties: { name: place.name || '' }
@@ -631,14 +753,16 @@ const cleanupMap = () => {
 
 const resetPlayer = () => {
   pause()
+  setBuffering(false)
   seekToMs(0)
   loadToken += 1
   photoLoadToken += 1
   cleanupMap()
   revokePhotoUrls()
+  scenePhotoStatus.value = new Map()
+  viewerVisible.value = false
   replayData.value = null
   sessionPhotos.value = null
-  photosReady.value = false
   unsupported.value = false
   projectionFallback.value = false
   loadError.value = ''
@@ -684,8 +808,9 @@ watch(() => props.visible, async (visible) => {
   playerRef.value?.focus()
 }, { immediate: true })
 watch(() => props.photosPayload, captureSessionPhotos)
+watch(currentSceneIndex, loadPhotosFrom)
 watch(story, () => {
-  preloadPhotos()
+  restartPhotoLoading()
   buildCameraPlan()
 })
 watch([mapReady, replayData, topPlaces], setupLayers, { deep: true })
@@ -724,19 +849,23 @@ onBeforeUnmount(() => {
 .cinematic-card--chapter { top:42%; left:50%; transform:translate(-50%,-50%); text-align:center }
 .cinematic-card--chapter h1 { font-size:clamp(3.5rem,12vw,8.5rem); text-transform:capitalize }
 .cinematic-card--caption h2 { text-transform:capitalize }
+.cinematic-card--chapter p { margin:1rem 0 0; color:#e0f2fe; font-size:clamp(.9rem,2vw,1.2rem); letter-spacing:.1em }
+.cinematic-card p.cinematic-route { margin:.65rem 0 0; color:#fff; font-size:clamp(1.05rem,2.4vw,1.6rem); font-weight:700; letter-spacing:0; text-transform:none }
 .cinematic-reel { position:absolute; z-index:6; right:clamp(1rem,6vw,6rem); top:50%; width:min(32vw,28rem); margin:0; transform:translateY(-50%) }
 .cinematic-reel-current { padding:.55rem; border-radius:1rem; background:#fff; box-shadow:0 1.5rem 4rem rgba(0,0,0,.48); transform:rotate(1.5deg) }
-.cinematic-reel-current figcaption { padding:.55rem .3rem .15rem; color:#334155; font-weight:700 }
+.cinematic-photo-caption { margin:0; padding:.55rem .3rem .15rem; color:#334155; font-weight:700 }
 .cinematic-reel-strip { display:flex; justify-content:flex-end; gap:.45rem; margin:.9rem 0 0; padding:0; list-style:none }
 .cinematic-reel-strip li { width:3.6rem; aspect-ratio:1; padding:.18rem; border-radius:.5rem; background:rgba(255,255,255,.75); box-shadow:0 .5rem 1.2rem rgba(0,0,0,.4); opacity:.75; animation:cinematic-strip-in .4s cubic-bezier(.34,1.56,.64,1) both; transition:opacity .2s ease, background .2s ease }
 .cinematic-reel-strip li.current { opacity:1; background:#fff; outline:2px solid var(--cinematic-accent,#38bdf8); outline-offset:1px }
+.cinematic-reel-strip button { display:block; width:100%; height:100%; padding:0; border:0; background:none; cursor:zoom-in }
+.cinematic-reel-strip button:focus-visible,.cinematic-photo-frame:focus-visible { outline:3px solid #93c5fd; outline-offset:2px }
 .cinematic-reel-strip img { display:block; width:100%; height:100%; object-fit:cover; border-radius:.35rem }
-.cinematic-photo-frame { overflow:hidden; border-radius:.65rem }
+.cinematic-photo-frame { display:block; width:100%; padding:0; border:0; overflow:hidden; border-radius:.65rem; background:none; cursor:zoom-in }
 .cinematic-photo-frame img { display:block; width:100%; max-height:54vh; object-fit:cover; animation:cinematic-ken-burns 2.4s ease-out both }
 .cinematic-controls { position:absolute; z-index:15; left:50%; bottom:max(1rem,env(safe-area-inset-bottom)); transform:translateX(-50%); display:flex; align-items:center; gap:.55rem; width:min(760px,calc(100% - 2rem)); padding:.65rem .8rem; border:1px solid rgba(255,255,255,.2); border-radius:999px; background:rgba(2,6,23,.8); backdrop-filter:blur(14px) }
 .cinematic-controls button { flex:0 0 auto; width:2.2rem; height:2.2rem; border:0; border-radius:50%; background:transparent; color:#fff; cursor:pointer }.cinematic-controls button:hover { background:rgba(255,255,255,.14) }
 .cinematic-controls input { flex:1; min-width:4rem }.cinematic-controls span { min-width:2.7rem; font-variant-numeric:tabular-nums; font-size:.8rem; text-align:center }
-.cinematic-months { position:absolute; z-index:15; left:50%; bottom:calc(max(1rem,env(safe-area-inset-bottom)) + 4.1rem); transform:translateX(-50%); display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:.25rem; width:min(760px,calc(100% - 2rem)) }
+.cinematic-months { position:absolute; z-index:15; left:50%; bottom:calc(max(1rem,env(safe-area-inset-bottom)) + 4.1rem); transform:translateX(-50%); display:grid; grid-template-columns:repeat(var(--chapter-count,12),minmax(0,1fr)); gap:.25rem; width:min(760px,calc(100% - 2rem)) }
 .cinematic-months button { position:relative; padding:.35rem 0 .55rem; border:0; border-radius:.5rem; background:transparent; color:rgba(255,255,255,.38); font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; text-shadow:0 1px 6px rgba(0,0,0,.8); cursor:pointer; transition:color .2s ease, background .2s ease }
 .cinematic-months button:disabled { cursor:default }
 .cinematic-months button.has-trip { color:rgba(255,255,255,.78) }

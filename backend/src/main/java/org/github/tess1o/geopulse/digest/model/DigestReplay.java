@@ -11,7 +11,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class YearlyDigestReplay {
+public class DigestReplay {
     private int year;
+    /** The month of a monthly replay; null for a yearly one. */
+    private Integer month;
     private List<DigestReplayTrip> trips;
 }

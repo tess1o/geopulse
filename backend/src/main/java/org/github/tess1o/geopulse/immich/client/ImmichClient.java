@@ -38,6 +38,9 @@ public class ImmichClient {
     @ConfigProperty(name = "immich.photos.search-timeout-seconds", defaultValue = "15")
     int searchTimeoutSeconds;
 
+    @ConfigProperty(name = "immich.assets.timeout-seconds", defaultValue = "30")
+    int assetTimeoutSeconds;
+
     public CompletableFuture<ImmichSearchResponse> searchAssetsAllPages(String baseUrl, String apiKey, ImmichSearchRequest request) {
         return searchAssets(baseUrl, apiKey, request)
                 .thenCompose(firstPage -> {
@@ -307,6 +310,7 @@ public class ImmichClient {
                     .get(uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort(),
                             uri.getHost(), path)
                     .ssl(uri.getScheme().equals("https"))
+                    .timeout(Math.max(assetTimeoutSeconds, 1) * 1000L)
                     .putHeader("x-api-key", apiKey)
                     .send()
                     .onComplete(ar -> {

@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildCinematicStory, useCinematicRewind } from './useCinematicRewind'
+import { buildCinematicStory, isValidRewindPlace, useCinematicRewind } from './useCinematicRewind'
 
 const trip = (month, distanceMeters = 1000) => ({
   id: month,
@@ -20,6 +20,16 @@ const photoDuring = (id, month, extra = {}) => ({
 
 describe('cinematic Rewind story', () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    [[50.45, 30.52], true], [[0, 0], true], [[90, 180], true], [[-90, -180], true],
+    [undefined, false], [null, false], [[], false], [[50], false],
+    [[NaN, 30], false], [[50, Infinity], false], [['50', 30], false], [[50, '30'], false],
+    [[null, 30], false], [[90.1, 30], false], [[-90.1, 30], false],
+    [[50, 180.1], false], [[50, -180.1], false]
+  ])('validates place coordinates %j as %s', (coordinates, expected) => {
+    expect(isValidRewindPlace({ coordinates })).toBe(expected)
+  })
 
   it('films every active month in date order, whether or not its trip has photos', () => {
     // One trip per month, as the replay API returns them; only March and April have photos.
@@ -69,6 +79,49 @@ describe('cinematic Rewind story', () => {
     })
 
     expect(story.map((scene) => scene.type)).toEqual(['intro', 'overview', 'place', 'closing'])
+  })
+
+  it('gives a place its own photos and a little more time to show them', () => {
+    const atKyiv = photoDuring('kyiv', 4, { latitude: 50.4502, longitude: 30.5201 })
+    const atLviv = photoDuring('lviv', 4, { latitude: 49.8397, longitude: 24.0297 })
+    const story = buildCinematicStory({
+      topPlaces: [
+        { name: 'Kyiv', coordinates: [50.45, 30.52] },
+        { name: 'Odesa', coordinates: [46.48, 30.72] }
+      ],
+      photos: [atKyiv, atLviv]
+    })
+    const places = story.filter((scene) => scene.type === 'place')
+
+    expect(places.map((scene) => scene.photos.map((photo) => photo.id))).toEqual([['kyiv'], []])
+    expect(places.map((scene) => scene.durationMs)).toEqual([6000, 4000])
+  })
+
+  it('stops the clock while held but, unlike not being ready, still lets the viewer press play', async () => {
+    let frame
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frame = callback
+      return 1
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    const hold = ref(true)
+    const Harness = defineComponent({
+      setup() {
+        return useCinematicRewind({ story: ref(buildCinematicStory({ trips: [trip(1)] })), ready: ref(true), hold })
+      },
+      template: '<div />'
+    })
+    const wrapper = mount(Harness)
+
+    wrapper.vm.play()
+    expect(wrapper.vm.isPlaying).toBe(true)
+    frame(0)
+    frame(1_000)
+    expect(wrapper.vm.elapsedMs).toBe(0)
+    hold.value = false
+    frame(1_400)
+    expect(wrapper.vm.elapsedMs).toBe(400)
+    wrapper.unmount()
   })
 
   it('uses one animation clock for play, pause, seek, and restart', async () => {

@@ -15,7 +15,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.digest.model.TimeDigest;
-import org.github.tess1o.geopulse.digest.model.YearlyDigestReplay;
+import org.github.tess1o.geopulse.digest.model.DigestReplay;
 import org.github.tess1o.geopulse.digest.service.DigestPdfService;
 import org.github.tess1o.geopulse.digest.service.DigestReplayService;
 import org.github.tess1o.geopulse.digest.service.DigestService;
@@ -112,8 +112,10 @@ public class DigestResource {
     @APIResponse(responseCode = "200", description = "Yearly cinematic replay data retrieved")
     @APIResponse(responseCode = "400", description = "Invalid digest year")
     @Operation(summary = "Get a yearly cinematic replay",
-            description = "Returns at most one representative trip per month with a bounded simplified path.")
-    public YearlyDigestReplay getYearlyReplay(
+            description = "Returns at most one chapter per month in the user's timezone, each with a bounded "
+                    + "path: a named trip from the Trips feature that starts that month, or else the month's longest "
+                    + "timeline trip with the places it started and ended at.")
+    public DigestReplay getYearlyReplay(
             @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
             @QueryParam("year") int year) {
         if (year < 2000 || year > 2100) {
@@ -123,6 +125,31 @@ public class DigestResource {
 
         var user = currentUserService.getCurrentUser();
         return digestReplayService.getYearlyReplay(user.getId(), year, user.getTimezone());
+    }
+
+    @GET
+    @Path("/monthly-replay")
+    @APIResponse(responseCode = "200", description = "Monthly cinematic replay data retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid digest period")
+    @Operation(summary = "Get a monthly cinematic replay",
+            description = "Returns at most one chapter per seven days of the month (days 1–7, 8–14, 15–21, 22–28 "
+                    + "and 29–31) in the user's timezone, chosen like the chapters of the yearly replay.")
+    public DigestReplay getMonthlyReplay(
+            @Parameter(description = "Year, from 2000 to 2100.", example = "2025")
+            @QueryParam("year") int year,
+            @Parameter(description = "Month, from 1 to 12.", example = "6")
+            @QueryParam("month") int month) {
+        if (year < 2000 || year > 2100) {
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+                    Map.of("year", year, "min", 2000, "max", 2100));
+        }
+        if (month < 1 || month > 12) {
+            throw new GeoPulseException(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
+                    Map.of("month", month, "min", 1, "max", 12));
+        }
+
+        var user = currentUserService.getCurrentUser();
+        return digestReplayService.getMonthlyReplay(user.getId(), year, month, user.getTimezone());
     }
 
     @GET

@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.digest.model.*;
         TimeDigest.class,
         ActivityChartData.class,
         DigestHighlight.class,
+        DigestReplay.class,
         DigestMetrics.class,
         DigestReplayPathPoint.class,
         DigestReplayTrip.class,
@@ -16,7 +17,6 @@ import org.github.tess1o.geopulse.digest.model.*;
         PeriodComparison.class,
         PeriodInfo.class,
         TimeDigest.class,
-        YearlyDigestReplay.class,
 })
 public class DigestNativeConfig {
 }

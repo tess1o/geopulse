@@ -1,5 +1,6 @@
 import {
   getPhotoQualityScore,
+  selectPlacePhotos,
   selectTimeSpreadPhotoMemories,
   selectTripPhotos,
   shufflePhotoMemories
@@ -96,6 +97,32 @@ describe('photo memory curation', () => {
       ]
 
       expect(selectTripPhotos(trip, photos, new Set(['used']))).toEqual([])
+    })
+  })
+
+  describe('place photos', () => {
+    const place = { name: 'Kyiv', coordinates: [50.45, 30.52] }
+    const near = (id, day, extra = {}) => ({
+      id, takenAt: `2026-08-${String(day).padStart(2, '0')}T12:00:00Z`, width: 1600, height: 1200,
+      latitude: 50.4510, longitude: 30.5210, ...extra
+    })
+
+    it('takes up to four photos geotagged within 500 m, spread over the period', () => {
+      const photos = [1, 2, 3, 10, 11, 20, 28].map((day) => near(`day-${day}`, day))
+      photos.push(near('far', 5, { latitude: 50.47 }), near('untagged', 6, { latitude: null, longitude: null }))
+
+      const picked = selectPlacePhotos(place, photos).map((photo) => photo.id)
+
+      expect(picked).toHaveLength(4)
+      expect(picked).not.toContain('far')
+      expect(picked).not.toContain('untagged')
+      expect(picked[0]).toBe('day-1')
+      expect(picked.at(-1)).toBe('day-28')
+    })
+
+    it('skips photos used by another scene and places without coordinates', () => {
+      expect(selectPlacePhotos(place, [near('used', 1)], new Set(['used']))).toEqual([])
+      expect(selectPlacePhotos({ name: 'Nowhere' }, [near('one', 1)])).toEqual([])
     })
   })
 })

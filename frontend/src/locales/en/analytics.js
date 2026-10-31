@@ -98,6 +98,18 @@ export default {
         exportFailedFallback: 'Could not generate the PDF.'
     },
     cinematicRewind: {
+        playMonth: 'Play {month} Rewind',
+        yourMonth: 'Your month in motion',
+        monthInMotion: 'Your month in motion',
+        overviewMonth: 'The month at a glance',
+        chapters: 'Weeks of the month',
+        loadingPhotos: 'Loading photos…',
+        route: '{from} → {to}',
+        routeTo: 'To {place}',
+        routeFrom: 'From {place}',
+        legs: '{count} trips',
+        openPhoto: 'Open photo',
+        photoAltPlace: 'Memory from {place}',
         photoCount: 'Photo {current} of {total}',
         months: 'Months of the year',
         jumpToMonth: 'Jump to {month}',

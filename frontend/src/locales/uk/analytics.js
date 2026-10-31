@@ -97,6 +97,18 @@ export default {
         exportFailedFallback: 'Не вдалося створити PDF.'
     },
     cinematicRewind: {
+        playMonth: 'Відтворити підсумок: {month}',
+        yourMonth: 'Ваш місяць у русі',
+        monthInMotion: 'Ваш місяць у русі',
+        overviewMonth: 'Місяць одним поглядом',
+        chapters: 'Тижні місяця',
+        loadingPhotos: 'Завантаження фото…',
+        route: '{from} → {to}',
+        routeTo: 'До: {place}',
+        routeFrom: 'Звідки: {place}',
+        legs: 'Поїздок: {count}',
+        openPhoto: 'Відкрити фото',
+        photoAltPlace: 'Спогад: {place}',
         photoCount: 'Фото {current} з {total}',
         months: 'Місяці року',
         jumpToMonth: 'Перейти до: {month}',

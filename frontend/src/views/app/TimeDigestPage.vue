@@ -2,7 +2,7 @@
   <AppLayout variant="default">
     <PageContainer :title="t('analytics.timeDigestPage.title')" :subtitle="t('analytics.timeDigestPage.subtitle')" max-width="large" :loading="isLoading">
       <template #actions>
-        <Button v-if="canPlayCinematic" :label="t('analytics.cinematicRewind.playYear', { year: selectedYear })" icon="pi pi-play-circle" @click="cinematicVisible = true" />
+        <Button v-if="CINEMATIC_REWIND_ENABLED && canPlayCinematic" :label="cinematicLabel" icon="pi pi-play-circle" @click="cinematicVisible = true" />
         <Button :label="t('analytics.timeDigestPage.exportPdf')" icon="pi pi-file-pdf" outlined :disabled="!currentDigest" @click="exportDialogVisible = true" />
       </template>
 
@@ -45,6 +45,7 @@
   <CinematicRewindDialog
     v-model:visible="cinematicVisible"
     :year="selectedYear"
+    :month="viewMode === 'monthly' ? selectedMonth : null"
     :digest="currentDigest"
     :photos-payload="rewindPhotosPayload"
   />
@@ -74,6 +75,7 @@ import DigestMilestones from '@/components/digest/DigestMilestones.vue'
 import DigestHeatmap from '@/components/digest/DigestHeatmap.vue'
 import CinematicRewindDialog from '@/components/digest/CinematicRewindDialog.vue'
 import { useDigestStore } from '@/stores/digest'
+import { isValidRewindPlace } from '@/composables/useCinematicRewind'
 import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
@@ -93,17 +95,20 @@ const exportDialogVisible = ref(false)
 const exporting = ref(false)
 const includePhotos = ref(false)
 const immichAvailable = ref(false)
+// Set to true to restore monthly and yearly playback after testing.
+const CINEMATIC_REWIND_ENABLED = false
 const cinematicVisible = ref(false)
 const rewindPhotosPayload = ref({ photos: [], settled: false })
 
 const hasError = computed(() => digestStore.hasError)
 const errorMessage = computed(() => formatApiErrorDetail(digestError.value, t('analytics.timeDigestPage.loadFailedFallback')))
 const displayPeriod = computed(() => viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value))
-const canPlayCinematic = computed(() => viewMode.value === 'yearly' && Boolean(currentDigest.value) && (
+const cinematicLabel = computed(() => viewMode.value === 'monthly'
+  ? t('analytics.cinematicRewind.playMonth', { month: displayPeriod.value })
+  : t('analytics.cinematicRewind.playYear', { year: selectedYear.value }))
+const canPlayCinematic = computed(() => Boolean(currentDigest.value) && (
   Number(currentDigest.value?.metrics?.tripCount || 0) > 0
-  || currentDigest.value?.topPlaces?.some((place) => Array.isArray(place?.coordinates)
-    && Number.isFinite(place.coordinates[0]) && place.coordinates[0] >= -90 && place.coordinates[0] <= 90
-    && Number.isFinite(place.coordinates[1]) && place.coordinates[1] >= -180 && place.coordinates[1] <= 180)
+  || currentDigest.value?.topPlaces?.some(isValidRewindPlace)
 ))
 
 const loadDigest = async () => {

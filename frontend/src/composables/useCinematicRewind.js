@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, ref, unref, watch } from 'vue'
-import { selectTripPhotos } from '@/utils/photoMemoryCuration'
+import { selectPlacePhotos, selectTripPhotos } from '@/utils/photoMemoryCuration'
 import { TRIP_FOLLOW_MS, buildTripPhases } from '@/maps/shared/cinematicCamera'
 
 export const CINEMATIC_SCENE_DURATIONS = Object.freeze({
@@ -8,12 +8,16 @@ export const CINEMATIC_SCENE_DURATIONS = Object.freeze({
   place: 4000,
   closing: 4000
 })
-// The replay API returns one trip per active month, so the film covers every month that has one.
+// The replay API returns one chapter per active month (or per seven days of a month), so the film covers them all.
 export const MAX_CINEMATIC_TRIPS = 12
 // A full reel of four photos gets a little more travel time, so each still shows for over a second.
 export const FULL_REEL_EXTRA_FOLLOW_MS = 1000
+// A place with photos stays on screen longer, so each still shows for over a second.
+export const PLACE_PHOTOS_EXTRA_MS = 2000
+// A place's photos play from the camera's arrival (40 % in) until just before the scene ends.
+export const PLACE_PHOTO_WINDOW = Object.freeze({ start: 0.4, end: 0.95 })
 
-const validPlace = (place) => {
+export const isValidRewindPlace = (place) => {
   const [latitude, longitude] = Array.isArray(place?.coordinates) ? place.coordinates : []
   return Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
     && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180
@@ -21,9 +25,8 @@ const validPlace = (place) => {
 
 const byStartTime = (first, second) => String(first.startTime).localeCompare(String(second.startTime))
 
-/** The film's trips in date order, each with its own photos; a photo is used by one trip only. */
-const selectFilmTrips = (trips, photos) => {
-  const usedPhotoIds = new Set()
+/** The film's trips in date order, each with its own photos; a photo is used by one scene only. */
+const selectFilmTrips = (trips, photos, usedPhotoIds) => {
   return [...trips].sort(byStartTime).slice(0, MAX_CINEMATIC_TRIPS).map((trip) => {
     const tripPhotos = selectTripPhotos(trip, photos, usedPhotoIds)
     tripPhotos.forEach((photo) => usedPhotoIds.add(photo.id))
@@ -32,18 +35,24 @@ const selectFilmTrips = (trips, photos) => {
 }
 
 export const buildCinematicStory = ({ trips = [], topPlaces = [], photos = [] }) => {
-  const tripScenes = selectFilmTrips(trips, photos).map(({ trip, photos: tripPhotos }) => {
+  const usedPhotoIds = new Set()
+  const tripScenes = selectFilmTrips(trips, photos, usedPhotoIds).map(({ trip, photos: tripPhotos }) => {
     const phases = buildTripPhases({
       followMs: TRIP_FOLLOW_MS + (tripPhotos.length >= 4 ? FULL_REEL_EXTRA_FOLLOW_MS : 0)
     })
     return { type: 'trip', durationMs: phases.durationMs, phases, trip, photos: tripPhotos }
   })
   const placeScenes = tripScenes.length === 0
-    ? topPlaces.filter(validPlace).slice(0, 5).map((place) => ({
-        type: 'place',
-        durationMs: CINEMATIC_SCENE_DURATIONS.place,
-        place
-      }))
+    ? topPlaces.filter(isValidRewindPlace).slice(0, 5).map((place) => {
+        const placePhotos = selectPlacePhotos(place, photos, usedPhotoIds)
+        placePhotos.forEach((photo) => usedPhotoIds.add(photo.id))
+        return {
+          type: 'place',
+          durationMs: CINEMATIC_SCENE_DURATIONS.place + (placePhotos.length > 0 ? PLACE_PHOTOS_EXTRA_MS : 0),
+          place,
+          photos: placePhotos
+        }
+      })
     : []
   const scenes = [
     { type: 'intro', durationMs: CINEMATIC_SCENE_DURATIONS.intro },
@@ -61,7 +70,11 @@ export const buildCinematicStory = ({ trips = [], topPlaces = [], photos = [] })
   })
 }
 
-export const useCinematicRewind = ({ story, ready = true } = {}) => {
+/**
+ * The film clock. It runs only while `ready`; `hold` also stops it (e.g. while a scene's photos load) but, unlike
+ * `ready`, does not stop the viewer from pressing play.
+ */
+export const useCinematicRewind = ({ story, ready = true, hold = false } = {}) => {
   const elapsedMs = ref(0)
   const isPlaying = ref(false)
   const buffering = ref(false)
@@ -92,7 +105,7 @@ export const useCinematicRewind = ({ story, ready = true } = {}) => {
 
   const tick = (timestamp) => {
     if (!isPlaying.value) return
-    if (lastFrameTimestamp === null || buffering.value || !unref(ready)) {
+    if (lastFrameTimestamp === null || buffering.value || !unref(ready) || unref(hold)) {
       lastFrameTimestamp = timestamp
     } else {
       elapsedMs.value = Math.min(totalDurationMs.value, elapsedMs.value + Math.max(0, timestamp - lastFrameTimestamp))

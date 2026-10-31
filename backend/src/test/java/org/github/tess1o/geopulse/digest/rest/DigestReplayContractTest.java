@@ -9,14 +9,22 @@ import io.restassured.specification.RequestSpecification;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
+import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
+import org.github.tess1o.geopulse.trips.repository.TripRepository;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.testsupport.TimelineSeeder;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,7 +36,7 @@ import static org.assertj.core.api.Assertions.offset;
 import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assertProblemEnvelope;
 
 /**
- * HTTP contract for {@code /api/v1/digests/yearly-replay}. The owner lives in Europe/Kyiv (UTC+2 in winter), so
+ * HTTP contract for {@code /api/v1/digests/yearly-replay} and {@code /api/v1/digests/monthly-replay}. The owner lives in Europe/Kyiv (UTC+2 in winter), so
  * trips just before and after midnight UTC on New Year's Eve land in different calendar years than in UTC.
  */
 @QuarkusTest
@@ -36,12 +44,15 @@ import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assert
 class DigestReplayContractTest {
 
     private static final String REPLAY = "/api/v1/digests/yearly-replay";
+    private static final String MONTHLY_REPLAY = "/api/v1/digests/monthly-replay";
+    private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
     private static final String PASSWORD = "password123";
 
     @Inject UserService userService;
     @Inject AuthenticationService authenticationService;
     @Inject TimelineSeeder seed;
     @Inject TimelineTripRepository tripRepository;
+    @Inject TripRepository namedTripRepository;
 
     private UserEntity owner;
     private String ownerToken;
@@ -123,6 +134,95 @@ class DigestReplayContractTest {
     }
 
     @Test
+    void namesThePlacesStayedAtJustBeforeAndAfterATrip() {
+        ReverseGeocodingLocationEntity home = seed.geocoding(owner, "Home", "Kyiv", "Ukraine", 50.4501, 30.5234);
+        ReverseGeocodingLocationEntity office = seed.geocoding(owner, "Office", "Kyiv", "Ukraine", 50.4550, 30.5300);
+        seed.stay(owner, home, Instant.parse("2026-02-10T07:00:00Z"), 3 * 3_600);
+        TimelineTripEntity named = seed.trip(owner, Instant.parse("2026-02-10T10:00:00Z"), 9_000, 1_800, "CAR");
+        seed.stay(owner, office, Instant.parse("2026-02-10T10:30:00Z"), 8 * 3_600);
+        // March: the last stay ended a day before the trip and the next one starts two days after it.
+        seed.stay(owner, home, Instant.parse("2026-03-01T07:00:00Z"), 3_600);
+        TimelineTripEntity unknown = seed.trip(owner, Instant.parse("2026-03-02T10:00:00Z"), 9_000, 1_800, "CAR");
+        seed.stay(owner, office, Instant.parse("2026-03-04T10:00:00Z"), 3_600);
+
+        Response response = authenticated(ownerToken).queryParam("year", 2026).when().get(REPLAY);
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        List<Map<String, Object>> trips = response.jsonPath().getList("trips");
+        assertThat(trips).extracting(trip -> ((Number) trip.get("id")).longValue())
+                .containsExactly(named.getId(), unknown.getId());
+        assertThat(trips.get(0)).containsEntry("originName", "Home").containsEntry("destinationName", "Office")
+                .containsEntry("legCount", 1).containsEntry("name", null);
+        assertThat(trips.get(1)).containsEntry("originName", null).containsEntry("destinationName", null);
+    }
+
+    @Test
+    void replaysANamedTripAsOneChapterJoiningItsTimelineTrips() {
+        Instant start = Instant.parse("2026-03-27T22:00:00Z"); // March 28 local
+        Instant end = Instant.parse("2026-04-03T21:00:00Z");
+        TimelineTripEntity flightOut = trip(owner, Instant.parse("2026-03-28T08:00:00Z"), 3_000_000, "FLIGHT",
+                new double[][]{{30.52, 50.45}, {10.0, 45.0}, {-9.14, 38.72}});
+        TimelineTripEntity walk = trip(owner, Instant.parse("2026-03-30T10:00:00Z"), 4_000, "WALK", null);
+        TimelineTripEntity flightBack = trip(owner, Instant.parse("2026-04-03T15:00:00Z"), 3_000_000, "FLIGHT",
+                new double[][]{{-9.14, 38.72}, {30.52, 50.45}});
+        TimelineTripEntity aprilCommute = seed.trip(owner, Instant.parse("2026-04-10T08:00:00Z"), 12_000, 1_800, "CAR");
+        namedTrip(owner, "Lisbon", start, end, TripStatus.COMPLETED);
+        namedTrip(owner, "Next year", Instant.parse("2026-05-01T00:00:00Z"), Instant.parse("2026-05-05T00:00:00Z"),
+                TripStatus.UPCOMING);
+        seed.trip(owner, Instant.parse("2026-05-02T08:00:00Z"), 1_000, 600, "WALK");
+
+        Response response = authenticated(ownerToken).queryParam("year", 2026).when().get(REPLAY);
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        List<Map<String, Object>> trips = response.jsonPath().getList("trips");
+        assertThat(trips).as("Lisbon, April without the flight back, and May: an upcoming trip is not a chapter")
+                .hasSize(3);
+        Map<String, Object> lisbon = trips.get(0);
+        assertThat(lisbon).containsEntry("name", "Lisbon").containsEntry("legCount", 3)
+                .containsEntry("movementType", "FLIGHT");
+        assertThat(((Number) lisbon.get("distanceMeters")).longValue()).isEqualTo(6_004_000L);
+        assertThat(((Number) lisbon.get("tripDuration")).longValue()).isEqualTo(end.getEpochSecond() - start.getEpochSecond());
+        assertThat(Instant.parse((String) lisbon.get("startTime"))).isEqualTo(start);
+        List<Map<String, Object>> route = path(lisbon);
+        assertThat(route).extracting(point -> Math.round(((Number) point.get("longitude")).doubleValue() * 10_000) / 10_000d)
+                .as("stored paths in order, the walk by its endpoints")
+                .containsExactly(30.52, 10.0, -9.14, 30.5234, 30.53, -9.14, 30.52);
+        assertThat(route).extracting(point -> point.get("timestamp")).containsOnlyNulls();
+        assertThat(((Number) trips.get(1).get("id")).longValue()).isEqualTo(aprilCommute.getId());
+        assertThat(trips.get(2)).containsEntry("name", null);
+        assertThat(List.of(flightOut.getId(), walk.getId(), flightBack.getId()))
+                .contains(((Number) lisbon.get("id")).longValue());
+    }
+
+    @Test
+    void monthlyReplayHasOneChapterPerSevenDaysOfTheLocalMonth() {
+        seed.trip(owner, Instant.parse("2026-03-02T10:00:00Z"), 1_000, 600, "WALK");
+        TimelineTripEntity firstWeek = seed.trip(owner, Instant.parse("2026-03-06T10:00:00Z"), 5_000, 600, "CAR");
+        TimelineTripEntity localEighth = seed.trip(owner, Instant.parse("2026-03-07T22:30:00Z"), 2_000, 600, "CAR");
+        TimelineTripEntity lastDays = seed.trip(owner, Instant.parse("2026-03-31T10:00:00Z"), 800, 600, "WALK");
+        seed.trip(owner, Instant.parse("2026-03-31T21:30:00Z"), 99_000, 600, "CAR"); // April 1 local
+
+        Response response = authenticated(ownerToken)
+                .queryParam("year", 2026).queryParam("month", 3).when().get(MONTHLY_REPLAY);
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.jsonPath().getInt("year")).isEqualTo(2026);
+        assertThat(response.jsonPath().getInt("month")).isEqualTo(3);
+        assertThat(response.jsonPath().getList("trips.id", Long.class))
+                .containsExactly(firstWeek.getId(), localEighth.getId(), lastDays.getId());
+    }
+
+    @Test
+    void monthlyReplayRejectsInvalidPeriodsAndAnonymousCallers() {
+        assertProblemEnvelope(authenticated(ownerToken).queryParam("year", 2026).queryParam("month", 13)
+                .when().get(MONTHLY_REPLAY), 400, "INVALID_DIGEST_MONTH");
+        assertProblemEnvelope(authenticated(ownerToken).queryParam("year", 1999).queryParam("month", 3)
+                .when().get(MONTHLY_REPLAY), 400, "INVALID_DIGEST_YEAR");
+        assertThat(given().queryParam("year", 2026).queryParam("month", 3).when().get(MONTHLY_REPLAY).statusCode())
+                .isEqualTo(401);
+    }
+
+    @Test
     void answersAnEmptyYearWithNoTrips() {
         Response response = authenticated(ownerToken).queryParam("year", 2030).when().get(REPLAY);
 
@@ -139,6 +239,29 @@ class DigestReplayContractTest {
                 400, "INVALID_DIGEST_YEAR");
 
         assertThat(given().queryParam("year", 2026).when().get(REPLAY).statusCode()).isEqualTo(401);
+    }
+
+    /** A timeline trip with a stored path of [longitude, latitude] pairs, or none for {@code null}. */
+    private TimelineTripEntity trip(UserEntity user, Instant start, long distanceMeters, String movementType,
+                                    double[][] storedPath) {
+        TimelineTripEntity trip = seed.trip(user, start, distanceMeters, 3_600, movementType);
+        if (storedPath != null) {
+            QuarkusTransaction.requiringNew().run(() -> tripRepository.findById(trip.getId()).setPath(
+                    WGS84.createLineString(java.util.Arrays.stream(storedPath)
+                            .map(point -> new Coordinate(point[0], point[1]))
+                            .toArray(Coordinate[]::new))));
+        }
+        return trip;
+    }
+
+    private void namedTrip(UserEntity user, String name, Instant start, Instant end, TripStatus status) {
+        QuarkusTransaction.requiringNew().run(() -> namedTripRepository.persist(TripEntity.builder()
+                .user(namedTripRepository.getEntityManager().getReference(UserEntity.class, user.getId()))
+                .name(name)
+                .startTime(start)
+                .endTime(end)
+                .status(status)
+                .build()));
     }
 
     @SuppressWarnings("unchecked")

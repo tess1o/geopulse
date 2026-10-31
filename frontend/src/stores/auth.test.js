@@ -28,6 +28,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import apiService from '../utils/apiService'
 import { useAuthStore } from './auth'
+import { useDigestStore } from './digest'
 
 vi.mock('../utils/apiService', () => ({
   default: {
@@ -100,6 +101,35 @@ describe('auth store cached profile reconciliation', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it.each(['account', 'timezone', 'logout'])('clears digest data on %s changes', (change) => {
+    const auth = useAuthStore()
+    auth.setUser(user())
+    const digest = useDigestStore()
+    digest.replays['2026'] = { trips: [{ id: 1 }] }
+    digest.currentDigest = { metrics: {} }
+    digest.monthlyDigests['2026-01'] = {}
+    digest.heatmapData['2026'] = [1]
+
+    if (change === 'logout') auth.clearUser()
+    else auth.setUser(user(change === 'account' ? { id: 'user-2', userId: 'user-2' } : { timezone: 'Europe/Kyiv' }))
+
+    expect(digest.replays).toEqual({})
+    expect(digest.currentDigest).toBeNull()
+    expect(digest.monthlyDigests).toEqual({})
+    expect(digest.heatmapData).toEqual({})
+  })
+
+  it('retains digest caches when refreshing the same account and timezone', () => {
+    const auth = useAuthStore()
+    auth.setUser(user())
+    const digest = useDigestStore()
+    digest.replays['2026'] = { trips: [{ id: 1 }] }
+
+    auth.setUser(user({ fullName: 'Updated name' }))
+
+    expect(digest.replays['2026'].trips).toEqual([{ id: 1 }])
   })
 
   it('replaces stale cached demo mode with the current server user', async () => {

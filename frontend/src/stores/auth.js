@@ -1,4 +1,5 @@
 import {defineStore} from 'pinia'
+import {useDigestStore} from './digest'
 import apiService from '../utils/apiService'
 import {useTimezone} from '@/composables/useTimezone'
 import {useLocale} from '@/composables/useLocale'
@@ -184,6 +185,9 @@ export const useAuthStore = defineStore('auth', {
     actions: {
         _applyUserState(rawUser, {persist = true} = {}) {
             const user = normalizeUser(rawUser)
+            if (this.user?.id !== user?.id || this.user?.timezone !== user?.timezone) {
+                useDigestStore().$reset()
+            }
             this.user = user
             this.isAuthenticated = !!user
 
@@ -255,6 +259,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         clearUser() {
+            useDigestStore().$reset()
             this.user = null
             this.isAuthenticated = false
             clearCachedUserProfile()

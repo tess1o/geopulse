@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import CinematicRewindDialog from './CinematicRewindDialog.vue'
 
-const { fetchYearlyReplay, layerUtils, imageService } = vi.hoisted(() => ({
+const { fetchYearlyReplay, fetchMonthlyReplay, layerUtils, imageService } = vi.hoisted(() => ({
   fetchYearlyReplay: vi.fn(),
+  fetchMonthlyReplay: vi.fn(),
   layerUtils: {
     ensureGeoJsonSource: vi.fn(),
     ensureLayer: vi.fn(),
@@ -21,7 +22,7 @@ const { fetchYearlyReplay, layerUtils, imageService } = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('@/stores/digest', () => ({ useDigestStore: () => ({ fetchYearlyReplay }) }))
+vi.mock('@/stores/digest', () => ({ useDigestStore: () => ({ fetchYearlyReplay, fetchMonthlyReplay }) }))
 vi.mock('@/utils/imageService', () => ({ imageService }))
 vi.mock('@/utils/calculationsHelpers', () => ({ formatDistanceRounded: (meters) => `${meters} m` }))
 const { appearance, profileStyle } = vi.hoisted(() => ({
@@ -43,6 +44,10 @@ vi.mock('@/composables/useTimezone', () => ({
   useTimezone: () => ({
     format: (value, pattern) => {
       if (pattern === 'YYYY-MM') return String(value).slice(0, 7)
+      if (pattern === 'YYYY-MM-DD') return String(value).slice(0, 10)
+      const longMonth = new Date(value).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
+      if (pattern === 'D MMMM') return `${new Date(value).getUTCDate()} ${longMonth}`
+      if (pattern === 'MMMM YYYY') return `${longMonth} ${String(value).slice(0, 4)}`
       const month = { MMMM: 'long', MMM: 'short' }[pattern]
       return month ? new Date(value).toLocaleString('en-US', { month, timeZone: 'UTC' }) : String(value)
     },
@@ -59,6 +64,13 @@ vi.mock('@/components/maps/BaseMap.vue', () => ({
     props: ['mapId', 'center', 'zoom', 'height', 'width', 'mapRenderMode', 'styleOverride', 'enableFullscreen', 'showScale', 'options'],
     emits: ['map-ready', 'map-warning'],
     template: '<div class="base-map-stub" />'
+  }
+}))
+vi.mock('@/components/dialogs/PhotoViewerDialog.vue', () => ({
+  default: {
+    name: 'PhotoViewerDialog',
+    props: ['visible', 'photos', 'initialPhotoIndex', 'allowShowOnMap', 'preloadedBlobUrlResolver'],
+    template: '<div v-if="visible" class="photo-viewer-stub" />'
   }
 }))
 vi.mock('primevue/dialog', () => ({
@@ -132,11 +144,14 @@ const digest = {
   topPlaces: []
 }
 
-const openPlayer = async ({ trips = [trip(1)], photos = [], map = createMap(), reducedMotion = false } = {}) => {
+const openPlayer = async ({
+  trips = [trip(1)], photos = [], map = createMap(), reducedMotion = false, month = null, topPlaces = []
+} = {}) => {
   fetchYearlyReplay.mockResolvedValue({ year: 2026, trips })
+  fetchMonthlyReplay.mockResolvedValue({ year: 2026, month, trips })
   window.matchMedia = vi.fn(() => ({ matches: reducedMotion }))
   const wrapper = mount(CinematicRewindDialog, {
-    props: { visible: true, year: 2026, digest, photosPayload: { photos, settled: true } },
+    props: { visible: true, year: 2026, month, digest: { ...digest, topPlaces }, photosPayload: { photos, settled: true } },
     attachTo: document.body
   })
   await flushPromises()
@@ -258,6 +273,36 @@ describe('CinematicRewindDialog', () => {
     wrapper.unmount()
   })
 
+  it('starts at once and holds a scene only until Immich serves its photos or the preload limit passes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      imageService.loadAuthenticatedImage.mockImplementationOnce(() => new Promise(() => {}))
+      const { wrapper } = await openPlayer({ photos: [photo('stalled', 1)] })
+      const clock = () => wrapper.find('.cinematic-controls span').text()
+      expect(playButton(wrapper).attributes('aria-label')).toBe('Pause')
+
+      // Into the trip, 7004 ms into a 17000 ms film: its photo is still loading, so the clock holds.
+      await seekTo(wrapper, Math.round((7_000 / 17_000) * 1000))
+      runFrame(0)
+      runFrame(1_000)
+      await flushPromises()
+      expect(clock()).toBe('00:07')
+      expect(wrapper.find('.cinematic-buffering').text()).toBe('Loading photos…')
+
+      vi.advanceTimersByTime(8_000)
+      await flushPromises()
+      runFrame(2_000)
+      await flushPromises()
+
+      expect(clock()).toBe('00:08')
+      expect(wrapper.find('.cinematic-buffering').exists()).toBe(false)
+      expect(wrapper.find('.cinematic-reel').exists()).toBe(false)
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('draws on the user\'s own timeline tiles with their Appearance path colours and width', async () => {
     layerUtils.ensureLayer.mockClear()
     const { wrapper } = await openPlayer()
@@ -367,6 +412,37 @@ describe('CinematicRewindDialog', () => {
     wrapper.unmount()
   })
 
+  it('clears tile buffering when closed and advances after reopening', async () => {
+    let now = 1_000
+    vi.spyOn(Date, 'now').mockImplementation(() => now)
+    const { wrapper, map } = await openPlayer()
+    map.tilesLoaded = false
+    for (const timestamp of [0, 500, 1_000, 1_500]) {
+      runFrame(timestamp)
+      await flushPromises()
+      now += 500
+    }
+    expect(wrapper.find('.cinematic-buffering').exists()).toBe(true)
+
+    await wrapper.find('.cinematic-close').trigger('click')
+    await wrapper.setProps({ visible: false })
+    frames = []
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const reopenedMap = createMap()
+    wrapper.findComponent({ name: 'BaseMap' }).vm.$emit('map-ready', reopenedMap)
+    await flushPromises()
+    reopenedMap.fire('idle')
+    await flushPromises()
+    runFrame(5_000)
+    runFrame(6_000)
+    await flushPromises()
+
+    expect(wrapper.find('.cinematic-buffering').exists()).toBe(false)
+    expect(wrapper.find('.cinematic-controls span').text()).toBe('00:01')
+    wrapper.unmount()
+  })
+
   it('opens paused and holds one flat view per scene when reduced motion is preferred', async () => {
     const { wrapper, map } = await openPlayer({ reducedMotion: true, photos: [photo('january', 1)] })
 
@@ -413,6 +489,99 @@ describe('CinematicRewindDialog', () => {
     expect(wrapper.find('.cinematic-months button.active').attributes('aria-current')).toBe('step')
     expect(wrapper.find('.cinematic-controls span').text()).toBe('00:13')
     expect(months()[8].attributes('aria-label')).toBe('Jump to September')
+    wrapper.unmount()
+  })
+
+  it('plays a month as chapters of seven days, each headed by its trip\'s date', async () => {
+    const twentieth = trip(3, {
+      id: 'twentieth',
+      startTime: '2026-03-20T10:00:00Z',
+      endTime: '2026-03-20T11:00:00Z'
+    })
+    const { wrapper } = await openPlayer({ month: 3, trips: [trip(3), twentieth] })
+    const chapters = () => wrapper.findAll('.cinematic-months button')
+
+    expect(fetchMonthlyReplay).toHaveBeenCalledWith(2026, 3)
+    expect(fetchYearlyReplay).not.toHaveBeenCalled()
+    expect(wrapper.find('.cinematic-card--hero p').text()).toBe('Your month in motion')
+    expect(wrapper.find('.cinematic-card--hero h1').text()).toBe('March 2026')
+    expect(chapters().map((button) => button.text())).toEqual(['1–7', '8–14', '15–21', '22–28', '29–31'])
+    expect(chapters().filter((button) => button.attributes('disabled') === undefined).map((button) => button.text()))
+      .toEqual(['1–7', '15–21'])
+    expect(wrapper.find('.cinematic-months').attributes('aria-label')).toBe('Weeks of the month')
+    expect(chapters()[2].attributes('aria-label')).toBe('Jump to 15–21 March')
+
+    // intro 0–3000, overview 3000–6000, March 5 6000–13000, March 20 13000–20000, closing 20000–24000.
+    await seekTo(wrapper, Math.round((6_500 / 24_000) * 1000))
+    expect(wrapper.find('.cinematic-card--chapter h1').text()).toBe('5 March')
+    await chapters()[2].trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.cinematic-card--chapter h1').text()).toBe('20 March')
+    expect(wrapper.find('.cinematic-months button.active').text()).toBe('15–21')
+    wrapper.unmount()
+  })
+
+  it('names where a trip went, and a named trip by its name and its number of trips', async () => {
+    const { wrapper } = await openPlayer({
+      trips: [
+        trip(3, { originName: 'Home', destinationName: 'Office', legCount: 1 }),
+        trip(6, { originName: 'Home', destinationName: null, legCount: 1 }),
+        trip(9, { name: 'Lisbon', legCount: 3, movementType: 'FLIGHT' })
+      ]
+    })
+    const caption = () => wrapper.find('.cinematic-card--caption')
+
+    // intro 0–3000, overview 3000–6000, March 6000–13000, June 13000–20000, September 20000–27000, closing to 31000.
+    await seekTo(wrapper, Math.round((6_500 / 31_000) * 1000))
+    expect(wrapper.find('.cinematic-card--chapter p').text()).toBe('Home → Office')
+    await seekTo(wrapper, Math.round((10_000 / 31_000) * 1000))
+    expect(caption().find('h2').text()).toBe('March')
+    expect(caption().find('.cinematic-route').text()).toBe('Home → Office')
+    expect(caption().find('span').text()).toBe('🚗 Car · 3000 m · 1 hour')
+
+    await seekTo(wrapper, Math.round((17_000 / 31_000) * 1000))
+    expect(caption().find('.cinematic-route').text()).toBe('From Home')
+
+    await seekTo(wrapper, Math.round((24_000 / 31_000) * 1000))
+    expect(caption().find('.cinematic-route').text()).toBe('Lisbon')
+    expect(caption().find('span').text()).toBe('3 trips · 9000 m · 1 hour')
+    wrapper.unmount()
+  })
+
+  it('plays the photos taken at a top place when the period has no trips', async () => {
+    const atCafe = { ...photo('cafe', 4), latitude: 50.4502, longitude: 30.5236 }
+    const elsewhere = { ...photo('elsewhere', 4), latitude: 48.0, longitude: 24.0 }
+    const { wrapper } = await openPlayer({
+      trips: [],
+      topPlaces: [{ name: 'Café', coordinates: [50.4501, 30.5234], visits: 3 }],
+      photos: [atCafe, elsewhere]
+    })
+
+    // intro 0–3000, overview 3000–6000, the place with its photo 6000–12000, closing 12000–16000.
+    expect(wrapper.findAll('.cinematic-controls span')[1].text()).toBe('00:16')
+    await seekTo(wrapper, Math.round((7_000 / 16_000) * 1000))
+    expect(wrapper.find('.cinematic-reel').exists()).toBe(false) // still flying in
+
+    await seekTo(wrapper, Math.round((9_500 / 16_000) * 1000))
+    const image = wrapper.find('.cinematic-reel-current img')
+    expect(image.attributes('src')).toBe('blob:/integrations/immich/photos/cafe/preview')
+    expect(image.attributes('alt')).toBe('Memory from Café')
+    expect(imageService.loadAuthenticatedImage).not.toHaveBeenCalledWith(expect.stringContaining('elsewhere'))
+    wrapper.unmount()
+  })
+
+  it('pauses and opens the playing photo in the photo viewer', async () => {
+    const { wrapper } = await openPlayer({ photos: [photo('january', 1)] })
+
+    await seekTo(wrapper, Math.round((9_000 / 17_000) * 1000))
+    await wrapper.find('.cinematic-photo-frame').trigger('click')
+
+    expect(playButton(wrapper).attributes('aria-label')).toBe('Play')
+    const viewer = wrapper.findComponent({ name: 'PhotoViewerDialog' })
+    expect(viewer.props('visible')).toBe(true)
+    expect(viewer.props('photos').map((entry) => entry.id)).toEqual(['january'])
+    expect(viewer.props('initialPhotoIndex')).toBe(0)
+    expect(viewer.props('preloadedBlobUrlResolver')('january')).toBe('blob:/integrations/immich/photos/january/preview')
     wrapper.unmount()
   })
 

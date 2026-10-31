@@ -124,9 +124,14 @@ export const selectTripPhotos = (trip, photos, excludedIds = new Set()) => {
       takenMs <= endMs
       || (takenMs <= endMs + TRIP_PHOTO_AFTER_ARRIVAL_MS && atDestination(photo))
     ))
-    .sort((first, second) => byPhotoQuality(first, second)
-      || (first.takenMs - second.takenMs)
-      || String(first.photo.id).localeCompare(String(second.photo.id)))
+  return spreadOverTime(candidates)
+}
+
+// The best photo of each quarter of the photographed time, then the next best at least an eighth of it apart.
+const spreadOverTime = (unsortedCandidates) => {
+  const candidates = [...unsortedCandidates].sort((first, second) => byPhotoQuality(first, second)
+    || (first.takenMs - second.takenMs)
+    || String(first.photo.id).localeCompare(String(second.photo.id)))
   if (candidates.length === 0) return []
 
   const firstMs = Math.min(...candidates.map(({ takenMs }) => takenMs))
@@ -143,4 +148,22 @@ export const selectTripPhotos = (trip, photos, excludedIds = new Set()) => {
     }
   })
   return chosen.sort((first, second) => first.takenMs - second.takenMs).map(({ photo }) => photo)
+}
+
+const PLACE_PHOTO_RADIUS_METERS = 500
+
+/**
+ * Up to four photos geotagged within 500 m of a place ({ coordinates: [latitude, longitude] }), spread over the
+ * period like a trip's photos. Photos in `excludedIds` (used by another scene) are skipped.
+ */
+export const selectPlacePhotos = (place, photos, excludedIds = new Set()) => {
+  const [latitude, longitude] = Array.isArray(place?.coordinates) ? place.coordinates.map(Number) : []
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return []
+  const center = { latitude, longitude }
+  return spreadOverTime(curatedPhotos(photos)
+    .filter((photo) => photo.id && !excludedIds.has(photo.id)
+      && photo.latitude != null && photo.longitude != null
+      && haversineDistanceMeters(photo, center) <= PLACE_PHOTO_RADIUS_METERS)
+    .map((photo) => ({ photo, takenMs: toTimeMs(photo.takenAt) }))
+    .filter(({ takenMs }) => takenMs !== null))
 }
