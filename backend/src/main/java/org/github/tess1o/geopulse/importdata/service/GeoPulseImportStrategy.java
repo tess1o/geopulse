@@ -111,6 +111,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
                         break;
+                    case ExportImportConstants.FileNames.TIMELINE_EDITS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_EDITS);
+                        break;
                     case ExportImportConstants.FileNames.TRIP_WORKSPACE:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TRIP_WORKSPACE);
                         break;
@@ -158,6 +161,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     public void processImportData(ImportJob job) throws IOException {
         // Collect all file contents for proper dependency ordering
         Map<String, byte[]> fileContents = extractZipContents(job);
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+            timelineDetailsImporter.requireEmptyTimelineEdits(job.getUserId());
+        }
 
         // Import in dependency order using native SQL
         processFilesInOrder(fileContents, job);
@@ -326,6 +333,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             timelineDetailsImporter.importTimelineOverridesData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES), job, referenceMaps);
         }
 
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+            timelineDetailsImporter.importTimelineEditsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_EDITS), job, referenceMaps);
+        }
+
         if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
             timelineDetailsImporter.importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job, referenceMaps);
         }
@@ -372,6 +383,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.TIMELINE_LABELS;
             case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                 return ExportImportConstants.DataTypes.TIMELINE_OVERRIDES;
+            case ExportImportConstants.FileNames.TIMELINE_EDITS:
+                return ExportImportConstants.DataTypes.TIMELINE_EDITS;
             case ExportImportConstants.FileNames.TRIP_WORKSPACE:
                 return ExportImportConstants.DataTypes.TRIP_WORKSPACE;
             case ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES:

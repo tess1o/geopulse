@@ -9,6 +9,7 @@ const isolatedSpecs = [
   '**/gps-data.spec.js',
   '**/data-export-import.spec.js',
   '**/timeline.spec.js',
+  '**/timeline-edits.spec.js',
   '**/timeline-notes.spec.js',
   '**/location-time-display.spec.js',
   '**/user-registration.spec.js',
@@ -130,11 +131,30 @@ export default defineConfig({
     },
 
     {
+      name: 'chromium-timeline-vector',
+      testMatch: ['**/timeline-edits.spec.js'],
+      grep: /trip stop:/,
+      use: { ...devices['Desktop Chrome'], mapMode: 'VECTOR' },
+    },
+    {
+      name: 'chromium-timeline-mobile',
+      testMatch: ['**/timeline-edits.spec.js'],
+      grep: /mobile:/,
+      use: { ...devices['Pixel 7'], mapMode: 'RASTER' },
+    },
+
+    ...(process.env.DEMO_BASE_URL ? [{
+      name: 'chromium-timeline-demo',
+      testMatch: ['**/timeline-edit-demo.spec.js'],
+      use: { ...devices['Desktop Chrome'], baseURL: process.env.DEMO_BASE_URL },
+    }] : []),
+
+    {
       // Runs once the projects above have finished (a failure there skips it), one test at a time:
       // each test owns the global auth settings while it runs.
       name: 'chromium-oidc',
       testMatch: oidcSpecs,
-      dependencies: ['chromium', 'chromium-vector'],
+      dependencies: ['chromium', 'chromium-vector', 'chromium-timeline-vector', 'chromium-timeline-mobile', ...(process.env.DEMO_BASE_URL ? ['chromium-timeline-demo'] : [])],
       fullyParallel: false,
       use: {
         ...devices['Desktop Chrome'],

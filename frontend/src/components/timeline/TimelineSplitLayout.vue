@@ -531,6 +531,12 @@ defineExpose({
 }
 
 .timeline-split-side-pane :deep(.timeline-header) {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.timeline-split-side-pane :deep(.timeline-title),
+.timeline-split-side-pane :deep(.timeline-header-date-nav) {
   display: none;
 }
 

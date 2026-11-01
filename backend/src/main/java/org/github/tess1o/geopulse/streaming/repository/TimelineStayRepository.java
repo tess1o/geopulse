@@ -56,13 +56,14 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
 
     /**
      * The latest stay starting before the timestamp that timeline generation produces itself: stays created by a
-     * manual override (a data gap or part of a trip turned into a stay) are skipped, since generation only recreates
-     * them afterwards.
+     * timeline edit are skipped, since generation recreates them from their source interval.
      */
     public Optional<TimelineStayEntity> findLatestGeneratedStayBefore(UUID userId, Instant beforeTimestamp) {
         return getEntityManager().createQuery("""
                         SELECT s FROM TimelineStayEntity s
                         WHERE s.user.id = :userId AND s.timestamp < :before
+                          AND NOT EXISTS (SELECT 1 FROM TimelineEditApplicationEntity a
+                                          WHERE a.targetType = 'STAY' AND a.targetId = s.id)
                           AND NOT EXISTS (SELECT 1 FROM TimelineDataGapStayOverrideEntity o WHERE o.stay = s)
                           AND NOT EXISTS (SELECT 1 FROM TimelineTripStaySplitOverrideEntity o WHERE o.stay = s)
                         ORDER BY s.timestamp DESC

@@ -32,6 +32,8 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayNameOverrideRepository;
@@ -110,6 +112,9 @@ public class ExportDataCollectorService {
 
     @Inject
     TimelineStayNameOverrideRepository stayNameOverrideRepository;
+
+    @Inject
+    TimelineEditRepository timelineEditRepository;
 
     @Inject
     TripRepository tripRepository;
@@ -318,6 +323,10 @@ public class ExportDataCollectorService {
 
     public List<TimelineStayNameOverrideEntity> collectStayNameOverrides(UUID userId) {
         return stayNameOverrideRepository.findByUserId(userId);
+    }
+
+    public List<TimelineEditEntity> collectTimelineEdits(UUID userId) {
+        return timelineEditRepository.findByUser(userId);
     }
 
     public List<TripEntity> collectTrips(UUID userId) {

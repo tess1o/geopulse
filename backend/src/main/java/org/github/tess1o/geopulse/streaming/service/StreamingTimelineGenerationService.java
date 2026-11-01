@@ -11,6 +11,9 @@ import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditResult;
+import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationException;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
@@ -147,6 +150,12 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     TimelineRebuildRequestRepository rebuildRequestRepository;
+
+    @Inject
+    TimelineEditService timelineEditService;
+
+    @Inject
+    TimelineEditApplicationRepository editApplications;
 
     @Inject
     Event<TimelineDataChangedEvent> timelineDataChangedEvent;
@@ -293,6 +302,7 @@ public class StreamingTimelineGenerationService {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "noGpsData", "No GPS data to process", 9, 100, null);
                 completeJob(jobId);
+                timelineEditService.clearMissingApplications(userId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
                 pendingRebuildFinished = true;
@@ -361,6 +371,13 @@ public class StreamingTimelineGenerationService {
                     recordTimelineStage(stageStart, trigger, "merge", "success");
                 }
 
+                Instant generatedEnd = events.stream().map(TimelineEvent::getEndTime)
+                        .max(Instant::compareTo).orElse(regenerationStartTime);
+                stageStart = metricsStart();
+                TimelineEditResult editResult = timelineEditService.apply(userId, events, regenerationStartTime, generatedEnd);
+                events = new ArrayList<>(editResult.events());
+                recordTimelineStage(stageStart, trigger, "timeline_edits", "success");
+
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
                 generatedTimeline = rawTimeline;
@@ -383,22 +400,16 @@ public class StreamingTimelineGenerationService {
                 // Generation has events to replace the manual stays with: the corrections recreate them below.
                 deleteManualStaysFrom(userId, regenerationStartTime);
 
-                // Re-apply manual Trip -> Stay -> Trip splits before movement overrides reattach.
+                stageStart = metricsStart();
+                timelineEditService.recordApplications(userId, editResult);
+                recordTimelineStage(stageStart, trigger, "timeline_edit_applications", "success");
+                // Legacy rows remain replayable until seeded migration-equivalence tests allow their tables to drop.
                 stageStart = metricsStart();
                 tripStaySplitOverrideService.reapplyManualOverrides(userId);
-                recordTimelineStage(stageStart, trigger, "trip_split_overrides", "success");
-                // Re-attach manual movement-type overrides to regenerated trips.
-                stageStart = metricsStart();
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);
-                recordTimelineStage(stageStart, trigger, "movement_overrides", "success");
-                // Re-attach manual Data Gap -> Stay conversions to regenerated gaps.
-                stageStart = metricsStart();
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
-                recordTimelineStage(stageStart, trigger, "data_gap_overrides", "success");
-                // Names given to single stays, last: they apply to whichever stay ends up there.
-                stageStart = metricsStart();
                 stayNameOverrideService.reapplyManualOverrides(userId);
-                recordTimelineStage(stageStart, trigger, "stay_name_overrides", "success");
+                recordTimelineStage(stageStart, trigger, "legacy_timeline_edits", "success");
                 // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
                 stageStart = metricsStart();
                 timelineNoteService.reattachAnchoredNotes(userId);
@@ -406,6 +417,8 @@ public class StreamingTimelineGenerationService {
             } else {
                 log.info("Timeline persistence skipped for user {} because post-processing returned no events", userId);
             }
+
+            timelineEditService.clearMissingApplications(userId);
 
             // Step 8: Data gap detection (90%)
             updateProgress(jobId, "detectingDataGaps", "Detecting data gaps", 8, 90, null);
@@ -663,10 +676,14 @@ public class StreamingTimelineGenerationService {
         return restart.orElse(new Restart(from, null));
     }
 
-    /** Generated events from {@code from} go; stays owned by a manual split or gap conversion stay. */
+    /** Generated events from {@code from} go; stays currently produced by active edits stay until replacement exists. */
     private void deleteGeneratedTimelineFrom(UUID userId, Instant from) {
         long deletedStays = timelineStayRepository.delete("""
                         user.id = :userId and timestamp >= :timestamp
+                        and id not in (select application.targetId
+                                       from TimelineEditApplicationEntity application
+                                       where application.edit.user.id = :userId
+                                         and application.targetType = 'STAY')
                         and id not in (select splitOverride.stay.id
                                        from TimelineTripStaySplitOverrideEntity splitOverride
                                        where splitOverride.user.id = :userId and splitOverride.stay is not null)
@@ -683,19 +700,25 @@ public class StreamingTimelineGenerationService {
                 deletedStays, deletedTrips, deletedGaps, userId, from);
     }
 
-    /** Removes the manual stays a finished generation replaces, just before their corrections recreate them. */
+    /** Removes old edited stays after a finished generation has persisted their replacements. */
     private void deleteManualStaysFrom(UUID userId, Instant from) {
         long deletedStays = timelineStayRepository.delete("""
                         user.id = :userId and timestamp >= :timestamp
-                        and (id in (select splitOverride.stay.id
-                                    from TimelineTripStaySplitOverrideEntity splitOverride
-                                    where splitOverride.user.id = :userId and splitOverride.stay is not null)
-                             or id in (select gapOverride.stay.id
-                                       from TimelineDataGapStayOverrideEntity gapOverride
-                                       where gapOverride.user.id = :userId and gapOverride.stay is not null))
+                        and id in (select application.targetId
+                                   from TimelineEditApplicationEntity application
+                                   where application.edit.user.id = :userId
+                                     and application.targetType = 'STAY')
+                         or (user.id = :userId and timestamp >= :timestamp
+                             and id in (select splitOverride.stay.id
+                                        from TimelineTripStaySplitOverrideEntity splitOverride
+                                        where splitOverride.user.id = :userId and splitOverride.stay is not null))
+                         or (user.id = :userId and timestamp >= :timestamp
+                             and id in (select gapOverride.stay.id
+                                        from TimelineDataGapStayOverrideEntity gapOverride
+                                        where gapOverride.user.id = :userId and gapOverride.stay is not null))
                         """,
                 Map.of("userId", userId, "timestamp", from));
-        log.debug("Deleted {} manual stays of user {} from {} before re-applying their corrections",
+        log.debug("Deleted {} replaced edited stays of user {} from {}",
                 deletedStays, userId, from);
     }
 
@@ -721,6 +744,15 @@ public class StreamingTimelineGenerationService {
                 .firstResultOptional()
                 .filter(stay -> !stay.getTimestamp().isBefore(regenerationStartTime))
                 .filter(stay -> stay.getFavoriteLocation() == null && stay.getGeocodingLocation() == null)
+                // A user-supplied place snapshot is resolved even without a live favorite/geocoding reference.
+                .filter(stay -> editApplications.findForTargets("STAY", List.of(stay.getId())).stream().noneMatch(application -> {
+                    var edit = application.getEdit();
+                    return switch (edit.getKind()) {
+                        case SET_PLACE, FORCE_STAY -> edit.getPlaceName() != null || edit.getPayload().get("locationName") != null;
+                        case SPLIT_STAY -> edit.getPayload().get("rightLocationName") != null;
+                        default -> false;
+                    };
+                }))
                 .ifPresent(stay -> {
                     log.info("Latest stay of user {} at {} has no resolved place; requesting another pass",
                             userId, stay.getTimestamp());

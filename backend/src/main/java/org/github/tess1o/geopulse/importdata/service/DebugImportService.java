@@ -174,6 +174,9 @@ public class DebugImportService {
         if (data.timelineOverrides != null) {
             timelineDetailsImporter.importTimelineOverridesData(data.timelineOverrides, job, referenceMaps);
         }
+        if (data.timelineEdits != null) {
+            timelineDetailsImporter.importTimelineEditsData(data.timelineEdits, job, referenceMaps);
+        }
 
         // 7. Optionally update timeline configuration and timezone
         boolean configApplied = request.isUpdateTimelineConfig() && data.timelineConfig != null;
@@ -240,6 +243,10 @@ public class DebugImportService {
                     case "timeline_overrides.json":
                         data.timelineOverrides = content;
                         log.info("Extracted timeline overrides");
+                        break;
+                    case "timeline_edits.json":
+                        data.timelineEdits = content;
+                        log.info("Extracted timeline edits");
                         break;
                     case "timeline.json":
                         // The exporting server's timeline: the expected result a regeneration is compared with, not
@@ -598,7 +605,7 @@ public class DebugImportService {
                 instant(text(metadata, "export_date")), timezone, timezoneApplied, configApplied, issue,
                 requestedRange, exportedRange,
                 new DebugImportReport.Imported(gps.imported(), favoriteLocations, favoriteAreas, geocodingLocations,
-                        data.timelineOverrides != null),
+                        data.timelineOverrides != null || data.timelineEdits != null),
                 gpsSources, timelineStatus, water, comparison, warnings);
     }
 
@@ -723,6 +730,7 @@ public class DebugImportService {
         JsonNode favoriteAreas;
         byte[] reverseGeocoding;
         byte[] timelineOverrides;
+        byte[] timelineEdits;
         TimelineDataDto exportedTimeline;
     }
 

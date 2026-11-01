@@ -424,6 +424,7 @@ public class DropFolderImportService {
                     ExportImportConstants.DataTypes.USER_INFO,
                     ExportImportConstants.DataTypes.TIMELINE_LABELS,
                     ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
+                    ExportImportConstants.DataTypes.TIMELINE_EDITS,
                     ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                     ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,
                     ExportImportConstants.DataTypes.GEOFENCING,

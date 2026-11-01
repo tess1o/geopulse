@@ -25,6 +25,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
@@ -95,6 +96,7 @@ public class ExportDataMapper {
                 .latitude(stay.getLocation().getY())
                 .duration(stay.getStayDuration()) // Duration in seconds
                 .address(stay.getLocationName())
+                .visitName(stay.getVisitName())
                 .favoriteId(stay.getFavoriteLocation() != null ? stay.getFavoriteLocation().getId() : null)
                 .geocodingId(stay.getGeocodingLocation() != null ? stay.getGeocodingLocation().getId() : null)
                 .explanation(stay.getExplanation())
@@ -375,6 +377,26 @@ public class ExportDataMapper {
                 .dataGapStayOverrides(gapOverrides.stream().map(this::toDataGapStayOverrideDto).collect(Collectors.toList()))
                 .tripStaySplitOverrides(staySplitOverrides.stream().map(this::toTripStaySplitOverrideDto).collect(Collectors.toList()))
                 .stayNameOverrides(stayNameOverrides.stream().map(this::toStayNameOverrideDto).collect(Collectors.toList()))
+                .build();
+    }
+
+    public TimelineEditsDataDto toTimelineEditsDataDto(List<TimelineEditEntity> edits) {
+        return TimelineEditsDataDto.builder()
+                .dataType(ExportImportConstants.DataTypes.TIMELINE_EDITS)
+                .exportDate(Instant.now())
+                .edits(edits.stream().map(edit -> TimelineEditsDataDto.EditDto.builder()
+                        .id(edit.getId()).seq(edit.getSeq()).kind(edit.getKind())
+                        .anchorStart(edit.getAnchorStart()).anchorEnd(edit.getAnchorEnd())
+                        .affectedFrom(edit.getAffectedFrom()).affectedTo(edit.getAffectedTo())
+                        .payload(new java.util.LinkedHashMap<>(edit.getPayload()))
+                        .beforeValues(edit.getBeforeValues() == null ? null : new java.util.LinkedHashMap<>(edit.getBeforeValues()))
+                        .favoriteId(edit.getPlaceFavorite() == null ? null : edit.getPlaceFavorite().getId())
+                        .geocodingId(edit.getPlaceGeocoding() == null ? null : edit.getPlaceGeocoding().getId())
+                        .latitude(edit.getPlaceLatitude()).longitude(edit.getPlaceLongitude())
+                        .placeName(edit.getPlaceName()).status(edit.getStatus())
+                        .supersededById(edit.getSupersededBy() == null ? null : edit.getSupersededBy().getId())
+                        .createdAt(edit.getCreatedAt()).updatedAt(edit.getUpdatedAt()).build())
+                        .toList())
                 .build();
     }
 

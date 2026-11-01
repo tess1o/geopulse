@@ -14,12 +14,13 @@ public class TimelineStayNameOverrideRepository implements PanacheRepository<Tim
 
     /** The user's stay names in the order they were given, so a later one wins where two cover the same stay. */
     public List<TimelineStayNameOverrideEntity> findByUserId(UUID userId) {
-        return find("user.id = ?1 order by id", userId).list();
+        return find("user.id = ?1 and migratedToTimelineEdits = false order by id", userId).list();
     }
 
     /** The correction for one named interval, if the user already named it. */
     public Optional<TimelineStayNameOverrideEntity> findByUserIdAndInterval(UUID userId, Instant from, Instant to) {
-        return find("user.id = ?1 and stayStartTime = ?2 and stayEndTime = ?3", userId, from, to)
+        return find("user.id = ?1 and stayStartTime = ?2 and stayEndTime = ?3 "
+                        + "and migratedToTimelineEdits = false", userId, from, to)
                 .firstResultOptional();
     }
 }

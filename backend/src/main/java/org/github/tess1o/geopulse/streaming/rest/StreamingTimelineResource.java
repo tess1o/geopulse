@@ -35,6 +35,10 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEventExplanationDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineOverrideSummaryDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditMutationResponse;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditPreviewDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
@@ -45,6 +49,7 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
 import org.github.tess1o.geopulse.streaming.service.TimelineOverrideListService;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineEventExplanationService;
 import org.jboss.resteasy.reactive.RestResponse;
 
@@ -72,6 +77,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NO
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_IN_PROGRESS;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_EDIT_NOT_FOUND;
 
 @Path("/timeline")
 @Produces(MediaType.APPLICATION_JSON)
@@ -95,6 +101,7 @@ public class StreamingTimelineResource {
     @Inject TimelineEventExplanationService timelineEventExplanationService;
     @Inject TimelineOverrideListService timelineOverrideListService;
     @Inject TripMovementTypeOverrideService tripMovementTypeOverrideService;
+    @Inject TimelineEditService timelineEditService;
 
     @GET
     @Operation(summary = "Get the timeline",
@@ -178,6 +185,83 @@ public class StreamingTimelineResource {
                     + "/api/v1/preferences/timeline`.")
     public TimelineConfig getUserPreferences() {
         return configurationProvider.getConfigurationForUser(currentUserService.getCurrentUserId());
+    }
+
+    @GET
+    @Path("/edits")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Operation(summary = "List timeline edits",
+            description = "Lists every one-off edit of the signed-in user's timeline in application order.")
+    public List<TimelineEditDTO> listEdits() {
+        return timelineEditService.list(currentUserService.getCurrentUserId());
+    }
+
+    @POST
+    @Path("/edits/preview")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Operation(summary = "Preview a timeline edit",
+            description = "Applies one proposed edit in memory and returns the affected event sequence without saving it.")
+    public TimelineEditPreviewDTO previewEdit(TimelineEditRequest request) {
+        try {
+            return timelineEditService.preview(currentUserService.getCurrentUserId(), request);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid timeline edit", e);
+        }
+    }
+
+    @POST
+    @Path("/edits")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Operation(summary = "Create a timeline edit",
+            description = "Stores one reversible edit and durably requests timeline regeneration.")
+    public TimelineEditMutationResponse createEdit(TimelineEditRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        try {
+            var edit = timelineEditService.create(userId, request);
+            var scheduling = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
+                    userId, edit.affectedFrom());
+            return new TimelineEditMutationResponse(edit,
+                    scheduling.jobId(), scheduling.queued());
+        } catch (TimelineGenerationLockException e) {
+            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
+                    "The timeline is being regenerated; try again when it has finished", e);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid timeline edit", e);
+        }
+    }
+
+    @POST
+    @Path("/edits/{editId}/revert")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Operation(summary = "Revert a timeline edit",
+            description = "Deactivates one edit and durably requests timeline regeneration.")
+    public TimelineEditMutationResponse revertEdit(@PathParam("editId") Long editId) {
+        return changeEditStatus(editId, false);
+    }
+
+    @POST
+    @Path("/edits/{editId}/restore")
+    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
+    @Operation(summary = "Restore a reverted timeline edit",
+            description = "Reactivates a reverted edit when it does not conflict with a newer active edit.")
+    public TimelineEditMutationResponse restoreEdit(@PathParam("editId") Long editId) {
+        return changeEditStatus(editId, true);
+    }
+
+    private TimelineEditMutationResponse changeEditStatus(Long editId, boolean restore) {
+        UUID userId = currentUserService.getCurrentUserId();
+        try {
+            var edit = (restore ? timelineEditService.restore(userId, editId) : timelineEditService.revert(userId, editId))
+                    .orElseThrow(() -> new GeoPulseException(TIMELINE_EDIT_NOT_FOUND,
+                            "Timeline edit not found or access denied", Map.of("editId", editId)));
+            var scheduling = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
+                    userId, edit.affectedFrom());
+            return new TimelineEditMutationResponse(edit,
+                    scheduling.jobId(), scheduling.queued());
+        } catch (TimelineGenerationLockException e) {
+            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
+                    "The timeline is being regenerated; try again when it has finished", e);
+        }
     }
 
     @GET

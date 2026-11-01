@@ -45,9 +45,8 @@ export default {
         clickToSetStay: 'Натисніть на маршрут, щоб вказати місце зупинки.',
         stayStartLabel: 'Початок зупинки',
         stayEndLabel: 'Кінець зупинки',
-        placeNameLabel: "Назва місця",
-        placeNameResolving: 'Визначення назви місця...',
-        placeNamePlaceholder: 'Визначається автоматично, якщо залишити порожнім',
+        placeLabel: 'Де ви зупинялися?',
+        selectedOnRoute: 'Точка на маршруті',
         updatingPreview: 'Оновлення результату розділення...',
         preview: {
             originalTrip: 'Початкова поїздка',
@@ -71,7 +70,7 @@ export default {
             minDuration: 'Тривалість зупинки має бути не менше 60 секунд.',
             startAfterTripStart: 'Зупинка має починатися після початку поїздки.',
             endBeforeTripEnd: 'Зупинка має завершитися до завершення поїздки.',
-            placeNameTooLong: 'Назва місця занадто довга.',
+            selectPlace: 'Виберіть місце зупинки або назвіть нове.',
             selectValidStayLocation: 'Виберіть коректне місце зупинки.'
         },
         pathErrors: {
@@ -80,8 +79,6 @@ export default {
         },
         previewErrorFallback: 'Не вдалося попередньо переглянути розділення поїздки',
         toasts: {
-            splitSummary: 'Поїздку розділено',
-            splitDetail: 'Зупинку додано до поїздки.',
             splitFailedSummary: 'Помилка розділення',
             splitFailedFallback: 'Не вдалося розділити поїздку'
         },

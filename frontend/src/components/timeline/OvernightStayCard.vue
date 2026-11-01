@@ -11,6 +11,8 @@
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
+          <TimelineEditTrigger :label="t('timeline.edit.visit')" :count="0"
+            :read-only="readOnly" @edit="emit('edit', stayItem)" @history="emit('show-edit-history', stayItem)" />
           <TimelineWeatherSummary :samples="weatherSamples" />
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
@@ -32,31 +34,15 @@
         🏠 {{ t('timeline.stay.stayedAt') }}
         <span class="location-name">{{ stayItem.locationName }}</span>
         <span v-if="isManualStay" class="manual-gap-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
-        <button
-          v-if="canRenameStay"
-          class="location-edit-icon-btn"
-          :aria-label="t('timeline.card.renameStayAria')"
-          :title="readOnly ? t('timeline.card.renameDisabledDemo') : t('timeline.card.renameStayAria')"
-          :disabled="readOnly"
-          @click.stop="handleRenameStay"
-        >
-          <i class="pi pi-pencil"></i>
-        </button>
-        <button
-          v-for="action in resetActions"
-          :key="action.key"
-          class="location-reset-icon-btn"
-          :aria-label="resetActionLabel(action)"
-          :title="readOnly ? t('timeline.card.resetDisabledDemo') : resetActionLabel(action)"
-          :disabled="readOnly"
-          @click.stop="handleResetAction(action)"
-        >
-          <i class="pi pi-refresh"></i>
-        </button>
       </div>
     </template>
 
     <template #content>
+      <div v-if="stayItem.visitName || (!readOnly && stayItem.activeEditCount)" class="timeline-edit-metadata">
+        <span v-if="stayItem.visitName" class="visit-label"><i class="pi pi-tag" aria-hidden="true" />{{ stayItem.visitName }}</span>
+        <TimelineEditTrigger :label="t('timeline.edit.visit')" :count="stayItem.activeEditCount || 0" :show-edit="false"
+          :read-only="readOnly" @history="emit('show-edit-history', stayItem)" />
+      </div>
       <div class="overnight-stay-content">
         <p class="duration-detail">
           📈 {{ t('timeline.dataGap.totalDuration') }} <span class="duration-value">{{ formatDurationSmart(stayItem.stayDuration) }}</span>
@@ -102,6 +88,7 @@ import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
+import TimelineEditTrigger from './TimelineEditTrigger.vue'
 
 const { t } = useI18n()
 const timezone = useTimezone()
@@ -154,7 +141,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'reset-trip-split-override', 'note-saved', 'show-explanation'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'note-saved', 'show-explanation', 'edit', 'show-edit-history'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -182,6 +169,10 @@ const hasCountry = computed(() => props.stayItem.country && props.stayItem.count
 const contextMenuItems = computed(() => {
   const items = []
 
+  if (!props.readOnly) {
+    items.push({ label: t('timeline.edit.visit'), icon: 'pi pi-pencil', command: () => emit('edit', props.stayItem) })
+  }
+
   if (canViewPlaceDetails.value) {
     items.push({
       label: t('timeline.card.viewAllVisits'),
@@ -192,27 +183,6 @@ const contextMenuItems = computed(() => {
     })
   }
 
-  if (canRenameStay.value) {
-    items.push({
-      label: t('timeline.card.renamePlace'),
-      icon: 'pi pi-pencil',
-      disabled: props.readOnly,
-      command: () => {
-        handleRenameStay()
-      }
-    })
-  }
-
-  for (const action of resetActions.value) {
-    items.push({
-      label: resetActionLabel(action),
-      icon: 'pi pi-refresh',
-      disabled: props.readOnly,
-      command: () => {
-        handleResetAction(action)
-      }
-    })
-  }
 
   if (props.allowExplanation) {
     items.push({
@@ -304,10 +274,6 @@ const stayPlaceDetailsRoute = computed(() => getStayPlaceDetailsRoute(props.stay
 
 const canViewPlaceDetails = computed(() => Boolean(stayPlaceDetailsRoute.value))
 
-const canRenameStay = computed(() => {
-  return canViewPlaceDetails.value
-})
-
 // A stay can hold corrections from several sources at once: the split that cut it out of a trip, and each data gap
 // turned into a stay at the same place. Each correction gets its own reset action.
 const resetActions = computed(() => {
@@ -333,15 +299,6 @@ const resetActions = computed(() => {
 })
 
 const isManualStay = computed(() => resetActions.value.length > 0)
-
-const resetActionLabel = (action) => {
-  if (action.kind === 'tripSplit') {
-    return t('timeline.card.undoTripSplit')
-  }
-  return action.count > 1
-    ? t('timeline.card.resetDataGapOfMany', { index: action.index, count: action.count })
-    : t('timeline.card.resetDataGap')
-}
 
 const canManageMatchingNotes = computed(() => {
   return props.allowNoteCreation && matchingNotes.value.some((note) => (
@@ -384,17 +341,6 @@ const getViewNotesLabel = () => {
   return matchingNotes.value.length === 1
     ? t('timeline.card.viewNoteSingle')
     : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
-}
-
-const handleRenameStay = () => {
-  if (!canRenameStay.value || props.readOnly) return
-  emit('rename-stay', props.stayItem)
-}
-
-const handleResetAction = (action) => {
-  if (props.readOnly || !action?.overrideId) return
-  const event = action.kind === 'tripSplit' ? 'reset-trip-split-override' : 'reset-data-gap-override'
-  emit(event, props.stayItem, action.overrideId)
 }
 
 const navigateToPlaceDetails = () => {

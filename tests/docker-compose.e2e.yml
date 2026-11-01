@@ -8,7 +8,7 @@ services:
       - ../generate-keys.sh:/generate-keys.sh
     command: sh /generate-keys.sh
 
-  geopulse-backend-e2e:
+  geopulse-backend-e2e: &timeline-backend
     build:
       context: ..
       dockerfile: backend/Dockerfile.native
@@ -26,7 +26,7 @@ services:
       geopulse-postgres-e2e:
         condition: service_healthy
 
-  geopulse-ui-e2e:
+  geopulse-ui-e2e: &timeline-ui
     build:
       context: ..
       dockerfile: frontend/Dockerfile
@@ -83,6 +83,25 @@ services:
     depends_on:
       geopulse-postgres-e2e:
         condition: service_healthy
+
+  geopulse-backend-demo-e2e:
+    <<: *timeline-backend
+    profiles: [timeline-demo]
+    container_name: geopulse-backend-demo-e2e
+    ports: ["8082:8080"]
+    environment:
+      GEOPULSE_DEMO_MODE: "true"
+      GEOPULSE_UI_URL: http://localhost:5557
+
+  geopulse-ui-demo-e2e:
+    <<: *timeline-ui
+    profiles: [timeline-demo]
+    container_name: geopulse-ui-demo-e2e
+    ports: ["5557:80"]
+    environment:
+      GEOPULSE_BACKEND_URL: http://geopulse-backend-demo-e2e:8080
+      GEOPULSE_UI_URL: http://localhost:5557
+    depends_on: [geopulse-backend-demo-e2e]
 
   playwright-tests:
     build:

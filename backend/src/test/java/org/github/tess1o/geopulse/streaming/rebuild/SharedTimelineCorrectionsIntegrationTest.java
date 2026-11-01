@@ -50,6 +50,9 @@ class SharedTimelineCorrectionsIntegrationTest {
     @Inject
     TimelineDataGapRepository dataGapRepository;
 
+    @Inject org.github.tess1o.geopulse.streaming.edits.TimelineEditService unifiedEdits;
+    @Inject org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator aggregator;
+
     private final CommuteWithStops day = new CommuteWithStops();
 
     @BeforeEach
@@ -109,6 +112,52 @@ class SharedTimelineCorrectionsIntegrationTest {
             assertThat(stay.get("tripSplitOverrideId")).isNull();
             assertThat(stay.get("dataGapOverrideIds")).isNull();
         });
+    }
+
+    @Test
+    void unifiedEditsKeepSharedContentButHideOwnerHistory() {
+        TestActor owner = testUserFactory.createAuthenticatedUser("unified-shared-owner");
+        UUID user = day.ingest(harness, owner.userId());
+        var split = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
+        split.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SPLIT_STAY);
+        split.setAnchorStart(at("08:46")); split.setAnchorEnd(at("12:00"));
+        split.setPayload(new java.util.LinkedHashMap<>(Map.of("splitAt", at("10:00").toString(),
+                "rightLocationName", "Shared destination", "rightLatitude", 50.0, "rightLongitude", 30.0)));
+        unifiedEdits.create(user, split); harness.fullRebuild(user);
+        var label = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
+        label.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_VISIT_NAME);
+        label.setAnchorStart(at("10:00")); label.setAnchorEnd(at("12:00"));
+        label.setPayload(new java.util.LinkedHashMap<>(Map.of("visitName", "Shared visit label")));
+        var saved = unifiedEdits.create(user, label); harness.fullRebuild(user);
+        assertThat(aggregator.getTimelineFromDb(user, at("00:00"), at("23:59")).getStays())
+                .anySatisfy(stay -> assertThat(stay.getActiveEditCount()).isPositive());
+        var viewer = aggregator.getTimelineFromDbForViewer(user, at("00:00"), at("23:59"), false);
+        assertThat(viewer.getStays()).anySatisfy(stay -> {
+            assertThat(stay.getLocationName()).isEqualTo("Shared destination");
+            assertThat(stay.getVisitName()).isEqualTo("Shared visit label");
+        }).allSatisfy(stay -> {
+            assertThat(stay.getActiveEditCount()).isZero();
+            assertThat(stay.getTripSplitOverrideId()).isNull();
+            assertThat(stay.getDataGapOverrideIds()).isNull();
+        });
+        var link = authenticated(owner).body(Map.of("name", "Unified share", "share_type", "TIMELINE",
+                "expires_at", Instant.now().plusSeconds(7200).toString(), "start_date", at("00:00").toString(),
+                "end_date", at("23:59").toString(), "show_current_location", false, "show_notes", false))
+                .post("/api/v1/share-links");
+        assertThat(link.statusCode()).isEqualTo(201);
+        String linkId = link.jsonPath().getString("id");
+        String guest = given().contentType(ContentType.JSON).body("{}")
+                .post("/api/v1/public/share-links/" + linkId + "/access-tokens").jsonPath().getString("access_token");
+        assertThat(guest).isNotBlank();
+        var shared = given().header("Authorization", "Bearer " + guest).get("/api/v1/public/share-links/" + linkId + "/timeline");
+        assertThat(shared.statusCode()).isEqualTo(200);
+        assertThat(shared.jsonPath().getList("stays.activeEditCount", Integer.class)).allMatch(count -> count == 0);
+        assertThat(shared.asString()).contains("Shared destination", "Shared visit label")
+                .doesNotContain("beforeValues", "supersededBy", "editApplications");
+        var other = testUserFactory.createAuthenticatedUser("unified-shared-viewer");
+        assertThat(authenticated(other).get("/api/v1/timeline/edits").jsonPath().getList("$")).isEmpty();
+        assertThat(authenticated(other).post("/api/v1/timeline/edits/" + saved.id() + "/revert").statusCode()).isEqualTo(404);
+        assertThat(unifiedEdits.list(user)).allSatisfy(edit -> assertThat(edit.applied()).isTrue());
     }
 
     private static io.restassured.specification.RequestSpecification authenticated(TestActor actor) {

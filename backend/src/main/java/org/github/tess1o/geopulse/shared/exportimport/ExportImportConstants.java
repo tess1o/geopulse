@@ -25,6 +25,7 @@ public final class ExportImportConstants {
         public static final String REVERSE_GEOCODING_LOCATION = "reversegeocodinglocation";
         public static final String TIMELINE_LABELS = "timelinelabels";
         public static final String TIMELINE_OVERRIDES = "timelineoverrides";
+        public static final String TIMELINE_EDITS = "timelineedits";
         public static final String TRIP_WORKSPACE = "tripworkspace";
         public static final String NOTIFICATION_TEMPLATES = "notificationtemplates";
         public static final String GEOFENCING = "geofencing";
@@ -36,7 +37,7 @@ public final class ExportImportConstants {
 
         public static final Set<String> ALL = Set.of(
                 RAW_GPS, TIMELINE, DATA_GAPS, FAVORITES, USER_INFO, LOCATION_SOURCES, REVERSE_GEOCODING_LOCATION,
-                TIMELINE_LABELS, TIMELINE_OVERRIDES, TRIP_WORKSPACE, NOTIFICATION_TEMPLATES, GEOFENCING, NOTES,
+                TIMELINE_LABELS, TIMELINE_OVERRIDES, TIMELINE_EDITS, TRIP_WORKSPACE, NOTIFICATION_TEMPLATES, GEOFENCING, NOTES,
                 WEATHER_SAMPLES, MAP_MATCHING, FRIENDS, FRIEND_PERMISSIONS);
     }
 
@@ -54,6 +55,7 @@ public final class ExportImportConstants {
         public static final String REVERSE_GEOCODING = "reverse-geocoding.json";
         public static final String TIMELINE_LABELS = "timeline-labels.json";
         public static final String TIMELINE_OVERRIDES = "timeline-overrides.json";
+        public static final String TIMELINE_EDITS = "timeline-edits.json";
         public static final String TRIP_WORKSPACE = "trip-workspace.json";
         public static final String NOTIFICATION_TEMPLATES = "notification-templates.json";
         public static final String GEOFENCING = "geofencing.json";

@@ -59,7 +59,8 @@ public class ManualEditsSupport {
             ExportImportConstants.DataTypes.RAW_GPS,
             ExportImportConstants.DataTypes.FAVORITES,
             ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
-            ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
+            ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
+            ExportImportConstants.DataTypes.TIMELINE_EDITS);
 
     /** The stored trip that runs through the whole window. */
     public TimelineTripEntity tripCovering(UUID userId, Instant from, Instant to) {

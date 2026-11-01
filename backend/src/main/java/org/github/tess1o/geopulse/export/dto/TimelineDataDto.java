@@ -37,6 +37,7 @@ public class TimelineDataDto {
          */
         private Long duration;
         private String address;
+        private String visitName;
         private Long favoriteId;
         private Long geocodingId;
         /** Why the timeline engine created the stay as it is ({start, notes, end} reason codes), if known. */

@@ -44,6 +44,10 @@ public class TimelineStayNameOverrideEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Builder.Default
+    @Column(name = "migrated_to_timeline_edits", nullable = false)
+    private boolean migratedToTimelineEdits = false;
+
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();

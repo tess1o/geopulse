@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayAIQueryReposi
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Duration;
@@ -44,6 +45,9 @@ public class StreamingTimelineAggregator {
 
     @Inject
     TimelineTripStaySplitOverrideRepository tripStaySplitOverrideRepository;
+
+    @Inject
+    TimelineEditApplicationRepository timelineEditApplicationRepository;
 
     @Inject
     StreamingTimelineConverter converter;
@@ -215,6 +219,9 @@ public class StreamingTimelineAggregator {
         if (includeCorrections) {
             attachDataGapOverrideMetadata(userId, timeline.getStays());
             attachTripSplitOverrideMetadata(userId, timeline.getStays());
+            attachEditCounts("STAY", timeline.getStays().stream().map(TimelineStayLocationDTO::getId).toList(),
+                    counts -> timeline.getStays().forEach(stay -> stay.setActiveEditCount(
+                            counts.getOrDefault(stay.getId(), 0))));
         }
 
         // Get trips with boundary expansion
@@ -222,6 +229,11 @@ public class StreamingTimelineAggregator {
         for (var tripEntity : tripEntities) {
             TimelineTripDTO tripDTO = converter.convertTripEntityToDto(tripEntity);
             timeline.getTrips().add(tripDTO);
+        }
+        if (includeCorrections) {
+            attachEditCounts("TRIP", timeline.getTrips().stream().map(TimelineTripDTO::getId).toList(),
+                    counts -> timeline.getTrips().forEach(trip -> trip.setActiveEditCount(
+                            counts.getOrDefault(trip.getId(), 0))));
         }
 
         // Align trip start/end pins with nearby favorite stays when available.
@@ -240,11 +252,25 @@ public class StreamingTimelineAggregator {
             gapDTO.setExplanation(TimelineExplanationDTO.from(gapEntity.getExplanation()));
             timeline.getDataGaps().add(gapDTO);
         }
+        if (includeCorrections) {
+            attachEditCounts("DATA_GAP", timeline.getDataGaps().stream().map(TimelineDataGapDTO::getId).toList(),
+                    counts -> timeline.getDataGaps().forEach(gap -> gap.setActiveEditCount(
+                            counts.getOrDefault(gap.getId(), 0))));
+        }
 
         log.debug("Retrieved {} stays, {} trips, {} data gaps",
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
 
         return timeline;
+    }
+
+    private void attachEditCounts(String targetType, List<Long> ids,
+                                  java.util.function.Consumer<Map<Long, Integer>> consumer) {
+        List<Long> presentIds = ids.stream().filter(Objects::nonNull).toList();
+        Map<Long, Integer> counts = new HashMap<>();
+        timelineEditApplicationRepository.findForTargets(targetType, presentIds)
+                .forEach(application -> counts.merge(application.getTargetId(), 1, Integer::sum));
+        consumer.accept(counts);
     }
 
     private void attachDataGapOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {

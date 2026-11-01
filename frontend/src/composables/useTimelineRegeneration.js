@@ -267,6 +267,7 @@ export function useTimelineRegeneration() {
    */
   const trackCorrectionRegeneration = async (result, {
     onCompleted,
+    onFailed,
     failedDetail,
     failureSummary = t('timeline.page.resetFailedSummary'),
     queuedSummary = t('timeline.page.correctionQueuedSummary'),
@@ -288,20 +289,24 @@ export function useTimelineRegeneration() {
             clear()
           }
         },
-        onFailed: (progress) => {
+        onFailed: async (progress) => {
           try {
+            await onFailed?.()
             toast.add({
               severity: 'error',
               summary: failureSummary,
-              detail: progress?.errorMessage || failedDetail,
-              life: 5000
+              detail: failedDetail || progress?.errorMessage,
+              group: 'gps-delete',
+              data: { timelineJobUrl: router.resolve({ name: 'Timeline Job Details', params: { jobId: result.timelineJobId } }).href },
+              life: 10000
             })
           } finally {
             clear()
           }
         },
-        onTrackingError: (error) => {
+        onTrackingError: async (error) => {
           try {
+            await onFailed?.()
             toast.add({ severity: 'error', summary: failureSummary, detail: error, life: 5000 })
           } finally {
             clear()

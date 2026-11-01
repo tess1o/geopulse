@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useTimelineRegeneration } from './useTimelineRegeneration'
 
 const mocks = vi.hoisted(() => ({
@@ -27,7 +27,7 @@ vi.mock('@/composables/useTimelineJobCheck', () => ({
 
 vi.mock('@/composables/useTimelineJobProgress', () => ({
   useTimelineJobProgress: () => ({
-    jobProgress: ref(null),
+    jobProgress: mocks.progress = ref(null),
     error: ref(null),
     startPolling: mocks.startPolling,
     stopPolling: mocks.stopPolling,
@@ -154,4 +154,21 @@ describe('useTimelineRegeneration.withTimelineRegeneration', () => {
     expect(toastSeverities()).toEqual(['error', 'success'])
     expect(timelineRegenerationVisible.value).toBe(true)
   })
+})
+
+it('reports a failed accepted correction once, then refreshes a successful retry', async () => {
+  const tracker = useTimelineRegeneration()
+  const onFailed = vi.fn()
+  const onCompleted = vi.fn()
+  await tracker.trackCorrectionRegeneration({ timelineJobId: 'failed' }, { onFailed, onCompleted })
+  mocks.progress.value = { status: 'FAILED' }
+  await nextTick(); await nextTick()
+  expect(onFailed).toHaveBeenCalledOnce()
+  expect(onCompleted).not.toHaveBeenCalled()
+  expect(tracker.currentJobId.value).toBeNull()
+  await tracker.trackCorrectionRegeneration({ timelineJobId: 'retry' }, { onFailed, onCompleted })
+  mocks.progress.value = { status: 'COMPLETED' }
+  await nextTick(); await nextTick()
+  expect(onCompleted).toHaveBeenCalledOnce()
+  expect(onFailed).toHaveBeenCalledOnce()
 })

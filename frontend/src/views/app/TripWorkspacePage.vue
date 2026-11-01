@@ -177,6 +177,7 @@
                       @timeline-item-click="handleWorkspaceTimelineItemClick"
                       @rename-stay="handleWorkspaceRenameStay"
                       @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
+                      @timeline-edit-submitted="handleWorkspaceTimelineEditSubmitted"
                       @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
                       @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
                     />
@@ -1027,6 +1028,46 @@ const handleWorkspaceTimelineRefreshRequested = async () => {
 
   await fetchWorkspaceRange(activeRange.value, false)
   await refreshVisitComparisons()
+}
+
+const editActionBusy = ref(false)
+const handleWorkspaceTimelineEditSubmitted = async (result) => {
+  const scrollY = window.scrollY
+  const operation = result.operation || 'create'
+  toast.add({ severity: 'info', summary: t('timeline.edit.updating'), group: 'timeline-edit-progress' })
+  const finishProgress = () => toast.removeGroup('timeline-edit-progress')
+  await trackCorrectionRegeneration(result, {
+    failedDetail: t('timeline.edit.updateFailed'),
+    failureSummary: t('timeline.edit.updateFailed'),
+    onFailed: async () => { finishProgress(); await result.onUpdateFailed?.() },
+    onCompleted: async () => {
+      finishProgress()
+      await handleWorkspaceTimelineRefreshRequested()
+      await result.onUpdated?.()
+      window.scrollTo({ top: scrollY })
+      toast.add({
+        severity: 'success',
+        summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
+        detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeWorkspaceTimelineEdit(result.edit?.id, operation === 'undo') }
+      })
+    }
+  })
+  if (result.timelineJobQueued) finishProgress()
+}
+const changeWorkspaceTimelineEdit = async (editId, restore = false) => {
+  if (!editId || editActionBusy.value) return
+  editActionBusy.value = true
+  toast.removeGroup('timeline-edit')
+  try {
+    const result = restore ? await timelineStore.restoreTimelineEdit(editId) : await timelineStore.revertTimelineEdit(editId)
+    const finish = () => { editActionBusy.value = false }
+    await handleWorkspaceTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
+    if (!result.timelineJobId || result.timelineJobQueued) finish()
+  } catch (error) {
+    editActionBusy.value = false
+    toast.add({ severity: 'error', summary: t('common.error'), detail: formatApiErrorDetail(error, t('timeline.edit.undoFailed')), life: 5000 })
+  }
 }
 
 const handleWorkspaceResetDataGapOverride = (stayItem, overrideId) => {

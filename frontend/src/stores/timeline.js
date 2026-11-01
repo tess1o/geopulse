@@ -371,6 +371,51 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        async fetchTimelineEdits() {
+            try {
+                return await apiService.get('/timeline/edits')
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to load timeline corrections')
+                throw this.error
+            }
+        },
+
+        async previewTimelineEdit(edit) {
+            try {
+                return await apiService.post('/timeline/edits/preview', edit)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to preview timeline correction')
+                throw this.error
+            }
+        },
+
+        async createTimelineEdit(edit) {
+            try {
+                return await apiService.post('/timeline/edits', edit)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to save timeline correction')
+                throw this.error
+            }
+        },
+
+        async revertTimelineEdit(editId) {
+            try {
+                return await apiService.post(`/timeline/edits/${editId}/revert`)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to revert timeline correction')
+                throw this.error
+            }
+        },
+
+        async restoreTimelineEdit(editId) {
+            try {
+                return await apiService.post(`/timeline/edits/${editId}/restore`)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to restore timeline correction')
+                throw this.error
+            }
+        },
+
         async fetchTimelineCount(startTime, endTime) {
             try {
                 return await apiService.get('/timeline/count', { from: startTime, to: endTime })

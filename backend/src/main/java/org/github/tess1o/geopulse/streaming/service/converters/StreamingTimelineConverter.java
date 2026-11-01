@@ -68,7 +68,7 @@ public class StreamingTimelineConverter {
         entity.setLocation(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
         entity.setStayDuration(stay.getDuration().toSeconds()); // Already in seconds
         entity.setLocationName(stay.getLocationName());
-        entity.setLocationSource(getLocationSource(stay));
+        entity.setVisitName(stay.getVisitName());
         entity.setExplanation(storedExplanation(stay.getExplanation()));
 
         // Set favorite location reference using pre-loaded map (O(1) lookup)
@@ -91,6 +91,8 @@ public class StreamingTimelineConverter {
             }
         }
 
+        entity.setLocationSource(entity.getFavoriteLocation() != null ? LocationSource.FAVORITE
+                : entity.getGeocodingLocation() != null ? LocationSource.GEOCODING : LocationSource.HISTORICAL);
         return entity;
     }
 
@@ -111,7 +113,7 @@ public class StreamingTimelineConverter {
         entity.setTripDuration(trip.getDuration().toSeconds());
         entity.setDistanceMeters((long) trip.getDistanceMeters());
         entity.setMovementType(trip.getTripType() != null ? trip.getTripType().name() : "UNKNOWN");
-        entity.setMovementTypeSource(MovementTypeSource.AUTO);
+        entity.setMovementTypeSource(trip.getMovementTypeSource() != null ? trip.getMovementTypeSource() : MovementTypeSource.AUTO);
         entity.setExplanation(storedExplanation(trip.getExplanation()));
 
         // Set start and end points
@@ -207,6 +209,7 @@ public class StreamingTimelineConverter {
                 .latitude(entity.getLocation().getY())
                 .stayDuration(entity.getStayDuration()) // Already in seconds
                 .locationName(entity.getLocationName() != null ? entity.getLocationName() : "Unknown location")
+                .visitName(entity.getVisitName())
                 .favoriteId(entity.getFavoriteLocation() != null ? entity.getFavoriteLocation().getId() : null)
                 .geocodingId(entity.getGeocodingLocation() != null ? entity.getGeocodingLocation().getId() : null)
                 .city(city)
@@ -246,19 +249,6 @@ public class StreamingTimelineConverter {
 
     private static java.util.LinkedHashMap<String, Object> storedExplanation(TimelineExplanation explanation) {
         return explanation == null || explanation.isEmpty() ? null : explanation.toMap();
-    }
-
-    /**
-     * Determine location source based on DTO fields.
-     */
-    private LocationSource getLocationSource(Stay stay) {
-        if (stay.getFavoriteId() != null && stay.getFavoriteId() != 0) {
-            return LocationSource.FAVORITE;
-        }
-        if (stay.getGeocodingId() != null && stay.getGeocodingId() != 0) {
-            return LocationSource.GEOCODING;
-        }
-        return LocationSource.HISTORICAL;
     }
 
     /**

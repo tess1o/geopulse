@@ -58,6 +58,9 @@ public class TimelineStayEntity {
     @Column(name = "location_name", nullable = false, length = 500)
     private String locationName;
 
+    @Column(name = "visit_name", length = 500)
+    private String visitName;
+
     /**
      * Reference to favorite location if this stay was resolved from user's favorites.
      * Exactly one of favoriteLocation or geocodingLocation will be set.

@@ -8,7 +8,9 @@ import OvernightTripCard from './OvernightTripCard.vue'
 import StayCard from './StayCard.vue'
 import TimelineContainer from './TimelineContainer.vue'
 import TripCard from './TripCard.vue'
-import DataGapToStayDialog from '../dialogs/DataGapToStayDialog.vue'
+import TripStaySplitDialog from '../dialogs/TripStaySplitDialog.vue'
+import TimelineEditDrawer from './TimelineEditDrawer.vue'
+import TimelineEditHistoryDrawer from './TimelineEditHistoryDrawer.vue'
 import TimelineEventExplanationDialog from '../dialogs/TimelineEventExplanationDialog.vue'
 import TripClassificationDialog from '../dialogs/TripClassificationDialog.vue'
 
@@ -56,10 +58,11 @@ describe('timeline prop bindings', () => {
     const container = sourceOf('./TimelineContainer.vue')
     const components = {
       StayCard, OvernightStayCard, TripCard, OvernightTripCard, DataGapCard, OvernightDataGapCard,
-      DataGapToStayDialog, TimelineEventExplanationDialog, TripClassificationDialog
+      TripStaySplitDialog, TimelineEditDrawer, TimelineEditHistoryDrawer, TimelineEventExplanationDialog, TripClassificationDialog
     }
 
     for (const [tagName, component] of Object.entries(components)) {
+      expect(container, tagName).toContain(`<${tagName}`)
       expect(undeclaredProps(boundPropNamesIn(container, tagName), component), tagName).toEqual([])
     }
     expect(container.match(/@show-explanation="handleShowExplanation"/g)).toHaveLength(6)
@@ -79,10 +82,10 @@ describe('timeline prop bindings', () => {
     expect(boundPropExpression(workspace, 'TimelineContainer', 'read-only')).toContain('!isOwner')
   })
 
-  it('passes read-only down to the data gap conversion controls', () => {
+  it('passes read-only down to gap cards and the trip split dialog', () => {
     const container = sourceOf('./TimelineContainer.vue')
 
-    for (const tagName of ['DataGapCard', 'OvernightDataGapCard', 'DataGapToStayDialog']) {
+    for (const tagName of ['DataGapCard', 'OvernightDataGapCard', 'TripStaySplitDialog']) {
       expect(boundPropExpression(container, tagName, 'read-only'), tagName).toBe('effectiveReadOnly')
     }
   })

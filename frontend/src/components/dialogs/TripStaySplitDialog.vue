@@ -4,7 +4,7 @@
     :header="t('tripDialogs.staySplit.header')"
     :modal="true"
     class="trip-stay-split-dialog"
-    @hide="$emit('close')"
+    :closable="!saving" :close-on-escape="!saving"
   >
     <div v-if="trip" class="split-content">
       <div class="trip-meta">
@@ -23,17 +23,18 @@
           <Message v-if="selectionError" severity="warn" :closable="false">{{ selectionError }}</Message>
 
           <template v-if="selectedPoint">
-            <div class="selection-row">
-              <span>{{ formatCoordinate(selectedPoint.latitude) }}, {{ formatCoordinate(selectedPoint.longitude) }}</span>
-              <span v-if="selectedDistanceMeters !== null">{{ formatDistance(selectedDistanceMeters) }}</span>
+            <div v-if="selectedDistanceMeters !== null" class="selection-row">
+              <span>{{ t('tripDialogs.staySplit.selectedOnRoute') }}</span>
+              <span>{{ formatDistance(selectedDistanceMeters) }}</span>
             </div>
 
             <div class="time-grid">
               <div class="field">
                 <label for="split-stay-start">{{ t('tripDialogs.staySplit.stayStartLabel') }}</label>
                 <DatePicker
-                  id="split-stay-start"
+                  inputId="split-stay-start"
                   v-model="stayStart"
+                  @input="onTimeInput('stayStart', $event)" @update:model-value="typedTimeInvalid.stayStart = false"
                   showTime
                   showSeconds
                   :dateFormat="timezone.getPrimeVueDatePickerFormat()"
@@ -44,8 +45,9 @@
               <div class="field">
                 <label for="split-stay-end">{{ t('tripDialogs.staySplit.stayEndLabel') }}</label>
                 <DatePicker
-                  id="split-stay-end"
+                  inputId="split-stay-end"
                   v-model="stayEnd"
+                  @input="onTimeInput('stayEnd', $event)" @update:model-value="typedTimeInvalid.stayEnd = false"
                   showTime
                   showSeconds
                   :dateFormat="timezone.getPrimeVueDatePickerFormat()"
@@ -56,14 +58,12 @@
             </div>
 
             <div class="field">
-              <label for="split-location-name">{{ t('tripDialogs.staySplit.placeNameLabel') }}</label>
-              <InputText
-                id="split-location-name"
-                v-model.trim="locationName"
-                maxlength="500"
-                :placeholder="resolvingPlaceName ? t('tripDialogs.staySplit.placeNameResolving') : t('tripDialogs.staySplit.placeNamePlaceholder')"
-                :disabled="saving"
-                @input="locationNameEdited = true"
+              <span class="field-label">{{ t('tripDialogs.staySplit.placeLabel') }}</span>
+              <TimelinePlacePicker
+                v-model="place"
+                :point="selectedPoint"
+                :allow-map="false"
+                :allow-search="false"
               />
             </div>
 
@@ -91,7 +91,7 @@
                       <i class="pi pi-arrow-right" aria-hidden="true"></i>
                     </span>
                     <div class="preview-copy">
-                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(preview.firstTrip?.tripDuration || 0) }) }}</strong>
+                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(previewEventSeconds(previewEvents.firstTrip)) }) }}</strong>
                       <span>{{ t('tripDialogs.staySplit.preview.to', { name: previewLocationName }) }}</span>
                     </div>
                   </li>
@@ -109,7 +109,7 @@
                       <i class="pi pi-arrow-right" aria-hidden="true"></i>
                     </span>
                     <div class="preview-copy">
-                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(preview.secondTrip?.tripDuration || 0) }) }}</strong>
+                      <strong>{{ t('tripDialogs.staySplit.preview.tripFor', { duration: formatDuration(previewEventSeconds(previewEvents.secondTrip)) }) }}</strong>
                       <span>{{ t('tripDialogs.staySplit.preview.from', { name: previewLocationName }) }}</span>
                     </div>
                   </li>
@@ -168,18 +168,21 @@ import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
-import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
-import { MapContainer, PathLayer } from '@/components/maps'
+import MapContainer from '@/components/maps/MapContainer.vue'
+import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import TripReconstructionMapOverlay from '@/components/trips/reconstruction/TripReconstructionMapOverlay.vue'
+import { parseTimelinePickerInput, timelinePickerToUtc } from '@/utils/timelineEditTime'
+import TimelinePlacePicker from '@/components/timeline/TimelinePlacePicker.vue'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
-import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import { normalizeLatLngPoint } from '@/maps/shared/coordinateUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { placePayload } from '@/utils/timelineEditPlace'
 import {
   normalizeTripPathPoints,
   normalizeTripPathSegments,
@@ -210,13 +213,17 @@ const { t } = useI18n()
 const toast = useToast()
 const timelineStore = useTimelineStore()
 const timelinePreferencesStore = useTimelinePreferencesStore()
-const tripsStore = useTripsStore()
 const timezone = useTimezone()
 
+const typedTimeInvalid = ref({ stayStart: false, stayEnd: false })
+function onTimeInput(field, event) {
+  const parsed = parseTimelinePickerInput(event, timezone, true)
+  typedTimeInvalid.value[field] = !parsed
+  if (parsed) { if (field === 'stayStart') stayStart.value = parsed; else stayEnd.value = parsed }
+}
 const stayStart = ref(null)
 const stayEnd = ref(null)
-const locationName = ref('')
-const locationNameEdited = ref(false)
+const place = ref(null)
 const pathPoints = ref([])
 const pathSegments = ref([])
 const selectedPoint = ref(null)
@@ -225,19 +232,17 @@ const preview = ref(null)
 const pathLoading = ref(false)
 const previewing = ref(false)
 const saving = ref(false)
-const resolvingPlaceName = ref(false)
 const pathError = ref('')
 const selectionError = ref('')
 const previewError = ref('')
 const mapRef = ref(null)
-let placeRequestToken = 0
 let previewRequestToken = 0
 let previewTimer = null
 
 const internalVisible = computed({
   get: () => props.visible,
   set: (value) => {
-    if (!value) emit('close')
+    if (!value && !saving.value && (!selectedPoint.value || window.confirm(t('timeline.edit.discardChanges')))) emit('close')
   }
 })
 
@@ -280,16 +285,17 @@ const activeStaySegment = computed(() => selectedPoint.value
       segmentType: 'STAY',
       latitude: selectedPoint.value.latitude,
       longitude: selectedPoint.value.longitude,
-      locationName: locationName.value || t('tripDialogs.staySplit.selectedStayFallback')
+      locationName: place.value?.locationName || t('tripDialogs.staySplit.selectedStayFallback')
     }
   : null)
 
 const validationError = computed(() => {
+  if (typedTimeInvalid.value.stayStart || typedTimeInvalid.value.stayEnd) return t('tripDialogs.staySplit.validation.selectValidTimes')
   if (!props.trip?.id) return t('tripDialogs.staySplit.validation.tripMissing')
   if (props.readOnly) return t('tripDialogs.staySplit.validation.readOnly')
   if (!selectedPoint.value) return t('tripDialogs.staySplit.validation.selectStayLocation')
   const range = selectedRange()
-  if (!range.start || !range.end) return t('tripDialogs.staySplit.validation.selectValidTimes')
+  if (!range.start || !range.end) return t(stayStart.value && stayEnd.value ? 'timeline.edit.uncertainTime' : 'tripDialogs.staySplit.validation.selectValidTimes')
   if (new Date(range.end) <= new Date(range.start)) return t('tripDialogs.staySplit.validation.endAfterStart')
   if (new Date(range.end).getTime() - new Date(range.start).getTime() < 60_000) return t('tripDialogs.staySplit.validation.minDuration')
   if (tripStart.value && new Date(range.start) <= new Date(tripStart.value)) return t('tripDialogs.staySplit.validation.startAfterTripStart')
@@ -300,7 +306,7 @@ const validationError = computed(() => {
     tripEnd: tripEnd.value
   })
   if (selectionValidation.error) return selectionValidation.error
-  if (locationName.value && locationName.value.length > 500) return t('tripDialogs.staySplit.validation.placeNameTooLong')
+  if (!place.value) return t('tripDialogs.staySplit.validation.selectPlace')
   return ''
 })
 
@@ -311,19 +317,30 @@ const originalTripDurationSeconds = computed(() => {
   return Number.isFinite(duration) && duration >= 0 ? duration : 0
 })
 
+// The edit preview lists the events of the trip's interval; the split turns it into trip, stay, trip.
+const previewEvents = computed(() => {
+  const events = preview.value?.events || []
+  const stayIndex = events.findIndex(event => event.type === 'STAY')
+  const stay = stayIndex >= 0 ? events[stayIndex] : null
+  return {
+    stay,
+    firstTrip: stay ? events.slice(0, stayIndex).reverse().find(event => event.type === 'TRIP') : null,
+    secondTrip: stay ? events.slice(stayIndex + 1).find(event => event.type === 'TRIP') : null
+  }
+})
+
 const previewLocationName = computed(() => (
-  preview.value?.locationName || locationName.value || t('tripDialogs.staySplit.selectedPlaceFallback')
+  previewEvents.value.stay?.locationName || previewEvents.value.stay?.label || place.value?.locationName || t('tripDialogs.staySplit.selectedPlaceFallback')
 ))
 
-const previewStayDurationSeconds = computed(() => {
-  const directDuration = Number(preview.value?.stay?.stayDuration ?? preview.value?.stayDuration)
-  if (Number.isFinite(directDuration) && directDuration >= 0) return directDuration
+const previewStayDurationSeconds = computed(() => previewEventSeconds(previewEvents.value.stay))
 
-  const start = Date.parse(preview.value?.stayStartTime)
-  const end = Date.parse(preview.value?.stayEndTime)
+const previewEventSeconds = (event) => {
+  const start = Date.parse(event?.start)
+  const end = Date.parse(event?.end)
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0
   return Math.round((end - start) / 1000)
-})
+}
 
 watch(
   () => [props.visible, props.trip?.id],
@@ -335,14 +352,14 @@ watch(
   { immediate: true }
 )
 
-watch([selectedPoint, stayStart, stayEnd, locationName], () => {
+watch([selectedPoint, stayStart, stayEnd, place, typedTimeInvalid], () => {
   schedulePreview()
-})
+}, { deep: true, flush: 'sync' })
 
 const resetForm = () => {
+  typedTimeInvalid.value = { stayStart: false, stayEnd: false }
   if (previewTimer) clearTimeout(previewTimer)
   previewTimer = null
-  placeRequestToken++
   previewRequestToken++
   pathPoints.value = []
   pathSegments.value = []
@@ -353,9 +370,7 @@ const resetForm = () => {
   selectionError.value = ''
   previewError.value = ''
   previewing.value = false
-  resolvingPlaceName.value = false
-  locationName.value = ''
-  locationNameEdited.value = false
+  place.value = null
   stayStart.value = null
   stayEnd.value = null
 }
@@ -415,19 +430,16 @@ const applyMapSelection = (rawCoordinate) => {
   if (result.error) {
     if (previewTimer) clearTimeout(previewTimer)
     previewTimer = null
-    placeRequestToken++
     previewRequestToken++
     selectionError.value = result.error
     selectedPoint.value = null
     selectedDistanceMeters.value = Number.isFinite(result.nearestDistanceMeters) ? result.nearestDistanceMeters : null
     stayStart.value = null
     stayEnd.value = null
-    locationName.value = ''
-    locationNameEdited.value = false
+    place.value = null
     preview.value = null
     previewError.value = ''
     previewing.value = false
-    resolvingPlaceName.value = false
     return
   }
 
@@ -436,22 +448,6 @@ const applyMapSelection = (rawCoordinate) => {
   stayStart.value = toPickerDate(result.startTime)
   stayEnd.value = toPickerDate(result.endTime)
   selectionError.value = ''
-  resolveLocationName(result.point)
-}
-
-const resolveLocationName = async (point) => {
-  if (!point || locationNameEdited.value) return
-  const token = ++placeRequestToken
-  resolvingPlaceName.value = true
-  try {
-    const suggestion = await tripsStore.getPlanSuggestion(point.latitude, point.longitude)
-    if (token !== placeRequestToken || locationNameEdited.value) return
-    locationName.value = suggestion?.title?.trim() || ''
-  } catch {
-    // Non-blocking. The split can still be saved with coordinates.
-  } finally {
-    if (token === placeRequestToken) resolvingPlaceName.value = false
-  }
 }
 
 const fitTripPath = () => {
@@ -482,12 +478,12 @@ const schedulePreview = () => {
 
 const loadPreview = async (token) => {
   try {
-    const result = await timelineStore.previewTripStaySplit(props.trip.id, buildPayload())
+    const result = await timelineStore.previewTimelineEdit(buildRequest())
     if (token !== previewRequestToken) return
     preview.value = result
   } catch (error) {
     if (token !== previewRequestToken) return
-    previewError.value = error.response?.data?.message || error.message || t('tripDialogs.staySplit.previewErrorFallback')
+    previewError.value = formatApiErrorDetail(error, t('tripDialogs.staySplit.previewErrorFallback'))
   } finally {
     if (token === previewRequestToken) previewing.value = false
   }
@@ -497,20 +493,14 @@ const saveSplit = async () => {
   if (!canSubmit.value) return
   saving.value = true
   try {
-    const result = await timelineStore.splitTripWithStay(props.trip.id, buildPayload())
-    toast.add({
-      severity: 'success',
-      summary: t('tripDialogs.staySplit.toasts.splitSummary'),
-      detail: t('tripDialogs.staySplit.toasts.splitDetail'),
-      life: 3000
-    })
+    const result = await timelineStore.createTimelineEdit(buildRequest())
     emit('split', result)
-    internalVisible.value = false
+    emit('close')
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: t('tripDialogs.staySplit.toasts.splitFailedSummary'),
-      detail: error.response?.data?.message || error.message || t('tripDialogs.staySplit.toasts.splitFailedFallback'),
+      detail: formatApiErrorDetail(error, t('tripDialogs.staySplit.toasts.splitFailedFallback')),
       life: 5000
     })
   } finally {
@@ -518,34 +508,31 @@ const saveSplit = async () => {
   }
 }
 
-const buildPayload = () => {
+// The split is one unified FORCE_STAY edit over the chosen part of the trip, so it is listed, undone and replayed
+// like every other timeline correction.
+const buildRequest = () => {
   const range = selectedRange()
-  const payload = {
-    stayStartTime: range.start,
-    stayEndTime: range.end,
-    anchorTimestamp: selectedPoint.value.timestamp,
-    latitude: selectedPoint.value.latitude,
-    longitude: selectedPoint.value.longitude
+  return {
+    kind: 'FORCE_STAY',
+    anchorStart: range.start,
+    anchorEnd: range.end,
+    affectedFrom: tripStart.value,
+    affectedTo: tripEnd.value,
+    payload: placePayload(place.value)
   }
-  if (locationName.value) {
-    payload.locationName = locationName.value
-  }
-  return payload
 }
 
 const selectedRange = () => {
-  const range = timezone.createDateTimeRangeFromPicker(stayStart.value, stayEnd.value)
-  return { start: range.start, end: range.end }
+  return { start: timelinePickerToUtc(stayStart.value, timezone), end: timelinePickerToUtc(stayEnd.value, timezone) }
 }
 
 const toPickerDate = (utcValue) => {
   if (!utcValue) return null
   const value = timezone.fromUtc(utcValue)
-  return new Date(value.year(), value.month(), value.date(), value.hour(), value.minute(), value.second())
+  return new Date(value.year(), value.month(), value.date(), value.hour(), value.minute(), value.second(), value.millisecond())
 }
 
 const formatDateTime = (value) => `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
-const formatCoordinate = (value) => Number.isFinite(value) ? value.toFixed(5) : ''
 const formatDistance = (value) => value < 1000
   ? t('tripDialogs.staySplit.distanceFromClickMeters', { value: Math.round(value) })
   : t('tripDialogs.staySplit.distanceFromClickKm', { value: (value / 1000).toFixed(1) })
@@ -620,7 +607,8 @@ const formatDistance = (value) => value < 1000
   gap: var(--gp-spacing-xs);
 }
 
-.field label {
+.field label,
+.field-label {
   color: var(--gp-text-primary);
   font-weight: 600;
   font-size: 0.875rem;

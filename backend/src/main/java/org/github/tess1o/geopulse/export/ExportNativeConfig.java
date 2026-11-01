@@ -21,6 +21,8 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         TimelineOverridesDataDto.DataGapStayOverrideDto.class,
         TimelineOverridesDataDto.TripStaySplitOverrideDto.class,
         TimelineOverridesDataDto.StayNameOverrideDto.class,
+        TimelineEditsDataDto.class,
+        TimelineEditsDataDto.EditDto.class,
         TripWorkspaceDataDto.class,
         TripWorkspaceDataDto.TripDto.class,
         TripWorkspaceDataDto.TripPlanItemDto.class,

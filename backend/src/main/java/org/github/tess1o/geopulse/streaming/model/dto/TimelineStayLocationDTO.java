@@ -25,6 +25,8 @@ public class TimelineStayLocationDTO implements GpsPoint {
 
     // Cached location name for display (resolved at creation time)
     private String locationName;
+    private String visitName;
+    private int activeEditCount;
 
     // City and country information (from favorite or geocoding location)
     private String city;

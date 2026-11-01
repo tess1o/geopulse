@@ -40,9 +40,10 @@ public class TimelineDataGapDTO {
 
     /**
      * True when this is the currently open/ongoing gap from the latest GPS point to now.
-     * Ongoing gaps are not convertible to manual stays.
+     * Ongoing gaps are not convertible to manual stays or trips.
      */
     private boolean ongoing;
+    private int activeEditCount;
 
     /** Why the timeline engine created this event as it is; absent until the timeline is regenerated. */
     @JsonInclude(JsonInclude.Include.NON_NULL)

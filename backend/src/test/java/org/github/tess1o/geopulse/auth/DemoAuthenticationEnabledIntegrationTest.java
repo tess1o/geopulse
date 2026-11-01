@@ -255,6 +255,20 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .header("X-GeoPulse-Demo-Blocked", "true");
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"", "/preview", "/1/revert", "/1/restore"})
+    void demoUserCannotMutateUnifiedTimelineEdits(String suffix) {
+        given().contentType(ContentType.JSON).header("Authorization", "Bearer " + demoAccessToken)
+                .body("""
+                        {"kind":"SET_VISIT_NAME", "anchorStart":"2026-09-15T06:00:00Z",
+                         "anchorEnd":"2026-09-15T08:00:00Z", "payload":{"visitName":"Forbidden"}}
+                        """)
+                .post("/api/v1/timeline/edits" + suffix).then().statusCode(403)
+                .header("X-GeoPulse-Demo-Blocked", "true");
+        given().header("Authorization", "Bearer " + demoAccessToken).get("/api/v1/timeline/edits")
+                .then().statusCode(200).body("size()", equalTo(0));
+    }
+
     private void ensureDemoUser(String email,
                                 String fullName,
                                 String timezone,

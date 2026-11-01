@@ -6,6 +6,7 @@ import * as TimelineTestData from '../utils/timeline-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createTimelineUser} from '../utils/isolated-user-helper.js';
 import {UserSettingsApi} from '../utils/user-settings-api.js';
+import {GpsDataFactory} from '../utils/gps-data-factory.js';
 
 test.describe('Timeline Page', () => {
 
@@ -329,8 +330,8 @@ test.describe('Timeline Page', () => {
     });
   });
 
-  test.describe('Trip Movement Type Override UX', () => {
-    test('should show Set movement type CTA for UNKNOWN + AUTO', async ({ page, isolatedUsers, dbManager }) => {
+  test.describe('Trip Movement Type Editing', () => {
+    test('should show the edit trigger and the unrecognized hint for an UNKNOWN trip', async ({ page, isolatedUsers, dbManager }) => {
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -344,14 +345,14 @@ test.describe('Timeline Page', () => {
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
-      const tripCard = timelinePage.getTimelineCards('trips').first();
+      const tripCard = page.locator('.timeline-card--trip').first();
 
-      await expect(tripCard.locator('.movement-set-btn')).toBeVisible();
-      await expect(tripCard.locator('.movement-edit-icon-btn')).toHaveCount(0);
+      await expect(tripCard.getByRole('button', { name: 'Edit trip…' })).toBeVisible();
+      await expect(tripCard.locator('.timeline-edit-count')).toHaveCount(0);
       await expect(tripCard.locator('.trip-hint')).toContainText('Algorithm did not recognize this trip');
     });
 
-    test('should show inline pencil edit for known AUTO movement type', async ({ page, isolatedUsers, dbManager }) => {
+    test('should not show the unrecognized hint for a known movement type', async ({ page, isolatedUsers, dbManager }) => {
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -374,84 +375,148 @@ test.describe('Timeline Page', () => {
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
-      const tripCard = timelinePage.getTimelineCards('trips').first();
+      const tripCard = page.locator('.timeline-card--trip').first();
 
-      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
-      await expect(tripCard.locator('.movement-set-btn')).toHaveCount(0);
+      await expect(tripCard.getByRole('button', { name: 'Edit trip…' })).toBeVisible();
+      await expect(tripCard).toContainText('Car');
+      await expect(tripCard.locator('.trip-hint')).toHaveCount(0);
       await expect(tripCard.locator('.manual-indicator')).toHaveCount(0);
     });
 
-    test('should save manual movement type and then reset to automatic', async ({ page, isolatedUsers, dbManager }) => {
+    test('shows visit labels and lets users inspect, undo and redo separate label and time changes', async ({ page, isolatedUsers, dbManager }) => {
+      test.setTimeout(180000);
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
+      const user = await dbManager.getUserByEmail(testUser.email);
+      const gps = GpsDataFactory.generateTestData(user.id, 'visit-edit-device');
+      await GpsDataFactory.insertGpsData(dbManager, gps.allPoints);
+      const response = await page.request.post('/api/v1/timeline/jobs');
+      expect(response.ok()).toBe(true);
+      const { jobId } = await response.json();
+      await expect.poll(async () => {
+        const response = await page.request.get(`/api/v1/timeline/jobs/${jobId}`);
+        return (await response.json()).status;
+      }, { timeout: 60000 }).toBe('COMPLETED');
+      const day = new Date('2025-08-10');
+      await timelinePage.navigateWithDateRange(day, day);
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+      const card = page.locator('.timeline-card--stay').first();
+      const location = await card.locator('.location-name').innerText();
+      const drawer = page.locator('.timeline-edit-drawer');
+      await card.getByRole('button', { name: 'Edit visit…' }).click();
+      await drawer.locator('.edit-action-row').filter({ hasText: 'Visit label' }).click();
+      await drawer.locator('input').fill('Test');
+      await drawer.getByRole('button', { name: 'Save changes', exact: true }).click();
+      await expect(card.locator('.visit-label')).toHaveText('Test', { timeout: 60000 });
+      await expect(card.locator('.location-name')).toHaveText(location);
+      await expect(card.locator('.timeline-edit-count')).toHaveText('1 change');
+      await card.locator('.timeline-edit-count').click();
+      await expect(drawer.locator('.timeline-changes')).toContainText('Test');
+      await drawer.locator('.edit-action-row').filter({ hasText: 'When it started and ended' }).click();
+      await drawer.getByRole('combobox', { name: 'Start', exact: true }).click();
+      await page.getByRole('button', { name: 'Next Minute', exact: true }).click();
+      await drawer.getByRole('combobox', { name: 'Start', exact: true }).press('Escape');
+      await expect(drawer.getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
+      await expect(drawer).toContainText('Step 1 of 2');
+      await drawer.getByRole('button', { name: 'Review changes', exact: true }).click();
+      await expect(drawer.locator('.edit-preview')).toContainText('After — review before saving');
+      await drawer.getByRole('button', { name: 'Save changes', exact: true }).click();
+      await expect(card.locator('.timeline-edit-count')).toHaveText('2 changes', { timeout: 60000 });
+      await card.locator('.timeline-edit-count').click();
+      const timeChange = drawer.locator('.timeline-changes article').filter({ hasText: 'Time' });
+      await expect(timeChange).toContainText('Before');
+      await expect(timeChange).toContainText('Saved');
+      await timeChange.getByRole('button', { name: 'Undo', exact: true }).click();
+      await expect(card.locator('.timeline-edit-count')).toHaveText('1 change', { timeout: 60000 });
+      await expect(card.locator('.visit-label')).toHaveText('Test');
+      await drawer.locator('.edit-action-row').filter({ hasText: 'Visit label' }).click();
+      await drawer.getByRole('button', { name: 'Remove label', exact: true }).click();
+      await expect(card.locator('.visit-label')).toHaveCount(0, { timeout: 60000 });
+      await drawer.locator('summary').click();
+      await drawer.locator('article').filter({ hasText: 'Visit label' }).getByRole('button', { name: 'Redo', exact: true }).click();
+      await expect(card.locator('.visit-label')).toHaveText('Test', { timeout: 60000 });
+      await page.reload();
+      await timelinePage.waitForPageLoad();
+      await expect(card.locator('.visit-label')).toHaveText('Test');
+    });
+
+    test('should change the movement type through the edit drawer and revert it from history', async ({ page, isolatedUsers, dbManager }) => {
+      test.setTimeout(180000);
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
 
-      const insertedTrip = await insertSingleTripForMovementType(dbManager, user.id, {
-        movementType: 'UNKNOWN',
-        movementTypeSource: 'AUTO'
-      });
+      // An edit is replayed by a rebuild from GPS points, so the trip has to come from real points, not a seeded row.
+      const gpsData = GpsDataFactory.generateTestData(user.id, 'movement-edit-device');
+      await GpsDataFactory.insertGpsData(dbManager, gpsData.allPoints);
+      const startResponse = await page.request.post('/api/v1/timeline/jobs');
+      expect(startResponse.ok()).toBe(true);
+      const { jobId } = await startResponse.json();
+      await expect.poll(async () => {
+        const response = await page.request.get(`/api/v1/timeline/jobs/${jobId}`);
+        return (await response.json()).status;
+      }, { timeout: 60000 }).toBe('COMPLETED');
 
-      await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
+      const gpsDay = new Date('2025-08-10');
+      await timelinePage.navigateWithDateRange(gpsDay, gpsDay);
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
-      const tripCard = timelinePage.getTimelineCards('trips').first();
-      await tripCard.locator('.movement-set-btn').click();
+      const tripCard = page.locator('.timeline-card--trip').last();
+      await expect(tripCard).toBeVisible();
+      await expect(tripCard).not.toContainText('Train');
+      await expect(tripCard.locator('.timeline-edit-count')).toHaveCount(0);
 
-      const quickEditDialog = page.locator('.p-dialog').filter({ hasText: 'Edit Movement Type' });
-      await expect(quickEditDialog).toBeVisible();
-      await expect(quickEditDialog).toContainText(/unknown/i);
-      await expect(quickEditDialog).toContainText('AUTO');
+      await tripCard.getByRole('button', { name: 'Edit trip…' }).click();
+      const drawer = page.locator('.timeline-edit-drawer');
+      await expect(drawer).toBeVisible();
+      await drawer.locator('.edit-action-row').filter({ hasText: 'Movement type' }).click();
+      await drawer.locator('.p-select').click();
+      await page.locator('.p-select-option').filter({ hasText: 'Train' }).first().click();
+      await drawer.getByRole('button', { name: 'Save changes' }).click();
 
-      await quickEditDialog.locator('.movement-select').click();
-      await page.locator('.p-select-option').filter({ hasText: 'Car' }).first().click();
-      await quickEditDialog.getByRole('button', { name: 'Save' }).click();
-      await expect(quickEditDialog).toBeHidden();
+      await expect(tripCard).toContainText('Train', { timeout: 60000 });
+      await expect(tripCard.locator('.timeline-edit-count')).toHaveCount(0);
+      await expect(tripCard.locator('.movement-edited-indicator')).toHaveText('Edited');
 
-      await expect(tripCard).toContainText('Car');
-      await expect(tripCard.locator('.manual-indicator')).toBeVisible();
-      await expect(tripCard.locator('.movement-set-btn')).toHaveCount(0);
-      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
+      const editAfterApply = await dbManager.client.query(`
+        SELECT id, status, payload->>'movementType' AS movement_type
+        FROM timeline_edits
+        WHERE user_id = $1 AND kind = 'SET_MOVEMENT_TYPE'
+      `, [user.id]);
+      expect(editAfterApply.rowCount).toBe(1);
+      expect(editAfterApply.rows[0].status).toBe('ACTIVE');
+      expect(editAfterApply.rows[0].movement_type).toBe('TRAIN');
 
-      const tripAfterManual = await dbManager.client.query(`
-        SELECT movement_type, movement_type_source
-        FROM timeline_trips
-        WHERE id = $1
-      `, [insertedTrip.id]);
-      expect(tripAfterManual.rows[0].movement_type).toBe('CAR');
-      expect(tripAfterManual.rows[0].movement_type_source).toBe('MANUAL');
-
-      const overrideAfterManual = await dbManager.client.query(`
-        SELECT trip_id, movement_type
-        FROM timeline_trip_movement_overrides
-        WHERE user_id = $1 AND trip_id = $2
-      `, [user.id, insertedTrip.id]);
-      expect(overrideAfterManual.rowCount).toBe(1);
-      expect(overrideAfterManual.rows[0].movement_type).toBe('CAR');
-
-      await tripCard.locator('.movement-edit-icon-btn').click();
-      await expect(quickEditDialog).toBeVisible();
-      await expect(quickEditDialog).toContainText('MANUAL');
-
-      await quickEditDialog.getByRole('button', { name: 'Reset' }).click();
-      await expect(quickEditDialog).toBeHidden();
-
-      await expect(tripCard.locator('.manual-indicator')).toHaveCount(0);
-      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
-
-      const tripAfterReset = await dbManager.client.query(`
-        SELECT movement_type_source
-        FROM timeline_trips
-        WHERE id = $1
-      `, [insertedTrip.id]);
-      expect(tripAfterReset.rows[0].movement_type_source).toBe('AUTO');
-
-      const overrideAfterReset = await dbManager.client.query(`
+      const editedTrips = await dbManager.client.query(`
         SELECT COUNT(*)::int AS count
-        FROM timeline_trip_movement_overrides
-        WHERE user_id = $1 AND trip_id = $2
-      `, [user.id, insertedTrip.id]);
-      expect(overrideAfterReset.rows[0].count).toBe(0);
+        FROM timeline_trips
+        WHERE user_id = $1 AND movement_type = 'TRAIN'
+      `, [user.id]);
+      expect(editedTrips.rows[0].count).toBe(1);
+
+      await tripCard.getByRole('button', { name: 'Edit trip…' }).click();
+      const history = page.locator('.timeline-edit-drawer');
+      await expect(history).toBeVisible();
+      await expect(history.locator('.timeline-changes')).toContainText('Train');
+      await history.getByRole('button', { name: 'Undo', exact: true }).click();
+
+      await expect(tripCard).not.toContainText('Train', { timeout: 60000 });
+      await expect(tripCard.locator('.timeline-edit-count')).toHaveCount(0);
+      await expect(tripCard.locator('.movement-edited-indicator')).toHaveCount(0);
+
+      const editAfterRevert = await dbManager.client.query(`
+        SELECT status FROM timeline_edits WHERE id = $1
+      `, [editAfterApply.rows[0].id]);
+      expect(editAfterRevert.rows[0].status).toBe('REVERTED');
+      await history.locator('summary').filter({ hasText: 'Previous changes' }).click();
+      await history.getByRole('button', { name: 'Redo', exact: true }).click();
+      await expect(tripCard).toContainText('Train', { timeout: 60000 });
+      await page.reload();
+      await timelinePage.waitForPageLoad();
+      await expect(tripCard).toContainText('Train');
+      await expect(tripCard.locator('.timeline-edit-count')).toHaveCount(0);
     });
   });
 

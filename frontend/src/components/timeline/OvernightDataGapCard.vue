@@ -11,6 +11,8 @@
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
+          <TimelineEditTrigger :label="t('timeline.edit.gap')" :count="0" :show-edit="!dataGapItem.ongoing"
+            :read-only="readOnly" @edit="emit('edit', dataGapItem)" @history="emit('show-edit-history', dataGapItem)" />
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
@@ -33,6 +35,10 @@
     </template>
 
     <template #content>
+      <div v-if="!readOnly && dataGapItem.activeEditCount" class="timeline-edit-metadata">
+        <TimelineEditTrigger :label="t('timeline.edit.gap')" :count="dataGapItem.activeEditCount || 0" :show-edit="false"
+          :read-only="readOnly" @history="emit('show-edit-history', dataGapItem)" />
+      </div>
       <div class="overnight-data-gap-content">
         <p class="duration-detail">
           📈 {{ t('timeline.dataGap.totalDuration') }} <span class="duration-value">{{ getGapDuration() }}</span>
@@ -41,15 +47,6 @@
           ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
-
-        <button
-          v-if="dataGapItem.id && !dataGapItem.ongoing && !readOnly"
-          class="convert-gap-btn"
-          :title="t('timeline.dataGap.convertTooltip')"
-          @click.stop="handleConvertToStay"
-        >
-          {{ t('timeline.dataGap.convertButton') }}
-        </button>
 
         <!-- Help section for gap configuration guidance -->
         <DataGapHelpSection :duration-seconds="gapDurationSeconds" />
@@ -85,6 +82,7 @@ import DataGapHelpSection from './DataGapHelpSection.vue';
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
+import TimelineEditTrigger from './TimelineEditTrigger.vue'
 
 const { t } = useI18n()
 const notesStore = useNotesStore()
@@ -129,7 +127,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['click', 'convert-to-stay', 'photo-show-on-map', 'note-saved', 'show-explanation']);
+const emit = defineEmits(['click', 'photo-show-on-map', 'note-saved', 'show-explanation', 'edit', 'show-edit-history']);
 
 const timezone = useTimezone();
 
@@ -190,6 +188,10 @@ const openNotesViewer = () => {
 const contextMenuItems = computed(() => {
   const items = []
 
+  if (!props.readOnly && props.dataGapItem.id && !props.dataGapItem.ongoing) {
+    items.push({ label: t('timeline.edit.gap'), icon: 'pi pi-pencil', command: () => emit('edit', props.dataGapItem) })
+  }
+
   if (props.allowExplanation) {
     items.push({
       label: t('timeline.explanation.toggle.dataGap'),
@@ -249,11 +251,6 @@ const getOnThisDayText = () => {
 const handleClick = (event) => {
   if (shouldSuppressClick(event)) return
   emit('click', props.dataGapItem);
-};
-
-const handleConvertToStay = () => {
-  if (props.readOnly) return;
-  emit('convert-to-stay', props.dataGapItem);
 };
 
 const handlePhotoShowOnMap = (photo) => {

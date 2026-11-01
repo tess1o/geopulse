@@ -98,6 +98,7 @@
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handleTimelinePhotoShowOnMap"
               @navigate-date="handleNavigateDate"
+              @timeline-edit-submitted="handleTimelineEditSubmitted"
           />
         </template>
       </TimelineSplitLayout>
@@ -658,6 +659,47 @@ const reloadCurrentRange = async () => {
 
 const handleTimelineRefreshRequested = async () => {
   await reloadCurrentRange()
+}
+
+const editActionBusy = ref(false)
+const handleTimelineEditSubmitted = async (result) => {
+  const scrollY = window.scrollY
+  const operation = result.operation || 'create'
+  toast.add({ severity: 'info', summary: t('timeline.edit.updating'), group: 'timeline-edit-progress' })
+  const finishProgress = () => toast.removeGroup('timeline-edit-progress')
+  await trackCorrectionRegeneration(result, {
+    failedDetail: t('timeline.edit.updateFailed'),
+    failureSummary: t('timeline.edit.updateFailed'),
+    onFailed: async () => { finishProgress(); await result.onUpdateFailed?.() },
+    onCompleted: async () => {
+      finishProgress()
+      await reloadCurrentRange()
+      await result.onUpdated?.()
+      window.scrollTo({ top: scrollY })
+      timelineContainerRef.value?.scrollToTimelineItem?.({ timestamp: result.edit?.payload?.start || result.edit?.anchorStart })
+      toast.add({
+        severity: 'success',
+        summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
+        detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeTimelineEdit(result.edit?.id, operation === 'undo') }
+      })
+    }
+  })
+  if (result.timelineJobQueued) finishProgress()
+}
+const changeTimelineEdit = async (editId, restore = false) => {
+  if (!editId || editActionBusy.value) return
+  editActionBusy.value = true
+  toast.removeGroup('timeline-edit')
+  try {
+    const result = restore ? await timelineStore.restoreTimelineEdit(editId) : await timelineStore.revertTimelineEdit(editId)
+    const finish = () => { editActionBusy.value = false }
+    await handleTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
+    if (!result.timelineJobId || result.timelineJobQueued) finish()
+  } catch (error) {
+    editActionBusy.value = false
+    toast.add({ severity: 'error', summary: t('common.error'), detail: formatApiErrorDetail(error, t('timeline.edit.undoFailed')), life: 5000 })
+  }
 }
 
 const handleResetDataGapOverride = (stayItem, overrideId) => {
