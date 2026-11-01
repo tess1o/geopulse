@@ -143,3 +143,43 @@ export function resolveVectorStyleSource(options = {}) {
     isCustom: preferredStyleUrl !== DEFAULT_VECTOR_STYLE_URL
   }
 }
+
+// MapLibre has no {s} placeholder, so a subdomain template becomes one tile URL per subdomain. Root-relative URLs
+// (such as the bundled OSM proxy) are made absolute by hand: new URL() would percent-encode the {z}/{x}/{y} braces.
+const toMapLibreTileUrls = (tileUrl, subdomains) => {
+  const absolute = tileUrl.startsWith('/') && typeof window !== 'undefined'
+    ? `${window.location.origin}${tileUrl}`
+    : tileUrl
+  if (!absolute.includes('{s}')) {
+    return [absolute]
+  }
+  return (subdomains?.length ? subdomains : ['a', 'b', 'c']).map((subdomain) => absolute.replace('{s}', subdomain))
+}
+
+/** A one-layer MapLibre style that draws raster tiles, e.g. the user's raster tile source. */
+export function buildRasterMapLibreStyle({ tileUrl, attribution, subdomains } = {}) {
+  return {
+    version: 8,
+    sources: {
+      'profile-raster': {
+        type: 'raster',
+        tiles: toMapLibreTileUrls(tileUrl || DEFAULT_RASTER_TILE_URL, subdomains),
+        tileSize: 256,
+        attribution
+      }
+    },
+    layers: [{ id: 'profile-raster', type: 'raster', source: 'profile-raster' }]
+  }
+}
+
+/**
+ * The MapLibre style that looks like the user's timeline map: their vector style, or, when they chose raster
+ * tiles, those tiles drawn by MapLibre, so MapLibre-only features such as the globe keep working.
+ */
+export function resolveProfileMapLibreStyle() {
+  if (normalizeMapRenderMode(readProfileCacheState().mapRenderMode) === MAP_RENDER_MODES.RASTER) {
+    return buildRasterMapLibreStyle(resolveRasterTileSource())
+  }
+  return resolveVectorStyleSource().styleUrl
+}
+

@@ -119,17 +119,49 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     const disabled = mountSection()
     await flushPromises()
     expect(disabled.find('.immich-photos-card').exists()).toBe(false)
+    expect(disabled.emitted('latest-photos-settled')).toContainEqual([[]])
 
     configured = true
     searchPhotos.mockResolvedValueOnce({ totalCount: 0, photos: [] })
     const empty = mountSection()
     await flushPromises()
     expect(empty.find('.immich-photos-card').exists()).toBe(false)
+    expect(empty.emitted('latest-photos-settled')).toContainEqual([[]])
 
     searchPhotos.mockRejectedValueOnce(new Error('Immich unavailable'))
     const unavailable = mountSection()
     await flushPromises()
     expect(unavailable.find('.immich-photos-card').exists()).toBe(false)
+    expect(unavailable.emitted('latest-photos-settled')).toContainEqual([[]])
+  })
+
+  it('settles with the photo list without waiting for Immich to serve thumbnails', async () => {
+    imageService.loadAuthenticatedImage.mockImplementation(() => new Promise(() => {}))
+    const wrapper = mountSection()
+    await flushPromises()
+
+    expect(wrapper.emitted('latest-photos-settled')?.at(-1)?.[0]).toHaveLength(90)
+    wrapper.unmount()
+  })
+
+  it('reports a failed search as settled after its last photo update', async () => {
+    searchPhotos.mockRejectedValueOnce(new Error('Immich unavailable'))
+    const events = []
+    const wrapper = mount(ImmichLatestPhotosSection, {
+      props: {
+        title: 'Memories along the way',
+        presentation: 'rewind',
+        loadMapMarkers: false,
+        searchParams: { startDate: 'start', endDate: 'end' },
+        onLatestPhotosChange: () => events.push('change'),
+        onLatestPhotosSettled: () => events.push('settled')
+      },
+      global: { stubs: { Button: true, Dialog: true, Paginator: true, ProgressSpinner: true } }
+    })
+    await flushPromises()
+
+    expect(events.at(-1)).toBe('settled')
+    wrapper.unmount()
   })
 
   it('keeps standard shared galleries on the existing photo-search contract', async () => {

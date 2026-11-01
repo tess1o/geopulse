@@ -368,6 +368,22 @@ test.describe('Time Digest', () => {
         expect(highlights.length).toBeGreaterThan(0);
       }
     });
+
+    for (const viewMode of ['monthly', 'yearly']) {
+      test(`should preserve the cinematic release hold for a populated ${viewMode} digest`, async ({page, isolatedUsers, dbManager}) => {
+        await openSeededYearlyRewind(page, isolatedUsers, dbManager);
+        if (viewMode === 'monthly') {
+          const digestPage = new TimeDigestPage(page);
+          await digestPage.navigate(2024, 1, 'monthly');
+          await digestPage.waitForLoadingComplete();
+        }
+        await expect(page.locator('.digest-hero')).toBeVisible();
+        await expect(page.getByRole('button', {name: /^Play .* Rewind$/})).toHaveCount(0);
+        await expect(page.getByRole('button', {name: 'Export PDF', exact: true})).toBeVisible();
+        await expect(page.locator('.cinematic-player')).toHaveCount(0);
+      });
+    }
+
   });
 
   test.describe('Data Integration and Consistency', () => {
@@ -630,6 +646,21 @@ async function insertMonthlyDigestTestDataWithMilestones(dbManager, userId, year
       'CAR'
     ]);
   }
+}
+
+async function openSeededYearlyRewind(page, isolatedUsers, dbManager) {
+  const loginPage = new LoginPage(page);
+  const digestPage = new TimeDigestPage(page);
+  const testUser = await isolatedUsers.create(page);
+  await loginPage.navigate();
+  await loginPage.login(testUser.email, testUser.password);
+  await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+  const user = await dbManager.getUserByEmail(testUser.email);
+  await insertYearlyDigestTestData(dbManager, user.id, 2024);
+
+  await digestPage.navigate(2024, null, 'yearly');
+  await digestPage.waitForLoadingComplete();
 }
 
 async function insertYearlyDigestTestData(dbManager, userId, year) {

@@ -433,10 +433,11 @@ public class SharedLinkService {
 
         // Get timeline data for the effective date range
         // This automatically includes overnight stays via boundary expansion
-        MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDb(
+        MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDbForViewer(
                 entity.getUser().getId(),
                 effectiveRange.start(),
-                effectiveRange.end()
+                effectiveRange.end(),
+                false
         );
 
         log.info("Timeline data accessed successfully for linkId: {}, items: {}, dateRange: {} to {}",

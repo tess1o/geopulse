@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripAltitudeStatistics;
 import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
@@ -28,6 +29,8 @@ public class Trip implements TimelineEvent {
     private Instant startTime;
     private Duration duration;
     private TripType tripType;
+    @Builder.Default
+    private MovementTypeSource movementTypeSource = MovementTypeSource.AUTO;
     private double distanceMeters;
     private GPSPoint startPoint;
     private GPSPoint endPoint;

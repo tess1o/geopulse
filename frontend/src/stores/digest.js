@@ -13,6 +13,8 @@ export const useDigestStore = defineStore('digest', {
         heatmapData: {},       // Cache by "YYYY" or "YYYY-MM"
         heatmapLoading: false,
         heatmapError: null,
+        // Cinematic Rewind replays, cached like the digests by "YYYY" or "YYYY-MM"
+        replays: {},
     }),
 
     getters: {
@@ -116,10 +118,34 @@ export const useDigestStore = defineStore('digest', {
             }
         },
 
+        async fetchYearlyReplay(year) {
+            return this.fetchReplay(String(year), '/digests/yearly-replay', { year })
+        },
+
+        async fetchMonthlyReplay(year, month) {
+            return this.fetchReplay(`${year}-${String(month).padStart(2, '0')}`, '/digests/monthly-replay', { year, month })
+        },
+
+        async fetchReplay(key, endpoint, params) {
+            const replays = this.replays
+            if (this.replays[key]) {
+                return this.replays[key]
+            }
+            try {
+                const replay = await apiService.get(endpoint, params)
+                // A previous account or timezone request must not refill a reset cache.
+                if (this.replays === replays) replays[key] = replay
+                return replay
+            } catch (error) {
+                throw normalizeApiError(error, 'Failed to load cinematic Rewind')
+            }
+        },
+
         // Clear all caches
         clearCache() {
             this.monthlyDigests = {}
             this.yearlyDigests = {}
+            this.replays = {}
             this.currentDigest = null
         },
 
@@ -127,10 +153,12 @@ export const useDigestStore = defineStore('digest', {
         invalidateMonthlyDigest(year, month) {
             const key = `${year}-${String(month).padStart(2, '0')}`
             delete this.monthlyDigests[key]
+            delete this.replays[key]
         },
 
         invalidateYearlyDigest(year) {
             delete this.yearlyDigests[year]
+            delete this.replays[String(year)]
         },
 
         // ---------- Heatmap ----------

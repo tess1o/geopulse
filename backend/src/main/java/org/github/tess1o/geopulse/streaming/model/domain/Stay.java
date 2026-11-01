@@ -32,6 +32,9 @@ public class Stay implements TimelineEvent {
      */
     private String locationName;
 
+    /** Optional user label for this visit only; independent of the place name. */
+    private String visitName;
+
     /**
      * ID of matching favorite location, if any
      */

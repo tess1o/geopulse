@@ -8,6 +8,9 @@ import OvernightTripCard from './OvernightTripCard.vue'
 import StayCard from './StayCard.vue'
 import TimelineContainer from './TimelineContainer.vue'
 import TripCard from './TripCard.vue'
+import TripStaySplitDialog from '../dialogs/TripStaySplitDialog.vue'
+import TimelineEditDrawer from './TimelineEditDrawer.vue'
+import TimelineEditHistoryDrawer from './TimelineEditHistoryDrawer.vue'
 import TimelineEventExplanationDialog from '../dialogs/TimelineEventExplanationDialog.vue'
 import TripClassificationDialog from '../dialogs/TripClassificationDialog.vue'
 
@@ -29,6 +32,13 @@ const undeclaredProps = (boundProps, component) => {
   return boundProps.filter(prop => !declaredProps.includes(prop))
 }
 
+const boundPropExpression = (source, tagName, propName) => {
+  const start = source.indexOf(`<${tagName}`)
+  if (start === -1) return null
+  const tag = source.slice(start, source.indexOf('/>', start))
+  return tag.match(new RegExp(`:${propName}="([^"]+)"`))?.[1] ?? null
+}
+
 describe('timeline prop bindings', () => {
   it('binds only props TimelineContainer declares', () => {
     const bound = boundPropNamesIn(sourceOf('../../views/app/TimelinePage.vue'), 'TimelineContainer')
@@ -48,10 +58,11 @@ describe('timeline prop bindings', () => {
     const container = sourceOf('./TimelineContainer.vue')
     const components = {
       StayCard, OvernightStayCard, TripCard, OvernightTripCard, DataGapCard, OvernightDataGapCard,
-      TimelineEventExplanationDialog, TripClassificationDialog
+      TripStaySplitDialog, TimelineEditDrawer, TimelineEditHistoryDrawer, TimelineEventExplanationDialog, TripClassificationDialog
     }
 
     for (const [tagName, component] of Object.entries(components)) {
+      expect(container, tagName).toContain(`<${tagName}`)
       expect(undeclaredProps(boundPropNamesIn(container, tagName), component), tagName).toEqual([])
     }
     expect(container.match(/@show-explanation="handleShowExplanation"/g)).toHaveLength(6)
@@ -61,5 +72,28 @@ describe('timeline prop bindings', () => {
   it('passes map matching state from the page down to the cards', () => {
     expect(sourceOf('../../views/app/TimelinePage.vue')).toContain(':map-matching-by-trip-id=')
     expect(sourceOf('./TimelineContainer.vue')).toContain(':map-matching-info=')
+  })
+
+  it('makes the shared timeline and a trip the viewer does not own read-only', () => {
+    expect(boundPropExpression(sourceOf('../../views/SharedTimelinePage.vue'), 'TimelineContainer', 'read-only'))
+      .toBe('true')
+
+    const workspace = sourceOf('../../views/app/TripWorkspacePage.vue')
+    expect(boundPropExpression(workspace, 'TimelineContainer', 'read-only')).toContain('!isOwner')
+  })
+
+  it('passes read-only down to gap cards and the trip split dialog', () => {
+    const container = sourceOf('./TimelineContainer.vue')
+
+    for (const tagName of ['DataGapCard', 'OvernightDataGapCard', 'TripStaySplitDialog']) {
+      expect(boundPropExpression(container, tagName, 'read-only'), tagName).toBe('effectiveReadOnly')
+    }
+  })
+
+  it('forwards the correction a card asked to reset, not just the stay', () => {
+    const container = sourceOf('./TimelineContainer.vue')
+
+    expect(container).toContain("emit('reset-data-gap-override', stayItem, overrideId)")
+    expect(container).toContain("emit('reset-trip-split-override', stayItem, overrideId)")
   })
 })

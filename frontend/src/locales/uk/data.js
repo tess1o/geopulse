@@ -312,6 +312,7 @@ export default {
         userinfo: { label: 'Інформація користувача', description: 'Ваш профіль та налаштування (без конфіденційних даних)' },
         timelinelabels: { label: 'Мітки хронології', description: 'Мітки хронології та їхні діапазони дат' },
         timelineoverrides: { label: 'Перевизначення хронології', description: 'Ручні виправлення типу поїздки та прогалин у даних' },
+        timelineedits: { label: 'Редагування хронології', description: 'Ваші оборотні зміни місць, часу, типів руху та структури хронології' },
         tripworkspace: { label: 'Плани поїздок', description: 'Поїздки, плани, примітки та співавтори' },
         notificationtemplates: { label: 'Шаблони сповіщень', description: 'Шаблони, що використовуються сповіщеннями геозон' },
         geofencing: { label: 'Геозони', description: 'Правила геозон та відстежувані суб\'єкти' },

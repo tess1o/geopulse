@@ -60,7 +60,9 @@ public class TripWorkspaceDataService {
         Instant end = resolveEnd(trip, requestedEnd);
         validateRequestedRange(trip, start, end);
 
-        return timelineAggregator.getTimelineFromDb(ownerUserId, start, end, includeLocationTimezones);
+        return access.owner()
+                ? timelineAggregator.getTimelineFromDb(ownerUserId, start, end, includeLocationTimezones)
+                : timelineAggregator.getTimelineFromDbForViewer(ownerUserId, start, end, includeLocationTimezones);
     }
 
     @SuppressWarnings("unchecked")

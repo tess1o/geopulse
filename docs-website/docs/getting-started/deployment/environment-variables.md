@@ -114,6 +114,7 @@ Notes:
 | `GEOPULSE_IMMICH_GEONAMES_NORMALIZATION_MAX_DISTANCE_METERS` | `50000` | Immich search cache Property: \`immich.photos.geonames-normalization.max-distance-meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_IMMICH_ASSET_TIMEOUT_SECONDS` | `30` | How long the backend waits for Immich to send a photo thumbnail, preview or original before giving up. Property: \`immich.assets.timeout-seconds\`. | Positive numeric value. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_TIMEOUT_SECONDS` | `15` | Immich search timeout Property: \`immich.photos.search-timeout-seconds\`. | Positive numeric value. | Backend restart |
 | `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_MAX_ENTRIES` | `200` | Memos notes search cache maximum entries. Property: \`geopulse.memos.notes.search-cache-max-entries\`. | Positive integer value. | Backend restart |
 | `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_TTL_SECONDS` | `300` | Memos notes search cache TTL in seconds. Property: \`geopulse.memos.notes.search-cache-ttl-seconds\`. | Positive integer seconds. | Backend restart |

@@ -111,6 +111,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
                         break;
+                    case ExportImportConstants.FileNames.TIMELINE_EDITS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_EDITS);
+                        break;
                     case ExportImportConstants.FileNames.TRIP_WORKSPACE:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TRIP_WORKSPACE);
                         break;
@@ -158,6 +161,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     public void processImportData(ImportJob job) throws IOException {
         // Collect all file contents for proper dependency ordering
         Map<String, byte[]> fileContents = extractZipContents(job);
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+            timelineDetailsImporter.requireEmptyTimelineEdits(job.getUserId());
+        }
 
         // Import in dependency order using native SQL
         processFilesInOrder(fileContents, job);
@@ -240,12 +247,19 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
 
         // 4. Full backup restores are snapshots: import stored timeline rows instead of regenerating.
-        if (snapshotRestore && hasTimelineData) {
+        boolean restoresTimelineSnapshot = snapshotRestore && hasTimelineData;
+        if (restoresTimelineSnapshot) {
             timelineSnapshotImporter.importTimelineDataSnapshot(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job, referenceMaps);
             totalProgress += 35;
             job.setProgress(totalProgress);
             log.info("Restored timeline snapshot for user {}; skipping timeline regeneration", job.getUserId());
-        } else if (hasGpsData && firstGpsTimestamp != null) {
+        }
+
+        // Labels, manual corrections and notes go with the timeline: after a snapshot's rows, which they keep their
+        // links to, and before a regeneration, which re-applies the corrections and re-attaches the notes.
+        importTimelineCorrections(fileContents, job, referenceMaps);
+
+        if (!restoresTimelineSnapshot && hasGpsData && firstGpsTimestamp != null) {
             if (snapshotRestore) {
                 log.warn("Snapshot restore for user {} has GPS data but no timeline snapshot; falling back to timeline regeneration",
                         job.getUserId());
@@ -279,14 +293,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_LABELS)) {
-            timelineDetailsImporter.importTimelineLabelsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_LABELS), job, referenceMaps);
-        }
-
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES)) {
-            timelineDetailsImporter.importTimelineOverridesData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES), job, referenceMaps);
-        }
-
         if (fileContents.containsKey(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES)) {
             planningImporter.importNotificationTemplatesData(fileContents.get(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES), job, referenceMaps);
         }
@@ -297,10 +303,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.GEOFENCING)) {
             planningImporter.importGeofencingData(fileContents.get(ExportImportConstants.FileNames.GEOFENCING), job, referenceMaps);
-        }
-
-        if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
-            timelineDetailsImporter.importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job, referenceMaps);
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.WEATHER_SAMPLES)) {
@@ -317,6 +319,26 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.FRIEND_PERMISSIONS)) {
             accountImporter.importFriendPermissionsData(fileContents.get(ExportImportConstants.FileNames.FRIEND_PERMISSIONS), job);
+        }
+    }
+
+    /** Timeline labels, manual timeline corrections and notes. */
+    private void importTimelineCorrections(Map<String, byte[]> fileContents, ImportJob job,
+                                           ImportReferenceMaps referenceMaps) throws IOException {
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_LABELS)) {
+            timelineDetailsImporter.importTimelineLabelsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_LABELS), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES)) {
+            timelineDetailsImporter.importTimelineOverridesData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+            timelineDetailsImporter.importTimelineEditsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_EDITS), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
+            timelineDetailsImporter.importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job, referenceMaps);
         }
     }
 
@@ -361,6 +383,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.TIMELINE_LABELS;
             case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                 return ExportImportConstants.DataTypes.TIMELINE_OVERRIDES;
+            case ExportImportConstants.FileNames.TIMELINE_EDITS:
+                return ExportImportConstants.DataTypes.TIMELINE_EDITS;
             case ExportImportConstants.FileNames.TRIP_WORKSPACE:
                 return ExportImportConstants.DataTypes.TRIP_WORKSPACE;
             case ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES:

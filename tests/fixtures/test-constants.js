@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 /**
  * Test constants to eliminate magic values
  */
@@ -58,7 +60,7 @@ export class TestConstants {
    * Generate a test UUID (for dynamic cases)
    */
   static generateTestUUID() {
-    return '00000000-0000-0000-0000-' + Date.now().toString().padStart(12, '0');
+    return randomUUID();
   }
 
   /**

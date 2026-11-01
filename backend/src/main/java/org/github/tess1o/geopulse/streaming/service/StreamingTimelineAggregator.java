@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayAIQueryReposi
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Duration;
@@ -46,6 +47,9 @@ public class StreamingTimelineAggregator {
     TimelineTripStaySplitOverrideRepository tripStaySplitOverrideRepository;
 
     @Inject
+    TimelineEditApplicationRepository timelineEditApplicationRepository;
+
+    @Inject
     StreamingTimelineConverter converter;
 
     @Inject
@@ -55,7 +59,21 @@ public class StreamingTimelineAggregator {
     TimelineLocationTimezoneEnricher locationTimezoneEnricher;
 
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime) {
-        return getExistingTimelineEvents(userId, startTime, endTime);
+        return getExistingTimelineEvents(userId, startTime, endTime, true);
+    }
+
+    /**
+     * The user's timeline as shown to someone else: through a share link, to a friend, to a trip collaborator. The
+     * same stays, trips and gaps, without the user's manual corrections behind them, which only the user sees and
+     * can undo.
+     */
+    public MovementTimelineDTO getTimelineFromDbForViewer(UUID userId, Instant startTime, Instant endTime,
+                                                          boolean includeLocationTimezones) {
+        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime, false);
+        if (includeLocationTimezones) {
+            locationTimezoneEnricher.enrich(timeline);
+        }
+        return timeline;
     }
 
     /**
@@ -64,7 +82,7 @@ public class StreamingTimelineAggregator {
      */
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime,
                                                  boolean includeLocationTimezones) {
-        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime);
+        MovementTimelineDTO timeline = getExistingTimelineEvents(userId, startTime, endTime, true);
         if (includeLocationTimezones) {
             locationTimezoneEnricher.enrich(timeline);
         }
@@ -185,7 +203,8 @@ public class StreamingTimelineAggregator {
         }
     }
 
-    private MovementTimelineDTO getExistingTimelineEvents(UUID userId, Instant startTime, Instant endTime) {
+    private MovementTimelineDTO getExistingTimelineEvents(UUID userId, Instant startTime, Instant endTime,
+                                                          boolean includeCorrections) {
         log.debug("Retrieving existing timeline events for user {} from {} to {}", userId, startTime, endTime);
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
@@ -197,14 +216,24 @@ public class StreamingTimelineAggregator {
             TimelineStayLocationDTO stayDTO = converter.convertStayEntityToDto(stayEntity);
             timeline.getStays().add(stayDTO);
         }
-        attachDataGapOverrideMetadata(userId, timeline.getStays());
-        attachTripSplitOverrideMetadata(userId, timeline.getStays());
+        if (includeCorrections) {
+            attachDataGapOverrideMetadata(userId, timeline.getStays());
+            attachTripSplitOverrideMetadata(userId, timeline.getStays());
+            attachEditCounts("STAY", timeline.getStays().stream().map(TimelineStayLocationDTO::getId).toList(),
+                    counts -> timeline.getStays().forEach(stay -> stay.setActiveEditCount(
+                            counts.getOrDefault(stay.getId(), 0))));
+        }
 
         // Get trips with boundary expansion
         var tripEntities = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
         for (var tripEntity : tripEntities) {
             TimelineTripDTO tripDTO = converter.convertTripEntityToDto(tripEntity);
             timeline.getTrips().add(tripDTO);
+        }
+        if (includeCorrections) {
+            attachEditCounts("TRIP", timeline.getTrips().stream().map(TimelineTripDTO::getId).toList(),
+                    counts -> timeline.getTrips().forEach(trip -> trip.setActiveEditCount(
+                            counts.getOrDefault(trip.getId(), 0))));
         }
 
         // Align trip start/end pins with nearby favorite stays when available.
@@ -223,11 +252,25 @@ public class StreamingTimelineAggregator {
             gapDTO.setExplanation(TimelineExplanationDTO.from(gapEntity.getExplanation()));
             timeline.getDataGaps().add(gapDTO);
         }
+        if (includeCorrections) {
+            attachEditCounts("DATA_GAP", timeline.getDataGaps().stream().map(TimelineDataGapDTO::getId).toList(),
+                    counts -> timeline.getDataGaps().forEach(gap -> gap.setActiveEditCount(
+                            counts.getOrDefault(gap.getId(), 0))));
+        }
 
         log.debug("Retrieved {} stays, {} trips, {} data gaps",
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
 
         return timeline;
+    }
+
+    private void attachEditCounts(String targetType, List<Long> ids,
+                                  java.util.function.Consumer<Map<Long, Integer>> consumer) {
+        List<Long> presentIds = ids.stream().filter(Objects::nonNull).toList();
+        Map<Long, Integer> counts = new HashMap<>();
+        timelineEditApplicationRepository.findForTargets(targetType, presentIds)
+                .forEach(application -> counts.merge(application.getTargetId(), 1, Integer::sum));
+        consumer.accept(counts);
     }
 
     private void attachDataGapOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {
@@ -243,15 +286,16 @@ public class StreamingTimelineAggregator {
             return;
         }
 
-        Map<Long, Long> firstOverrideByStayId = new HashMap<>();
+        Map<Long, List<Long>> overridesByStayId = new HashMap<>();
         dataGapStayOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
             if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
                 return;
             }
-            firstOverrideByStayId.putIfAbsent(override.getStay().getId(), override.getId());
+            overridesByStayId.computeIfAbsent(override.getStay().getId(), ignored -> new ArrayList<>())
+                    .add(override.getId());
         });
 
-        if (firstOverrideByStayId.isEmpty()) {
+        if (overridesByStayId.isEmpty()) {
             return;
         }
 
@@ -259,7 +303,11 @@ public class StreamingTimelineAggregator {
             if (stay.getId() == null) {
                 return;
             }
-            stay.setDataGapOverrideId(firstOverrideByStayId.get(stay.getId()));
+            List<Long> overrideIds = overridesByStayId.get(stay.getId());
+            if (overrideIds != null) {
+                overrideIds.sort(Comparator.naturalOrder());
+                stay.setDataGapOverrideIds(overrideIds);
+            }
         });
     }
 

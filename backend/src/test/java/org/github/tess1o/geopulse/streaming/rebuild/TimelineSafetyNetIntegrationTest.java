@@ -7,12 +7,17 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.jobs.TimelineSafetyNetJob;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService.Outcome;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +26,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +46,8 @@ class TimelineSafetyNetIntegrationTest {
 
     @Inject
     TimelineReplayHarness harness;
+
+    @Inject org.github.tess1o.geopulse.streaming.edits.TimelineEditService edits;
 
     @Inject
     TimelineSafetyNetService safetyNetService;
@@ -65,6 +74,55 @@ class TimelineSafetyNetIntegrationTest {
         assertThat(safetyNetService.verifyUser(userId, now.minus(WINDOW))).isEqualTo(Outcome.UNCHANGED);
 
         harness.assertMatchesFullRebuild(userId, "after the safety net");
+    }
+
+    @Test
+    void editedTimelineNeedsNoSafetyNetCorrection() {
+        UUID userId = userWithRecentDays("safety-edited", 57);
+        TimelineStayEntity stay = QuarkusTransaction.requiringNew().call(() -> entityManager.createQuery(
+                        "select s from TimelineStayEntity s where s.user.id = :userId order by s.timestamp",
+                        TimelineStayEntity.class)
+                .setParameter("userId", userId).setMaxResults(1).getSingleResult());
+        QuarkusTransaction.requiringNew().run(() -> entityManager.persist(TimelineEditEntity.builder()
+                .user(entityManager.getReference(UserEntity.class, userId)).seq(1)
+                .kind(TimelineEditKind.SET_VISIT_NAME)
+                .anchorStart(stay.getTimestamp()).anchorEnd(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
+                .affectedFrom(stay.getTimestamp()).affectedTo(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
+                .payload(new LinkedHashMap<>(Map.of("visitName", "Safety checked")))
+                .status(TimelineEditStatus.ACTIVE).build()));
+        harness.fullRebuild(userId);
+
+        assertThat(safetyNetService.verifyUser(userId, Instant.now().minus(WINDOW))).isEqualTo(Outcome.UNCHANGED);
+        assertThat(QuarkusTransaction.requiringNew().call(() -> entityManager.createQuery(
+                        "select count(s) from TimelineStayEntity s where s.user.id = :userId and s.visitName = :name",
+                        Long.class)
+                .setParameter("userId", userId).setParameter("name", "Safety checked").getSingleResult()))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void safetyNetRepairsMissingStructuralOutputAndRetainsItsApplication() {
+        UUID user = userWithRecentDays("safety-structural", 58);
+        var stay = QuarkusTransaction.requiringNew().call(() -> entityManager.createQuery(
+                "select s from TimelineStayEntity s where s.user.id=:user and s.stayDuration>7200 order by s.timestamp desc", TimelineStayEntity.class)
+                .setParameter("user", user).setMaxResults(1).getSingleResult());
+        var request = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
+        request.setKind(TimelineEditKind.SPLIT_STAY); request.setAnchorStart(stay.getTimestamp());
+        request.setAnchorEnd(stay.getTimestamp().plusSeconds(stay.getStayDuration()));
+        request.setPayload(new LinkedHashMap<>(Map.of("splitAt", stay.getTimestamp().plusSeconds(3600).toString(),
+                "rightLocationName", "Safety stop", "rightLatitude", 50.0, "rightLongitude", 30.0)));
+        var edit = edits.create(user, request); harness.fullRebuild(user);
+        assertThat(harness.pendingRebuild(user)).isEmpty();
+        var expected = harness.snapshot(user).content();
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createQuery(
+                "delete from TimelineStayEntity s where s.user.id=:user and s.locationName='Safety stop'")
+                .setParameter("user", user).executeUpdate());
+        assertThat(harness.snapshot(user).content()).isNotEqualTo(expected);
+        assertThat(safetyNetService.verifyUser(user, stay.getTimestamp().minusSeconds(60))).isEqualTo(Outcome.CORRECTED);
+        assertThat(harness.snapshot(user).content()).isEqualTo(expected);
+        assertThat(edits.list(user)).filteredOn(row -> row.id().equals(edit.id())).singleElement().satisfies(row -> {
+            assertThat(row.applied()).isTrue(); assertThat(row.target()).isNotNull();
+        });
     }
 
     @Test

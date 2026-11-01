@@ -108,7 +108,7 @@
         :label="t('tripDialogs.dataGapToStay.convert')"
         icon="pi pi-check"
         :loading="saving"
-        :disabled="!canConvert"
+        :disabled="!canConvert || readOnly"
         @click="convert"
       />
     </template>
@@ -139,6 +139,10 @@ const props = defineProps({
   dataGap: {
     type: Object,
     default: null
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -183,7 +187,7 @@ const internalVisible = computed({
 })
 
 const canConvert = computed(() => {
-  if (!props.dataGap?.id || saving.value) {
+  if (!props.dataGap?.id || saving.value || props.readOnly) {
     return false
   }
 
@@ -267,7 +271,7 @@ const searchPlaces = async (event) => {
 }
 
 const convert = async () => {
-  if (!props.dataGap?.id) return
+  if (!props.dataGap?.id || props.readOnly) return
 
   const payload = {
     locationStrategy: strategy.value

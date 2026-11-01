@@ -12,6 +12,8 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.service.StayNameOverrideService;
+import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
@@ -46,19 +48,25 @@ public class TripReconstructionService {
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final EntityManager entityManager;
     private final TimelineRebuildRequestRepository rebuildRequestRepository;
+    private final StayNameOverrideService stayNameOverrideService;
+    private final TripMovementTypeOverrideService movementTypeOverrideService;
 
     public TripReconstructionService(TripAccessService tripAccessService,
                                      TimelineConfigurationProvider timelineConfigurationProvider,
                                      GpsPointRepository gpsPointRepository,
                                      AsyncTimelineGenerationService asyncTimelineGenerationService,
                                      EntityManager entityManager,
-                                     TimelineRebuildRequestRepository rebuildRequestRepository) {
+                                     TimelineRebuildRequestRepository rebuildRequestRepository,
+                                     StayNameOverrideService stayNameOverrideService,
+                                     TripMovementTypeOverrideService movementTypeOverrideService) {
         this.tripAccessService = tripAccessService;
         this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.gpsPointRepository = gpsPointRepository;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.entityManager = entityManager;
         this.rebuildRequestRepository = rebuildRequestRepository;
+        this.stayNameOverrideService = stayNameOverrideService;
+        this.movementTypeOverrideService = movementTypeOverrideService;
     }
 
     public TripReconstructionPreviewDto preview(UUID actorUserId,
@@ -83,16 +91,21 @@ public class TripReconstructionService {
             throw new IllegalArgumentException("No GPS points were generated from the provided segments");
         }
 
-        PersistenceResult persistenceResult = QuarkusTransaction.requiringNew()
-                .call(() -> persistGeneratedPoints(prepared.ownerUserId(), generatedPoints));
+        boolean[] correctionsWritten = new boolean[1];
+        PersistenceResult persistenceResult = QuarkusTransaction.requiringNew().call(() -> {
+            PersistenceResult result = persistGeneratedPoints(prepared.ownerUserId(), generatedPoints);
+            correctionsWritten[0] = keepWhatTheUserSaid(prepared.ownerUserId(), prepared.segments());
+            return result;
+        });
 
+        Instant regenerationStart = resolveRegenerationStart(persistenceResult, prepared, correctionsWritten[0]);
         String jobId = null;
         String regenerationWarning = null;
-        if (persistenceResult.insertedPoints() > 0 && persistenceResult.earliestInsertedTimestamp() != null) {
+        if (regenerationStart != null) {
             try {
                 UUID asyncJobId = asyncTimelineGenerationService.regenerateTimelineFromTimestampAsync(
                         prepared.ownerUserId(),
-                        persistenceResult.earliestInsertedTimestamp()
+                        regenerationStart
                 );
                 jobId = asyncJobId.toString();
             } catch (IllegalStateException ex) {
@@ -105,7 +118,7 @@ public class TripReconstructionService {
                 .generatedPoints(generatedPoints.size())
                 .insertedPoints(persistenceResult.insertedPoints())
                 .duplicatePoints(persistenceResult.duplicatePoints())
-                .regenerationStartTime(persistenceResult.earliestInsertedTimestamp())
+                .regenerationStartTime(regenerationStart)
                 .jobId(jobId)
                 .regenerationWarning(regenerationWarning)
                 .build();
@@ -151,6 +164,61 @@ public class TripReconstructionService {
         // Committed with the points: if the regeneration job below cannot start or fails, the real-time job runs it.
         rebuildRequestRepository.request(ownerUserId, earliestInsertedTimestamp);
         return new PersistenceResult(insertedPoints, duplicatePoints, earliestInsertedTimestamp);
+    }
+
+    /**
+     * Timeline generation reads only the points; the stay names and movement types given for the segments are kept as
+     * the user's corrections, so the stays and trips generated from the points come out as described, rebuilds
+     * included.
+     *
+     * @return whether any correction was recorded, so a commit with only duplicated points still regenerates
+     */
+    private boolean keepWhatTheUserSaid(UUID ownerUserId, List<NormalizedSegment> segments) {
+        boolean written = false;
+        for (NormalizedSegment segment : segments) {
+            if (segment.type() == SegmentType.STAY && segment.locationName() != null) {
+                stayNameOverrideService.nameStay(ownerUserId, segment.startTime(), segment.endTime(),
+                        segment.locationName());
+                written = true;
+            } else if (segment.type() == SegmentType.TRIP && segment.movementTypeGiven()) {
+                LatLon start = segment.waypoints().getFirst();
+                LatLon end = segment.waypoints().getLast();
+                List<Double> distances = buildCumulativeDistances(segment.waypoints());
+                movementTypeOverrideService.addPendingOverride(ownerUserId, new TripMovementTypeOverrideService.SourceTrip(
+                        segment.startTime(),
+                        Duration.between(segment.startTime(), segment.endTime()).getSeconds(),
+                        Math.round(distances.getLast()),
+                        start.latitude(), start.longitude(), end.latitude(), end.longitude()), segment.movementType());
+                written = true;
+            }
+        }
+        return written;
+    }
+
+    /**
+     * The earliest point a regeneration must cover: the first inserted point, or the reconstruction start when only
+     * corrections changed and every point was already stored.
+     */
+    private static Instant resolveRegenerationStart(PersistenceResult result, PreparedReconstruction prepared,
+                                                    boolean correctionsWritten) {
+        Instant start = result.insertedPoints() > 0 ? result.earliestInsertedTimestamp() : null;
+        if (correctionsWritten && (start == null || prepared.startTime().isBefore(start))) {
+            start = prepared.startTime();
+        }
+        return start;
+    }
+
+    /** A reconstruction fills time without data: mixed into recorded points, made-up ones would distort them. */
+    private void ensureNoRecordedPoints(UUID ownerUserId, List<NormalizedSegment> segments) {
+        for (NormalizedSegment segment : segments) {
+            long recorded = gpsPointRepository.countRecordedByUserIdAndTimePeriod(ownerUserId, segment.startTime(),
+                    segment.endTime());
+            if (recorded > 0) {
+                throw new TripReconstructionOverlapException("Segment " + (segment.index() + 1) + " ("
+                        + segment.startTime() + " to " + segment.endTime() + ") covers " + recorded
+                        + " recorded GPS points; reconstruct only time without data");
+            }
+        }
     }
 
     private PreparedReconstruction prepareReconstruction(UUID actorUserId,
@@ -222,6 +290,8 @@ public class TripReconstructionService {
                 .max(Comparator.naturalOrder())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid segments"));
 
+        ensureNoRecordedPoints(ownerUserId, normalized);
+
         return new PreparedReconstruction(ownerUserId, timelineConfig, normalized, startTime, endTime);
     }
 
@@ -257,6 +327,7 @@ public class TripReconstructionService {
                 throw new IllegalArgumentException("Stay segment " + (index + 1) + " requires latitude and longitude");
             }
 
+            String locationName = segment.getLocationName() != null ? segment.getLocationName().trim() : "";
             return new NormalizedSegment(
                     index,
                     type,
@@ -264,7 +335,9 @@ public class TripReconstructionService {
                     segment.getEndTime(),
                     segment.getLatitude(),
                     segment.getLongitude(),
+                    locationName.isEmpty() ? null : locationName,
                     null,
+                    false,
                     List.of()
             );
         }
@@ -293,7 +366,9 @@ public class TripReconstructionService {
                 segment.getEndTime(),
                 null,
                 null,
+                null,
                 movementType,
+                segment.getMovementType() != null && !segment.getMovementType().isBlank(),
                 waypoints
         );
     }
@@ -559,7 +634,9 @@ public class TripReconstructionService {
                                      Instant endTime,
                                      Double latitude,
                                      Double longitude,
+                                     String locationName,
                                      TripType movementType,
+                                     boolean movementTypeGiven,
                                      List<LatLon> waypoints) {
     }
 

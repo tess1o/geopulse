@@ -258,7 +258,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['latest-photos-change', 'map-markers-change', 'show-on-map'])
+const emit = defineEmits(['latest-photos-change', 'latest-photos-settled', 'map-markers-change', 'show-on-map'])
 
 const toast = useToast()
 const immichStore = useImmichStore()
@@ -885,6 +885,13 @@ const loadMissingPhotoBlobs = async (photos, contextToken = photoBlobContextToke
   }))
 }
 
+// The photo list is final once the search answers; thumbnails load afterwards and may never arrive.
+const settleLatestPhotos = (requestToken) => {
+  if (requestToken === latestRequestToken) {
+    emit('latest-photos-settled', latestPhotos.value)
+  }
+}
+
 const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
   if (!showSection.value || !hasValidSearchParams.value) {
     resetPhotoState({ resetLimit: false })
@@ -908,6 +915,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
         ? Math.min(currentLimit.value, safeLatestMaxOnPage.value)
         : filteredDataset.length
       latestPhotos.value = filteredDataset.slice(0, visibleLimit)
+      settleLatestPhotos(requestToken)
       await loadMissingPhotoBlobs(displayedPhotos.value, photoBlobContextToken)
       return
     }
@@ -926,6 +934,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       latestPhotos.value = photos
     }
 
+    settleLatestPhotos(requestToken)
     await loadMissingPhotoBlobs(displayedPhotos.value, photoBlobContextToken)
   } catch (err) {
     if (requestToken !== latestRequestToken) {
@@ -938,6 +947,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       clearPhotoBlobs()
     }
     photosError.value = formatApiErrorDetail(err, t('analytics.immichPhotos.loadFailed'))
+    settleLatestPhotos(requestToken)
   } finally {
     if (requestToken === latestRequestToken) {
       latestPhotosLoading.value = false
@@ -1054,6 +1064,9 @@ const ensureImmichConfig = async () => {
     console.warn('Failed to fetch Immich config:', err)
   } finally {
     immichConfigChecked.value = true
+    if (!immichStore.isConfigured) {
+      emit('latest-photos-settled', [])
+    }
   }
 }
 
@@ -1262,9 +1275,10 @@ onBeforeUnmount(() => {
   clearPhotoBlobs()
 })
 
+// Synchronous, so a change is never reported after the settled event that follows it.
 watch(latestPhotos, (photos) => {
   emit('latest-photos-change', photos)
-}, { immediate: true })
+}, { immediate: true, flush: 'sync' })
 
 watch(mapMarkerGroups, (groups) => {
   emit('map-markers-change', groups)
@@ -1281,6 +1295,9 @@ watch(
   async ([visible]) => {
     resetPhotoState()
     if (!visible || !hasValidSearchParams.value) {
+      if (immichConfigChecked.value) {
+        emit('latest-photos-settled', [])
+      }
       return
     }
     const requests = [fetchLatestPhotos({ append: false, mode: 'initial' })]

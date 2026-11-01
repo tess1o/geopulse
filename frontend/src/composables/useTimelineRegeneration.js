@@ -261,6 +261,67 @@ export function useTimelineRegeneration() {
     resetJobProgress()
   }
 
+  /**
+   * Follows the regeneration returned by a correction undo. A correction can be queued behind a regeneration that
+   * is already running; then there is no job to follow and the page must not pretend the timeline has changed.
+   */
+  const trackCorrectionRegeneration = async (result, {
+    onCompleted,
+    onFailed,
+    failedDetail,
+    failureSummary = t('timeline.page.resetFailedSummary'),
+    queuedSummary = t('timeline.page.correctionQueuedSummary'),
+    queuedDetail = t('timeline.page.correctionQueuedDetail')
+  } = {}) => {
+    if (result?.timelineJobId) {
+      const clear = () => {
+        if (!timelineRegenerationVisible.value) {
+          clearTrackedTimelineJob()
+        }
+      }
+      await trackExistingTimelineJob(String(result.timelineJobId), {
+        modalType: 'general',
+        showModal: false,
+        onCompleted: async () => {
+          try {
+            await onCompleted?.()
+          } finally {
+            clear()
+          }
+        },
+        onFailed: async (progress) => {
+          try {
+            await onFailed?.()
+            toast.add({
+              severity: 'error',
+              summary: failureSummary,
+              detail: failedDetail || progress?.errorMessage,
+              group: 'gps-delete',
+              data: { timelineJobUrl: router.resolve({ name: 'Timeline Job Details', params: { jobId: result.timelineJobId } }).href },
+              life: 10000
+            })
+          } finally {
+            clear()
+          }
+        },
+        onTrackingError: async (error) => {
+          try {
+            await onFailed?.()
+            toast.add({ severity: 'error', summary: failureSummary, detail: error, life: 5000 })
+          } finally {
+            clear()
+          }
+        }
+      })
+      return
+    }
+    if (result?.timelineJobQueued) {
+      toast.add({ severity: 'info', summary: queuedSummary, detail: queuedDetail, life: 5000 })
+      return
+    }
+    await onCompleted?.()
+  }
+
   return {
     timelineRegenerationVisible,
     timelineRegenerationType,
@@ -269,6 +330,7 @@ export function useTimelineRegeneration() {
     jobError,
     withTimelineRegeneration,
     trackExistingTimelineJob,
+    trackCorrectionRegeneration,
     refreshCurrentJobProgress,
     clearTrackedTimelineJob
   }

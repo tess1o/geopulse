@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.rebuild;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.common.annotation.Identifier;
@@ -185,7 +186,36 @@ public class TimelineReplayHarness {
         try {
             return withEntry(zip, "timeline_overrides.json", content -> """
                     {"dataType":"timelineoverrides","tripMovementOverrides":[],"dataGapStayOverrides":[],\
-                    "tripStaySplitOverrides":[]}""".getBytes(StandardCharsets.UTF_8));
+                    "tripStaySplitOverrides":[],"stayNameOverrides":[]}""".getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Rewrites an export's split overrides in the order older exports used ({@code stayStartTime}), which can put a
+     * child split before its parent when the child covers an earlier part of a split leg.
+     */
+    public byte[] exportWithLegacySplitOrder(byte[] export) {
+        try {
+            return withEntry(export, "timeline-overrides.json", content -> {
+                try {
+                    JsonNode root = objectMapper.readTree(content);
+                    JsonNode splits = root.get("tripStaySplitOverrides");
+                    if (splits == null || !splits.isArray()) {
+                        return content;
+                    }
+                    List<JsonNode> ordered = new ArrayList<>();
+                    splits.forEach(ordered::add);
+                    ordered.sort(Comparator.comparing(split -> split.path("stayStartTime").asText()));
+                    ArrayNode sorted = objectMapper.createArrayNode();
+                    ordered.forEach(sorted::add);
+                    ((ObjectNode) root).set("tripStaySplitOverrides", sorted);
+                    return objectMapper.writeValueAsBytes(root);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -495,6 +525,15 @@ public class TimelineReplayHarness {
         boolean ongoing = Objects.equals(gap.getStartTime(), latestPoint);
         return "GAP " + gap.getStartTime() + " why=" + explanation(gap.getExplanation()) + " .. "
                 + (ongoing ? "ongoing" : gap.getEndTime());
+    }
+
+    /** One JSON entry of an export, for asserting what the export actually carries. */
+    public JsonNode readExportJson(byte[] export, String name) {
+        try {
+            return objectMapper.readTree(readZipEntry(export, name));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public static byte[] readResource(String path) {

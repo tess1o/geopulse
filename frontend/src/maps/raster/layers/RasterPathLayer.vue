@@ -42,6 +42,7 @@ import {
 } from '@/maps/shared/highlightedTripData'
 import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
 import { MUTED_DAY_OPACITY } from '@/maps/shared/pathDayColoring'
+import { buildAntimeridianReplayBounds } from '@/maps/shared/tripReplayMath'
 import {
   PATH_OUTLINE_EXTRA_WIDTH,
   SPEED_BAND_PALETTES,
@@ -902,14 +903,20 @@ const renderHighlightedTrip = (newTrip) => {
     syncReplayMarker()
 
     if (props.map) {
-      const bounds = L.latLngBounds(tripCoords)
-      props.map.fitBounds(bounds, {
-        padding: [20, 20],
-        // Animated zoom can race with trip layer replacement when users click
-        // multiple trips in quick succession, leaving detached markers in the
-        // zoom animation callback queue.
-        animate: false
-      })
+      const replayBounds = buildAntimeridianReplayBounds(tripCoords.map(([latitude, longitude]) => [longitude, latitude]))
+      const bounds = replayBounds && L.latLngBounds(
+        [replayBounds[0][1], replayBounds[0][0]],
+        [replayBounds[1][1], replayBounds[1][0]]
+      )
+      if (bounds) {
+        props.map.fitBounds(bounds, {
+          padding: [20, 20],
+          // Animated zoom can race with trip layer replacement when users click
+          // multiple trips in quick succession, leaving detached markers in the
+          // zoom animation callback queue.
+          animate: false
+        })
+      }
 
       if (props.showHighlightedTripPopup) {
         tripPopupTimeoutId = setTimeout(() => {

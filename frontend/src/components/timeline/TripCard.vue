@@ -11,6 +11,13 @@
           🕐 {{ formattedTimestamp }}
         </p>
         <div class="timeline-title-actions">
+          <TimelineEditTrigger
+            :label="t('timeline.edit.trip')"
+            :count="0"
+            :read-only="readOnly"
+            @edit="emit('edit', tripItem)"
+            @history="emit('show-edit-history', tripItem)"
+          />
           <TimelineWeatherSummary :samples="weatherSamples" />
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
@@ -41,6 +48,7 @@
     </template>
 
     <template #content>
+
       <div class="trip-content">
         <p class="trip-detail">
           ⏱️ {{ t('timeline.trip.durationLabel') }}
@@ -55,25 +63,7 @@
           <span class="font-bold">
             {{ formatMovementType(tripItem.movementType).icon }}
             {{ formatMovementType(tripItem.movementType).label }}
-            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
-            <button
-              v-if="showInlineEditIcon"
-              class="movement-edit-icon-btn"
-              :aria-label="t('timeline.trip.editMovementType')"
-              :title="readOnly ? t('timeline.trip.movementEditDisabledDemo') : t('timeline.trip.editMovementType')"
-              :disabled="readOnly"
-              @click.stop="handleEditMovementType"
-            >
-              <i class="pi pi-pencil"></i>
-            </button>
-            <button
-              v-if="isUnknownAuto"
-              class="movement-set-btn"
-              :disabled="readOnly"
-              @click.stop="handleEditMovementType"
-            >
-              {{ t('timeline.trip.setMovementType') }}
-            </button>
+            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="movement-edited-indicator">{{ t('timeline.trip.edited') }}</span>
           </span>
         </p>
         <p v-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
@@ -115,6 +105,7 @@ import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
+import TimelineEditTrigger from './TimelineEditTrigger.vue'
 
 const { t, te } = useI18n()
 const notesStore = useNotesStore()
@@ -167,7 +158,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved', 'show-map-matching-details', 'show-explanation'])
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'photo-show-on-map', 'note-saved', 'show-map-matching-details', 'show-explanation', 'edit', 'show-edit-history'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -194,29 +185,16 @@ const isMapMatchingProblem = computed(() => (
 
 const contextMenuItems = computed(() => {
   const items = [
-    {
-      label: t('timeline.trip.changeMovementType'),
+    ...(!props.readOnly ? [{
+      label: t('timeline.edit.trip'),
       icon: 'pi pi-pencil',
-      disabled: props.readOnly,
-      command: () => {
-        if (props.readOnly) return
-        emit('edit-movement-type', props.tripItem)
-      }
-    },
+      command: () => emit('edit', props.tripItem)
+    }] : []),
     {
       label: t('timeline.trip.whyThisClassification'),
       icon: 'pi pi-question-circle',
       command: () => {
         emit('show-classification', props.tripItem)
-      }
-    },
-    {
-      label: t('timeline.trip.splitTripWithStay'),
-      icon: 'pi pi-directions-alt',
-      disabled: props.readOnly,
-      command: () => {
-        if (props.readOnly) return
-        emit('split-trip-with-stay', props.tripItem)
       }
     }
   ]
@@ -412,12 +390,7 @@ const formattedTimestamp = computed(() => {
   color: var(--gp-primary-text);
 }
 
-.manual-indicator {
-  margin-left: 6px;
-  font-size: 0.75rem;
-  color: var(--gp-warning);
-  font-weight: 700;
-}
+
 
 .movement-set-btn {
   margin-left: 8px;

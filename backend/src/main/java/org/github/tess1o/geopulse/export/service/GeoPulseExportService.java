@@ -140,6 +140,10 @@ public class GeoPulseExportService {
                         addTimelineOverridesData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
+                    case ExportImportConstants.DataTypes.TIMELINE_EDITS:
+                        addTimelineEditsData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
                     case ExportImportConstants.DataTypes.TRIP_WORKSPACE:
                         addTripWorkspaceData(zos, job, currentProgress);
                         currentProgress += progressPerType;
@@ -422,13 +426,27 @@ public class GeoPulseExportService {
         var tripOverrides = dataCollectorService.collectTripMovementOverrides(job.getUserId());
         var gapOverrides = dataCollectorService.collectDataGapStayOverrides(job.getUserId());
         var staySplitOverrides = dataCollectorService.collectTripStaySplitOverrides(job.getUserId());
+        var stayNameOverrides = dataCollectorService.collectStayNameOverrides(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
                 ExportImportConstants.FileNames.TIMELINE_OVERRIDES,
-                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides)
+                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides,
+                        stayNameOverrides)
         );
-        log.debug("Exported {} trip movement overrides, {} data-gap stay overrides and {} trip stay-split overrides",
-                tripOverrides.size(), gapOverrides.size(), staySplitOverrides.size());
+        log.debug("Exported {} trip movement overrides, {} data-gap stay overrides, {} trip stay-split overrides and "
+                        + "{} stay names", tripOverrides.size(), gapOverrides.size(), staySplitOverrides.size(),
+                stayNameOverrides.size());
+    }
+
+    private void addTimelineEditsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "exportingTimelineEdits", "Exporting timeline edits...");
+        var edits = dataCollectorService.collectTimelineEdits(job.getUserId()).stream()
+                .filter(edit -> edit.getAffectedFrom().isBefore(job.getDateRange().getEndDate())
+                        && edit.getAffectedTo().isAfter(job.getDateRange().getStartDate()))
+                .toList();
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.TIMELINE_EDITS,
+                exportDataMapper.toTimelineEditsDataDto(edits));
+        log.debug("Exported {} timeline edits", edits.size());
     }
 
     private void addTripWorkspaceData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {

@@ -12,7 +12,7 @@ vi.mock('@/composables/useTimezone', () => ({
 vi.mock('@/components/location-analytics/ImmichLatestPhotosSection.vue', () => ({
   default: {
     props: ['presentation', 'searchParams', 'showOnMapEnabled', 'loadMapMarkers'],
-    emits: ['latest-photos-change'],
+    emits: ['latest-photos-change', 'latest-photos-settled'],
     template: '<div class="shared-gallery" />'
   }
 }))
@@ -39,5 +39,20 @@ describe('DigestMemories', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.emitted('availability')).toEqual([[true], [false]])
+  })
+
+  it('forwards the already-loaded photos and their settled state', async () => {
+    const wrapper = mount(DigestMemories, { props: { viewMode: 'yearly', year: 2026 } })
+    const gallery = wrapper.findComponent({ name: 'ImmichLatestPhotosSection' })
+    const photos = [{ id: 'one' }]
+
+    gallery.vm.$emit('latest-photos-change', photos)
+    gallery.vm.$emit('latest-photos-settled', photos)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('photos-change')).toEqual([
+      [{ photos, settled: false }],
+      [{ photos, settled: true }]
+    ])
   })
 })

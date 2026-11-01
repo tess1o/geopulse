@@ -16,6 +16,9 @@ import org.github.tess1o.geopulse.importdata.model.DebugImportRequest;
 import org.github.tess1o.geopulse.importdata.service.DebugImportService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
@@ -31,7 +34,9 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -64,6 +69,9 @@ class DebugExportRoundTripIntegrationTest {
     TripMovementTypeOverrideService tripMovementTypeOverrideService;
 
     @Inject
+    TimelineEditService timelineEditService;
+
+    @Inject
     StreamingTimelineGenerationService timelineGenerationService;
 
     @Inject
@@ -92,9 +100,23 @@ class DebugExportRoundTripIntegrationTest {
                 tripMovementTypeOverrideService.setManualMovementType(source, firstTrip.getId(), manualType));
         timelineGenerationService.regenerateFullTimeline(source);
 
+        TimelineStayEntity namedStay = staysStartingIn(source, DAY_START, DAY_END).getFirst();
+        TimelineEditRequest visitName = new TimelineEditRequest();
+        visitName.setKind(TimelineEditKind.SET_VISIT_NAME);
+        visitName.setAnchorStart(namedStay.getTimestamp());
+        visitName.setAnchorEnd(namedStay.getTimestamp().plusSeconds(namedStay.getStayDuration()));
+        visitName.setPayload(new LinkedHashMap<>(Map.of("visitName", "Sensitive customer visit")));
+        timelineEditService.create(source, visitName);
+        timelineGenerationService.regenerateFullTimeline(source);
+
         setTimezone(source, "Europe/Kyiv");
         Instant issueTime = Instant.parse("2026-10-08T12:30:00Z");
         byte[] export = export(source, DAY_START, DAY_END, "Drive home shows as one long stay", issueTime);
+        JsonNode exportedEdits = objectMapper.readTree(zipEntry(export, "timeline_edits.json"));
+        assertThat(exportedEdits.path("edits")).hasSize(1);
+        assertThat(exportedEdits.path("edits").get(0).path("payload").path("visitName").asText())
+                .doesNotContain("Sensitive customer visit");
+        assertThat(zipEntry(export, "timeline_overrides.json")).isNotEmpty();
         UUID copy = harness.createUser("debug-rt-copy");
         DebugImportReport report = debugImportService.importDebugData(copy, export, new DebugImportRequest(true, true));
 
@@ -120,6 +142,9 @@ class DebugExportRoundTripIntegrationTest {
 
         // The manual movement type is re-applied to the regenerated trip
         assertThat(firstTripFrom(copy, DAY_START).getMovementType()).isEqualTo(manualType.name());
+        assertThat(staysStartingIn(copy, DAY_START, DAY_END)).anySatisfy(stay ->
+                assertThat(stay.getVisitName()).isEqualTo(
+                        exportedEdits.path("edits").get(0).path("payload").path("visitName").asText()));
 
         // Stays of the day sit at the same latitude, moved east by the shift, and keep their place identity
         List<TimelineStayEntity> sourceStays = staysStartingIn(source, DAY_START, DAY_END);

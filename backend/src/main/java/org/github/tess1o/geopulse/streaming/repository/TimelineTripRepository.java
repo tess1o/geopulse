@@ -33,6 +33,37 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 userId, from, to).list();
     }
 
+    /** The user's trips starting in {@code [from, toExclusive)}, oldest first. */
+    public List<TimelineTripEntity> findStartedBetween(UUID userId, Instant from, Instant toExclusive) {
+        return find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3 order by timestamp",
+                userId, from, toExclusive).list();
+    }
+
+    /** Start and distance of the user's trips starting in {@code [from, toExclusive)}, without their geometry. */
+    public List<TripStartAndDistance> findStartsAndDistances(UUID userId, Instant from, Instant toExclusive) {
+        return getEntityManager().createQuery("""
+                        SELECT t.id, t.timestamp, t.distanceMeters FROM TimelineTripEntity t
+                        WHERE t.user.id = :userId AND t.timestamp >= :from AND t.timestamp < :to
+                        """, Object[].class)
+                .setParameter("userId", userId)
+                .setParameter("from", from)
+                .setParameter("to", toExclusive)
+                .getResultStream()
+                .map(row -> new TripStartAndDistance((Long) row[0], (Instant) row[1], ((Number) row[2]).longValue()))
+                .toList();
+    }
+
+    /** The user's trips with these ids, oldest first. */
+    public List<TimelineTripEntity> findByUserAndIds(UUID userId, List<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return find("user.id = ?1 and id in ?2 order by timestamp", userId, ids).list();
+    }
+
+    public record TripStartAndDistance(Long id, Instant timestamp, long distanceMeters) {
+    }
+
     public Optional<TimelineTripEntity> findLatestByUserIdAtOrBefore(UUID userId, Instant timestamp) {
         return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
                 .firstResultOptional();
@@ -61,6 +92,16 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
      */
     public List<TimelineTripEntity> findByUser(UUID userId) {
         return find("user.id = ?1 order by timestamp", userId).list();
+    }
+
+    /** The user's trips sharing some time with {@code from}..{@code to}. */
+    public List<TimelineTripEntity> findOverlapping(UUID userId, Instant from, Instant to) {
+        return find("""
+                        user.id = ?1
+                        and timestamp < ?3
+                        and FUNCTION('TIMESTAMPADD', SECOND, tripDuration, timestamp) > ?2
+                        order by timestamp
+                        """, userId, from, to).list();
     }
 
     public List<TimelineTripEntity> findMapMatchingChunk(UUID userId, Instant cursorAt,

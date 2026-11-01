@@ -569,7 +569,7 @@ export const useExportImportStore = defineStore('exportImport', {
         getDataTypeDisplayName(dataType) {
             const knownTypes = new Set([
                 'rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo',
-                'timelinelabels', 'timelineoverrides', 'tripworkspace', 'notificationtemplates',
+                'timelinelabels', 'timelineoverrides', 'timelineedits', 'tripworkspace', 'notificationtemplates',
                 'geofencing', 'notes', 'weathersamples', 'mapmatching', 'statistics'
             ])
             return knownTypes.has(dataType) ? t(`data.dataTypes.${dataType}.label`) : dataType

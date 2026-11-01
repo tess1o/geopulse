@@ -59,6 +59,8 @@ class RebuildRequestLifecycleIntegrationTest {
     @Inject
     EntityManager entityManager;
 
+    @Inject org.github.tess1o.geopulse.streaming.edits.TimelineEditService edits;
+
     private GeocodingProviderFactory geocoding;
 
     @BeforeEach
@@ -225,6 +227,14 @@ class RebuildRequestLifecycleIntegrationTest {
         harness.ingest(userId, commute.home());
         harness.process(userId);
 
+        var split = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
+        split.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SPLIT_STAY);
+        split.setAnchorStart(at("06:00")); split.setAnchorEnd(at("08:00"));
+        split.setPayload(new java.util.LinkedHashMap<>(java.util.Map.of("splitAt", at("07:00").toString(),
+                "rightLocationName", "Parked correction", "rightLatitude", 50.0, "rightLongitude", 30.0)));
+        var edit = edits.create(userId, split);
+        harness.fullRebuild(userId);
+        assertThat(edits.list(userId).getFirst().applied()).isTrue();
         AtomicBoolean failing = new AtomicBoolean(true);
         TripStaySplitOverrideService splits = mock(TripStaySplitOverrideService.class);
         doAnswer(invocation -> {
@@ -251,6 +261,9 @@ class RebuildRequestLifecycleIntegrationTest {
         assertThat(harness.pendingRebuild(userId).orElseThrow().failedAttempts())
                 .isEqualTo(TimelineRebuildRequest.MAX_FAILED_ATTEMPTS);
 
+        assertThat(edits.list(userId).getFirst().id()).isEqualTo(edit.id());
+        assertThat(edits.list(userId).getFirst().applied()).isTrue();
+        assertThat(harness.snapshot(userId).stays()).anySatisfy(row -> assertThat(row).contains("Parked correction"));
         // Once the retry delay has passed, the request is tried again and cleared.
         harness.backdateLastFailure(userId, TimelineRebuildRequest.RETRY_FAILED_AFTER.plusMinutes(1));
         assertThat(harness.process(userId)).isEqualTo(Outcome.REBUILT);

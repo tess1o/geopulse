@@ -72,3 +72,35 @@
         touch-action: pan-y;
     }
 }
+
+.timeline-edit-metadata {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0 0 .5rem;
+}
+.visit-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .35rem;
+    max-width: 100%;
+    padding: .15rem .45rem;
+    border-radius: var(--gp-radius-small);
+    background: var(--gp-surface-muted);
+    color: var(--gp-text-secondary);
+    font-size: .8rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+.visit-label i { color: var(--gp-primary-text); font-size: .75rem; }
+
+.movement-edited-indicator {
+    display: inline-block;
+    margin-left: .35rem;
+    padding: .15rem .3rem;
+    font: inherit;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--gp-primary-text);
+}

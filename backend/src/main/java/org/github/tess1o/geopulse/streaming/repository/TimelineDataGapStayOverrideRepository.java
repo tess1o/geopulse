@@ -13,22 +13,25 @@ import java.util.UUID;
 public class TimelineDataGapStayOverrideRepository implements PanacheRepository<TimelineDataGapStayOverrideEntity> {
 
     public Optional<TimelineDataGapStayOverrideEntity> findByIdAndUserId(Long overrideId, UUID userId) {
-        return find("id = ?1 and user.id = ?2", overrideId, userId).firstResultOptional();
+        return find("id = ?1 and user.id = ?2 and migratedToTimelineEdits = false", overrideId, userId)
+                .firstResultOptional();
     }
 
     public Optional<TimelineDataGapStayOverrideEntity> findByUserIdAndSourceGap(UUID userId, Instant sourceStart, Instant sourceEnd) {
-        return find("user.id = ?1 and sourceGapStartTime = ?2 and sourceGapEndTime = ?3",
+        return find("user.id = ?1 and sourceGapStartTime = ?2 and sourceGapEndTime = ?3 "
+                        + "and migratedToTimelineEdits = false",
                 userId, sourceStart, sourceEnd).firstResultOptional();
     }
 
     public List<TimelineDataGapStayOverrideEntity> findByUserId(UUID userId) {
-        return find("user.id = ?1 order by sourceGapStartTime", userId).list();
+        return find("user.id = ?1 and migratedToTimelineEdits = false order by sourceGapStartTime", userId).list();
     }
 
     public List<TimelineDataGapStayOverrideEntity> findByUserIdAndStayIds(UUID userId, List<Long> stayIds) {
         if (stayIds == null || stayIds.isEmpty()) {
             return List.of();
         }
-        return find("user.id = ?1 and stay.id in ?2 order by sourceGapStartTime", userId, stayIds).list();
+        return find("user.id = ?1 and stay.id in ?2 and migratedToTimelineEdits = false order by sourceGapStartTime",
+                userId, stayIds).list();
     }
 }

@@ -68,6 +68,12 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         PhotonResponse.Geometry.class,
         PhotonResponse.Properties.class,
 
+        // Health DTOs
+        GeocodingHealthResponse.class,
+        GeocodingHealthResponse.Status.class,
+        GeocodingProviderHealthResponse.class,
+        GeocodingProviderHealthResponse.Status.class,
+
         // Management DTOs
         ReverseGeocodingDTO.class,
         ReverseGeocodingUpdateDTO.class,

@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.streaming;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
@@ -14,10 +16,21 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 
 @RegisterForReflection(targets = {
+        TimelineEditKind.class,
+        TimelineEditStatus.class,
+        TimelineEditEntity.class,
+        TimelineEditApplicationEntity.class,
+        TimelineEditRequest.class,
+        TimelineEditDTO.class,
+        TimelineEditTargetDTO.class,
+        TimelineEditMutationResponse.class,
+        TimelineEditPreviewDTO.class,
+        TimelineEditPreviewDTO.Event.class,
         TimelineStayEntity.class,
         TimelineTripEntity.class,
         TimelineTripMovementOverrideEntity.class,
         TimelineTripStaySplitOverrideEntity.class,
+        TimelineStayNameOverrideEntity.class,
         TimelineDataGapStayOverrideEntity.class,
         TimelineRegenerationCampaignEntity.class,
         TimelineRegenerationCampaignUserEntity.class,
@@ -52,6 +65,7 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         DataGapStayOverrideRequest.class,
         DataGapStayOverrideResponseDTO.class,
         DataGapStayConversionPreviewDTO.class,
+        TimelineOverrideSummaryDTO.class,
         TimelineDataGapDTO.class,
         CreateTimelineRegenerationCampaignRequest.class,
         TimelineRegenerationCampaignPreviewRequest.class,
@@ -62,6 +76,7 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         TimelineConfig.class,
         TimelineJobProgress.class,
         TimelineJobProgress.JobStatus.class,
+        TimelineJobStatistics.class,
         // Key of the EnumMap the nightly safety net reports its results in.
         TimelineSafetyNetService.Outcome.class,
         PlaceDetailsDTO.class,
@@ -72,6 +87,10 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         UpdatePlaceNameRequest.class,
         FavoriteRelationDTO.class,
         TripClassificationDetailsDTO.class,
+        TripClassificationDetailsDTO.TripStatistics.class,
+        TripClassificationDetailsDTO.ClassificationThresholds.class,
+        TripClassificationDetailsDTO.ClassificationStep.class,
+        TripClassificationDetailsDTO.ThresholdCheck.class,
         BoatSetupStatusDTO.class,
         BoatSetupStatusDTO.Status.class,
         BoatSetupStatusDTO.DatasetStatus.class,

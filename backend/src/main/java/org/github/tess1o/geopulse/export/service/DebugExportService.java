@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.export.dto.ReverseGeocodingDataDto;
 import org.github.tess1o.geopulse.export.dto.TimelineDataDto;
 import org.github.tess1o.geopulse.export.dto.TimelineOverridesDataDto;
+import org.github.tess1o.geopulse.export.dto.TimelineEditsDataDto;
 import org.github.tess1o.geopulse.export.mapper.ExportDataMapper;
 import org.github.tess1o.geopulse.export.model.DebugExportRequest;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -24,6 +25,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -80,6 +82,7 @@ public class DebugExportService {
     public static final String TIMELINE_FILE = "timeline.json";
     public static final String REVERSE_GEOCODING_FILE = "reverse_geocoding.json";
     public static final String TIMELINE_OVERRIDES_FILE = "timeline_overrides.json";
+    public static final String TIMELINE_EDITS_FILE = "timeline_edits.json";
 
     /**
      * Points exported before the first and after the last timeline event touching the requested range, so the events
@@ -207,6 +210,10 @@ public class DebugExportService {
         List<TimelineDataGapEntity> dataGaps = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(
                 userId, range.start(), range.end());
         TimelineOverridesDataDto overrides = collectOverrides(userId, range);
+        TimelineEditsDataDto edits = exportDataMapper.toTimelineEditsDataDto(
+                dataCollectorService.collectTimelineEdits(userId).stream()
+                        .filter(edit -> range.overlaps(edit.getAffectedFrom(), edit.getAffectedTo()))
+                        .toList());
 
         Set<Long> geocodingIds = new LinkedHashSet<>();
         stays.stream()
@@ -218,10 +225,13 @@ public class DebugExportService {
         overrides.getTripStaySplitOverrides().stream()
                 .filter(override -> override.getGeocodingId() != null)
                 .forEach(override -> geocodingIds.add(override.getGeocodingId()));
+        edits.getEdits().stream().filter(edit -> edit.getGeocodingId() != null)
+                .forEach(edit -> geocodingIds.add(edit.getGeocodingId()));
         ReverseGeocodingDataDto geocoding = exportDataMapper.toReverseGeocodingDataDto(
                 dataCollectorService.collectReverseGeocodingLocations(geocodingIds));
         shiftAndAnonymize(geocoding, shift, anonymizer);
         shiftAndAnonymize(overrides, shift, anonymizer);
+        shiftAndAnonymize(edits, shift, anonymizer);
 
         TimelineDataDto timeline = null;
         if (request.isIncludeTimeline()) {
@@ -249,6 +259,8 @@ public class DebugExportService {
         counts.put("trip_movement_override_count", overrides.getTripMovementOverrides().size());
         counts.put("data_gap_stay_override_count", overrides.getDataGapStayOverrides().size());
         counts.put("trip_stay_split_override_count", overrides.getTripStaySplitOverrides().size());
+        counts.put("stay_name_override_count", overrides.getStayNameOverrides().size());
+        counts.put("timeline_edit_count", edits.getEdits().size());
         if (timeline != null) {
             counts.put("timeline_stay_count", timeline.getStays().size());
             counts.put("timeline_trip_count", timeline.getTrips().size());
@@ -272,7 +284,14 @@ public class DebugExportService {
         addEntry(zipOut, FAVORITE_LOCATIONS_FILE, locationsData);
         addEntry(zipOut, FAVORITE_AREAS_FILE, areasData);
         addEntry(zipOut, REVERSE_GEOCODING_FILE, writeJson(geocoding));
-        addEntry(zipOut, TIMELINE_OVERRIDES_FILE, writeJson(overrides));
+        if (!overrides.getTripMovementOverrides().isEmpty()
+                || !overrides.getDataGapStayOverrides().isEmpty()
+                || !overrides.getTripStaySplitOverrides().isEmpty()
+                || !overrides.getStayNameOverrides().isEmpty()) {
+            // Migration bridge while old correction rows can still exist alongside unified edits.
+            addEntry(zipOut, TIMELINE_OVERRIDES_FILE, writeJson(overrides));
+        }
+        addEntry(zipOut, TIMELINE_EDITS_FILE, writeJson(edits));
         if (timeline != null) {
             addEntry(zipOut, TIMELINE_FILE, writeJson(timeline));
         }
@@ -327,7 +346,12 @@ public class DebugExportService {
                 .filter(override -> range.overlaps(override.getSourceTripTimestamp(),
                         override.getSourceTripTimestamp().plusSeconds(override.getSourceTripDurationSeconds())))
                 .toList();
-        return exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides);
+        List<TimelineStayNameOverrideEntity> stayNameOverrides = dataCollectorService.collectStayNameOverrides(userId)
+                .stream()
+                .filter(override -> range.overlaps(override.getStayStartTime(), override.getStayEndTime()))
+                .toList();
+        return exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides,
+                stayNameOverrides);
     }
 
     /**
@@ -765,6 +789,40 @@ public class DebugExportService {
             override.setStayLocationName(anonymizer.location(override.getFavoriteId(), override.getGeocodingId(),
                     override.getStayLocationName()));
         }
+        for (TimelineOverridesDataDto.StayNameOverrideDto override : overrides.getStayNameOverrides()) {
+            override.setLocationName(anonymizer.location(null, null, override.getLocationName()));
+        }
+    }
+
+    private void shiftAndAnonymize(TimelineEditsDataDto edits, Shift shift, Anonymizer anonymizer) {
+        for (TimelineEditsDataDto.EditDto edit : edits.getEdits()) {
+            edit.setLatitude(shift.latitude(edit.getLatitude()));
+            edit.setLongitude(shift.longitude(edit.getLongitude()));
+            edit.setPlaceName(anonymizer.location(edit.getFavoriteId(), edit.getGeocodingId(), edit.getPlaceName()));
+            Map<String, Object> payload = edit.getPayload();
+            shiftNumber(payload, "latitude", shift::latitude);
+            shiftNumber(payload, "longitude", shift::longitude);
+            shiftNumber(payload, "rightLatitude", shift::latitude);
+            shiftNumber(payload, "rightLongitude", shift::longitude);
+            shiftNumber(payload, "startLatitude", shift::latitude);
+            shiftNumber(payload, "startLongitude", shift::longitude);
+            shiftNumber(payload, "endLatitude", shift::latitude);
+            shiftNumber(payload, "endLongitude", shift::longitude);
+            anonymizeText(payload, "locationName", anonymizer);
+            anonymizeText(payload, "rightLocationName", anonymizer);
+            anonymizeText(payload, "visitName", anonymizer);
+        }
+    }
+
+    private static void shiftNumber(Map<String, Object> payload, String key,
+                                    java.util.function.Function<Double, Double> shifter) {
+        Object value = payload.get(key);
+        if (value instanceof Number number) payload.put(key, shifter.apply(number.doubleValue()));
+    }
+
+    private static void anonymizeText(Map<String, Object> payload, String key, Anonymizer anonymizer) {
+        Object value = payload.get(key);
+        if (value != null) payload.put(key, anonymizer.location(null, null, value.toString()));
     }
 
     private void shiftAndAnonymize(TimelineDataDto timeline, Shift shift, Anonymizer anonymizer) {

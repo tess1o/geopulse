@@ -16,6 +16,17 @@
         </ToastMessageContent>
       </template>
     </Toast>
+    <Toast group="timeline-edit-progress" position="top-right" />
+    <Toast group="timeline-edit" position="top-right">
+      <template #message="slotProps">
+        <ToastMessageContent :message="slotProps.message">
+          <button type="button" class="gp-toast-action gp-toast-action-button"
+            @click.stop="slotProps.message.data?.undo?.()">
+            {{ slotProps.message.data?.actionLabel || t('timeline.edit.undo') }}
+          </button>
+        </ToastMessageContent>
+      </template>
+    </Toast>
     <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" :header="t('ui.appLayout.whatsNew')">
       <div v-if="releaseAnnouncement" class="gp-release-announcement">
         <h3>{{ releaseAnnouncement.title }}</h3>
@@ -230,6 +241,7 @@ onUnmounted(() => {
 .gp-release-announcement-list { padding-left: 1.4rem; list-style: disc; display: grid; gap: .45rem; }
 .gp-release-announcement-link { color: var(--gp-primary); font-weight: 600; text-decoration: underline; text-underline-offset: .18em; width: fit-content; }
 .gp-release-announcement-link:hover { color: var(--gp-primary-dark, var(--gp-primary)); }
+.gp-toast-action-button { padding: 0; border: 0; background: transparent; cursor: pointer; }
 
 .gp-app-layout--full-height {
   min-height: 100vh;

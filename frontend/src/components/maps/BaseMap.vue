@@ -12,6 +12,7 @@
     :width="width"
     :custom-tile-url="customTileUrl"
     :custom-style-url="customStyleUrl"
+    :style-override="styleOverride"
     :map-render-mode="mapRenderMode"
     :is-shared-view="isSharedView"
     :enable-fullscreen="enableFullscreen"
@@ -64,6 +65,11 @@ const props = defineProps({
   },
   customStyleUrl: {
     type: String,
+    default: null
+  },
+  // Vector engine only: a MapLibre style (URL or style object) used instead of the profile's style.
+  styleOverride: {
+    type: [String, Object],
     default: null
   },
   mapRenderMode: {

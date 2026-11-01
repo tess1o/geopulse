@@ -46,9 +46,8 @@ export default {
         clickToSetStay: 'Click on the route to set your stay location.',
         stayStartLabel: 'Stay start',
         stayEndLabel: 'Stay end',
-        placeNameLabel: 'Place name',
-        placeNameResolving: 'Resolving place...',
-        placeNamePlaceholder: 'Resolved automatically when empty',
+        placeLabel: 'Where did you stop?',
+        selectedOnRoute: 'Point on the route',
         updatingPreview: 'Updating split result...',
         preview: {
             originalTrip: 'Original trip',
@@ -72,7 +71,7 @@ export default {
             minDuration: 'Stay duration must be at least 60 seconds.',
             startAfterTripStart: 'Stay must start after the trip starts.',
             endBeforeTripEnd: 'Stay must end before the trip ends.',
-            placeNameTooLong: 'Place name is too long.',
+            selectPlace: 'Choose a place for the stop, or name a new one.',
             selectValidStayLocation: 'Select a valid stay location.'
         },
         pathErrors: {
@@ -81,8 +80,6 @@ export default {
         },
         previewErrorFallback: 'Could not preview trip split',
         toasts: {
-            splitSummary: 'Trip Split',
-            splitDetail: 'Stay was inserted into the trip.',
             splitFailedSummary: 'Split Failed',
             splitFailedFallback: 'Could not split trip'
         },

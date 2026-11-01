@@ -55,6 +55,13 @@ public class TimelineTripStaySplitOverrideEntity {
     @Column(name = "stay_location_source", nullable = false, length = 30)
     private LocationSource stayLocationSource;
 
+    /**
+     * Whether the name was typed for this stay. Otherwise the stay is named after its place, and takes the place's
+     * current name whenever it is recreated.
+     */
+    @Column(name = "stay_location_name_custom", nullable = false)
+    private boolean stayLocationNameCustom;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "favorite_id")
     @ToString.Exclude
@@ -86,11 +93,19 @@ public class TimelineTripStaySplitOverrideEntity {
     @Column(name = "source_end_longitude", nullable = false)
     private double sourceEndLongitude;
 
+    /** The movement type the user had set on the trip before splitting it; null when it was detected. */
+    @Column(name = "source_trip_movement_type", length = 50)
+    private String sourceTripMovementType;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Builder.Default
+    @Column(name = "migrated_to_timeline_edits", nullable = false)
+    private boolean migratedToTimelineEdits = false;
 
     @PrePersist
     protected void onCreate() {

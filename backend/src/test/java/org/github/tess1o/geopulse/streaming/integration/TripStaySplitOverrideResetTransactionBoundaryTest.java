@@ -13,11 +13,11 @@ import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
-import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
@@ -35,7 +35,6 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -65,6 +64,9 @@ class TripStaySplitOverrideResetTransactionBoundaryTest {
 
     @Inject
     UserRepository userRepository;
+
+    @Inject
+    TimelineRebuildRequestRepository rebuildRequestRepository;
 
     @Inject
     EntityManager entityManager;
@@ -109,16 +111,19 @@ class TripStaySplitOverrideResetTransactionBoundaryTest {
     }
 
     @Test
-    void keepsTheOverrideWhenRegenerationCannotAcquireTheTimelineLock() {
+    void undoWhileTheTimelineIsBeingRegeneratedLeavesTheRegenerationOwed() {
         QuarkusTransaction.requiringNew().run(() ->
                 userRepository.findById(userId).setTimelineStatus(TimelineStatus.PROCESSING));
 
-        assertThatThrownBy(() -> timelineGenerationService.resetTripStaySplitOverride(userId, overrideId))
-                .isInstanceOf(TimelineGenerationLockException.class);
+        assertThat(timelineGenerationService.resetTripStaySplitOverride(userId, overrideId)).isPresent();
 
         boolean overrideExists = QuarkusTransaction.requiringNew().call(() ->
                 overrideRepository.findByIdAndUserId(overrideId, userId).isPresent());
-        assertThat(overrideExists).isTrue();
+        assertThat(overrideExists).isFalse();
+        assertThat(QuarkusTransaction.requiringNew().call(() -> rebuildRequestRepository.find(userId)))
+                .as("the regeneration of the trip the split was made on")
+                .hasValueSatisfying(request -> assertThat(request.rebuildFrom())
+                        .isEqualTo(Instant.parse("2026-01-10T10:00:00Z")));
     }
 
     @Test

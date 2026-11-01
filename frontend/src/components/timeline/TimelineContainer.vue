@@ -1,7 +1,14 @@
 <template>
   <div ref="timelineContainerRef" class="timeline-container">
     <div class="timeline-header">
-      <div class="timeline-title">{{ t('timeline.splitLayout.defaultExpandedLabel') }}</div>
+      <div class="timeline-header-top">
+        <div class="timeline-title">{{ t('timeline.splitLayout.defaultExpandedLabel') }}</div>
+        <Button v-if="!effectiveReadOnly" class="timeline-history-button" text
+          :aria-label="t('timeline.edit.history')" :title="t('timeline.edit.history')" @click="openEditHistory(null)">
+          <i class="pi pi-history" />
+          <span v-if="activeEditCount" class="timeline-history-count">{{ activeEditCount }}</span>
+        </Button>
+      </div>
       <div
         v-if="isSingleDaySelected && selectedDateLabel"
         class="timeline-header-date-nav"
@@ -122,17 +129,16 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
-              @rename-stay="handleRenameStay"
-              @reset-data-gap-override="handleResetDataGapOverride"
-              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
 
             <StayCard
@@ -143,17 +149,16 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
-              @rename-stay="handleRenameStay"
-              @reset-data-gap-override="handleResetDataGapOverride"
-              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
 
             <!-- Trip Cards -->
@@ -166,19 +171,19 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
-              @edit-movement-type="handleQuickEditMovementType"
-              @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
 
             <TripCard
@@ -190,19 +195,19 @@
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
-              :allow-note-creation="!isPublicView"
-              :read-only="readOnly"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
-              @edit-movement-type="handleQuickEditMovementType"
-              @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
               @show-map-matching-details="handleShowMapMatchingDetails"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
 
             <!-- Data Gap Cards -->
@@ -214,13 +219,15 @@
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
-              :allow-note-creation="!isPublicView"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
-              @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
 
             <DataGapCard
@@ -230,13 +237,15 @@
               :immich-photos="immichPhotosForCards"
               :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
-              :allow-note-creation="!isPublicView"
+              :allow-note-creation="!effectiveReadOnly"
+              :read-only="effectiveReadOnly"
               @click="handleTimelineItemClick"
-              @convert-to-stay="handleConvertDataGapToStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @edit="openEditor"
+              @show-edit-history="openEditor($event, true)"
             />
             </div>
           </template>
@@ -248,7 +257,7 @@
     <TripClassificationDialog
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
-      :read-only="readOnly"
+      :read-only="effectiveReadOnly"
       :show-explanation-link="!isPublicView"
       @movement-updated="handleMovementTypeUpdated"
       @show-explanation="handleShowExplanationFromClassification"
@@ -263,25 +272,10 @@
       @close="handleCloseExplanationDialog"
     />
 
-    <TripMovementTypeQuickEditDialog
-      :visible="quickEditDialogVisible"
-      :trip="selectedTripForQuickEdit"
-      :read-only="readOnly"
-      @movement-updated="handleMovementTypeUpdated"
-      @close="handleCloseQuickEditDialog"
-    />
-
-    <DataGapToStayDialog
-      :visible="dataGapConversionDialogVisible"
-      :data-gap="selectedDataGapForConversion"
-      @converted="handleDataGapConverted"
-      @close="handleCloseDataGapConversionDialog"
-    />
-
     <TripStaySplitDialog
       :visible="tripSplitDialogVisible"
       :trip="selectedTripForSplit"
-      :read-only="readOnly"
+      :read-only="effectiveReadOnly"
       @split="handleTripSplitSaved"
       @close="handleCloseTripSplitDialog"
     />
@@ -291,6 +285,26 @@
       :trip="selectedTripForMapMatchingDetails"
       :info="selectedMapMatchingInfo"
       @close="handleCloseMapMatchingDetails"
+    />
+
+    <TimelineEditDrawer
+      :focus-changes="focusEditChanges"
+      :visible="editDrawerVisible"
+      :item="selectedItemForEdit"
+      :previous-item="getPreviousTimelineItem(selectedItemForEdit)"
+      :next-item="getNextTimelineItem(selectedItemForEdit)"
+      :merge-previous-item="getMergePreviousTimelineItem(selectedItemForEdit)"
+      :merge-next-item="getMergeNextTimelineItem(selectedItemForEdit)"
+      @close="closeEditor"
+      @rename-place="handleRenameStay"
+      @split-trip-with-stay="handleSplitTripFromEditor"
+      @submitted="handleEditSubmitted"
+    />
+    <TimelineEditHistoryDrawer
+      :visible="editHistoryVisible"
+      :item="selectedItemForHistory"
+      @close="closeEditHistory"
+      @changed="handleEditSubmitted"
     />
   </div>
 </template>
@@ -313,10 +327,13 @@ import DataGapCard from './DataGapCard.vue'
 import OvernightStayCard from './OvernightStayCard.vue'
 import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
+import TimelineEditDrawer from './TimelineEditDrawer.vue'
+import TimelineEditHistoryDrawer from './TimelineEditHistoryDrawer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
 import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { canMergeTimelineEvents } from '@/utils/timelineEditPlace'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Lazy load the classification dialog
@@ -325,12 +342,6 @@ const TripClassificationDialog = defineAsyncComponent(() =>
 )
 const TimelineEventExplanationDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TimelineEventExplanationDialog.vue')
-)
-const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
-  import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
-)
-const DataGapToStayDialog = defineAsyncComponent(() =>
-  import('@/components/dialogs/DataGapToStayDialog.vue')
 )
 const TripStaySplitDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripStaySplitDialog.vue')
@@ -354,16 +365,16 @@ const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
 const explanationDialogVisible = ref(false)
 const selectedItemForExplanation = ref(null)
-const quickEditDialogVisible = ref(false)
-const selectedTripForQuickEdit = ref(null)
-const dataGapConversionDialogVisible = ref(false)
-const selectedDataGapForConversion = ref(null)
 const tripSplitDialogVisible = ref(false)
 const selectedTripForSplit = ref(null)
 const mapMatchingDetailsVisible = ref(false)
 const selectedTripForMapMatchingDetails = ref(null)
 const selectedMapMatchingInfo = ref(null)
 const timelineContainerRef = ref(null)
+const editDrawerVisible = ref(false)
+const selectedItemForEdit = ref(null)
+const editHistoryVisible = ref(false)
+const selectedItemForHistory = ref(null)
 
 // Props
 const props = defineProps({
@@ -445,8 +456,12 @@ const emit = defineEmits([
   'reset-data-gap-override',
   'reset-trip-split-override',
   'navigate-date',
-  'day-focus-change'
+  'day-focus-change',
+  'timeline-edit-submitted'
 ])
+
+// A public share is read-only even if a caller forgets to pass read-only explicitly.
+const effectiveReadOnly = computed(() => props.readOnly || props.isPublicView)
 
 // Composables
 const timezone = useTimezone()
@@ -605,8 +620,76 @@ const nextItemByTimelineOrder = computed(() => {
   return map
 })
 
+const previousItemByTimelineOrder = computed(() => {
+  const map = new Map()
+  const items = props.timelineData || []
+  for (let i = 1; i < items.length; i++) map.set(items[i], items[i - 1])
+  return map
+})
+
+const activeEditCount = computed(() => (props.timelineData || [])
+  .reduce((sum, item) => sum + (item.activeEditCount || 0), 0))
+
 const getNextTimelineItem = (item) => {
   return nextItemByTimelineOrder.value.get(item) || null
+}
+
+const getPreviousTimelineItem = (item) => previousItemByTimelineOrder.value.get(item) || null
+
+const getSameTypeTimelineItem = (item, step) => {
+  const items = props.timelineData || []
+  const index = items.indexOf(item)
+  if (index === -1) return null
+  const immediate = items[index + step]
+  const candidate = immediate?.type === item?.type ? immediate : items[index + (2 * step)]
+  if (candidate?.type === item?.type && canMergeTimelineEvents(item, candidate)) return candidate
+  return null
+}
+
+const getMergePreviousTimelineItem = (item) => getSameTypeTimelineItem(item, -1)
+const getMergeNextTimelineItem = (item) => getSameTypeTimelineItem(item, 1)
+
+watch(() => props.timelineData, items => {
+  if (!editDrawerVisible.value || !selectedItemForEdit.value) return
+  const previous = selectedItemForEdit.value
+  const timestamp = previous.timestamp || previous.startTime
+  const start = Date.parse(timestamp)
+  const endOf = item => Date.parse(item.endTime || new Date(Date.parse(item.timestamp || item.startTime) + (item.stayDuration ?? item.tripDuration ?? item.durationSeconds ?? 0) * 1000).toISOString())
+  const end = endOf(previous)
+  const candidates = items.filter(item => item.type === previous.type).map(item => ({
+    item, overlap: Math.max(0, Math.min(end, endOf(item)) - Math.max(start, Date.parse(item.timestamp || item.startTime)))
+  })).filter(candidate => candidate.overlap > 0).sort((a, b) => b.overlap - a.overlap)
+  const match = items.find(item => item.type === previous.type && (item.timestamp || item.startTime) === timestamp)
+    || (candidates[0]?.overlap > (candidates[1]?.overlap || 0) ? candidates[0].item : null)
+  if (match) selectedItemForEdit.value = match
+})
+const focusEditChanges = ref(false)
+const openEditor = (item, focusChanges = false) => {
+  focusEditChanges.value = focusChanges
+  if (effectiveReadOnly.value) return
+  selectedItemForEdit.value = item
+  editDrawerVisible.value = true
+}
+
+const closeEditor = () => {
+  editDrawerVisible.value = false
+  selectedItemForEdit.value = null
+}
+
+const openEditHistory = (item) => {
+  if (effectiveReadOnly.value) return
+  selectedItemForHistory.value = item
+  editHistoryVisible.value = true
+}
+
+const closeEditHistory = () => {
+  editHistoryVisible.value = false
+  selectedItemForHistory.value = null
+}
+
+const handleEditSubmitted = (result) => {
+  if (!result.operation || result.operation === 'create') closeEditor()
+  emit('timeline-edit-submitted', result)
 }
 
 const getWeatherSamplesForItem = (item) => {
@@ -668,31 +751,32 @@ const scrollToTimelineItem = (item) => {
   }
 
   target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target.animate?.([{ backgroundColor: 'var(--gp-primary-soft)' }, { backgroundColor: 'transparent' }], { duration: 1800 })
   return true
 }
 
 const handleRenameStay = (stayItem) => {
-  if (props.readOnly) {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
   emit('rename-stay', stayItem)
 }
 
-const handleResetDataGapOverride = (stayItem) => {
-  if (props.readOnly) {
+const handleResetDataGapOverride = (stayItem, overrideId) => {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
-  emit('reset-data-gap-override', stayItem)
+  emit('reset-data-gap-override', stayItem, overrideId)
 }
 
-const handleResetTripSplitOverride = (stayItem) => {
-  if (props.readOnly) {
+const handleResetTripSplitOverride = (stayItem, overrideId) => {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
-  emit('reset-trip-split-override', stayItem)
+  emit('reset-trip-split-override', stayItem, overrideId)
 }
 
 const handleExportTripAsGpx = async (tripItem) => {
@@ -778,36 +862,8 @@ const handleCloseMapMatchingDetails = () => {
   selectedMapMatchingInfo.value = null
 }
 
-const handleQuickEditMovementType = (tripItem) => {
-  if (props.readOnly) {
-    showReadOnlyToast()
-    return
-  }
-  selectedTripForQuickEdit.value = tripItem
-  quickEditDialogVisible.value = true
-}
-
-const handleCloseQuickEditDialog = () => {
-  quickEditDialogVisible.value = false
-  selectedTripForQuickEdit.value = null
-}
-
-const handleConvertDataGapToStay = (dataGapItem) => {
-  selectedDataGapForConversion.value = dataGapItem
-  dataGapConversionDialogVisible.value = true
-}
-
-const handleCloseDataGapConversionDialog = () => {
-  dataGapConversionDialogVisible.value = false
-  selectedDataGapForConversion.value = null
-}
-
-const handleDataGapConverted = () => {
-  emit('timeline-refresh-requested')
-}
-
 const handleSplitTripWithStay = (tripItem) => {
-  if (props.readOnly) {
+  if (effectiveReadOnly.value) {
     showReadOnlyToast()
     return
   }
@@ -818,10 +874,20 @@ const handleSplitTripWithStay = (tripItem) => {
 const handleCloseTripSplitDialog = () => {
   tripSplitDialogVisible.value = false
   selectedTripForSplit.value = null
+  if (splitReturnItem.value) { openEditor(splitReturnItem.value); splitReturnItem.value = null }
 }
 
-const handleTripSplitSaved = () => {
-  emit('timeline-refresh-requested')
+const splitReturnItem = ref(null)
+const handleSplitTripFromEditor = (tripItem) => {
+  splitReturnItem.value = tripItem
+  closeEditor()
+  handleSplitTripWithStay(tripItem)
+}
+
+// The split is a unified timeline edit, so it follows the same job, refresh and undo path as the drawer's edits.
+const handleTripSplitSaved = (result) => {
+  splitReturnItem.value = null
+  emit('timeline-edit-submitted', result)
 }
 
 const handleMovementTypeUpdated = (updated) => {
@@ -829,10 +895,6 @@ const handleMovementTypeUpdated = (updated) => {
   if (selectedTripForClassification.value?.id === updated.tripId) {
     selectedTripForClassification.value.movementType = updated.movementType
     selectedTripForClassification.value.movementTypeSource = updated.movementTypeSource
-  }
-  if (selectedTripForQuickEdit.value?.id === updated.tripId) {
-    selectedTripForQuickEdit.value.movementType = updated.movementType
-    selectedTripForQuickEdit.value.movementTypeSource = updated.movementTypeSource
   }
 }
 
@@ -965,6 +1027,51 @@ defineExpose({
 
 .timeline-title {
   line-height: 1.3;
+}
+
+.timeline-header-top {
+  position: relative;
+  width: 100%;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2.4rem;
+}
+
+.timeline-history-button {
+  position: absolute;
+  right: .25rem;
+  top: 50%;
+  min-width: 2.15rem;
+  height: 2.15rem;
+  padding: 0 .45rem !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+  transform: translateY(-50%);
+  color: var(--gp-text-secondary) !important;
+}
+
+.timeline-history-button:hover {
+  color: var(--gp-primary-text) !important;
+  background: var(--gp-surface-hover) !important;
+}
+
+.timeline-history-count {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .25rem;
+  border-radius: var(--gp-radius-pill);
+  background: var(--gp-primary);
+  color: var(--gp-primary-contrast);
+  font-size: .62rem;
+  font-weight: 750;
+  line-height: 1;
 }
 
 .timeline-header-date-nav {

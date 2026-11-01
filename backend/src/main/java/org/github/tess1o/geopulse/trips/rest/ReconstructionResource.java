@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitRespon
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
 import org.github.tess1o.geopulse.shared.api.ApiPaths;
+import org.github.tess1o.geopulse.trips.service.TripReconstructionOverlapException;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -26,6 +27,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RECONSTRUCTION;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA;
 
 @Path(ApiPaths.TRIP_PLANNING + "/reconstructions")
 @ApplicationScoped
@@ -57,6 +59,8 @@ public class ReconstructionResource {
             return tripReconstructionService.preview(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
             throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
+        } catch (TripReconstructionOverlapException e) {
+            throw new GeoPulseException(TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA, e.getMessage(), e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -73,6 +77,8 @@ public class ReconstructionResource {
             return tripReconstructionService.commit(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
             throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
+        } catch (TripReconstructionOverlapException e) {
+            throw new GeoPulseException(TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA, e.getMessage(), e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }

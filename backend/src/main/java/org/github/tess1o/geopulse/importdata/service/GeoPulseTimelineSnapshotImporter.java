@@ -110,11 +110,11 @@ public class GeoPulseTimelineSnapshotImporter {
 
             entityManager.createNativeQuery("""
                             INSERT INTO timeline_stays
-                            (id, user_id, timestamp, stay_duration, location, location_name,
+                            (id, user_id, timestamp, stay_duration, location, location_name, visit_name,
                              favorite_id, geocoding_id, created_at, last_updated, location_source, explanation)
                             VALUES (:id, :userId, :timestamp, :duration,
                                     ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
-                                    :locationName, :favoriteId, :geocodingId, :createdAt, :lastUpdated, :locationSource,
+                                    :locationName, :visitName, :favoriteId, :geocodingId, :createdAt, :lastUpdated, :locationSource,
                                     CAST(:explanation AS jsonb))
                             ON CONFLICT (id) DO UPDATE SET
                                 user_id = EXCLUDED.user_id,
@@ -122,6 +122,7 @@ public class GeoPulseTimelineSnapshotImporter {
                                 stay_duration = EXCLUDED.stay_duration,
                                 location = EXCLUDED.location,
                                 location_name = EXCLUDED.location_name,
+                                visit_name = EXCLUDED.visit_name,
                                 favorite_id = EXCLUDED.favorite_id,
                                 geocoding_id = EXCLUDED.geocoding_id,
                                 created_at = EXCLUDED.created_at,
@@ -138,6 +139,7 @@ public class GeoPulseTimelineSnapshotImporter {
                     .setParameter("longitude", dto.getLongitude())
                     .setParameter("latitude", dto.getLatitude())
                     .setParameter("locationName", dto.getAddress() == null ? "" : dto.getAddress())
+                    .setParameter("visitName", dto.getVisitName())
                     .setParameter("favoriteId", favoriteId)
                     .setParameter("geocodingId", geocodingId)
                     .setParameter("createdAt", Instant.now())
@@ -301,6 +303,8 @@ public class GeoPulseTimelineSnapshotImporter {
         executeUserDelete("DELETE FROM timeline_trip_movement_overrides WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_data_gap_stay_overrides WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_trip_stay_split_overrides WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_stay_name_overrides WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_edits WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_stays WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_trips WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_data_gaps WHERE user_id = :userId", userId);

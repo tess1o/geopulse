@@ -142,12 +142,12 @@ export const createRasterTripReconstructionMapAdapter = (callbacks = {}) => {
       }
 
       clear()
+      // Context is drawn on its own too, so a map can show reference places before anything is selected.
+      renderContext(contextPoints)
+      renderContextTripLines(contextTripLines)
       if (!activeSegment) {
         return
       }
-
-      renderContext(contextPoints)
-      renderContextTripLines(contextTripLines)
 
       if (activeSegment.segmentType === 'STAY') {
         renderStay(activeSegment, activeSegmentIndex)

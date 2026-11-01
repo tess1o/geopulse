@@ -20,9 +20,13 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOver
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -31,6 +35,9 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -233,6 +240,8 @@ public class GeoPulseTimelineDetailsImporter {
             entity.setStayLatitude(defaultDouble(dto.getStayLatitude()));
             entity.setStayLongitude(defaultDouble(dto.getStayLongitude()));
             entity.setStayLocationName(dto.getStayLocationName() != null ? dto.getStayLocationName() : "Unknown Location");
+            // Older exports do not say; keeping the stored name is what they did.
+            entity.setStayLocationNameCustom(dto.getStayLocationNameCustom() == null || dto.getStayLocationNameCustom());
             entity.setStayLocationSource(parseEnum(LocationSource.class, dto.getStayLocationSource(), LocationSource.GEOCODING));
             entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
             entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
@@ -241,6 +250,7 @@ public class GeoPulseTimelineDetailsImporter {
             entity.setSourceStartLongitude(defaultDouble(dto.getSourceStartLongitude()));
             entity.setSourceEndLatitude(defaultDouble(dto.getSourceEndLatitude()));
             entity.setSourceEndLongitude(defaultDouble(dto.getSourceEndLongitude()));
+            entity.setSourceTripMovementType(validTripTypeOrNull(dto.getSourceTripMovementType()));
             if (entity.getCreatedAt() == null) {
                 entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
             }
@@ -248,8 +258,108 @@ public class GeoPulseTimelineDetailsImporter {
             entityManager.persist(entity);
             staySplitOverrides++;
         }
-        log.info("Imported/updated {} trip overrides, {} gap overrides and {} stay-split overrides for user {}",
-                tripOverrides, gapOverrides, staySplitOverrides, job.getUserId());
+        int stayNames = 0;
+        for (TimelineOverridesDataDto.StayNameOverrideDto dto : emptyIfNull(data.getStayNameOverrides())) {
+            if (dto.getStayStartTime() == null || dto.getStayEndTime() == null || dto.getLocationName() == null
+                    || shouldSkipDueToDateFilter(dto.getStayStartTime(), job)) {
+                continue;
+            }
+            TimelineStayNameOverrideEntity entity = entityManager.createQuery("""
+                            SELECT override FROM TimelineStayNameOverrideEntity override
+                            WHERE override.user.id = :userId
+                              AND override.stayStartTime = :stayStart
+                              AND override.stayEndTime = :stayEnd
+                            """, TimelineStayNameOverrideEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("stayStart", dto.getStayStartTime())
+                    .setParameter("stayEnd", dto.getStayEndTime())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineStayNameOverrideEntity::new);
+            entity.setUser(user);
+            entity.setStayStartTime(dto.getStayStartTime());
+            entity.setStayEndTime(dto.getStayEndTime());
+            entity.setLocationName(dto.getLocationName());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            stayNames++;
+        }
+        log.info("Imported/updated {} trip overrides, {} gap overrides, {} stay-split overrides and {} stay names "
+                + "for user {}", tripOverrides, gapOverrides, staySplitOverrides, stayNames, job.getUserId());
+    }
+
+    public void requireEmptyTimelineEdits(UUID userId) {
+        if (entityManager.createQuery("select count(e) from TimelineEditEntity e where e.user.id = :userId", Long.class)
+                .setParameter("userId", userId).getSingleResult() != 0) {
+            throw new IllegalArgumentException("Timeline edits can only be imported into an account with no timeline edits");
+        }
+    }
+
+    @Transactional
+    public void importTimelineEditsData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        requireEmptyTimelineEdits(job.getUserId());
+        TimelineEditsDataDto data = IMPORT_JSON.readValue(content, TimelineEditsDataDto.class);
+        UserEntity user = requireImportingUser(userRepository, job);
+        Map<Long, TimelineEditEntity> importedByOldId = new HashMap<>();
+
+        for (TimelineEditsDataDto.EditDto dto : emptyIfNull(data.getEdits())) {
+            if (dto.getKind() == null || dto.getAnchorStart() == null || dto.getAnchorEnd() == null
+                    || dto.getAffectedFrom() == null || dto.getAffectedTo() == null
+                    || shouldSkipDueToDateFilter(dto.getAffectedFrom(), job)) {
+                continue;
+            }
+            TimelineEditEntity edit = new TimelineEditEntity();
+            edit.setUser(user);
+            edit.setSeq(dto.getSeq());
+            edit.setKind(dto.getKind());
+            edit.setAnchorStart(dto.getAnchorStart());
+            edit.setAnchorEnd(dto.getAnchorEnd());
+            edit.setAffectedFrom(dto.getAffectedFrom());
+            edit.setAffectedTo(dto.getAffectedTo());
+            edit.setBeforeValues(dto.getBeforeValues() == null ? null : new LinkedHashMap<>(dto.getBeforeValues()));
+            edit.setPayload(dto.getPayload() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(dto.getPayload()));
+            for (String prefix : List.of("", "right", "start", "end")) {
+                remapPayloadReference(edit.getPayload(), prefix.isEmpty() ? "favoriteId" : prefix + "FavoriteId", referenceMaps.favoriteIds);
+                remapPayloadReference(edit.getPayload(), prefix.isEmpty() ? "geocodingId" : prefix + "GeocodingId", referenceMaps.geocodingIds);
+            }
+            Long favoriteId = dto.getFavoriteId() == null
+                    ? payloadId(edit.getPayload(), "favoriteId") : resolveMappedId(dto.getFavoriteId(), referenceMaps.favoriteIds);
+            Long geocodingId = dto.getGeocodingId() == null
+                    ? payloadId(edit.getPayload(), "geocodingId") : resolveMappedId(dto.getGeocodingId(), referenceMaps.geocodingIds);
+            edit.setPlaceFavorite(favoriteId == null ? null : entityManager.getReference(FavoritesEntity.class, favoriteId));
+            edit.setPlaceGeocoding(geocodingId == null ? null
+                    : entityManager.getReference(ReverseGeocodingLocationEntity.class, geocodingId));
+            edit.setPlaceLatitude(dto.getLatitude());
+            edit.setPlaceLongitude(dto.getLongitude());
+            edit.setPlaceName(dto.getPlaceName());
+            edit.setStatus(dto.getStatus() == null ? TimelineEditStatus.ACTIVE : dto.getStatus());
+            edit.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            edit.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(edit);
+            entityManager.flush();
+            if (dto.getId() != null) importedByOldId.put(dto.getId(), edit);
+        }
+
+        for (TimelineEditsDataDto.EditDto dto : emptyIfNull(data.getEdits())) {
+            TimelineEditEntity edit = importedByOldId.get(dto.getId());
+            if (edit != null) edit.setSupersededBy(importedByOldId.get(dto.getSupersededById()));
+        }
+        log.info("Imported/updated {} timeline edits for user {}", importedByOldId.size(), job.getUserId());
+    }
+
+    private static Long payloadId(Map<String, Object> payload, String key) {
+        return payload.get(key) instanceof Number number ? number.longValue() : null;
+    }
+
+    private static void remapPayloadReference(Map<String, Object> payload, String key, Map<Long, Long> ids) {
+        Object old = payload.remove(key);
+        if (old instanceof Number number) {
+            Long mapped = ids.get(number.longValue());
+            if (mapped != null) payload.put(key, mapped);
+        }
     }
 
     @Transactional
@@ -427,5 +537,17 @@ public class GeoPulseTimelineDetailsImporter {
                 .setParameter("inputHash", dto.getInputHash())
                 .getResultStream()
                 .findFirst();
+    }
+
+    /** Imported data is untrusted; an unknown movement type would otherwise fail an undo with a 500. */
+    private static String validTripTypeOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return TripType.valueOf(value).name();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

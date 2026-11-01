@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
+import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineExplanationPointClassifier;
@@ -53,6 +54,12 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public long countByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime) {
         return count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
                 userId, startTime, endTime);
+    }
+
+    /** Points recorded by a device (not added by hand) from {@code startTime} to {@code endTime}, both inclusive. */
+    public long countRecordedByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime) {
+        return count("user.id = ?1 and timestamp >= ?2 and timestamp <= ?3 and (sourceType is null or sourceType <> ?4)",
+                userId, startTime, endTime, GpsSourceType.MANUAL);
     }
 
     public long countEligibleByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,

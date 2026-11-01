@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.common.annotation.Identifier;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -8,6 +9,8 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
+import org.github.tess1o.geopulse.user.model.TimelineStatus;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -43,6 +46,9 @@ public class AsyncTimelineGenerationService {
 
     @Inject
     TimelineRebuildRequestRepository rebuildRequestRepository;
+
+    @Inject
+    UserRepository userRepository;
 
     private final ConcurrentHashMap<UUID, Instant> pendingRegenerationStartTimes = new ConcurrentHashMap<>();
 
@@ -123,7 +129,7 @@ public class AsyncTimelineGenerationService {
             return new TimelineSchedulingResult(null, false, false);
         }
 
-        if (jobProgressService.getUserActiveJob(userId).isPresent()) {
+        if (jobProgressService.getUserActiveJob(userId).isPresent() || timelineProcessing(userId)) {
             queuePendingRegeneration(userId, earliestAffectedTimestamp);
             return new TimelineSchedulingResult(null, true, true);
         }
@@ -135,6 +141,13 @@ public class AsyncTimelineGenerationService {
             queuePendingRegeneration(userId, earliestAffectedTimestamp);
             return new TimelineSchedulingResult(null, true, true);
         }
+    }
+
+    /** A regeneration holds the user's timeline row in PROCESSING even when its job entry is not visible yet. */
+    private boolean timelineProcessing(UUID userId) {
+        return QuarkusTransaction.requiringNew().call(() -> userRepository.findByIdOptional(userId)
+                .map(user -> user.getTimelineStatus() == TimelineStatus.PROCESSING)
+                .orElse(false));
     }
 
     private UUID createAndRunAsyncJob(UUID userId, TimelineJobRunner runner) {

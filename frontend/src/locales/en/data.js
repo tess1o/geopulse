@@ -313,6 +313,7 @@ export default {
         userinfo: { label: 'User Information', description: 'Your profile and preferences (excludes sensitive data)' },
         timelinelabels: { label: 'Timeline Labels', description: 'Timeline labels and their date ranges' },
         timelineoverrides: { label: 'Timeline Overrides', description: 'Manual trip type and data gap corrections' },
+        timelineedits: { label: 'Timeline Edits', description: 'Your reversible place, time, movement, and structural timeline changes' },
         tripworkspace: { label: 'Trip Plans', description: 'Trips, plans, notes, and collaborators' },
         notificationtemplates: { label: 'Notification Templates', description: 'Templates used by geofence notifications' },
         geofencing: { label: 'Geofences', description: 'Geofence rules and monitored subjects' },

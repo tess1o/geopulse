@@ -435,6 +435,7 @@ components:
       - INVALID_DEBUG_IMPORT
       - DEBUG_IMPORT_FAILED
       - MOBILE_SESSION_CODE_INVALID
+      - MOVEMENT_OVERRIDE_NOT_FOUND
       - NO_FAVORITES_PROVIDED
       - GEOFENCE_EVENT_NOT_FOUND
       - GEOFENCE_RULE_NOT_FOUND
@@ -485,10 +486,12 @@ components:
       - TIMELINE_JOB_ACCESS_DENIED
       - TIMELINE_JOB_ALREADY_ACTIVE
       - TIMELINE_JOB_NOT_FOUND
+      - TIMELINE_REGENERATION_IN_PROGRESS
       - TIMELINE_REGENERATION_CAMPAIGN_INVALID
       - TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND
       - TRIP_NOT_FOUND
       - TRIP_PLAN_ITEM_NOT_FOUND
+      - TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA
       - TRIP_SPLIT_OVERRIDE_NOT_FOUND
       - UNSUPPORTED_COVERAGE_GRID
       - USER_REGISTRATION_CONFLICT
@@ -2336,6 +2339,10 @@ components:
           type: integer
         regenerationStartTime:
           $ref: "#/components/schemas/Instant"
+        timelineJobId:
+          $ref: "#/components/schemas/UUID"
+        timelineJobQueued:
+          type: boolean
     DatasetStatus:
       enum:
       - NOT_IMPORTED
@@ -7192,6 +7199,24 @@ components:
           $ref: "#/components/schemas/Instant"
         updatedAt:
           $ref: "#/components/schemas/Instant"
+    TimelineOverrideSummaryDTO:
+      type: object
+      properties:
+        type:
+          type: string
+        id:
+          format: int64
+          type: integer
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        applied:
+          type: boolean
+        movementType:
+          type: string
+        locationName:
+          type: string
     TimelinePreferencesUpdateResponse:
       type: object
       properties:
@@ -7357,9 +7382,11 @@ components:
           type: string
         country:
           type: string
-        dataGapOverrideId:
-          format: int64
-          type: integer
+        dataGapOverrideIds:
+          type: array
+          items:
+            format: int64
+            type: integer
         explanation:
           $ref: "#/components/schemas/TimelineExplanationDTO"
         tripSplitOverrideId:
@@ -8049,6 +8076,10 @@ components:
           $ref: "#/components/schemas/TimelineStayLocationDTO"
         secondTrip:
           $ref: "#/components/schemas/TimelineTripDTO"
+        timelineJobId:
+          $ref: "#/components/schemas/UUID"
+        timelineJobQueued:
+          type: boolean
     TripSummaryDto:
       type: object
       properties:
@@ -20752,7 +20783,7 @@ paths:
     delete:
       summary: Undo a data gap conversion
       description: |-
-        Removes a data-gap-to-stay override so the period is shown as a data gap again.
+        Removes a data-gap-to-stay override so the period is shown as a data gap again. The affected timeline is regenerated in the background; `timelineJobId` is the job to follow (null when it could not start now; it then runs later).
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: StreamingTimelineResource_resetDataGapStayOverride
@@ -21062,6 +21093,36 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
+  /api/v1/timeline/movement-overrides/{overrideId}:
+    delete:
+      summary: Remove a movement type correction
+      description: |-
+        Removes a movement type set by hand. The trip it applies to, if any, gets its detected movement type back. To reset a trip shown on the timeline, `DELETE /api/v1/trips/{tripId}/timeline/movement-type` does the same by trip.
+
+        **Access:** Any signed-in user, with a session or an API token.
+      operationId: StreamingTimelineResource_removeMovementOverride
+      tags:
+      - Timeline Corrections
+      parameters:
+      - description: "ID of the movement type correction, as listed by `GET /api/v1/timeline/overrides`."
+        name: overrideId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "204":
+          description: Correction removed
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      security:
+      - bearerAuth: []
+      - apiKey: []
   /api/v1/timeline/multi-user:
     get:
       summary: Get timelines of several users
@@ -21108,6 +21169,34 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
+  /api/v1/timeline/overrides:
+    get:
+      summary: List timeline corrections
+      description: |-
+        All manual corrections of the signed-in user's timeline (movement types set by hand, trip splits, data gaps turned into stays), oldest first, each with whether the timeline shows it now. A correction is not applied when the event it corrected no longer comes out of the GPS data, for instance after its points were deleted; it applies again should the event return.
+
+        **Access:** Any signed-in user, with a session or an API token.
+      operationId: StreamingTimelineResource_listOverrides
+      tags:
+      - Timeline Corrections
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineOverrideSummaryDTO"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      security:
+      - bearerAuth: []
+      - apiKey: []
   /api/v1/timeline/preferences:
     get:
       summary: Get effective timeline settings
@@ -21138,7 +21227,7 @@ paths:
     delete:
       summary: Undo a trip split
       description: |-
-        Removes a manual split that turned part of a trip into a stay, and regenerates the affected timeline.
+        Removes a manual split that turned part of a trip into a stay. The affected timeline is regenerated in the background; `timelineJobId` is the job to follow (null when it could not start now, for instance while another regeneration runs; it then runs after it).
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: StreamingTimelineResource_resetTripStaySplitOverride

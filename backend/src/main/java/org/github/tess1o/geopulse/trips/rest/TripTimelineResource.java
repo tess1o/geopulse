@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.trips.rest;
 import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
 import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -38,6 +39,7 @@ import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_IN_PROGRESS;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 
 /**
@@ -156,6 +158,9 @@ public class TripTimelineResource {
                     .splitTrip(currentUserService.getCurrentUserId(), tripId, request)
                     .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                             Map.of("tripId", tripId)));
+        } catch (TimelineGenerationLockException e) {
+            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
+                    "The timeline is being regenerated; try again when it has finished", e);
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid trip split request", e);
         }
