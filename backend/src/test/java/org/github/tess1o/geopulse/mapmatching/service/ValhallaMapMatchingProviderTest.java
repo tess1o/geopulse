@@ -2,14 +2,11 @@ package org.github.tess1o.geopulse.mapmatching.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteResponse;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("unit")
 class ValhallaMapMatchingProviderTest {
 
-    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Test
     void serializesContinuousTraceWithDocumentedAccuracyField() throws Exception {
@@ -88,9 +84,10 @@ class ValhallaMapMatchingProviderTest {
         assertTrue(unavailable.isRetryable());
     }
 
-    private GpsPointEntity point(double longitude, double latitude, String timestamp, double accuracy) {
-        GpsPointEntity point = new GpsPointEntity();
-        point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude)));
+    private MapMatchingPointDTO point(double longitude, double latitude, String timestamp, double accuracy) {
+        MapMatchingPointDTO point = new MapMatchingPointDTO();
+        point.setLongitude(longitude);
+        point.setLatitude(latitude);
         point.setTimestamp(Instant.parse(timestamp));
         point.setAccuracy(accuracy);
         return point;

@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.service.TimelineMemoryDiagnostics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ class StreamingTimelineProcessorTest {
     private FavoriteLocationService favoriteLocationService;
     @Mock
     private TimelineJobProgressService jobProgressService;
+    @Mock
+    private TimelineMemoryDiagnostics memoryDiagnostics;
     @Spy
     private TripStopHeuristicsService tripStopHeuristicsService = new TripStopHeuristicsService();
     private TimelineConfig config;

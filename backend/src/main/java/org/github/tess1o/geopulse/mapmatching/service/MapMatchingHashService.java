@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.mapmatching.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 
 import java.util.List;
@@ -13,14 +13,14 @@ public class MapMatchingHashService {
         return sha256(source == null ? "" : source);
     }
 
-    public String inputHash(List<GpsPointEntity> points, Double maxAccuracy) {
+    public String inputHash(List<MapMatchingPointDTO> points, Double maxAccuracy) {
         StringBuilder builder = new StringBuilder();
         builder.append("maxAccuracy=").append(maxAccuracy).append('\n');
         if (points != null) {
-            for (GpsPointEntity point : points) {
+            for (MapMatchingPointDTO point : points) {
                 builder.append(point.getTimestamp()).append('|')
-                        .append(point.getCoordinates() != null ? point.getCoordinates().getY() : null).append('|')
-                        .append(point.getCoordinates() != null ? point.getCoordinates().getX() : null).append('|')
+                        .append(point.getLatitude()).append('|')
+                        .append(point.getLongitude()).append('|')
                         .append(point.getAccuracy()).append('\n');
             }
         }

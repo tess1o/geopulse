@@ -53,7 +53,7 @@ public class DataGapDetectionEngine {
             return gapEvents;
         }
 
-        log.info("Data gap detected: {} duration between {} and {}",
+        log.debug("Data gap detected: {} duration between {} and {}",
                 timeDelta, lastPoint.getTimestamp(), currentPoint.getTimestamp());
 
         DataGapContext context = new DataGapContext(lastPoint, currentPoint, userState, config, timeDelta);

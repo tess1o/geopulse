@@ -587,9 +587,20 @@ public class GpsPointService {
     public GpsPointPathDTO getGpsPointPath(UUID userId, Instant startTime, Instant endTime) {
         TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(userId);
         Double maxAccuracy = TimelineGpsAccuracyFilter.getActiveMaxAccuracyThreshold(config);
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, startTime, endTime, maxAccuracy);
-        List<GpsPointPathPointDTO> pathPoints = gpsPointMapper.toPathPoints(gpsPoints);
-        applyTelemetryToPathPoints(userId, gpsPoints, pathPoints);
+        var rows = gpsPointRepository.findPathRows(userId, startTime, endTime, maxAccuracy);
+        List<GpsPointPathPointDTO> pathPoints = new java.util.ArrayList<>(rows.size());
+        var telemetry = telemetryRenderingService.renderForPathRows(userId, rows);
+        for (var row : rows) {
+            var point = new GpsPointPathPointDTO(row.id(), row.longitude(), row.latitude(), row.timestamp(),
+                    row.accuracy(), row.altitude(), row.velocity(), userId,
+                    row.sourceType() == null ? null : row.sourceType().name());
+            var rendered = telemetry.get(row.id());
+            if (rendered != null) {
+                point.setTelemetryGpsData(rendered.gpsData());
+                point.setTelemetryCurrentPopup(rendered.currentPopup());
+            }
+            pathPoints.add(point);
+        }
 
         return new GpsPointPathDTO(userId, pathPoints);
     }
@@ -598,8 +609,7 @@ public class GpsPointService {
         TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(userId);
         Double maxAccuracy = TimelineGpsAccuracyFilter.getActiveMaxAccuracyThreshold(config);
         long totalCount = gpsPointRepository.countEligibleByUserIdAndTimePeriod(userId, startTime, endTime, maxAccuracy);
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findEligibleMapPointsByUserIdAndTimePeriod(userId, startTime, endTime, limit, maxAccuracy);
-        List<RawGpsPointMapPointDTO> points = gpsPointMapper.toRawGpsPointMapPointDTOs(gpsPoints);
+        List<RawGpsPointMapPointDTO> points = gpsPointRepository.findRawMapPoints(userId, startTime, endTime, limit, maxAccuracy);
 
         return RawGpsPointMapResponseDTO.builder()
                 .points(points)
@@ -1023,26 +1033,6 @@ public class GpsPointService {
         }
 
         for (GpsPointDTO dto : targetDtos) {
-            GpsTelemetryRenderingService.RenderedTelemetry rendered = telemetryByPointId.get(dto.getId());
-            if (rendered == null) {
-                continue;
-            }
-            dto.setTelemetryGpsData(rendered.gpsData());
-            dto.setTelemetryCurrentPopup(rendered.currentPopup());
-        }
-    }
-
-    private void applyTelemetryToPathPoints(UUID userId, List<GpsPointEntity> sourcePoints, List<GpsPointPathPointDTO> targetDtos) {
-        if (sourcePoints == null || sourcePoints.isEmpty() || targetDtos == null || targetDtos.isEmpty()) {
-            return;
-        }
-
-        var telemetryByPointId = telemetryRenderingService.renderForPoints(userId, sourcePoints);
-        if (telemetryByPointId.isEmpty()) {
-            return;
-        }
-
-        for (GpsPointPathPointDTO dto : targetDtos) {
             GpsTelemetryRenderingService.RenderedTelemetry rendered = telemetryByPointId.get(dto.getId());
             if (rendered == null) {
                 continue;

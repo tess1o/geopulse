@@ -65,7 +65,7 @@ public class TimelineEventFinalizationService {
         GPSPoint centroid = userState.calculateCentroid();
 
         if (firstPoint == null || lastPoint == null || centroid == null) {
-            log.warn("Cannot finalize stay - missing required points");
+            log.debug("Cannot finalize stay - missing required points");
             return null;
         }
 
@@ -178,10 +178,10 @@ public class TimelineEventFinalizationService {
      * @return finalized trip event
      */
     public Trip finalizeTrip(UserState userState, TimelineConfig config) {
-        List<GPSPoint> tripPath = userState.copyActivePoints();
+        List<GPSPoint> tripPath = userState.getActivePoints();
 
         if (tripPath.size() < 2) {
-            log.warn("Cannot finalize trip - insufficient path points: {}", tripPath.size());
+            log.debug("Cannot finalize trip - insufficient path points: {}", tripPath.size());
             return null;
         }
 
@@ -219,13 +219,17 @@ public class TimelineEventFinalizationService {
      * @return finalized trip event with unknown type
      */
     public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint, TimelineConfig config) {
-        List<GPSPoint> tripPath = userState.copyActivePoints();
+        List<GPSPoint> tripPath = userState.getActivePoints();
         if (endPoint != null) {
-            tripPath.add(endPoint);
+            // Reserve the appended endpoint up front instead of copying and then growing a full trip array.
+            List<GPSPoint> extendedPath = new ArrayList<>(tripPath.size() + 1);
+            for (GPSPoint point : tripPath) extendedPath.add(point);
+            extendedPath.add(endPoint);
+            tripPath = extendedPath;
         }
 
         if (tripPath.isEmpty()) {
-            log.warn("Cannot finalize trip - no path points");
+            log.debug("Cannot finalize trip - no path points");
             return null;
         }
 

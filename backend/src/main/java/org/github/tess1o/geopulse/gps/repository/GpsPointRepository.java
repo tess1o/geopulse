@@ -1,10 +1,16 @@
 package org.github.tess1o.geopulse.gps.repository;
 
+import org.github.tess1o.geopulse.sharing.model.LocationHistoryResponse;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
+import jakarta.persistence.Tuple;
+import org.github.tess1o.geopulse.gps.model.GpsPathRow;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
+import org.github.tess1o.geopulse.gps.model.RawGpsPointMapPointDTO;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
@@ -41,6 +47,114 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         return find(buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
                 buildEligibleTimePeriodParams(userId, startTime, endTime, maxAccuracy))
                 .list();
+    }
+
+    public List<GpsPathRow> findPathRows(
+            UUID userId, Instant startTime, Instant endTime, Double maxAccuracy) {
+        var query = getEntityManager().createQuery("""
+                select new org.github.tess1o.geopulse.gps.model.GpsPathRow(
+                    id, cast(st_x(coordinates) as double), cast(st_y(coordinates) as double), timestamp, accuracy, altitude, velocity,
+                    sourceType, telemetry)
+                from GpsPointEntity where
+                """ + buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
+                GpsPathRow.class);
+        buildEligibleTimePeriodParams(userId, startTime, endTime, maxAccuracy).forEach(query::setParameter);
+        return query.getResultList();
+    }
+
+    public List<GpsPointPathPointDTO> findPathPoints(
+            UUID userId, Instant start, Instant end) {
+        return getEntityManager().createQuery("""
+                select id as id, st_x(coordinates) as longitude, st_y(coordinates) as latitude,
+                    timestamp as timestamp, accuracy as accuracy, altitude as altitude,
+                    velocity as velocity, sourceType as sourceType
+                from GpsPointEntity where user.id = :userId and timestamp >= :start and timestamp <= :end
+                order by timestamp
+                """, Tuple.class)
+                .setParameter("userId", userId).setParameter("start", start).setParameter("end", end)
+                .getResultList().stream().map(row -> {
+                    var source = row.get("sourceType", GpsSourceType.class);
+                    return new GpsPointPathPointDTO(
+                            row.get("id", Long.class), row.get("longitude", Double.class), row.get("latitude", Double.class),
+                            row.get("timestamp", Instant.class), row.get("accuracy", Double.class),
+                            row.get("altitude", Double.class), row.get("velocity", Double.class), userId,
+                            source == null ? null : source.name());
+                }).toList();
+    }
+
+    public List<RawGpsPointMapPointDTO> findRawMapPoints(
+            UUID userId, Instant start, Instant end, int limit, Double maxAccuracy) {
+        var query = getEntityManager().createQuery("""
+                select id as id, st_x(coordinates) as longitude, st_y(coordinates) as latitude,
+                    timestamp as timestamp, accuracy as accuracy, battery as battery,
+                    altitude as altitude, velocity as velocity, sourceType as sourceType
+                from GpsPointEntity where
+                """ + buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC", Tuple.class);
+        buildEligibleTimePeriodParams(userId, start, end, maxAccuracy).forEach(query::setParameter);
+        return query.setMaxResults(limit).getResultList().stream().map(row -> {
+            var source = row.get("sourceType", GpsSourceType.class);
+            return RawGpsPointMapPointDTO.builder()
+                    .id(row.get("id", Long.class)).timestamp(row.get("timestamp", Instant.class))
+                    .longitude(row.get("longitude", Double.class)).latitude(row.get("latitude", Double.class))
+                    .accuracy(row.get("accuracy", Double.class)).battery(row.get("battery", Double.class))
+                    .altitude(row.get("altitude", Double.class)).velocity(row.get("velocity", Double.class))
+                    .sourceType(source == null ? null : source.name()).build();
+        }).toList();
+    }
+
+    public boolean existsPointWithSource(UUID userId, Instant timestamp, GpsSourceType sourceType) {
+        return !getEntityManager().createQuery("""
+                select 1 from GpsPointEntity where user.id = :userId and timestamp = :timestamp
+                and (sourceType = :source or (sourceType is null and :source is null))
+                """, Integer.class).setParameter("userId", userId).setParameter("timestamp", timestamp)
+                .setParameter("source", sourceType).setMaxResults(1).getResultList().isEmpty();
+    }
+
+    public boolean existsLocationDuplicate(UUID userId, Instant start, Instant end, GpsSourceType sourceType,
+                                           double latitude, double longitude, double tolerance) {
+        return !getEntityManager().createQuery("""
+                select 1 from GpsPointEntity where user.id = :userId and timestamp >= :start and timestamp <= :end
+                and (sourceType = :source or (sourceType is null and :source is null))
+                and abs(coalesce(cast(st_y(coordinates) as double), 0.0) - :latitude) < :tolerance
+                and abs(coalesce(cast(st_x(coordinates) as double), 0.0) - :longitude) < :tolerance
+                """, Integer.class).setParameter("userId", userId).setParameter("start", start).setParameter("end", end)
+                .setParameter("source", sourceType).setParameter("latitude", latitude).setParameter("longitude", longitude)
+                .setParameter("tolerance", tolerance).setMaxResults(1).getResultList().isEmpty();
+    }
+
+    public List<MapMatchingPointDTO> findMapMatchingPoints(
+            UUID userId, Instant start, Instant end, Double maxAccuracy) {
+        var query = getEntityManager().createQuery("""
+                select new org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO(
+                    timestamp, cast(st_y(coordinates) as double), cast(st_x(coordinates) as double), accuracy)
+                from GpsPointEntity where
+                """ + buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
+                MapMatchingPointDTO.class);
+        buildEligibleTimePeriodParams(userId, start, end, maxAccuracy).forEach(query::setParameter);
+        return query.getResultList();
+    }
+
+    public LocationHistoryResponse.CurrentLocationData findLatestLocation(UUID userId) {
+        return getEntityManager().createQuery("""
+                select st_y(coordinates) as latitude, st_x(coordinates) as longitude, timestamp as timestamp, accuracy as accuracy
+                from GpsPointEntity where user.id = :userId order by timestamp desc
+                """, Tuple.class).setParameter("userId", userId).setMaxResults(1)
+                .getResultList().stream().map(row -> new LocationHistoryResponse.CurrentLocationData(
+                        row.get("latitude", Double.class), row.get("longitude", Double.class),
+                        row.get("timestamp", Instant.class), row.get("accuracy", Double.class))).findFirst().orElse(null);
+    }
+
+    public List<LocationHistoryResponse.HistoricalLocationData> findLocationHistory(
+            UUID userId, Instant start, Instant end) {
+        return getEntityManager().createQuery("""
+                select st_y(coordinates) as latitude, st_x(coordinates) as longitude, timestamp as timestamp
+                from GpsPointEntity where user.id = :userId and timestamp >= :start and timestamp <= :end
+                order by timestamp
+                """, Tuple.class).setParameter("userId", userId)
+                .setParameter("start", start).setParameter("end", end).getResultList().stream()
+                .map(row -> new LocationHistoryResponse.HistoricalLocationData(
+                        row.get("latitude", Double.class), row.get("longitude", Double.class), row.get("timestamp", Instant.class)))
+                .toList();
     }
 
     public List<GpsPointEntity> findEligibleMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
@@ -149,6 +263,12 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public Optional<GpsPointEntity> findLatestReceived() {
         return find("createdAt IS NOT NULL ORDER BY createdAt DESC")
                 .firstResultOptional();
+    }
+
+    public Instant findLatestTimestamp(UUID userId) {
+        return getEntityManager().createQuery(
+                "select max(timestamp) from GpsPointEntity where user.id = :userId", Instant.class)
+                .setParameter("userId", userId).getSingleResult();
     }
 
     public Optional<GpsPointEntity> findLatest(UUID userId) {
@@ -334,7 +454,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 ? ""
                 : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
         String cursorPredicate = cursorTimestamp != null && cursorId != null
-                ? "AND (gp.timestamp > :cursorTimestamp OR (gp.timestamp = :cursorTimestamp AND gp.id > :cursorId)) "
+                ? "AND (gp.timestamp, gp.id) > (:cursorTimestamp, :cursorId) "
                 : "";
 
         Query query = getEntityManager().createNativeQuery(

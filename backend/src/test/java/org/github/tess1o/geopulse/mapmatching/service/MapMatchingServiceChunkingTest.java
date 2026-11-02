@@ -1,12 +1,9 @@
 package org.github.tess1o.geopulse.mapmatching.service;
 
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchedPointDTO;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.PrecisionModel;
 
 import java.time.Instant;
 import java.util.List;
@@ -21,14 +18,13 @@ import static org.mockito.Mockito.when;
 @Tag("unit")
 class MapMatchingServiceChunkingTest {
 
-    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
     private final MapMatchingService service = new MapMatchingService(
             null, null, null, null, null, null, null, null, null, null);
 
     @Test
     void capsChunksAndOverlapsOnlyAtContinuousBoundaries() {
-        List<GpsPointEntity> points = List.of(
+        List<MapMatchingPointDTO> points = List.of(
                 point("2026-01-01T10:00:00Z"),
                 point("2026-01-01T10:01:00Z"),
                 point("2026-01-01T10:02:00Z"),
@@ -36,7 +32,7 @@ class MapMatchingServiceChunkingTest {
                 point("2026-01-01T10:04:00Z")
         );
 
-        List<List<GpsPointEntity>> chunks = service.chunkPoints(points, 3);
+        List<List<MapMatchingPointDTO>> chunks = service.chunkPoints(points, 3);
 
         assertEquals(List.of(3, 3), chunks.stream().map(List::size).toList());
         assertSame(chunks.getFirst().getLast(), chunks.getLast().getFirst());
@@ -44,11 +40,11 @@ class MapMatchingServiceChunkingTest {
 
     @Test
     void preservesDiscontinuitiesAsSeparateSegmentsAndDropsIsolatedPoints() {
-        GpsPointEntity isolated = point("2026-01-01T09:00:00Z");
-        GpsPointEntity first = point("2026-01-01T10:00:00Z");
-        GpsPointEntity second = point("2026-01-01T10:01:00Z");
+        MapMatchingPointDTO isolated = point("2026-01-01T09:00:00Z");
+        MapMatchingPointDTO first = point("2026-01-01T10:00:00Z");
+        MapMatchingPointDTO second = point("2026-01-01T10:01:00Z");
 
-        List<List<GpsPointEntity>> chunks = service.chunkPoints(List.of(isolated, first, second), 100);
+        List<List<MapMatchingPointDTO>> chunks = service.chunkPoints(List.of(isolated, first, second), 100);
 
         assertEquals(1, chunks.size());
         assertEquals(List.of(first, second), chunks.getFirst());
@@ -67,7 +63,7 @@ class MapMatchingServiceChunkingTest {
     @Test
     void rejectsTinyMatchedFragmentsForLongContinuousTrip() {
         MapMatchingService service = serviceWithQualityConfig();
-        List<GpsPointEntity> input = List.of(
+        List<MapMatchingPointDTO> input = List.of(
                 point("2026-08-23T10:00:00Z", 25.60, 49.55),
                 point("2026-08-23T10:30:00Z", 25.90, 49.35),
                 point("2026-08-23T11:00:00Z", 26.20, 49.25)
@@ -83,7 +79,7 @@ class MapMatchingServiceChunkingTest {
     @Test
     void acceptsContinuousMatchedGeometryForLongTrip() {
         MapMatchingService service = serviceWithQualityConfig();
-        List<GpsPointEntity> input = List.of(
+        List<MapMatchingPointDTO> input = List.of(
                 point("2026-08-23T10:00:00Z", 25.60, 49.55),
                 point("2026-08-23T10:30:00Z", 25.90, 49.35),
                 point("2026-08-23T11:00:00Z", 26.20, 49.25)
@@ -107,15 +103,16 @@ class MapMatchingServiceChunkingTest {
                 configuration, null, null, null, null, null, null, null, null, null);
     }
 
-    private GpsPointEntity point(String timestamp) {
-        GpsPointEntity point = new GpsPointEntity();
+    private MapMatchingPointDTO point(String timestamp) {
+        MapMatchingPointDTO point = new MapMatchingPointDTO();
         point.setTimestamp(Instant.parse(timestamp));
         return point;
     }
 
-    private GpsPointEntity point(String timestamp, double longitude, double latitude) {
-        GpsPointEntity point = point(timestamp);
-        point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude)));
+    private MapMatchingPointDTO point(String timestamp, double longitude, double latitude) {
+        MapMatchingPointDTO point = point(timestamp);
+        point.setLongitude(longitude);
+        point.setLatitude(latitude);
         return point;
     }
 

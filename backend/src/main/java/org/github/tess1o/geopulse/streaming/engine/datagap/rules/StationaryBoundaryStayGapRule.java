@@ -73,7 +73,7 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
             return false;
         }
 
-        log.info("Stationary boundary IN_TRIP gap stay inference applied - creating inferred stay instead of data gap");
+        log.debug("Stationary boundary IN_TRIP gap stay inference applied - creating inferred stay instead of data gap");
 
         Trip finalizedTrip = finalizeTripBeforeGap(context.userState(), context.config());
         TimelineExplanation tripExplanation = context.userState()
@@ -109,7 +109,7 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         }
 
         int minTripPoints = resolveMinTripPoints(context.config());
-        int activePointsCount = context.userState().copyActivePoints().size();
+        int activePointsCount = context.userState().getActivePoints().size();
         if (activePointsCount < minTripPoints) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - active trip points {} below minimum {}",
                     activePointsCount, minTripPoints);
@@ -129,9 +129,9 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         if (boundaryDistanceMeters > effectiveMaxBoundaryDistanceMeters) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - boundary distance {}m exceeds maximum {}m "
                             + "(configMax={}m, stayRadius={}m)",
-                    String.format("%.1f", boundaryDistanceMeters),
-                    String.format("%.1f", effectiveMaxBoundaryDistanceMeters),
-                    String.format("%.1f", maxBoundaryDistanceMeters),
+                    boundaryDistanceMeters,
+                    effectiveMaxBoundaryDistanceMeters,
+                    maxBoundaryDistanceMeters,
                     stayRadiusMeters);
             return false;
         }
@@ -139,14 +139,14 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         double stopSpeedThreshold = resolveStopSpeedThreshold(context.config());
         if (context.lastPoint().getSpeed() > stopSpeedThreshold) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - last point speed {}m/s exceeds threshold {}m/s",
-                    String.format("%.2f", context.lastPoint().getSpeed()),
-                    String.format("%.2f", stopSpeedThreshold));
+                    context.lastPoint().getSpeed(),
+                    stopSpeedThreshold);
             return false;
         }
         if (context.currentPoint().getSpeed() > stopSpeedThreshold) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - current point speed {}m/s exceeds threshold {}m/s",
-                    String.format("%.2f", context.currentPoint().getSpeed()),
-                    String.format("%.2f", stopSpeedThreshold));
+                    context.currentPoint().getSpeed(),
+                    stopSpeedThreshold);
             return false;
         }
 
@@ -157,16 +157,16 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         double impliedSpeedKmh = (boundaryDistanceMeters / 1000.0) / gapHours;
         if (impliedSpeedKmh > maxImpliedSpeedKmh) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - implied speed {}km/h exceeds maximum {}km/h",
-                    String.format("%.3f", impliedSpeedKmh), String.format("%.1f", maxImpliedSpeedKmh));
+                    impliedSpeedKmh, maxImpliedSpeedKmh);
             return false;
         }
 
-        log.info("Stationary boundary IN_TRIP stay inference conditions met: gap={}h, distance={}m, impliedSpeed={}km/h, "
+        log.debug("Stationary boundary IN_TRIP stay inference conditions met: gap={}h, distance={}m, impliedSpeed={}km/h, "
                         + "speedThreshold={}m/s",
-                String.format("%.2f", gapHours),
-                String.format("%.1f", boundaryDistanceMeters),
-                String.format("%.3f", impliedSpeedKmh),
-                String.format("%.2f", stopSpeedThreshold));
+                gapHours,
+                boundaryDistanceMeters,
+                impliedSpeedKmh,
+                stopSpeedThreshold);
         return true;
     }
 

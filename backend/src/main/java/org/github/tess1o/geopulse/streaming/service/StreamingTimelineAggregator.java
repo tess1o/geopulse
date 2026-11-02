@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.repository.TimelineReadRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +8,6 @@ import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineExplanationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
@@ -17,7 +17,6 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
-import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -50,7 +49,7 @@ public class StreamingTimelineAggregator {
     TimelineEditApplicationRepository timelineEditApplicationRepository;
 
     @Inject
-    StreamingTimelineConverter converter;
+    TimelineReadRepository timelineReadRepository;
 
     @Inject
     GpsPointRepository gpsPointRepository;
@@ -210,12 +209,7 @@ public class StreamingTimelineAggregator {
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
         timeline.setLastUpdated(Instant.now());
 
-        // Get stays with boundary expansion
-        var stayEntities = timelineStayRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
-        for (var stayEntity : stayEntities) {
-            TimelineStayLocationDTO stayDTO = converter.convertStayEntityToDto(stayEntity);
-            timeline.getStays().add(stayDTO);
-        }
+        timeline.getStays().addAll(timelineReadRepository.findStays(userId, startTime, endTime));
         if (includeCorrections) {
             attachDataGapOverrideMetadata(userId, timeline.getStays());
             attachTripSplitOverrideMetadata(userId, timeline.getStays());
@@ -224,12 +218,7 @@ public class StreamingTimelineAggregator {
                             counts.getOrDefault(stay.getId(), 0))));
         }
 
-        // Get trips with boundary expansion
-        var tripEntities = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
-        for (var tripEntity : tripEntities) {
-            TimelineTripDTO tripDTO = converter.convertTripEntityToDto(tripEntity);
-            timeline.getTrips().add(tripDTO);
-        }
+        timeline.getTrips().addAll(timelineReadRepository.findTrips(userId, startTime, endTime));
         if (includeCorrections) {
             attachEditCounts("TRIP", timeline.getTrips().stream().map(TimelineTripDTO::getId).toList(),
                     counts -> timeline.getTrips().forEach(trip -> trip.setActiveEditCount(
@@ -241,17 +230,8 @@ public class StreamingTimelineAggregator {
         snapTripEndpointsToAdjacentFavoriteStays(timeline.getTrips(), timeline.getStays());
 
         // Get data gaps with boundary expansion
-        Instant latestGpsTimestamp = gpsPointRepository.findLatest(userId)
-                .map(point -> point.getTimestamp())
-                .orElse(null);
-        var gapEntities = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
-        for (var gapEntity : gapEntities) {
-            boolean ongoing = latestGpsTimestamp != null && latestGpsTimestamp.equals(gapEntity.getStartTime());
-            var gapDTO = new TimelineDataGapDTO(
-                    gapEntity.getId(), gapEntity.getStartTime(), gapEntity.getEndTime(), ongoing);
-            gapDTO.setExplanation(TimelineExplanationDTO.from(gapEntity.getExplanation()));
-            timeline.getDataGaps().add(gapDTO);
-        }
+        Instant latestGpsTimestamp = gpsPointRepository.findLatestTimestamp(userId);
+        timeline.getDataGaps().addAll(timelineReadRepository.findGaps(userId, startTime, endTime, latestGpsTimestamp));
         if (includeCorrections) {
             attachEditCounts("DATA_GAP", timeline.getDataGaps().stream().map(TimelineDataGapDTO::getId).toList(),
                     counts -> timeline.getDataGaps().forEach(gap -> gap.setActiveEditCount(
@@ -267,9 +247,7 @@ public class StreamingTimelineAggregator {
     private void attachEditCounts(String targetType, List<Long> ids,
                                   java.util.function.Consumer<Map<Long, Integer>> consumer) {
         List<Long> presentIds = ids.stream().filter(Objects::nonNull).toList();
-        Map<Long, Integer> counts = new HashMap<>();
-        timelineEditApplicationRepository.findForTargets(targetType, presentIds)
-                .forEach(application -> counts.merge(application.getTargetId(), 1, Integer::sum));
+        Map<Long, Integer> counts = timelineEditApplicationRepository.countForTargets(targetType, presentIds);
         consumer.accept(counts);
     }
 
@@ -287,12 +265,12 @@ public class StreamingTimelineAggregator {
         }
 
         Map<Long, List<Long>> overridesByStayId = new HashMap<>();
-        dataGapStayOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
-            if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
+        dataGapStayOverrideRepository.findIdsByUserIdAndStayIds(userId, stayIds).forEach(override -> {
+            if (override.stayId() == null || override.id() == null) {
                 return;
             }
-            overridesByStayId.computeIfAbsent(override.getStay().getId(), ignored -> new ArrayList<>())
-                    .add(override.getId());
+            overridesByStayId.computeIfAbsent(override.stayId(), ignored -> new ArrayList<>())
+                    .add(override.id());
         });
 
         if (overridesByStayId.isEmpty()) {
@@ -325,11 +303,11 @@ public class StreamingTimelineAggregator {
         }
 
         Map<Long, Long> firstOverrideByStayId = new HashMap<>();
-        tripStaySplitOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
-            if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
+        tripStaySplitOverrideRepository.findIdsByUserIdAndStayIds(userId, stayIds).forEach(override -> {
+            if (override.stayId() == null || override.id() == null) {
                 return;
             }
-            firstOverrideByStayId.putIfAbsent(override.getStay().getId(), override.getId());
+            firstOverrideByStayId.putIfAbsent(override.stayId(), override.id());
         });
 
         if (firstOverrideByStayId.isEmpty()) {

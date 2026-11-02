@@ -333,28 +333,16 @@ public class SharedLinkService {
 
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
-        GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
-
+        var currentLocation = gpsPointRepository.findLatestLocation(entity.getUser().getId());
         if (entity.isShowHistory()) {
             Instant startDate = Instant.now().minus(entity.getHistoryHours(), ChronoUnit.HOURS);
-            List<GpsPointEntity> history = gpsPointRepository.findByUserIdAndTimePeriod(
-                    entity.getUser().getId(), startDate, Instant.now());
-
-            return mapper.toLocationHistoryResponse(currentLocation, history);
-        } else {
-            if (currentLocation != null) {
-                ShareLinkResponse current = mapper.toShareLinkResponse(currentLocation);
-                LocationHistoryResponse.CurrentLocationData currentData =
-                        new LocationHistoryResponse.CurrentLocationData(
-                                current.getLatitude(),
-                                current.getLongitude(),
-                                current.getTimestamp(),
-                                current.getAccuracy()
-                        );
-                return new LocationHistoryResponse(currentData, List.of());
-            }
-            return new LocationHistoryResponse(null, List.of());
+            var history = gpsPointRepository.findLocationHistory(entity.getUser().getId(), startDate, Instant.now());
+            return new LocationHistoryResponse(currentLocation, history);
         }
+        if (currentLocation != null && currentLocation.getAccuracy() == null) {
+            currentLocation.setAccuracy(0.0);
+        }
+        return new LocationHistoryResponse(currentLocation, List.of());
     }
 
     private String createTemporaryAccessToken(UUID linkId, Long lifespan) {
@@ -601,27 +589,8 @@ public class SharedLinkService {
 
         TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
 
-        // Get GPS points for the effective date range
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(
-                entity.getUser().getId(),
-                effectiveRange.start(),
-                effectiveRange.end()
-        );
-
-        // Convert to GpsPoint interface for simplification
-        List<GpsPoint> convertedPoints = gpsPoints.stream()
-                .map(gp -> new GpsPointPathPointDTO(
-                        gp.getId(),
-                        gp.getCoordinates().getX(), // longitude
-                        gp.getCoordinates().getY(), // latitude
-                        gp.getTimestamp(),
-                        gp.getAccuracy(),
-                        gp.getAltitude(),
-                        gp.getVelocity(),
-                        entity.getUser().getId(),
-                        gp.getSourceType().name()
-                ))
-                .collect(Collectors.toList());
+        List<GpsPointPathPointDTO> convertedPoints = gpsPointRepository.findPathPoints(
+                entity.getUser().getId(), effectiveRange.start(), effectiveRange.end());
 
         // Get user's timeline config for simplification
         TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(entity.getUser().getId());
@@ -630,7 +599,7 @@ public class SharedLinkService {
         List<? extends GpsPoint> simplifiedPoints = pathSimplificationService.simplify(convertedPoints, config);
 
         log.info("Path data accessed for linkId: {}, original points: {}, simplified: {}",
-                linkId, gpsPoints.size(), simplifiedPoints.size());
+                linkId, convertedPoints.size(), simplifiedPoints.size());
 
         // simplify() returns a subset of the input, so every element is a GpsPointPathPointDTO
         @SuppressWarnings("unchecked")

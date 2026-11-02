@@ -124,6 +124,17 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
      * @param endTime   end of time range
      * @return list of trips that overlap with the time range, ordered by timestamp
      */
+    public long[] summarizeOverlapping(UUID userId, Instant start, Instant end) {
+        Object[] row = getEntityManager().createQuery("""
+                select count(t), coalesce(sum(t.distanceMeters), 0), coalesce(sum(t.tripDuration), 0)
+                from TimelineTripEntity t where t.user.id = :userId and (
+                    (t.timestamp >= :start and t.timestamp <= :end) or
+                    (t.timestamp < :start and timestampadd(second, t.tripDuration, t.timestamp) > :start))
+                """, Object[].class).setParameter("userId", userId).setParameter("start", start)
+                .setParameter("end", end).getSingleResult();
+        return new long[]{((Number) row[0]).longValue(), ((Number) row[1]).longValue(), ((Number) row[2]).longValue()};
+    }
+
     public List<TimelineTripEntity> findByUserIdAndTimeRangeWithExpansion(UUID userId, Instant startTime, Instant endTime) {
         // Find trips that either:
         // 1. Start within the requested range, OR

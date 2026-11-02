@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.mapmatching.dto.*;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
@@ -152,27 +152,28 @@ public class MapMatchingService {
         matchRepository.markAttemptStarted(targetId);
         try {
             TimelineTripEntity trip = target.getTrip();
-            List<GpsPointEntity> points = loadEligiblePoints(trip.getUser().getId(), trip, maxAccuracy);
-            if (points.size() < 2) {
-                matchRepository.markSkipped(targetId, "Trip has fewer than two eligible GPS points");
-                recordOutcome(target, "skipped");
-                return;
-            }
             if (trip.getTripDuration() > Math.max(1, configuration.getMaxTripDurationHours()) * 3600L) {
                 matchRepository.markSkipped(targetId, "Trip exceeds configured map-matching duration limit");
                 recordOutcome(target, "skipped");
                 return;
             }
+            List<MapMatchingPointDTO> points = loadEligiblePoints(trip.getUser().getId(), trip, maxAccuracy);
+            if (points.size() < 2) {
+                matchRepository.markSkipped(targetId, "Trip has fewer than two eligible GPS points");
+                recordOutcome(target, "skipped");
+                return;
+            }
+
 
             MapMatchingProvider provider = providerFor(target.getProvider());
             List<List<MapMatchedPointDTO>> matchedSegments = new ArrayList<>();
-            List<List<GpsPointEntity>> chunks = chunkPoints(points, Math.max(2, configuration.getMaxInputPoints()));
+            List<List<MapMatchingPointDTO>> chunks = chunkPoints(points, Math.max(2, configuration.getMaxInputPoints()));
             if (chunks.isEmpty()) {
                 matchRepository.markSkipped(targetId, "Trip has no contiguous GPS segment with at least two points");
                 recordOutcome(target, "skipped");
                 return;
             }
-            for (List<GpsPointEntity> chunk : chunks) {
+            for (List<MapMatchingPointDTO> chunk : chunks) {
                 List<List<MapMatchedPointDTO>> chunkSegments = provider.matchSegments(chunk, target.getProfile())
                         .stream()
                         .filter(segment -> segment != null && segment.size() >= 2)
@@ -237,18 +238,19 @@ public class MapMatchingService {
                     message("mapMatching.skipped.durationLimit", "Trip exceeds configured map-matching duration limit"), null);
         }
 
-        List<GpsPointEntity> points = loadEligiblePoints(userId, trip, maxAccuracy);
-        if (points.size() < 2) {
-            return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
-                    message("mapMatching.skipped.insufficientPoints", "Trip has fewer than two eligible GPS points"), null);
-        }
-
         String profile = profileResolver.resolveProfile(trip.getMovementType());
         if (profile == null) {
             return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
                     message("mapMatching.skipped.unsupportedMovementType",
                             "Movement type is not supported by road/path map matching"), null);
         }
+
+        List<MapMatchingPointDTO> points = loadEligiblePoints(userId, trip, maxAccuracy);
+        if (points.size() < 2) {
+            return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
+                    message("mapMatching.skipped.insufficientPoints", "Trip has fewer than two eligible GPS points"), null);
+        }
+
         String configHash = hashService.configHash(configuration.configHashSource() + "|" + profile);
         String inputHash = hashService.inputHash(points, maxAccuracy);
         Optional<TimelineTripPathMatchEntity> existing = matchRepository.findCurrent(
@@ -274,10 +276,10 @@ public class MapMatchingService {
         return configuration.isEnabled() && isDisplayEnabled(userId);
     }
 
-    private List<GpsPointEntity> loadEligiblePoints(UUID userId, TimelineTripEntity trip, Double maxAccuracy) {
+    private List<MapMatchingPointDTO> loadEligiblePoints(UUID userId, TimelineTripEntity trip, Double maxAccuracy) {
         Instant start = trip.getTimestamp();
         Instant end = start.plusSeconds(Math.max(0L, trip.getTripDuration()));
-        return gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, start, end, maxAccuracy);
+        return gpsPointRepository.findMapMatchingPoints(userId, start, end, maxAccuracy);
     }
 
     private Double cachedActiveMaxAccuracy(UUID userId, Map<UUID, Double> cache) {
@@ -292,18 +294,18 @@ public class MapMatchingService {
         return TimelineGpsAccuracyFilter.getActiveMaxAccuracyThreshold(config);
     }
 
-    List<List<GpsPointEntity>> chunkPoints(List<GpsPointEntity> points, int maxPoints) {
-        List<List<GpsPointEntity>> chunks = new ArrayList<>();
-        List<GpsPointEntity> current = new ArrayList<>(maxPoints);
-        for (GpsPointEntity point : points) {
-            GpsPointEntity previous = current.isEmpty() ? null : current.getLast();
+    List<List<MapMatchingPointDTO>> chunkPoints(List<MapMatchingPointDTO> points, int maxPoints) {
+        List<List<MapMatchingPointDTO>> chunks = new ArrayList<>();
+        List<MapMatchingPointDTO> current = new ArrayList<>(maxPoints);
+        for (MapMatchingPointDTO point : points) {
+            MapMatchingPointDTO previous = current.isEmpty() ? null : current.getLast();
             boolean gap = previous != null && previous.getTimestamp() != null && point.getTimestamp() != null
                     && point.getTimestamp().isAfter(previous.getTimestamp().plusSeconds(10 * 60L));
             if (gap) {
                 if (current.size() >= 2) chunks.add(List.copyOf(current));
                 current.clear();
             } else if (current.size() >= maxPoints) {
-                GpsPointEntity overlap = current.getLast();
+                MapMatchingPointDTO overlap = current.getLast();
                 chunks.add(List.copyOf(current));
                 current.clear();
                 current.add(overlap);
@@ -314,7 +316,7 @@ public class MapMatchingService {
         return chunks;
     }
 
-    boolean hasAcceptableMatchedCoverage(List<GpsPointEntity> inputPoints,
+    boolean hasAcceptableMatchedCoverage(List<MapMatchingPointDTO> inputPoints,
                                          List<List<MapMatchedPointDTO>> matchedSegments) {
         double rawDistanceMeters = inputDistanceMeters(inputPoints);
         if (rawDistanceMeters < Math.max(1, configuration.getQualityMinRawDistanceMeters())) {
@@ -338,21 +340,21 @@ public class MapMatchingService {
         return discontinuityMeters <= maxAllowedDiscontinuity;
     }
 
-    private double inputDistanceMeters(List<GpsPointEntity> points) {
+    private double inputDistanceMeters(List<MapMatchingPointDTO> points) {
         if (points == null || points.size() < 2) {
             return 0.0;
         }
 
         double distance = 0.0;
-        GpsPointEntity previous = null;
-        for (GpsPointEntity point : points) {
-            if (point == null || point.getCoordinates() == null) {
+        MapMatchingPointDTO previous = null;
+        for (MapMatchingPointDTO point : points) {
+            if (point == null || (point.getLatitude() == null || point.getLongitude() == null)) {
                 continue;
             }
-            if (previous != null && previous.getCoordinates() != null) {
+            if (previous != null && (previous.getLatitude() != null && previous.getLongitude() != null)) {
                 distance += GeoUtils.haversine(
-                        previous.getCoordinates().getY(), previous.getCoordinates().getX(),
-                        point.getCoordinates().getY(), point.getCoordinates().getX());
+                        previous.getLatitude(), previous.getLongitude(),
+                        point.getLatitude(), point.getLongitude());
             }
             previous = point;
         }

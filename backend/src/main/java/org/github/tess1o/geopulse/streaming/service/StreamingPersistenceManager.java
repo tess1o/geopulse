@@ -1,185 +1,192 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
-import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
-import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
-import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import jakarta.persistence.EntityManager;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
-import org.github.tess1o.geopulse.streaming.model.domain.Trip;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
-import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
-import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.hibernate.Session;
+import org.locationtech.jts.geom.Point;
 
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-/**
- * Manages persistence of streaming timeline results to existing database tables.
- */
+/** Bounded inserts on the generation transaction's connection, without retaining inserted entities. */
 @ApplicationScoped
-@Slf4j
 public class StreamingPersistenceManager {
+    static final int JDBC_BATCH_SIZE = 500;
 
-    @Inject
-    TimelineStayRepository stayRepository;
+    private static final String INSERT_TRIP = """
+            INSERT INTO timeline_trips (user_id,timestamp,trip_duration,start_point,end_point,distance_meters,
+                movement_type,movement_type_source,avg_gps_speed,max_gps_speed,speed_variance,
+                low_accuracy_points_count,water_distance_meters,water_distance_ratio,longest_water_segment_meters,
+                water_sample_count,water_evidence_available,altitude_sustained_height_meters,
+                altitude_vertical_speed_p90,altitude_sample_count,explanation,created_at,last_updated)
+            VALUES {rows}
+            """;
+    private static final String TRIP_ROW = """
+            (?,?,?,ST_SetSRID(ST_MakePoint(?,?),4326),ST_SetSRID(ST_MakePoint(?,?),4326),
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,clock_timestamp(),clock_timestamp())
+            """;
+    private static final String INSERT_STAY = """
+            INSERT INTO timeline_stays (user_id,timestamp,location,stay_duration,location_name,visit_name,
+                favorite_id,geocoding_id,created_at,last_updated,location_source,explanation)
+            SELECT v.user_id,v.timestamp,ST_SetSRID(ST_MakePoint(v.longitude,v.latitude),4326),
+                v.duration,v.location_name,v.visit_name,f.id,g.id,clock_timestamp(),clock_timestamp(),
+                CASE WHEN f.id IS NOT NULL THEN 'FAVORITE' WHEN g.id IS NOT NULL THEN 'GEOCODING'
+                     ELSE 'HISTORICAL' END,v.explanation
+            FROM (VALUES {rows}) v(user_id,timestamp,longitude,latitude,duration,location_name,visit_name,
+                explanation,favorite_id,geocoding_id)
+            LEFT JOIN favorite_locations f ON f.id=v.favorite_id
+            LEFT JOIN reverse_geocoding_location g ON g.id=v.geocoding_id
+            """;
+    private static final String STAY_ROW = """
+            (?::uuid,?::timestamptz,?::double precision,?::double precision,?::bigint,?::text,?::text,
+                ?::jsonb,NULLIF(?::bigint,0),NULLIF(?::bigint,0))
+            """;
+    private static final String INSERT_GAP = """
+            INSERT INTO timeline_data_gaps (user_id,start_time,end_time,duration_seconds,explanation,created_at)
+            VALUES {rows}
+            """;
+    private static final String GAP_ROW = "(?,?,?,?,?::jsonb,clock_timestamp())";
 
-    @Inject
-    TimelineTripRepository tripRepository;
+    @Inject EntityManager entityManager;
+    @Inject StreamingTimelineConverter converter;
+    @Inject ObjectMapper objectMapper;
+    @Inject TimelineMemoryDiagnostics memoryDiagnostics;
 
-    @Inject
-    TimelineDataGapRepository gapRepository;
-
-    @Inject
-    StreamingTimelineConverter converter;
-
-    @Inject
-    FavoritesRepository favoritesRepository;
-
-    @Inject
-    ReverseGeocodingLocationRepository geocodingRepository;
-
-    /**
-     * Persist raw timeline with GPS statistics calculation and progress tracking.
-     * This method processes trips with rich GPS data while maintaining optimized stays/gaps persistence.
-     *
-     * @param userId      user identifier
-     * @param rawTimeline raw timeline container with domain objects
-     * @param jobId       optional job ID for progress tracking
-     */
-    public void persistRawTimeline(UUID userId, RawTimeline rawTimeline) {
-        log.debug("Starting raw timeline persistence for user {} with {} events",
-                userId, rawTimeline.getTotalEventCount());
-
-        // Create user reference for entities  
-        UserEntity userRef = converter.createUserReference(userId);
-
-        int tripCount = persistTripsWithGpsStats(rawTimeline.getTrips(), userRef);
-        int stayCount = persistStaysFromDomain(rawTimeline.getStays(), userRef);
-        int gapCount = persistDataGapsFromDomain(rawTimeline.getDataGaps(), userRef);
-
-        log.debug("Raw timeline persistence completed for user {}: {} trips with GPS stats, {} stays, {} gaps",
-                userId, tripCount, stayCount, gapCount);
+    public void persistRawTimeline(UUID userId, RawTimeline timeline, UUID jobId) {
+        // Make pending ORM changes visible; never clear the caller's managed edits, notes or user lock state.
+        entityManager.flush();
+        var user = converter.createUserReference(userId);
+        entityManager.unwrap(Session.class).doWork(connection -> {
+            write(connection, INSERT_TRIP, TRIP_ROW, 23, timeline.getTrips(), (statement, offset, trip) ->
+                    bindTrip(statement, offset, converter.convertStreamingTripToEntity(trip, user)), userId, jobId, "persist_trips");
+            write(connection, INSERT_STAY, STAY_ROW, 10, timeline.getStays(), (statement, offset, stay) ->
+                    bindStay(statement, offset, userId, stay), userId, jobId, "persist_stays");
+            write(connection, INSERT_GAP, GAP_ROW, 5, timeline.getDataGaps(), (statement, offset, gap) ->
+                    bindGap(statement, offset, userId, gap), userId, jobId, "persist_gaps");
+        });
     }
 
-    /**
-     * Persist trips with GPS statistics calculation from rich domain objects.
-     */
-    private int persistTripsWithGpsStats(List<Trip> trips, UserEntity userRef) {
-        int tripCount = 0;
-        for (Trip trip : trips) {
-            TimelineTripEntity tripEntity = converter.convertStreamingTripToEntity(trip, userRef);
-            if (tripEntity != null) {
-                tripRepository.persist(tripEntity);
-                tripCount++;
+    private <T> void write(Connection connection, String sql, String rowSql, int parameters, List<T> rows, Binder<T> binder,
+                           UUID userId, UUID jobId, String stage) throws SQLException {
+        if (rows.isEmpty()) return;
+        List<T> batch = new ArrayList<>(JDBC_BATCH_SIZE);
+        int count = 0;
+        for (T row : rows) {
+            if (row == null) continue;
+            batch.add(row);
+            if (batch.size() == JDBC_BATCH_SIZE) {
+                insert(connection, sql, rowSql, parameters, batch, binder);
+                count += batch.size();
+                batch.clear();
+                if (count % 2_000 == 0 && memoryDiagnostics.isEnabled()) {
+                    memoryDiagnostics.checkpoint(userId, jobId, stage, Map.of(
+                            "persistedRows", count, "totalRows", rows.size(), "jdbcBatchLimit", JDBC_BATCH_SIZE));
+                }
             }
         }
-        log.debug("Persisted {} trip entities with GPS statistics", tripCount);
-        return tripCount;
+        if (!batch.isEmpty()) {
+            insert(connection, sql, rowSql, parameters, batch, binder);
+            count += batch.size();
+        }
+        memoryDiagnostics.checkpoint(userId, jobId, stage + "_end", Map.of("persistedRows", count));
     }
 
-    private int persistStaysFromDomain(List<Stay> stays, UserEntity userRef) {
-        if (stays.isEmpty()) {
-            return 0;
+    private <T> void insert(Connection connection, String sql, String rowSql, int parameters,
+                            List<T> batch, Binder<T> binder) throws SQLException {
+        String statementSql = sql.replace("{rows}", String.join(",", Collections.nCopies(batch.size(), rowSql)));
+        try (PreparedStatement statement = connection.prepareStatement(statementSql)) {
+            for (int i = 0; i < batch.size(); i++) binder.bind(statement, i * parameters, batch.get(i));
+            statement.executeUpdate();
         }
-        // Use existing optimized stay persistence with batch loading
-        persistStays(stays, userRef);
-        return stays.size();
     }
 
-    private int persistDataGapsFromDomain(List<DataGap> dataGaps, UserEntity userRef) {
-        if (dataGaps.isEmpty()) {
-            return 0;
-        }
-        // Use existing data gap persistence
-        persistDataGaps(dataGaps, userRef);
-        return dataGaps.size();
+    private void bindTrip(PreparedStatement s, int offset, TimelineTripEntity t) throws SQLException {
+        s.setObject(offset + 1, t.getUser().getId());
+        timestamp(s, offset + 2, t.getTimestamp());
+        s.setLong(offset + 3, t.getTripDuration());
+        point(s, offset + 4, t.getStartPoint());
+        point(s, offset + 6, t.getEndPoint());
+        s.setLong(offset + 8, t.getDistanceMeters());
+        s.setString(offset + 9, t.getMovementType());
+        s.setString(offset + 10, t.getMovementTypeSource().name());
+        s.setObject(offset + 11, t.getAvgGpsSpeed());
+        s.setObject(offset + 12, t.getMaxGpsSpeed());
+        s.setObject(offset + 13, t.getSpeedVariance());
+        s.setObject(offset + 14, t.getLowAccuracyPointsCount());
+        s.setObject(offset + 15, t.getWaterDistanceMeters());
+        s.setObject(offset + 16, t.getWaterDistanceRatio());
+        s.setObject(offset + 17, t.getLongestWaterSegmentMeters());
+        s.setObject(offset + 18, t.getWaterSampleCount());
+        s.setObject(offset + 19, t.getWaterEvidenceAvailable());
+        s.setObject(offset + 20, t.getAltitudeSustainedHeightMeters());
+        s.setObject(offset + 21, t.getAltitudeVerticalSpeedP90());
+        s.setObject(offset + 22, t.getAltitudeSampleCount());
+        s.setString(offset + 23, json(t.getExplanation()));
     }
 
-    /**
-     * Persist stay locations to database using batch loading to eliminate N+1 queries.
-     */
-    private void persistStays(Iterable<Stay> stays, UserEntity userRef) {
-        List<Stay> stayList = StreamSupport.stream(stays.spliterator(), false)
-                .collect(Collectors.toList());
-
-        if (stayList.isEmpty()) {
-            return;
-        }
-
-        // Step 1: Collect all favorite and geocoding IDs
-        Set<Long> favoriteIds = stayList.stream()
-                .map(Stay::getFavoriteId)
-                .filter(Objects::nonNull)
-                .filter(id -> id != 0)
-                .collect(Collectors.toSet());
-
-        Set<Long> geocodingIds = stayList.stream()
-                .map(Stay::getGeocodingId)
-                .filter(Objects::nonNull)
-                .filter(id -> id != 0)
-                .collect(Collectors.toSet());
-
-        // Step 2: Batch load all favorites and geocoding entities using repositories
-        Map<Long, FavoritesEntity> favoriteMap =
-                favoriteIds.isEmpty() ? Map.of() :
-                        favoritesRepository.find("id in ?1", favoriteIds)
-                                .list()
-                                .stream()
-                                .collect(Collectors.toMap(
-                                        FavoritesEntity::getId,
-                                        Function.identity()
-                                ));
-
-        Map<Long, ReverseGeocodingLocationEntity> geocodingMap =
-                geocodingIds.isEmpty() ? Map.of() :
-                        geocodingRepository.find("id in ?1", geocodingIds)
-                                .list()
-                                .stream()
-                                .collect(Collectors.toMap(
-                                        ReverseGeocodingLocationEntity::getId,
-                                        Function.identity()
-                                ));
-
-        log.debug("Batch loaded {} favorites and {} geocoding entities for {} stays",
-                favoriteMap.size(), geocodingMap.size(), stayList.size());
-
-        // Step 3: Convert and persist stays using pre-loaded entity maps
-        int stayCount = 0;
-        for (Stay stay : stayList) {
-            TimelineStayEntity entity = converter.convertStayToEntityWithBatchData(stay, userRef, favoriteMap, geocodingMap);
-            if (entity != null) {
-                stayRepository.persist(entity);
-                stayCount++;
-            }
-        }
-        log.debug("Persisted {} stay entities using batch loading (reduced from 1+{}+{} to 3 queries)",
-                stayCount, favoriteIds.size(), geocodingIds.size());
+    private void bindStay(PreparedStatement s, int offset, UUID user, Stay stay) throws SQLException {
+        s.setObject(offset + 1, user);
+        timestamp(s, offset + 2, stay.getStartTime());
+        point(s, offset + 3, GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
+        s.setLong(offset + 5, stay.getDuration().toSeconds());
+        s.setString(offset + 6, stay.getLocationName());
+        s.setString(offset + 7, stay.getVisitName());
+        s.setString(offset + 8, explanation(stay.getExplanation()));
+        s.setObject(offset + 9, stay.getFavoriteId());
+        s.setObject(offset + 10, stay.getGeocodingId());
     }
 
-    /**
-     * Persist data gaps to database.
-     */
-    private void persistDataGaps(Iterable<DataGap> gaps, UserEntity userRef) {
-        int gapCount = 0;
-        for (DataGap gap : gaps) {
-            TimelineDataGapEntity entity = converter.convertGapToEntity(gap, userRef);
-            if (entity != null) {
-                gapRepository.persist(entity);
-                gapCount++;
-            }
+    private void bindGap(PreparedStatement s, int offset, UUID user, DataGap gap) throws SQLException {
+        s.setObject(offset + 1, user);
+        timestamp(s, offset + 2, gap.getStartTime());
+        timestamp(s, offset + 3, gap.getEndTime());
+        // Match the entity's @PrePersist epoch-second calculation, including fractional instants.
+        s.setLong(offset + 4, gap.getEndTime().getEpochSecond() - gap.getStartTime().getEpochSecond());
+        s.setString(offset + 5, explanation(gap.getExplanation()));
+    }
+
+    private String explanation(TimelineExplanation value) throws SQLException {
+        return json(value == null || value.isEmpty() ? null : value.toMap());
+    }
+
+    private String json(Object value) throws SQLException {
+        if (value == null) return null;
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new SQLException("Cannot serialize timeline explanation", e);
         }
-        log.debug("Persisted {} data gap entities", gapCount);
+    }
+
+    private static void timestamp(PreparedStatement statement, int index, Instant value) throws SQLException {
+        statement.setObject(index, value == null ? null : value.atOffset(ZoneOffset.UTC));
+    }
+
+    private static void point(PreparedStatement statement, int index, Point value) throws SQLException {
+        statement.setObject(index, value == null ? null : value.getX());
+        statement.setObject(index + 1, value == null ? null : value.getY());
+    }
+
+    @FunctionalInterface
+    private interface Binder<T> {
+        void bind(PreparedStatement statement, int offset, T row) throws SQLException;
     }
 }

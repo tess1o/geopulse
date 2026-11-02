@@ -1,5 +1,11 @@
 package org.github.tess1o.geopulse.statistics.repository;
 
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Arrays;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -327,6 +333,37 @@ public class StatisticsRepository {
     /**
      * Get chart data grouped by days.
      */
+    public Map<String, List<ChartDataPoint>> getChartDataByMovementType(
+            UUID userId, Instant start, Instant end, boolean weeks) {
+        var types = Arrays.stream(TripType.values())
+                .filter(type -> type != TripType.UNKNOWN).toList();
+        String values = types.stream().map(type -> "('" + type.name() + "')")
+                .collect(Collectors.joining(","));
+        String bucket = weeks ? "date(date_trunc('week', timestamp::date))" : "date(timestamp)";
+        String label = weeks ? "to_char(b.bucket, 'MM/DD')" : "upper(to_char(b.bucket, 'Dy'))";
+        // Aggregate once before expanding null/blank movement types into each chart, matching the legacy charts.
+        String sql = """
+                with buckets as (
+                    select %s as bucket, movement_type, sum(distance_meters) as distance
+                    from timeline_trips where user_id = :userId and timestamp >= :start and timestamp <= :end
+                    group by 1, movement_type
+                )
+                select types.movement_type, b.bucket, %s, sum(b.distance) / 1000.0
+                from buckets b join (values %s) types(movement_type)
+                  on b.movement_type = types.movement_type or b.movement_type is null or b.movement_type = ''
+                group by types.movement_type, b.bucket order by b.bucket, types.movement_type
+                """.formatted(bucket, label, values);
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery(sql).setParameter("userId", userId)
+                .setParameter("start", start).setParameter("end", end).getResultList();
+        Map<String, List<ChartDataPoint>> charts = new HashMap<>();
+        types.forEach(type -> charts.put(type.name(), new ArrayList<>()));
+        for (Object[] row : rows) {
+            charts.get((String) row[0]).add(new ChartDataPoint((String) row[2], ((Number) row[3]).doubleValue(), row[1].toString()));
+        }
+        return charts;
+    }
+
     public List<ChartDataPoint> getChartDataByDays(UUID userId, Instant startTime, Instant endTime,
             String movementType) {
         String sql = """

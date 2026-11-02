@@ -14,6 +14,18 @@ public class TimelineEditApplicationRepository implements PanacheRepositoryBase<
         if (targetIds.isEmpty()) return List.of();
         return find("targetType = ?1 and targetId in ?2", targetType, targetIds).list();
     }
+    public java.util.Map<Long, Integer> countForTargets(String targetType, Collection<Long> targetIds) {
+        if (targetIds.isEmpty()) return java.util.Map.of();
+        var rows = getEntityManager().createQuery("""
+                select targetId, count(*) from TimelineEditApplicationEntity
+                where targetType = :targetType and targetId in :targetIds group by targetId
+                """, Object[].class)
+                .setParameter("targetType", targetType).setParameter("targetIds", targetIds).getResultList();
+        java.util.Map<Long, Integer> counts = new java.util.HashMap<>();
+        for (var row : rows) counts.put((Long) row[0], Math.toIntExact((Long) row[1]));
+        return counts;
+    }
+
     public void deleteMissingTargets(UUID userId) {
         getEntityManager().createQuery("""
                 delete from TimelineEditApplicationEntity application

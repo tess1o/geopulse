@@ -47,6 +47,8 @@ test-results/
 playwright-report/
 tests/test-results/
 tests/playwright-report/
+tests/performance/memory/__pycache__/
+tests/performance/memory/results/
 
 ### Node.js ###
 node_modules/

@@ -24,10 +24,10 @@ class MapMatchingHashServiceTest {
         point.setCoordinates(new GeometryFactory().createPoint(new Coordinate(30.1, 50.1)));
         point.setAccuracy(5.0);
 
-        String originalInput = service.inputHash(List.of(point), 50.0);
+        String originalInput = service.inputHash(List.of(project(point)), 50.0);
         point.setAccuracy(7.0);
 
-        assertNotEquals(originalInput, service.inputHash(List.of(point), 50.0));
+        assertNotEquals(originalInput, service.inputHash(List.of(project(point)), 50.0));
         assertNotEquals(service.configHash("url=a|algorithm=v1"), service.configHash("url=b|algorithm=v2"));
     }
 
@@ -37,7 +37,7 @@ class MapMatchingHashServiceTest {
         GpsPointEntity first = point(1L);
         GpsPointEntity recreated = point(99L);
 
-        assertEquals(service.inputHash(List.of(first), 50.0), service.inputHash(List.of(recreated), 50.0));
+        assertEquals(service.inputHash(List.of(project(first)), 50.0), service.inputHash(List.of(project(recreated)), 50.0));
     }
 
     private GpsPointEntity point(Long id) {
@@ -48,4 +48,26 @@ class MapMatchingHashServiceTest {
         point.setAccuracy(5.0);
         return point;
     }
+    private org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO project(GpsPointEntity point) {
+        return new org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO(point.getTimestamp(),
+                point.getCoordinates() == null ? null : point.getLatitude(),
+                point.getCoordinates() == null ? null : point.getLongitude(), point.getAccuracy());
+    }
+
+    @Test
+    void projectedInputKeepsLegacyHashIncludingNullsAndOrdering() {
+        var point = point(1L);
+        var empty = new GpsPointEntity();
+        var source = List.of(point, empty);
+        StringBuilder legacy = new StringBuilder("maxAccuracy=null\n");
+        for (var p : source) {
+            legacy.append(p.getTimestamp()).append('|')
+                    .append(p.getCoordinates() == null ? null : p.getCoordinates().getY()).append('|')
+                    .append(p.getCoordinates() == null ? null : p.getCoordinates().getX()).append('|')
+                    .append(p.getAccuracy()).append('\n');
+        }
+        assertEquals(org.github.tess1o.geopulse.shared.security.CryptoUtils.sha256Hex(legacy.toString()),
+                new MapMatchingHashService().inputHash(source.stream().map(this::project).toList(), null));
+    }
+
 }

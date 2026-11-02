@@ -87,14 +87,15 @@ public class TripAltitudeStatisticsCalculator {
 
     private static double[] smooth(List<GPSPoint> points) {
         double[] smoothed = new double[points.size()];
+        double[] window = new double[2 * SMOOTHING_RADIUS + 1];
         for (int i = 0; i < points.size(); i++) {
             int from = Math.max(0, i - SMOOTHING_RADIUS);
             int to = Math.min(points.size(), i + SMOOTHING_RADIUS + 1);
-            double[] window = new double[to - from];
             for (int j = from; j < to; j++) {
                 window[j - from] = points.get(j).getAltitude();
             }
-            smoothed[i] = median(window);
+            Arrays.sort(window, 0, to - from);
+            smoothed[i] = window[(to - from) / 2];
         }
         return smoothed;
     }

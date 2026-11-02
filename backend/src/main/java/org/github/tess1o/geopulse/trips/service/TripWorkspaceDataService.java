@@ -1,7 +1,6 @@
 package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -17,7 +16,6 @@ import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class TripWorkspaceDataService {
@@ -80,20 +78,7 @@ public class TripWorkspaceDataService {
         Instant end = resolveEnd(trip, requestedEnd);
         validateRequestedRange(trip, start, end);
 
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(ownerUserId, start, end);
-        List<GpsPoint> converted = gpsPoints.stream()
-                .map(gp -> new GpsPointPathPointDTO(
-                        gp.getId(),
-                        gp.getCoordinates().getX(),
-                        gp.getCoordinates().getY(),
-                        gp.getTimestamp(),
-                        gp.getAccuracy(),
-                        gp.getAltitude(),
-                        gp.getVelocity(),
-                        ownerUserId,
-                        gp.getSourceType() != null ? gp.getSourceType().name() : null
-                ))
-                .collect(Collectors.toList());
+        List<GpsPointPathPointDTO> converted = gpsPointRepository.findPathPoints(ownerUserId, start, end);
 
         TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(ownerUserId);
         List<? extends GpsPoint> simplified = pathSimplificationService.simplify(converted, config);

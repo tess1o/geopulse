@@ -5,13 +5,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -45,12 +43,7 @@ public class GpsPointDuplicateDetectionService {
      * @return true if a duplicate exists, false otherwise
      */
     public boolean isDuplicatePoint(UUID userId, Instant timestamp, GpsSourceType sourceType) {
-        long existingCount = gpsPointRepository.findByUserIdAndTimePeriod(userId, timestamp, timestamp)
-                .stream()
-                .filter(point -> point.getSourceType() == sourceType)
-                .count();
-
-        boolean isDuplicate = existingCount > 0;
+        boolean isDuplicate = gpsPointRepository.existsPointWithSource(userId, timestamp, sourceType);
         if (isDuplicate) {
             log.warn("Duplicate GPS point detected for user {} at timestamp {} from source {}", 
                     userId, timestamp, sourceType);
@@ -106,17 +99,8 @@ public class GpsPointDuplicateDetectionService {
         Instant startTime = timestamp.minus(thresholdMinutes, ChronoUnit.MINUTES);
         Instant endTime = timestamp.plus(thresholdMinutes, ChronoUnit.MINUTES);
 
-        // Fetch all GPS points within the time window
-        List<GpsPointEntity> pointsInWindow = gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime);
-
-        // Filter by source type and check for location match
-        boolean hasDuplicate = pointsInWindow.stream()
-                .filter(point -> point.getSourceType() == sourceType)
-                .anyMatch(point -> {
-                    double latDiff = Math.abs(point.getLatitude() - latitude);
-                    double lonDiff = Math.abs(point.getLongitude() - longitude);
-                    return latDiff < LOCATION_TOLERANCE && lonDiff < LOCATION_TOLERANCE;
-                });
+        boolean hasDuplicate = gpsPointRepository.existsLocationDuplicate(
+                userId, startTime, endTime, sourceType, latitude, longitude, LOCATION_TOLERANCE);
 
         if (hasDuplicate) {
             log.debug("Location duplicate detected for user {}: same coordinates within {} minutes window, skipping",

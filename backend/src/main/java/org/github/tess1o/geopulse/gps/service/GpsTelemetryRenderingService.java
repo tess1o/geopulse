@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.service;
 
+import org.github.tess1o.geopulse.gps.model.GpsPathRow;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsTelemetryDisplayDTO;
@@ -50,15 +51,37 @@ public class GpsTelemetryRenderingService {
                 continue;
             }
 
-            List<GpsTelemetryDisplayDTO> gpsData = buildDisplayList(mapping, telemetry, true);
-            List<GpsTelemetryDisplayDTO> currentPopup = buildDisplayList(mapping, telemetry, false);
-
-            if (!gpsData.isEmpty() || !currentPopup.isEmpty()) {
-                output.put(point.getId(), new RenderedTelemetry(gpsData, currentPopup));
-            }
+            var rendered = render(mapping, telemetry);
+            if (rendered != null) output.put(point.getId(), rendered);
         }
 
         return output;
+    }
+
+    public Map<Long, RenderedTelemetry> renderForPathRows(UUID userId,
+            List<GpsPathRow> rows) {
+        Set<GpsSourceType> sources = new HashSet<>();
+        for (var row : rows) {
+            if (row.sourceType() != null && row.telemetry() != null && !row.telemetry().isEmpty()) {
+                sources.add(row.sourceType());
+            }
+        }
+        if (sources.isEmpty()) return Map.of();
+        var mappings = telemetryConfigService.getResolvedMappings(userId, sources);
+        Map<Long, RenderedTelemetry> output = new HashMap<>();
+        for (var row : rows) {
+            var mapping = row.sourceType() == null ? null : mappings.get(row.sourceType());
+            if (mapping == null || mapping.isEmpty() || row.telemetry() == null || row.telemetry().isEmpty()) continue;
+            var rendered = render(mapping, row.telemetry());
+            if (rendered != null) output.put(row.id(), rendered);
+        }
+        return output;
+    }
+
+    private RenderedTelemetry render(List<GpsTelemetryMappingEntry> mapping, Map<String, Object> telemetry) {
+        var gpsData = buildDisplayList(mapping, telemetry, true);
+        var currentPopup = buildDisplayList(mapping, telemetry, false);
+        return gpsData.isEmpty() && currentPopup.isEmpty() ? null : new RenderedTelemetry(gpsData, currentPopup);
     }
 
     private List<GpsTelemetryDisplayDTO> buildDisplayList(List<GpsTelemetryMappingEntry> mapping,

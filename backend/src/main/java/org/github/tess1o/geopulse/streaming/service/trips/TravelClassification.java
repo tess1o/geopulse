@@ -349,7 +349,7 @@ public class TravelClassification {
                                                long distanceMeters,
                                                TimelineConfig config) {
         if (statistics == null || !statistics.hasValidData()) {
-            log.warn("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
+            log.debug("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
             return classifyWithoutGpsStatistics(config, waterStatistics, tripDuration, distanceMeters);
         }
 
@@ -420,20 +420,20 @@ public class TravelClassification {
             // Extreme distance: almost certainly a flight (with minimum speed requirement)
             if (distanceKm > EXTREME_FLIGHT_DISTANCE_KM && avgSpeedKmh > EXTREME_FLIGHT_MIN_SPEED_KMH) {
                 log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (high confidence: extreme distance)",
-                         String.format("%.0f", distanceKm),
-                         String.format("%.0f", EXTREME_FLIGHT_DISTANCE_KM),
-                         String.format("%.1f", avgSpeedKmh),
-                         String.format("%.1f", EXTREME_FLIGHT_MIN_SPEED_KMH));
+                         distanceKm,
+                         EXTREME_FLIGHT_DISTANCE_KM,
+                         avgSpeedKmh,
+                         EXTREME_FLIGHT_MIN_SPEED_KMH);
                 return FLIGHT;
             }
 
             // Long distance with high calculated speed: clear flight signature
             if (distanceKm > LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > LONG_FLIGHT_MIN_SPEED_KMH) {
                 log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (medium-high confidence: long distance + high speed)",
-                         String.format("%.0f", distanceKm),
-                         String.format("%.0f", LONG_FLIGHT_DISTANCE_KM),
-                         String.format("%.1f", avgSpeedKmh),
-                         String.format("%.1f", LONG_FLIGHT_MIN_SPEED_KMH));
+                         distanceKm,
+                         LONG_FLIGHT_DISTANCE_KM,
+                         avgSpeedKmh,
+                         LONG_FLIGHT_MIN_SPEED_KMH);
                 return FLIGHT;
             }
 
@@ -444,21 +444,21 @@ public class TravelClassification {
                 distanceKm <= SHORT_FLIGHT_MAX_DISTANCE_KM &&
                 avgSpeedKmh > SHORT_FLIGHT_MIN_SPEED_KMH) {
                 log.debug("Distance {}km ({}-{}km range) AND speed {}km/h > {}km/h → FLIGHT (medium confidence: short-haul)",
-                         String.format("%.0f", distanceKm),
-                         String.format("%.0f", SHORT_FLIGHT_MIN_DISTANCE_KM),
-                         String.format("%.0f", SHORT_FLIGHT_MAX_DISTANCE_KM),
-                         String.format("%.1f", avgSpeedKmh),
-                         String.format("%.1f", SHORT_FLIGHT_MIN_SPEED_KMH));
+                         distanceKm,
+                         SHORT_FLIGHT_MIN_DISTANCE_KM,
+                         SHORT_FLIGHT_MAX_DISTANCE_KM,
+                         avgSpeedKmh,
+                         SHORT_FLIGHT_MIN_SPEED_KMH);
                 return FLIGHT;
             }
 
             // Very long distance with modest speed: likely flight with taxi/ground time
             if (distanceKm > VERY_LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > VERY_LONG_FLIGHT_MIN_SPEED_KMH) {
                 log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (medium confidence: very long distance)",
-                         String.format("%.0f", distanceKm),
-                         String.format("%.0f", VERY_LONG_FLIGHT_DISTANCE_KM),
-                         String.format("%.1f", avgSpeedKmh),
-                         String.format("%.1f", VERY_LONG_FLIGHT_MIN_SPEED_KMH));
+                         distanceKm,
+                         VERY_LONG_FLIGHT_DISTANCE_KM,
+                         avgSpeedKmh,
+                         VERY_LONG_FLIGHT_MIN_SPEED_KMH);
                 return FLIGHT;
             }
         }
@@ -475,10 +475,10 @@ public class TravelClassification {
                 // Add confidence logging based on speed range
                 if (avgSpeedKmh > 150) {
                     log.debug("Distance {}km, speed {}km/h → TRAIN (high-speed rail)",
-                             String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                             distanceKm, avgSpeedKmh);
                 } else {
                     log.debug("Distance {}km, speed {}km/h → TRAIN (regional/intercity)",
-                             String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                             distanceKm, avgSpeedKmh);
                 }
                 return TRAIN;
             }
@@ -527,9 +527,9 @@ public class TravelClassification {
         //    This catches GPS noise creating phantom supersonic trips
         final double MAX_REALISTIC_SPEED_KMH = 1200.0;
         if (avgSpeedKmh > MAX_REALISTIC_SPEED_KMH || maxSpeedKmh > MAX_REALISTIC_SPEED_KMH) {
-            log.warn("Impossible speed detected (avg: {} km/h, max: {} km/h). Likely GPS noise. Classifying as UNKNOWN.",
-                    String.format("%f", avgSpeedKmh),
-                    String.format("%f", maxSpeedKmh));
+            log.debug("Impossible speed detected (avg: {} km/h, max: {} km/h). Likely GPS noise. Classifying as UNKNOWN.",
+                    avgSpeedKmh,
+                    maxSpeedKmh);
             return UNKNOWN;
         }
 
@@ -762,17 +762,17 @@ public class TravelClassification {
             // Example: Flight with good GPS (750 km/h) but bad distance calc (1500 km/h)
             if (avgSpeedKmh <= MAX_REALISTIC_SPEED_KMH && maxSpeedKmh <= MAX_REALISTIC_SPEED_KMH) {
                 log.debug("Calculated speed ({} km/h) is unrealistic, but GPS speeds are reasonable ({} km/h avg, {} km/h max). Using GPS.",
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh));
+                        calculatedAvgSpeedKmh,
+                        avgSpeedKmh,
+                        maxSpeedKmh);
                 return null; // Continue with GPS speeds
             } else {
                 // Both calculated AND GPS are unrealistic - this is pure noise
-                log.warn("Impossible calculated speed ({} km/h) detected. GPS shows {} km/h avg, {} km/h max. " +
+                log.debug("Impossible calculated speed ({} km/h) detected. GPS shows {} km/h avg, {} km/h max. " +
                                 "Distance: {} m, Duration: {} s. This is GPS noise - using UNKNOWN.",
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh),
+                        calculatedAvgSpeedKmh,
+                        avgSpeedKmh,
+                        maxSpeedKmh,
                         distanceMeters,
                         tripDuration.getSeconds());
                 return UNKNOWN;
@@ -808,10 +808,10 @@ public class TravelClassification {
                 // Max speed spike is unrealistic compared to avg (e.g., 39 km/h max with 3.5 km/h avg)
                 adjustedMaxSpeed = avgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
                 log.debug("GPS max speed ({} km/h) is noise spike ({}x avg {} km/h). Using estimated max: {} km/h",
-                        String.format("%f", maxSpeedKmh),
-                        String.format("%f", maxSpeedKmh / avgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", adjustedMaxSpeed));
+                        maxSpeedKmh,
+                        maxSpeedKmh / avgSpeedKmh,
+                        avgSpeedKmh,
+                        adjustedMaxSpeed);
             }
             return new GpsReliabilityResult(avgSpeedKmh, adjustedMaxSpeed);
         }
@@ -823,8 +823,8 @@ public class TravelClassification {
         if (calculatedAvgSpeedKmh < MIN_REALISTIC_CALCULATED_SPEED_KMH && avgSpeedKmh > MIN_GPS_MOVEMENT_SPEED_KMH) {
             log.debug("Calculated speed is unrealistically low ({} km/h) but GPS shows movement ({} km/h). " +
                             "Distance calculation likely wrong ({}m in {}s). Trusting GPS.",
-                    String.format("%f", calculatedAvgSpeedKmh),
-                    String.format("%f", avgSpeedKmh),
+                    calculatedAvgSpeedKmh,
+                    avgSpeedKmh,
                     distanceMeters,
                     tripDuration.getSeconds());
             return new GpsReliabilityResult(avgSpeedKmh, maxSpeedKmh);
@@ -861,8 +861,8 @@ public class TravelClassification {
             // GPS should not exceed calculated by more than 2x
             if (avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO) {
                 log.debug("GPS unreliable (too high): GPS {} km/h > calculated {} km/h * {}",
-                        String.format("%.2f", avgSpeedKmh),
-                        String.format("%.2f", calculatedAvgSpeedKmh),
+                        avgSpeedKmh,
+                        calculatedAvgSpeedKmh,
                         LOW_SPEED_GPS_RELIABILITY_RATIO);
                 return true; // GPS unreliable - too high
             }
@@ -873,10 +873,10 @@ public class TravelClassification {
             // If GPS is 5.5 km/h, it's too low (underreporting by ~27%)
             if (avgSpeedKmh < calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO) {
                 log.debug("GPS unreliable (too low): GPS {} km/h < calculated {} km/h / {} (= {} km/h)",
-                        String.format("%.2f", avgSpeedKmh),
-                        String.format("%.2f", calculatedAvgSpeedKmh),
+                        avgSpeedKmh,
+                        calculatedAvgSpeedKmh,
                         LOW_SPEED_GPS_MIN_RELIABILITY_RATIO,
-                        String.format("%.2f", calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO));
+                        calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO);
                 return true; // GPS unreliable - too low
             }
 
@@ -910,13 +910,13 @@ public class TravelClassification {
                                   double avgSpeedKmh, long distanceMeters, Duration tripDuration, TimelineConfig config) {
         if (maxSpeedKmh > calculatedAvgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
             if (shouldKeepRoadVehiclePeakSpeed(maxSpeedKmh, distanceMeters, config)) {
-                log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) exceeds configured " +
+                log.debug("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) exceeds configured " +
                                 "non-motorized peak thresholds within plausible road-vehicle range " +
                                 "(calculated avg: {} km/h). " +
                                 "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh),
-                        String.format("%f", calculatedAvgSpeedKmh),
+                        avgSpeedKmh,
+                        maxSpeedKmh,
+                        calculatedAvgSpeedKmh,
                         distanceMeters,
                         tripDuration.getSeconds());
                 return maxSpeedKmh;
@@ -925,22 +925,22 @@ public class TravelClassification {
             // GPS max is too high - likely noise spike
             // Use reasonable estimate instead
             double estimatedMax = calculatedAvgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
-            log.warn("GPS avg speed ({} km/h) and max speed ({} km/h) are unreliable (calculated: {} km/h). " +
+            log.debug("GPS avg speed ({} km/h) and max speed ({} km/h) are unreliable (calculated: {} km/h). " +
                             "Distance: {} m, Duration: {} s. Using calculated speeds.",
-                    String.format("%f", avgSpeedKmh),
-                    String.format("%f", maxSpeedKmh),
-                    String.format("%f", calculatedAvgSpeedKmh),
+                    avgSpeedKmh,
+                    maxSpeedKmh,
+                    calculatedAvgSpeedKmh,
                     distanceMeters,
                     tripDuration.getSeconds());
             return estimatedMax;
         } else {
             // GPS max seems reasonable - keep it
             // This handles: car trip with traffic stops (10 km/h avg, 49 km/h max)
-            log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) seems reasonable (calculated avg: {} km/h). " +
+            log.debug("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) seems reasonable (calculated avg: {} km/h). " +
                             "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
-                    String.format("%f", avgSpeedKmh),
-                    String.format("%f", maxSpeedKmh),
-                    String.format("%f", calculatedAvgSpeedKmh),
+                    avgSpeedKmh,
+                    maxSpeedKmh,
+                    calculatedAvgSpeedKmh,
                     distanceMeters,
                     tripDuration.getSeconds());
             return maxSpeedKmh;

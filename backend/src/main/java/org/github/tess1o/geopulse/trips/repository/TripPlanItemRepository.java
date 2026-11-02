@@ -6,7 +6,6 @@ import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @ApplicationScoped
 public class TripPlanItemRepository implements PanacheRepository<TripPlanItemEntity> {
@@ -15,6 +14,14 @@ public class TripPlanItemRepository implements PanacheRepository<TripPlanItemEnt
         // The one ordering rule shared with the frontend rail and the map route: planned day first
         // (unscheduled last), then the position within the day.
         return list("trip.id = ?1 ORDER BY plannedDay ASC NULLS LAST, orderIndex ASC, createdAt ASC, id ASC", tripId);
+    }
+
+    public long[] countSummary(Long tripId) {
+        Object[] row = getEntityManager().createQuery("""
+                select count(p), coalesce(sum(case when p.isVisited = true then 1 else 0 end), 0)
+                from TripPlanItemEntity p where p.trip.id = :tripId
+                """, Object[].class).setParameter("tripId", tripId).getSingleResult();
+        return new long[]{((Number) row[0]).longValue(), ((Number) row[1]).longValue()};
     }
 
     public Optional<TripPlanItemEntity> findByIdAndTripId(Long itemId, Long tripId) {

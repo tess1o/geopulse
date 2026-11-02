@@ -46,13 +46,13 @@ public class GapStayInferenceRule implements DataGapRule {
                 context.gapDuration()
         );
         boolean shouldInferStay = stayInferencePlan.isInferred();
-        log.info("Gap stay inference check: shouldInfer={}, enabled={}",
+        log.debug("Gap stay inference check: shouldInfer={}, enabled={}",
                 shouldInferStay, context.config().getGapStayInferenceEnabled());
         if (!shouldInferStay) {
             return false;
         }
 
-        log.info("Gap stay inference applied - skipping gap creation, points are at same location");
+        log.debug("Gap stay inference applied - skipping gap creation, points are at same location");
         applyStayInferencePlan(stayInferencePlan, context.userState(), context.config(), gapEvents);
         context.userState().getActiveExplanation().note(TimelineReason.of(TimelineReasons.CONTINUED_OVER_GAP,
                 "gapSeconds", context.gapDuration().getSeconds()));

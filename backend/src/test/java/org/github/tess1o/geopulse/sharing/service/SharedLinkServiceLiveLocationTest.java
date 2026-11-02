@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.sharing.service;
 
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.sharing.mapper.SharedLinkMapper;
@@ -26,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_ACCESS_DENIED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 /**
@@ -101,16 +102,26 @@ class SharedLinkServiceLiveLocationTest {
         liveLink.setHistoryHours(1);
         when(sharedLinkRepository.findActiveById(linkId)).thenReturn(Optional.of(liveLink));
 
-        GpsPointEntity latest = new GpsPointEntity();
-        when(gpsPointRepository.findByUserIdLatestGpsPoint(ownerId)).thenReturn(latest);
-        when(gpsPointRepository.findByUserIdAndTimePeriod(any(), any(Instant.class), any(Instant.class)))
-                .thenReturn(List.of());
-        LocationHistoryResponse expected = new LocationHistoryResponse(null, List.of());
-        when(mapper.toLocationHistoryResponse(latest, List.of())).thenReturn(expected);
-
+        var current = new LocationHistoryResponse.CurrentLocationData(50.0, 30.0, Instant.now(), null);
+        when(gpsPointRepository.findLatestLocation(ownerId)).thenReturn(current);
+        when(gpsPointRepository.findLocationHistory(any(), any(Instant.class), any(Instant.class))).thenReturn(List.of());
         LocationHistoryResponse actual = service.getSharedLocation(linkId, TOKEN);
+        assertThat(actual.getCurrent()).isSameAs(current);
+        assertThat(actual.getHistory()).isEmpty();
+        assertThat(actual.getCurrent().getAccuracy()).isNull();
+    }
 
-        assertThat(actual).isSameAs(expected);
+    @Test
+    void liveShareWithoutHistoryKeepsLegacyZeroAccuracyDefault() {
+        var live = link(ShareType.LIVE_LOCATION);
+        live.setShowHistory(false);
+        when(sharedLinkRepository.findActiveById(linkId)).thenReturn(Optional.of(live));
+        when(gpsPointRepository.findLatestLocation(ownerId))
+                .thenReturn(new LocationHistoryResponse.CurrentLocationData(50.0, 30.0, Instant.now(), null));
+        var response = service.getSharedLocation(linkId, TOKEN);
+        assertThat(response.getCurrent().getAccuracy()).isEqualTo(0.0);
+        assertThat(response.getHistory()).isEmpty();
+        verify(gpsPointRepository, never()).findLocationHistory(any(), any(), any());
     }
 
     private SharedLinkEntity link(ShareType shareType) {

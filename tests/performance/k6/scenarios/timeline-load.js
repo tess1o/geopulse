@@ -20,6 +20,9 @@ import {
   randomItem,
 } from '../utils/helpers.js';
 
+// Shared with the native memory runner's fixed, light read workload.
+const timelineRead = JSON.parse(open('../utils/timeline-read.json'));
+
 // Load test configuration
 export const options = {
   stages: [
@@ -73,9 +76,9 @@ export default function (data) {
   const dateRange = generateDateRange(rangeType);
 
   // Build timeline API URL with query parameters
-  const timelineUrl = buildUrl(`${config.baseUrl}/api/v1/timeline`, {
-    startTime: dateRange.start,
-    endTime: dateRange.end,
+  const timelineUrl = buildUrl(`${config.baseUrl}/api/v1${timelineRead.path}`, {
+    [timelineRead.startParameter]: dateRange.start,
+    [timelineRead.endParameter]: dateRange.end,
   });
 
   // Make request to timeline endpoint
@@ -86,19 +89,12 @@ export default function (data) {
 
   // Verify response
   check(response, {
-    ...commonChecks(200, 'stays'),
-    'has trips data': (r) => {
+    ...commonChecks(200),
+    'has timeline data': (r) => {
       try {
         const body = JSON.parse(r.body);
-        return body.data && body.data.trips !== undefined;
-      } catch (e) {
-        return false;
-      }
-    },
-    'has data gaps': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.data && body.data.dataGaps !== undefined;
+        const data = body.data || body;
+        return timelineRead.requiredFields.every((field) => data[field] !== undefined);
       } catch (e) {
         return false;
       }

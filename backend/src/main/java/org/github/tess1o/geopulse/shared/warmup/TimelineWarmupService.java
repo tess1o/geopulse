@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.shared.warmup;
 
+import org.github.tess1o.geopulse.streaming.repository.TimelineReadRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -8,15 +9,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
-import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -24,8 +19,8 @@ import java.util.UUID;
  * to eliminate first-request latency and prevent OOM errors in 512MB containers.
  * <p>
  * Strategy:
- * 1. Load real timeline data (30 days default) to pre-warm all caches and query plans
- * 2. Exercise full DTO conversion pipeline (geometry processing, coordinate extraction)
+ * 1. Read bounded timeline projections (30 days default) to warm query plans
+ * 2. Exercise the timeline response mapping without loading entity graphs
  * 3. Force garbage collection to free warmup objects before users arrive
  * <p>
  * Trade-off: Longer startup time (5-8s) for safe first-request handling.
@@ -35,16 +30,7 @@ import java.util.UUID;
 public class TimelineWarmupService {
 
     @Inject
-    TimelineStayRepository stayRepository;
-
-    @Inject
-    TimelineTripRepository tripRepository;
-
-    @Inject
-    TimelineDataGapRepository dataGapRepository;
-
-    @Inject
-    StreamingTimelineConverter converter;
+    TimelineReadRepository timelineReadRepository;
 
     @Inject
     EntityManager entityManager;
@@ -136,8 +122,8 @@ public class TimelineWarmupService {
         } catch (Exception e) {
             log.warn("Could not find user with moderate data, falling back to any user");
             // Fallback: just pick first user
-            List<UserEntity> users = UserEntity.listAll();
-            return users.isEmpty() ? null : users.getFirst().getId();
+            return entityManager.createQuery("select id from UserEntity order by id", UUID.class)
+                    .setMaxResults(1).getResultStream().findFirst().orElse(null);
         }
     }
 
@@ -150,44 +136,11 @@ public class TimelineWarmupService {
 
         try {
 
-            var stays = stayRepository.findByUserIdAndTimeRangeWithExpansion(
-                    userId, startTime, endTime
-            );
-            log.debug("Loaded {} stays for warmup", stays.size());
-
-            var trips = tripRepository.findByUserIdAndTimeRangeWithExpansion(
-                    userId, startTime, endTime
-            );
-            log.debug("Loaded {} trips for warmup", trips.size());
-
-            var gaps = dataGapRepository.findByUserIdAndTimeRangeWithExpansion(
-                    userId, startTime, endTime
-            );
-            log.debug("Loaded {} data gaps for warmup", gaps.size());
-
-            // Limit conversion to maxWarmupItems to prevent memory spikes
-            // Full query execution already warmed up the pipeline
-            int convertedCount = 0;
-            int totalItems = stays.size() + trips.size();
-
-            if (totalItems > maxWarmupItems) {
-                log.info("Loaded {} items, limiting DTO conversion to {} to prevent memory spike",
-                        totalItems, maxWarmupItems);
-            }
-
-            // Convert to DTOs (warms up geometry conversion, coordinate extraction)
-            for (var stay : stays) {
-                if (convertedCount >= maxWarmupItems) break;
-                converter.convertStayEntityToDto(stay);
-                convertedCount++;
-            }
-            for (var trip : trips) {
-                if (convertedCount >= maxWarmupItems) break;
-                converter.convertTripEntityToDto(trip);
-                convertedCount++;
-            }
-
-            log.debug("Converted {} entities to DTOs during warmup", convertedCount);
+            int limit = Math.max(0, maxWarmupItems);
+            var stays = timelineReadRepository.findStays(userId, startTime, endTime, limit);
+            var trips = timelineReadRepository.findTrips(userId, startTime, endTime, limit - stays.size());
+            var gaps = timelineReadRepository.findGaps(userId, startTime, endTime, null, limit);
+            log.debug("Warmed {} stays, {} trips, {} gaps", stays.size(), trips.size(), gaps.size());
 
         } catch (Exception e) {
             log.error("Warmup query execution failed (non-critical): {}", e.getMessage(), e);
@@ -202,15 +155,9 @@ public class TimelineWarmupService {
         UUID dummyUserId = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
         try {
-            stayRepository.findByUserIdAndTimeRangeWithExpansion(
-                    dummyUserId, futureTime, futureTime
-            );
-            tripRepository.findByUserIdAndTimeRangeWithExpansion(
-                    dummyUserId, futureTime, futureTime
-            );
-            dataGapRepository.findByUserIdAndTimeRangeWithExpansion(
-                    dummyUserId, futureTime, futureTime
-            );
+            timelineReadRepository.findStays(dummyUserId, futureTime, futureTime, 1);
+            timelineReadRepository.findTrips(dummyUserId, futureTime, futureTime, 1);
+            timelineReadRepository.findGaps(dummyUserId, futureTime, futureTime, null, 1);
         } catch (Exception e) {
             log.warn("Dummy warmup failed: {}", e.getMessage());
         }

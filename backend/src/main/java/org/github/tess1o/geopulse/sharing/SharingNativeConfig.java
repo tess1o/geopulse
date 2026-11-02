@@ -10,6 +10,8 @@ import org.github.tess1o.geopulse.sharing.model.*;
         CreateShareLinkRequest.class,
         CreateShareLinkResponse.class,
         LocationHistoryResponse.class,
+        LocationHistoryResponse.CurrentLocationData.class,
+        LocationHistoryResponse.HistoricalLocationData.class,
         SharedLinkDto.class,
         SharedLinksDto.class,
         SharedLocationInfo.class,

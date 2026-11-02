@@ -1,0 +1,104 @@
+name: Timeline Memory Benchmark
+
+on:
+  schedule:
+    - cron: '15 1 * * *'
+  workflow_dispatch:
+    inputs:
+      baseline_image:
+        description: Immutable native baseline image reference
+        required: true
+        type: string
+      baseline_commit:
+        description: Application commit used to build the baseline (if known)
+        type: string
+      sizes:
+        description: Space-separated point counts
+        default: '100000 1000000 10000000'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: timeline-memory-benchmark
+  cancel-in-progress: false
+
+jobs:
+  images:
+    if: github.event_name == 'workflow_dispatch' || vars.MEMORY_BENCHMARK_BASELINE_IMAGE != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      BASELINE_IMAGE: ${{ inputs.baseline_image || vars.MEMORY_BENCHMARK_BASELINE_IMAGE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve baseline image before building candidate
+        run: |
+          docker pull "$BASELINE_IMAGE"
+          docker image save -o "$RUNNER_TEMP/baseline-image.tar" "$BASELINE_IMAGE"
+      - name: Build production native candidate
+        run: |
+          docker build -f backend/Dockerfile.native -t geopulse-memory-candidate .
+          docker image save -o "$RUNNER_TEMP/candidate-image.tar" geopulse-memory-candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timeline-memory-images
+          path: ${{ runner.temp }}/*-image.tar
+          retention-days: 3
+
+  benchmark:
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [stay, trip, events, merges, dense-altitude, recorded-627, recorded-631, recorded-632]
+    env:
+      BASELINE_IMAGE: ${{ inputs.baseline_image || vars.MEMORY_BENCHMARK_BASELINE_IMAGE }}
+      BENCHMARK_SIZES: ${{ inputs.sizes || '100000 1000000 10000000' }}
+      BENCHMARK_DATASET: ${{ matrix.dataset }}
+      BASELINE_COMMIT: ${{ inputs.baseline_commit || vars.MEMORY_BENCHMARK_BASELINE_COMMIT || 'unknown' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: timeline-memory-images
+          path: ${{ runner.temp }}/memory-images
+      - name: Load exact baseline and candidate images
+        run: |
+          docker image load -i "$RUNNER_TEMP/memory-images/baseline-image.tar"
+          docker image load -i "$RUNNER_TEMP/memory-images/candidate-image.tar"
+      - name: Test benchmark infrastructure
+        run: python3 -m unittest discover -s tests/performance/memory -p 'test_*.py' -v
+      - name: Fetch fixture services
+        run: |
+          docker pull postgis/postgis:18-3.6
+          docker pull python:3.13-alpine
+      - name: Preserve baseline and database fixtures
+        run: |
+          python3 tests/performance/memory/benchmark.py capture \
+            --baseline "$BASELINE_IMAGE" --baseline-commit "$BASELINE_COMMIT" --out "$RUNNER_TEMP/memory-baseline" \
+            --sizes $BENCHMARK_SIZES --datasets "$BENCHMARK_DATASET"
+      - name: Measure alternating baseline and candidate
+        run: |
+          python3 tests/performance/memory/benchmark.py run \
+            --bundle "$RUNNER_TEMP/memory-baseline" --candidate geopulse-memory-candidate \
+            --candidate-commit "$GITHUB_SHA" --out "$RUNNER_TEMP/memory-results" \
+            --memory 512m --heap 192m --repetitions 5 \
+            --scenarios normal load retention concurrency interrupt database-failure
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timeline-memory-${{ matrix.dataset }}
+          path: |
+            ${{ runner.temp }}/memory-results
+            ${{ runner.temp }}/memory-baseline
+            !${{ runner.temp }}/memory-baseline/baseline-image.tar
+          retention-days: 3

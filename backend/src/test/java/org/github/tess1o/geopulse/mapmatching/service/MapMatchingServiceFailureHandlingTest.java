@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.mapmatching.service;
 
 import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingTripResolutionDTO;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionStatus;
@@ -132,7 +132,7 @@ class MapMatchingServiceFailureHandlingTest {
         when(regeneratedTrip.getTimestamp()).thenReturn(start);
         when(regeneratedTrip.getTripDuration()).thenReturn(120L);
         when(regeneratedTrip.getMovementType()).thenReturn("CAR");
-        when(gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, start, start.plusSeconds(120), null))
+        when(gpsPointRepository.findMapMatchingPoints(userId, start, start.plusSeconds(120), null))
                 .thenReturn(List.of(point(start), point(start.plusSeconds(60))));
         when(profileResolver.resolveProfile("CAR")).thenReturn("auto");
         when(hashService.configHash("algorithm=v4|valhalla|auto")).thenReturn("config-hash");
@@ -151,6 +151,27 @@ class MapMatchingServiceFailureHandlingTest {
         verifyNoInteractions(valhallaProvider);
     }
 
+    @Test
+    void unsupportedMovementSkipsGpsLoading() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setTimelineDisplayPreferences(TimelineDisplayPreferences.builder().mapMatchingEnabled(true).build());
+        var trip = TimelineTripEntity.builder().id(9001L).user(user).timestamp(Instant.parse("2026-07-02T10:00:00Z"))
+                .tripDuration(120).movementType("BOAT").build();
+        when(configuration.isEnabled()).thenReturn(true);
+        when(configuration.provider()).thenReturn("valhalla");
+        when(configuration.valhallaConfigured()).thenReturn(true);
+        when(configuration.getMaxTripDurationHours()).thenReturn(24);
+        when(userRepository.findById(userId)).thenReturn(user);
+        when(timelineConfigurationProvider.getConfigurationForUser(userId))
+                .thenReturn(TimelineConfig.builder().useVelocityAccuracy(false).build());
+        when(tripRepository.findByIdOptional(9001L)).thenReturn(Optional.of(trip));
+        var result = service.resolve(userId, List.of(9001L)).getTrips().getFirst();
+        assertThat(result.getStatus()).isEqualTo(MapMatchingResolutionStatus.SKIPPED);
+        verifyNoInteractions(gpsPointRepository, valhallaProvider);
+    }
+
     private TimelineTripPathMatchEntity processFailure(RuntimeException failure) {
         UUID userId = UUID.randomUUID();
         UserEntity user = mock(UserEntity.class);
@@ -162,14 +183,14 @@ class MapMatchingServiceFailureHandlingTest {
                 .profile("pedestrian")
                 .build();
         Instant start = Instant.parse("2026-07-02T10:00:00Z");
-        GpsPointEntity first = point(start);
-        GpsPointEntity second = point(start.plusSeconds(60));
+        MapMatchingPointDTO first = point(start);
+        MapMatchingPointDTO second = point(start.plusSeconds(60));
 
         when(user.getId()).thenReturn(userId);
         when(trip.getUser()).thenReturn(user);
         when(trip.getTimestamp()).thenReturn(start);
         when(trip.getTripDuration()).thenReturn(60L);
-        when(gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, start, start.plusSeconds(60), null))
+        when(gpsPointRepository.findMapMatchingPoints(userId, start, start.plusSeconds(60), null))
                 .thenReturn(List.of(first, second));
         when(configuration.getMaxTripDurationHours()).thenReturn(24);
         when(configuration.getMaxInputPoints()).thenReturn(100);
@@ -181,8 +202,8 @@ class MapMatchingServiceFailureHandlingTest {
         return target;
     }
 
-    private GpsPointEntity point(Instant timestamp) {
-        GpsPointEntity point = new GpsPointEntity();
+    private MapMatchingPointDTO point(Instant timestamp) {
+        MapMatchingPointDTO point = new MapMatchingPointDTO();
         point.setTimestamp(timestamp);
         return point;
     }

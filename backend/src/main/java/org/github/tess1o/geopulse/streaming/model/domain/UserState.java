@@ -2,11 +2,13 @@ package org.github.tess1o.geopulse.streaming.model.domain;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.AccessLevel;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Getter
@@ -14,8 +16,17 @@ import java.util.List;
 public class UserState {
 
     private ProcessorMode currentMode = ProcessorMode.UNKNOWN;
-    private List<GPSPoint> activePoints = new ArrayList<>();
+    private final ArrayList<GPSPoint> activePoints = new ArrayList<>();
+    @Getter(AccessLevel.NONE)
+    private final List<GPSPoint> activePointsView = Collections.unmodifiableList(activePoints);
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private double latitudeSum;
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private double longitudeSum;
     private GPSPoint lastProcessedPoint;
+    private WaterTransitionTracker waterTransitionTracker;
 
     /** How the next event begins: with the very first point, or with the first point after a data gap. */
     private TimelineReason nextStartReason = TimelineReason.of(TimelineReasons.FIRST_POINT);
@@ -45,10 +56,23 @@ public class UserState {
 
     public void addActivePoint(GPSPoint point) {
         this.activePoints.add(point);
+        // Streamed GPS coordinates are immutable after insertion; preserve the original summation order.
+        latitudeSum += point.getLatitude();
+        longitudeSum += point.getLongitude();
     }
 
     public void clearActivePoints() {
+        int previousSize = activePoints.size();
         this.activePoints.clear();
+        if (previousSize > 10_000) activePoints.trimToSize();
+        latitudeSum = 0;
+        longitudeSum = 0;
+        waterTransitionTracker = null;
+    }
+
+    /** Short-lived read-only view; use copyActivePoints when points must survive clearing this state. */
+    public List<GPSPoint> getActivePoints() {
+        return activePointsView;
     }
 
     public GPSPoint getFirstActivePoint() {
@@ -67,17 +91,10 @@ public class UserState {
         if (activePoints.isEmpty()) {
             return null;
         }
-        double lat = 0;
-        double lon = 0;
-        for (GPSPoint p : activePoints) {
-            lat += p.getLatitude();
-            lon += p.getLongitude();
-        }
-
         // Apply consistent rounding to match GeoUtils.createPoint() behavior
         // 8 decimal places provides approximately 1.1 meter precision at the equator
-        double avgLat = lat / activePoints.size();
-        double avgLon = lon / activePoints.size();
+        double avgLat = latitudeSum / activePoints.size();
+        double avgLon = longitudeSum / activePoints.size();
 
         double latRounded = BigDecimal.valueOf(avgLat)
                 .setScale(8, RoundingMode.HALF_UP)
@@ -98,7 +115,7 @@ public class UserState {
      */
     public void reset() {
         currentMode = ProcessorMode.UNKNOWN;
-        activePoints.clear();
+        clearActivePoints();
         lastProcessedPoint = null;
         nextStartReason = TimelineReason.of(TimelineReasons.AFTER_DATA_GAP);
         activeExplanation = new TimelineExplanation();

@@ -1,13 +1,13 @@
 <template>
   <Drawer :visible="visible" position="right" class="timeline-edit-history" :header="t('timeline.edit.history')" @show="rememberFocus" @after-hide="restoreFocus" @update:visible="value => !value && $emit('close')">
-    <TimelineChangesList :visible="visible" :item="item" @changed="$emit('changed', $event)" />
+    <TimelineChangesList :visible="visible" :item="item" :edits="edits" :reload="reload" @changed="$emit('changed', $event)" />
   </Drawer>
 </template>
 <script setup>
 import { useI18n } from 'vue-i18n'
 import Drawer from 'primevue/drawer'
 import TimelineChangesList from './TimelineChangesList.vue'
-defineProps({ visible: Boolean, item: { type: Object, default: null } })
+defineProps({ visible: Boolean, item: { type: Object, default: null }, edits: { type: Array, default: null }, reload: Function })
 defineEmits(['close', 'changed'])
 const { t } = useI18n()
 let opener = null

@@ -48,8 +48,8 @@ class StatisticsServiceImplTest {
                 .thenReturn(createMostActiveDay("01/02", "Monday", 20.0, 3600.0, 3L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(new ChartDataPoint("MON", 10.0, "MON")));
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of(new ChartDataPoint("MON", 10.0, "MON"))));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
@@ -71,7 +71,7 @@ class StatisticsServiceImplTest {
         verify(statisticsRepository).getTopPlaces(testUserId, testStart, testEnd, 5);
         verify(statisticsRepository).getMostActiveDay(testUserId, testStart, testEnd);
         verify(statisticsRepository).getRoutesStatistics(testUserId, testStart, testEnd);
-        verify(statisticsRepository, times(9)).getChartDataByDays(any(), any(), any(), any());
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false));
     }
     @Test
     void getStatistics_WithEmptyData_ReturnsZeroStatistics() {
@@ -89,7 +89,8 @@ class StatisticsServiceImplTest {
                         .longestTripDistanceMeters(0.0)
                         .mostCommonRoute(new MostCommonRoute("", 0))
                         .build());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of()));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
@@ -120,7 +121,8 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of()));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
@@ -140,15 +142,15 @@ class StatisticsServiceImplTest {
                 .thenReturn(createMostActiveDay("01/05", "Friday", 25.0, 4500.0, 4L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, longRangeEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true)))
+                .thenReturn(chartRows(List.of(
                         new ChartDataPoint("01/01", 10.0, "01/01"),
                         new ChartDataPoint("01/08", 5.0, "01/08")
-                ));
+                )));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS);
         // Then
-        verify(statisticsRepository, atLeast(5)).getChartDataByWeeks(any(), any(), any(), any());
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true));
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
@@ -165,15 +167,15 @@ class StatisticsServiceImplTest {
                 .thenReturn(createMostActiveDay("01/03", "Wednesday", 30.0, 5400.0, 5L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of(
                         new ChartDataPoint("MON", 5.0, "MON"),
                         new ChartDataPoint("TUE", 10.0, "TUE")
-                ));
+                )));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
-        verify(statisticsRepository, atLeast(5)).getChartDataByDays(any(), any(), any(), any());
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false));
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
@@ -190,13 +192,13 @@ class StatisticsServiceImplTest {
                 .thenReturn(createMostActiveDay("01/04", "Thursday", 18.0, 3200.0, 3L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(new ChartDataPoint("01/01", 15.0, "01/01")));
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true)))
+                .thenReturn(chartRows(List.of(new ChartDataPoint("01/01", 15.0, "01/01"))));
         // When
         statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
         // Then
-        verify(statisticsRepository, times(9)).getChartDataByWeeks(any(), any(), any(), any());
-        verify(statisticsRepository, times(0)).getChartDataByDays(any(), any(), any(), any());
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true));
+        verify(statisticsRepository, times(0)).getChartDataByMovementType(any(), any(), any(), eq(false));
     }
     @Test
     void getStatistics_HandlesTopPlacesWithCoordinates() {
@@ -213,7 +215,8 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of()));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
@@ -237,13 +240,20 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+                .thenReturn(chartRows(List.of()));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
         assertEquals(18.0, result.getAverageSpeed(), 0.01); // 36km / 2h = 18 km/h
     }
     // Helper methods to create test data
+    private java.util.Map<String, List<ChartDataPoint>> chartRows(List<ChartDataPoint> points) {
+        return java.util.Arrays.stream(org.github.tess1o.geopulse.streaming.model.shared.TripType.values())
+                .filter(type -> type != org.github.tess1o.geopulse.streaming.model.shared.TripType.UNKNOWN)
+                .collect(java.util.stream.Collectors.toMap(Enum::name, type -> points));
+    }
+
     private TopPlace createTopPlace(String name, int visits, long duration, double lat, double lon) {
         return TopPlace.builder()
                 .name(name)
