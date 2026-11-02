@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.repository;
 
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineOverrideIds;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
@@ -34,4 +35,16 @@ public class TimelineDataGapStayOverrideRepository implements PanacheRepository<
         return find("user.id = ?1 and stay.id in ?2 and migratedToTimelineEdits = false order by sourceGapStartTime",
                 userId, stayIds).list();
     }
+    public List<TimelineOverrideIds> findIdsByUserIdAndStayIds(
+            UUID userId, List<Long> stayIds) {
+        if (stayIds == null || stayIds.isEmpty()) return List.of();
+        return getEntityManager().createQuery("""
+                select new org.github.tess1o.geopulse.streaming.model.dto.TimelineOverrideIds(id, stay.id)
+                from TimelineDataGapStayOverrideEntity
+                where user.id = :userId and stay.id in :stayIds and migratedToTimelineEdits = false
+                order by sourceGapStartTime
+                """, TimelineOverrideIds.class)
+                .setParameter("userId", userId).setParameter("stayIds", stayIds).getResultList();
+    }
+
 }

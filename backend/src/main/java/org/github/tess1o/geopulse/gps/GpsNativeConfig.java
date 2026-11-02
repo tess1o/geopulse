@@ -32,6 +32,7 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
 
 @RegisterForReflection(targets = {
         GpsPointEntity.class,
+        GpsPathRow.class,
         GoogleTimelineRecordType.class,
         GpsPointPathPointDTO.class,
         GpsPointSummaryDTO.class,

@@ -241,6 +241,31 @@ class StatisticsRepositoryTest {
         // Should include trips from 2024-01-02
         assertTrue(result.getTotalDistanceMeters() >= 20000.0); // 15k + 5k from day 2
     }
+    @Test
+    @Transactional
+    void groupedChartsMatchLegacyQueriesForAllTypesAndNullOrBlankMovement() {
+        createTrip(testUser, "2024-01-01T00:00:00Z", 1, 1, null);
+        createTrip(testUser, "2024-01-07T23:59:59Z", 2, 1, "");
+        createTrip(testUser, "2024-01-08T00:00:00Z", 0, 1, "WALK");
+        createTrip(testUser, "2024-01-14T12:00:00Z", 1231, 1, "BICYCLE");
+        createTrip(testUser, "2024-01-15T12:00:00Z", 99, 1, "UNKNOWN");
+        entityManager.flush();
+        Instant end = testEnd.plusSeconds(14 * 86400L);
+        for (boolean weeks : new boolean[]{false, true}) {
+            var charts = statisticsRepository.getChartDataByMovementType(testUserId, testStart, end, weeks);
+            for (var type : org.github.tess1o.geopulse.streaming.model.shared.TripType.values()) {
+                if (type == org.github.tess1o.geopulse.streaming.model.shared.TripType.UNKNOWN) continue;
+                var expected = weeks
+                        ? statisticsRepository.getChartDataByWeeks(testUserId, testStart, end, type.name())
+                        : statisticsRepository.getChartDataByDays(testUserId, testStart, end, type.name());
+                org.assertj.core.api.Assertions.assertThat(charts.get(type.name()))
+                        .usingRecursiveComparison().isEqualTo(expected);
+            }
+            var empty = statisticsRepository.getChartDataByMovementType(UUID.randomUUID(), testStart, end, weeks);
+            org.assertj.core.api.Assertions.assertThat(empty.values()).allMatch(List::isEmpty);
+        }
+    }
+
     // Helper methods to create test data
     private void createStay(UserEntity user, String timestamp, String locationName, double lat, double lon, long durationSeconds) {
         TimelineStayEntity stay = new TimelineStayEntity();

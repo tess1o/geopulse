@@ -45,10 +45,10 @@ class GpsPointServiceRawMapPointsTest {
 
         GpsPointRepository repository = mock(GpsPointRepository.class);
         when(repository.countEligibleByUserIdAndTimePeriod(userId, start, end, null)).thenReturn(3L);
-        when(repository.findEligibleMapPointsByUserIdAndTimePeriod(userId, start, end, 2, null)).thenReturn(List.of(
+        when(repository.findRawMapPoints(userId, start, end, 2, null)).thenReturn(new GpsPointMapper().toRawGpsPointMapPointDTOs(List.of(
                 gpsPoint(11L, userId, "2026-07-08T10:00:00Z", 1.327946, 103.804579),
                 gpsPoint(12L, userId, "2026-07-08T10:01:00Z", 1.328000, 103.805000)
-        ));
+        )));
 
         RawGpsPointMapResponseDTO response = createService(repository, mock(LocationPointResolver.class))
                 .getRawGpsMapPoints(userId, start, end, 2);
@@ -75,10 +75,10 @@ class GpsPointServiceRawMapPointsTest {
 
         GpsPointRepository repository = mock(GpsPointRepository.class);
         when(repository.countEligibleByUserIdAndTimePeriod(userId, start, end, 60.0)).thenReturn(2L);
-        when(repository.findEligibleMapPointsByUserIdAndTimePeriod(userId, start, end, 10, 60.0)).thenReturn(List.of(
+        when(repository.findRawMapPoints(userId, start, end, 10, 60.0)).thenReturn(new GpsPointMapper().toRawGpsPointMapPointDTOs(List.of(
                 gpsPoint(21L, userId, "2026-07-08T10:00:00Z", 1.327946, 103.804579, 11.0),
                 gpsPoint(23L, userId, "2026-07-08T10:02:00Z", 1.328000, 103.805000, 12.0)
-        ));
+        )));
 
         RawGpsPointMapResponseDTO response = createService(repository, mock(LocationPointResolver.class), config)
                 .getRawGpsMapPoints(userId, start, end, 10);
@@ -101,9 +101,9 @@ class GpsPointServiceRawMapPointsTest {
 
         GpsPointRepository repository = mock(GpsPointRepository.class);
         when(repository.countEligibleByUserIdAndTimePeriod(userId, start, end, null)).thenReturn(1L);
-        when(repository.findEligibleMapPointsByUserIdAndTimePeriod(userId, start, end, 10, null)).thenReturn(List.of(
+        when(repository.findRawMapPoints(userId, start, end, 10, null)).thenReturn(new GpsPointMapper().toRawGpsPointMapPointDTOs(List.of(
                 gpsPoint(31L, userId, "2026-07-08T10:00:00Z", 1.327946, 103.804579, 700.0)
-        ));
+        )));
 
         RawGpsPointMapResponseDTO response = createService(repository, mock(LocationPointResolver.class), config)
                 .getRawGpsMapPoints(userId, start, end, 10);
@@ -123,9 +123,9 @@ class GpsPointServiceRawMapPointsTest {
 
         GpsPointRepository repository = mock(GpsPointRepository.class);
         when(repository.countEligibleByUserIdAndTimePeriod(userId, start, end, 60.0)).thenReturn(1L);
-        when(repository.findEligibleMapPointsByUserIdAndTimePeriod(userId, start, end, 10, 60.0)).thenReturn(List.of(
+        when(repository.findRawMapPoints(userId, start, end, 10, 60.0)).thenReturn(new GpsPointMapper().toRawGpsPointMapPointDTOs(List.of(
                 gpsPoint(41L, userId, "2026-07-08T10:00:00Z", 1.327946, 103.804579, null)
-        ));
+        )));
 
         RawGpsPointMapResponseDTO response = createService(repository, mock(LocationPointResolver.class), config)
                 .getRawGpsMapPoints(userId, start, end, 10);

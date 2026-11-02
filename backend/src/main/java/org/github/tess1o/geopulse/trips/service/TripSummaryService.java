@@ -2,19 +2,15 @@ package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.service.LocationAnalyticsService;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
-import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -23,7 +19,7 @@ public class TripSummaryService {
     private final TripService tripService;
     private final TripAccessService tripAccessService;
     private final TripPlanItemRepository tripPlanItemRepository;
-    private final StreamingTimelineAggregator timelineAggregator;
+    private final TimelineStayRepository timelineStayRepository;
     private final TimelineTripRepository timelineTripRepository;
     private final LocationAnalyticsService locationAnalyticsService;
 
@@ -36,13 +32,13 @@ public class TripSummaryService {
     public TripSummaryService(TripService tripService,
                               TripAccessService tripAccessService,
                               TripPlanItemRepository tripPlanItemRepository,
-                              StreamingTimelineAggregator timelineAggregator,
+                              TimelineStayRepository timelineStayRepository,
                               TimelineTripRepository timelineTripRepository,
                               LocationAnalyticsService locationAnalyticsService) {
         this.tripService = tripService;
         this.tripAccessService = tripAccessService;
         this.tripPlanItemRepository = tripPlanItemRepository;
-        this.timelineAggregator = timelineAggregator;
+        this.timelineStayRepository = timelineStayRepository;
         this.timelineTripRepository = timelineTripRepository;
         this.locationAnalyticsService = locationAnalyticsService;
     }
@@ -53,9 +49,9 @@ public class TripSummaryService {
         UUID ownerUserId = access.ownerUserId();
         TripStatus resolvedStatus = tripService.resolveStatus(trip);
 
-        List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
-        int totalPlanItems = planItems.size();
-        int visitedPlanItems = (int) planItems.stream().filter(item -> Boolean.TRUE.equals(item.getIsVisited())).count();
+        long[] planCounts = tripPlanItemRepository.countSummary(tripId);
+        int totalPlanItems = Math.toIntExact(planCounts[0]);
+        int visitedPlanItems = Math.toIntExact(planCounts[1]);
         double completionRate = totalPlanItems == 0 ? 0.0 : (visitedPlanItems * 100.0) / totalPlanItems;
 
         if (resolvedStatus == TripStatus.UNPLANNED || trip.getStartTime() == null || trip.getEndTime() == null) {
@@ -79,19 +75,9 @@ public class TripSummaryService {
         Instant start = trip.getStartTime();
         Instant end = trip.getEndTime();
 
-        Map<String, Long> timelineCounts = timelineAggregator.getTimelineItemCounts(ownerUserId, start, end);
-
-        List<TimelineTripEntity> trips = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(ownerUserId, start, end);
-        long totalDistanceMeters = trips.stream()
-                .mapToLong(TimelineTripEntity::getDistanceMeters)
-                .sum();
-        long totalTripDurationSeconds = trips.stream()
-                .mapToLong(TimelineTripEntity::getTripDuration)
-                .sum();
-
-        var places = locationAnalyticsService.getMapPlaces(
-                ownerUserId, start, end, null, null, null, null, placesPage, placesPageSize
-        );
+        long staysCount = timelineStayRepository.countByUserIdAndTimeRange(ownerUserId, start, end);
+        long[] tripTotals = timelineTripRepository.summarizeOverlapping(ownerUserId, start, end);
+        int placesCount = locationAnalyticsService.countMapPlaces(ownerUserId, start, end, placesPage, placesPageSize);
 
         return TripSummaryDto.builder()
                 .tripId(trip.getId())
@@ -102,11 +88,11 @@ public class TripSummaryService {
                 .planItemsTotal(totalPlanItems)
                 .planItemsVisited(visitedPlanItems)
                 .planCompletionRate(completionRate)
-                .timelineStays(timelineCounts.getOrDefault("stays", 0L))
-                .timelineTrips(timelineCounts.getOrDefault("trips", 0L))
-                .totalDistanceMeters(totalDistanceMeters)
-                .totalTripDurationSeconds(totalTripDurationSeconds)
-                .actualPlacesCount(places.size())
+                .timelineStays(staysCount)
+                .timelineTrips(tripTotals[0])
+                .totalDistanceMeters(tripTotals[1])
+                .totalTripDurationSeconds(tripTotals[2])
+                .actualPlacesCount(placesCount)
                 .build();
     }
 }

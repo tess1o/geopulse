@@ -175,6 +175,22 @@ public class TimelineStayGeographyRepository implements PanacheRepository<Timeli
         return query.getResultList();
     }
 
+    public long countMapPlaces(UUID userId, Instant start, Instant end, int minVisits) {
+        return ((Number) getEntityManager().createNativeQuery("""
+                select count(*) from (
+                    select case when favorite_id is not null then 'favorite' else 'geocoding' end,
+                           coalesce(favorite_id, geocoding_id)
+                    from timeline_stays where user_id = :userId and location is not null
+                      and (favorite_id is not null or geocoding_id is not null)
+                      and timestamp >= :start and timestamp <= :end
+                    group by case when favorite_id is not null then 'favorite' else 'geocoding' end,
+                             coalesce(favorite_id, geocoding_id)
+                    having count(*) >= :minVisits
+                ) places
+                """).setParameter("userId", userId).setParameter("start", start).setParameter("end", end)
+                .setParameter("minVisits", Math.max(1, minVisits)).getSingleResult()).longValue();
+    }
+
     private double normalizeLongitude(double longitude) {
         return ((longitude + 180.0d) % 360.0d + 360.0d) % 360.0d - 180.0d;
     }

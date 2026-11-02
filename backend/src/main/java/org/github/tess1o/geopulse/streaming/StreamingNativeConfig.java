@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 
 @RegisterForReflection(targets = {
+        TimelineOverrideIds.class,
         TimelineEditKind.class,
         TimelineEditStatus.class,
         TimelineEditEntity.class,

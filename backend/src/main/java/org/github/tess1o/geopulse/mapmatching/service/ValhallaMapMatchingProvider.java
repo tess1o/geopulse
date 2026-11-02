@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingPointDTO;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaLocation;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClient;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClients;
@@ -42,14 +42,14 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
     }
 
     @Override
-    public List<MapMatchedPointDTO> match(List<GpsPointEntity> points, String profile) {
+    public List<MapMatchedPointDTO> match(List<MapMatchingPointDTO> points, String profile) {
         return matchSegments(points, profile).stream()
                 .flatMap(List::stream)
                 .toList();
     }
 
     @Override
-    public List<List<MapMatchedPointDTO>> matchSegments(List<GpsPointEntity> points, String profile) {
+    public List<List<MapMatchedPointDTO>> matchSegments(List<MapMatchingPointDTO> points, String profile) {
         if (!configuration.valhallaConfigured()) {
             throw new IllegalStateException("Valhalla base URL is not configured");
         }
@@ -80,12 +80,12 @@ public class ValhallaMapMatchingProvider implements MapMatchingProvider {
                 .toList();
     }
 
-    ValhallaTraceRouteRequest buildRequest(List<GpsPointEntity> points, String profile) {
+    ValhallaTraceRouteRequest buildRequest(List<MapMatchingPointDTO> points, String profile) {
         List<ValhallaLocation> shape = points.stream()
-                        .filter(point -> point.getCoordinates() != null)
+                        .filter(point -> (point.getLatitude() != null && point.getLongitude() != null))
                         .map(point -> ValhallaLocation.builder()
-                                .lat(point.getCoordinates().getY())
-                                .lon(point.getCoordinates().getX())
+                                .lat(point.getLatitude())
+                                .lon(point.getLongitude())
                                 .time(point.getTimestamp() != null ? point.getTimestamp().getEpochSecond() : null)
                                 .accuracy(point.getAccuracy())
                                 .type("through")

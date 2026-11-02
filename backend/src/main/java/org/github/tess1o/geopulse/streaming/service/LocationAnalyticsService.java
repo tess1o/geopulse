@@ -187,6 +187,11 @@ public class LocationAnalyticsService {
      * @param limit     max places returned
      * @return aggregated places for map rendering
      */
+    public int countMapPlaces(UUID userId, Instant start, Instant end, int minVisits, int limit) {
+        long count = stayGeographyRepository.countMapPlaces(userId, start, end, minVisits);
+        return (int) Math.min(count, Math.min(Math.max(limit, 1), 10000));
+    }
+
     public List<LocationAnalyticsMapPlaceDTO> getMapPlaces(
             UUID userId,
             Instant startTime,

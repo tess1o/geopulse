@@ -50,12 +50,14 @@ public class StatisticsServiceImpl implements StatisticsService {
         // Get chart data based on grouping mode
         boolean useWeeks = Duration.between(from, to).toDays() >= 10 || chartGroupMode == ChartGroupMode.WEEKS;
 
+        Map<String, List<ChartDataPoint>> chartData = statisticsRepository.getChartDataByMovementType(userId, from, to, useWeeks);
+
         // Get chart data for all trip types (excluding UNKNOWN)
         Map<String, BarChartData> chartsByTripType = Arrays.stream(TripType.values())
                 .filter(tripType -> tripType != TripType.UNKNOWN) // Exclude UNKNOWN type
                 .collect(Collectors.toMap(
                         TripType::name,
-                        tripType -> getBarChartData(userId, from, to, tripType.name(), useWeeks),
+                        tripType -> getBarChartData(chartData.getOrDefault(tripType.name(), List.of())),
                         (existing, replacement) -> existing, // In case of duplicates, keep existing
                         HashMap::new
                 ));
@@ -88,11 +90,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     /**
      * Get bar chart data from SQL results.
      */
-    private BarChartData getBarChartData(UUID userId, Instant from, Instant to, String movementType, boolean useWeeks) {
-        List<ChartDataPoint> dataPoints = useWeeks
-                ? statisticsRepository.getChartDataByWeeks(userId, from, to, movementType)
-                : statisticsRepository.getChartDataByDays(userId, from, to, movementType);
-
+    private BarChartData getBarChartData(List<ChartDataPoint> dataPoints) {
         String[] labels = dataPoints.stream()
                 .map(ChartDataPoint::getLabel)
                 .toArray(String[]::new);
