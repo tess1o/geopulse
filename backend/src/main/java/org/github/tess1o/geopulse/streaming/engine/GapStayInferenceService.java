@@ -90,12 +90,12 @@ public class GapStayInferenceService {
         double distance = centroid.distanceTo(currentPoint);
         if (distance > stayRadiusMeters) {
             log.debug("Distance {}m from centroid exceeds stay radius {}m - creating gap instead",
-                    String.format("%.1f", distance), stayRadiusMeters);
+                    distance, stayRadiusMeters);
             return GapStayInferencePlan.none();
         }
 
-        log.info("Gap stay inference conditions met: mode={}, gap={}h, distance={}m (radius={}m)",
-                mode, gapDuration.toHours(), String.format("%.1f", distance), stayRadiusMeters);
+        log.debug("Gap stay inference conditions met: mode={}, gap={}h, distance={}m (radius={}m)",
+                mode, gapDuration.toHours(), distance, stayRadiusMeters);
         return GapStayInferencePlan.continueExistingStay();
     }
 
@@ -125,7 +125,7 @@ public class GapStayInferenceService {
         double resumeDistance = lastTripPoint.distanceTo(currentPoint);
         if (resumeDistance > stayRadiusMeters) {
             log.debug("IN_TRIP resume distance {}m exceeds stay radius {}m - creating gap instead",
-                    String.format("%.1f", resumeDistance), stayRadiusMeters);
+                    resumeDistance, stayRadiusMeters);
             return GapStayInferencePlan.none();
         }
 
@@ -138,21 +138,21 @@ public class GapStayInferenceService {
         double localExcursionLimitMeters = stayRadiusMeters * radiusMultiplier;
         if (maxDistanceFromTripEnd > localExcursionLimitMeters) {
             log.debug("Pending IN_TRIP spread {}m exceeds local excursion limit {}m (radius={}m x {})",
-                    String.format("%.1f", maxDistanceFromTripEnd),
-                    String.format("%.1f", localExcursionLimitMeters),
+                    maxDistanceFromTripEnd,
+                    localExcursionLimitMeters,
                     stayRadiusMeters,
-                    String.format("%.2f", radiusMultiplier));
+                    radiusMultiplier);
             return GapStayInferencePlan.none();
         }
 
         List<GPSPoint> localPoints = collectPointsWithinRadius(activeTripPoints, lastTripPoint, stayRadiusMeters);
 
-        log.info("Gap stay inference conditions met for short local IN_TRIP: gap={}h, pendingTrip={}, " +
+        log.debug("Gap stay inference conditions met for short local IN_TRIP: gap={}h, pendingTrip={}, " +
                         "resumeDistance={}m, spread={}m (radius={}m)",
                 gapDuration.toHours(),
                 pendingTripDuration,
-                String.format("%.1f", resumeDistance),
-                String.format("%.1f", maxDistanceFromTripEnd),
+                resumeDistance,
+                maxDistanceFromTripEnd,
                 stayRadiusMeters);
         return GapStayInferencePlan.replaceWithConfirmedStay(localPoints);
     }
@@ -170,12 +170,12 @@ public class GapStayInferenceService {
         List<GPSPoint> tripPoints = new ArrayList<>(activeTripPoints.subList(0, stopClusterStartIndex));
         List<GPSPoint> stoppedTailPoints = new ArrayList<>(activeTripPoints.subList(stopClusterStartIndex, activeTripPoints.size()));
 
-        log.info("Gap stay inference conditions met for IN_TRIP tail arrival: gap={}h, tailPoints={}, tailDuration={}, " +
+        log.debug("Gap stay inference conditions met for IN_TRIP tail arrival: gap={}h, tailPoints={}, tailDuration={}, " +
                         "resumeDistance={}m (radius={}m), finalizedTripPoints={}",
                 gapDuration.toHours(),
                 stoppedTailPoints.size(),
                 tailMatch.getTailDuration(),
-                String.format("%.1f", tailMatch.getResumeDistanceMeters()),
+                tailMatch.getResumeDistanceMeters(),
                 tailMatch.getStayRadiusMeters(),
                 tripPoints.size());
 

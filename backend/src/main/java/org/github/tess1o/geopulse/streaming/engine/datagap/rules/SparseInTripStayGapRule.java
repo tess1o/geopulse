@@ -56,7 +56,7 @@ public class SparseInTripStayGapRule implements DataGapRule {
             return false;
         }
 
-        log.info("Sparse IN_TRIP gap stay inference applied - creating inferred stay instead of data gap");
+        log.debug("Sparse IN_TRIP gap stay inference applied - creating inferred stay instead of data gap");
 
         Trip finalizedTrip = finalizeTripBeforeGap(context.userState(), context.config());
         TimelineExplanation tripExplanation = context.userState()
@@ -101,12 +101,12 @@ public class SparseInTripStayGapRule implements DataGapRule {
         double boundaryDistanceMeters = context.lastPoint().distanceTo(context.currentPoint());
         if (boundaryDistanceMeters < minBoundaryDistanceMeters) {
             log.debug("Sparse IN_TRIP stay inference skipped - distance {}m below minimum {}m",
-                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", minBoundaryDistanceMeters));
+                    boundaryDistanceMeters, minBoundaryDistanceMeters);
             return false;
         }
         if (boundaryDistanceMeters > maxBoundaryDistanceMeters) {
             log.debug("Sparse IN_TRIP stay inference skipped - distance {}m exceeds maximum {}m",
-                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", maxBoundaryDistanceMeters));
+                    boundaryDistanceMeters, maxBoundaryDistanceMeters);
             return false;
         }
 
@@ -118,14 +118,14 @@ public class SparseInTripStayGapRule implements DataGapRule {
         double impliedSpeedKmh = (boundaryDistanceMeters / 1000.0) / gapHours;
         if (impliedSpeedKmh > maxImpliedSpeedKmh) {
             log.debug("Sparse IN_TRIP stay inference skipped - implied speed {}km/h exceeds maximum {}km/h",
-                    String.format("%.3f", impliedSpeedKmh), String.format("%.1f", maxImpliedSpeedKmh));
+                    impliedSpeedKmh, maxImpliedSpeedKmh);
             return false;
         }
 
-        log.info("Sparse IN_TRIP stay inference conditions met: gap={}h, distance={}m, impliedSpeed={}km/h",
-                String.format("%.2f", gapHours),
-                String.format("%.1f", boundaryDistanceMeters),
-                String.format("%.3f", impliedSpeedKmh));
+        log.debug("Sparse IN_TRIP stay inference conditions met: gap={}h, distance={}m, impliedSpeed={}km/h",
+                gapHours,
+                boundaryDistanceMeters,
+                impliedSpeedKmh);
         return true;
     }
 

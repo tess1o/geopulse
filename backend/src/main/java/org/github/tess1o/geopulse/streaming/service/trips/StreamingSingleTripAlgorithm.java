@@ -41,7 +41,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                         } else if (currentStay != null) {
                             // CRITICAL: Always include trip between stays to maintain timeline continuity
                             // Even if it's very short, we need SOME movement between different locations
-                            log.warn("Including short trip between stays for continuity: {}m, {}min (below normal thresholds)",
+                            log.debug("Including short trip between stays for continuity: {}m, {}min (below normal thresholds)",
                                     mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                             processedEvents.add(mergedTrip);
                         } else {
@@ -60,12 +60,12 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                     } else {
                         Trip continuityTrip = createContinuityTripBetweenStays(currentStay, stay, config);
                         if (continuityTrip != null) {
-                            log.warn("Including continuity trip between consecutive stays: '{}' -> '{}' ({}m, {}min)",
+                            log.debug("Including continuity trip between consecutive stays: '{}' -> '{}' ({}m, {}min)",
                                     currentStay.getLocationName(), stay.getLocationName(),
                                     continuityTrip.getDistanceMeters(), continuityTrip.getDuration().toMinutes());
                             processedEvents.add(continuityTrip);
                         } else {
-                            log.warn("Could not create continuity trip between consecutive stays: '{}' -> '{}'",
+                            log.debug("Could not create continuity trip between consecutive stays: '{}' -> '{}'",
                                     currentStay.getLocationName(), stay.getLocationName());
                         }
                     }
@@ -90,7 +90,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                         } else if (event instanceof DataGap) {
                             // Keep short movement before a data gap to preserve continuity
                             // and allow downstream stay/gap interpretation to retain context.
-                            log.warn("Including short trip before data gap for continuity: {}m, {}min",
+                            log.debug("Including short trip before data gap for continuity: {}m, {}min",
                                     mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                             processedEvents.add(mergedTrip);
                         }
@@ -112,7 +112,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                     processedEvents.add(mergedTrip);
                 } else if (currentStay != null) {
                     // Include for continuity if we had a preceding stay
-                    log.warn("Including final short trip for continuity: {}m, {}min",
+                    log.debug("Including final short trip for continuity: {}m, {}min",
                             mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                     processedEvents.add(mergedTrip);
                 }

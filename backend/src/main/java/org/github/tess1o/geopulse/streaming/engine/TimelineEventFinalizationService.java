@@ -65,7 +65,7 @@ public class TimelineEventFinalizationService {
         GPSPoint centroid = userState.calculateCentroid();
 
         if (firstPoint == null || lastPoint == null || centroid == null) {
-            log.warn("Cannot finalize stay - missing required points");
+            log.debug("Cannot finalize stay - missing required points");
             return null;
         }
 
@@ -181,7 +181,7 @@ public class TimelineEventFinalizationService {
         List<GPSPoint> tripPath = userState.getActivePoints();
 
         if (tripPath.size() < 2) {
-            log.warn("Cannot finalize trip - insufficient path points: {}", tripPath.size());
+            log.debug("Cannot finalize trip - insufficient path points: {}", tripPath.size());
             return null;
         }
 
@@ -229,7 +229,7 @@ public class TimelineEventFinalizationService {
         }
 
         if (tripPath.isEmpty()) {
-            log.warn("Cannot finalize trip - no path points");
+            log.debug("Cannot finalize trip - no path points");
             return null;
         }
 

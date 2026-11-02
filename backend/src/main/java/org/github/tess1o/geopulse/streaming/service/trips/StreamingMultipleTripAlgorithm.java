@@ -60,7 +60,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                         Trip bestTrip = processedTrips.stream()
                                 .max((t1, t2) -> Double.compare(t1.getDistanceMeters(), t2.getDistanceMeters()))
                                 .orElse(processedTrips.get(0));
-                        log.warn("Including short trip between stays for continuity: {}m, {}min",
+                        log.debug("Including short trip between stays for continuity: {}m, {}min",
                                 bestTrip.getDistanceMeters(), bestTrip.getDuration().toMinutes());
                         processedEvents.add(bestTrip);
                     } else {
@@ -81,12 +81,12 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                     } else {
                         Trip continuityTrip = createContinuityTripBetweenStays(currentStay, stay, config);
                         if (continuityTrip != null) {
-                            log.warn("Including continuity trip between consecutive stays: '{}' -> '{}' ({}m, {}min)",
+                            log.debug("Including continuity trip between consecutive stays: '{}' -> '{}' ({}m, {}min)",
                                     currentStay.getLocationName(), stay.getLocationName(),
                                     continuityTrip.getDistanceMeters(), continuityTrip.getDuration().toMinutes());
                             processedEvents.add(continuityTrip);
                         } else {
-                            log.warn("Could not create continuity trip between consecutive stays: '{}' -> '{}'",
+                            log.debug("Could not create continuity trip between consecutive stays: '{}' -> '{}'",
                                     currentStay.getLocationName(), stay.getLocationName());
                         }
                     }
@@ -111,7 +111,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                         Trip bestTrip = processedTrips.stream()
                                 .max((t1, t2) -> Double.compare(t1.getDistanceMeters(), t2.getDistanceMeters()))
                                 .orElse(processedTrips.get(0));
-                        log.warn("Including short trip before data gap for continuity: {}m, {}min",
+                        log.debug("Including short trip before data gap for continuity: {}m, {}min",
                                 bestTrip.getDistanceMeters(), bestTrip.getDuration().toMinutes());
                         processedEvents.add(bestTrip);
                     }
@@ -134,7 +134,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 Trip bestTrip = processedTrips.stream()
                         .max((t1, t2) -> Double.compare(t1.getDistanceMeters(), t2.getDistanceMeters()))
                         .orElse(processedTrips.get(0));
-                log.warn("Including final short trip for continuity: {}m, {}min",
+                log.debug("Including final short trip for continuity: {}m, {}min",
                         bestTrip.getDistanceMeters(), bestTrip.getDuration().toMinutes());
                 processedEvents.add(bestTrip);
             } else {
@@ -269,7 +269,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         boolean legitimate = significantModeCount >= 2;
 
-        if (logAnalysis) {
+        if (logAnalysis && log.isDebugEnabled()) {
             log.debug("Mode change analysis: contributions={}, significantModes={}, legitimate={}",
                     describeModeContributions(contributionsByType, totalDistance, totalTime),
                     significantModeCount,
@@ -319,15 +319,9 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                     ModeContribution contribution = entry.getValue();
                     double distanceRatio = totalDistance > 0.0 ? contribution.distanceMeters() / totalDistance : 0.0;
                     double timeRatio = totalTime > 0.0 ? contribution.durationSeconds() / totalTime : 0.0;
-                    return String.format(
-                            "%s=%d trips, %.0fm, %.1f%%, %.0fs, %.1f%%",
-                            entry.getKey(),
-                            contribution.tripCount(),
-                            contribution.distanceMeters(),
-                            distanceRatio * 100.0,
-                            contribution.durationSeconds(),
-                            timeRatio * 100.0
-                    );
+                    return entry.getKey() + "=" + contribution.tripCount() + " trips, "
+                            + contribution.distanceMeters() + "m, " + distanceRatio * 100.0 + "%, "
+                            + contribution.durationSeconds() + "s, " + timeRatio * 100.0 + "%";
                 })
                 .collect(Collectors.joining("; "));
     }

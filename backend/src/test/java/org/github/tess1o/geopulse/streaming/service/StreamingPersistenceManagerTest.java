@@ -21,7 +21,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -29,7 +30,7 @@ import static org.mockito.Mockito.*;
 @Tag("unit")
 class StreamingPersistenceManagerTest {
     @Test
-    void boundsDriverBatchesAndNeverManagesOrClearsInsertedEntities() throws Exception {
+    void boundsMultiRowStatementsAndNeverManagesOrClearsInsertedEntities() throws Exception {
         var writer = new StreamingPersistenceManager();
         writer.entityManager = mock(EntityManager.class);
         writer.converter = new StreamingTimelineConverter(writer.entityManager);
@@ -41,30 +42,49 @@ class StreamingPersistenceManagerTest {
         when(writer.entityManager.getReference(UserEntity.class, userId)).thenReturn(user);
         Session session = mock(Session.class);
         Connection connection = mock(Connection.class);
-        PreparedStatement statement = mock(PreparedStatement.class);
         when(writer.entityManager.unwrap(Session.class)).thenReturn(session);
-        when(connection.prepareStatement(anyString())).thenReturn(statement);
         doAnswer(call -> { call.<Work>getArgument(0).execute(connection); return null; })
                 .when(session).doWork(any());
-        AtomicInteger pending = new AtomicInteger();
         List<Integer> sizes = new ArrayList<>();
-        doAnswer(call -> { pending.incrementAndGet(); return null; }).when(statement).addBatch();
-        when(statement.executeBatch()).thenAnswer(call -> {
-            sizes.add(pending.get());
-            return new int[pending.get()];
+        List<PreparedStatement> statements = new ArrayList<>();
+        when(connection.prepareStatement(anyString())).thenAnswer(call -> {
+            String sql = call.getArgument(0);
+            int parameters = (int) sql.chars().filter(c -> c == '?').count();
+            PreparedStatement statement = mock(PreparedStatement.class);
+            statements.add(statement);
+            Set<Integer> bound = new HashSet<>();
+            doAnswer(binding -> { bound.add(binding.getArgument(0)); return null; })
+                    .when(statement).setObject(anyInt(), any());
+            doAnswer(binding -> { bound.add(binding.getArgument(0)); return null; })
+                    .when(statement).setString(anyInt(), any());
+            doAnswer(binding -> { bound.add(binding.getArgument(0)); return null; })
+                    .when(statement).setLong(anyInt(), anyLong());
+            when(statement.executeUpdate()).thenAnswer(execution -> {
+                assertThat(bound).containsExactlyInAnyOrderElementsOf(
+                        java.util.stream.IntStream.rangeClosed(1, parameters).boxed().toList());
+                sizes.add(parameters / 23);
+                return parameters / 23;
+            });
+            return statement;
         });
-        doAnswer(call -> { pending.set(0); return null; }).when(statement).clearBatch();
         var trip = Trip.builder().startTime(Instant.parse("2026-01-01T00:00:00Z"))
                 .duration(Duration.ofMinutes(5)).tripType(TripType.CAR)
                 .startPoint(new GPSPoint(50, 30, 0, 0)).endPoint(new GPSPoint(50.1, 30.1, 0, 0)).build();
-        writer.persistRawTimeline(userId, RawTimeline.builder().trips(Collections.nCopies(1003, trip)).build(), null);
+        List<Trip> trips = new ArrayList<>(Collections.nCopies(1003, trip));
+        trips.add(0, null);
+        trips.add(500, null);
+        trips.add(null);
+        writer.persistRawTimeline(userId, RawTimeline.builder().trips(trips).build(), null);
         assertThat(sizes).containsExactly(500, 500, 3);
-        assertThat(pending.get()).isZero();
         verify(writer.entityManager).flush();
         verify(writer.entityManager, never()).clear();
         verify(session).doWork(any());
         verifyNoMoreInteractions(session);
-        verify(statement).close();
+        for (PreparedStatement statement : statements) {
+            verify(statement).close();
+            verify(statement, never()).addBatch();
+            verify(statement, never()).executeBatch();
+        }
         verify(connection, never()).commit();
         verify(connection, never()).close();
     }

@@ -244,8 +244,8 @@ public class LocationPointResolver {
                  stillNeedExternal.size(), batchCacheMisses);
 
         updateGeocodingProgress(jobId, "resolvedFromCache",
-            String.format("Resolved %d from cache (%d from batch, %d from individual lookup)",
-                cachedResolved, cachedResults.size(), batchCacheMisses),
+            "Resolved " + cachedResolved + " from cache (" + cachedResults.size() + " from batch, "
+                + batchCacheMisses + " from individual lookup)",
             totalLocations, favoritesResolved, cachedResolved, stillNeedExternal.size(), 0, results.size(),
             Map.of("batchResolved", cachedResults.size(), "individualResolved", batchCacheMisses));
 
@@ -288,8 +288,8 @@ public class LocationPointResolver {
 
         // Final progress update - all locations resolved
         updateGeocodingProgress(jobId, "geocodingComplete",
-            String.format("Geocoding complete: %d favorites, %d cached, %d external API calls",
-                favoritesResolved, finalCachedResolved, externalCompleted),
+            "Geocoding complete: " + favoritesResolved + " favorites, " + finalCachedResolved + " cached, "
+                + externalCompleted + " external API calls",
             totalLocations, favoritesResolved, finalCachedResolved, 0, externalCompleted, results.size());
 
         return results;
@@ -320,7 +320,7 @@ public class LocationPointResolver {
                 int remaining = coordinates.size() - i;
                 int currentExternalCompleted = results.size() - favoritesResolved - cachedResolved;
                 updateGeocodingProgress(jobId, "geocodingLocationProgress",
-                    String.format("Geocoding location %d/%d", i + 1, coordinates.size()),
+                    "Geocoding location " + (i + 1) + "/" + coordinates.size(),
                     totalLocations, favoritesResolved, cachedResolved, remaining, currentExternalCompleted, results.size(),
                     Map.of("current", i + 1, "total", coordinates.size()));
 

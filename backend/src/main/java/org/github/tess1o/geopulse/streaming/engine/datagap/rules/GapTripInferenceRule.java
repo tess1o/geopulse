@@ -39,13 +39,13 @@ public class GapTripInferenceRule implements DataGapRule {
     @Override
     public boolean apply(DataGapContext context, List<TimelineEvent> gapEvents) {
         boolean shouldInferTrip = shouldInferTripDuringGap(context);
-        log.info("Gap trip inference check: shouldInfer={}, enabled={}",
+        log.debug("Gap trip inference check: shouldInfer={}, enabled={}",
                 shouldInferTrip, context.config().getGapTripInferenceEnabled());
         if (!shouldInferTrip) {
             return false;
         }
 
-        log.info("Gap trip inference applied - creating inferred trip for gap");
+        log.debug("Gap trip inference applied - creating inferred trip for gap");
 
         TimelineEvent activeEvent = GapRuleSupport.finalizeActiveEvent(
                 finalizationService,
@@ -106,14 +106,14 @@ public class GapTripInferenceRule implements DataGapRule {
 
         if (distance < minDistanceMeters) {
             log.debug("Distance {}m is below minimum {}m for trip inference",
-                    String.format("%.1f", distance), minDistanceMeters);
+                    distance, minDistanceMeters);
             return false;
         }
 
-        log.info("Gap trip inference conditions met: mode={}, gap={}h, distance={}m (min={}m)",
+        log.debug("Gap trip inference conditions met: mode={}, gap={}h, distance={}m (min={}m)",
                 context.userState().getCurrentMode(),
                 context.gapDuration().toHours(),
-                String.format("%.1f", distance),
+                distance,
                 minDistanceMeters);
         return true;
     }
@@ -137,9 +137,9 @@ public class GapTripInferenceRule implements DataGapRule {
 
         log.debug("Inferred trip classification: type={}, distance={}m, duration={}h, avgSpeed={}km/h",
                 tripType,
-                String.format("%.0f", distanceMeters),
-                String.format("%.2f", tripDuration.toHours() + (tripDuration.toMinutesPart() / 60.0)),
-                String.format("%.1f", (distanceMeters / 1000.0) / (tripDuration.getSeconds() / 3600.0)));
+                distanceMeters,
+                tripDuration.toHours() + (tripDuration.toMinutesPart() / 60.0),
+                (distanceMeters / 1000.0) / (tripDuration.getSeconds() / 3600.0));
 
         return Trip.builder()
                 .startTime(context.lastPoint().getTimestamp())

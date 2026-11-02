@@ -525,38 +525,23 @@ public class StreamingTimelineProcessor {
         }
 
         List<GPSPoint> activePoints = userState.getActivePoints();
-        if (activePoints.size() < 4) {
-            return null;
+        WaterTransitionTracker tracker = userState.getWaterTransitionTracker();
+        if (tracker == null) {
+            double minWaterDistance = config.getBoatMinContinuousWaterDistanceMeters() != null
+                    ? config.getBoatMinContinuousWaterDistanceMeters() : DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS;
+            tracker = new WaterTransitionTracker(Math.max(DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS, minWaterDistance),
+                    Math.max(100.0, getStayRadius(config)), MIN_WATER_TRANSITION_SPLIT_DURATION_SECONDS,
+                    MIN_LAND_TRANSITION_SPLIT_DURATION_SECONDS);
+            userState.setWaterTransitionTracker(tracker);
         }
-
-        Boolean currentEnvironment = getTrailingRunEnvironment(activePoints);
-        if (currentEnvironment == null) {
-            return null;
-        }
-
-        int currentRunStartIndex = findTrailingRunStartIndex(activePoints, currentEnvironment);
-        if (currentRunStartIndex <= 0) {
-            return null;
-        }
-
-        EnvironmentRun currentRun = measureRunStartingAt(activePoints, currentRunStartIndex, currentEnvironment);
-        if (!isEnvironmentRunEligible(currentRun, config)) {
-            return null;
-        }
-
-        EnvironmentRun previousRun = findPreviousEligibleRun(
-                activePoints,
-                currentRunStartIndex - 1,
-                !currentEnvironment,
-                config
-        );
-        if (previousRun == null || previousRun.endIndex <= 0) {
-            return null;
-        }
+        WaterTransitionTracker.Transition transitionRuns = tracker.findTransition(activePoints);
+        if (transitionRuns == null) return null;
+        WaterTransitionTracker.Run previousRun = transitionRuns.previous();
+        WaterTransitionTracker.Run currentRun = transitionRuns.current();
 
         UserState completedTripState = new UserState();
         completedTripState.setCurrentMode(ProcessorMode.IN_TRIP);
-        for (int i = 0; i <= previousRun.endIndex; i++) {
+        for (int i = 0; i <= previousRun.endIndex(); i++) {
             completedTripState.addActivePoint(activePoints.get(i));
         }
 
@@ -564,11 +549,11 @@ public class StreamingTimelineProcessor {
         if (completedTrip == null) {
             return null;
         }
-        TimelineReason transition = TimelineReason.of(TimelineReasons.WATER_TRANSITION, "toWater", currentRun.onWater);
+        TimelineReason transition = TimelineReason.of(TimelineReasons.WATER_TRANSITION, "toWater", currentRun.onWater());
         completedTrip.setExplanation(userState.finishExplanation(transition));
 
         // The remaining tail must outlive clearActivePoints; inspection above needs no snapshot.
-        List<GPSPoint> continuation = new ArrayList<>(activePoints.subList(previousRun.endIndex, activePoints.size()));
+        List<GPSPoint> continuation = new ArrayList<>(activePoints.subList(previousRun.endIndex(), activePoints.size()));
         userState.setCurrentMode(ProcessorMode.IN_TRIP);
         userState.clearActivePoints();
         for (GPSPoint point : continuation) {
@@ -577,111 +562,14 @@ public class StreamingTimelineProcessor {
         userState.startExplanation(transition);
 
         log.debug("Split active trip on {} -> {} environment transition: previous={}m/{}s, current={}m/{}s",
-                previousRun.onWater ? "water" : "land",
-                currentRun.onWater ? "water" : "land",
-                previousRun.distanceMeters,
-                previousRun.durationSeconds,
-                currentRun.distanceMeters,
-                currentRun.durationSeconds);
+                previousRun.onWater() ? "water" : "land",
+                currentRun.onWater() ? "water" : "land",
+                previousRun.distanceMeters(),
+                previousRun.durationSeconds(),
+                currentRun.distanceMeters(),
+                currentRun.durationSeconds());
 
         return ProcessingResult.withSingleEvent(userState, completedTrip);
-    }
-
-    private EnvironmentRun findPreviousEligibleRun(List<GPSPoint> points, int endIndex, boolean onWater, TimelineConfig config) {
-        int index = Math.min(endIndex, points.size() - 1);
-        while (index > 0) {
-            GPSPoint point = points.get(index);
-            if (point.getOnWater() == null || point.getOnWater() != onWater) {
-                index--;
-                continue;
-            }
-
-            EnvironmentRun run = measureRunEndingAt(points, index, onWater);
-            if (isEnvironmentRunEligible(run, config)) {
-                return run;
-            }
-
-            index = Math.max(0, run.startIndex - 1);
-        }
-
-        return null;
-    }
-
-    private Boolean getTrailingRunEnvironment(List<GPSPoint> points) {
-        if (points.size() < 2) {
-            return null;
-        }
-
-        GPSPoint previous = points.get(points.size() - 2);
-        GPSPoint current = points.getLast();
-        if (previous.getOnWater() == null
-                || current.getOnWater() == null
-                || !previous.getOnWater().equals(current.getOnWater())) {
-            return null;
-        }
-        return current.getOnWater();
-    }
-
-    private int findTrailingRunStartIndex(List<GPSPoint> points, boolean onWater) {
-        int index = points.size() - 1;
-        while (index > 0 && isSegmentEnvironment(points.get(index - 1), points.get(index), onWater)) {
-            index--;
-        }
-        return index;
-    }
-
-    private EnvironmentRun measureRunEndingAt(List<GPSPoint> points, int endIndex, boolean onWater) {
-        double distanceMeters = 0.0;
-        int startIndex = endIndex;
-
-        while (startIndex > 0 && isSegmentEnvironment(points.get(startIndex - 1), points.get(startIndex), onWater)) {
-            distanceMeters += points.get(startIndex - 1).distanceTo(points.get(startIndex));
-            startIndex--;
-        }
-
-        double durationSeconds = Duration.between(
-                points.get(startIndex).getTimestamp(),
-                points.get(endIndex).getTimestamp()
-        ).toSeconds();
-        return new EnvironmentRun(onWater, distanceMeters, durationSeconds, startIndex, endIndex);
-    }
-
-    private EnvironmentRun measureRunStartingAt(List<GPSPoint> points, int startIndex, boolean onWater) {
-        double distanceMeters = 0.0;
-        int endIndex = startIndex;
-
-        while (endIndex < points.size() - 1 && isSegmentEnvironment(points.get(endIndex), points.get(endIndex + 1), onWater)) {
-            distanceMeters += points.get(endIndex).distanceTo(points.get(endIndex + 1));
-            endIndex++;
-        }
-
-        double durationSeconds = Duration.between(
-                points.get(startIndex).getTimestamp(),
-                points.get(endIndex).getTimestamp()
-        ).toSeconds();
-        return new EnvironmentRun(onWater, distanceMeters, durationSeconds, startIndex, endIndex);
-    }
-
-    private boolean isSegmentEnvironment(GPSPoint previous, GPSPoint current, boolean onWater) {
-        return previous.getOnWater() != null
-                && current.getOnWater() != null
-                && previous.getOnWater() == onWater
-                && current.getOnWater() == onWater;
-    }
-
-    private boolean isEnvironmentRunEligible(EnvironmentRun run, TimelineConfig config) {
-        if (run.onWater) {
-            double minWaterDistanceMeters = config.getBoatMinContinuousWaterDistanceMeters() != null
-                    ? config.getBoatMinContinuousWaterDistanceMeters()
-                    : DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS;
-            minWaterDistanceMeters = Math.max(DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS, minWaterDistanceMeters);
-            return run.distanceMeters >= minWaterDistanceMeters
-                    && run.durationSeconds >= MIN_WATER_TRANSITION_SPLIT_DURATION_SECONDS;
-        }
-
-        double minLandDistanceMeters = Math.max(100.0, getStayRadius(config));
-        return run.distanceMeters >= minLandDistanceMeters
-                && run.durationSeconds >= MIN_LAND_TRANSITION_SPLIT_DURATION_SECONDS;
     }
 
     private boolean isBoatEnabled(TimelineConfig config) {
@@ -775,22 +663,6 @@ public class StreamingTimelineProcessor {
 
         static StopDetectionResult stopDetected(TripStopHeuristicsService.TripStopDetection detection) {
             return new StopDetectionResult(true, detection.getStoppedClusterStartIndex(), detection);
-        }
-    }
-
-    private static class EnvironmentRun {
-        final boolean onWater;
-        final double distanceMeters;
-        final double durationSeconds;
-        final int startIndex;
-        final int endIndex;
-
-        EnvironmentRun(boolean onWater, double distanceMeters, double durationSeconds, int startIndex, int endIndex) {
-            this.onWater = onWater;
-            this.distanceMeters = distanceMeters;
-            this.durationSeconds = durationSeconds;
-            this.startIndex = startIndex;
-            this.endIndex = endIndex;
         }
     }
 

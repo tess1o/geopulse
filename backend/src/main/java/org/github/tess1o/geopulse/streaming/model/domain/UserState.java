@@ -26,6 +26,7 @@ public class UserState {
     @Setter(AccessLevel.NONE)
     private double longitudeSum;
     private GPSPoint lastProcessedPoint;
+    private WaterTransitionTracker waterTransitionTracker;
 
     /** How the next event begins: with the very first point, or with the first point after a data gap. */
     private TimelineReason nextStartReason = TimelineReason.of(TimelineReasons.FIRST_POINT);
@@ -66,6 +67,7 @@ public class UserState {
         if (previousSize > 10_000) activePoints.trimToSize();
         latitudeSum = 0;
         longitudeSum = 0;
+        waterTransitionTracker = null;
     }
 
     /** Short-lived read-only view; use copyActivePoints when points must survive clearing this state. */

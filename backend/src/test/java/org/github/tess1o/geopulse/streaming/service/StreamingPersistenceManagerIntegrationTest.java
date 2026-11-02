@@ -53,13 +53,22 @@ class StreamingPersistenceManagerIntegrationTest {
                 .latitude(50.123456789).longitude(30.987654321).locationName("Place")
                 .visitName("My visit").favoriteId(-1L).geocodingId(0L).build();
         var gap = DataGap.fromTimeRange(at.plusSeconds(2000), at.plusSeconds(2011).minusNanos(200000000));
-        RawTimeline timeline = RawTimeline.builder().trips(List.of(trip, missingStats)).stays(List.of(stay))
-                .dataGaps(List.of(gap)).build();
+        List<Stay> stays = new ArrayList<>(List.of(stay));
+        List<DataGap> gaps = new ArrayList<>(List.of(gap));
+        for (int i = 1; i < 503; i++) {
+            stays.add(Stay.builder().startTime(at.plusSeconds(i * 3000L)).duration(Duration.ofSeconds(i))
+                    .latitude(50.123456789).longitude(30.987654321)
+                    .locationName("Place 'Київ' " + i)
+                    .visitName(i % 3 == 0 ? "Visit " + i : null).build());
+            gaps.add(DataGap.fromTimeRange(at.plusSeconds(i * 3000L + 1000), at.plusSeconds(i * 3000L + 1001)));
+        }
+        RawTimeline timeline = RawTimeline.builder().trips(List.of(trip, missingStats)).stays(stays)
+                .dataGaps(gaps).build();
         List<?> expected = QuarkusTransaction.requiringNew().call(() -> {
             var ref = converter.createUserReference(user);
             for (var t : timeline.getTrips()) em.persist(converter.convertStreamingTripToEntity(t, ref));
-            em.persist(converter.convertStayToEntityWithBatchData(stay, ref, Map.of(), Map.of()));
-            em.persist(converter.convertGapToEntity(gap, ref));
+            for (var s : stays) em.persist(converter.convertStayToEntityWithBatchData(s, ref, Map.of(), Map.of()));
+            for (var g : gaps) em.persist(converter.convertGapToEntity(g, ref));
             em.flush();
             return snapshot(user);
         });

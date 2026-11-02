@@ -45,7 +45,9 @@ class UserStateTest {
         assertThatThrownBy(() -> view.set(0, point)).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> view.subList(0, 1).clear()).isInstanceOf(UnsupportedOperationException.class);
         List<GPSPoint> snapshot = state.copyActivePoints();
+        state.setWaterTransitionTracker(new WaterTransitionTracker(300, 100, 120, 60));
         state.clearActivePoints();
+        assertThat(state.getWaterTransitionTracker()).isNull();
         assertThat(view).isEmpty();
         assertThat(snapshot).containsExactly(point);
         assertThat(snapshot.getFirst()).isSameAs(point);
