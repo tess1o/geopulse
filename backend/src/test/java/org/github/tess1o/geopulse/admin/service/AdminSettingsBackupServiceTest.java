@@ -249,6 +249,49 @@ class AdminSettingsBackupServiceTest {
     }
 
     @Test
+    void importBackupTreatsInheritedLogLevelAsNoOverride() {
+        Map<String, SettingDefinition> definitions = definitions();
+        definitions.put(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY,
+                new SettingDefinition("geopulse.log.level", "inherit", ValueType.STRING, "system", "Application log level"));
+        when(settingsService.getSettingDefinitions()).thenReturn(definitions);
+        when(settingsRepository.listAllSettings()).thenReturn(List.of());
+        when(customGeocodingProviderService.listForBackupExport()).thenReturn(List.of());
+        when(oidcProviderConfigurationService.loadAllProviders()).thenReturn(List.of());
+
+        AdminSettingsBackupDto backup = backup();
+        backup.getSettings().add(setting(
+                SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "system", ValueType.STRING, " InHeRiT "));
+
+        AdminSettingsImportResult result = service.importBackup(backup, adminId);
+
+        assertThat(result.getSettingsImported()).isEqualTo(4);
+        assertThat(result.getUnsupportedSettings()).doesNotContain(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY);
+        verify(settingsService, never()).validateValueForImport(eq(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY), any());
+        verify(settingsService, never()).setValue(eq(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY), any(), any());
+    }
+
+    @Test
+    void importBackupKeepsAConfiguredLogLevel() {
+        Map<String, SettingDefinition> definitions = definitions();
+        definitions.put(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY,
+                new SettingDefinition("geopulse.log.level", "inherit", ValueType.STRING, "system", "Application log level"));
+        when(settingsService.getSettingDefinitions()).thenReturn(definitions);
+        when(settingsRepository.listAllSettings()).thenReturn(List.of());
+        when(customGeocodingProviderService.listForBackupExport()).thenReturn(List.of());
+        when(oidcProviderConfigurationService.loadAllProviders()).thenReturn(List.of());
+
+        AdminSettingsBackupDto backup = backup();
+        backup.getSettings().add(setting(
+                SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "system", ValueType.STRING, "debug"));
+
+        AdminSettingsImportResult result = service.importBackup(backup, adminId);
+
+        assertThat(result.getSettingsImported()).isEqualTo(5);
+        verify(settingsService).validateValueForImport(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "debug");
+        verify(settingsService).setValue(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "debug", adminId);
+    }
+
+    @Test
     void settingRegistryPromotesPortableSettingsAndExcludesLegacyOidcEnabledSwitch() {
         SystemSettingsService realSettingsService = new SystemSettingsService(
                 settingsRepository,
