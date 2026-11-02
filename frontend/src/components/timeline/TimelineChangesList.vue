@@ -30,7 +30,7 @@ import {useTimelineStore} from '@/stores/timeline'
 import {useTimezone} from '@/composables/useTimezone'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
-const props = defineProps({visible: Boolean, item: {type: Object, default: null}})
+const props = defineProps({visible: Boolean, item: {type: Object, default: null}, edits: {type: Array, default: null}, reload: Function})
 const emit = defineEmits(['changed', 'loaded'])
 const {t, te} = useI18n()
 const timezone = useTimezone()
@@ -45,6 +45,7 @@ let loadVersion = 0
 const period = (start, end) => `${timezone.formatDateTimeDisplay(start)} – ${timezone.formatDateTimeDisplay(end)}`
 const direct = edit => props.item?.id != null && edit.target?.type === (props.item.type === 'dataGap' ? 'DATA_GAP' : props.item.type.toUpperCase()) && Number(edit.target.id) === Number(props.item.id)
 const visibleEdits = computed(() => {
+  if (props.edits !== null) return props.edits
   if (!props.item) return edits.value
   const start = Date.parse(props.item.timestamp || props.item.startTime)
   const end = props.item.endTime ? Date.parse(props.item.endTime) : start + (props.item.stayDuration ?? props.item.tripDuration ?? props.item.durationSeconds ?? 0) * 1000
@@ -61,7 +62,7 @@ const visibleEdits = computed(() => {
 const active = computed(() => visibleEdits.value.filter(edit => edit.status === 'ACTIVE').sort((a, b) => b.seq - a.seq))
 const past = computed(() => visibleEdits.value.filter(edit => edit.status !== 'ACTIVE').sort((a, b) => b.seq - a.seq))
 watch(() => [props.visible, props.item], () => {
-  if (props.visible) load()
+  if (props.visible && props.edits === null) load()
 }, {immediate: true})
 
 async function load() {
@@ -69,9 +70,9 @@ async function load() {
   loading.value = true;
   error.value = ''
   try {
-    const result = await store.fetchTimelineEdits()
+    const result = props.edits !== null ? await props.reload?.() : await store.fetchTimelineEdits()
     if (version !== loadVersion) return
-    edits.value = result
+    if (props.edits === null) edits.value = result
     emit('loaded', visibleEdits.value)
   } catch (problem) {
     if (version === loadVersion) error.value = formatApiErrorDetail(problem, t('timeline.edit.historyFailed'))

@@ -65,6 +65,7 @@ class TimelineReadProjectionTest {
                     .explanation(explanation).build());
         }
         var geocoding = new org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity();
+        geocoding.setUser(user);
         geocoding.setRequestCoordinates(point());
         geocoding.setDisplayName("Geocoded place");
         geocoding.setProviderName("test");

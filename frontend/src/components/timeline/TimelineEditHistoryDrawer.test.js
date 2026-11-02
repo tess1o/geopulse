@@ -43,7 +43,30 @@ describe('TimelineEditHistoryDrawer', () => {
     expect(store.restoreTimelineEdit).toHaveBeenCalledWith(2)
   })
 
-  it('keeps the drawer open and shows a load failure', async () => {
+  it('uses supplied timeframe history and refreshes it after undo without loading global history', async () => {
+    const pinia = createPinia()
+    const store = useTimelineStore(pinia)
+    const fetch = vi.spyOn(store, 'fetchTimelineEdits')
+    vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: { id: 1 }, timelineJobId: 'job' })
+    const edit = { id: 1, kind: 'SET_MOVEMENT_TYPE', status: 'ACTIVE', applied: false, anchorStart: '2026-10-25T10:00:00Z', anchorEnd: '2026-10-25T11:00:00Z' }
+    const reload = vi.fn(async () => { await wrapper.setProps({ edits: [{ ...edit, status: 'REVERTED' }] }) })
+    const wrapper = mount(TimelineEditHistoryDrawer, {
+      props: { visible: true, edits: [edit], reload },
+      global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } }
+    })
+    await flushPromises()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(wrapper.findAll('article')).toHaveLength(1)
+    await wrapper.find('button').trigger('click')
+    await flushPromises()
+    await wrapper.emitted('changed')[0][0].onUpdated()
+    await flushPromises()
+    expect(reload).toHaveBeenCalledOnce()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(wrapper.find('button').text()).toBe('Redo')
+  })
+
+  it('keeps the drawer open and shows a load failure' , async () => {
     const pinia = createPinia()
     const store = useTimelineStore(pinia)
     vi.spyOn(store, 'fetchTimelineEdits').mockRejectedValue(new Error('history unavailable'))

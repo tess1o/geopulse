@@ -3,10 +3,10 @@
     <div class="timeline-header">
       <div class="timeline-header-top">
         <div class="timeline-title">{{ t('timeline.splitLayout.defaultExpandedLabel') }}</div>
-        <Button v-if="!effectiveReadOnly" class="timeline-history-button" text
+        <Button v-if="!effectiveReadOnly && historyEdits.length" class="timeline-history-button" text
           :aria-label="t('timeline.edit.history')" :title="t('timeline.edit.history')" @click="openEditHistory(null)">
           <i class="pi pi-history" />
-          <span v-if="activeEditCount" class="timeline-history-count">{{ activeEditCount }}</span>
+          <span class="timeline-history-count">{{ historyEdits.length }}</span>
         </Button>
       </div>
       <div
@@ -303,6 +303,8 @@
     <TimelineEditHistoryDrawer
       :visible="editHistoryVisible"
       :item="selectedItemForHistory"
+      :edits="historyEdits"
+      :reload="loadEditHistory"
       @close="closeEditHistory"
       @changed="handleEditSubmitted"
     />
@@ -319,6 +321,7 @@ import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useImmichStore } from '@/stores/immich'
+import { useTimelineStore } from '@/stores/timeline'
 import { useNotesStore } from '@/stores/notes'
 import { useHighlightStore } from '@/stores/highlight'
 import StayCard from './StayCard.vue'
@@ -356,6 +359,7 @@ const exportImportStore = useExportImportStore()
 const timelineLabelsStore = useTimelineLabelsStore()
 const immichStore = useImmichStore()
 const notesStore = useNotesStore()
+const timelineStore = useTimelineStore()
 
 // Display limit for progressive loading
 const displayLimit = ref(50)
@@ -627,8 +631,8 @@ const previousItemByTimelineOrder = computed(() => {
   return map
 })
 
-const activeEditCount = computed(() => (props.timelineData || [])
-  .reduce((sum, item) => sum + (item.activeEditCount || 0), 0))
+const historyEdits = ref([])
+let historyLoadVersion = 0
 
 const getNextTimelineItem = (item) => {
   return nextItemByTimelineOrder.value.get(item) || null
@@ -689,7 +693,18 @@ const closeEditHistory = () => {
 
 const handleEditSubmitted = (result) => {
   if (!result.operation || result.operation === 'create') closeEditor()
-  emit('timeline-edit-submitted', result)
+  const refresh = callback => async () => {
+    try {
+      await callback?.()
+    } finally {
+      await refreshEditHistory()
+    }
+  }
+  emit('timeline-edit-submitted', {
+    ...result,
+    onUpdated: refresh(result.onUpdated),
+    onUpdateFailed: refresh(result.onUpdateFailed)
+  })
 }
 
 const getWeatherSamplesForItem = (item) => {
@@ -902,6 +917,40 @@ const handleMovementTypeUpdated = (updated) => {
 const loadRange = computed(() => (
   Array.isArray(props.dataWindow) && props.dataWindow.length === 2 ? props.dataWindow : props.dateRange
 ))
+
+async function loadEditHistory() {
+  const version = ++historyLoadVersion
+  const range = loadRange.value
+  historyEdits.value = []
+  if (effectiveReadOnly.value || range?.length !== 2) return
+  const start = Date.parse(range[0])
+  const end = Date.parse(range[1])
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) return
+  try {
+    const edits = await timelineStore.fetchTimelineEdits()
+    if (version !== historyLoadVersion) return
+    historyEdits.value = edits.filter(edit =>
+      Date.parse(edit.affectedFrom || edit.anchorStart) < end &&
+      Date.parse(edit.affectedTo || edit.anchorEnd) > start)
+  } catch (error) {
+    if (version === historyLoadVersion) throw error
+  }
+}
+
+async function refreshEditHistory() {
+  try {
+    await loadEditHistory()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: t('timeline.edit.historyFailed'),
+      detail: formatApiErrorDetail(error, t('timeline.edit.historyFailed')),
+      life: 5000
+    })
+  }
+}
+
+watch([loadRange, () => props.timelineData, effectiveReadOnly], refreshEditHistory, { deep: true, immediate: true })
 
 // Load timeline labels when dateRange changes
 const loadTimelineLabels = async () => {
