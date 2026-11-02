@@ -1617,6 +1617,20 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.CAR, result);
     }
 
+    @Test
+    void altitudeApproximationMustNotHideClassificationThresholdCrossings() {
+        TimelineConfig thresholds = altitudeFlightConfig(true, 0.0);
+        for (double height : new double[]{299.99, 300.0, 300.01}) {
+            for (double verticalSpeed : new double[]{1.1999, 1.2, 1.2001}) {
+                TripType actual = classification.classifyTravelType(GLIDER_SPEEDS, TripWaterStatistics.unavailable(),
+                        new TripAltitudeStatistics(height, verticalSpeed, 100),
+                        Duration.ofMinutes(135), 150_000, thresholds);
+                TripType expected = height >= 300.0 && verticalSpeed >= 1.2 ? TripType.FLIGHT : TripType.CAR;
+                assertEquals(expected, actual, "height=" + height + ", verticalSpeed=" + verticalSpeed);
+            }
+        }
+    }
+
     private TimelineConfig altitudeFlightConfig(boolean altitudeDetectionEnabled, double minDistanceKm) {
         return TimelineConfig.builder()
                 .flightEnabled(true)

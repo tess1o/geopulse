@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.service.TimelineMemoryDiagnostics;
 import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 
 import java.time.Duration;
@@ -62,6 +63,9 @@ public class StreamingTimelineProcessor {
 
     @Inject
     TripStopHeuristicsService tripStopHeuristicsService;
+
+    @Inject
+    TimelineMemoryDiagnostics memoryDiagnostics;
 
 
     /**
@@ -129,6 +133,7 @@ public class StreamingTimelineProcessor {
 
         final int progressUpdateThreshold = 5000;
         int processedCount = 0;
+        boolean memoryDiagnosticsEnabled = memoryDiagnostics.isEnabled();
 
         // Process points with inline accuracy filtering (streaming-friendly)
         for (GPSPoint point : newPoints) {
@@ -146,6 +151,11 @@ public class StreamingTimelineProcessor {
             // Update progress periodically
             if (jobId != null && processedCount % progressUpdateThreshold == 0) {
                 updateProcessingProgress(jobId, processedCount, totalPoints);
+            }
+            if (memoryDiagnosticsEnabled && processedCount % 100_000 == 0) {
+                memoryDiagnostics.checkpoint(userId, jobId, "processing_points", Map.of(
+                        "processedPoints", processedCount, "activePoints", userState.getActivePoints().size(),
+                        "events", finalizedEvents.size()));
             }
         }
 
@@ -166,7 +176,11 @@ public class StreamingTimelineProcessor {
         }
 
         // 4. Batch populate location data for all stays at once (with progress tracking if jobId provided)
+        memoryDiagnostics.checkpoint(userId, jobId, "before_geocoding", Map.of(
+                "processedPoints", processedCount, "activePoints", userState.getActivePoints().size(),
+                "events", finalizedEvents.size()));
         finalizationService.populateStayLocations(finalizedEvents, userId, jobId);
+        memoryDiagnostics.checkpoint(userId, jobId, "after_geocoding", Map.of("events", finalizedEvents.size()));
 
         return finalizedEvents;
     }
@@ -453,7 +467,7 @@ public class StreamingTimelineProcessor {
      * changes no stop that the points' speeds already show.
      */
     private ProcessingResult splitTripOnSparseStop(UserState userState, TimelineConfig config) {
-        List<GPSPoint> allPoints = userState.copyActivePoints();
+        List<GPSPoint> allPoints = userState.getActivePoints();
         if (allPoints.size() < 2) {
             return null;
         }
@@ -510,7 +524,7 @@ public class StreamingTimelineProcessor {
             return null;
         }
 
-        List<GPSPoint> activePoints = userState.copyActivePoints();
+        List<GPSPoint> activePoints = userState.getActivePoints();
         if (activePoints.size() < 4) {
             return null;
         }
@@ -553,10 +567,12 @@ public class StreamingTimelineProcessor {
         TimelineReason transition = TimelineReason.of(TimelineReasons.WATER_TRANSITION, "toWater", currentRun.onWater);
         completedTrip.setExplanation(userState.finishExplanation(transition));
 
+        // The remaining tail must outlive clearActivePoints; inspection above needs no snapshot.
+        List<GPSPoint> continuation = new ArrayList<>(activePoints.subList(previousRun.endIndex, activePoints.size()));
         userState.setCurrentMode(ProcessorMode.IN_TRIP);
         userState.clearActivePoints();
-        for (int i = previousRun.endIndex; i < activePoints.size(); i++) {
-            userState.addActivePoint(activePoints.get(i));
+        for (GPSPoint point : continuation) {
+            userState.addActivePoint(point);
         }
         userState.startExplanation(transition);
 
@@ -784,7 +800,7 @@ public class StreamingTimelineProcessor {
      * Returns information about where the stopped cluster begins for retroactive stay timestamp.
      */
     private StopDetectionResult detectSustainedStopInTrip(UserState userState, TimelineConfig config) {
-        List<GPSPoint> activePoints = userState.copyActivePoints();
+        List<GPSPoint> activePoints = userState.getActivePoints();
         TripStopHeuristicsService.TripStopDetection detection =
                 tripStopHeuristicsService.detectTripStopFromRecentWindow(activePoints, config);
         if (detection.isStopDetected()) {

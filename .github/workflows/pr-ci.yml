@@ -16,6 +16,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  memory-benchmark-tests:
+    name: Memory Benchmark Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 -m unittest discover -s tests/performance/memory -p 'test_*.py' -v
+
   # Stage 1: Fast Unit Tests (Parallel)
   backend-unit-tests:
     name: Backend Unit Tests

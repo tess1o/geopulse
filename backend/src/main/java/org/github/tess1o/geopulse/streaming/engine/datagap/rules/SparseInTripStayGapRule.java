@@ -86,7 +86,7 @@ public class SparseInTripStayGapRule implements DataGapRule {
         if (context.userState().getCurrentMode() != ProcessorMode.IN_TRIP) {
             return false;
         }
-        if (context.userState().copyActivePoints().size() < 2) {
+        if (context.userState().getActivePoints().size() < 2) {
             log.debug("Sparse IN_TRIP stay inference skipped - fewer than 2 active trip points");
             return false;
         }

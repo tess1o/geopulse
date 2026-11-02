@@ -163,6 +163,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
 
+    @Inject
+    TimelineMemoryDiagnostics memoryDiagnostics;
+
     @ConfigProperty(name = "geopulse.trip.visit-matching.auto-apply-on-timeline-regeneration", defaultValue = "true")
     boolean autoApplyVisitMatchingOnRegeneration;
 
@@ -248,6 +251,8 @@ public class StreamingTimelineGenerationService {
         long startTime = System.currentTimeMillis();
         long metricsStart = metricsStart();
         String result = "success";
+        memoryDiagnostics.watchTransaction(userId, jobId);
+        memoryDiagnostics.checkpoint(userId, jobId, "start");
 
         // Step 1: Acquiring lock (5%)
         updateProgress(jobId, "acquiringLock", "Acquiring timeline lock", 1, 5, null);
@@ -285,6 +290,7 @@ public class StreamingTimelineGenerationService {
             Restart restart = deleteFromRestartPoint(userId, earliestAffectedTimestamp, restartPoint);
             Instant regenerationStartTime = restart.from();
             recordTimelineStage(stageStart, trigger, "cleanup", "success");
+            memoryDiagnostics.checkpoint(userId, jobId, "cleanup_end");
 
             stageStart = metricsStart();
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
@@ -316,6 +322,7 @@ public class StreamingTimelineGenerationService {
             stageStart = metricsStart();
             String environmentDatasetVersion = prepareBoatEvidence(userId, config, jobId);
             recordTimelineStage(stageStart, trigger, "boat_prepare", "success");
+            memoryDiagnostics.checkpoint(userId, jobId, "boat_prepare_end", Map.of("estimatedGpsPoints", estimatedCount));
 
             // Create streaming iterable (memory-efficient - no loading all points!)
             StreamingGpsIterable gpsStream = new StreamingGpsIterable(
@@ -337,6 +344,7 @@ public class StreamingTimelineGenerationService {
             List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId, restart.replay());
             recordTimelineStage(stateMachineStartNanos, trigger, "state_machine", "success");
             countTimelineEvents(trigger, "raw", rawEvents.size());
+            memoryDiagnostics.checkpoint(userId, jobId, "state_machine_end", Map.of("rawEvents", rawEvents.size()));
             log.info("Timeline state-machine processing completed for user {} in {} ms (rawEvents={})",
                     userId, elapsedMillis(stateMachineStartNanos), rawEvents.size());
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
@@ -355,6 +363,7 @@ public class StreamingTimelineGenerationService {
                     ), restart), restart);
             recordTimelineStage(tripPostProcessingStartNanos, trigger, "trip_postprocess", "success");
             countTimelineEvents(trigger, "postprocessed", events.size());
+            memoryDiagnostics.checkpoint(userId, jobId, "trip_postprocess_end", Map.of("events", events.size()));
             log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
                     userId, elapsedMillis(tripPostProcessingStartNanos), events.size());
 
@@ -369,14 +378,16 @@ public class StreamingTimelineGenerationService {
                     stageStart = metricsStart();
                     events = timelineMerger.mergeSameNamedLocations(config, events);
                     recordTimelineStage(stageStart, trigger, "merge", "success");
+                    memoryDiagnostics.checkpoint(userId, jobId, "merge_end", Map.of("events", events.size()));
                 }
 
                 Instant generatedEnd = events.stream().map(TimelineEvent::getEndTime)
                         .max(Instant::compareTo).orElse(regenerationStartTime);
                 stageStart = metricsStart();
                 TimelineEditResult editResult = timelineEditService.apply(userId, events, regenerationStartTime, generatedEnd);
-                events = new ArrayList<>(editResult.events());
+                events = editResult.events();
                 recordTimelineStage(stageStart, trigger, "timeline_edits", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "timeline_edits_end", Map.of("events", events.size()));
 
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
@@ -387,8 +398,12 @@ public class StreamingTimelineGenerationService {
 
                 // Persist raw timeline with GPS statistics calculation
                 long persistenceStartNanos = System.nanoTime();
-                persistenceManager.persistRawTimeline(userId, rawTimeline);
+                memoryDiagnostics.checkpoint(userId, jobId, "before_persist", Map.of(
+                        "events", rawTimeline.getTotalEventCount(), "stays", rawTimeline.getStays().size(),
+                        "trips", rawTimeline.getTrips().size(), "gaps", rawTimeline.getDataGaps().size()));
+                persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
                 recordTimelineStage(persistenceStartNanos, trigger, "persist", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "persist_end");
                 log.info("Timeline persistence completed for user {} in {} ms (stays={}, trips={}, gaps={}, events={})",
                         userId,
                         elapsedMillis(persistenceStartNanos),
@@ -403,6 +418,7 @@ public class StreamingTimelineGenerationService {
                 stageStart = metricsStart();
                 timelineEditService.recordApplications(userId, editResult);
                 recordTimelineStage(stageStart, trigger, "timeline_edit_applications", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "edit_applications_end");
                 // Legacy rows remain replayable until seeded migration-equivalence tests allow their tables to drop.
                 stageStart = metricsStart();
                 tripStaySplitOverrideService.reapplyManualOverrides(userId);
@@ -410,10 +426,12 @@ public class StreamingTimelineGenerationService {
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
                 stayNameOverrideService.reapplyManualOverrides(userId);
                 recordTimelineStage(stageStart, trigger, "legacy_timeline_edits", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "legacy_edits_end");
                 // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
                 stageStart = metricsStart();
                 timelineNoteService.reattachAnchoredNotes(userId);
                 recordTimelineStage(stageStart, trigger, "notes", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "notes_end");
             } else {
                 log.info("Timeline persistence skipped for user {} because post-processing returned no events", userId);
             }
@@ -436,6 +454,7 @@ public class StreamingTimelineGenerationService {
                     updateProgress(jobId, "autoMatchingVisits", "Auto-matching planned visits", 9, 97, null);
                     tripVisitAutoMatchService.evaluateAllTrips(userId, true);
                     recordTimelineStage(stageStart, trigger, "visit_matching", "success");
+                    memoryDiagnostics.checkpoint(userId, jobId, "visit_matching_end");
                 } catch (Exception ex) {
                     recordTimelineStage(stageStart, trigger, "visit_matching", "error");
                     log.error("Failed to auto-match trip plan items for user {} after timeline regeneration: {}",
@@ -455,6 +474,7 @@ public class StreamingTimelineGenerationService {
             finishPendingRebuild(userId, pendingRebuild, regenerationStartTime);
         } catch (Exception e) {
             result = "error";
+            memoryDiagnostics.checkpoint(userId, jobId, "error");
             // Once the request row has been touched by this transaction, counting the failure in a separate
             // transaction would wait on our own lock; the request is then simply rolled back to how it was.
             if (pendingRebuild != null && !pendingRebuildFinished) {
@@ -463,6 +483,7 @@ public class StreamingTimelineGenerationService {
             failJob(jobId, "Timeline generation failed: " + e.getMessage());
             throw new TimelineGenerationException("Timeline generation failed", e);
         } finally {
+            memoryDiagnostics.checkpoint(userId, jobId, "transaction_body_end");
             countTimelineRun(trigger, result);
             recordTimelineDuration(metricsStart, trigger, result);
             releaseLock(userId);

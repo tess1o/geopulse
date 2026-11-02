@@ -198,6 +198,8 @@ public class TimelineEditService {
                 .filter(edit -> !insertsAtAnchor(edit.getKind()) || !edit.getAnchorStart().isBefore(from))
                 .map(TimelineEditService::command)
                 .toList();
+        // Generation owns these events; without edits there is no mutation to isolate with deep copies.
+        if (commands.isEmpty()) return new TimelineEditResult(List.copyOf(events), Map.of(), List.of());
         return applier.apply(events, commands, trip -> recalculateTrip(userId, trip));
     }
 

@@ -61,16 +61,6 @@ public class TimelineNoteAnchorReattachmentService {
         if (notes.isEmpty()) {
             return 0;
         }
-        List<TimelineStayEntity> candidates = stayRepository.findByUserIdAndTimeRangeWithExpansion(
-                userId,
-                notes.stream()
-                        .map(TimelineNoteEntity::getSourceItemStartTime)
-                        .filter(Objects::nonNull)
-                        .min(Instant::compareTo)
-                        .orElse(Instant.EPOCH)
-                        .minusSeconds(maxTimestampDeltaSeconds),
-                Instant.now().plusSeconds(maxTimestampDeltaSeconds)
-        );
         List<TimelineDataGapEntity> gaps = findDataGapsCoveringNotes(userId, notes);
 
         int count = 0;
@@ -83,6 +73,10 @@ public class TimelineNoteAnchorReattachmentService {
                 note.setAnchorType(NoteAnchorType.TIMESTAMP);
                 continue;
             }
+            Instant anchor = note.getSourceItemStartTime();
+            List<TimelineStayEntity> candidates = anchor == null ? List.of() : stayRepository.find(
+                    "user.id = ?1 and timestamp >= ?2 and timestamp < ?3 order by timestamp", userId,
+                    anchor.minusSeconds(maxTimestampDeltaSeconds), candidateEnd(anchor)).list();
             TimelineStayEntity best = findBestStayMatch(note, candidates, matchedStayIds);
             if (best == null) {
                 continue;
@@ -100,7 +94,6 @@ public class TimelineNoteAnchorReattachmentService {
         if (notes.isEmpty()) {
             return 0;
         }
-        List<TimelineTripEntity> candidates = tripRepository.findByUser(userId);
         List<TimelineDataGapEntity> gaps = findDataGapsCoveringNotes(userId, notes);
 
         int count = 0;
@@ -113,6 +106,10 @@ public class TimelineNoteAnchorReattachmentService {
                 note.setAnchorType(NoteAnchorType.TIMESTAMP);
                 continue;
             }
+            Instant anchor = note.getSourceItemStartTime();
+            List<TimelineTripEntity> candidates = anchor == null ? List.of() : tripRepository.find(
+                    "user.id = ?1 and timestamp >= ?2 and timestamp < ?3 order by timestamp", userId,
+                    anchor.minusSeconds(maxTimestampDeltaSeconds), candidateEnd(anchor)).list();
             TimelineTripEntity best = findBestTripMatch(note, candidates, matchedTripIds);
             if (best == null) {
                 continue;
@@ -123,6 +120,11 @@ public class TimelineNoteAnchorReattachmentService {
             count++;
         }
         return count;
+    }
+
+    Instant candidateEnd(Instant anchor) {
+        // Duration.getSeconds() admits positive fractional deltas through max + 0.999... seconds.
+        return anchor.plusSeconds(maxTimestampDeltaSeconds).plusSeconds(1);
     }
 
     private TimelineStayEntity findBestStayMatch(TimelineNoteEntity note, List<TimelineStayEntity> candidates, Set<Long> matchedStayIds) {

@@ -28,13 +28,13 @@ export class AuthManager {
   /**
    * Login and obtain JWT tokens
    *
-   * Uses /api/v1/auth/api-login endpoint which returns tokens in response body
+   * Uses /api/v1/auth/api-sessions endpoint which returns tokens in response body
    * (not cookies), making it suitable for API testing.
    *
    * @returns {boolean} true if login successful, false otherwise
    */
   login() {
-    const loginUrl = `${config.baseUrl}/api/v1/auth/api-login`;
+    const loginUrl = `${config.baseUrl}/api/v1/auth/api-sessions`;
 
     const payload = JSON.stringify({
       email: this.email,
@@ -55,7 +55,8 @@ export class AuthManager {
       'login response has data': (r) => {
         try {
           const body = JSON.parse(r.body);
-          return body.data && body.data.accessToken && body.data.refreshToken;
+          const data = body.data || body;
+          return data.accessToken && data.refreshToken;
         } catch (e) {
           return false;
         }
@@ -68,13 +69,14 @@ export class AuthManager {
       return false;
     }
 
-    const body = JSON.parse(response.body);
+    const parsed = JSON.parse(response.body);
+    const body = parsed.data || parsed;
     console.log(`Login successful for ${this.email}`);
-    this.accessToken = body.data.accessToken;
-    this.refreshToken = body.data.refreshToken;
+    this.accessToken = body.accessToken;
+    this.refreshToken = body.refreshToken;
 
     // expiresIn is in seconds (default: 1800 = 30 minutes)
-    const expiresInMs = (body.data.expiresIn || 1800) * 1000;
+    const expiresInMs = (body.expiresIn || 1800) * 1000;
     this.tokenExpiry = Date.now() + expiresInMs;
 
     return true;
@@ -121,7 +123,7 @@ export class AuthManager {
    * Updates internal state with new tokens and expiry time.
    */
   refreshAccessToken() {
-    const refreshUrl = `${config.baseUrl}/api/v1/auth/refresh`;
+    const refreshUrl = `${config.baseUrl}/api/v1/auth/api-sessions/current/refresh`;
 
     const payload = JSON.stringify({
       refreshToken: this.refreshToken,

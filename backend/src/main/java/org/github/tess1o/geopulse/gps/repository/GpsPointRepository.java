@@ -334,7 +334,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 ? ""
                 : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
         String cursorPredicate = cursorTimestamp != null && cursorId != null
-                ? "AND (gp.timestamp > :cursorTimestamp OR (gp.timestamp = :cursorTimestamp AND gp.id > :cursorId)) "
+                ? "AND (gp.timestamp, gp.id) > (:cursorTimestamp, :cursorId) "
                 : "";
 
         Query query = getEntityManager().createNativeQuery(

@@ -1,5 +1,7 @@
 # GeoPulse k6 Load Testing
 
+For isolated native-image timeline memory, capacity, correctness and before/after speed tests, use the [timeline memory benchmark](memory/README.md). The k6 suite below measures API traffic and does not verify the 512 MiB regeneration requirement.
+
 Comprehensive load testing infrastructure for GeoPulse using [k6](https://k6.io/).
 
 ## Overview

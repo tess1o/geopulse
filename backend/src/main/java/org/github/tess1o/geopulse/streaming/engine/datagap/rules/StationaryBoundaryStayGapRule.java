@@ -109,7 +109,7 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
         }
 
         int minTripPoints = resolveMinTripPoints(context.config());
-        int activePointsCount = context.userState().copyActivePoints().size();
+        int activePointsCount = context.userState().getActivePoints().size();
         if (activePointsCount < minTripPoints) {
             log.debug("Stationary boundary IN_TRIP stay inference skipped - active trip points {} below minimum {}",
                     activePointsCount, minTripPoints);

@@ -178,7 +178,7 @@ public class TimelineEventFinalizationService {
      * @return finalized trip event
      */
     public Trip finalizeTrip(UserState userState, TimelineConfig config) {
-        List<GPSPoint> tripPath = userState.copyActivePoints();
+        List<GPSPoint> tripPath = userState.getActivePoints();
 
         if (tripPath.size() < 2) {
             log.warn("Cannot finalize trip - insufficient path points: {}", tripPath.size());
@@ -219,9 +219,13 @@ public class TimelineEventFinalizationService {
      * @return finalized trip event with unknown type
      */
     public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint, TimelineConfig config) {
-        List<GPSPoint> tripPath = userState.copyActivePoints();
+        List<GPSPoint> tripPath = userState.getActivePoints();
         if (endPoint != null) {
-            tripPath.add(endPoint);
+            // Reserve the appended endpoint up front instead of copying and then growing a full trip array.
+            List<GPSPoint> extendedPath = new ArrayList<>(tripPath.size() + 1);
+            for (GPSPoint point : tripPath) extendedPath.add(point);
+            extendedPath.add(endPoint);
+            tripPath = extendedPath;
         }
 
         if (tripPath.isEmpty()) {

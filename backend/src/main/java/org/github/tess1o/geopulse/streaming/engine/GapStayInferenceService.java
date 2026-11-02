@@ -101,7 +101,7 @@ public class GapStayInferenceService {
 
     private GapStayInferencePlan tryInferForShortLocalTrip(GPSPoint currentPoint, UserState userState,
                                                            int stayRadiusMeters, Duration gapDuration) {
-        List<GPSPoint> activeTripPoints = userState.copyActivePoints();
+        List<GPSPoint> activeTripPoints = userState.getActivePoints();
         if (activeTripPoints.size() < 2) {
             log.debug("Gap stay inference not applicable for IN_TRIP with fewer than 2 active points");
             return GapStayInferencePlan.none();
@@ -159,7 +159,7 @@ public class GapStayInferenceService {
 
     private GapStayInferencePlan tryInferFromTripTailArrival(GPSPoint currentPoint, UserState userState,
                                                              TimelineConfig config, Duration gapDuration) {
-        List<GPSPoint> activeTripPoints = userState.copyActivePoints();
+        List<GPSPoint> activeTripPoints = userState.getActivePoints();
         TripStopHeuristicsService.TailArrivalClusterMatch tailMatch =
                 tripStopHeuristicsService.findGapTailArrivalClusterMatch(activeTripPoints, currentPoint, config);
         if (!tailMatch.isMatched()) {
