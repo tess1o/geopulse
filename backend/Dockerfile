@@ -32,6 +32,7 @@ COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/quarkus/ /app/q
 
 # Stage 2: Create a minimal runtime image
 FROM eclipse-temurin:25.0.4.1_1-jdk-alpine-3.24
+LABEL org.opencontainers.image.source="https://github.com/tess1o/geopulse"
 WORKDIR /app
 
 # Full backups need pg_dump/pg_restore matching the server major. Both majors are installed side by side

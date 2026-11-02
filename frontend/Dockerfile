@@ -15,6 +15,7 @@ RUN npm run build
 
 # Stage 2: Runtime
 FROM nginx:1.30.5-alpine3.24
+LABEL org.opencontainers.image.source="https://github.com/tess1o/geopulse"
 WORKDIR /usr/share/nginx/html
 
 # Remove default nginx static assets
