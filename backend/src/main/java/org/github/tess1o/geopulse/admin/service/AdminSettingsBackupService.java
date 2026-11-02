@@ -137,6 +137,13 @@ public class AdminSettingsBackupService {
                 }
                 continue;
             }
+            if (isInheritedLogLevel(setting)) {
+                // "inherit" is the log level's default and means "no admin-managed value". Export writes the
+                // effective value, so a backup made without an override contains it, while the settings
+                // validator only accepts real levels. Treat it as absent: the import then removes any existing
+                // override and the deployment's environment/default applies again.
+                continue;
+            }
             if (setting.getValueType() != null && setting.getValueType() != definition.valueType()) {
                 throw new IllegalArgumentException("Setting " + setting.getKey() + " has value type "
                         + setting.getValueType() + " but expected " + definition.valueType());
@@ -147,6 +154,11 @@ public class AdminSettingsBackupService {
             settingsService.validateValueForImport(setting.getKey(), safeValue(setting.getValue()));
         }
         return supportedSettings;
+    }
+
+    private boolean isInheritedLogLevel(AdminSettingsBackupDto.SettingBackupDto setting) {
+        return SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(setting.getKey())
+                && "inherit".equalsIgnoreCase(safeValue(setting.getValue()).trim());
     }
 
     private void validateBackupEnvelope(AdminSettingsBackupDto backup) {
