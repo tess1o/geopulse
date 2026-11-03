@@ -72,6 +72,9 @@ public class TimelineDisplayPreferences implements Serializable {
     /** Show telemetry in the current-location popup on the Timeline map. Default: true. */
     private Boolean showCurrentLocationTelemetry;
 
+    /** Show Unknown Activity cards in the main Timeline. Default: true. */
+    private Boolean showUnknownActivity;
+
     /** Enable 3D buildings when a compatible MapTiler vector map opens. Default: false. */
     private Boolean enable3dBuildingsByDefault;
 
@@ -133,6 +136,7 @@ public class TimelineDisplayPreferences implements Serializable {
                 .pathMaxPoints(pathMaxPoints != null ? pathMaxPoints : 0)
                 .pathAdaptiveSimplification(pathAdaptiveSimplification != null ? pathAdaptiveSimplification : true)
                 .showCurrentLocationTelemetry(showCurrentLocationTelemetry != null ? showCurrentLocationTelemetry : true)
+                .showUnknownActivity(showUnknownActivity != null ? showUnknownActivity : true)
                 .enable3dBuildingsByDefault(enable3dBuildingsByDefault != null ? enable3dBuildingsByDefault : false)
                 .mapMatchingEnabled(mapMatchingEnabled != null ? mapMatchingEnabled : false)
                 .mapMatchingExcludedMovementTypes(mapMatchingExcludedMovementTypes != null

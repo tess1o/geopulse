@@ -40,14 +40,25 @@
       <ProgressSpinner />
     </div>
 
-    <div v-show="timelineNoData" class="loading-messages timeline-no-data">
+    <div v-show="timelineNoData && !timelineDataLoading && !onlyHiddenGaps" class="loading-messages timeline-no-data">
       <div>{{ t('timeline.container.noData') }}</div>
     </div>
 
+    <div v-if="!timelineDataLoading && onlyHiddenGaps" class="loading-messages timeline-no-data">
+      <div>{{ t('timeline.container.unknownActivityHidden') }}</div>
+      <Button
+        as="router-link"
+        to="/app/profile?tab=timeline&setting=showUnknownActivity"
+        :label="t('timeline.container.displaySettings')"
+        icon="pi pi-cog"
+        size="small"
+      />
+    </div>
+
     <!-- Warning for large datasets -->
-    <div v-if="!timelineNoData && !timelineDataLoading && timelineData && timelineData.length > displayLimit && displayLimit < timelineData.length" class="timeline-warning">
+    <div v-if="!timelineNoData && !timelineDataLoading && displayedTimelineData.length > displayLimit" class="timeline-warning">
       <i class="pi pi-info-circle"></i>
-      <span>{{ t('timeline.container.showingItems', { shown: displayLimit, total: timelineData.length }) }}</span>
+      <span>{{ t('timeline.container.showingItems', { shown: displayLimit, total: displayedTimelineData.length }) }}</span>
       <Button
         :label="t('timeline.container.loadMore')"
         icon="pi pi-plus"
@@ -382,6 +393,10 @@ const selectedItemForHistory = ref(null)
 
 // Props
 const props = defineProps({
+  showUnknownActivity: {
+    type: Boolean,
+    default: true
+  },
   timelineNoData: {
     type: Boolean,
     default: false
@@ -526,19 +541,24 @@ const selectedDateLabel = computed(() => (
   selectedSingleDayDate.value ? timezone.formatDateLong(selectedSingleDayDate.value) : ''
 ))
 
+const displayedTimelineData = computed(() => props.showUnknownActivity
+  ? props.timelineData
+  : props.timelineData.filter(item => item.type !== 'dataGap'))
+const onlyHiddenGaps = computed(() => props.timelineData.length > 0 && displayedTimelineData.value.length === 0)
+
 // Group timeline data by date with proper overnight stay handling
 const groupedTimelineData = computed(() => {
-  if (!props.timelineData || props.timelineData.length === 0) {
+  if (!displayedTimelineData.value || displayedTimelineData.value.length === 0) {
     return []
   }
 
   // For large datasets, progressively load items based on displayLimit
-  const itemsToProcess = props.timelineData.length > displayLimit.value
-    ? props.timelineData.slice(0, displayLimit.value)
-    : props.timelineData
+  const itemsToProcess = displayedTimelineData.value.length > displayLimit.value
+    ? displayedTimelineData.value.slice(0, displayLimit.value)
+    : displayedTimelineData.value
 
-  if (props.timelineData.length > displayLimit.value) {
-    console.log(`Timeline: Showing ${displayLimit.value} of ${props.timelineData.length} items`)
+  if (displayedTimelineData.value.length > displayLimit.value) {
+    console.log(`Timeline: Showing ${displayLimit.value} of ${displayedTimelineData.value.length} items`)
   }
 
   const allDates = new Set();
@@ -728,8 +748,8 @@ const navigateDay = (offset) => {
 
 const loadMore = () => {
   // Load 100 more items each time
-  displayLimit.value = Math.min(displayLimit.value + 100, props.timelineData.length)
-  console.log(`Timeline: Loading more items. Now showing ${displayLimit.value} of ${props.timelineData.length}`)
+  displayLimit.value = Math.min(displayLimit.value + 100, displayedTimelineData.value.length)
+  console.log(`Timeline: Loading more items. Now showing ${displayLimit.value} of ${displayedTimelineData.value.length}`)
 }
 
 const handleTimelineItemClick = (item) => {

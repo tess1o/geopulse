@@ -21,6 +21,7 @@ class PreferencePatchesTest {
     @Test
     void nullFieldsLeaveStoredValuesUnchanged() {
         TimelineDisplayPreferences current = TimelineDisplayPreferences.builder()
+                .showUnknownActivity(false)
                 .pathMaxPoints(250)
                 .mapRenderMode(MapRenderMode.RASTER)
                 .defaultPathColor("#112233")
@@ -30,6 +31,7 @@ class PreferencePatchesTest {
                 TimelineDisplayPreferences.builder().enable3dBuildingsByDefault(true).build());
 
         assertEquals(250, merged.getPathMaxPoints());
+        assertEquals(false, merged.withDefaults().getShowUnknownActivity());
         assertEquals(MapRenderMode.RASTER, merged.getMapRenderMode());
         assertEquals("#112233", merged.getDefaultPathColor());
         assertEquals(true, merged.getEnable3dBuildingsByDefault());
@@ -57,16 +59,19 @@ class PreferencePatchesTest {
     @Test
     void falseAndZeroAreValuesNotAbsence() {
         TimelineDisplayPreferences current = TimelineDisplayPreferences.builder()
+                .showUnknownActivity(true)
                 .showCurrentLocationTelemetry(true)
                 .pathMaxPoints(500)
                 .build();
 
         TimelineDisplayPreferences merged = PreferencePatches.apply(current, TimelineDisplayPreferences.builder()
+                .showUnknownActivity(false)
                 .showCurrentLocationTelemetry(false)
                 .pathMaxPoints(0)
                 .build());
 
         assertEquals(false, merged.getShowCurrentLocationTelemetry());
+        assertEquals(false, merged.withDefaults().getShowUnknownActivity());
         assertEquals(0, merged.getPathMaxPoints());
     }
 
@@ -161,6 +166,7 @@ class PreferencePatchesTest {
     void doesNotMutateTheCurrentValue() {
         TimelineDisplayPreferences current = TimelineDisplayPreferences.builder()
                 .defaultPathColor("#112233")
+                .showUnknownActivity(false)
                 .pathMaxPoints(250)
                 .build();
 

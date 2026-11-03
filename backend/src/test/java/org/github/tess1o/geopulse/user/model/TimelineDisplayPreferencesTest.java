@@ -70,6 +70,7 @@ class TimelineDisplayPreferencesTest {
         assertEquals(4, resolved.getPathWidth());
         assertEquals(PathColorMode.SINGLE, resolved.getPathColorMode());
         assertEquals(true, resolved.getShowMapScale());
+        assertEquals(true, resolved.getShowUnknownActivity());
         assertNull(resolved.getDayPalette());
         assertNull(resolved.getSpeedBandPalette());
         assertNull(resolved.getHeatmapGradient());
@@ -86,6 +87,7 @@ class TimelineDisplayPreferencesTest {
                 .speedBandPalette("OFF")
                 .pathColorMode(PathColorMode.DAY)
                 .dayPalette("TOL_MUTED")
+                .showUnknownActivity(false)
                 .showMapScale(false)
                 .build()
                 .withDefaults();
@@ -97,5 +99,6 @@ class TimelineDisplayPreferencesTest {
         assertEquals(PathColorMode.DAY, resolved.getPathColorMode());
         assertEquals("TOL_MUTED", resolved.getDayPalette());
         assertEquals(false, resolved.getShowMapScale());
+        assertEquals(false, resolved.getShowUnknownActivity());
     }
 }

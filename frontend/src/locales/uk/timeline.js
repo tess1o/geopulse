@@ -398,6 +398,8 @@ export default {
         minutes: '{value} хв'
     },
     container: {
+        unknownActivityHidden: 'За цей період немає записаних зупинок або поїздок. Невідому активність приховано.',
+        displaySettings: 'Налаштування відображення хронології',
         noData: 'Немає хронології для вибраного діапазону дат.',
         showingItems: 'Показано {shown} з {total} елементів.',
         loadMore: 'Завантажити більше',

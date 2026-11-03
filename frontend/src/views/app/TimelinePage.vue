@@ -81,6 +81,7 @@
           <TimelineContainer
               ref="timelineContainerRef"
               :timelineData="timelineDataWithStayTelemetry"
+              :show-unknown-activity="showUnknownActivity"
               :weather-samples="weatherSamples"
               :timelineNoData="timelineNoData"
               :timelineDataLoading="timelineDataLoading"
@@ -276,6 +277,7 @@ const readTimelineDisplayFallback = () => {
     ?? []
 
   return {
+    showUnknownActivity: user.showUnknownActivity ?? cachedProfile.showUnknownActivity ?? true,
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
       ?? cachedProfile.showCurrentLocationTelemetry
       ?? true,
@@ -308,6 +310,7 @@ const lastAppliedFocusKey = ref(null)
 const currentLocation = ref(null)
 let currentLocationRequestToken = 0
 const mapPreferencesLoaded = ref(false)
+const showUnknownActivity = ref(initialTimelineDisplaySettings.showUnknownActivity)
 const showCurrentLocationTelemetry = ref(initialTimelineDisplaySettings.showCurrentLocationTelemetry)
 const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
@@ -844,6 +847,7 @@ const loadTimelineDisplaySettings = async () => {
 
   try {
     const data = await authStore.fetchTimelineDisplayPreferences()
+    showUnknownActivity.value = data?.showUnknownActivity ?? fallback.showUnknownActivity
     showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = hasOwnPreference(data, 'customMapTileUrl')
       ? data.customMapTileUrl || null
@@ -860,6 +864,7 @@ const loadTimelineDisplaySettings = async () => {
     panoramaxAvailable.value = data?.panoramaxAvailable ?? false
     panoramaxEndpoint.value = data?.panoramaxEndpoint || null
   } catch (error) {
+    showUnknownActivity.value = fallback.showUnknownActivity
     showCurrentLocationTelemetry.value = fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = fallback.customMapTileUrl
     customMapStyleUrl.value = fallback.customMapStyleUrl

@@ -400,6 +400,8 @@ export default {
         minutes: '{value} min'
     },
     container: {
+        unknownActivityHidden: 'No recorded stays or trips in this period. Unknown Activity is hidden.',
+        displaySettings: 'Timeline Display settings',
         noData: 'No timeline for the given date range.',
         showingItems: 'Showing {shown} of {total} items.',
         loadMore: 'Load More',

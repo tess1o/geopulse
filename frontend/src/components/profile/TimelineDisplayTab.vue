@@ -43,6 +43,23 @@
             </SettingCard>
 
             <SettingCard
+              :title="t('profile.timeline.behavior.unknownActivity.title')"
+              :description="t('profile.timeline.behavior.unknownActivity.description')"
+              :details="t('profile.timeline.behavior.unknownActivity.details')"
+              setting-id="showUnknownActivity"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.showUnknownActivity"
+                  input-id="showUnknownActivity"
+                  :aria-label="t('profile.timeline.behavior.unknownActivity.title')"
+                  class="toggle-control"
+                  :disabled="readOnly"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
               :title="t('profile.timeline.behavior.telemetry.title')"
               :description="t('profile.timeline.behavior.telemetry.description')"
               :details="t('profile.timeline.behavior.telemetry.details')"
@@ -324,6 +341,7 @@ const form = ref({
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
+  showUnknownActivity: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],
@@ -398,6 +416,7 @@ const editablePreferenceKeys = [
   'pathMaxPoints',
   'pathAdaptiveSimplification',
   'showCurrentLocationTelemetry',
+  'showUnknownActivity',
   'enable3dBuildingsByDefault',
   'mapMatchingEnabled',
   'mapMatchingExcludedMovementTypes'
@@ -413,6 +432,7 @@ const normalizePreferences = (preferences = {}) => ({
   pathMaxPoints: Number(preferences.pathMaxPoints ?? 0),
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
+  showUnknownActivity: preferences.showUnknownActivity ?? true,
   enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
   mapMatchingExcludedMovementTypes: normalizeMovementTypeList(preferences.mapMatchingExcludedMovementTypes),
@@ -553,6 +573,7 @@ const handleSubmit = async () => {
       pathMaxPoints: form.value.pathMaxPoints,
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
+      showUnknownActivity: form.value.showUnknownActivity,
       enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
       mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false,
       mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes)
@@ -574,6 +595,7 @@ const handleReset = () => {
     pathMaxPoints: 0,
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
+    showUnknownActivity: true,
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],

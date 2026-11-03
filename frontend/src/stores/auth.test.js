@@ -233,6 +233,16 @@ describe('auth store cached profile reconciliation', () => {
     expect(readCachedProfile()).toMatchObject({ colorScheme: 'RED_GREEN_SAFE', pathWidth: 6 })
   })
 
+  it('defaults Unknown Activity to shown and caches an explicit hidden preference', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(serverUser())
+    expect(authStore.user.showUnknownActivity).toBe(true)
+    apiService.get.mockResolvedValue({ preferences: { showUnknownActivity: false }, capabilities: {} })
+    expect(await authStore.fetchTimelineDisplayPreferences()).toMatchObject({ showUnknownActivity: false })
+    expect(authStore.user.showUnknownActivity).toBe(false)
+    expect(readCachedProfile().showUnknownActivity).toBe(false)
+  })
+
   it('refreshes the in-memory user when timeline display preferences are fetched', async () => {
     const authStore = useAuthStore()
     authStore.setUser(user())

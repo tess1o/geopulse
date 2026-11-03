@@ -155,6 +155,7 @@ const timelineDisplayPrefs = ref({
   pathAdaptiveSimplification: true,
   defaultDateRangePreset: defaultDateRangePreset.value || '',
   showCurrentLocationTelemetry: true,
+  showUnknownActivity: true,
   enable3dBuildingsByDefault: enable3dBuildingsByDefault.value ?? false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],
@@ -556,6 +557,7 @@ const loadTimelineDisplayPreferences = async () => {
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
         defaultDateRangePreset: data.defaultDateRangePreset || '',
         showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
+        showUnknownActivity: data.showUnknownActivity ?? true,
         enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: data.mapMatchingEnabled ?? false,
         mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)

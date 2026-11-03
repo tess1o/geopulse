@@ -277,6 +277,26 @@ const appearancePrefs = {
 }
 
 describe('appearance and timeline tabs share one preferences document', () => {
+  it('loads, saves and resets the Unknown Activity preference with dirty tracking', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: { initialPreferences: { ...timelineDisplayPrefs, showUnknownActivity: false } },
+      global: globalOptions
+    })
+    await flushPromises()
+    const toggle = wrapper.find('input[aria-label="Show Unknown Activity"]')
+    expect(toggle.element.checked).toBe(false)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save')[0][0].showUnknownActivity).toBe(false)
+    await toggle.setValue(true)
+    expect(lastDirtyValue(wrapper)).toBe(true)
+    await toggle.setValue(false)
+    expect(lastDirtyValue(wrapper)).toBe(false)
+    await findButtonByLabel(wrapper, 'Reset to Defaults').trigger('click')
+    expect(toggle.element.checked).toBe(true)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save').at(-1)[0].showUnknownActivity).toBe(true)
+  })
+
   it('saves only timeline & map fields from the timeline tab', async () => {
     const wrapper = mount(TimelineDisplayTab, {
       props: { initialPreferences: { ...timelineDisplayPrefs, ...appearancePrefs } },

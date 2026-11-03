@@ -118,6 +118,13 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['default date range', 'today', 'yesterday', 'last week', 'last month']
   },
   {
+    id: 'showUnknownActivity',
+    title: 'Show Unknown Activity',
+    tab: 'timelineDisplay',
+    subtitle: 'Display',
+    keywords: ['unknown activity', 'gaps', 'empty days', 'hide', 'sparse imports']
+  },
+  {
     id: 'showCurrentLocationTelemetry',
     title: 'Show Telemetry In Current Location Popup',
     tab: 'timelineDisplay',

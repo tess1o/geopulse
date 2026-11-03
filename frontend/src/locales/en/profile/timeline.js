@@ -16,6 +16,11 @@ export default {
             details: 'Clear the selection to use the app default: Today.',
             placeholder: 'Use app default (Today)'
         },
+        unknownActivity: {
+            title: 'Show Unknown Activity',
+            description: 'Show data gaps in the main Timeline.',
+            details: 'Turn off to hide gap cards and dates without recorded stays or trips. Timeline data and processing remain unchanged.'
+        },
         telemetry: {
             title: 'Current-location telemetry',
             description: 'Show telemetry values in the current-location map popup.',

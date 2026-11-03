@@ -69,6 +69,7 @@ const TIMELINE_DISPLAY_PREFERENCE_DEFAULTS = {
     mapRenderMode: 'VECTOR',
     defaultDateRangePreset: '',
     showCurrentLocationTelemetry: true,
+    showUnknownActivity: true,
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],
