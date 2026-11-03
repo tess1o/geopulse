@@ -10,7 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.notes.model.MemosCreateMemoRequest;
 
-@Path("/api/v1/memos")
+@Path("/memos")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public interface MemosRestClient {

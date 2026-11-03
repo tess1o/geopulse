@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 
 @ApplicationScoped
 @Slf4j
@@ -38,26 +39,12 @@ public class MemosClient {
         int pageSize = Math.max(1, Math.min(DEFAULT_PAGE_SIZE, Math.min(limit, MAX_PAGE_SIZE)));
         String filter = buildMemosFilter(startTime, endTime, includeTags);
 
-        List<MemosMemo> allMemos = new ArrayList<>();
-        MemosRestClient client = buildClient(baseUrl, apiKey);
-        try {
-            MemosListResponse firstPage = fetchMemosPage(client, pageSize, null, filter);
-            allMemos.addAll(safeMemos(firstPage));
-            if (allMemos.size() >= limit) {
-                return allMemos.subList(0, limit);
-            }
+        return withDetectedClient(baseUrl, apiKey, pageSize, null, filter, (client, firstPage) -> {
+            List<MemosMemo> allMemos = new ArrayList<>(safeMemos(firstPage));
             return fetchRemainingPages(
-                    client,
-                    pageSize,
-                    firstPage.getNextPageToken(),
-                    filter,
-                    allMemos,
-                    limit,
-                    0
+                    client, pageSize, firstPage.getNextPageToken(), filter, allMemos, limit, 0
             );
-        } finally {
-            closeClient(client);
-        }
+        });
     }
 
     public MemosListResponse fetchMemosPage(
@@ -68,12 +55,7 @@ public class MemosClient {
             String filter
     ) {
         try {
-            MemosRestClient client = buildClient(baseUrl, apiKey);
-            try {
-                return fetchMemosPage(client, pageSize, pageToken, filter);
-            } finally {
-                closeClient(client);
-            }
+            return withDetectedClient(baseUrl, apiKey, pageSize, pageToken, filter, (client, page) -> page);
         } catch (Exception e) {
             log.error("Failed to list memos from server {}: {}", baseUrl, e.getMessage(), e);
             throw asRuntimeException(e);
@@ -81,33 +63,57 @@ public class MemosClient {
     }
 
     public MemosMemo createMemo(String baseUrl, String apiKey, MemosCreateMemoRequest createRequest) {
-        MemosRestClient client = null;
         try {
-            client = buildClient(baseUrl, apiKey);
-            try (Response response = client.createMemo(createRequest)) {
-                assertSuccessful(response);
-                return response.readEntity(MemosMemo.class);
-            }
+            // Resolve with a GET so a failed POST is never retried and cannot duplicate a note.
+            return withDetectedClient(baseUrl, apiKey, 1, null, null, (client, page) -> {
+                try (Response response = client.createMemo(createRequest)) {
+                    assertSuccessful(response);
+                    return response.readEntity(MemosMemo.class);
+                }
+            });
         } catch (Exception e) {
             log.error("Failed to create memo on server {}: {}", baseUrl, e.getMessage(), e);
             throw asRuntimeException(e);
-        } finally {
-            if (client != null) {
-                closeClient(client);
-            }
         }
     }
 
+    private <T> T withDetectedClient(
+            String baseUrl, String apiKey, int pageSize, String pageToken, String filter,
+            BiFunction<MemosRestClient, MemosListResponse, T> operation
+    ) {
+        for (String prefix : List.of("/api", "/api/v1")) {
+            MemosRestClient client = buildClient(baseUrl, apiKey, prefix);
+            try {
+                MemosListResponse page;
+                try (Response response = listMemos(client, pageSize, pageToken, filter)) {
+                    if (prefix.equals("/api") && (response.getStatus() == 404 || response.getStatus() == 410)) {
+                        continue;
+                    }
+                    assertSuccessful(response);
+                    page = response.readEntity(MemosListResponse.class);
+                }
+                return operation.apply(client, page);
+            } finally {
+                closeClient(client);
+            }
+        }
+        throw new IllegalStateException("No supported Memos API route found");
+    }
+
     private MemosListResponse fetchMemosPage(MemosRestClient client, int pageSize, String pageToken, String filter) {
-        try (Response response = client.listMemos(
+        try (Response response = listMemos(client, pageSize, pageToken, filter)) {
+            assertSuccessful(response);
+            return response.readEntity(MemosListResponse.class);
+        }
+    }
+
+    private Response listMemos(MemosRestClient client, int pageSize, String pageToken, String filter) {
+        return client.listMemos(
                 Math.max(1, Math.min(pageSize, MAX_PAGE_SIZE)),
                 blankToNull(pageToken),
                 blankToNull(filter),
                 "create_time desc"
-        )) {
-            assertSuccessful(response);
-            return response.readEntity(MemosListResponse.class);
-        }
+        );
     }
 
     private List<MemosMemo> fetchRemainingPages(
@@ -194,10 +200,10 @@ public class MemosClient {
         return escaped.append('"').toString();
     }
 
-    private MemosRestClient buildClient(String baseUrl, String apiKey) {
+    private MemosRestClient buildClient(String baseUrl, String apiKey, String apiPrefix) {
         try {
             return RestClientBuilder.newBuilder()
-                    .baseUri(normalizeBaseUri(baseUrl))
+                    .baseUri(URI.create(normalizeBaseUri(baseUrl) + apiPrefix))
                     .connectTimeout(Math.max(searchTimeoutSeconds, 1), TimeUnit.SECONDS)
                     .readTimeout(Math.max(searchTimeoutSeconds, 1), TimeUnit.SECONDS)
                     .property("microprofile.rest.client.disable.default.mapper", true)
