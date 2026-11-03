@@ -21,7 +21,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * - Compares GPS-reported speeds against calculated speeds (distance/duration)
  * - LOW SPEED trips (&lt; 20 km/h): Uses strict ratio-based validation
  *   - GPS too HIGH: Rejects if GPS &gt; calculated × 2.0 (GPS noise/errors)
- *   - GPS too LOW: Rejects if GPS &lt; calculated / 1.3 (GPS underreporting, averaging stops)
+ *   - GPS too LOW: Rejects if GPS &lt; calculated / 1.3, unless both GPS speeds satisfy walking limits
  * - MEDIUM SPEED trips (20-200 km/h): Uses percentage-based validation (50% tolerance)
  * - HIGH SPEED trips (&gt; 200 km/h): Always trusts GPS (straight-line distance unreliable)
  * <p>
@@ -86,7 +86,7 @@ public class TravelClassification {
 
     /**
      * Minimum allowed ratio of GPS avg speed to calculated avg speed for low-speed trips (GPS too low).
-     * If GPS avg < calculated / this ratio, GPS is considered unreliable.
+     * If GPS avg < calculated / this ratio, GPS is considered unreliable unless both GPS speeds satisfy walking limits.
      * Example: GPS 5.5 km/h vs calculated 7.5 km/h: 5.5 < 7.5/1.3 = 5.77 (GPS too low, use calculated).
      * This catches cases where GPS underreports speed due to averaging stops or poor accuracy.
      * Value of 1.3 allows ~23% variance, which is reasonable for low-speed GPS measurements.
@@ -799,7 +799,7 @@ public class TravelClassification {
                                                         long distanceMeters, Duration tripDuration,
                                                         TimelineConfig config) {
         // Check if GPS is unreliable compared to calculated
-        boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
+        boolean isUnreliable = !isGpsReliable(avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh, config);
 
         if (!isUnreliable) {
             // GPS avg is reliable - but still check for max speed noise spikes
@@ -838,61 +838,33 @@ public class TravelClassification {
     }
 
     /**
-     * Checks if GPS speed is unreliable compared to calculated speed.
-     * Uses adaptive thresholds based on speed range.
-     * <p>
-     * IMPORTANT: This is a BIDIRECTIONAL check that validates GPS in both directions:
-     * - GPS too HIGH: catches GPS noise/errors that inflate speed
-     * - GPS too LOW: catches GPS averaging stops, poor accuracy that deflates speed
-     *
-     * @param avgSpeedKmh        GPS average speed
-     * @param calculatedAvgSpeedKmh Calculated average speed
-     * @return true if GPS is unreliable, false otherwise
+     * Shared GPS average reliability decision for classification and its explanation (speeds in km/h).
      */
-    private boolean isGpsUnreliable(double avgSpeedKmh, double calculatedAvgSpeedKmh) {
+    public boolean isGpsReliable(Double avgSpeedKmh, Double maxSpeedKmh,
+                                 double calculatedAvgSpeedKmh, TimelineConfig config) {
+        if (avgSpeedKmh == null || maxSpeedKmh == null) {
+            return false;
+        }
         if (calculatedAvgSpeedKmh <= 0) {
-            return false; // Can't validate if calculated is zero
+            return true; // Can't validate if calculated is zero.
         }
 
         if (calculatedAvgSpeedKmh < LOW_SPEED_THRESHOLD_KMH) {
-            // Low speed trips: Use strict bidirectional ratio-based validation
-
-            // Check 1: GPS too HIGH (original check)
-            // GPS should not exceed calculated by more than 2x
             if (avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO) {
-                log.debug("GPS unreliable (too high): GPS {} km/h > calculated {} km/h * {}",
-                        avgSpeedKmh,
-                        calculatedAvgSpeedKmh,
-                        LOW_SPEED_GPS_RELIABILITY_RATIO);
-                return true; // GPS unreliable - too high
+                return false;
             }
-
-            // Check 2: GPS too LOW (new check for underreporting)
-            // GPS should not be less than calculated / 1.3 (i.e., calculated should not exceed GPS by more than ~23%)
-            // Example: Calculated 7.5 km/h, GPS must be >= 7.5/1.3 = 5.77 km/h
-            // If GPS is 5.5 km/h, it's too low (underreporting by ~27%)
             if (avgSpeedKmh < calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO) {
-                log.debug("GPS unreliable (too low): GPS {} km/h < calculated {} km/h / {} (= {} km/h)",
-                        avgSpeedKmh,
-                        calculatedAvgSpeedKmh,
-                        LOW_SPEED_GPS_MIN_RELIABILITY_RATIO,
-                        calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO);
-                return true; // GPS unreliable - too low
+                // Position jumps can inflate distance while both GPS speeds still indicate walking.
+                return avgSpeedKmh <= config.getWalkingMaxAvgSpeed()
+                        && maxSpeedKmh <= config.getWalkingMaxMaxSpeed();
             }
-
-            return false; // GPS is reliable (within acceptable range)
-
-        } else if (avgSpeedKmh > HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH) {
-            // Very high GPS speed (likely flight/high-speed train): Always trust GPS
-            // Calculated speed from distance/duration is unreliable due to route vs straight-line
-            return false;
-        } else {
-            // Medium-high speed trips: Use percentage-based validation
-            // GPS should not differ from calculated by more than 50%
-            double difference = Math.abs(avgSpeedKmh - calculatedAvgSpeedKmh);
-            double percentDiff = difference / calculatedAvgSpeedKmh;
-            return percentDiff > HIGH_SPEED_GPS_RELIABILITY_PERCENT;
+            return true;
         }
+        if (avgSpeedKmh > HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH) {
+            return true;
+        }
+        double difference = Math.abs(avgSpeedKmh - calculatedAvgSpeedKmh);
+        return difference / calculatedAvgSpeedKmh <= HIGH_SPEED_GPS_RELIABILITY_PERCENT;
     }
 
     /**

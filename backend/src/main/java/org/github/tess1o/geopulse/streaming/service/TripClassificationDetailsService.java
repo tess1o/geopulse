@@ -177,7 +177,7 @@ public class TripClassificationDetailsService {
         TimelineConfig config = configProvider.getConfigurationForUser(userId);
 
         // Build statistics
-        TripStatistics statistics = buildTripStatistics(trip);
+        TripStatistics statistics = buildTripStatistics(trip, config);
 
         // Build thresholds from config
         ClassificationThresholds thresholds = buildThresholds(config);
@@ -218,7 +218,7 @@ public class TripClassificationDetailsService {
     /**
      * Build trip statistics from entity, converting speeds to km/h.
      */
-    private TripStatistics buildTripStatistics(TimelineTripEntity trip) {
+    private TripStatistics buildTripStatistics(TimelineTripEntity trip, TimelineConfig config) {
         Double avgGpsSpeedKmh = trip.getAvgGpsSpeed() != null ? trip.getAvgGpsSpeed() * 3.6 : null;
         Double maxGpsSpeedKmh = trip.getMaxGpsSpeed() != null ? trip.getMaxGpsSpeed() * 3.6 : null;
         Double speedVarianceKmh = trip.getSpeedVariance();
@@ -228,8 +228,8 @@ public class TripClassificationDetailsService {
         double hours = trip.getTripDuration() / 3600.0;
         Double calculatedAvgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-        // Determine GPS reliability (simplified logic from TravelClassification)
-        boolean gpsReliable = isGpsReliable(avgGpsSpeedKmh, calculatedAvgSpeedKmh);
+        boolean gpsReliable = travelClassification.isGpsReliable(
+                avgGpsSpeedKmh, maxGpsSpeedKmh, calculatedAvgSpeedKmh, config);
 
         return new TripStatistics(
                 avgGpsSpeedKmh,
@@ -244,45 +244,6 @@ public class TripClassificationDetailsService {
                 trip.getWaterSampleCount(),
                 trip.getWaterEvidenceAvailable()
         );
-    }
-
-    /**
-     * GPS reliability check - matches TravelClassification.isGpsUnreliable() logic.
-     * Returns TRUE if GPS is reliable, FALSE if unreliable.
-     * <p>
-     * IMPORTANT: This must stay in sync with TravelClassification.isGpsUnreliable()
-     * to ensure the classification dialog explanation matches actual classification.
-     */
-    private boolean isGpsReliable(Double avgGpsSpeedKmh, Double calculatedAvgSpeedKmh) {
-        if (avgGpsSpeedKmh == null || calculatedAvgSpeedKmh == null || calculatedAvgSpeedKmh <= 0) {
-            return avgGpsSpeedKmh != null;
-        }
-
-        // Low speed trips: BIDIRECTIONAL validation
-        if (calculatedAvgSpeedKmh < 20.0) {
-            // Check 1: GPS too HIGH (exceeds calculated by more than 2x)
-            if (avgGpsSpeedKmh > calculatedAvgSpeedKmh * 2.0) {
-                return false; // GPS unreliable - too high
-            }
-
-            // Check 2: GPS too LOW (less than calculated / 1.3)
-            // This matches TravelClassification.LOW_SPEED_GPS_MIN_RELIABILITY_RATIO
-            if (avgGpsSpeedKmh < calculatedAvgSpeedKmh / 1.3) {
-                return false; // GPS unreliable - too low
-            }
-
-            return true; // GPS reliable (within acceptable range)
-        }
-
-        // High speed trips: trust GPS
-        if (avgGpsSpeedKmh > 200.0) {
-            return true;
-        }
-
-        // Medium speed: GPS should not differ by more than 50%
-        double difference = Math.abs(avgGpsSpeedKmh - calculatedAvgSpeedKmh);
-        double percentDiff = difference / calculatedAvgSpeedKmh;
-        return percentDiff <= 0.5;
     }
 
     /**
@@ -380,6 +341,12 @@ public class TripClassificationDetailsService {
             } else {
                 maxSpeedKmh = statistics.maxGpsSpeedKmh() != null ? statistics.maxGpsSpeedKmh() : avgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
                 speedSource = String.format("Using GPS average speed (%.1f km/h) for classification", avgSpeedKmh);
+                if (statistics.calculatedAvgSpeedKmh() > avgSpeedKmh
+                        && avgSpeedKmh <= config.getWalkingMaxAvgSpeed()
+                        && maxSpeedKmh <= config.getWalkingMaxMaxSpeed()) {
+                    speedSource += String.format(" Retaining GPS speeds because average and maximum are within walking limits "
+                            + "despite the higher calculated average (%.1f km/h).", statistics.calculatedAvgSpeedKmh());
+                }
             }
         } else {
             // GPS avg is unreliable - check for special case (matches TravelClassification:477-487)
