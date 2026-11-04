@@ -244,7 +244,7 @@ public final class GeoUtils {
      * @param context description of the coordinates being validated (for error messages)
      * @throws IllegalArgumentException if coordinates are outside valid ranges or NaN/Infinite
      */
-    private static void validateCoordinates(double lat, double lon, String context) {
+    public static void validateCoordinates(double lat, double lon, String context) {
         if (Double.isNaN(lat) || Double.isInfinite(lat)) {
             throw new IllegalArgumentException("Latitude for " + context + " must be a valid number, got: " + lat);
         }

@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.adapter;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -98,5 +99,12 @@ public class NominatimResponseAdapter implements GeocodingResponseAdapter<Nomina
             log.warn("Failed to convert bounding box: {}", boundingbox, e);
             return null;
         }
+    }
+
+    public java.util.List<GeocodingCandidate> adaptCandidates(
+            NominatimResponse response, Point requestCoordinates, String providerName) {
+        if (response == null) return java.util.List.of();
+        return java.util.List.of(new GeocodingCandidate(
+                adapt(response, requestCoordinates, providerName), response.getType(), response.getDisplayName()));
     }
 }

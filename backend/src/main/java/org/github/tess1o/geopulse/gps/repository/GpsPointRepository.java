@@ -176,6 +176,12 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 userId, startTime, endTime, GpsSourceType.MANUAL);
     }
 
+    /** Reconstruction may use recorded boundary points, but must not replace recorded interior data. */
+    public long countRecordedInsideTimePeriod(UUID userId, Instant startTime, Instant endTime) {
+        return count("user.id = ?1 and timestamp > ?2 and timestamp < ?3 and (sourceType is null or sourceType <> ?4)",
+                userId, startTime, endTime, GpsSourceType.MANUAL);
+    }
+
     public long countEligibleByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
                                                    Double maxAccuracy) {
         return count(buildEligibleTimePeriodQuery(maxAccuracy),

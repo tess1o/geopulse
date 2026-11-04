@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -152,6 +153,52 @@ public class GeocodingProviderFactory {
             }
             default -> callCustomProvider(providerName, requestCoordinates);
         };
+        return trackHealth(request, providerName);
+    }
+
+    public Uni<List<GeocodingCandidate>> reconciliationCandidates(String providerName, Point requestCoordinates) {
+        Uni<List<GeocodingCandidate>> request = switch (providerName.toLowerCase(Locale.ROOT)) {
+            case "nominatim" -> {
+                if (!nominatimService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
+                }
+                yield nominatimService.reverseCandidates(requestCoordinates);
+            }
+            case "googlemaps" -> {
+                if (!googleMapsService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled or not configured"));
+                }
+                yield googleMapsService.reverseCandidates(requestCoordinates);
+            }
+            case "mapbox" -> {
+                if (!mapboxService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled or not configured"));
+                }
+                yield mapboxService.reverseCandidates(requestCoordinates);
+            }
+            case "photon" -> {
+                if (!photonService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Photon provider is disabled or not configured"));
+                }
+                yield photonService.reverseCandidates(requestCoordinates);
+            }
+            case "geoapify" -> {
+                if (!geoapifyService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Geoapify provider is disabled or not configured"));
+                }
+                yield geoapifyService.reverseCandidates(requestCoordinates);
+            }
+            case "chibigeo" -> {
+                if (!chibiGeoService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("ChibiGeo provider is disabled or not configured"));
+                }
+                yield chibiGeoService.reverseCandidates(requestCoordinates);
+            }
+            default -> callCustomCandidates(providerName, requestCoordinates);
+        };
+        return trackHealth(request, providerName);
+    }
+    private <T> Uni<T> trackHealth(Uni<T> request, String providerName) {
         return request
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, providerName))
@@ -164,6 +211,21 @@ public class GeocodingProviderFactory {
                         null,
                         null));
     }
+
+   private Uni<List<GeocodingCandidate>> callCustomCandidates(String providerName, Point point) {
+       var provider = customProviderService.findEnabledByName(providerName);
+       if (provider.isEmpty()) return Uni.createFrom().failure(new GeocodingException("Unknown or disabled provider: " + providerName));
+       var entity = provider.get();
+       return switch (entity.getType().toLowerCase(Locale.ROOT)) {
+           case "photon" -> buildPhotonClient(entity)
+                   .getAddressCandidates(point.getX(), point.getY(), sanitizePhotonLanguage(entity.getLanguage()), null, 10)
+                   .map(response -> photonAdapter.adaptCandidates(response, point, providerDisplayName(entity)));
+           case "nominatim" -> callCustomNominatim(entity, point)
+                   .map(result -> List.of(new GeocodingCandidate(result, null, result.getFormattedDisplayName())));
+           default -> Uni.createFrom().failure(new GeocodingException("Unsupported custom provider type: " + entity.getType()));
+       };
+   }
+
 
     /**
      * Get available enabled providers for informational purposes.

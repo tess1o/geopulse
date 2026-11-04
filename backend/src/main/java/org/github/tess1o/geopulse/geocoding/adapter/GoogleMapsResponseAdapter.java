@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.adapter;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -152,4 +153,27 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         }
     }
 
+
+    public java.util.List<GeocodingCandidate> adaptCandidates(
+            GoogleMapsResponse response, Point requestCoordinates, String providerName) {
+        var candidates = new java.util.ArrayList<GeocodingCandidate>();
+        if (response == null || response.getResults() == null) return candidates;
+        for (var item : response.getResults()) {
+            if (item == null || !(item.getGeometry() != null && item.getGeometry().getLocation() != null)) continue;
+            try {
+                var single = new GoogleMapsResponse();
+                single.setResults(java.util.List.of(item));
+                var result = adapt(single, requestCoordinates, providerName);
+                var point = result.getResultCoordinates();
+                if (point == null || !Double.isFinite(point.getX()) || !Double.isFinite(point.getY())
+                        || Math.abs(point.getX()) > 180 || Math.abs(point.getY()) > 90) continue;
+                candidates.add(new GeocodingCandidate(
+                        result, item.getTypes() == null ? null : String.join(", ", item.getTypes()), item.getFormattedAddress()));
+                if (candidates.size() == 10) break;
+            } catch (RuntimeException e) {
+                log.warn("Skipping malformed {} candidate: {}", providerName, e.getMessage());
+            }
+        }
+        return candidates;
+    }
 }

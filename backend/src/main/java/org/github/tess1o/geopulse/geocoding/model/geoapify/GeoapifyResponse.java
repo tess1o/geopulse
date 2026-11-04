@@ -31,6 +31,8 @@ public class GeoapifyResponse {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Result {
+        @JsonProperty("result_type")
+        private String resultType;
         private String formatted;
         private String name;
         private String housenumber;

@@ -53,6 +53,8 @@ class ReverseGeocodingContractTest {
     @Inject ReverseGeocodingLocationRepository geocodingRepository;
     @Inject ReconciliationJobProgressService reconciliationProgressService;
 
+    @Inject jakarta.persistence.EntityManager entityManager;
+    private org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory provider;
     private TestCoordinates.Scope coords;
     private UserEntity owner;
     private UserEntity other;
@@ -67,7 +69,18 @@ class ReverseGeocodingContractTest {
     @Transactional
     void setUp() {
         // Keeps every provider call off the network.
-        GeocodingTestMocks.install();
+        provider = GeocodingTestMocks.install();
+        org.mockito.Mockito.when(provider.getEnabledProviders()).thenReturn(List.of(PROVIDER));
+        org.mockito.Mockito.when(provider.reconciliationCandidates(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> {
+                    var first = GeocodingTestMocks.result(invocation.getArgument(1));
+                    var second = GeocodingTestMocks.result(invocation.getArgument(1));
+                    second.setFormattedDisplayName("Selected second candidate");
+                    second.setResultCoordinates(org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30.521, 50.451));
+                    return io.smallrye.mutiny.Uni.createFrom().item(List.of(
+                            new org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate(first, null, null),
+                            new org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate(second, "cafe", "Street")));
+                });
         coords = TestCoordinates.newScope();
 
         owner = register("geocoding-owner");
@@ -282,6 +295,60 @@ class ReverseGeocodingContractTest {
         } finally {
             reconciliationProgressService.completeJob(activeJobId);
         }
+    }
+
+    @Test
+    void previewsAndSelectsSecondCandidateWithCopyOnWriteAndLinkedStayIsolation() {
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            var shared = geocodingRepository.findById(sharedRowId);
+            for (var user : List.of(owner, owner, other)) {
+                var stay = new org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity();
+                stay.setUser(entityManager.getReference(UserEntity.class, user.getId()));
+                stay.setGeocodingLocation(shared);
+                stay.setLocation(shared.getRequestCoordinates());
+                stay.setLocationName(shared.getDisplayName());
+                stay.setLocationSource(org.github.tess1o.geopulse.streaming.model.domain.LocationSource.GEOCODING);
+                stay.setTimestamp(Instant.now().minusSeconds(3600));
+                stay.setStayDuration(600L);
+                stay.setCreatedAt(Instant.now());
+                stay.setLastUpdated(Instant.now());
+                entityManager.persist(stay);
+            }
+        });
+        var preview = authenticated(ownerToken).body(Map.of("providerName", PROVIDER))
+                .post(GEOCODING + "/" + sharedRowId + "/reconciliation-candidates");
+        assertThat(preview.statusCode()).isEqualTo(200);
+        assertThat(preview.jsonPath().getList("candidates")).hasSize(2);
+        var selection = Map.of("previewId", preview.jsonPath().getString("previewId"), "candidateId", 1);
+        assertProblemEnvelope(authenticated(otherToken).body(selection)
+                .post(GEOCODING + "/" + sharedRowId + "/reconciliation-selection"), 400, "INVALID_GEOCODING_REQUEST");
+        var saved = authenticated(ownerToken).body(selection)
+                .post(GEOCODING + "/" + sharedRowId + "/reconciliation-selection");
+        assertThat(saved.statusCode()).isEqualTo(200);
+        assertThat(saved.jsonPath().getString("displayName")).isEqualTo("Selected second candidate");
+        long copyId = saved.jsonPath().getLong("id");
+        assertThat(copyId).isNotEqualTo(sharedRowId);
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            assertThat(geocodingRepository.findById(sharedRowId).getDisplayName()).isEqualTo("Shared geocoding row");
+            var copies = entityManager.createQuery("select t from TimelineStayEntity t where t.user.id = :user and t.geocodingLocation.id = :id",
+                    org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity.class)
+                    .setParameter("user", owner.getId()).setParameter("id", copyId).getResultList();
+            assertThat(copies).hasSize(2).allSatisfy(stay -> assertThat(stay.getLocationName()).isEqualTo("Selected second candidate"));
+            var foreign = entityManager.createQuery("select t from TimelineStayEntity t where t.user.id = :user and t.geocodingLocation.id = :id",
+                    org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity.class)
+                    .setParameter("user", other.getId()).setParameter("id", sharedRowId).getResultList();
+            assertThat(foreign).hasSize(1);
+        });
+    }
+
+    @Test
+    void candidateEndpointsRejectForeignEntriesAndInvalidSelections() {
+        assertProblemEnvelope(authenticated(ownerToken).body(Map.of("providerName", PROVIDER))
+                .post(GEOCODING + "/" + otherRowId + "/reconciliation-candidates"), 403, "GEOCODING_ACCESS_DENIED");
+        assertThat(authenticated(ownerToken).body(Map.of("providerName", ""))
+                .post(GEOCODING + "/" + ownerRowId + "/reconciliation-candidates").statusCode()).isEqualTo(400);
+        assertThat(authenticated(ownerToken).body(Map.of("previewId", UUID.randomUUID(), "candidateId", 10))
+                .post(GEOCODING + "/" + ownerRowId + "/reconciliation-selection").statusCode()).isEqualTo(400);
     }
 
     private static Map<String, Object> reconcileBody(List<Long> ids) {

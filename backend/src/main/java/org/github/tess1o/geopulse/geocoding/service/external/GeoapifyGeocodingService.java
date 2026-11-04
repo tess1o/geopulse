@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service.external;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -42,6 +43,17 @@ public class GeoapifyGeocodingService {
     @Bulkhead(value = 5, waitingTaskQueue = 20)
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        return reverse(requestCoordinates, false, response -> adapter.adapt(response, requestCoordinates, getProviderName()));
+    }
+
+    @Retry
+    @Bulkhead(value = 5, waitingTaskQueue = 20)
+    @CircuitBreaker
+    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+        return reverse(requestCoordinates, true, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
+    }
+
+    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, java.util.function.Function<GeoapifyResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Geoapify provider is disabled"));
         }
@@ -55,8 +67,9 @@ public class GeoapifyGeocodingService {
         double latitude = requestCoordinates.getY();
         String language = configService.getGeoapifyLanguage().orElse(null);
 
-        return geoapifyClient.reverseGeocode(latitude, longitude, apiKey, language)
-                .map(response -> adapter.adapt(response, requestCoordinates, getProviderName()))
+        return (candidates ? geoapifyClient.reverseGeocodeCandidates(latitude, longitude, apiKey, language, 10)
+                : geoapifyClient.reverseGeocode(latitude, longitude, apiKey, language))
+                .map(response -> adapt.apply(response))
                 .onItem().ifNull().failWith(() -> new GeocodingException("Geoapify adapter returned null result"))
                 .onFailure().transform(failure -> {
                     log.error("Geoapify API call failed", failure);

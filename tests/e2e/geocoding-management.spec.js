@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
 import {TestHelpers} from '../utils/test-helpers.js';
@@ -600,6 +602,67 @@ test.describe('Geocoding Management Page', () => {
       // Button should now be enabled
       expect(await geocodingPage.isReconcileAllButtonDisabled()).toBe(false);
     });
+
+    for (const entryPoint of ['row action', 'single selection']) {
+      test(`selects the second provider candidate from ${entryPoint} and updates linked stays`, async ({page, isolatedUsers, dbManager}) => {
+        const providerName = `candidate-${randomUUID().slice(0, 8)}`;
+        const requests = [];
+        const server = createServer((request, response) => {
+          requests.push(request.url);
+          response.writeHead(200, {'Content-Type': 'application/json'});
+          response.end(JSON.stringify({features: ['First cafe', 'Second cafe'].map((name, index) => ({
+            properties: {name, osm_value: 'cafe', city: 'Helmsley', country: 'United Kingdom'},
+            geometry: {type: 'Point', coordinates: [-1.061154 + index * 0.0001, 54.245793]}
+          }))}));
+        });
+        await new Promise(resolve => server.listen(0, '0.0.0.0', resolve));
+        // The backend and test runner share the Compose network in CI; host runs reach the fixture through Docker's host alias.
+        const host = (process.env.BASE_URL || '').includes('geopulse-ui-e2e') ? 'playwright-tests' : 'host.docker.internal';
+        try {
+          await dbManager.client.query(`INSERT INTO geocoding_provider_configs
+            (id, name, display_name, type, url, enabled, created_at, updated_at)
+            VALUES (nextval('geocoding_provider_configs_seq'), $1, $1, 'photon', $2, true, NOW(), NOW())`,
+            [providerName, `http://${host}:${server.address().port}`]);
+          const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
+          const id = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
+            coords: 'POINT(-1.061154 54.245793)', displayName: 'Original cafe'
+          });
+          for (let i = 0; i < 2; i++) {
+            await TestSetupHelper.createTimelineStay(dbManager, user.id, {
+              geocodingId: id, coords: 'POINT(-1.061154 54.245793)', locationName: 'Original cafe', timestampOffset: `${i + 2} hours`
+            });
+          }
+          await page.reload();
+          await geocodingPage.waitForPageLoad();
+          if (entryPoint === 'row action') await geocodingPage.clickReconcileInTable(0);
+          else {
+            await geocodingPage.selectTableRow(0);
+            await geocodingPage.clickReconcileSelected();
+          }
+          const dialog = page.getByRole('dialog');
+          await dialog.locator('#candidate-provider').click();
+          await page.getByRole('option', {name: providerName, exact: true}).click();
+          await dialog.getByRole('button', {name: 'Load candidates', exact: true}).click();
+          const save = dialog.getByRole('button', {name: 'Save', exact: true});
+          await expect(dialog.getByRole('radio')).toHaveCount(2);
+          await expect(dialog.getByRole('radio').first()).toBeChecked();
+          await expect(save).toBeEnabled();
+          await dialog.getByRole('radio').nth(1).check();
+          const saved = page.waitForResponse(response => response.url().includes('/reconciliation-selection'));
+          await save.click();
+          expect((await saved).status()).toBe(200);
+          await expect(dialog).toBeHidden();
+          await expect(page.getByText('Second cafe', {exact: true})).toBeVisible();
+          const stays = await dbManager.client.query('SELECT location_name FROM timeline_stays WHERE user_id = $1 AND geocoding_id = $2', [user.id, id]);
+          expect(stays.rows).toHaveLength(2);
+          expect(stays.rows.every(stay => stay.location_name === 'Second cafe')).toBe(true);
+          expect(requests.some(url => new URL(url, 'http://fixture').searchParams.get('limit') === '10')).toBe(true);
+        } finally {
+          await dbManager.client.query('DELETE FROM geocoding_provider_configs WHERE name = $1', [providerName]);
+          await new Promise(resolve => server.close(resolve));
+        }
+      });
+    }
 
     test('should open reconcile dialog for single result', async ({page, isolatedUsers, dbManager}) => {
       const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));

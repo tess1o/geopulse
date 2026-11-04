@@ -79,6 +79,14 @@ export const useGeocodingStore = defineStore('geocoding', {
       }
     },
 
+    async fetchReconciliationCandidates(id, providerName) {
+      return apiService.post(`/geocoding/${id}/reconciliation-candidates`, { providerName })
+    },
+
+    async selectReconciliationCandidate(id, previewId, candidateId) {
+      return apiService.post(`/geocoding/${id}/reconciliation-selection`, { previewId, candidateId })
+    },
+
     async startBulkReconciliation(request) {
       try {
         return await apiService.post('/geocoding/reconcile/bulk', request)

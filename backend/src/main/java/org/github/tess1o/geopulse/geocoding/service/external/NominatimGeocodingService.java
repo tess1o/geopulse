@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.geocoding.service.external;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
+import org.github.tess1o.geopulse.geocoding.model.nominatim.NominatimResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +82,17 @@ public class NominatimGeocodingService {
     @Bulkhead(value = 1, waitingTaskQueue = 10) // Max 1 concurrent request, queue up to 10
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> adapter.adapt(response, requestCoordinates, getProviderName()));
+    }
+
+    @Retry
+    @Bulkhead(value = 2, waitingTaskQueue = 10)
+    @CircuitBreaker
+    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
+    }
+
+    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<NominatimResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
         }
@@ -100,7 +113,7 @@ public class NominatimGeocodingService {
         return client.getAddress("json", longitude, latitude, language)
                 .map(response -> {
                     log.debug("Nominatim response received");
-                    return adapter.adapt(response, requestCoordinates, getProviderName());
+                    return adapt.apply(response);
                 })
                 .onItem().ifNull().failWith(() -> {
                     log.error("Nominatim adapter returned a null result");

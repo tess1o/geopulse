@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service.external;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -57,6 +58,17 @@ public class MapboxGeocodingService {
     @Bulkhead(value = 3, waitingTaskQueue = 15) // Max 3 concurrent requests, moderate queue
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> adapter.adapt(response, requestCoordinates, getProviderName()));
+    }
+
+    @Retry
+    @Bulkhead(value = 3, waitingTaskQueue = 15)
+    @CircuitBreaker
+    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
+    }
+
+    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<MapboxResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled"));
         }
@@ -73,8 +85,8 @@ public class MapboxGeocodingService {
 
         return mapboxClient.reverseGeocode(longitude, latitude, accessToken, "poi,address")
                 .map(response -> {
-                    log.debug("Mapbox response received: type={}, features={}", response.getType(), response.getFeatures().size());
-                    return adapter.adapt(response, requestCoordinates, getProviderName());
+                    log.debug("Mapbox response received: type={}, features={}", response == null ? null : response.getType(), response == null || response.getFeatures() == null ? 0 : response.getFeatures().size());
+                    return adapt.apply(response);
                 })
                 .onItem().ifNull().failWith(() -> {
                     log.error("Mapbox adapter returned a null result");

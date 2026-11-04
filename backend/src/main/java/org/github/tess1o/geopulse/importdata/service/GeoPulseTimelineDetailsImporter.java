@@ -320,6 +320,7 @@ public class GeoPulseTimelineDetailsImporter {
             edit.setAffectedFrom(dto.getAffectedFrom());
             edit.setAffectedTo(dto.getAffectedTo());
             edit.setBeforeValues(dto.getBeforeValues() == null ? null : new LinkedHashMap<>(dto.getBeforeValues()));
+            edit.setGroupId(dto.getGroupId());
             edit.setPayload(dto.getPayload() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(dto.getPayload()));
             for (String prefix : List.of("", "right", "start", "end")) {
                 remapPayloadReference(edit.getPayload(), prefix.isEmpty() ? "favoriteId" : prefix + "FavoriteId", referenceMaps.favoriteIds);

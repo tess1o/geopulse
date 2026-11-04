@@ -299,3 +299,20 @@ config:
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
 For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#geocoding-configuration).
+
+## Choose a result during manual reconciliation
+
+On **Geocoding Management**, click a row's **Reconcile** action, or select exactly one row and click **Reconcile Selected**. Choose an enabled provider and click **Load candidates**, then review the results and save. The first candidate is selected automatically; you can choose a different result before saving. The dialog shows available category/address information and distance from the recorded coordinates. Cancelling leaves saved data unchanged.
+
+Photon (including ChibiGeo and custom Photon providers) and Geoapify request up to 10 results. Google Maps and Mapbox show up to 10 returned results. Nominatim and custom Nominatim return a single reverse result. Providers can return fewer candidates; not every candidate represents a business or POI.
+
+Saving corrects all your stays linked to that geocoding entry. Shared provider entries are copied for your user, leaving other users' data unchanged. Recorded GPS coordinates are preserved. Your correction can also influence future user-specific geocoding cache matches. Multiple-row and **Reconcile All** operations continue to select the provider's preferred result automatically.
+
+### Candidate API
+
+Both endpoints require authentication and use the `/api/v1/geocoding` prefix:
+
+- `POST /{id}/reconciliation-candidates` with `{ "providerName": "Photon" }` returns `previewId` and a `candidates` array. Each candidate contains `id`, `displayName`, optional `category` and `address`, `city`, `country`, `latitude`, `longitude`, and `distanceMeters`.
+- `POST /{id}/reconciliation-selection` with `{ "previewId": "<returned UUID>", "candidateId": 1 }` saves that candidate and returns the resulting geocoding DTO. Its `id` can change when a shared entry is copied.
+
+Previews expire after 10 minutes, and loading another preview replaces the user's previous preview. They are held in server memory and are lost on restart; deployments with multiple backend replicas require requests to reach the same replica. Expired previews, changed target entries, invalid candidates and disabled providers require reloading candidates. Candidate data supplied by the client is never used as the saved provider result.

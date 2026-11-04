@@ -23,6 +23,16 @@ public interface GeoapifyRestClient {
             @QueryParam("lang") String language);
 
     @GET
+    @Path("/reverse")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<GeoapifyResponse> reverseGeocodeCandidates(
+            @QueryParam("lat") double latitude,
+            @QueryParam("lon") double longitude,
+            @QueryParam("apiKey") String apiKey,
+            @QueryParam("lang") String language,
+            @QueryParam("limit") int limit);
+
+    @GET
     @Path("/search")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<GeoapifyResponse> forwardGeocode(

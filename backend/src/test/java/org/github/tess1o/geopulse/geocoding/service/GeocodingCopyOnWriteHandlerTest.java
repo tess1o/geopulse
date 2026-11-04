@@ -52,6 +52,22 @@ class GeocodingCopyOnWriteHandlerTest {
     void setUp() {
         handler = new GeocodingCopyOnWriteHandler(entityMapper, repository, timelineSyncService, boundingBoxGuardService);
     }
+    @Test
+    void sameNameWithChangedCoordinatesAndNullCityIsSavedAndSynchronized() {
+        var entity = createUserOwnedEntity(USER_ID);
+        entity.setId(123L);
+        entity.setCity(null);
+        var fresh = SimpleFormattableResult.builder()
+                .requestCoordinates(entity.getRequestCoordinates())
+                .resultCoordinates(GeoUtils.createPoint(10.0, 20.0))
+                .formattedDisplayName(entity.getDisplayName()).providerName(entity.getProviderName())
+                .city("New city").country(entity.getCountry()).build();
+        var result = handler.handleReconciliation(USER_ID, entity, fresh);
+        assertTrue(result.changed());
+        verify(entityMapper).updateEntityFromResult(entity, fresh);
+        verify(timelineSyncService).updateLocationNameForUser(USER_ID, 123L, entity.getDisplayName());
+    }
+
     // ==================== Test Suite 1: handleUserUpdate() ====================
     @Nested
     @DisplayName("handleUserUpdate() - User Update with Copy-on-Write")

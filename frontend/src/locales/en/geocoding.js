@@ -1,4 +1,16 @@
 export default {
+    candidates: {
+        "save": "Save",
+        "current": "Current location",
+        "linkedStays": "Saving updates all your stays linked to this location.",
+        "load": "Load candidates",
+        "empty": "No candidates returned. Try another provider.",
+        "single": "This provider returned one candidate.",
+        "choose": "Choose the correct location",
+        "distance": "{distance} m from recorded coordinates",
+        "loadFailed": "Could not load candidates. Please try again.",
+        "saveFailed": "Could not save this selection. Reload candidates and try again."
+},
     page: {
         title: 'Reverse Geocoding Management',
         subtitle: 'Manage and update your geocoding results',

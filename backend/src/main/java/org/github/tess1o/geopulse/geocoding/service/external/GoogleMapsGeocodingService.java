@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service.external;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -57,6 +58,23 @@ public class GoogleMapsGeocodingService {
     @Bulkhead(value = 5, waitingTaskQueue = 20) // Max 5 concurrent requests, larger queue
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> adapter.adapt(response, requestCoordinates, getProviderName()));
+    }
+
+    @Retry
+    @Bulkhead(value = 5, waitingTaskQueue = 20)
+    @CircuitBreaker
+    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+        return reverse(requestCoordinates, response -> {
+            if (response != null && response.getStatus() != null && !"OK".equals(response.getStatus())
+                    && !"ZERO_RESULTS".equals(response.getStatus())) {
+                throw new GeocodingException("Google Maps returned status: " + response.getStatus());
+            }
+            return adapter.adaptCandidates(response, requestCoordinates, getProviderName());
+        });
+    }
+
+    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<GoogleMapsResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled"));
         }
@@ -79,8 +97,8 @@ public class GoogleMapsGeocodingService {
         String latlng = String.format("%.6f,%.6f", latitude, longitude);
         return googleMapsClient.reverseGeocode(latlng, apiKey, "street_address|establishment", language)
                 .map(response -> {
-                    log.debug("Google Maps response received: status={}, results={}", response.getStatus(), response.getResults().size());
-                    return adapter.adapt(response, requestCoordinates, getProviderName());
+                    log.debug("Google Maps response received: status={}, results={}", response == null ? null : response.getStatus(), response == null || response.getResults() == null ? 0 : response.getResults().size());
+                    return adapt.apply(response);
                 })
                 .onItem().ifNull().failWith(() -> {
                     log.error("Google Maps adapter returned a null result");

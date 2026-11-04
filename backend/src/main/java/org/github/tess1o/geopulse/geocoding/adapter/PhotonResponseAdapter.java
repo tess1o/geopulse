@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.adapter;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -129,5 +130,28 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
             log.warn("Failed to convert bounding box: {}", boundingbox, e);
             return null;
         }
+    }
+
+    public java.util.List<GeocodingCandidate> adaptCandidates(
+            PhotonResponse response, Point requestCoordinates, String providerName) {
+        var candidates = new java.util.ArrayList<GeocodingCandidate>();
+        if (response == null || response.getFeatures() == null) return candidates;
+        for (var item : response.getFeatures()) {
+            if (item == null || !(item.getProperties() != null && item.getGeometry() != null && item.getGeometry().getCoordinates() != null && item.getGeometry().getCoordinates().size() >= 2)) continue;
+            try {
+                var single = new PhotonResponse();
+                single.setFeatures(java.util.List.of(item));
+                var result = adapt(single, requestCoordinates, providerName);
+                var point = result.getResultCoordinates();
+                if (point == null || !Double.isFinite(point.getX()) || !Double.isFinite(point.getY())
+                        || Math.abs(point.getX()) > 180 || Math.abs(point.getY()) > 90) continue;
+                candidates.add(new GeocodingCandidate(
+                        result, item.getProperties().getOsmValue(), formatAddress(item.getProperties())));
+                if (candidates.size() == 10) break;
+            } catch (RuntimeException e) {
+                log.warn("Skipping malformed {} candidate: {}", providerName, e.getMessage());
+            }
+        }
+        return candidates;
     }
 }

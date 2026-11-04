@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service.external;
 
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -85,6 +86,17 @@ public class PhotonGeocodingService {
     @Bulkhead(value = 2, waitingTaskQueue = 10) // Max 2 concurrent requests, queue up to 10
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        return reverse(requestCoordinates, false, response -> adapter.adapt(response, requestCoordinates, getProviderName()));
+    }
+
+    @Retry
+    @Bulkhead(value = 2, waitingTaskQueue = 10)
+    @CircuitBreaker
+    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+        return reverse(requestCoordinates, true, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
+    }
+
+    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, java.util.function.Function<PhotonResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException(getProviderName() + " provider is disabled"));
         }
@@ -103,10 +115,11 @@ public class PhotonGeocodingService {
         }
 
         PhotonRestClient client = getClient();
-        return client.getAddress(longitude, latitude, language, getApiKeyHeader())
+        return (candidates ? client.getAddressCandidates(longitude, latitude, language, getApiKeyHeader(), 10)
+                : client.getAddress(longitude, latitude, language, getApiKeyHeader()))
                 .map(response -> {
                     log.debug("{} response received", getProviderName());
-                    return adapter.adapt(response, requestCoordinates, getProviderName());
+                    return adapt.apply(response);
                 })
                 .onItem().ifNull().failWith(() -> {
                     log.error("{} adapter returned a null result", getProviderName());

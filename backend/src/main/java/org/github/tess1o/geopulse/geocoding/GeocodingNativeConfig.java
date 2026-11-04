@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.UserLocationNormalizationRuleEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingCandidate;
 import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.geoapify.GeoapifyResponse;
@@ -34,6 +35,7 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         ReverseGeocodingLocationEntity.class,
         FormattableGeocodingResult.class,
         SimpleFormattableResult.class,
+        GeocodingCandidate.class,
         GeocodingSearchResult.class,
         GoogleMapsAddressComponent.class,
         GoogleMapsGeometry.class,
@@ -46,6 +48,8 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         GeoapifyResponse.class,
         GeoapifyResponse.Result.class,
         GeoapifyResponse.Bbox.class,
+        GeoapifyResponse.Feature.class,
+        GeoapifyResponse.Geometry.class,
 
         MapboxContext.class,
         MapboxFeature.class,
@@ -78,6 +82,10 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         ReverseGeocodingDTO.class,
         ReverseGeocodingUpdateDTO.class,
         ReverseGeocodingReconcileRequest.class,
+        GeocodingCandidateRequest.class,
+        GeocodingCandidateSelection.class,
+        GeocodingCandidatePreview.class,
+        GeocodingCandidatePreview.Candidate.class,
         ReverseGeocodingSummaryDTO.class,
         GeocodingProviderDTO.class,
         CustomGeocodingProviderRequest.class,

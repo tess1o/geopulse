@@ -311,9 +311,18 @@
       @save="handleBulkEditSave"
     />
 
+    <GeocodingCandidateDialog
+      v-if="showReconcileDialog && isSingleReconciliation"
+      :visible="true"
+      :result="selectedReconcileResults[0]"
+      :enabled-providers="enabledProviders"
+      @close="handleReconcileDialogClose"
+      @saved="handleCandidateSaved"
+    />
+
     <!-- Reconcile Dialog -->
     <GeocodingReconcileDialog
-      :visible="showReconcileDialog"
+      :visible="showReconcileDialog && !isSingleReconciliation"
       :selected-results="selectedReconcileResults"
       :enabled-providers="enabledProviders"
       :reconcile-mode="reconcileMode"
@@ -447,6 +456,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
+import GeocodingCandidateDialog from '@/components/dialogs/GeocodingCandidateDialog.vue'
 import GeocodingReconcileDialog from '@/components/dialogs/GeocodingReconcileDialog.vue'
 import BulkEditDialog from '@/components/dialogs/BulkEditDialog.vue'
 
@@ -539,6 +549,15 @@ const hasActiveFilters = computed(() =>
 const selectedReconcileResults = computed(() => {
   return selectedRows.value.length > 0 ? selectedRows.value : (selectedResult.value ? [selectedResult.value] : [])
 })
+
+const isSingleReconciliation = computed(() => reconcileMode.value === 'selected' && selectedReconcileResults.value.length === 1)
+
+const handleCandidateSaved = async () => {
+  handleReconcileDialogClose()
+  selectedRows.value = []
+  selectedResult.value = null
+  await loadGeocodingResults()
+}
 
 const ruleTypeOptions = computed(() => [
   { label: t('geocoding.page.ruleTypeOptions.country'), value: 'COUNTRY' },

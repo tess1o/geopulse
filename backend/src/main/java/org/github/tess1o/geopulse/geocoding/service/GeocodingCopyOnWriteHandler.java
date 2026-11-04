@@ -185,19 +185,12 @@ public class GeocodingCopyOnWriteHandler {
      * Check if geocoding data has changed.
      */
     private boolean hasDataChanged(ReverseGeocodingLocationEntity entity, FormattableGeocodingResult freshResult) {
-        if (!entity.getDisplayName().equals(freshResult.getFormattedDisplayName())) {
-            return true;
-        }
-        if (entity.getCity() != null && !entity.getCity().equals(freshResult.getCity())) {
-            return true;
-        }
-        if (entity.getCountry() != null && !entity.getCountry().equals(freshResult.getCountry())) {
-            return true;
-        }
-        if (entity.getProviderName() != null && !entity.getProviderName().equals(freshResult.getProviderName())) {
-            return true;
-        }
-        return false;
+        return !java.util.Objects.equals(entity.getDisplayName(), freshResult.getFormattedDisplayName())
+               || !java.util.Objects.equals(entity.getCity(), freshResult.getCity())
+               || !java.util.Objects.equals(entity.getCountry(), freshResult.getCountry())
+                || !java.util.Objects.equals(entity.getProviderName(), freshResult.getProviderName())
+                || !java.util.Objects.equals(entity.getResultCoordinates(), freshResult.getResultCoordinates())
+                || !java.util.Objects.equals(entity.getBoundingBox(), freshResult.getBoundingBox());
     }
 
     /**

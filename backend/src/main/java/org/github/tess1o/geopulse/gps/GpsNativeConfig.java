@@ -1,6 +1,10 @@
 package org.github.tess1o.geopulse.gps;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.gps.model.GpsPointUpdateResponse;
+import org.github.tess1o.geopulse.gps.model.GpsPointDeleteResponse;
+import org.github.tess1o.geopulse.gps.model.GpsPointBulkUpdateResponse;
+import org.github.tess1o.geopulse.gps.model.GpsIngestionResponse;
 import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichGeometry;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
@@ -31,6 +35,10 @@ import org.github.tess1o.geopulse.gps.service.GpsIngestRejectionCode;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 
 @RegisterForReflection(targets = {
+        GpsIngestionResponse.class,
+        GpsPointBulkUpdateResponse.class,
+        GpsPointDeleteResponse.class,
+        GpsPointUpdateResponse.class,
         GpsPointEntity.class,
         GpsPathRow.class,
         GoogleTimelineRecordType.class,

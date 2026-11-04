@@ -23,6 +23,16 @@ public interface PhotonRestClient {
             @HeaderParam("X-Api-Key") String apiKey);
 
     @GET
+    @Path("/reverse")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<PhotonResponse> getAddressCandidates(
+            @QueryParam("lon") double longitude,
+            @QueryParam("lat") double latitude,
+            @HeaderParam("Accept-Language") String acceptLanguage,
+            @HeaderParam("X-Api-Key") String apiKey,
+            @QueryParam("limit") int limit);
+
+    @GET
     @Path("/api")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<PhotonResponse> search(

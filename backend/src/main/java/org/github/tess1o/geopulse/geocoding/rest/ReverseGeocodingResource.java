@@ -1,5 +1,9 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
+import org.github.tess1o.geopulse.geocoding.service.GeocodingReconciliationService;
+import org.github.tess1o.geopulse.geocoding.dto.GeocodingCandidateSelection;
+import org.github.tess1o.geopulse.geocoding.dto.GeocodingCandidateRequest;
+import org.github.tess1o.geopulse.geocoding.dto.GeocodingCandidatePreview;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -67,6 +71,26 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_
 @RolesAllowed({"USER", "ADMIN"})
 @Tag(name = ApiTags.GEOCODING)
 public class ReverseGeocodingResource {
+
+    @Inject
+    GeocodingReconciliationService reconciliationService;
+
+    @POST
+    @Path("/{id}/reconciliation-candidates")
+    @Operation(summary = "Preview provider candidates for a single geocoding entry")
+    public GeocodingCandidatePreview previewCandidates(
+            @PathParam("id") Long id,
+            @Valid @jakarta.validation.constraints.NotNull GeocodingCandidateRequest request) {
+        return reconciliationService.previewCandidates(currentUserService.getCurrentUserId(), id, request.providerName());
+    }
+
+    @POST
+    @Path("/{id}/reconciliation-selection")
+    @Operation(summary = "Apply a previewed candidate to the user's linked stays")
+    public ReverseGeocodingDTO selectCandidate(@PathParam("id") Long id,
+            @Valid @jakarta.validation.constraints.NotNull GeocodingCandidateSelection selection) {
+        return reconciliationService.selectCandidate(currentUserService.getCurrentUserId(), id, selection);
+    }
 
     private final ReverseGeocodingManagementService managementService;
     private final CurrentUserService currentUserService;
