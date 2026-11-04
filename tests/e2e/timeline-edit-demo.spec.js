@@ -19,8 +19,8 @@ test('demo persona cannot open edit history or mutate a populated timeline', asy
   await page.goto(`/app/timeline?start=${date}&end=${date}`);
   await expect(page.locator('.timeline-card').filter({ hasText: 'Demo visit' })).toBeVisible();
   const mutations = [];
-  page.on('request', request => { if (request.method() !== 'GET' && request.url().includes('/timeline/edits')) mutations.push(request.url()); });
-  await expect(page.locator('.timeline-edit-trigger, .timeline-history-button')).toHaveCount(0);
+  page.on('request', request => { if (request.method() !== 'GET' && /\/timeline\/(edits|activity-corrections)/.test(request.url())) mutations.push(request.url()); });
+  await expect(page.locator('.timeline-edit-trigger, .timeline-history-button, .gap-fill-action')).toHaveCount(0);
   await page.locator('.timeline-card').filter({ hasText: 'Demo visit' }).click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: /Edit visit|Timeline changes/ })).toHaveCount(0);
   expect(mutations).toEqual([]);
@@ -29,6 +29,11 @@ test('demo persona cannot open edit history or mutate a populated timeline', asy
       kind: 'SET_VISIT_NAME', anchorStart: new Date(stay.timestamp).toISOString(),
       anchorEnd: new Date(Date.parse(stay.timestamp) + 3600000).toISOString(), payload: { visitName: 'Forbidden' }
     } });
+    expect(response.status()).toBe(403);
+    expect(response.headers()['x-geopulse-demo-blocked']).toBe('true');
+  }
+  for (const suffix of ['', '/preview', '/00000000-0000-0000-0000-000000000000/revert', '/00000000-0000-0000-0000-000000000000/restore']) {
+    const response = await page.request.post(`/api/v1/timeline/activity-corrections${suffix}`, { data: { activities: [] } });
     expect(response.status()).toBe(403);
     expect(response.headers()['x-geopulse-demo-blocked']).toBe('true');
   }

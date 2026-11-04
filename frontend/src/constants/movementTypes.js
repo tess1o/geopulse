@@ -38,3 +38,5 @@ export const getMovementTypeEmoji = (movementType) => (displayFor(movementType) 
 export const getMovementTypeIcon = (movementType) => (displayFor(movementType) || MOVEMENT_TYPE_DISPLAY.UNKNOWN).icon
 
 export const getMovementTypeSeverity = (movementType) => (displayFor(movementType) || MOVEMENT_TYPE_DISPLAY.UNKNOWN).severity
+
+export const movementTypeOptions = MOVEMENT_TYPES.map(value => ({ value, labelKey: `movementTypes.${value}` }))

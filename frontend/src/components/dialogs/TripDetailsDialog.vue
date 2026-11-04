@@ -7,6 +7,7 @@
     @hide="$emit('close')"
   >
     <div class="trip-details-content">
+      <p v-if="trip?.manualRoute" role="note">{{ t('missingActivity.manualRoute') }}</p>
       <!-- Map Section -->
       <div class="map-section">
         <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.route') }}</h4>
@@ -21,8 +22,9 @@
             @map-ready="handleMapReady"
           >
             <template #overlays="{ map, isReady }">
+              <ManualRoutesLayer v-if="map && isReady && trip?.manualRoute" :map="map" :timeline="[trip]" />
               <PathLayer
-                v-if="map && isReady && selectedTripForMap && tripPathData.length > 0"
+                v-if="map && isReady && !trip?.manualRoute && selectedTripForMap && tripPathData.length > 0"
                 :map="map"
                 :path-data="tripPathData"
                 :highlighted-trip="selectedTripForMap"
@@ -117,11 +119,11 @@
             <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.routeInfo') }}</h4>
             <div class="detail-item">
               <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.origin') }}</span>
-              <span class="detail-value">{{ trip?.origin?.locationName || t('common.unknown') }}</span>
+              <span class="detail-value">{{ trip?.origin?.locationName || trip?.explanation?.start?.params?.startLocationName || t('common.unknown') }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.destination') }}</span>
-              <span class="detail-value">{{ trip?.destination?.locationName || t('common.unknown') }}</span>
+              <span class="detail-value">{{ trip?.destination?.locationName || trip?.explanation?.start?.params?.endLocationName || t('common.unknown') }}</span>
             </div>
           </div>
 
@@ -155,6 +157,7 @@
 </template>
 
 <script setup>
+import ManualRoutesLayer from '@/components/maps/layers/ManualRoutesLayer.vue'
 import { ref, computed, watch, onBeforeUnmount, markRaw } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
@@ -164,6 +167,7 @@ import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
+import { fitMapToBounds } from '@/maps/tripReconstruction/shared/tripReconstructionViewport'
 import { useTimezone } from '@/composables/useTimezone'
 import {
   getMovementTypeIcon as getTransportIcon,
@@ -224,7 +228,7 @@ const dialogTitle = computed(() => {
 })
 
 const mapCenter = computed(() => {
-  if (!props.trip?.latitude || !props.trip?.longitude) {
+  if (!Number.isFinite(props.trip?.latitude) || !Number.isFinite(props.trip?.longitude)) {
     return [49.5472, 25.5951] // Default center
   }
   return [props.trip.latitude, props.trip.longitude]
@@ -260,6 +264,7 @@ const tripPathData = computed(() => (
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(mapInstance.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
 const averageSpeedText = computed(() => {
+  if (props.trip?.manualRoute) return null
   const averageSpeedKmh = resolveAverageTripSpeedKmh(props.trip)
   return Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
 })
@@ -287,7 +292,7 @@ const {
   handleHighlightedTripReplayData,
   cleanupTripReplay
 } = useTripReplayControls({
-  enabled: computed(() => props.visible && tripPathData.value.length > 0),
+  enabled: computed(() => props.visible && !props.trip?.manualRoute && tripPathData.value.length > 0),
   activeTrip: selectedTripForMap,
   showPath: true,
   supports3d: isVectorMapMode
@@ -295,8 +300,8 @@ const {
 
 // Methods
 const getTripTitle = () => {
-  const origin = props.trip?.origin?.locationName || t('tripDialogs.tripDetails.unknownOrigin')
-  const destination = props.trip?.destination?.locationName || t('tripDialogs.tripDetails.unknownDestination')
+  const origin = props.trip?.origin?.locationName || props.trip?.explanation?.start?.params?.startLocationName || t('tripDialogs.tripDetails.unknownOrigin')
+  const destination = props.trip?.destination?.locationName || props.trip?.explanation?.start?.params?.endLocationName || t('tripDialogs.tripDetails.unknownDestination')
   return `${origin} → ${destination}`
 }
 
@@ -344,13 +349,15 @@ const copyToClipboard = async (text) => {
 const handleMapReady = async (map) => {
   mapInstance.value = map ? markRaw(map) : null
 
-  if (props.trip) {
+  if (props.trip?.manualRoute?.length >= 2) {
+    fitMapToBounds(map, props.trip.manualRoute.map(point => [point.latitude, point.longitude]), { padding: [24, 24], maxZoom: 16 })
+  } else if (props.trip) {
     await fetchTripGpsPoints()
   }
 }
 
 const fetchTripGpsPoints = async () => {
-  if (!props.trip?.timestamp || !props.trip?.tripDuration) {
+  if (props.trip?.manualRoute || !props.trip?.timestamp || !props.trip?.tripDuration) {
     tripGpsPoints.value = []
     return
   }

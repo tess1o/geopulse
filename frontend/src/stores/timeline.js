@@ -371,6 +371,10 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        async previewActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections/preview', payload) },
+        async saveActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections', payload) },
+        async revertActivityCorrection(groupId) { return apiService.post(`/timeline/activity-corrections/${groupId}/revert`) },
+        async restoreActivityCorrection(groupId) { return apiService.post(`/timeline/activity-corrections/${groupId}/restore`) },
         async fetchTimelineEdits() {
             try {
                 return await apiService.get('/timeline/edits')
@@ -445,10 +449,10 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
-        async lookupLocation(latitude, longitude) {
+        async lookupLocation(latitude, longitude, options = {}) {
             try {
                 return await apiService.get('/timeline/location-lookup',
-                    timezone.withLocationTimezoneParams({ latitude, longitude }))
+                    timezone.withLocationTimezoneParams({ latitude, longitude }), options)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Could not check visits at this location')
                 throw this.error

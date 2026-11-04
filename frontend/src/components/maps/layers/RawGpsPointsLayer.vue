@@ -6,6 +6,7 @@
     :points="points"
     :visible="visible"
     :resolve-location="resolveLocation"
+    :select-point="selectPoint"
   />
 </template>
 
@@ -28,6 +29,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  selectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
     default: null

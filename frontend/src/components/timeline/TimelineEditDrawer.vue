@@ -18,6 +18,7 @@
 
       <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" /></div>
       <template v-if="!action">
+        <p v-if="groupedActivity" role="note">{{ t('timeline.edit.groupStructureHint') }}</p>
 
         <section class="edit-action-section">
           <h3>{{ t('timeline.edit.details') }}</h3>
@@ -66,10 +67,7 @@
           <TimelinePlacePicker v-model="form.place" :current="currentPlace" :lookup-at="currentPlace"
             :reference="currentPlace" map-id="timeline-edit-place-map" />
         </template>
-        <template v-else-if="action.id === 'FORCE_STAY'">
-          <h4 class="edit-question">{{ t('timeline.edit.gapStayQuestion') }}</h4>
-          <TimelinePlacePicker v-model="form.place" :suggestions="neighbourPlaces" map-id="timeline-edit-gap-map" />
-        </template>
+
         <template v-else-if="action.id === 'SET_MOVEMENT_TYPE'">
           <label>{{ t('timeline.edit.movementType') }}
             <Select :aria-label="t('timeline.edit.movementType')" v-model="form.movementType" :options="movementTypes" option-label="label" option-value="value" />
@@ -119,19 +117,7 @@
             <Select v-model="form.resolution" :options="resolutions" option-label="label" option-value="value" />
           </label>
         </template>
-        <template v-else-if="action.id === 'FORCE_TRIP'">
-          <template v-if="!endCoordinate(previousItem) && !startCoordinate(item)">
-            <h4>{{ t('timeline.edit.tripStart') }}</h4>
-            <TimelinePlacePicker v-model="form.startPlace" map-id="gap-trip-start" />
-          </template>
-          <template v-if="!startCoordinate(nextItem) && !endCoordinate(item)">
-            <h4>{{ t('timeline.edit.tripEnd') }}</h4>
-            <TimelinePlacePicker v-model="form.endPlace" map-id="gap-trip-end" />
-          </template>
-          <label>{{ t('timeline.edit.movementType') }}
-            <Select :aria-label="t('timeline.edit.movementType')" v-model="form.movementType" :options="movementTypes" option-label="label" option-value="value" />
-          </label>
-        </template>
+
 
         <p v-if="validationMessage" class="edit-field-error" role="status">{{ validationMessage }}</p>
         <p v-if="!action.structural" class="edit-comparison">{{ currentValue(action.id) || t('timeline.edit.noLabel') }} → {{ proposedValue }}</p>
@@ -180,7 +166,7 @@ import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
-import { parseTimelinePickerInput, timelinePickerToUtc } from '@/utils/timelineEditTime'
+import { parseTimelinePickerInput, timelinePickerToUtc, timelineUtcToPicker } from '@/utils/timelineEditTime'
 import { canMergeTimelineEvents, placePayload, samePlace, stayPlace } from '@/utils/timelineEditPlace'
 
 const props = defineProps({
@@ -258,25 +244,29 @@ const entry = (id, key, icon, structural = false, hintKey = key) => ({
   id, label: t(`timeline.edit.action.${key}`), icon, structural,
   hint: te(`timeline.edit.actionHint.${hintKey}`) ? t(`timeline.edit.actionHint.${hintKey}`) : ''
 })
+const groupedActivity = computed(() => savedEdits.value.some(edit => edit.groupId && edit.status === 'ACTIVE'
+  && ['FORCE_STAY', 'FORCE_TRIP'].includes(edit.kind)))
 const detailActions = computed(() => {
   if (props.item?.type === 'stay') return [
     entry('SET_PLACE', 'location', 'pi pi-map-marker'),
     entry('SET_VISIT_NAME', 'visitLabel', 'pi pi-tag'),
-    entry('SET_TIMES', 'times', 'pi pi-clock', true)
+    ...(!groupedActivity.value ? [entry('SET_TIMES', 'times', 'pi pi-clock', true)] : [])
   ]
   if (props.item?.type === 'trip') return [
     entry('SET_MOVEMENT_TYPE', 'movement', 'pi pi-car'),
-    entry('SET_TIMES', 'times', 'pi pi-clock', true)
+    ...(!groupedActivity.value ? [entry('SET_TIMES', 'times', 'pi pi-clock', true)] : [])
   ]
   return []
 })
 const structuralActions = computed(() => {
+  if (groupedActivity.value) return props.item?.type === 'stay'
+    ? [entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil')] : []
   const merge = directions.value.length
     ? [entry('MERGE', 'merge', 'pi pi-link', true, props.item?.type === 'trip' ? 'mergeTrip' : 'mergeStay')]
     : []
   if (props.item?.type === 'stay') return [entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil'), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
-  if (props.item?.type === 'trip') return [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
-  return [entry('FORCE_STAY', 'gapToStay', 'pi pi-map-marker', true), entry('FORCE_TRIP', 'gapToTrip', 'pi pi-directions', true)]
+  if (props.item?.type === 'trip') return [...(props.item.manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  return []
 })
 const movementTypes = computed(() => ['WALK', 'BICYCLE', 'RUNNING', 'CAR', 'MOTORCYCLE', 'PUBLIC_TRANSPORT', 'TRAIN', 'FLIGHT', 'BOAT', 'UNKNOWN']
   .map(value => ({ value, label: te(`movementTypes.${value}`) ? t(`movementTypes.${value}`) : value })))
@@ -294,11 +284,7 @@ const resolutions = computed(() => [
 ].filter(Boolean))
 const currentPlace = computed(() => props.item?.type === 'stay' ? stayPlace(props.item) : null)
 // A gap most often continues the visit before it or leads into the one after it.
-const neighbourPlaces = computed(() => [
-  props.previousItem?.type === 'stay' && { ...stayPlace(props.previousItem), hint: t('timeline.edit.place.beforeGap') },
-  props.nextItem?.type === 'stay' && { ...stayPlace(props.nextItem), hint: t('timeline.edit.place.afterGap') }
-].filter(Boolean))
-const placeActions = ['SET_PLACE', 'FORCE_STAY', 'SPLIT_STAY']
+const placeActions = ['SET_PLACE', 'SPLIT_STAY']
 // The split time is checked rather than limited in the picker: a limited picker refuses each intermediate step, so
 // changing 17:22 to 16:59 is impossible when the hour goes first and 16:22 falls before the visit.
 const splitAtOutside = computed(() => {
@@ -320,7 +306,6 @@ const validInput = computed(() => {
   if (action.value.id === 'SET_VISIT_NAME' && (!form.visitName?.trim() || form.visitName.trim() === (props.item?.visitName || ''))) return false
   if (action.value.id === 'SET_MOVEMENT_TYPE' && form.movementType === props.item?.movementType) return false
   if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return false
-  if (action.value.id === 'FORCE_TRIP' && (!gapStart.value || !gapEnd.value)) return false
   if (placeActions.includes(action.value.id) && !form.place) return false
   if (action.value.id === 'SET_PLACE' && samePlace(form.place, currentPlace.value)) return false
   if (action.value.id === 'SPLIT_STAY' && (!fromPickerDate(form.splitAt) || splitAtOutside.value)) return false
@@ -328,8 +313,6 @@ const validInput = computed(() => {
   return true
 })
 
-const gapStart = computed(() => endCoordinate(props.previousItem) || startCoordinate(props.item) || form.startPlace)
-const gapEnd = computed(() => startCoordinate(props.nextItem) || endCoordinate(props.item) || form.endPlace)
 const canApply = computed(() => validInput.value && !previewing.value && (!action.value?.structural || preview.value !== null))
 const validationMessage = computed(() => {
   if (!action.value || saving.value) return ''
@@ -341,7 +324,6 @@ const validationMessage = computed(() => {
   if (action.value.id === 'SET_VISIT_NAME' && !form.visitName?.trim()) return t('timeline.edit.labelRequired')
   if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)))) return t('timeline.edit.invalidTimes')
   if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return t('timeline.edit.chooseResolution')
-  if (action.value.id === 'FORCE_TRIP' && (!gapStart.value || !gapEnd.value)) return t('timeline.edit.endpointsRequired')
   if (!validInput.value) return t('timeline.edit.unchanged')
   return ''
 })
@@ -353,6 +335,7 @@ watch(form, () => { previewVersion++; preview.value = null; previewing.value = f
 watch(() => action.value?.id, () => { previewVersion++; preview.value = null; previewing.value = false })
 
 function reset() {
+  savedEdits.value = []
   action.value = null
   preview.value = null
   error.value = ''
@@ -389,21 +372,13 @@ function request() {
   const anchorEnd = interval.value.end
   const payload = {}
   if (action.value.id === 'SET_VISIT_NAME') payload.visitName = form.visitName.trim()
-  if (action.value.id === 'SET_PLACE' || action.value.id === 'FORCE_STAY') Object.assign(payload, placePayload(form.place))
-  if (action.value.id === 'SET_MOVEMENT_TYPE' || action.value.id === 'FORCE_TRIP') payload.movementType = form.movementType
+  if (action.value.id === 'SET_PLACE') Object.assign(payload, placePayload(form.place))
+  if (action.value.id === 'SET_MOVEMENT_TYPE') payload.movementType = form.movementType
   if (action.value.id === 'SET_MOVEMENT_TYPE') {
     payload.sourceStartLatitude = props.item.startLatitude
     payload.sourceStartLongitude = props.item.startLongitude
     payload.sourceEndLatitude = props.item.endLatitude
     payload.sourceEndLongitude = props.item.endLongitude
-  }
-  if (action.value.id === 'FORCE_TRIP') {
-    const start = gapStart.value
-    const end = gapEnd.value
-    payload.startLatitude = start.latitude; payload.startLongitude = start.longitude
-    payload.endLatitude = end.latitude; payload.endLongitude = end.longitude
-    if (form.startPlace) Object.assign(payload, placePayload(form.startPlace, 'start'))
-    if (form.endPlace) Object.assign(payload, placePayload(form.endPlace, 'end'))
   }
   if (action.value.id === 'SET_TIMES') { payload.start = fromPickerDate(form.start); payload.end = fromPickerDate(form.end) }
   if (action.value.id === 'SPLIT_STAY') {
@@ -495,11 +470,7 @@ function eventEnd(item) {
 }
 // The date picker works with browser-local Date objects, so times are shown and read in the user's timezone through
 // the same conversions as the other pickers, not in the browser's.
-function toPickerDate(value) {
-  if (!value) return null
-  const local = timezone.fromUtc(value)
-  return new Date(local.year(), local.month(), local.date(), local.hour(), local.minute(), local.second(), local.millisecond())
-}
+function toPickerDate(value) { return timelineUtcToPicker(value, timezone) }
 function fromPickerDate(value) {
   const original = value === form.start ? interval.value.start : value === form.end ? interval.value.end : null
   return timelinePickerToUtc(value, timezone, original)

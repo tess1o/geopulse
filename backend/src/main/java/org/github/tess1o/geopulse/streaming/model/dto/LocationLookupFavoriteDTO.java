@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 public class LocationLookupFavoriteDTO {
     private Long id;
     private String name;
+    private Double latitude;
+    private Double longitude;
     private String type;
     private String relation;
     private Double distanceMeters;

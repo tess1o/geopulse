@@ -205,6 +205,7 @@ const scheduleRenderNotification = (callback) => {
 export const createRawGpsPopupMount = (group, {
   timezone,
   resolveLocation,
+  onSelectPoint,
   onRender
 } = {}) => {
   let popupMount = null
@@ -216,6 +217,7 @@ export const createRawGpsPopupMount = (group, {
     group,
     timezone,
     resolveLocation,
+    onSelectPoint,
     onRender: notifyRender
   })
 

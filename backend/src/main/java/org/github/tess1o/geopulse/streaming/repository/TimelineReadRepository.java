@@ -57,7 +57,7 @@ public class TimelineReadRepository {
                     st_y(t.startPoint) as latitude, st_x(t.endPoint) as endLongitude,
                     st_y(t.endPoint) as endLatitude, t.tripDuration as duration,
                     t.distanceMeters as distance, t.movementType as movementType,
-                    t.movementTypeSource as movementTypeSource, t.explanation as explanation
+                    t.movementTypeSource as movementTypeSource, t.manualRoute as manualRoute, t.explanation as explanation
                 from TimelineTripEntity t
                 where t.user.id = :userId and ((t.timestamp >= :start and t.timestamp <= :end)
                     or (t.timestamp < :start and timestampadd(second, t.tripDuration, t.timestamp) > :start))
@@ -73,6 +73,7 @@ public class TimelineReadRepository {
                         .movementType(row.get("movementType", String.class))
                         .movementTypeSource(row.get("movementTypeSource") == null ? MovementTypeSource.AUTO.name()
                                 : row.get("movementTypeSource", MovementTypeSource.class).name())
+                        .manualRoute((java.util.List<org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto>) row.get("manualRoute"))
                         .explanation(explanation(row)).build()).toList();
     }
 

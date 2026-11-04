@@ -313,7 +313,7 @@ import MultiSelect from 'primevue/multiselect'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
-import { movementTypeOptions } from '@/composables/useTripReconstructionSegments'
+import { movementTypeOptions } from '@/constants/movementTypes'
 
 const { t } = useI18n()
 

@@ -50,7 +50,7 @@ async function setup(page, db, users, { timezone = 'UTC', overnight = false } = 
   await timeline.loginAndNavigate(managed, { dbManager: db, mapMode: await resolvePageMapMode(page) });
   await UserSettingsApi.updateCurrentUserProfile(page, { timezone, dateFormat: 'YMD', timeFormat: '24h' });
   const user = await db.getUserByEmail(managed.email);
-  // Keep the fixture's missing hours as a gap for the explicit conversion flows.
+  // Keep missing hours as a gap for the manual activity editor.
   await db.client.query(`UPDATE users SET timeline_preferences = COALESCE(timeline_preferences, '{}'::jsonb)
     || '{"gapStayInferenceEnabled":false,"gapTripInferenceEnabled":false,"dataGapThresholdSeconds":1800}'::jsonb WHERE id=$1`, [user.id]);
   const favorites = {};
@@ -96,6 +96,7 @@ async function setup(page, db, users, { timezone = 'UTC', overnight = false } = 
   await waitJob(page, await generated.json());
   const url = `/app/timeline?start=${DAY}&end=${overnight ? '2026-09-16' : DAY}`;
   await page.goto(url);
+  await page.waitForLoadState('networkidle');
   await expect(page.locator(STAYS)).toHaveCount(overnight ? 5 : 4);
   const baseline = await rows(db, user.id);
   expect(baseline.filter(row => row.type === 'trip')).toHaveLength(2);
@@ -103,16 +104,18 @@ async function setup(page, db, users, { timezone = 'UTC', overnight = false } = 
 }
 
 async function open(page, kind, index = 0) {
-  const selector = { stay: '.timeline-card--stay', trip: '.timeline-card--trip', gap: '.timeline-card--data-gap' }[kind];
-  await page.locator(selector).nth(index).getByRole('button', { name: { stay: 'Edit visit…', trip: 'Edit trip…', gap: 'Resolve gap…' }[kind] }).click();
+  const selector = { stay: '.timeline-card--stay', trip: '.timeline-card--trip' }[kind];
+  await page.locator(selector).nth(index).getByRole('button', { name: { stay: 'Edit visit…', trip: 'Edit trip…' }[kind] }).click();
   await expect(drawer(page)).toBeVisible();
 }
 async function choosePlace(page, name) {
-  await drawer(page).getByRole('combobox', { name: 'Search your places' }).fill(name);
-  await page.getByRole('option').filter({ hasText: name }).first().click();
+  if (await page.getByRole('dialog', { name: 'Choose Date', exact: true }).last().isVisible()) await page.keyboard.press('Escape');
+  await drawer(page).getByRole('textbox', { name: 'Find a saved or visited place' }).fill(name);
+  await drawer(page).getByRole('button', { name, exact: true }).click();
   await expect(drawer(page).locator('.place-picker-selected')).toContainText(name);
 }
 async function review(page) {
+  if (await page.getByRole('dialog', { name: 'Choose Date', exact: true }).last().isVisible()) await page.keyboard.press('Escape');
   await expect(drawer(page).getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
   const response = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/timeline/edits/preview');
   await drawer(page).getByRole('button', { name: 'Review changes', exact: true }).click();
@@ -149,9 +152,13 @@ async function historyChange(page, edit, operation) {
   await expect(entry).toBeAttached();
   await expect(entry.locator('.change-value')).not.toHaveCount(0);
   // The history drawer uses the same list, including the collapsed reverted entries.
-  if (await entry.locator('xpath=ancestor::details').count()) await history.locator('summary').click();
+  const details = entry.locator('xpath=ancestor::details');
+  await expect(async () => {
+    if (await details.count() && await details.getAttribute('open') === null) await details.locator('summary').click();
+    await expect(entry).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
   const response = page.waitForResponse(response => response.request().method() === 'POST'
-    && new URL(response.url()).pathname === `/api/v1/timeline/edits/${edit.id}/${operation === 'Undo' ? 'revert' : 'restore'}`);
+    && new URL(response.url()).pathname === `/api/v1/timeline/${edit.groupId ? `activity-corrections/${edit.groupId}` : `edits/${edit.id}`}/${operation === 'Undo' ? 'revert' : 'restore'}`);
   await entry.getByRole('button', { name: operation, exact: true }).click();
   const changed = await response;
   expect(changed.ok()).toBe(true);
@@ -184,23 +191,23 @@ async function lifecycle(page, db, context, edit, assertChanged) {
   await assertChanged(changed);
   await assertRendered(page, context, changed);
   expect(changed).not.toEqual(context.baseline);
-  await page.reload();
+  await page.reload(); await page.waitForLoadState('networkidle');
   await expect(page.locator('.timeline-history-button')).toBeVisible();
   expect(await rows(db, context.user)).toEqual(changed);
   await assertRendered(page, context, changed);
   await historyChange(page, edit, 'Undo');
   expect(await rows(db, context.user)).toEqual(context.baseline);
   await assertRendered(page, context, context.baseline);
-  await page.reload();
+  await page.reload(); await page.waitForLoadState('networkidle');
   await historyChange(page, edit, 'Redo');
   expect(await rows(db, context.user)).toEqual(changed);
   await assertRendered(page, context, changed);
-  await page.reload();
+  await page.reload(); await page.waitForLoadState('networkidle');
   await assertChanged(await rows(db, context.user));
   await assertRendered(page, context, changed);
 }
 
-const scenarios = ['movement', 'place', 'label', 'times', 'split stay', 'gap to stay', 'gap to trip',
+const scenarios = ['movement', 'place', 'label', 'times', 'split stay',
   'merge previous', 'merge next', 'remove gap', 'remove previous', 'remove next', 'remove merge', 'trip stop'];
 
 test.describe('Timeline Edit desktop release checks', () => {
@@ -238,7 +245,7 @@ test.describe('Timeline Edit desktop release checks', () => {
         await dialog.getByRole('combobox', { name: 'Stay start' }).press('Tab');
         await dialog.getByRole('combobox', { name: 'Stay end' }).fill(`${DAY} 08:21:00`);
         await dialog.getByRole('combobox', { name: 'Stay end' }).press('Tab');
-        await dialog.locator('.place-picker-option').filter({ hasText: 'Bakery' }).click();
+        await expect(dialog.locator('.place-picker-selected')).toContainText('Bakery');
         await expect(dialog.locator('.split-preview')).toBeVisible();
         const edit = await save(page, dialog.getByRole('button', { name: 'Save Split' }));
         await lifecycle(page, dbManager, context, edit, async values => {
@@ -260,8 +267,7 @@ test.describe('Timeline Edit desktop release checks', () => {
         });
         return;
       }
-      if (scenario.startsWith('gap')) await open(page, 'gap');
-      else if (scenario === 'movement' || scenario.startsWith('merge')) await open(page, 'trip', scenario === 'merge previous' ? 1 : 0);
+      if (scenario === 'movement' || scenario.startsWith('merge')) await open(page, 'trip', scenario === 'merge previous' ? 1 : 0);
       else await open(page, 'stay', 1);
       if (scenario === 'movement') {
         await action(page, 'Movement type').click();
@@ -292,19 +298,6 @@ test.describe('Timeline Edit desktop release checks', () => {
           expect(values).toContainEqual(expect.objectContaining({ type: 'stay', start: office.start, finish: at('10:00'), name: 'Office' }));
           expect(values).toContainEqual(expect.objectContaining({ type: 'stay', start: at('10:00'), finish: office.finish, name: 'Bakery', favorite: context.favorites.Bakery }));
         };
-      } else if (scenario.startsWith('gap')) {
-        const gap = context.baseline.find(row => row.type === 'gap');
-        await action(page, scenario === 'gap to stay' ? 'Convert to stay' : 'Convert to trip').click();
-        if (scenario === 'gap to stay') await choosePlace(page, 'Bakery');
-        else {
-          await drawer(page).getByRole('combobox', { name: 'Movement type' }).click();
-          await page.getByRole('option', { name: 'Walk', exact: true }).click();
-        }
-        check = async values => {
-          expect(values.filter(row => row.type === 'gap')).toHaveLength(0);
-          expect(values).toContainEqual(expect.objectContaining({ type: scenario === 'gap to stay' ? 'stay' : 'trip', start: gap.start, finish: gap.finish,
-            ...(scenario === 'gap to stay' ? { name: 'Bakery' } : { movement: 'WALK', source: 'MANUAL' }) }));
-        };
       } else if (scenario.startsWith('merge')) {
         await action(page, 'Merge').click();
         await drawer(page).getByRole('radio', { name: scenario === 'merge previous' ? /Merge with the previous trip/ : /Merge with the next trip/ }).click();
@@ -329,6 +322,106 @@ test.describe('Timeline Edit desktop release checks', () => {
       if (!['movement', 'place', 'label'].includes(scenario)) await review(page);
       const edit = await save(page);
       await lifecycle(page, dbManager, context, edit, check);
+    });
+  }
+
+  for (const scenario of ['stay', 'trip', 'group']) {
+    test(`missing activity: ${scenario} saves through the editor, reloads, and undoes/restores the group`, async ({ page, dbManager, isolatedUsers }, testInfo) => {
+      if (testInfo.project.name.includes('mobile')) await page.setViewportSize({ width: 390, height: 844 });
+      const context = await setup(page, dbManager, isolatedUsers);
+      const gps = async () => (await dbManager.client.query(
+        'SELECT id, timestamp, ST_AsText(coordinates) AS coordinates FROM gps_points WHERE user_id=$1 ORDER BY timestamp, id', [context.user])).rows;
+      const originalGps = await gps();
+      if (scenario === 'trip') await page.getByRole('button', { name: 'Add missing timeline data', exact: true }).click();
+      else await page.locator('.timeline-card--data-gap').getByRole('button', { name: 'Fill missing time…', exact: true }).click();
+      const editor = page.locator('.missing-activity-editor');
+      await expect(editor).toBeVisible();
+      const fillTimes = async (form, start, end) => {
+        await form.getByRole('combobox', { name: 'From · Time', exact: true }).fill(`${start}:00`);
+        await form.getByRole('combobox', { name: 'From · Time', exact: true }).press('Escape');
+        await form.getByRole('combobox', { name: 'To · Time', exact: true }).fill(`${end}:00`);
+        await form.getByRole('combobox', { name: 'To · Time', exact: true }).press('Escape');
+      };
+      const selectPlace = async (picker, name) => {
+        const search = picker.getByRole('textbox', { name: 'Find a saved or visited place' });
+        if (!await search.isVisible()) await picker.getByRole('button', { name: 'Choose location', exact: true }).click();
+        await search.fill(name);
+        await picker.getByRole('button', { name, exact: true }).click();
+        await expect(picker.locator('.place-picker-selected')).toContainText(name);
+      };
+      const chooseType = async (form, type) => {
+        await form.getByRole('combobox', { name: 'What happened?' }).click();
+        await page.getByRole('option', { name: type, exact: true }).click();
+      };
+      if (scenario !== 'trip') {
+        const form = editor.locator('.activity-form').first();
+        await fillTimes(form, '18:30', '19:00');
+        await chooseType(form, 'Stayed at a place');
+        await selectPlace(form.locator('.place-picker'), 'Bakery');
+        await form.getByRole('button', { name: 'Add a visit label', exact: true }).click();
+        await form.getByRole('textbox', { name: 'Visit label (optional)' }).fill('Missing visit');
+      }
+      if (scenario !== 'stay') {
+        if (scenario === 'group') await editor.getByRole('button', { name: 'Add another activity', exact: true }).click();
+        const form = editor.locator('.activity-form').last();
+        await fillTimes(form, '19:15', '20:15');
+        await chooseType(form, 'Travelled');
+        await selectPlace(form.getByRole('group', { name: 'Start', exact: true }), 'Home');
+        await selectPlace(form.getByRole('group', { name: 'Destination', exact: true }), 'Office');
+        await form.getByRole('combobox').last().click();
+        await page.getByRole('option', { name: 'Walk', exact: true }).click();
+        await form.getByRole('button', { name: 'Add route points', exact: true }).click();
+        const host = editor.locator('[data-testid^="map-host-"]');
+        await expect(host).toBeVisible();
+        const bounds = await host.boundingBox();
+        await host.click({ position: { x: bounds.width * 0.55, y: bounds.height * 0.75 } });
+        await expect(form.getByRole('button', { name: 'Route point 1', exact: true })).toBeVisible();
+        await editor.getByRole('button', { name: 'Done placing points', exact: true }).click();
+      }
+      const preview = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/timeline/activity-corrections/preview');
+      await editor.getByRole('button', { name: 'Review changes', exact: true }).click();
+      expect((await preview).ok()).toBe(true);
+      await expect(editor.locator('.activity-review')).toContainText('Still unknown');
+      expect((await dbManager.client.query('SELECT id FROM timeline_edits WHERE user_id=$1', [context.user])).rowCount).toBe(0);
+      if (scenario === 'stay') {
+        const end = editor.getByRole('combobox', { name: 'To · Time', exact: true });
+        await end.fill('19:01:00'); await editor.locator('.p-dialog-title').click();
+        await expect(editor.locator('.activity-review')).toHaveCount(0);
+        await expect(editor.getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
+        await end.fill('19:00:00'); await editor.locator('.p-dialog-title').click();
+        const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/timeline/activity-corrections/preview');
+        await editor.getByRole('button', { name: 'Review changes', exact: true }).click();
+        expect((await refreshed).ok()).toBe(true);
+      }
+      const response = page.waitForResponse(r => r.request().method() === 'POST'
+        && new URL(r.url()).pathname === '/api/v1/timeline/activity-corrections');
+      await editor.getByRole('button', { name: 'Save changes', exact: true }).click();
+      const saved = await response; expect(saved.ok()).toBe(true);
+      const result = await saved.json();
+      expect(result.edits).toHaveLength(scenario === 'group' ? 2 : 1);
+      expect(result.edits.every(edit => edit.groupId === result.groupId)).toBe(true);
+      await waitJob(page, result);
+      await expect(editor).not.toBeVisible();
+      await lifecycle(page, dbManager, context, result.edits[0], async values => {
+        expect(await gps()).toEqual(originalGps);
+        if (scenario !== 'trip') expect(values).toContainEqual(expect.objectContaining({
+          type: 'stay', start: at('18:30'), finish: at('19:00'), name: 'Bakery', label: 'Missing visit', favorite: context.favorites.Bakery
+        }));
+        if (scenario !== 'stay') {
+          expect(values).toContainEqual(expect.objectContaining({ type: 'trip', start: at('19:15'), finish: at('20:15'), movement: 'WALK', source: 'MANUAL' }));
+          const manual = await dbManager.client.query('SELECT manual_route, distance_meters FROM timeline_trips WHERE user_id=$1 AND timestamp=$2', [context.user, at('19:15')]);
+          expect(manual.rows[0].manual_route).toHaveLength(3);
+          expect(Number(manual.rows[0].distance_meters)).toBeGreaterThan(100);
+          await expect(page.locator('.manual-route-legend')).toContainText('Manual route');
+        }
+      });
+      const card = scenario === 'trip'
+        ? page.locator('.timeline-card--trip').filter({ hasText: '19:15' })
+        : page.locator('.timeline-card--stay').filter({ hasText: 'Missing visit' });
+      await card.getByRole('button', { name: scenario === 'trip' ? 'Edit trip…' : 'Edit visit…' }).click();
+      await expect(drawer(page).getByRole('note')).toContainText('undo the correction group');
+      for (const name of ['Time', 'Split stay', 'Add a stop', 'Merge', 'Remove']) await expect(action(page, name)).toHaveCount(0);
+      await expect(action(page, scenario === 'trip' ? 'Movement type' : 'Visit label')).toBeVisible();
     });
   }
 
@@ -383,7 +476,7 @@ test.describe('Timeline Edit desktop release checks', () => {
     await drawer(page).getByRole('combobox', { name: 'Split at', exact: true }).fill(`${DAY} 10:00`);
     await choosePlace(page, 'Bakery'); await review(page);
     const first = await save(page);
-    await page.reload();
+    await page.reload(); await page.waitForLoadState('networkidle');
     await open(page, 'stay', 1); await action(page, 'Remove').click();
     await drawer(page).getByRole('combobox').click();
     await page.getByRole('option', { name: 'Leaving a data gap' }).click(); await review(page);
@@ -433,7 +526,7 @@ test.describe('Timeline Edit desktop release checks', () => {
       const changed = await page.request.put('/api/v1/preferences/timeline', { data: { staypointMinDurationMinutes: minutes } });
       expect(changed.status()).toBe(200);
       await waitJob(page, await changed.json());
-      await page.reload();
+      await page.reload(); await page.waitForLoadState('networkidle');
       await expect(page.locator('.timeline-history-button')).toBeVisible();
     };
     await changeMinimum(240);
@@ -450,7 +543,7 @@ test.describe('Timeline Edit desktop release checks', () => {
     await changeMinimum(originalMinimum);
     await expect(page.locator('.visit-label').filter({ hasText: 'Late visit' })).toHaveCount(0);
     await historyChange(page, edit, 'Redo');
-    await page.reload();
+    await page.reload(); await page.waitForLoadState('networkidle');
     await expect(page.locator('.visit-label')).toHaveText('Late visit');
   });
 
@@ -465,7 +558,7 @@ test.describe('Timeline Edit desktop release checks', () => {
     await page.goto(`/shared-timeline/${link.id}`);
     await expect(page.locator('.timeline-card').first()).toBeVisible();
     await expect(page.locator('.visit-label')).toHaveText('Shared visit');
-    await expect(page.locator('.timeline-edit-trigger, .timeline-history-button, .timeline-edit-count')).toHaveCount(0);
+    await expect(page.locator('.timeline-edit-trigger, .timeline-history-button, .timeline-edit-count, .gap-fill-action')).toHaveCount(0);
     const viewer = await page.context().browser().newContext({ baseURL: new URL(page.url()).origin });
     try {
       const access = await viewer.request.post(`/api/v1/public/share-links/${link.id}/access-tokens`, { data: {} });
@@ -504,7 +597,7 @@ test.describe('Timeline Edit desktop release checks', () => {
       await viewer.goto(`/app/trips/${trip}`);
       await viewer.locator('.trip-rail-lens').getByText('Timeline', { exact: true }).click();
       await expect(viewer.locator('.visit-label')).toHaveText('Collaborative visit');
-      await expect(viewer.locator('.timeline-edit-trigger, .timeline-history-button')).toHaveCount(0);
+      await expect(viewer.locator('.timeline-edit-trigger, .timeline-history-button, .gap-fill-action')).toHaveCount(0);
       const before = await rows(dbManager, context.user);
       for (const action of ['revert', 'restore']) expect((await viewer.request.post(`/api/v1/timeline/edits/${edit.id}/${action}`)).status()).toBe(404);
       expect(await rows(dbManager, context.user)).toEqual(before);

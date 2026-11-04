@@ -26,6 +26,7 @@ public class TimelineEditsDataDto {
     @AllArgsConstructor
     public static class EditDto {
         private Long id;
+        private java.util.UUID groupId;
         private long seq;
         private TimelineEditKind kind;
         private Instant anchorStart;

@@ -23,7 +23,8 @@ const createVectorStayElement = () => {
 
 const createVectorContextElement = (point) => {
   const root = document.createElement('div')
-  root.className = 'trip-reconstruction-context-marker'
+  const variant = { S: 'stay', A: 'start', B: 'end' }[point.label] || (/^\d+$/.test(point.label) ? 'via' : null)
+  root.className = `trip-reconstruction-context-marker${variant ? ` trip-reconstruction-context--${variant}` : ''}${point.draggable ? ' trip-reconstruction-context--draggable' : ''}`
   root.textContent = point.label
   return root
 }
@@ -102,12 +103,18 @@ export const createVectorTripReconstructionMapAdapter = (callbacks = {}) => {
     }
 
     contextMarkers = contextPoints.map((point) => {
-      return new maplibregl.Marker({
+      const marker = new maplibregl.Marker({
         element: createVectorContextElement(point),
-        anchor: 'center'
+        anchor: 'center',
+        draggable: Boolean(point.draggable)
       })
         .setLngLat([point.longitude, point.latitude])
         .addTo(map)
+      if (point.draggable) marker.on('dragend', () => {
+        const position = marker.getLngLat()
+        callbacks.onContextPointDragged?.(point, position.lat, position.lng)
+      })
+      return marker
     })
   }
 

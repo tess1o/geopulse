@@ -1,9 +1,15 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReasons;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
@@ -23,13 +29,17 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.function.Consumer;
 
-/** Applies persisted one-off edits as an ordered fold over generated events. */
+/**
+ * Applies persisted one-off edits as an ordered fold over generated events.
+ */
 @ApplicationScoped
 public class TimelineEditApplier {
+    @Inject ObjectMapper objectMapper;
     private static final double MAX_TRIP_ANCHOR_DISTANCE_METERS = 2_000;
 
     public TimelineEditResult apply(List<TimelineEvent> source, List<TimelineEditCommand> commands) {
-        return apply(source, commands, trip -> {});
+        return apply(source, commands, trip -> {
+        });
     }
 
     public TimelineEditResult apply(List<TimelineEvent> source, List<TimelineEditCommand> commands,
@@ -106,6 +116,10 @@ public class TimelineEditApplier {
                 .duration(Duration.between(edit.anchorStart(), edit.anchorEnd()))
                 .build();
         applyPlace(stay, edit.payload(), "");
+        if (Boolean.TRUE.equals(edit.payload().get("reconstruction")) || Boolean.TRUE.equals(edit.payload().get("activityCorrection"))) {
+            stay.setExplanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.MANUAL_RECONSTRUCTION), List.of(), null));
+        }
+        stay.setVisitName(text(edit.payload(), "visitName", null));
         if (stay.getLocationName() == null) stay.setLocationName("Unknown location");
         events.add(stay);
         return stay;
@@ -126,6 +140,18 @@ public class TimelineEditApplier {
                 .endPoint(GPSPoint.builder().timestamp(edit.anchorEnd()).latitude(endLat).longitude(endLon).build())
                 .distanceMeters(number(edit.payload(), "distanceMeters", 0))
                 .build();
+        if (Boolean.TRUE.equals(edit.payload().get("activityCorrection"))) {
+            var route = ManualRouteGeometry.read(edit.payload().get("waypoints"), objectMapper);
+            trip.setManualRoute(route);
+            trip.setDistanceMeters(ManualRouteGeometry.distance(route));
+            var first = route.getFirst();
+            var last = route.getLast();
+            trip.setStartPoint(GPSPoint.builder().timestamp(edit.anchorStart()).latitude(first.getLatitude()).longitude(first.getLongitude()).build());
+            trip.setEndPoint(GPSPoint.builder().timestamp(edit.anchorEnd()).latitude(last.getLatitude()).longitude(last.getLongitude()).build());
+            trip.setExplanation(new TimelineExplanation(TimelineReason.of(TimelineReasons.MANUAL_RECONSTRUCTION,
+                    "startLocationName", text(edit.payload(), "startLocationName", null),
+                    "endLocationName", text(edit.payload(), "endLocationName", null)), List.of(), null));
+        }
         events.add(trip);
         return trip;
     }
@@ -193,7 +219,7 @@ public class TimelineEditApplier {
         if (("EXTEND_PREVIOUS".equals(resolution) && index == 0)
                 || ("EXTEND_NEXT".equals(resolution) && index + 1 == events.size())
                 || ("MERGE".equals(resolution) && (index == 0 || index + 1 == events.size()
-                    || !canMerge(events.get(index - 1), events.get(index + 1))))) return null;
+                || !canMerge(events.get(index - 1), events.get(index + 1))))) return null;
         events.remove(index);
         return switch (resolution) {
             case "GAP" -> {
@@ -273,7 +299,8 @@ public class TimelineEditApplier {
         TimelineEvent merged = copy(first);
         resize(merged, first.getStartTime(), last.getEndTime());
         if (merged instanceof Trip trip && last instanceof Trip other) {
-            if (other.getMovementTypeSource() == MovementTypeSource.MANUAL) trip.setMovementTypeSource(MovementTypeSource.MANUAL);
+            if (other.getMovementTypeSource() == MovementTypeSource.MANUAL)
+                trip.setMovementTypeSource(MovementTypeSource.MANUAL);
             trip.setEndPoint(other.getEndPoint());
             trip.setDistanceMeters(trip.getDistanceMeters() + other.getDistanceMeters());
         }
@@ -292,7 +319,8 @@ public class TimelineEditApplier {
             return GeoUtils.haversine(left.getLatitude(), left.getLongitude(),
                     right.getLatitude(), right.getLongitude()) <= 200;
         }
-        return !(first instanceof Trip left) || left.getTripType() == ((Trip) second).getTripType();
+        return !(first instanceof Trip left) || (left.getManualRoute() == null && ((Trip) second).getManualRoute() == null
+                && left.getTripType() == ((Trip) second).getTripType());
     }
 
     private static TimelineEvent copyRange(TimelineEvent event, Instant start, Instant end) {
@@ -311,7 +339,7 @@ public class TimelineEditApplier {
         if (event instanceof Trip trip) {
             return Trip.builder().startTime(trip.getStartTime()).duration(trip.getDuration()).tripType(trip.getTripType())
                     .movementTypeSource(trip.getMovementTypeSource())
-                    .distanceMeters(trip.getDistanceMeters()).startPoint(trip.getStartPoint()).endPoint(trip.getEndPoint())
+                    .distanceMeters(trip.getDistanceMeters()).manualRoute(trip.getManualRoute()).startPoint(trip.getStartPoint()).endPoint(trip.getEndPoint())
                     .statistics(trip.getStatistics()).waterStatistics(trip.getWaterStatistics())
                     .altitudeStatistics(trip.getAltitudeStatistics()).explanation(trip.getExplanation()).build();
         }

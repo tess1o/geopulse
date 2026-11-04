@@ -24,6 +24,7 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  editableContext: { type: Boolean, default: false },
   contextTripLines: {
     type: Array,
     default: () => []
@@ -35,6 +36,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'context-point-dragged',
   'stay-dragged',
   'waypoint-dragged',
   'waypoint-removed'
@@ -46,7 +48,7 @@ const renderOverlay = () => {
   mapAdapter.value?.render?.({
     activeSegment: props.activeSegment,
     activeSegmentIndex: props.activeSegmentIndex,
-    contextPoints: props.contextPoints,
+    contextPoints: props.contextPoints.map(point => ({ ...point, draggable: props.editableContext && point.draggable !== false && !['•', '◇'].includes(point.label) })),
     contextTripLines: props.contextTripLines
   })
 }
@@ -66,6 +68,9 @@ watch(() => props.map, (nextMap) => {
   mapAdapter.value = createTripReconstructionMapAdapter(nextMap, {
     idPrefix: props.idPrefix,
     hasValidCoordinates,
+    onContextPointDragged: (point, latitude, longitude) => {
+      emit('context-point-dragged', { label: point.label, latitude, longitude })
+    },
     onStayDragged: (segmentIndex, latitude, longitude) => {
       emit('stay-dragged', { segmentIndex, latitude, longitude })
     },
@@ -82,7 +87,7 @@ watch(() => props.map, (nextMap) => {
 }, { immediate: true })
 
 watch(
-  () => [props.activeSegment, props.activeSegmentIndex, props.contextPoints, props.contextTripLines],
+  () => [props.activeSegment, props.activeSegmentIndex, props.contextPoints, props.contextTripLines, props.editableContext],
   () => {
     renderOverlay()
   },

@@ -1,6 +1,10 @@
 <template>
   <div
     class="map-view-container"
+    tabindex="0"
+    role="region"
+    :aria-label="t('trips.reconstructionContext.mapActions')"
+    @keydown.shift.f10.prevent.stop="handleKeyboardMapContextMenu"
     :class="{
       'map-view-container--trip-replay-bar': showTripReplayBar,
       'map-view-container--trip-replay-restore': showTripReplayRestoreButton
@@ -144,6 +148,7 @@
         />
         
 
+        <ManualRoutesLayer v-if="map && isReady" :map="map" :timeline="processedTimelineData" :visible="showPath" />
         <!-- Timeline Layer -->
         <TimelineLayer
           v-if="map && isReady"
@@ -346,6 +351,9 @@
 
       </template>
     </MapContainer>
+    <div v-if="showPath && processedTimelineData.some(item => item.manualRoute?.length)" class="manual-route-legend">
+      <span aria-hidden="true">┄</span> {{ t('missingActivity.manualRoute') }}
+    </div>
 
     <!-- Bottom-left, stacked: heatmap legend, day legend, and the way back from a focused day. -->
     <div v-if="showHeatmapLegend || showDayLegend || showFocusedDayChip" class="map-bottom-left-overlays">
@@ -466,6 +474,8 @@ import {useI18n} from 'vue-i18n'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
+import ManualRoutesLayer from '@/components/maps/layers/ManualRoutesLayer.vue'
+import { pointsInViewport } from '@/utils/timelineReconstructionContext'
 import ConfirmDialog from 'primevue/confirmdialog'
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
@@ -704,7 +714,8 @@ const emit = defineEmits([
   'plan-to-visit',
   'plan-item-edit',
   'plan-item-delete',
-  'plan-item-click'
+  'plan-item-click',
+  'reconstruct-range'
 ])
 
 // Router
@@ -1143,7 +1154,7 @@ const {
   handleHighlightedTripReplayData,
   cleanupTripReplay
 } = useTripReplayControls({
-  enabled: computed(() => props.enableTripReplay),
+  enabled: computed(() => props.enableTripReplay && !activeHighlightedTrip.value?.manualRoute),
   activeTrip: activeHighlightedTrip,
   showPath,
   supports3d: isVectorMapMode,
@@ -1180,6 +1191,17 @@ const mapMenuItems = computed(() => {
       command: () => openLocationLookup(dialogState.value.addToFavoritesLatLng)
     }
   ]
+
+  if (!props.isPublicView && !props.isSharedView && !props.readOnly) {
+    items.push({
+      label: t('missingActivity.add'),
+      icon: 'pi pi-plus-circle',
+      command: () => {
+        const point = dialogState.value.addToFavoritesLatLng
+        emit('reconstruct-range', { locationSuggestion: point ? { latitude: point.lat, longitude: point.lng } : null })
+      }
+    })
+  }
 
   if (props.showPlanToVisitAction) {
     items.push({
@@ -1492,6 +1514,22 @@ const handleMapContextMenu = (event) => {
       mapContextMenuRef.value.show(event.originalEvent)
     }
   }, 0)
+}
+
+const handleKeyboardMapContextMenu = event => {
+  const currentMap = map.value
+  if (!currentMap || props.isPublicView) return
+  const bounds = event.currentTarget.getBoundingClientRect()
+  handleMapContextMenu({
+    latlng: currentMap.getCenter(),
+    originalEvent: {
+      target: event.target,
+      pageX: bounds.left + window.scrollX + bounds.width / 2,
+      pageY: bounds.top + window.scrollY + Math.min(bounds.height / 2, 160),
+      preventDefault: () => event.preventDefault(),
+      stopPropagation: () => event.stopPropagation()
+    }
+  })
 }
 
 // Layer event handlers
@@ -2158,8 +2196,18 @@ const fitBounds = (bounds, options = {}) => {
   mapContainerRef.value?.fitBounds?.(bounds, options)
 }
 
+const captureReconstructionContext = async () => {
+  const currentMap = map.value
+  if (!currentMap || props.isPublicView) return null
+  const center = currentMap.getCenter()
+  const bounds = currentMap.getBounds()
+  const zoom = currentMap.getZoom()
+  await loadRawGpsPoints({ force: true })
+  return { center: [center.lat, center.lng], zoom, points: pointsInViewport(rawGpsPoints.value, bounds), allPoints: rawGpsPoints.value }
+}
 // Expose methods for parent component
 defineExpose({
+  captureReconstructionContext,
   map: readonly(map),
   clearAllHighlights: clearAllMapHighlights,
   zoomToData: handleZoomToData,
@@ -2427,36 +2475,36 @@ defineExpose({
 
   /* Lift the bottom controls (attribution) above the mobile bottom sheet. The control container has z-index 0 in
      maplibreMarkerFixes.css, which would keep them under the markers. */
-  .map-view-container :global(.maplibregl-control-container) {
+  .map-view-container :deep(.maplibregl-control-container) {
     z-index: auto;
   }
 
-  .map-view-container :global(.leaflet-bottom),
-  .map-view-container :global(.maplibregl-ctrl-bottom-left),
-  .map-view-container :global(.maplibregl-ctrl-bottom-right) {
+  .map-view-container :deep(.leaflet-bottom),
+  .map-view-container :deep(.maplibregl-ctrl-bottom-left),
+  .map-view-container :deep(.maplibregl-ctrl-bottom-right) {
     bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom));
     z-index: 880;
     pointer-events: none;
   }
 
-  .map-view-container :global(.leaflet-bottom.leaflet-left),
-  .map-view-container :global(.maplibregl-ctrl-bottom-left) {
+  .map-view-container :deep(.leaflet-bottom.leaflet-left),
+  .map-view-container :deep(.maplibregl-ctrl-bottom-left) {
     left: calc(0.5rem + env(safe-area-inset-left));
   }
 
-  .map-view-container :global(.leaflet-bottom.leaflet-right),
-  .map-view-container :global(.maplibregl-ctrl-bottom-right) {
+  .map-view-container :deep(.leaflet-bottom.leaflet-right),
+  .map-view-container :deep(.maplibregl-ctrl-bottom-right) {
     right: calc(0.5rem + env(safe-area-inset-right));
   }
 
-  .map-view-container :global(.leaflet-control-attribution),
-  .map-view-container :global(.maplibregl-ctrl-attrib) {
+  .map-view-container :deep(.leaflet-control-attribution),
+  .map-view-container :deep(.maplibregl-ctrl-attrib) {
     max-width: calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     box-sizing: border-box;
     pointer-events: auto;
   }
 
-  .map-view-container :global(.maplibregl-ctrl-attrib) {
+  .map-view-container :deep(.maplibregl-ctrl-attrib) {
     margin-bottom: 0;
     font-size: 9px;
     white-space: nowrap;
@@ -2473,4 +2521,10 @@ defineExpose({
     max-width: 30rem;
   }
 }
+.manual-route-legend {
+  position: absolute; bottom: 3rem; left: 1rem; z-index: 800;
+  padding: .35rem .6rem; border-radius: var(--gp-radius-small);
+  background: var(--gp-surface-card); color: var(--gp-text-secondary); font-size: .8rem; pointer-events: none;
+}
+.manual-route-legend span { color: #8b5cf6; font-weight: bold; }
 </style>

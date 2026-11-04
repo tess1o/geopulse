@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.notes;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.notes.model.MemosConnectionStatus;
 import org.github.tess1o.geopulse.notes.model.*;
 
 @RegisterForReflection(targets = {
+        MemosConnectionStatus.class,
         TimelineNoteEntity.class,
         NoteDto.class,
         NoteSearchResponse.class,

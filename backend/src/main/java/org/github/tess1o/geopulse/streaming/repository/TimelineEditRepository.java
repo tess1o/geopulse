@@ -25,6 +25,10 @@ public class TimelineEditRepository implements PanacheRepository<TimelineEditEnt
                 userId, TimelineEditStatus.ACTIVE, from, to).list();
     }
 
+    public List<TimelineEditEntity> findGroup(UUID userId, UUID groupId) {
+        return find("user.id = ?1 and groupId = ?2 order by seq", userId, groupId).list();
+    }
+
     public long nextSeq(UUID userId) {
         Long maximum = getEntityManager().createQuery(
                         "select max(e.seq) from TimelineEditEntity e where e.user.id = :userId", Long.class)

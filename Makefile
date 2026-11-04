@@ -325,7 +325,8 @@ e2e-logs:
 .PHONY: test-e2e
 test-e2e:
 	@echo "🧪 Running E2E tests (RASTER + VECTOR + OIDC)..."
-	cd tests && npx playwright test $(E2E_PLAYWRIGHT_PROJECTS)
+	@status=0; cd tests && npx playwright test $(E2E_PLAYWRIGHT_PROJECTS) || status=$$?; \
+	node scripts/validate-backend-logs.js || status=$$?; exit $$status
 
 # Run E2E tests with UI (interactive)
 .PHONY: test-e2e-ui

@@ -62,10 +62,12 @@ public class LocationAnalyticsService {
                     .findByUserIdAndNameContaining(userId, query, 10);
 
             for (FavoritesEntity favorite : favorites) {
+                var center = favorite.getGeometry() == null ? null : favorite.getGeometry().getCentroid();
                 long visitCount = stayRepository.countByFavoriteLocationId(favorite.getId(), userId);
                 results.add(LocationSearchResultDTO.builder()
                         .type("place")
                         .category("favorite")
+                        .latitude(center == null ? null : center.getY()).longitude(center == null ? null : center.getX())
                         .id(favorite.getId())
                         .name(favorite.getName())
                         .displayName(favorite.getName())
@@ -79,10 +81,12 @@ public class LocationAnalyticsService {
                     geocodingRepository.findByDisplayNameContaining(userId, query, 10);
 
             for (ReverseGeocodingLocationEntity geocoding : geocodingList) {
+                var center = geocoding.getResultCoordinates() != null ? geocoding.getResultCoordinates() : geocoding.getRequestCoordinates();
                 long visitCount = stayRepository.countByGeocodingLocationId(geocoding.getId(), userId);
                 results.add(LocationSearchResultDTO.builder()
                         .type("place")
                         .category("geocoding")
+                        .latitude(center == null ? null : center.getY()).longitude(center == null ? null : center.getX())
                         .id(geocoding.getId())
                         .name(geocoding.getDisplayName())
                         .displayName(geocoding.getDisplayName())

@@ -32,3 +32,8 @@ describe('timeline viewport', () => {
     expect(getTimelineBoundsViewport([])).toBeNull()
   })
 })
+
+it('fits manual route waypoints without requiring recorded GPS paths', () => {
+  expect(collectTimelineDataBounds({ timelineData: [{ latitude: 49, longitude: 24, manualRoute: [{ latitude: 50, longitude: 25 }, { latitude: 51, longitude: 26 }] }] }))
+    .toEqual([[49, 24], [50, 25], [51, 26]])
+})

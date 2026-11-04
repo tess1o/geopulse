@@ -31,7 +31,7 @@ public class TripReconstructionSegmentDto {
     @Schema(examples = "2025-06-01T11:30:00Z")
     private Instant endTime;
 
-    @Size(max = 255, message = "locationName cannot exceed 255 characters")
+    @Size(max = 500, message = "locationName cannot exceed 500 characters")
     @Schema(examples = "Train to Lviv")
     private String locationName;
 
@@ -44,6 +44,9 @@ public class TripReconstructionSegmentDto {
     @DecimalMax(value = "180.0", message = "Longitude must be <= 180")
     @Schema(examples = "24.0297")
     private Double longitude;
+
+    private Long favoriteId;
+    private Long geocodingId;
 
     @Schema(examples = "TRAIN")
     private String movementType;

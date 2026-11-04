@@ -104,3 +104,42 @@
     font-weight: 600;
     color: var(--gp-primary-text);
 }
+
+.timeline-card--data-gap,
+.timeline-card--overnight-data-gap {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.gap-fill-action {
+    margin-top: .625rem;
+    max-width: 100%;
+    min-height: 44px;
+}
+
+@media (max-width: 768px) {
+    .timeline-card--data-gap :deep(.p-card-body),
+    .timeline-card--overnight-data-gap :deep(.p-card-body) {
+        padding: .75rem;
+    }
+
+    .timeline-card--data-gap .timeline-title-row,
+    .timeline-card--overnight-data-gap .timeline-title-row {
+        flex-wrap: nowrap;
+        align-items: flex-start;
+    }
+
+    .timeline-card--data-gap .timeline-title-actions,
+    .timeline-card--overnight-data-gap .timeline-title-actions {
+        flex-shrink: 1;
+        min-width: 2rem;
+    }
+
+    .gap-fill-action {
+        width: 100%;
+    }
+
+    .gap-fill-action :deep(.p-button-label) {
+        white-space: normal;
+    }
+}

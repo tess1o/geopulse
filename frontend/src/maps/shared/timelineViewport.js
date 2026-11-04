@@ -56,6 +56,7 @@ export const collectTimelineDataBounds = ({ pathData = [], timelineData = [], fa
 
   timelineData.forEach(item => {
     addTimelineBoundsPoint(bounds, item)
+    item.manualRoute?.forEach(point => addTimelineBoundsPoint(bounds, point))
   })
 
   favoritesData.forEach(favorite => {

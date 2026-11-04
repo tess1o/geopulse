@@ -22,3 +22,9 @@ export function parseTimelinePickerInput(event, timezone, seconds = false) {
   const parsed = dayjs(event.target.value, [`${date} ${time}`, `${date} ${time.replace(/^h:/, 'hh:')}`], true)
   return parsed.isValid() ? parsed.toDate() : null
 }
+
+export function timelineUtcToPicker(value, timezone) {
+  if (!value) return null
+  const local = timezone.fromUtc(value)
+  return new Date(local.year(), local.month(), local.date(), local.hour(), local.minute(), local.second(), local.millisecond())
+}

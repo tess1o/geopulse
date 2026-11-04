@@ -6,6 +6,7 @@
  */
 export default {
     edit: {
+    groupStructureHint: 'To change times, split, merge, or remove these activities, undo the correction group in Your changes and add it again.',
         reviewChanges: 'Review changes',
         reviewFirst: 'Step 1 of 2 · Make your changes, then continue to review.',
         reviewReady: 'Step 2 of 2 · Check the result below, then save your changes.',
@@ -245,6 +246,7 @@ export default {
             NO_POINTS_SINCE_LAST: 'No GPS points since the last one. A break longer than {thresholdSeconds} is shown as a data gap until new points arrive.',
             STOPPED_BEFORE_GAP: 'Starts where you stopped, right before a data gap.',
             MANUAL_SPLIT: 'You added this stay by splitting a trip.',
+            MANUAL_RECONSTRUCTION: "Created for the exact interval you entered during reconstruction.",
             MANUAL_GAP_STAY: 'You turned a data gap into this stay.'
         },
         note: {
@@ -255,6 +257,7 @@ export default {
             JOINED_SEGMENTS: '{segments} parts of movement were joined into this trip.',
             SHORT_STOP: 'Includes a stop of {stopSeconds}, too short to be a stay ({minMinutes} min needed).',
             MANUAL_SPLIT: 'Changed by your manual trip split.',
+            MANUAL_RECONSTRUCTION: "Created for the exact interval you entered during reconstruction.",
             MANUAL_GAP_STAY: 'Extended by your manual data gap conversion.'
         },
         end: {
@@ -310,6 +313,7 @@ export default {
                     CONTINUITY: 'No movement was recorded between the stays before and after this trip, but they are {distanceMeters} apart, so GeoPulse adds this trip to connect them. It has no GPS points of its own.',
                     STOPPED_BEFORE_GAP: 'You stopped here at {time}, right before your GPS data stopped, and were in the same place when it came back.',
                     MANUAL_SPLIT: 'You added this by splitting a trip.',
+                    MANUAL_RECONSTRUCTION: "Created for the exact interval you entered during reconstruction.",
                     MANUAL_GAP_STAY: 'You turned a data gap into this stay.',
                     NO_POINTS: 'No GPS points from {time} to {endTime} ({gapSeconds}). Breaks longer than {thresholdSeconds} are shown as data gaps.',
                     NO_POINTS_SINCE_LAST: 'No GPS points since {time}. A break longer than {thresholdSeconds} is shown as a data gap until new points arrive.'
@@ -322,6 +326,7 @@ export default {
                     JOINED_SEGMENTS: '{segments} trips in a row were joined into this one.',
                     SHORT_STOP: 'Includes a stop of {stopSeconds}, shorter than the {minMinutes} a stay needs.',
                     MANUAL_SPLIT: 'Changed by your manual trip split.',
+                    MANUAL_RECONSTRUCTION: "Created for the exact interval you entered during reconstruction.",
                     MANUAL_GAP_STAY: 'Extended by your manual data gap conversion.'
                 },
                 end: {

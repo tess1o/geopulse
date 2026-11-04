@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 @Slf4j
 public class StreamingTimelineAggregator {
+    @jakarta.inject.Inject StreamingDataGapService dataGapService;
 
     @Inject
     TimelineStayRepository timelineStayRepository;
@@ -230,7 +231,7 @@ public class StreamingTimelineAggregator {
         snapTripEndpointsToAdjacentFavoriteStays(timeline.getTrips(), timeline.getStays());
 
         // Get data gaps with boundary expansion
-        Instant latestGpsTimestamp = gpsPointRepository.findLatestTimestamp(userId);
+        Instant latestGpsTimestamp = dataGapService.latestKnownTime(userId, gpsPointRepository.findLatestTimestamp(userId));
         timeline.getDataGaps().addAll(timelineReadRepository.findGaps(userId, startTime, endTime, latestGpsTimestamp));
         if (includeCorrections) {
             attachEditCounts("DATA_GAP", timeline.getDataGaps().stream().map(TimelineDataGapDTO::getId).toList(),

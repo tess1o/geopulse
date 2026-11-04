@@ -221,7 +221,7 @@ public class MapMatchingService {
     private MapMatchingTripResolutionDTO resolveTrip(UUID userId, UserEntity user, TimelineTripEntity trip,
                                                      MapMatchingSource source, boolean requireDisplayPreference,
                                                      Double maxAccuracy) {
-        if (!configuration.isEnabled()) {
+        if (trip.getManualRoute() != null || !configuration.isEnabled()) {
             return status(trip.getId(), MapMatchingResolutionStatus.UNAVAILABLE, null, null, null);
         }
         if (!"valhalla".equals(configuration.provider()) || !configuration.valhallaConfigured()) {

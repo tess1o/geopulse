@@ -7,8 +7,8 @@ export default {
     mainApp: {
         shareLabel: 'Поділитися',
         shareAria: 'Поділитися хронологією',
-        reconstructTooltip: 'Згенерувати GPS-точки з ручних зупинок і поїздок. Наявні GPS-точки зберігаються.',
-        reconstructLabel: 'Додати відсутні дані хронології',
+        reconstructTooltip: 'Додайте перебування або подорож до порожнього проміжку хронології.',
+        reconstructLabel: 'Додати відсутню активність…',
         reconstructAria: 'Додати відсутні дані хронології',
         timelineReportsTab: 'Звіти хронології'
     },

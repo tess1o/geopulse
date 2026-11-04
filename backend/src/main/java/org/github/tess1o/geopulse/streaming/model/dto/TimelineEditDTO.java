@@ -10,6 +10,7 @@ import java.util.Map;
 @Builder
 public record TimelineEditDTO(
         Long id,
+        java.util.UUID groupId,
         long seq,
         TimelineEditKind kind,
         Instant anchorStart,

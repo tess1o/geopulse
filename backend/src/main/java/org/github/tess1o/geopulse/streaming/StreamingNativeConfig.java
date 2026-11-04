@@ -1,6 +1,10 @@
 package org.github.tess1o.geopulse.streaming;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
+import org.github.tess1o.geopulse.streaming.rest.ActivityCorrectionResource;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
@@ -16,6 +20,13 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 
 @RegisterForReflection(targets = {
+        ActivityCorrectionService.Activity.class,
+        ActivityCorrectionService.Place.class,
+        ActivityCorrectionService.Preview.class,
+        ActivityCorrectionService.Request.class,
+        ActivityCorrectionResource.Response.class,
+        TimelineExplanation.class,
+        TimelineReason.class,
         TimelineOverrideIds.class,
         TimelineEditKind.class,
         TimelineEditStatus.class,

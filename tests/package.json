@@ -10,6 +10,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "setup:db": "node setup/database-setup.js",
+    "validate:backend-logs": "node scripts/validate-backend-logs.js",
+    "test:backend-logs": "node --test scripts/validate-backend-logs.test.js",
     "validate:isolation": "node scripts/validate-isolated-specs.js"
   },
   "dependencies": {

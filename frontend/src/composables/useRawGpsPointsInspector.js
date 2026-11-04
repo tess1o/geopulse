@@ -43,8 +43,8 @@ export function useRawGpsPointsInspector({ enabled, isPublicView }) {
       : null
   }
 
-  const loadRawGpsPoints = async () => {
-    if (!enabled.value || isPublicView()) {
+  const loadRawGpsPoints = async ({ force = false } = {}) => {
+    if ((!enabled.value && !force) || isPublicView()) {
       return
     }
 

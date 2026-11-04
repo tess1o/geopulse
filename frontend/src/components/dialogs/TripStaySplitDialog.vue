@@ -61,9 +61,12 @@
               <span class="field-label">{{ t('tripDialogs.staySplit.placeLabel') }}</span>
               <TimelinePlacePicker
                 v-model="place"
+                @preview="placePreview = $event"
                 :point="selectedPoint"
                 :allow-map="false"
                 :allow-search="false"
+                external-map
+                @request-map="mapRef?.$el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })"
               />
             </div>
 
@@ -145,6 +148,7 @@
                 v-if="map && selectedPoint"
                 :map="map"
                 :active-segment="activeStaySegment"
+                :context-points="placePreview ? [{ ...placePreview, label: '◇' }] : []"
                 :active-segment-index="0"
                 :id-prefix="mapId"
                 @stay-dragged="handleStayDragged"
@@ -224,6 +228,7 @@ function onTimeInput(field, event) {
 const stayStart = ref(null)
 const stayEnd = ref(null)
 const place = ref(null)
+const placePreview = ref(null)
 const pathPoints = ref([])
 const pathSegments = ref([])
 const selectedPoint = ref(null)
@@ -357,6 +362,7 @@ watch([selectedPoint, stayStart, stayEnd, place, typedTimeInvalid], () => {
 }, { deep: true, flush: 'sync' })
 
 const resetForm = () => {
+  placePreview.value = null
   typedTimeInvalid.value = { stayStart: false, stayEnd: false }
   if (previewTimer) clearTimeout(previewTimer)
   previewTimer = null

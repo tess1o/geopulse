@@ -62,8 +62,8 @@ class StreamingPersistenceManagerTest {
             when(statement.executeUpdate()).thenAnswer(execution -> {
                 assertThat(bound).containsExactlyInAnyOrderElementsOf(
                         java.util.stream.IntStream.rangeClosed(1, parameters).boxed().toList());
-                sizes.add(parameters / 23);
-                return parameters / 23;
+                sizes.add(parameters / 24);
+                return parameters / 24;
             });
             return statement;
         });

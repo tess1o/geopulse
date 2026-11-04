@@ -133,13 +133,13 @@ export default defineConfig({
     {
       name: 'chromium-timeline-vector',
       testMatch: ['**/timeline-edits.spec.js'],
-      grep: /trip stop:/,
+      grep: /trip stop:|missing activity: (trip|group)/,
       use: { ...devices['Desktop Chrome'], mapMode: 'VECTOR' },
     },
     {
       name: 'chromium-timeline-mobile',
       testMatch: ['**/timeline-edits.spec.js'],
-      grep: /mobile:/,
+      grep: /mobile:|missing activity: group/,
       use: { ...devices['Pixel 7'], mapMode: 'RASTER' },
     },
 

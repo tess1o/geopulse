@@ -5,6 +5,26 @@
  * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
  */
 export default {
+    reconstructionContext: {
+        "selectRange": "Add missing data between GPS points…",
+        "selectionHelp": "Select the points before and after the missing section, on the map or below. Next, add the stay or route.",
+        "firstPoint": "From",
+        "secondPoint": "To",
+        "usePoint": "Select this time",
+        "addMissing": "Add missing data",
+        "cancel": "Cancel",
+        "undoHint": "Undo removes the stay correction, but keeps reconstructed GPS points. Automatic detection may still create a stay.",
+        "title": "Add missing timeline data",
+        "step": "Step 1 of 2 · Choose times",
+        "choosePoint": "Choose a GPS point",
+        "selectedDuration": "{duration} selected",
+        "selectBoth": "Choose two different timestamps to continue.",
+        "loading": "Loading GPS points…",
+        "noPoints": "No GPS points in this view. Close this panel, zoom into your recorded route, and try again.",
+        "mapActions": "Timeline map. Press Shift+F10 for map actions.",
+        "continue": "Continue"
+},
+
     summaryBar: {
         completion: 'Completion',
         visited: 'Visited',
@@ -312,7 +332,7 @@ export default {
         subtitleCompactWithDays: '{status} • {count} day | {status} • {count} days',
         setTripDates: 'Set Trip Dates',
         resetToFullTripRange: 'Reset to full trip range',
-        addMissingTripData: 'Add Missing Trip Data',
+        addMissingTripData: 'Add missing activity…',
         collaborators: 'Collaborators',
         unplannedBanner: 'This trip is unplanned. Add planned stops now, then set trip dates to enable timeline, path, and analytics.',
         editorAccessBanner: 'Editor access: you can update planned stops and visit states, but only the owner can change trip metadata.',

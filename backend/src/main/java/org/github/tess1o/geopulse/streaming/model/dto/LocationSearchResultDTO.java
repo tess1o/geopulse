@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 public class LocationSearchResultDTO {
     private String type;                // "place", "city", or "country"
     private String name;                // Raw name value
+    private Double latitude;
+    private Double longitude;
     private String displayName;         // Formatted display name
     private String category;            // For places: "favorite" or "geocoding"
     private Long id;                    // For places only (favorite or geocoding ID)

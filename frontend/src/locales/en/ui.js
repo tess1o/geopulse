@@ -8,8 +8,8 @@ export default {
     mainApp: {
         shareLabel: 'Share',
         shareAria: 'Share timeline',
-        reconstructTooltip: 'Generate GPS points from manual stays and trips. Existing GPS points are preserved.',
-        reconstructLabel: 'Add Missing Timeline Data',
+        reconstructTooltip: 'Add a manual stay or journey to an empty period of your timeline.',
+        reconstructLabel: 'Add missing activity…',
         reconstructAria: 'Add missing timeline data',
         timelineReportsTab: 'Timeline Reports'
     },

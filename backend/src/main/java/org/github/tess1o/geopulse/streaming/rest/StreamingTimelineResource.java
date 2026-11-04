@@ -251,6 +251,8 @@ public class StreamingTimelineResource {
     private TimelineEditMutationResponse changeEditStatus(Long editId, boolean restore) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
+            if (timelineEditService.grouped(userId, editId))
+                throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Use the activity correction group to undo or restore this change");
             var edit = (restore ? timelineEditService.restore(userId, editId) : timelineEditService.revert(userId, editId))
                     .orElseThrow(() -> new GeoPulseException(TIMELINE_EDIT_NOT_FOUND,
                             "Timeline edit not found or access denied", Map.of("editId", editId)));

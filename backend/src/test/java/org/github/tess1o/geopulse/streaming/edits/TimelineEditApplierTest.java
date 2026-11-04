@@ -24,6 +24,19 @@ class TimelineEditApplierTest {
 
     private final TimelineEditApplier applier = new TimelineEditApplier();
 
+    @Test
+    void reconstructedShortStayIsExactEvenWithoutAutomaticEvents() {
+        var correction = edit(1, TimelineEditKind.FORCE_STAY, 0, 3,
+                Map.of("latitude", 50.0, "longitude", 30.0, "reconstruction", true));
+        var result = applier.apply(List.of(), List.of(correction));
+        assertThat(result.events()).singleElement().isInstanceOfSatisfying(Stay.class, stay -> {
+            assertThat(stay.getStartTime()).isEqualTo(ZERO);
+            assertThat(stay.getDuration()).isEqualTo(Duration.ofMinutes(3));
+            assertThat(stay.getExplanation().getStart().code()).isEqualTo("MANUAL_RECONSTRUCTION");
+        });
+        assertThat(result.appliedEditIds()).containsExactly(1L);
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
     void deletedPlaceReferencesBecomeHistoricalSnapshots(boolean favorite) {

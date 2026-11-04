@@ -72,6 +72,8 @@ class TimelineLocationLookupServiceTest {
 
         LocationLookupResponseDTO result = service.lookup(userId, 50.11, 30.11);
 
+        assertEquals(50.15, result.getFavoriteMatches().getFirst().getLatitude(), 0.00001);
+        assertEquals(30.15, result.getFavoriteMatches().getFirst().getLongitude(), 0.00001);
         assertEquals(1, result.getVisitMatches().size());
         assertEquals(7L, result.getVisitMatches().getFirst().getFavoriteId());
         assertEquals("Inside favorite area", result.getVisitMatches().getFirst().getMatchReason());

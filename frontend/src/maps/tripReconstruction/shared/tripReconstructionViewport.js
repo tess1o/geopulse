@@ -31,19 +31,24 @@ export const fitMapToBounds = (mapInstance, bounds, options = {}) => {
     return
   }
 
+  const latitudes = bounds.map(point => point[0])
+  const longitudes = bounds.map(point => point[1])
+  const south = Math.min(...latitudes), north = Math.max(...latitudes)
+  const west = Math.min(...longitudes), east = Math.max(...longitudes)
+  if (north - south < 0.002 && east - west < 0.002) {
+    setMapView(mapInstance, [(south + north) / 2, (west + east) / 2], options.maxZoom ?? 16)
+    return
+  }
+  const corners = [[south, west], [north, east]]
   const mode = resolveMapEngineModeFromInstance(mapInstance, MAP_RENDER_MODES.RASTER)
   if (mode === MAP_RENDER_MODES.VECTOR) {
     mapInstance.fitBounds(
-      bounds.map(([latitude, longitude]) => [longitude, latitude]),
-      {
-        ...options,
-        padding: normalizeMapLibrePadding(options.padding)
-      }
+      corners.map(([latitude, longitude]) => [longitude, latitude]),
+      { ...options, padding: normalizeMapLibrePadding(options.padding) }
     )
     return
   }
-
-  mapInstance.fitBounds(bounds, options)
+  mapInstance.fitBounds(corners, options)
 }
 
 export const fitMapToActiveSegment = (mapInstance, segments, activeSegmentIndex) => {

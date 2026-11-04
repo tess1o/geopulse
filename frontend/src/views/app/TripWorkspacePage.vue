@@ -114,6 +114,7 @@
               <TimelineMap
                 v-else
                 ref="timelineMapRef"
+                @reconstruct-range="openReconstructionDialog"
                 class="workspace-timeline-map"
                 :style="workspaceTimelineMapStyle"
                 :pathData="hasPathData ? workspacePath : null"
@@ -166,6 +167,7 @@
                     <TimelineContainer
                       ref="timelineContainerRef"
                       :timeline-data="workspaceTimeline"
+                      @reconstruct-gap="openReconstructionDialog"
                       :timelineNoData="!workspaceTimeline.length"
                       :timelineDataLoading="workspaceLoading"
                       :dateRange="activeDateRangeArray"
@@ -352,12 +354,17 @@
       :can-manage="isOwner"
     />
 
-    <TripReconstructionDialog
+    <MissingActivityEditor
       :visible="showReconstructionDialog"
-      mode="trip"
       :trip-id="tripId"
       :trip="currentTrip"
       :fallback-center="workspaceFallbackCenter"
+      :initial-viewport="reconstructionContext"
+      :recorded-points="reconstructionContext?.points || []"
+      :suggested-range="reconstructionSuggestedRange"
+      :location-suggestion="reconstructionLocationSuggestion"
+      :timeline-data="workspaceTimeline"
+      :available-gaps="missingActivityGaps(workspaceTimeline, activeRange?.start, activeRange?.end)"
       :read-only="demoReadOnly"
       @close="showReconstructionDialog = false"
       @committed="handleReconstructionCommitted"
@@ -423,7 +430,8 @@ import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLat
 import TripStopsRail from '@/components/trips/workspace/TripStopsRail.vue'
 import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vue'
 import TripSummaryBar from '@/components/trips/workspace/TripSummaryBar.vue'
-import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
+import MissingActivityEditor from '@/components/timeline/MissingActivityEditor.vue'
+import { missingActivityGaps } from '@/utils/timelineReconstructionContext'
 import TripCollaboratorsDialog from '@/components/trips/workspace/TripCollaboratorsDialog.vue'
 import TripTimelineJobDialog from '@/components/trips/workspace/TripTimelineJobDialog.vue'
 import { isTimelineJobDialogClosable } from '@/components/trips/workspace/timelineJobDialogState'
@@ -535,6 +543,9 @@ const planItemDialogMapInstance = ref(null)
 const planItemDialogMapAdapter = ref(null)
 const showCollaboratorsDialog = ref(false)
 const showReconstructionDialog = ref(false)
+const reconstructionContext = ref(null)
+const reconstructionSuggestedRange = ref(null)
+const reconstructionLocationSuggestion = ref(null)
 const showTimelineGenerationDialog = ref(false)
 const isRefreshingAfterTimelineJob = ref(false)
 
@@ -922,8 +933,11 @@ const openCollaboratorsDialog = () => {
   showCollaboratorsDialog.value = true
 }
 
-const openReconstructionDialog = () => {
-  if (!canReconstructTrip.value) return
+const openReconstructionDialog = async (context = null) => {
+  if (!canReconstructTrip.value || context?.ongoing) return
+  reconstructionSuggestedRange.value = context?.startTime && context?.endTime ? context : null
+  reconstructionLocationSuggestion.value = context?.locationSuggestion || null
+  reconstructionContext.value = await timelineMapRef.value?.captureReconstructionContext?.() || null
   showReconstructionDialog.value = true
 }
 
@@ -1033,6 +1047,7 @@ const handleWorkspaceTimelineRefreshRequested = async () => {
 
 const editActionBusy = ref(false)
 const handleWorkspaceTimelineEditSubmitted = async (result) => {
+  result = { ...result, edit: result.edit || result.edits?.[0] }
   const scrollY = window.scrollY
   const operation = result.operation || 'create'
   toast.add({ severity: 'info', summary: t('timeline.edit.updating'), group: 'timeline-edit-progress' })
@@ -1050,18 +1065,20 @@ const handleWorkspaceTimelineEditSubmitted = async (result) => {
         severity: 'success',
         summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
         detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
-        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeWorkspaceTimelineEdit(result.edit?.id, operation === 'undo') }
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeWorkspaceTimelineEdit(result.edit?.id, operation === 'undo', result.groupId || result.edit?.groupId) }
       })
     }
   })
   if (result.timelineJobQueued) finishProgress()
 }
-const changeWorkspaceTimelineEdit = async (editId, restore = false) => {
+const changeWorkspaceTimelineEdit = async (editId, restore = false, groupId = null) => {
   if (!editId || editActionBusy.value) return
   editActionBusy.value = true
   toast.removeGroup('timeline-edit')
   try {
-    const result = restore ? await timelineStore.restoreTimelineEdit(editId) : await timelineStore.revertTimelineEdit(editId)
+    const result = groupId
+      ? await (restore ? timelineStore.restoreActivityCorrection(groupId) : timelineStore.revertActivityCorrection(groupId))
+      : await (restore ? timelineStore.restoreTimelineEdit(editId) : timelineStore.revertTimelineEdit(editId))
     const finish = () => { editActionBusy.value = false }
     await handleWorkspaceTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
     if (!result.timelineJobId || result.timelineJobQueued) finish()
@@ -1889,8 +1906,11 @@ const handleTimelineGenerationDialogHide = () => {
 
 const handleReconstructionCommitted = async (result) => {
   showReconstructionDialog.value = false
-  const jobId = result?.jobId
-
+  const jobId = result?.timelineJobId || result?.jobId
+  if (result?.timelineJobQueued) {
+    toast.add({ severity: 'info', detail: t('missingActivity.pending'), life: 5000 })
+    return
+  }
   if (jobId) {
     await openTimelineGenerationDialogForJob(jobId)
     return

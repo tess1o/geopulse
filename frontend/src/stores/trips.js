@@ -427,14 +427,14 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
-    async getPlanSuggestion(lat, lon) {
+    async getPlanSuggestion(lat, lon, options = {}) {
       this.error = null
       try {
         const normalizedLon = Number.isFinite(lon) ? normalizeLongitude(lon) : lon
         return await apiService.get('/trip-planning/suggestions', {
           latitude: lat,
           longitude: normalizedLon
-        })
+        }, options)
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to resolve plan suggestion')
         throw this.error

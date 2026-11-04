@@ -1,11 +1,13 @@
 package org.github.tess1o.geopulse.export;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.export.model.DebugExportRequest;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.model.*;
 import org.github.tess1o.geopulse.export.rest.ExportResource;
 
 @RegisterForReflection(targets = {
+        DebugExportRequest.class,
         ExportStatus.class,
         CreateExportRequest.class,
         RawGpsDataDto.class,

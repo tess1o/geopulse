@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -55,6 +57,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_EDIT_C
 
 @ApplicationScoped
 public class TimelineEditService {
+    @Inject ObjectMapper objectMapper;
     @Inject TimelineEditRepository editRepository;
     @Inject TimelineEditApplicationRepository applicationRepository;
     @Inject TimelineStayRepository stayRepository;
@@ -77,7 +80,18 @@ public class TimelineEditService {
 
     public TimelineEditPreviewDTO preview(UUID userId, TimelineEditRequest request) {
         validateRequest(request);
-        if (insertsAtAnchor(request.getKind())) {
+        if (request.getKind().structural()) {
+            Instant from = request.getAnchorStart().isBefore(request.getAffectedFrom()) ? request.getAnchorStart() : request.getAffectedFrom();
+            Instant to = request.getAnchorEnd().isAfter(request.getAffectedTo()) ? request.getAnchorEnd() : request.getAffectedTo();
+            editRepository.findActiveOverlapping(userId, from, to).stream()
+                    .filter(edit -> edit.getGroupId() != null && edit.getKind().structural())
+                    .findFirst().ifPresent(edit -> {
+                        throw new GeoPulseException(TIMELINE_EDIT_CONFLICT,
+                                "Undo the activity correction group before changing its structure",
+                                Map.of("conflictingEditId", edit.getId()));
+                    });
+        }
+        if (insertsAtAnchor(request.getKind()) && !(request.getPayload() != null && Boolean.TRUE.equals(request.getPayload().get("activityCorrection")))) {
             gpsPoints.findLatest(userId).ifPresent(latest -> {
                 boolean ongoing = gapRepository.findByUserIdAndTimeRange(userId,
                                 request.getAnchorStart(), request.getAnchorEnd()).stream()
@@ -189,6 +203,18 @@ public class TimelineEditService {
         return found.map(TimelineEditService::toDto);
     }
 
+    public boolean grouped(UUID userId, Long editId) {
+        return editRepository.findByIdAndUser(editId, userId).map(edit -> edit.getGroupId() != null).orElse(false);
+    }
+
+    public Instant activeEnd(UUID userId) {
+        // Only missing-activity corrections can be replayed without generated GPS events.
+        return editRepository.findByUser(userId).stream()
+                .filter(edit -> edit.getStatus() == TimelineEditStatus.ACTIVE
+                        && Boolean.TRUE.equals(edit.getPayload().get("activityCorrection")))
+                .map(TimelineEditEntity::getAffectedTo).max(Instant::compareTo).orElse(null);
+    }
+
     public TimelineEditResult apply(UUID userId, List<TimelineEvent> events, Instant from, Instant to) {
         List<TimelineEditCommand> commands = editRepository.findActiveOverlapping(userId, from, to).stream()
                 // A forced event is created at its anchor without matching an existing event. When the regeneration
@@ -200,7 +226,26 @@ public class TimelineEditService {
                 .toList();
         // Generation owns these events; without edits there is no mutation to isolate with deep copies.
         if (commands.isEmpty()) return new TimelineEditResult(List.copyOf(events), Map.of(), List.of());
-        return applier.apply(events, commands, trip -> recalculateTrip(userId, trip));
+        List<TimelineEvent> covered = events;
+        var insertions = commands.stream().filter(command -> insertsAtAnchor(command.kind())).toList();
+        if (!insertions.isEmpty()) {
+            covered = new ArrayList<>(events);
+            Instant firstInsertion = insertions.stream().map(TimelineEditCommand::anchorStart).min(Instant::compareTo).orElseThrow();
+            if (events.isEmpty()) {
+                if (Duration.between(firstInsertion, to).getSeconds() > 0)
+                    covered.add(DataGap.fromTimeRange(firstInsertion, to));
+            } else {
+                // Extend coverage for edits outside generated history; preserve ordinary spacing inside it.
+                Instant firstEvent = events.stream().map(TimelineEvent::getStartTime).min(Instant::compareTo).orElseThrow();
+                Instant lastEvent = events.stream().map(TimelineEvent::getEndTime).max(Instant::compareTo).orElseThrow();
+                Instant lastInsertion = insertions.stream().map(TimelineEditCommand::anchorEnd).max(Instant::compareTo).orElseThrow();
+                if (Duration.between(firstInsertion, firstEvent).getSeconds() > 0)
+                    covered.add(DataGap.fromTimeRange(firstInsertion, firstEvent));
+                if (Duration.between(lastEvent, lastInsertion).getSeconds() > 0)
+                    covered.add(DataGap.fromTimeRange(lastEvent, lastInsertion));
+            }
+        }
+        return applier.apply(covered, commands, trip -> recalculateTrip(userId, trip));
     }
 
     /** Kinds that always insert their event at the anchor instead of matching one of the regenerated events. */
@@ -209,6 +254,7 @@ public class TimelineEditService {
     }
 
     private void recalculateTrip(UUID userId, Trip trip) {
+        if (trip.getManualRoute() != null) return;
         var config = configuration.getConfigurationForUser(userId);
         Instant from = trip.getStartPoint().getTimestamp().isBefore(trip.getStartTime())
                 ? trip.getStartPoint().getTimestamp() : trip.getStartTime();
@@ -289,7 +335,7 @@ public class TimelineEditService {
     public static TimelineEditDTO toDto(TimelineEditEntity entity) {
         TimelineEditApplicationEntity application = entity.getApplication();
         return TimelineEditDTO.builder()
-                .id(entity.getId()).seq(entity.getSeq()).kind(entity.getKind())
+                .id(entity.getId()).groupId(entity.getGroupId()).seq(entity.getSeq()).kind(entity.getKind())
                 .anchorStart(entity.getAnchorStart()).anchorEnd(entity.getAnchorEnd())
                 .affectedFrom(entity.getAffectedFrom()).affectedTo(entity.getAffectedTo())
                 .payload(entity.getPayload()).beforeValues(entity.getBeforeValues()).status(entity.getStatus())
@@ -327,7 +373,7 @@ public class TimelineEditService {
                 }).orElse(null);
     }
 
-    private List<TimelineEvent> loadCurrentEvents(UUID userId, Instant from, Instant to) {
+    public List<TimelineEvent> loadCurrentEvents(UUID userId, Instant from, Instant to) {
         List<TimelineEvent> result = new ArrayList<>();
         stayRepository.findOverlapping(userId, from, to).forEach(stay -> result.add(fromEntity(stay)));
         tripRepository.findOverlapping(userId, from, to).forEach(trip -> result.add(fromEntity(trip)));
@@ -397,7 +443,7 @@ public class TimelineEditService {
         return payload;
     }
 
-    private LinkedHashMap<String, Object> resolvedPayload(UUID userId, TimelineEditRequest request) {
+    public LinkedHashMap<String, Object> resolvedPayload(UUID userId, TimelineEditRequest request) {
         LinkedHashMap<String, Object> payload = normalizedPayload(request);
         resolvePlace(userId, payload, "");
         // A split stay's second place is a reference too, resolved the same way into a prefixed snapshot.
@@ -409,6 +455,7 @@ public class TimelineEditService {
             throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Choose a place with valid coordinates");
         }
         if (request.getKind() == TimelineEditKind.FORCE_TRIP) {
+            if (Boolean.TRUE.equals(payload.get("activityCorrection"))) ManualRouteGeometry.read(payload.get("waypoints"), objectMapper);
             for (String prefix : List.of("start", "end")) {
                 Double latitude = doubleValue(payload, prefix + "Latitude");
                 Double longitude = doubleValue(payload, prefix + "Longitude");
@@ -513,7 +560,7 @@ public class TimelineEditService {
         return event.getStartTime().isBefore(to) && event.getEndTime().isAfter(from);
     }
 
-    private static TimelineEditPreviewDTO.Event previewEvent(TimelineEvent event) {
+    static TimelineEditPreviewDTO.Event previewEvent(TimelineEvent event) {
         String label = event instanceof Stay stay ? (stay.getVisitName() == null ? stay.getLocationName() : stay.getVisitName())
                 : event instanceof Trip trip ? trip.getTripType().name() : "Data gap";
         return new TimelineEditPreviewDTO.Event(event.getType().name(), event.getStartTime(), event.getEndTime(), label,
@@ -531,7 +578,7 @@ public class TimelineEditService {
     private static Trip fromEntity(TimelineTripEntity trip) {
         return Trip.builder().startTime(trip.getTimestamp()).duration(Duration.ofSeconds(trip.getTripDuration()))
                 .tripType(TripType.valueOf(trip.getMovementType())).movementTypeSource(trip.getMovementTypeSource())
-                .distanceMeters(trip.getDistanceMeters())
+                .distanceMeters(trip.getDistanceMeters()).manualRoute(trip.getManualRoute())
                 .startPoint(GPSPoint.builder().timestamp(trip.getTimestamp()).latitude(trip.getStartPoint().getY())
                         .longitude(trip.getStartPoint().getX()).build())
                 .endPoint(GPSPoint.builder().timestamp(trip.getTimestamp().plusSeconds(trip.getTripDuration()))

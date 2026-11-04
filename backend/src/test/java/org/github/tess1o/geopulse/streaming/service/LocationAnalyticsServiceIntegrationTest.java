@@ -186,5 +186,8 @@ class LocationAnalyticsServiceIntegrationTest {
         assertThat(service.search(ownerId, "Home " + token, "place"))
                 .extracting(LocationSearchResultDTO::getCategory, LocationSearchResultDTO::getId)
                 .containsExactly(tuple("favorite", homeId));
+        assertThat(service.search(ownerId, "Home " + token, "place").getFirst())
+                .extracting(LocationSearchResultDTO::getLatitude, LocationSearchResultDTO::getLongitude)
+                .containsExactly(38.7200, -9.1400);
     }
 }

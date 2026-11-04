@@ -33,14 +33,14 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
       return this.error
     },
 
-    async searchLocations(query, type = null) {
+    async searchLocations(query, type = null, options = {}) {
       this.searchLoading = true
       this.error = null
       try {
         this.searchResults = await apiService.get('/location-analytics/search', {
           q: query,
           ...(type ? { type } : {})
-        })
+        }, options)
         return this.searchResults
       } catch (error) {
         throw this.fail(error, 'Search failed')

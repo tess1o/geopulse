@@ -298,7 +298,8 @@ const resetActions = computed(() => {
   return actions
 })
 
-const isManualStay = computed(() => resetActions.value.length > 0)
+const isManualStay = computed(() => resetActions.value.length > 0
+  || props.stayItem.explanation?.start?.code === 'MANUAL_RECONSTRUCTION')
 
 const canManageMatchingNotes = computed(() => {
   return props.allowNoteCreation && matchingNotes.value.some((note) => (

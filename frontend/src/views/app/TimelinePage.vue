@@ -42,7 +42,7 @@
         </template>
 
         <template #map>
-          <div v-if="mapNoData" class="loading-messages">
+          <div v-if="mapNoData && !manualTimelineGeometry" class="loading-messages">
             {{ t('timeline.page.map.noData') }}
           </div>
           <div v-if="mapDataLoading" class="loading-messages">
@@ -50,8 +50,9 @@
           </div>
           <TimelineMap
               v-if="mapPreferencesLoaded"
-              v-show="!mapNoData && !mapDataLoading"
+              v-show="(!mapNoData || manualTimelineGeometry) && !mapDataLoading"
               ref="mapViewRef"
+              @reconstruct-range="openTimelineReconstructionDialog"
               :pathData="activePathData"
               :raw-path-data="pathData"
               :matched-trip-ids="matchedTripIds"
@@ -96,6 +97,7 @@
               @rename-stay="handleRenameStay"
               @timeline-refresh-requested="handleTimelineRefreshRequested"
               @reset-data-gap-override="handleResetDataGapOverride"
+              @reconstruct-gap="openTimelineReconstructionDialog"
               @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handleTimelinePhotoShowOnMap"
               @navigate-date="handleNavigateDate"
@@ -126,12 +128,17 @@
             @close-geocoding="closeGeocodingDialog"
         />
 
-        <TripReconstructionDialog
+        <MissingActivityEditor
             :visible="showReconstructionDialog"
-            mode="timeline"
             :context-start-time="timelineReconstructionStart"
             :context-end-time="timelineReconstructionEnd"
             :fallback-center="timelineReconstructionFallbackCenter"
+            :initial-viewport="reconstructionContext"
+            :recorded-points="reconstructionContext?.points || []"
+            :suggested-range="reconstructionSuggestedRange"
+            :location-suggestion="reconstructionLocationSuggestion"
+            :timeline-data="timelineDataWithStayTelemetry"
+            :available-gaps="missingActivityGaps(timelineDataWithStayTelemetry, timelineReconstructionStart, timelineReconstructionEnd)"
             :read-only="demoReadOnly"
             @close="showReconstructionDialog = false"
             @committed="handleReconstructionCommitted"
@@ -165,7 +172,8 @@ import { useTimezone } from '@/composables/useTimezone'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
-import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
+import MissingActivityEditor from '@/components/timeline/MissingActivityEditor.vue'
+import { missingActivityGaps } from '@/utils/timelineReconstructionContext'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
 import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
@@ -303,6 +311,7 @@ const initialTimelineDisplaySettings = readTimelineDisplayFallback()
 // Reactive state
 const mapDataLoading = ref(false)
 const mapNoData = ref(false)
+const manualTimelineGeometry = computed(() => timelineDataWithStayTelemetry.value?.some(item => item.manualRoute?.length || item.explanation?.start?.code === 'MANUAL_RECONSTRUCTION'))
 const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
 const lastFetchedRange = ref(null)
@@ -324,6 +333,10 @@ const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
 const showReconstructionDialog = ref(false)
+const reconstructionContext = ref(null)
+const reconstructionSuggestedRange = ref(null)
+const reconstructionLocationSuggestion = ref(null)
+let reconstructionOpening = false
 const {
   timelineRegenerationVisible: reconstructionRegenerationVisible,
   timelineRegenerationType: reconstructionRegenerationType,
@@ -666,6 +679,7 @@ const handleTimelineRefreshRequested = async () => {
 
 const editActionBusy = ref(false)
 const handleTimelineEditSubmitted = async (result) => {
+  result = { ...result, edit: result.edit || result.edits?.[0] }
   const scrollY = window.scrollY
   const operation = result.operation || 'create'
   toast.add({ severity: 'info', summary: t('timeline.edit.updating'), group: 'timeline-edit-progress' })
@@ -684,18 +698,20 @@ const handleTimelineEditSubmitted = async (result) => {
         severity: 'success',
         summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
         detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
-        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeTimelineEdit(result.edit?.id, operation === 'undo') }
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeTimelineEdit(result.edit?.id, operation === 'undo', result.groupId || result.edit?.groupId) }
       })
     }
   })
   if (result.timelineJobQueued) finishProgress()
 }
-const changeTimelineEdit = async (editId, restore = false) => {
+const changeTimelineEdit = async (editId, restore = false, groupId = null) => {
   if (!editId || editActionBusy.value) return
   editActionBusy.value = true
   toast.removeGroup('timeline-edit')
   try {
-    const result = restore ? await timelineStore.restoreTimelineEdit(editId) : await timelineStore.revertTimelineEdit(editId)
+    const result = groupId
+      ? await (restore ? timelineStore.restoreActivityCorrection(groupId) : timelineStore.revertActivityCorrection(groupId))
+      : await (restore ? timelineStore.restoreTimelineEdit(editId) : timelineStore.revertTimelineEdit(editId))
     const finish = () => { editActionBusy.value = false }
     await handleTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
     if (!result.timelineJobId || result.timelineJobQueued) finish()
@@ -796,17 +812,28 @@ const handleTimelinePhotoShowOnMap = (photo) => {
   mapViewRef.value?.focusOnPhoto?.(photo)
 }
 
-const openTimelineReconstructionDialog = () => {
-  if (!canReconstructTimeline.value) {
-    return
+const openTimelineReconstructionDialog = async (range = null) => {
+  if (!canReconstructTimeline.value || range?.ongoing || reconstructionOpening) return
+  reconstructionOpening = true
+  try {
+    reconstructionLocationSuggestion.value = range?.locationSuggestion || null
+    reconstructionSuggestedRange.value = range?.startTime && range?.endTime
+      ? { startTime: range.startTime, endTime: range.endTime } : null
+    reconstructionContext.value = await mapViewRef.value?.captureReconstructionContext?.() || null
+    showReconstructionDialog.value = true
+  } finally {
+    reconstructionOpening = false
   }
-  showReconstructionDialog.value = true
 }
 
 const handleReconstructionCommitted = async (result) => {
   showReconstructionDialog.value = false
 
-  const jobId = result?.jobId
+  const jobId = result?.timelineJobId || result?.jobId
+  if (result?.timelineJobQueued) {
+    toast.add({ severity: 'info', detail: t('missingActivity.pending'), life: 5000 })
+    return
+  }
   if (!jobId) {
     await reloadCurrentRange()
     return

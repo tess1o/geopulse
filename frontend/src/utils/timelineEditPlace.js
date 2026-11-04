@@ -41,7 +41,7 @@ export function samePlace(first, second) {
 
 export function canMergeTimelineEvents(first, second) {
   if (!first || !second || first.type !== second.type) return false
-  if (first.type === 'trip') return first.movementType === second.movementType
+  if (first.type === 'trip') return !first.manualRoute && !second.manualRoute && first.movementType === second.movementType
   if (first.type !== 'stay') return true
   if (first.favoriteId != null || second.favoriteId != null) return first.favoriteId != null && first.favoriteId === second.favoriteId
   if (first.geocodingId != null || second.geocodingId != null) return first.geocodingId != null && first.geocodingId === second.geocodingId

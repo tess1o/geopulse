@@ -32,6 +32,9 @@ public class TimelineTripDTO implements GpsPoint {
      * Distance traveled in meters
      */
     private long distanceMeters;
+
+    private java.util.List<org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto> manualRoute;
+
     private String movementType;
     private String movementTypeSource;
     private int activeEditCount;

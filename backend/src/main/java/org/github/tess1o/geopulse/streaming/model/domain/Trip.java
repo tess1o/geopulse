@@ -32,6 +32,7 @@ public class Trip implements TimelineEvent {
     @Builder.Default
     private MovementTypeSource movementTypeSource = MovementTypeSource.AUTO;
     private double distanceMeters;
+    private java.util.List<org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto> manualRoute;
     private GPSPoint startPoint;
     private GPSPoint endPoint;
     private TripGpsStatistics statistics;

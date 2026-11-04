@@ -36,12 +36,12 @@ public class StreamingPersistenceManager {
                 movement_type,movement_type_source,avg_gps_speed,max_gps_speed,speed_variance,
                 low_accuracy_points_count,water_distance_meters,water_distance_ratio,longest_water_segment_meters,
                 water_sample_count,water_evidence_available,altitude_sustained_height_meters,
-                altitude_vertical_speed_p90,altitude_sample_count,explanation,created_at,last_updated)
+                altitude_vertical_speed_p90,altitude_sample_count,explanation,manual_route,created_at,last_updated)
             VALUES {rows}
             """;
     private static final String TRIP_ROW = """
             (?,?,?,ST_SetSRID(ST_MakePoint(?,?),4326),ST_SetSRID(ST_MakePoint(?,?),4326),
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,clock_timestamp(),clock_timestamp())
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?::jsonb,clock_timestamp(),clock_timestamp())
             """;
     private static final String INSERT_STAY = """
             INSERT INTO timeline_stays (user_id,timestamp,location,stay_duration,location_name,visit_name,
@@ -75,7 +75,7 @@ public class StreamingPersistenceManager {
         entityManager.flush();
         var user = converter.createUserReference(userId);
         entityManager.unwrap(Session.class).doWork(connection -> {
-            write(connection, INSERT_TRIP, TRIP_ROW, 23, timeline.getTrips(), (statement, offset, trip) ->
+            write(connection, INSERT_TRIP, TRIP_ROW, 24, timeline.getTrips(), (statement, offset, trip) ->
                     bindTrip(statement, offset, converter.convertStreamingTripToEntity(trip, user)), userId, jobId, "persist_trips");
             write(connection, INSERT_STAY, STAY_ROW, 10, timeline.getStays(), (statement, offset, stay) ->
                     bindStay(statement, offset, userId, stay), userId, jobId, "persist_stays");
@@ -140,6 +140,7 @@ public class StreamingPersistenceManager {
         s.setObject(offset + 21, t.getAltitudeVerticalSpeedP90());
         s.setObject(offset + 22, t.getAltitudeSampleCount());
         s.setString(offset + 23, json(t.getExplanation()));
+        s.setString(offset + 24, json(t.getManualRoute()));
     }
 
     private void bindStay(PreparedStatement s, int offset, UUID user, Stay stay) throws SQLException {

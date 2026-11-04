@@ -1,3 +1,4 @@
+import missingActivity from './missingActivity.js'
 import nav from './nav.js'
 import common from './common.js'
 import errors from './errors.js'
@@ -48,6 +49,7 @@ import exports_ from './exports.js'
  * tests are pinned to. Every other locale is loaded on demand.
  */
 export default {
+    missingActivity,
     nav,
     common,
     errors,

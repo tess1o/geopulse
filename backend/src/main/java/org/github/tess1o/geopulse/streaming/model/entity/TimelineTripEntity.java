@@ -61,6 +61,11 @@ public class TimelineTripEntity {
     @Column(name = "distance_meters", nullable = false)
     private long distanceMeters;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "manual_route", columnDefinition = "jsonb")
+    private java.util.List<org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto> manualRoute;
+
+
     /**
      * Movement type (e.g., WALKING, DRIVING, CYCLING)
      */

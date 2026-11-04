@@ -44,7 +44,7 @@ export function useTimelineMapMatching({
       .map(normalizeMovementType)
   ))
   const eligibleVisibleTrips = computed(() => readVisibleTrips().filter(trip => (
-    !excludedMovementTypeSet.value.has(normalizeMovementType(trip?.movementType))
+    !trip?.manualRoute && !excludedMovementTypeSet.value.has(normalizeMovementType(trip?.movementType))
   )))
   const eligibleTripIds = computed(() => new Set(
     eligibleVisibleTrips.value.map(trip => Number(trip.id))
@@ -194,7 +194,7 @@ export function useTimelineMapMatching({
       return
     }
 
-    const tripIds = readVisibleTrips().map(trip => trip.id).filter(Boolean)
+    const tripIds = readVisibleTrips().filter(trip => !trip.manualRoute).map(trip => trip.id).filter(Boolean)
     if (tripIds.length === 0) {
       resolution.value = null
       resolving.value = false

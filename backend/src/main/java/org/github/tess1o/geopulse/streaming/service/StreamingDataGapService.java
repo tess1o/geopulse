@@ -28,6 +28,8 @@ import java.util.UUID;
 @Slf4j
 public class StreamingDataGapService {
 
+    @Inject jakarta.persistence.EntityManager entityManager;
+
     @Inject
     GpsPointRepository gpsPointRepository;
 
@@ -72,6 +74,15 @@ public class StreamingDataGapService {
      * @param userId user identifier
      * @param config timeline configuration containing gap thresholds
      */
+    public Instant latestKnownTime(UUID userId, Instant gpsTime) {
+        Instant latest = entityManager.createQuery("select max(e.anchorEnd) from TimelineEditEntity e where e.user.id = :userId and e.status = :status and (e.kind = :stay or e.kind = :trip)", Instant.class)
+                .setParameter("userId", userId)
+                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .setParameter("stay", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_STAY)
+                .setParameter("trip", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_TRIP).getSingleResult();
+        return latest != null && (gpsTime == null || latest.isAfter(gpsTime)) ? latest : gpsTime;
+    }
+
     @Transactional
     public void checkAndCreateOngoingDataGap(UUID userId, TimelineConfig config) {
         // Get the latest GPS point for this user
@@ -84,7 +95,7 @@ public class StreamingDataGapService {
         }
 
         Instant now = Instant.now();
-        Instant lastGpsTime = lastGpsPoint.get().getTimestamp();
+        Instant lastGpsTime = latestKnownTime(userId, lastGpsPoint.get().getTimestamp());
 
         // Use service to check if gap should be created
         if (shouldCreateDataGap(config, lastGpsTime, now)) {

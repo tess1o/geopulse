@@ -13,7 +13,7 @@
         <div class="timeline-title-actions">
           <TimelineEditTrigger
             :label="t('timeline.edit.gap')"
-            :count="0" :show-edit="!dataGapItem.ongoing"
+            :count="0" :show-edit="false"
             :read-only="readOnly"
             @edit="emit('edit', dataGapItem)"
             @history="emit('show-edit-history', dataGapItem)"
@@ -54,6 +54,10 @@
           <span class="detail-value">{{ formatDuration(dataGapItem.durationSeconds) }}</span>
         </p>
 
+        <Button data-testid="add-missing-data" v-if="!readOnly && !dataGapItem.ongoing"
+          class="gap-fill-action" icon="pi pi-plus" outlined size="small"
+          :label="t('missingActivity.fillGap')" @click.stop="emit('reconstruct', dataGapItem)" />
+
         <!-- Help section for gap configuration guidance -->
         <DataGapHelpSection :duration-seconds="dataGapItem.durationSeconds" />
       </div>
@@ -75,6 +79,7 @@
 <script setup>
 import TimelineExplanationTrigger from './TimelineExplanationTrigger.vue'
 import { ref, computed } from 'vue'
+import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
 import ContextMenu from 'primevue/contextmenu'
 import { formatDuration } from '@/utils/calculationsHelpers'
@@ -129,7 +134,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'photo-show-on-map', 'note-saved', 'show-explanation', 'edit', 'show-edit-history'])
+const emit = defineEmits(['reconstruct', 'click', 'photo-show-on-map', 'note-saved', 'show-explanation', 'edit', 'show-edit-history'])
 
 const timezone = useTimezone()
 
@@ -185,14 +190,11 @@ const openNotesViewer = () => {
 
 const contextMenuItems = computed(() => {
   const items = []
-
-  if (!props.readOnly && props.dataGapItem.id && !props.dataGapItem.ongoing) {
-    items.push({
-      label: t('timeline.edit.gap'),
-      icon: 'pi pi-pencil',
-      command: () => emit('edit', props.dataGapItem)
-    })
+  if (!props.readOnly && !props.dataGapItem.ongoing) {
+    items.push({ label: t('missingActivity.fillGap'), icon: 'pi pi-plus',
+      command: () => emit('reconstruct', props.dataGapItem) })
   }
+
 
   if (props.allowExplanation) {
     items.push({

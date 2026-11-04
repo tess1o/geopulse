@@ -237,6 +237,7 @@
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @reconstruct="emit('reconstruct-gap', $event)"
               @edit="openEditor"
               @show-edit-history="openEditor($event, true)"
             />
@@ -255,6 +256,7 @@
               @note-saved="handleNoteSaved"
               :allow-explanation="!isPublicView"
               @show-explanation="handleShowExplanation"
+              @reconstruct="emit('reconstruct-gap', $event)"
               @edit="openEditor"
               @show-edit-history="openEditor($event, true)"
             />
@@ -467,6 +469,7 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits([
+  'reconstruct-gap',
   'timeline-item-click',
   'tag-clicked',
   'photo-show-on-map',
@@ -1065,6 +1068,11 @@ defineExpose({
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.timeline-item-content,
+.custom-timeline :deep(.p-timeline-event-content) {
+  min-width: 0;
 }
 
 .timeline-content {

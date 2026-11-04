@@ -198,3 +198,19 @@ describe('raw GPS point inspector grouping', () => {
     popupMount.unmount()
   })
 })
+
+
+describe('raw GPS point selection for reconstruction', () => {
+  it('passes the selected point from a stationary stack to the range selector', async () => {
+    const points = [pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 0, 0)]
+    const group = groupRawGpsPoints(points)[0]
+    const onSelectPoint = vi.fn()
+    const popup = createRawGpsPopupMount(group, { timezone, onSelectPoint })
+    await waitForRenderNotification()
+    popup.element.querySelectorAll('.raw-gps-stack-row')[1].click()
+    await waitForRenderNotification()
+    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent.includes('Select this time')).click()
+    expect(onSelectPoint).toHaveBeenCalledWith(expect.objectContaining({ id: 2, timestamp: points[1].timestamp }))
+    popup.unmount()
+  })
+})

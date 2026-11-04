@@ -12,7 +12,10 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
-import org.github.tess1o.geopulse.streaming.service.StayNameOverrideService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
@@ -48,7 +51,7 @@ public class TripReconstructionService {
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final EntityManager entityManager;
     private final TimelineRebuildRequestRepository rebuildRequestRepository;
-    private final StayNameOverrideService stayNameOverrideService;
+    private final TimelineEditService timelineEditService;
     private final TripMovementTypeOverrideService movementTypeOverrideService;
 
     public TripReconstructionService(TripAccessService tripAccessService,
@@ -57,7 +60,7 @@ public class TripReconstructionService {
                                      AsyncTimelineGenerationService asyncTimelineGenerationService,
                                      EntityManager entityManager,
                                      TimelineRebuildRequestRepository rebuildRequestRepository,
-                                     StayNameOverrideService stayNameOverrideService,
+                                     TimelineEditService timelineEditService,
                                      TripMovementTypeOverrideService movementTypeOverrideService) {
         this.tripAccessService = tripAccessService;
         this.timelineConfigurationProvider = timelineConfigurationProvider;
@@ -65,7 +68,7 @@ public class TripReconstructionService {
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.entityManager = entityManager;
         this.rebuildRequestRepository = rebuildRequestRepository;
-        this.stayNameOverrideService = stayNameOverrideService;
+        this.timelineEditService = timelineEditService;
         this.movementTypeOverrideService = movementTypeOverrideService;
     }
 
@@ -93,6 +96,7 @@ public class TripReconstructionService {
 
         boolean[] correctionsWritten = new boolean[1];
         PersistenceResult persistenceResult = QuarkusTransaction.requiringNew().call(() -> {
+            ensureNoRecordedPoints(prepared.ownerUserId(), prepared.segments());
             PersistenceResult result = persistGeneratedPoints(prepared.ownerUserId(), generatedPoints);
             correctionsWritten[0] = keepWhatTheUserSaid(prepared.ownerUserId(), prepared.segments());
             return result;
@@ -167,18 +171,35 @@ public class TripReconstructionService {
     }
 
     /**
-     * Timeline generation reads only the points; the stay names and movement types given for the segments are kept as
-     * the user's corrections, so the stays and trips generated from the points come out as described, rebuilds
-     * included.
+     * Keep exact stays and supplied movement types as durable corrections, independently of automatic detection.
      *
      * @return whether any correction was recorded, so a commit with only duplicated points still regenerates
      */
     private boolean keepWhatTheUserSaid(UUID ownerUserId, List<NormalizedSegment> segments) {
         boolean written = false;
         for (NormalizedSegment segment : segments) {
-            if (segment.type() == SegmentType.STAY && segment.locationName() != null) {
-                stayNameOverrideService.nameStay(ownerUserId, segment.startTime(), segment.endTime(),
-                        segment.locationName());
+            if (segment.type() == SegmentType.STAY) {
+                TimelineEditRequest request = new TimelineEditRequest();
+                request.setKind(TimelineEditKind.FORCE_STAY);
+                request.setAnchorStart(segment.startTime());
+                request.setAnchorEnd(segment.endTime());
+                request.setAffectedFrom(segment.startTime());
+                request.setAffectedTo(segment.endTime());
+                request.setLatitude(segment.latitude());
+                request.setLongitude(segment.longitude());
+                request.setPlaceName(segment.locationName());
+                request.getPayload().put("reconstruction", true);
+                // Recommitting may replace this reconstruction, never an unrelated structural correction.
+                var overlapping = timelineEditService.list(ownerUserId).stream()
+                        .filter(edit -> edit.status() == TimelineEditStatus.ACTIVE && edit.kind().structural())
+                        .filter(edit -> edit.affectedFrom().isBefore(segment.endTime())
+                                && edit.affectedTo().isAfter(segment.startTime())).toList();
+                request.setSupersede(!overlapping.isEmpty() && overlapping.stream().allMatch(edit ->
+                        edit.kind() == TimelineEditKind.FORCE_STAY
+                                && Boolean.TRUE.equals(edit.payload().get("reconstruction"))
+                                && edit.anchorStart().equals(segment.startTime())
+                                && edit.anchorEnd().equals(segment.endTime())));
+                timelineEditService.create(ownerUserId, request);
                 written = true;
             } else if (segment.type() == SegmentType.TRIP && segment.movementTypeGiven()) {
                 LatLon start = segment.waypoints().getFirst();
@@ -211,7 +232,7 @@ public class TripReconstructionService {
     /** A reconstruction fills time without data: mixed into recorded points, made-up ones would distort them. */
     private void ensureNoRecordedPoints(UUID ownerUserId, List<NormalizedSegment> segments) {
         for (NormalizedSegment segment : segments) {
-            long recorded = gpsPointRepository.countRecordedByUserIdAndTimePeriod(ownerUserId, segment.startTime(),
+            long recorded = gpsPointRepository.countRecordedInsideTimePeriod(ownerUserId, segment.startTime(),
                     segment.endTime());
             if (recorded > 0) {
                 throw new TripReconstructionOverlapException("Segment " + (segment.index() + 1) + " ("

@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.user;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.user.model.PasswordStatusResponse;
+import org.github.tess1o.geopulse.user.model.AvatarResponse;
 import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
@@ -11,6 +13,8 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.*;
 
 @RegisterForReflection(targets = {
+        AvatarResponse.class,
+        PasswordStatusResponse.class,
         UserEntity.class,
         TimelinePreferences.class,
         TimelineStatus.class,

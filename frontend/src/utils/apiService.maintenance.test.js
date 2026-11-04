@@ -90,4 +90,28 @@ describe('api transport during restore activation', () => {
     await expect(onRejected(failure)).rejects.toBe(failure)
     expect(fetch).not.toHaveBeenCalled()
   })
+  it('keeps optional lookup failures local while preserving the rejected error', async () => {
+    const { default: apiService } = await import('./apiService')
+    const redirect = vi.spyOn(apiService, 'redirectToErrorPage').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = { message: 'Unavailable', response: { status: 503, data: {} } }
+    axiosMock.get.mockRejectedValue(error)
+    await expect(apiService.get('/trip-planning/suggestions', {}, { redirectOnServerError: false })).rejects.toBe(error)
+    expect(redirect).not.toHaveBeenCalled()
+    await expect(apiService.get('/timeline')).rejects.toBe(error)
+    expect(redirect).toHaveBeenCalledOnce()
+  })
+
+  it('still handles expired sessions for optional lookups', async () => {
+    const { default: apiService } = await import('./apiService')
+    vi.spyOn(apiService, 'hasCachedUserProfile').mockReturnValue(true)
+    vi.spyOn(apiService, 'clearAuthData').mockImplementation(() => {})
+    const login = vi.spyOn(apiService, 'redirectToLogin').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = { response: { status: 401, data: {} } }
+    axiosMock.get.mockRejectedValue(error)
+    await expect(apiService.get('/trip-planning/suggestions', {}, { redirectOnServerError: false })).rejects.toBe(error)
+    expect(login).toHaveBeenCalledOnce()
+  })
+
 })

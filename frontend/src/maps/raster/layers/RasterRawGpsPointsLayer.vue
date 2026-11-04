@@ -34,6 +34,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  selectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
     default: null
@@ -108,6 +109,7 @@ const renderMarkers = () => {
       popupMount = createRawGpsPopupMount(group, {
         timezone,
         resolveLocation: props.resolveLocation,
+        onSelectPoint: props.selectPoint,
         onRender: () => {
           popup?.update?.()
         }

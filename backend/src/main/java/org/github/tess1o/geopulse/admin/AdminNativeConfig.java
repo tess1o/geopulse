@@ -1,6 +1,9 @@
 package org.github.tess1o.geopulse.admin;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.admin.service.LogLevelService;
+import org.github.tess1o.geopulse.admin.backup.RestorePhase;
+import org.github.tess1o.geopulse.admin.backup.RestoreOperationState;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.dto.backup.*;
@@ -8,6 +11,10 @@ import org.github.tess1o.geopulse.admin.model.*;
 
 @RegisterForReflection(
         targets = {
+                RestoreOperationState.class,
+                RestorePhase.class,
+                LogLevelService.LoggingStatus.class,
+                LogLevelService.Source.class,
                 // DTOs
                 AdminSettingsBackupDto.class,
                 AdminSettingsBackupDto.SettingBackupDto.class,

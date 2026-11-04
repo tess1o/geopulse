@@ -1,3 +1,4 @@
+import missingActivity from './missingActivity.js'
 import nav from './nav.js'
 import common from './common.js'
 import errors from './errors.js'
@@ -52,6 +53,7 @@ import exports_ from './exports.js'
  * Key set must stay identical to en/index.js; `locales.test.js` enforces that.
  */
 export default {
+    missingActivity,
     nav,
     common,
     errors,

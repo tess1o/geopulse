@@ -10,6 +10,16 @@ import java.util.UUID;
 
 @ApplicationScoped
 public class TimelineEditApplicationRepository implements PanacheRepositoryBase<TimelineEditApplicationEntity, Long> {
+    @Override
+    public boolean deleteById(Long id) {
+        TimelineEditApplicationEntity application = findById(id);
+        if (application == null) return false;
+        // Keep the managed inverse side consistent when superseding or reverting a loaded edit.
+        application.getEdit().setApplication(null);
+        delete(application);
+        return true;
+    }
+
     public List<TimelineEditApplicationEntity> findForTargets(String targetType, Collection<Long> targetIds) {
         if (targetIds.isEmpty()) return List.of();
         return find("targetType = ?1 and targetId in ?2", targetType, targetIds).list();

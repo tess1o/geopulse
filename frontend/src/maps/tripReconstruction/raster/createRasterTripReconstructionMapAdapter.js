@@ -20,11 +20,13 @@ const createRasterStayIcon = () => {
 }
 
 const createRasterContextIcon = (point) => {
+  const variant = { S: 'stay', A: 'start', B: 'end' }[point.label] || (/^\d+$/.test(point.label) ? 'via' : null)
+  const size = variant === 'stay' ? 36 : variant ? 32 : 22
   return L.divIcon({
     className: 'trip-reconstruction-waypoint-icon-wrapper',
-    html: `<div class="trip-reconstruction-context-icon">${point.label}</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11]
+    html: `<div class="trip-reconstruction-context-icon${variant ? ` trip-reconstruction-context--${variant}` : ''}${point.draggable ? ' trip-reconstruction-context--draggable' : ''}">${point.label}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2]
   })
 }
 
@@ -63,11 +65,18 @@ export const createRasterTripReconstructionMapAdapter = (callbacks = {}) => {
 
   const renderContext = (contextPoints = []) => {
     contextMarkers = contextPoints.map((point) => {
-      return L.marker([point.latitude, point.longitude], {
+      const marker = L.marker([point.latitude, point.longitude], {
         icon: createRasterContextIcon(point),
-        interactive: false,
+        interactive: Boolean(point.draggable),
+        draggable: Boolean(point.draggable),
+        zIndexOffset: point.draggable ? 1000 : 0,
         keyboard: false
       }).addTo(map)
+      if (point.draggable) marker.on('dragend', () => {
+        const position = marker.getLatLng()
+        callbacks.onContextPointDragged?.(point, position.lat, position.lng)
+      })
+      return marker
     })
   }
 

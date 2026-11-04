@@ -112,6 +112,7 @@ public class StreamingTimelineConverter {
         entity.setTimestamp(trip.getStartTime());
         entity.setTripDuration(trip.getDuration().toSeconds());
         entity.setDistanceMeters((long) trip.getDistanceMeters());
+        entity.setManualRoute(trip.getManualRoute());
         entity.setMovementType(trip.getTripType() != null ? trip.getTripType().name() : "UNKNOWN");
         entity.setMovementTypeSource(trip.getMovementTypeSource() != null ? trip.getMovementTypeSource() : MovementTypeSource.AUTO);
         entity.setExplanation(storedExplanation(trip.getExplanation()));
@@ -236,6 +237,7 @@ public class StreamingTimelineConverter {
                 .endLatitude(entity.getEndPoint().getY())
                 .tripDuration(entity.getTripDuration()) // Already in seconds
                 .distanceMeters(entity.getDistanceMeters())
+                .manualRoute(entity.getManualRoute())
                 .movementType(entity.getMovementType())
                 .movementTypeSource(entity.getMovementTypeSource() != null
                         ? entity.getMovementTypeSource().name()

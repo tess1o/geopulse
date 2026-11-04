@@ -52,6 +52,7 @@ public final class TimelineReasons {
     /** Created or changed by the user's manual Trip -> Stay -> Trip split. */
     public static final String MANUAL_SPLIT = "MANUAL_SPLIT";
     /** Created or extended by the user's manual Data Gap -> Stay conversion. */
+    public static final String MANUAL_RECONSTRUCTION = "MANUAL_RECONSTRUCTION";
     public static final String MANUAL_GAP_STAY = "MANUAL_GAP_STAY";
 
     // How an event ends

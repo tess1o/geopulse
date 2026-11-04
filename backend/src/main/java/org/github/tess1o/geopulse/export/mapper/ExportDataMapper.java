@@ -385,7 +385,7 @@ public class ExportDataMapper {
                 .dataType(ExportImportConstants.DataTypes.TIMELINE_EDITS)
                 .exportDate(Instant.now())
                 .edits(edits.stream().map(edit -> TimelineEditsDataDto.EditDto.builder()
-                        .id(edit.getId()).seq(edit.getSeq()).kind(edit.getKind())
+                        .id(edit.getId()).groupId(edit.getGroupId()).seq(edit.getSeq()).kind(edit.getKind())
                         .anchorStart(edit.getAnchorStart()).anchorEnd(edit.getAnchorEnd())
                         .affectedFrom(edit.getAffectedFrom()).affectedTo(edit.getAffectedTo())
                         .payload(new java.util.LinkedHashMap<>(edit.getPayload()))

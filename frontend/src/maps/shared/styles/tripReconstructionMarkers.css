@@ -74,3 +74,31 @@
   cursor: grab;
   user-select: none;
 }
+
+.trip-reconstruction-context--stay {
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  background: #c2410c;
+  border-width: 3px;
+  font-size: 1rem;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+}
+
+.trip-reconstruction-context--start,
+.trip-reconstruction-context--end,
+.trip-reconstruction-context--via {
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  font-size: .875rem;
+}
+.trip-reconstruction-context--start { background: #15803d; }
+.trip-reconstruction-context--end { background: #b91c1c; border-radius: 8px; }
+.trip-reconstruction-context--via { background: #7e22ce; }
+
+.trip-reconstruction-context--draggable { pointer-events: auto; cursor: grab; }
+.trip-reconstruction-context--draggable:active { cursor: grabbing; }
+
+.maplibregl-marker.trip-reconstruction-context--draggable { z-index: 30; }

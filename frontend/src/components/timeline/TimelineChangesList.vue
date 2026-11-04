@@ -59,8 +59,21 @@ const visibleEdits = computed(() => {
     return Date.parse(edit.affectedFrom || edit.anchorStart) < end && Date.parse(edit.affectedTo || edit.anchorEnd) > start
   })
 })
-const active = computed(() => visibleEdits.value.filter(edit => edit.status === 'ACTIVE').sort((a, b) => b.seq - a.seq))
-const past = computed(() => visibleEdits.value.filter(edit => edit.status !== 'ACTIVE').sort((a, b) => b.seq - a.seq))
+const groupedEntries = computed(() => {
+  const groups = new Map()
+  for (const edit of visibleEdits.value) {
+    const key = edit.groupId || edit.id
+    if (groups.has(key)) continue
+    const members = edit.groupId ? (props.edits || edits.value).filter(value => value.groupId === edit.groupId) : [edit]
+    groups.set(key, { ...edit, members,
+      anchorStart: members.map(value => value.anchorStart).sort()[0],
+      anchorEnd: members.map(value => value.anchorEnd).sort().at(-1),
+      applied: members.every(value => value.applied) })
+  }
+  return [...groups.values()]
+})
+const active = computed(() => groupedEntries.value.filter(edit => edit.status === 'ACTIVE').sort((a, b) => b.seq - a.seq))
+const past = computed(() => groupedEntries.value.filter(edit => edit.status !== 'ACTIVE').sort((a, b) => b.seq - a.seq))
 watch(() => [props.visible, props.item], () => {
   if (props.visible && props.edits === null) load()
 }, {immediate: true})
@@ -114,7 +127,9 @@ async function change(edit, restore) {
   error.value = '';
   conflictId.value = null
   try {
-    const result = restore ? await store.restoreTimelineEdit(edit.id) : await store.revertTimelineEdit(edit.id)
+    const result = edit.groupId
+      ? await (restore ? store.restoreActivityCorrection(edit.groupId) : store.revertActivityCorrection(edit.groupId))
+      : await (restore ? store.restoreTimelineEdit(edit.id) : store.revertTimelineEdit(edit.id))
     const finish = async () => {
       busy.value = null;
       await load()
@@ -133,12 +148,14 @@ const ChangeEntry = defineComponent({
   setup: entry => () => {
     const edit = entry.edit
     return h('div', [
-      h('strong', t(`timeline.edit.kind.${edit.kind}`)),
+      h('strong', edit.groupId ? t('missingActivity.group', { count: edit.members?.length || 1 }) : t(`timeline.edit.kind.${edit.kind}`)),
       h('span', {class: 'change-status'}, t(`timeline.edit.status.${edit.status}`)),
       props.item && !direct(edit) ? h('small', t('timeline.edit.relatedChange')) : null,
       h('p', {class: 'change-value'}, [h('small', t('timeline.edit.before')), h('span', value(edit, true))]),
       h('p', {class: 'change-value'}, [h('small', t('timeline.edit.savedValue')), h('span', value(edit, false))]),
       h('small', period(edit.anchorStart, edit.anchorEnd)),
+      edit.groupId ? h('ul', edit.members.map(member => h('li', `${t(`timeline.edit.kind.${member.kind}`)} · ${period(member.anchorStart, member.anchorEnd)}`))) : null,
+      edit.payload?.reconstruction ? h('p', t('trips.reconstructionContext.undoHint')) : null,
       edit.status === 'ACTIVE' && !edit.applied ? h('p', {role: 'status'}, t('timeline.edit.unapplied')) : null,
       ['ACTIVE', 'REVERTED'].includes(edit.status) ? h(Button, {
         label: t(`timeline.edit.${edit.status === 'ACTIVE' ? 'revert' : 'restore'}`),

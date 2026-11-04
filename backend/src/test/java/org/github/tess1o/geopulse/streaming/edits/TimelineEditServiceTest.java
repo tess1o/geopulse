@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository;
 import org.junit.jupiter.api.Tag;
@@ -64,6 +65,45 @@ class TimelineEditServiceTest {
         var result = service.apply(user, List.of(stay), FROM, FROM.plusSeconds(60));
         assertThat(result.appliedEditIds()).containsExactly(1L);
         assertThat(((Stay) result.events().getFirst()).getVisitName()).isEqualTo("Corrected");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TimelineEditKind.class, names = {"FORCE_STAY", "FORCE_TRIP"})
+    void fillingAnExistingGapDoesNotMaterializeSpacingBeforeIt(TimelineEditKind kind) {
+        Instant previousStart = Instant.parse("2026-10-14T16:58:21Z");
+        Instant gapStart = Instant.parse("2026-10-16T09:44:25Z");
+        Instant gapEnd = Instant.parse("2026-10-16T13:54:23Z");
+        var previous = Stay.builder().startTime(previousStart).duration(Duration.ofSeconds(146639))
+                .latitude(50).longitude(30).locationName("Home").build();
+        var next = Stay.builder().startTime(gapEnd).duration(Duration.ofHours(1))
+                .latitude(50).longitude(30).locationName("Home").build();
+        var correction = edit(kind, gapStart, gapEnd);
+        when(repository.findActiveOverlapping(user, previousStart, next.getEndTime())).thenReturn(List.of(correction));
+
+        var result = service.apply(user, List.of(previous, DataGap.fromTimeRange(gapStart, gapEnd), next),
+                previousStart, next.getEndTime());
+
+        assertThat(result.events()).noneMatch(DataGap.class::isInstance);
+        assertThat(result.events()).hasSize(3);
+        assertThat(result.events().getFirst().getEndTime()).isEqualTo(Instant.parse("2026-10-16T09:42:20Z"));
+        assertThat(result.events().get(1).getStartTime()).isEqualTo(gapStart);
+        assertThat(result.events().get(1).getEndTime()).isEqualTo(gapEnd);
+    }
+
+    @Test
+    void onlyActiveMissingActivitiesExtendGenerationWithoutGps() {
+        var ordinary = edit(TimelineEditKind.FORCE_STAY, FROM, FROM.plusSeconds(300));
+        ordinary.setStatus(TimelineEditStatus.ACTIVE);
+        ordinary.setAffectedTo(FROM.plusSeconds(300));
+        var missing = edit(TimelineEditKind.FORCE_STAY, FROM, FROM.plusSeconds(60));
+        missing.setStatus(TimelineEditStatus.ACTIVE);
+        missing.setAffectedTo(FROM.plusSeconds(60));
+        missing.getPayload().put("activityCorrection", true);
+        when(repository.findByUser(user)).thenReturn(List.of(ordinary, missing));
+
+        assertThat(service.activeEnd(user)).isEqualTo(FROM.plusSeconds(60));
+        missing.setStatus(TimelineEditStatus.REVERTED);
+        assertThat(service.activeEnd(user)).isNull();
     }
 
     private TimelineEditEntity edit(TimelineEditKind kind, Instant start, Instant end) {

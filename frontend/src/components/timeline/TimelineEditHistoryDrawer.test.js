@@ -66,6 +66,23 @@ describe('TimelineEditHistoryDrawer', () => {
     expect(wrapper.find('button').text()).toBe('Redo')
   })
 
+  it('shows one history entry and one undo for an activity group', async () => {
+    const pinia = createPinia(), store = useTimelineStore(pinia)
+    const members = [1, 2].map(id => ({ id, groupId: 'group', kind: 'FORCE_STAY', status: 'ACTIVE', applied: true,
+      anchorStart: `2026-10-08T${id + 10}:00:00Z`, anchorEnd: `2026-10-08T${id + 11}:00:00Z` }))
+    const revert = vi.spyOn(store, 'revertActivityCorrection').mockResolvedValue({ edits: members })
+    const single = vi.spyOn(store, 'revertTimelineEdit')
+    const wrapper = mount(TimelineEditHistoryDrawer, { props: { visible: true, edits: members },
+      global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } } })
+    await flushPromises()
+    expect(wrapper.findAll('article')).toHaveLength(1)
+    expect(wrapper.text()).toContain('2 manual activities')
+    await wrapper.findAll('button').find(button => button.text() === 'Undo').trigger('click')
+    await flushPromises()
+    expect(revert).toHaveBeenCalledWith('group')
+    expect(single).not.toHaveBeenCalled()
+  })
+
   it('keeps the drawer open and shows a load failure' , async () => {
     const pinia = createPinia()
     const store = useTimelineStore(pinia)

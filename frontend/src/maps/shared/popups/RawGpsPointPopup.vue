@@ -5,6 +5,8 @@
     :subtitle="subtitle"
     variant="wide"
   >
+    <Button v-if="onSelectPoint" :label="t('trips.reconstructionContext.usePoint')"
+      @click.stop="onSelectPoint(selectedPoint)" />
     <div class="raw-gps-popup-grid">
       <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.coordinates') }}</div>
       <div class="gp-map-popup-value">
@@ -68,6 +70,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { t } from '@/locales'
 import { formatSpeed } from '@/utils/calculationsHelpers'
 import MapPopupCard from './MapPopupCard.vue'
+import Button from 'primevue/button'
 
 const props = defineProps({
   group: {
@@ -78,6 +81,7 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  onSelectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
     default: null

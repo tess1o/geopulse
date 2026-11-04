@@ -212,7 +212,7 @@ public final class TimelineExplanationPointClassifier {
                 case TimelineReasons.ARRIVAL -> markFirst(used, intParam(startReason, "points", 1),
                         TimelineReasons.ARRIVAL);
                 case TimelineReasons.INFERRED_DURING_GAP -> markGapEdges(entries, start, end, startReason.code());
-                case TimelineReasons.MANUAL_SPLIT, TimelineReasons.MANUAL_GAP_STAY -> {
+                case TimelineReasons.MANUAL_SPLIT, TimelineReasons.MANUAL_GAP_STAY, TimelineReasons.MANUAL_RECONSTRUCTION -> {
                 }
                 default -> markFirst(used, 1, startReason.code());
             }

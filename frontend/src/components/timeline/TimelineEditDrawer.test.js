@@ -59,6 +59,21 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).not.toContain('Visit label')
   })
 
+  it.each(['stay', 'trip'])('limits grouped %s activities to supported detail edits', async type => {
+    const item = { id: 5, type, timestamp: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z',
+      stayDuration: 3600, tripDuration: 3600, movementType: 'CAR', locationName: 'Home' }
+    const wrapper = mountDrawer(item)
+    wrapper.vm.savedEdits = [{ id: 9, groupId: 'group', kind: type === 'stay' ? 'FORCE_STAY' : 'FORCE_TRIP', status: 'ACTIVE' }]
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(type === 'stay'
+      ? ['SET_PLACE', 'SET_VISIT_NAME'] : ['SET_MOVEMENT_TYPE'])
+    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(type === 'stay' ? ['RENAME_PLACE'] : [])
+    expect(wrapper.text()).toContain('undo the correction group')
+    await wrapper.setProps({ item: { ...item, id: 6 } })
+    expect(wrapper.vm.detailActions.map(entry => entry.id)).toContain('SET_TIMES')
+    wrapper.unmount()
+  })
+
   it('hands trip splitting to the route-map dialog instead of asking for coordinates', async () => {
     const item = { type: 'trip', timestamp: '2026-10-08T10:00:00Z', tripDuration: 3600, movementType: 'CAR' }
     const wrapper = mountDrawer(item)
@@ -70,31 +85,14 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).not.toContain('Latitude')
   })
 
-  it('keeps gap resolution to the two conversions', () => {
+  it('keeps only history for gaps, whose correction uses the shared editor', () => {
     const wrapper = mountDrawer({ type: 'dataGap', startTime: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z', durationSeconds: 3600 })
-    expect(wrapper.text()).toContain('Convert to stay')
-    expect(wrapper.text()).toContain('Convert to trip')
+    expect(wrapper.text()).not.toContain('Convert to stay')
+    expect(wrapper.text()).not.toContain('Convert to trip')
     expect(wrapper.text()).not.toContain('Remove')
   })
 
-  it('uses neighbouring event endpoints when converting a gap to a trip', async () => {
-    const gap = { type: 'dataGap', startTime: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z', durationSeconds: 3600 }
-    const wrapper = mountDrawer(gap, {
-      previousItem: { type: 'trip', timestamp: '2026-10-08T09:00:00Z', tripDuration: 3600, endLatitude: 50.1, endLongitude: 30.1 },
-      nextItem: { type: 'stay', timestamp: '2026-10-08T11:00:00Z', stayDuration: 3600, latitude: 51.2, longitude: 31.2 }
-    })
-    const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
 
-    await clickButton(wrapper, 'Convert to trip')
-    await clickButton(wrapper, 'Review changes')
-
-    expect(store.previewTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({
-      payload: expect.objectContaining({
-        startLatitude: 50.1, startLongitude: 30.1, endLatitude: 51.2, endLongitude: 31.2
-      })
-    }))
-  })
 
   it('does not offer merge when no compatible neighbour exists', () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' })
@@ -186,20 +184,7 @@ describe('TimelineEditDrawer action overview', () => {
     expect(store.createTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'SET_PLACE', payload: { favoriteId: 3 } }))
   })
 
-  it('offers the neighbouring visits when a gap becomes a stay', async () => {
-    const gap = { type: 'dataGap', startTime: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z', durationSeconds: 3600 }
-    const wrapper = mountDrawer(gap, {
-      previousItem: { type: 'stay', timestamp: '2026-10-08T09:00:00Z', stayDuration: 3600, locationName: 'Home', geocodingId: 4 },
-      nextItem: { type: 'trip', timestamp: '2026-10-08T11:00:00Z', tripDuration: 600 }
-    })
 
-    await clickButton(wrapper, 'Convert to stay')
-
-    expect(wrapper.text()).toContain('Where were you during this gap?')
-    expect(wrapper.findComponent({ name: 'TimelinePlacePicker' }).props('suggestions')).toEqual([
-      expect.objectContaining({ geocodingId: 4, locationName: 'Home', hint: 'Where you were before the gap' })
-    ])
-  })
 
   it('explains which trip a merge joins and which stop it removes, and previews it at once', async () => {
     const trip = { type: 'trip', timestamp: '2026-10-08T10:00:00Z', tripDuration: 1200, movementType: 'CAR' }
@@ -318,15 +303,7 @@ describe('review safeguards', () => {
     await clickButton(wrapper, 'Review changes')
     expect(store.previewTimelineEdit).not.toHaveBeenCalled()
   })
-  it('requests unknown trip endpoints instead of inventing coordinates', async () => {
-    const wrapper = mountDrawer({ type: 'dataGap', startTime: stay.timestamp, endTime: '2026-10-08T11:00:00Z' })
-    const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit')
-    await clickButton(wrapper, 'Convert to trip')
-    expect(wrapper.findAllComponents({ name: 'TimelinePlacePicker' })).toHaveLength(2)
-    await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit).not.toHaveBeenCalled()
-  })
+
   it('keeps a changed form when discarding is declined', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const wrapper = mountDrawer(stay)

@@ -122,14 +122,14 @@ const apiService = {
      * @param {Function} requestFn - Function that performs the actual request
      * @returns {Promise} - Request result
      */
-    async _request(requestFn) {
+    async _request(requestFn, options = {}) {
         try {
             return await requestFn();
         } catch (error) {
             if (interruptsApplicationRequests() || isMaintenanceInterruption(error)) {
                 throw new MaintenanceInterruption();
             }
-            await this.handleError(error);
+            await this.handleError(error, options);
             throw error;
         }
     },
@@ -138,9 +138,10 @@ const apiService = {
      * Perform a GET request
      * @param {string} endpoint - API endpoint
      * @param {Object} params - URL parameters
+     * @param {Object} options - Set redirectOnServerError=false for failures handled in the current UI.
      * @returns {Promise} - Axios response promise
      */
-    async get(endpoint, params = {}) {
+    async get(endpoint, params = {}, options = {}) {
         return this._request(async () => {
             assertApplicationTransportAvailable(endpoint);
 
@@ -150,7 +151,7 @@ const apiService = {
                 headers: {}
             });
             return response.data;
-        });
+        }, options);
     },
 
     /**
@@ -388,7 +389,7 @@ const apiService = {
      * Handle common error scenarios and enhance error messages
      * @param {Error} error - Error object
      */
-    handleError(error) {
+    handleError(error, options = {}) {
         if (isMaintenanceInterruption(error) || interruptsApplicationRequests() && (axios.isCancel(error) || isBackendDown(error))) {
             return;
         }
@@ -418,7 +419,7 @@ const apiService = {
         error.canRetry = formattedError.canRetry;
 
         // Check if backend is completely down and redirect to error page
-        if (isBackendDown(error)) {
+        if (isBackendDown(error) && options.redirectOnServerError !== false) {
             this.redirectToErrorPage(error);
         }
 

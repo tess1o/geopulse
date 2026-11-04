@@ -303,7 +303,9 @@ public class StreamingTimelineGenerationService {
             Long estimatedCount = gpsPointRepository.estimatePointCount(userId, restart.pointsFrom());
             recordTimelineStage(stageStart, trigger, "count_points", "success");
 
-            if (estimatedCount == null || estimatedCount == 0) {
+            Instant correctionEnd = timelineEditService.activeEnd(userId);
+            if ((estimatedCount == null || estimatedCount == 0) && correctionEnd == null) {
+                fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId, true);
                 result = "no_points";
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "noGpsData", "No GPS data to process", 9, 100, null);
@@ -369,26 +371,32 @@ public class StreamingTimelineGenerationService {
 
             RawTimeline generatedTimeline = null;
 
-            if (!events.isEmpty()) {
-                // Step 6: Merging and simplification (75%)
-                // Apply optional merge pass on the ordered events (includes same-location integrity merge behavior)
-                // when merge is enabled by configuration.
-                if (config.getIsMergeEnabled()) {
-                    updateProgress(jobId, "mergingTimeline", "Merging timeline", 6, 75, null);
-                    stageStart = metricsStart();
-                    events = timelineMerger.mergeSameNamedLocations(config, events);
-                    recordTimelineStage(stageStart, trigger, "merge", "success");
-                    memoryDiagnostics.checkpoint(userId, jobId, "merge_end", Map.of("events", events.size()));
-                }
-
-                Instant generatedEnd = events.stream().map(TimelineEvent::getEndTime)
-                        .max(Instant::compareTo).orElse(regenerationStartTime);
+            // Step 6: Merging and simplification (75%)
+            // Apply optional merge pass on the ordered events (includes same-location integrity merge behavior)
+            // when merge is enabled by configuration.
+            if (config.getIsMergeEnabled() && !events.isEmpty()) {
+                updateProgress(jobId, "mergingTimeline", "Merging timeline", 6, 75, null);
                 stageStart = metricsStart();
-                TimelineEditResult editResult = timelineEditService.apply(userId, events, regenerationStartTime, generatedEnd);
-                events = editResult.events();
-                recordTimelineStage(stageStart, trigger, "timeline_edits", "success");
-                memoryDiagnostics.checkpoint(userId, jobId, "timeline_edits_end", Map.of("events", events.size()));
+                events = timelineMerger.mergeSameNamedLocations(config, events);
+                recordTimelineStage(stageStart, trigger, "merge", "success");
+                memoryDiagnostics.checkpoint(userId, jobId, "merge_end", Map.of("events", events.size()));
+            }
 
+            Instant generatedEnd = events.stream().map(TimelineEvent::getEndTime)
+                    .max(Instant::compareTo).orElse(regenerationStartTime);
+            Instant lastPointEnd = gpsPointRepository.findLatest(userId)
+                    .map(point -> point.getTimestamp().plusNanos(1)).orElse(regenerationStartTime.plusNanos(1));
+            if (lastPointEnd.isAfter(generatedEnd)) generatedEnd = lastPointEnd;
+            if (correctionEnd != null && correctionEnd.isAfter(generatedEnd)) generatedEnd = correctionEnd;
+            stageStart = metricsStart();
+            TimelineEditResult editResult = events.isEmpty() && correctionEnd == null
+                    ? new TimelineEditResult(List.of(), Map.of(), List.of())
+                    : timelineEditService.apply(userId, events, regenerationStartTime, generatedEnd);
+            events = editResult.events();
+            recordTimelineStage(stageStart, trigger, "timeline_edits", "success");
+            memoryDiagnostics.checkpoint(userId, jobId, "timeline_edits_end", Map.of("events", events.size()));
+
+            if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
                 generatedTimeline = rawTimeline;
@@ -699,9 +707,10 @@ public class StreamingTimelineGenerationService {
 
     /** Generated events from {@code from} go; stays currently produced by active edits stay until replacement exists. */
     private void deleteGeneratedTimelineFrom(UUID userId, Instant from) {
+        // Detail edits must not keep a stay alive after its missing-activity group is undone.
         long deletedStays = timelineStayRepository.delete("""
                         user.id = :userId and timestamp >= :timestamp
-                        and id not in (select application.targetId
+                        and (id not in (select application.targetId
                                        from TimelineEditApplicationEntity application
                                        where application.edit.user.id = :userId
                                          and application.targetType = 'STAY')
@@ -711,6 +720,10 @@ public class StreamingTimelineGenerationService {
                         and id not in (select gapOverride.stay.id
                                        from TimelineDataGapStayOverrideEntity gapOverride
                                        where gapOverride.user.id = :userId and gapOverride.stay is not null)
+                        or exists (select edit.id from TimelineEditEntity edit
+                                   where edit.user.id = :userId and edit.groupId is not null
+                                     and edit.status <> 'ACTIVE' and edit.kind = 'FORCE_STAY'
+                                     and edit.anchorStart = timestamp))
                         """,
                 Map.of("userId", userId, "timestamp", from));
         long deletedTrips = timelineTripRepository.delete("user.id = :userId and timestamp >= :timestamp",

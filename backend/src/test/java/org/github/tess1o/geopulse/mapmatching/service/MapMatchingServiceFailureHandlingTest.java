@@ -128,6 +128,7 @@ class MapMatchingServiceFailureHandlingTest {
                 .thenReturn(TimelineConfig.builder().useVelocityAccuracy(false).build());
         when(tripRepository.findByIdOptional(9001L)).thenReturn(Optional.of(regeneratedTrip));
         when(regeneratedTrip.getId()).thenReturn(9001L);
+        when(regeneratedTrip.getManualRoute()).thenReturn(null);
         when(regeneratedTrip.getUser()).thenReturn(user);
         when(regeneratedTrip.getTimestamp()).thenReturn(start);
         when(regeneratedTrip.getTripDuration()).thenReturn(120L);
