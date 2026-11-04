@@ -19,6 +19,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HomeContentServiceTest {
 
     @Test
+    void germanTipsTranslateTextAndPreserveMetadata() {
+        HomeContentService service = new HomeContentService(new ObjectMapper());
+        service.init();
+        var english = service.getContent("en");
+        var german = service.getContent("de");
+
+        assertFalse(german.tips().isEmpty());
+        assertEquals(english.tips().size(), german.tips().size());
+        for (int i = 0; i < english.tips().size(); i++) {
+            var source = english.tips().get(i);
+            var translated = german.tips().get(i);
+            assertEquals(source.id(), translated.id());
+            assertEquals(source.icon(), translated.icon());
+            assertEquals(source.audiences(), translated.audiences());
+            assertFalse(translated.title().isBlank());
+            assertFalse(translated.description().isBlank());
+            assertFalse(source.title().equals(translated.title()));
+            assertFalse(source.description().equals(translated.description()));
+            assertEquals(source.links().size(), translated.links().size());
+            for (int j = 0; j < source.links().size(); j++) {
+                assertEquals(source.links().get(j).url(), translated.links().get(j).url());
+                assertFalse(translated.links().get(j).label().isBlank());
+                assertFalse(source.links().get(j).label().equals(translated.links().get(j).label()));
+            }
+        }
+    }
+
+    @Test
     void getContent_UsesBundledFiles() {
         MutableClock clock = new MutableClock(Instant.parse("2026-03-30T10:00:00Z"));
 

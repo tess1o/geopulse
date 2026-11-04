@@ -83,6 +83,7 @@ export default {
     },
     dateFormatOptions: {
         dmy: 'DD/MM/YYYY (European)',
+        dmyDot: 'DD.MM.YYYY (German)',
         mdy: 'MM/DD/YYYY (US)',
         ymd: 'YYYY-MM-DD (ISO)'
     },

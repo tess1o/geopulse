@@ -77,6 +77,7 @@ export default {
     },
     dateFormatOptions: {
         dmy: 'DD/MM/YYYY (європейський)',
+        dmyDot: 'DD.MM.YYYY (німецький)',
         mdy: 'MM/DD/YYYY (США)',
         ymd: 'YYYY-MM-DD (ISO)'
     },

@@ -32,9 +32,9 @@ public class UserUiPreferences implements Serializable {
     @Schema(examples = "CELSIUS")
     private TemperatureUnit temperatureUnit;
 
-    /** Allowed values: MDY, DMY, YMD. Null lets the client pick its default. */
-    @Pattern(regexp = "^(MDY|DMY|YMD)$", message = "Date format must be one of: MDY, DMY, YMD")
-    @Schema(examples = "DMY")
+    /** Allowed values: MDY, DMY, DMY_DOT, YMD. Null lets the client pick its default. */
+    @Pattern(regexp = "^(MDY|DMY|DMY_DOT|YMD)$", message = "Date format must be one of: MDY, DMY, DMY_DOT, YMD")
+    @Schema(examples = {"DMY", "DMY_DOT"})
     private String dateFormat;
 
     @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")

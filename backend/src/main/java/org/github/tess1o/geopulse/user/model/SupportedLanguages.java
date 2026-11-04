@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public enum SupportedLanguages {
     EN("en"),
     UK("uk"),
+    DE("de"),
     // add-locale:entries -- `npm run i18n:add` inserts new constants above this line.
     ;
 

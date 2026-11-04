@@ -499,6 +499,7 @@ public class DigestPdfService {
         if (instant == null) return "";
         String pattern = switch (safe(user.getUiPreferences().getDateFormat()).toUpperCase(Locale.ROOT)) {
             case "DMY" -> "dd/MM/yyyy";
+            case "DMY_DOT" -> "dd.MM.yyyy";
             case "YMD" -> "yyyy-MM-dd";
             default -> "MM/dd/yyyy";
         };

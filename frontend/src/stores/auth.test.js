@@ -256,12 +256,12 @@ describe('auth store cached profile reconciliation', () => {
     expect(authStore.user).toMatchObject({ colorScheme: 'HIGH_CONTRAST', activePathColor: '#ffcc00' })
   })
 
-  it('sends UI preferences nested and flattens the updated profile', async () => {
+  it.each(['MDY', 'DMY', 'DMY_DOT', 'YMD'])('sends and caches the %s date preference', async (dateFormat) => {
     const authStore = useAuthStore()
     authStore.setUser(user())
     apiService.patch.mockResolvedValue(serverUser({
       fullName: 'Renamed',
-      uiPreferences: { distanceUnit: 'MILES', dateFormat: 'DMY' }
+      uiPreferences: { distanceUnit: 'MILES', dateFormat }
     }))
 
     await authStore.updateProfile({
@@ -269,19 +269,19 @@ describe('auth store cached profile reconciliation', () => {
       avatar: null,
       timezone: 'UTC',
       distanceUnit: 'MILES',
-      dateFormat: 'DMY'
+      dateFormat
     })
 
     expect(apiService.patch).toHaveBeenCalledWith('/users/me', {
       fullName: 'Renamed',
       avatar: null,
       timezone: 'UTC',
-      uiPreferences: { distanceUnit: 'MILES', dateFormat: 'DMY' }
+      uiPreferences: { distanceUnit: 'MILES', dateFormat }
     })
     expect(authStore.userName).toBe('Renamed')
     expect(authStore.distanceUnit).toBe('MILES')
-    expect(authStore.dateFormat).toBe('DMY')
-    expect(readCachedProfile()).toMatchObject({ distanceUnit: 'MILES', dateFormat: 'DMY' })
+    expect(authStore.dateFormat).toBe(dateFormat)
+    expect(readCachedProfile()).toMatchObject({ distanceUnit: 'MILES', dateFormat })
   })
 
   it('flattens fetched timeline display settings for callers', async () => {

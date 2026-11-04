@@ -76,6 +76,18 @@ describe('JourneyWeatherInsights', () => {
     localStorage.clear()
   })
 
+  it('uses dotted dates for observations and calendar-day summaries', async () => {
+    const timezone = (await import('@/composables/useTimezone')).useTimezone()
+    timezone.setDateFormat('DMY_DOT')
+    try {
+      const wrapper = mount(JourneyWeatherInsights, { props: { weather } })
+      expect(wrapper.text()).toContain('20.07.2026')
+      expect(wrapper.text()).toContain('03.05.2026')
+    } finally {
+      timezone.setDateFormat('MDY')
+    }
+  })
+
   it('does not render without weather samples', () => {
     const wrapper = mount(JourneyWeatherInsights, {
       props: {

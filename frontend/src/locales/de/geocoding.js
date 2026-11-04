@@ -1,0 +1,123 @@
+export default {
+    "candidates": {
+        "save": "Speichern",
+        "current": "Aktueller Standort",
+        "linkedStays": "Beim Speichern werden alle deine Aufenthalte aktualisiert, die mit diesem Standort verknüpft sind.",
+        "load": "Vorschläge laden",
+        "empty": "Keine Vorschläge erhalten. Versuche einen anderen Anbieter.",
+        "single": "Dieser Anbieter hat einen Vorschlag geliefert.",
+        "choose": "Den richtigen Standort wählen",
+        "distance": "{distance} m von den aufgezeichneten Koordinaten entfernt",
+        "loadFailed": "Vorschläge konnten nicht geladen werden. Bitte versuche es erneut.",
+        "saveFailed": "Diese Auswahl konnte nicht gespeichert werden. Lade die Vorschläge neu und versuche es erneut."
+    },
+    "page": {
+        "title": "Rückwärts-Geocodierung verwalten",
+        "subtitle": "Verwalte und aktualisiere deine Geocodierungsergebnisse",
+        "reconcileAllButton": "Alle abgleichen ({count})",
+        "bulkEditButton": "Gemeinsam bearbeiten ({count})",
+        "reconcileSelectedButton": "Auswahl abgleichen ({count})",
+        "providerSwitchInfo": "Ein Wechsel des Anbieters gilt nur für neue Abfragen. Mit „Auswahl abgleichen“ bzw. „Alle abgleichen“ aktualisierst du bestehende Einträge im Cache.",
+        "normalization": {
+            "title": "Normalisierungsregeln",
+            "subtitle": "Eigene Zuordnungsregeln für Länder- und Städtenamen. Neue Geocodierungsergebnisse nutzen sie automatisch; mit „Regeln jetzt anwenden“ aktualisierst du vorhandene Geocodierungseinträge und Favoriten.",
+            "collapse": "Einklappen",
+            "expand": "Aufklappen",
+            "addRule": "Regel hinzufügen",
+            "applyRulesNow": "Regeln jetzt anwenden",
+            "collapsedHint": "Bereich eingeklappt. Aufklappen, um Regeln zu verwalten.",
+            "empty": "Noch keine Normalisierungsregeln.",
+            "typeColumn": "Typ",
+            "typeCountry": "Land",
+            "typeCity": "Stadt",
+            "fromColumn": "Von",
+            "toColumn": "Zu",
+            "actionsColumn": "Aktionen",
+            "valueDash": "-"
+        },
+        "filters": {
+            "providerLabel": "Anbieter:",
+            "allProviders": "Alle Anbieter",
+            "searchLabel": "Suche:",
+            "searchPlaceholder": "Nach Ort, Stadt oder Land suchen",
+            "clearFilters": "Filter zurücksetzen"
+        },
+        "table": {
+            "title": "Geocodierungsergebnisse",
+            "emptyTitle": "Keine Geocodierungsergebnisse gefunden",
+            "emptyDescription": "Für die gewählten Kriterien gibt es keine Geocodierungsdaten.",
+            "displayNameColumn": "Anzeigename",
+            "cityColumn": "Stadt",
+            "countryColumn": "Land",
+            "providerColumn": "Anbieter",
+            "coordinatesColumn": "Koordinaten",
+            "lastUsedColumn": "Zuletzt verwendet",
+            "actionsColumn": "Aktionen",
+            "nullValue": "-",
+            "viewDetailsTooltip": "Details ansehen",
+            "editTooltip": "Bearbeiten",
+            "reconcileTooltip": "Abgleichen"
+        },
+        "bulkEdit": {
+            "itemTypeName": "Geocodierungsergebnisse"
+        },
+        "ruleDialog": {
+            "editHeader": "Normalisierungsregel bearbeiten",
+            "addHeader": "Normalisierungsregel hinzufügen",
+            "ruleTypeLabel": "Art der Regel",
+            "fromCountryLabel": "Von Land",
+            "toCountryLabel": "Zu Land",
+            "fromCityLabel": "Von Stadt",
+            "toCityLabel": "Zu Stadt",
+            "countryPlaceholderFrom": "z. B. Bulgaria",
+            "countryPlaceholderTo": "z. B. Bulgarien",
+            "cityPlaceholderFrom": "z. B. Munich",
+            "cityPlaceholderTo": "z. B. München",
+            "cancel": "Abbrechen",
+            "save": "Speichern"
+        },
+        "applyRulesDialog": {
+            "applySelectedHeader": "Ausgewählte Regel anwenden",
+            "applyAllHeader": "Normalisierungsregeln anwenden",
+            "applying": "Wird angewendet: {source} → {target}",
+            "applyToGeocoding": "Auf Einträge der Rückwärts-Geocodierung anwenden",
+            "applyToFavorites": "Auf Favoriten anwenden",
+            "cancel": "Abbrechen",
+            "apply": "Anwenden"
+        },
+        "ruleTypeOptions": {
+            "country": "Land",
+            "city": "Stadt"
+        },
+        "deleteRuleConfirm": "Zuordnung „{source} → {target}“ löschen?",
+        "toasts": {
+            "loadResultsFailed": "Geocodierungsergebnisse konnten nicht geladen werden",
+            "loadRulesFailed": "Normalisierungsregeln konnten nicht geladen werden",
+            "ruleUpdatedSummary": "Regel aktualisiert",
+            "ruleUpdatedDetail": "Normalisierungsregel aktualisiert",
+            "ruleAddedSummary": "Regel hinzugefügt",
+            "ruleAddedDetail": "Normalisierungsregel erstellt",
+            "saveFailedSummary": "Speichern fehlgeschlagen",
+            "saveRuleFailedFallback": "Normalisierungsregel konnte nicht gespeichert werden",
+            "ruleDeletedSummary": "Regel gelöscht",
+            "ruleDeletedDetail": "Normalisierungsregel gelöscht",
+            "deleteFailedSummary": "Löschen fehlgeschlagen",
+            "deleteRuleFailedFallback": "Normalisierungsregel konnte nicht gelöscht werden",
+            "normalizationStartedSummary": "Normalisierung gestartet",
+            "normalizationStartedSingleDetail": "Ausgewählte Regel wird im Hintergrund angewendet …",
+            "normalizationStartedAllDetail": "Regeln werden im Hintergrund angewendet …",
+            "applyFailedSummary": "Anwenden fehlgeschlagen",
+            "applyFailedFallback": "Normalisierung konnte nicht gestartet werden",
+            "updateSuccessDetail": "Geocodierungsergebnis aktualisiert",
+            "updateFailedSummary": "Aktualisieren fehlgeschlagen",
+            "updateFailedFallback": "Geocodierungsergebnis konnte nicht aktualisiert werden",
+            "reconciliationFailedSummary": "Abgleich fehlgeschlagen",
+            "reconciliationFailedFallback": "Abgleich konnte nicht gestartet werden",
+            "reconciliationCompleteSummary": "Abgleich abgeschlossen",
+            "reconciliationCompleteDetail": "{success} von {total} Ergebnissen abgeglichen",
+            "normalizationCompleteSummary": "Normalisierung abgeschlossen",
+            "normalizationCompleteDetail": "{geocodingUpdated} Geocodierungseinträge und {favoritesUpdated} Favoriten aktualisiert",
+            "normalizationCompleteFailedSuffix": " ({count} fehlgeschlagen)"
+        }
+    }
+}

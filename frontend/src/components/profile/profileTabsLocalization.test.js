@@ -142,6 +142,7 @@ describe('personal settings tabs in Ukrainian', () => {
       expect(text).toContain('Милі (миль, фут)')
       expect(text).toContain('Цельсій (°C)')
       expect(text).toContain('DD/MM/YYYY (європейський)')
+      expect(text).toContain('DD.MM.YYYY (німецький)')
       expect(text).toContain('24-годинний (13:45)')
     })
 

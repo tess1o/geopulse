@@ -362,6 +362,7 @@ public class GeofenceEvaluationService {
         return switch (dateFormat.trim().toUpperCase(Locale.ROOT)) {
             case "MDY", "US", "MM/DD/YYYY", "MM-DD-YYYY" -> DATE_PATTERN_MDY;
             case "DMY", "EU", "DD/MM/YYYY", "DD-MM-YYYY" -> DATE_PATTERN_DMY;
+            case "DMY_DOT" -> "dd.MM.yyyy";
             case "YMD", "ISO", "YYYY-MM-DD" -> DATE_PATTERN_YMD;
             default -> DATE_PATTERN_MDY;
         };

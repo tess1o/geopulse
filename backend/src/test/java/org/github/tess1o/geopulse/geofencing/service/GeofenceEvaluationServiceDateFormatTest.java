@@ -119,6 +119,16 @@ class GeofenceEvaluationServiceDateFormatTest {
     }
 
     @Test
+    void shouldRenderDottedDmyWhenConfigured() throws Exception {
+        UserEntity owner = new UserEntity();
+        owner.setTimezone("Europe/Kyiv");
+        owner.getUiPreferences().setDateFormat("DMY_DOT");
+
+        assertThat(invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner))
+                .isEqualTo("26.03.2026 03:31:27");
+    }
+
+    @Test
     void shouldFallbackTo24HourTimeWhenTimeFormatInvalid() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");

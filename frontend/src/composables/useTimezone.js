@@ -28,16 +28,19 @@ export const LOCATION_DAY_FETCH_PADDING_HOURS = 26
 const DATE_FORMAT_PATTERNS = {
     MDY: 'MM/DD/YYYY',
     DMY: 'DD/MM/YYYY',
+    DMY_DOT: 'DD.MM.YYYY',
     YMD: 'YYYY-MM-DD'
 }
 const DATE_FORMAT_PRIMEVUE = {
     MDY: 'mm/dd/yy',
     DMY: 'dd/mm/yy',
+    DMY_DOT: 'dd.mm.yy',
     YMD: 'yy-mm-dd'
 }
 const DATE_FORMAT_FIRST_DAY_OF_WEEK = {
     MDY: 0,
     DMY: 1,
+    DMY_DOT: 1,
     YMD: 1
 }
 

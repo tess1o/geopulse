@@ -301,8 +301,8 @@ public class UserService {
 
         String normalized = dateFormat.trim().toUpperCase(Locale.ROOT);
         return switch (normalized) {
-            case "MDY", "DMY", "YMD" -> normalized;
-            default -> throw new IllegalArgumentException("Invalid date format. Allowed values: MDY, DMY, YMD");
+            case "MDY", "DMY", "DMY_DOT", "YMD" -> normalized;
+            default -> throw new IllegalArgumentException("Invalid date format. Allowed values: MDY, DMY, DMY_DOT, YMD");
         };
     }
 

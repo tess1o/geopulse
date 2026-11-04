@@ -48,6 +48,31 @@ describe('locale catalogs', () => {
         expect(computeCoverage(en, catalogs.uk).missing).toEqual([])
     })
 
+    it('keeps German complete with matching message parameters and plural forms', () => {
+        expect(computeCoverage(en, catalogs.de).missing).toEqual([])
+        const parameters = value => [...String(value).matchAll(/\{[A-Za-z_]\w*\}|@:[\w.-]+/g)]
+            .map(match => match[0]).sort()
+        const german = flattenValues(catalogs.de)
+        for (const [key, value] of Object.entries(flattenValues(en))) {
+            expect(parameters(german[key]), key).toEqual(parameters(value))
+            expect(String(german[key]).split('|').length, key).toBe(String(value).split('|').length)
+        }
+    })
+
+    it('renders German singular and plural messages', async () => {
+        await loadLocale('de')
+        const previous = i18n.global.locale.value
+        try {
+            i18n.global.locale.value = 'de'
+            expect(t('insights.places.visits', { count: 0 }, 0)).toBe('0 Besuche')
+            expect(t('insights.places.visits', { count: 1 }, 1)).toBe('1 Besuch')
+            expect(t('insights.places.visits', { count: 2 }, 2)).toBe('2 Besuche')
+            expect(t('missingActivity.activity', { number: 3 })).toBe('Aktivität 3')
+        } finally {
+            i18n.global.locale.value = previous
+        }
+    })
+
     it('has no empty translation values', () => {
         const empty = Object.entries(catalogs).flatMap(([locale, catalog]) =>
             Object.entries(flattenValues(catalog))
@@ -116,7 +141,7 @@ describe('message syntax', () => {
   // must be written {'{z}'}. Left raw it renders as a blank, which is silent -- the URL-template help
   // text and its validation message both lost their {z}, {x}, {y} placeholders this way.
   it('renders literal braces in the tile-URL copy', () => {
-    for (const locale of ['en', 'uk']) {
+    for (const locale of ['en', 'uk', 'de']) {
       const previous = i18n.global.locale.value
       i18n.global.locale.value = locale
       for (const key of ['profile.timeline.validation.tilePlaceholders', 'profile.timeline.sources.rasterTiles.details']) {

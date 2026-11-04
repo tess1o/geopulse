@@ -1,0 +1,449 @@
+{
+  "tips": [
+    {
+      "id": "export-trip-or-stay-gpx",
+      "title": "Aufenthalte und Strecken als GPX exportieren",
+      "description": "Klicke auf der Zeitleistenseite mit der rechten Maustaste auf eine Aufenthalts- oder Streckenkarte und wähle „Als GPX exportieren“. So kannst du eine Route teilen, einen Abschnitt archivieren oder ihn in einem anderen Kartenwerkzeug untersuchen.",
+      "icon": "pi pi-download",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleiste öffnen",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "show-favorites-on-map",
+      "title": "Favoriten direkt auf der Zeitleistenkarte anzeigen",
+      "description": "Verwende auf der Zeitleistenseite die Kartenschaltfläche „Favoriten anzeigen“, um alle gespeicherten Favoritenpunkte und Favoritenbereiche einzublenden. So kannst du bekannte Orte beim Durchsehen deiner täglichen Bewegungen schnell wiederfinden.",
+      "icon": "pi pi-heart",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleiste öffnen",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "favorite-point-vs-area",
+      "title": "Den passenden Favoritentyp wählen: Punkt oder Bereich",
+      "description": "Favoritenpunkte stehen für einen genauen Ort und ordnen GPS-Aufzeichnungen innerhalb deines Aufenthaltserkennungsradius zu. Favoritenbereiche sind Rechtecke auf der Karte und erfassen alle Aufzeichnungen innerhalb dieses Gebiets. Sie eignen sich besser für Hochschulgelände, Parks, Einkaufszentren und andere größere Flächen.",
+      "icon": "pi pi-map-marker",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Favoritenverwaltung öffnen",
+          "url": "/app/favorites-management"
+        }
+      ]
+    },
+    {
+      "id": "manage-favorites",
+      "title": "Favoriten in der Zeitleiste oder auf der Verwaltungsseite bearbeiten",
+      "description": "Du kannst Favoritenorte direkt auf der Zeitleistenkarte beim Durchsehen deiner Daten erstellen und bearbeiten. In der Favoritenverwaltung kannst du viele Einträge auf einmal bereinigen und gezielt bearbeiten.",
+      "icon": "pi pi-star",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Favoritenverwaltung",
+          "url": "/app/favorites-management"
+        },
+        {
+          "label": "Dokumentation zur Ortsverwaltung",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/managing-places"
+        }
+      ]
+    },
+    {
+      "id": "journey-insights-overview",
+      "title": "Langfristige Meilensteine in den Reiseeinblicken verfolgen",
+      "description": "Die Reiseeinblicke fassen deine erkundeten Orte mit Meilensteinen und Fortschrittsansichten zusammen. So siehst du auf Länder- und Stadtebene, wo du im Laufe der Zeit gewesen bist – über die täglichen Bewegungen hinaus.",
+      "icon": "pi pi-compass",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Reiseeinblicke öffnen",
+          "url": "/app/journey-insights"
+        },
+        {
+          "label": "Dokumentation zu Reiseeinblicken",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/journey-insights"
+        }
+      ]
+    },
+    {
+      "id": "rewind-heatmaps",
+      "title": "Monatliche und jährliche Heatmaps im Rückblick nutzen",
+      "description": "Der Rückblick hilft dir mit detaillierten Zeitraumansichten und Heatmaps, frühere Bewegungsmuster zu analysieren. Er eignet sich besonders dafür, saisonale Muster zu erkennen und verschiedene Monate oder Jahre zu vergleichen.",
+      "icon": "pi pi-calendar",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Rückblick öffnen",
+          "url": "/app/rewind"
+        },
+        {
+          "label": "Dokumentation zum Rückblick",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/rewind"
+        }
+      ]
+    },
+    {
+      "id": "geofences-for-you-and-friends",
+      "title": "Betreten und Verlassen mit Geofences verfolgen",
+      "description": "Richte Geofence-Regeln ein, um das Betreten und Verlassen von Gebieten für dich selbst und für Freunde zu erkennen, die ihren Live-Standort mit dir teilen. Nutze dies für Ankunftsmeldungen, regelmäßige Abläufe oder die Anbindung von Automatisierungen.",
+      "icon": "pi pi-map",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Geofences öffnen",
+          "url": "/app/geofences"
+        },
+        {
+          "label": "Dokumentation zu Geofences",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/geofences"
+        }
+      ]
+    },
+    {
+      "id": "ai-setup-and-chat",
+      "title": "KI mit deinem eigenen Schlüssel oder Server einrichten",
+      "description": "In den Profileinstellungen kannst du einen OpenAI-kompatiblen Schlüssel und Endpunkt einrichten. Im KI-Chat kannst du dann Fragen zu deinen Zeitleistendaten und – mit entsprechender Freigabe – zu den Daten deiner Freunde stellen.",
+      "icon": "pi pi-sparkles",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "KI-Einstellungen",
+          "url": "/app/profile?tab=ai"
+        },
+        {
+          "label": "KI-Chat öffnen",
+          "url": "/app/ai/chat"
+        }
+      ]
+    },
+    {
+      "id": "location-analytics-drilldown",
+      "title": "Mit Standortanalysen ins Detail gehen",
+      "description": "Die Standortanalyse führt dich von Ländern über Städte bis zu einzelnen Orten. Nutze Karten- und Listenansichten gemeinsam, um zu sehen, wo du die meiste Zeit verbringst und am häufigsten unterwegs bist.",
+      "icon": "pi pi-globe",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Standortanalyse öffnen",
+          "url": "/app/location-analytics?tab=map"
+        }
+      ]
+    },
+    {
+      "id": "timeline-preferences-rebuild",
+      "title": "Die Zeitleiste in den Einstellungen anpassen",
+      "description": "Passe die Erkennungs- und Klassifizierungseinstellungen der Zeitleiste an deine Fortbewegung und Datenqualität an. Nach relevanten Einstellungsänderungen berechnet GeoPulse die Zeitleiste automatisch neu.",
+      "icon": "pi pi-sliders-h",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleisten-Einstellungen",
+          "url": "/app/timeline/preferences"
+        }
+      ]
+    },
+    {
+      "id": "share-links-live-and-timeline",
+      "title": "Live-Standort oder Zeitleiste mit Gästen teilen",
+      "description": "Erstelle über Freigabelinks gezielte Freigaben für deinen Live-Standort und Zeitleistenverlauf. Je nach Freigabeeinstellungen können angemeldete Benutzer und Gäste diese Links verwenden.",
+      "icon": "pi pi-share-alt",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Freigabelinks öffnen",
+          "url": "/app/share-links"
+        }
+      ]
+    },
+    {
+      "id": "trip-type-override",
+      "title": "Fortbewegungsart bei Bedarf korrigieren",
+      "description": "Wenn GeoPulse eine Bewegung falsch einordnet, öffne die Zeitleiste und ändere die Fortbewegungsart manuell. Deine Korrektur sorgt dafür, dass Analysen und Berichte deine tatsächliche Fortbewegung widerspiegeln.",
+      "icon": "pi pi-pencil",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleiste öffnen",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "Dokumentation zur Zeitleiste",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/timeline"
+        }
+      ]
+    },
+    {
+      "id": "classification-explainer",
+      "title": "Die Einordnung einer Strecke nachvollziehen",
+      "description": "Klicke in der Zeitleiste mit der rechten Maustaste auf eine Streckenkarte und öffne „Warum diese Fortbewegungsart?“, um die Entscheidung für die gewählte Fortbewegungsart nachzuvollziehen.",
+      "icon": "pi pi-info-circle",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleiste öffnen",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "enable-more-trip-types",
+      "title": "Erkennung für Fahrrad, Laufen und Zug aktivieren",
+      "description": "Aktiviere in den Zeitleisten-Einstellungen weitere Fortbewegungsarten und passe die zugehörigen Schwellenwerte an. So wird die Einordnung von Wegen ohne Auto genauer.",
+      "icon": "pi pi-cog",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleisten-Einstellungen",
+          "url": "/app/timeline/preferences?tab=trips"
+        }
+      ]
+    },
+    {
+      "id": "friends-sharing",
+      "title": "Freunde hinzufügen und ihre Zugriffsrechte festlegen",
+      "description": "Sende auf der Freundeseite Anfragen und richte die Freigaben für Live-Standort und Zeitleistenverlauf getrennt ein. So behältst du die Kontrolle darüber, welche Daten du teilst.",
+      "icon": "pi pi-users",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Freundeseite öffnen",
+          "url": "/app/friends"
+        }
+      ]
+    },
+    {
+      "id": "setup-admin-user",
+      "title": "Deinem Konto Administratorrechte geben",
+      "description": "Setze GEOPULSE_ADMIN_EMAIL in deiner .env auf die E-Mail-Adresse deines Benutzerkontos und starte GeoPulse neu. Melde dich danach ab und wieder an. Anschließend sind die Verwaltungsseiten und Systemeinstellungen für dein Konto verfügbar.",
+      "icon": "pi pi-shield",
+      "audiences": [
+        "non_admin"
+      ],
+      "links": [
+        {
+          "label": "Dokumentation zur Verwaltungseinrichtung",
+          "url": "https://geopulse.cc/docs/system-administration/configuration/admin-panel"
+        }
+      ]
+    },
+    {
+      "id": "disable-registration",
+      "title": "Registrierung neuer Benutzer steuern",
+      "description": "Administratoren können die öffentliche Registrierung in den Systemeinstellungen deaktivieren, wenn die Instanz nur auf Einladung zugänglich sein oder der Zugang stärker eingeschränkt werden soll.",
+      "icon": "pi pi-user-minus",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "Authentifizierungseinstellungen",
+          "url": "/app/admin/settings?tab=authentication"
+        }
+      ]
+    },
+    {
+      "id": "configure-geocoding",
+      "title": "Globale Anbieter für Rückwärts-Geocodierung festlegen",
+      "description": "Administratoren können für die gesamte Instanz den primären und den Ersatzanbieter für Rückwärts-Geocodierung einrichten, einschließlich API-Schlüsseln und anbieterspezifischen Optionen.",
+      "icon": "pi pi-map-marker",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "Geocodierungseinstellungen",
+          "url": "/app/admin/settings?tab=geocoding"
+        }
+      ]
+    },
+    {
+      "id": "schedule-encrypted-backups",
+      "title": "Verschlüsselte Sicherungen planen",
+      "description": "Administratoren können in den Verwaltungseinstellungen den Speicherort und ein Passwort für Sicherungen festlegen und anschließend vollständige Sicherungen nach einem Cron-Zeitplan aktivieren. Eine vertrauenswürdige Sicherung lässt sich auf derselben Seite mit ihrem Passwort wiederherstellen.",
+      "icon": "pi pi-file-export",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "Sicherung & Wiederherstellung öffnen",
+          "url": "/app/admin/settings?tab=backup"
+        },
+        {
+          "label": "Dokumentation zu Sicherung & Wiederherstellung",
+          "url": "https://geopulse.cc/docs/system-administration/maintenance/backup-restore"
+        }
+      ]
+    },
+    {
+      "id": "configure-map-matching",
+      "title": "Routen mit Kartenabgleich verfeinern",
+      "description": "Administratoren können einen Valhalla-Server einrichten und den Kartenabgleich global aktivieren. Benutzer können dann angepasste Routen entlang der Straßen verwenden. Die GPS-Rohdaten bleiben unverändert.",
+      "icon": "pi pi-map",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "Kartenabgleich-Einstellungen öffnen",
+          "url": "/app/admin/settings?tab=map-matching"
+        },
+        {
+          "label": "Dokumentation zum Kartenabgleich",
+          "url": "https://geopulse.cc/docs/user-guide/timeline/map-matching"
+        }
+      ]
+    },
+    {
+      "id": "connect-an-ai-client-with-mcp",
+      "title": "Einen KI-Client über MCP verbinden",
+      "description": "MCP (Model Context Protocol) ermöglicht ChatGPT und anderen KI-Clients den Lesezugriff auf die Zeitleistenwerkzeuge von GeoPulse. Es ist standardmäßig aktiviert. Erstelle vor dem Verbinden unter Profil → Sicherheit einen API-Token.",
+      "icon": "pi pi-sparkles",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Dokumentation zum MCP-Server",
+          "url": "https://geopulse.cc/docs/api/mcp"
+        },
+        {
+          "label": "API-Tokens öffnen",
+          "url": "/app/profile?tab=security"
+        }
+      ]
+    },
+    {
+      "id": "split-a-trip-with-a-stay",
+      "title": "Eine Strecke an einem übersehenen Stopp teilen",
+      "description": "Wenn GeoPulse einen wichtigen Stopp in eine durchgehende Strecke einordnet, öffne das Kontextmenü der Strecke und wähle „Strecke mit Aufenthalt teilen …“. Daraus wird Strecke → Aufenthalt → Strecke. Die Korrektur bleibt nach einer Neuberechnung erhalten.",
+      "icon": "pi pi-directions-alt",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitleiste öffnen",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "Dokumentation zur manuellen Streckenteilung",
+          "url": "https://geopulse.cc/docs/user-guide/timeline/manual-trip-split"
+        }
+      ]
+    },
+    {
+      "id": "weather-on-your-timeline",
+      "title": "Wetter entlang deiner Zeitleiste anzeigen",
+      "description": "Wetterdaten ergänzen Aufenthalte, Strecken, Zeitleistenkarten und Reiseeinblicke. Die laufende Erfassung ist standardmäßig aktiviert. Ein Administrator kann zusätzlich historische Wetterdaten nachladen.",
+      "icon": "pi pi-cloud",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Dokumentation zu Wetterdaten",
+          "url": "https://geopulse.cc/docs/system-administration/configuration/weather"
+        }
+      ]
+    },
+    {
+      "id": "timeline-local-time-zone",
+      "title": "Unterwegs Zeiten in der lokalen Zeitzone anzeigen",
+      "description": "Wähle unter Profil → Allgemein die „Zeitzone der Zeitleiste“, um Zeiten in der Zeitleiste und in GPS-Daten in der lokalen Zeitzone des besuchten Ortes anzuzeigen. Das ist besonders bei Auslandsreisen hilfreich. Die Tage werden weiterhin nach deiner Profilzeitzone gruppiert. Die Option erscheint nur, wenn der Server GeoNames-Städtedaten geladen hat.",
+      "icon": "pi pi-clock",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Zeitzone der Zeitleiste",
+          "url": "/app/profile?tab=general&setting=timeDisplayMode"
+        }
+      ]
+    },
+    {
+      "id": "enable-3d-buildings",
+      "title": "3D-Gebäude aktivieren",
+      "description": "Aktiviere unter Profil → Zeitleiste & Karte die Option „3D-Gebäude“, um beim Heranzoomen auf Straßenebene Gebäudeformen anzuzeigen. Dies funktioniert nur im Vektor-Kartenmodus (MapLibre) und mit Kartenstilen, die Gebäudehöhen enthalten.",
+      "icon": "pi pi-building",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Einstellung für 3D-Gebäude",
+          "url": "/app/profile?tab=timeline&setting=enable3dBuildingsByDefault"
+        }
+      ]
+    },
+    {
+      "id": "profile-appearance-colors",
+      "title": "Farben der Zeitleiste im Erscheinungsbild anpassen",
+      "description": "Unter Profil → Erscheinungsbild kannst du Farben und Linienstile für Wege, Geschwindigkeit und Heatmaps ändern. Voreinstellungen für Farbsehschwächen passen alles in einem Schritt an. Eine Live-Vorschau zeigt das Ergebnis auf hellen, dunklen und Satellitenkarten.",
+      "icon": "pi pi-palette",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Erscheinungsbild öffnen",
+          "url": "/app/profile?tab=appearance"
+        }
+      ]
+    },
+    {
+      "id": "profile-notification-settings",
+      "title": "Festlegen, welche Benachrichtigungen du erhältst",
+      "description": "Unter Profil → Benachrichtigungen kannst du GPS-Statuswarnungen, die monatliche Rückblick-Erinnerung und Neuigkeiten zu Versionen einstellen. GPS-Statuswarnungen und Rückblick-Erinnerungen können im Posteingang der App, über Apprise oder auf beiden Wegen zugestellt werden.",
+      "icon": "pi pi-bell",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "Benachrichtigungen öffnen",
+          "url": "/app/profile?tab=notifications"
+        }
+      ]
+    }
+  ]
+}

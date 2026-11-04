@@ -70,7 +70,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import dayjs from 'dayjs'
 import { useTimezone } from '@/composables/useTimezone'
 import { te } from '@/locales'
 import {
@@ -79,12 +78,6 @@ import {
   formatWindSpeed,
   getWeatherCodeInfo
 } from '@/utils/weatherDisplay'
-
-const DATE_FORMAT_PATTERNS = {
-  MDY: 'MM/DD/YYYY',
-  DMY: 'DD/MM/YYYY',
-  YMD: 'YYYY-MM-DD'
-}
 
 const props = defineProps({
   weather: {
@@ -161,8 +154,7 @@ const formatLocalDate = (date) => {
   if (!date) {
     return t('weather.insights.dateUnavailable')
   }
-  const pattern = DATE_FORMAT_PATTERNS[timezone.getDateFormat()] || DATE_FORMAT_PATTERNS.MDY
-  return dayjs(date).format(pattern)
+  return timezone.formatCalendarDateDisplay(date)
 }
 
 const formatSampleLocation = (sample) => {

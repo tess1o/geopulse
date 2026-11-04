@@ -5,6 +5,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.github.tess1o.geopulse.digest.model.ActivityChartData;
 import org.github.tess1o.geopulse.digest.model.DigestMetrics;
+import org.github.tess1o.geopulse.digest.model.DigestHighlight;
 import org.github.tess1o.geopulse.digest.model.PeriodInfo;
 import org.github.tess1o.geopulse.digest.model.TimeDigest;
 import org.github.tess1o.geopulse.immich.model.ImmichConfigResponse;
@@ -23,6 +24,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +40,26 @@ import static org.mockito.Mockito.when;
 
 @Tag("unit")
 class DigestPdfServiceTest {
+    @Test
+    void formatsHighlightDatesWithDottedDmy() throws Exception {
+        TimeDigest digest = TimeDigest.builder()
+                .period(PeriodInfo.builder().year(2026).month(11).build())
+                .metrics(DigestMetrics.builder().totalDistance(1_000).build())
+                .highlights(DigestHighlight.builder()
+                        .longestTrip(DigestHighlight.TripHighlight.builder()
+                                .date(Instant.parse("2026-11-04T12:00:00Z"))
+                                .distance(1_000).build())
+                        .build())
+                .build();
+        UserEntity user = UserEntity.builder().id(UUID.randomUUID()).timezone("Europe/Berlin")
+                .uiPreferences(UserUiPreferences.builder().dateFormat("DMY_DOT")
+                        .distanceUnit(DistanceUnit.KILOMETERS).build()).build();
+
+        try (var pdf = Loader.loadPDF(new DigestPdfService().generate(digest, user, false))) {
+            assertThat(new PDFTextStripper().getText(pdf)).contains("04.11.2026");
+        }
+    }
+
     @Test
     void generatesReadableUnicodeReport() throws Exception {
         TimeDigest digest = TimeDigest.builder()

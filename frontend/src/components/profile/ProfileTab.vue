@@ -454,6 +454,7 @@ const temperatureUnitOptions = computed(() => [
 
 const dateFormatOptions = computed(() => [
   { label: t('profile.general.dateFormatOptions.dmy'), value: 'DMY' },
+  { label: t('profile.general.dateFormatOptions.dmyDot'), value: 'DMY_DOT' },
   { label: t('profile.general.dateFormatOptions.mdy'), value: 'MDY' },
   { label: t('profile.general.dateFormatOptions.ymd'), value: 'YMD' }
 ])
