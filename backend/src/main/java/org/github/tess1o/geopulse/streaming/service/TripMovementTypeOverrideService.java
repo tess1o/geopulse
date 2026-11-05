@@ -143,6 +143,13 @@ public class TripMovementTypeOverrideService {
      */
     @Transactional
     public void addPendingOverride(UUID userId, SourceTrip source, TripType movementType) {
+        if (source.durationSeconds() <= 0) {
+            // A correction with no length can never match a trip after a regeneration, and an empty anchor
+            // cannot be represented as a timeline edit.
+            log.warn("Not recording a {} correction for user {}: source trip at {} has no positive duration",
+                    movementType, userId, source.start());
+            return;
+        }
         List<TimelineTripMovementOverrideEntity> existing = new ArrayList<>(
                 overrideRepository.findByUserIdAndSource(userId, source.start(), source.durationSeconds()));
         // A repeated reconstruction or undo must update the one correction for this travelled interval, not add
@@ -269,6 +276,13 @@ public class TripMovementTypeOverrideService {
     }
 
     private void upsertOverride(UUID userId, TimelineTripEntity trip, String movementType) {
+        if (trip.getTripDuration() <= 0) {
+            // A trip with no length cannot be matched again after a regeneration, and remembering it would
+            // create an anchor with an empty interval.
+            log.warn("Not recording a {} correction for user {}: trip {} has no positive duration",
+                    movementType, userId, trip.getId());
+            return;
+        }
         TimelineTripMovementOverrideEntity override = overrideRepository.findByUserIdAndTripId(userId, trip.getId())
                 .orElseGet(() -> TimelineTripMovementOverrideEntity.builder()
                         .user(entityManager.getReference(UserEntity.class, userId))

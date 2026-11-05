@@ -130,6 +130,17 @@ public class GeoPulseTimelineDetailsImporter {
             if (dto.getSourceTripTimestamp() == null || shouldSkipDueToDateFilter(dto.getSourceTripTimestamp(), job)) {
                 continue;
             }
+            if (dto.getSourceTripDurationSeconds() == null || dto.getSourceTripDurationSeconds() <= 0) {
+                log.warn("Skipping trip movement override at {} for user {}: source trip duration is missing or not positive",
+                        dto.getSourceTripTimestamp(), job.getUserId());
+                continue;
+            }
+            String movementType = validTripTypeOrNull(dto.getMovementType());
+            if (movementType == null) {
+                log.warn("Skipping trip movement override at {} for user {}: '{}' is not a trip type",
+                        dto.getSourceTripTimestamp(), job.getUserId(), dto.getMovementType());
+                continue;
+            }
             TimelineTripMovementOverrideEntity entity = entityManager.createQuery("""
                             SELECT override FROM TimelineTripMovementOverrideEntity override
                             WHERE override.user.id = :userId
@@ -138,17 +149,17 @@ public class GeoPulseTimelineDetailsImporter {
                             """, TimelineTripMovementOverrideEntity.class)
                     .setParameter("userId", job.getUserId())
                     .setParameter("timestamp", dto.getSourceTripTimestamp())
-                    .setParameter("duration", dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds())
+                    .setParameter("duration", dto.getSourceTripDurationSeconds())
                     .getResultStream()
                     .findFirst()
                     .orElseGet(TimelineTripMovementOverrideEntity::new);
 
             entity.setUser(user);
-            entity.setMovementType(dto.getMovementType());
+            entity.setMovementType(movementType);
             Long mappedTripId = resolveMappedId(dto.getTripId(), referenceMaps.timelineTripIds);
             entity.setTrip(mappedTripId == null ? null : entityManager.getReference(TimelineTripEntity.class, mappedTripId));
             entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
-            entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
+            entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds());
             entity.setSourceDistanceMeters(dto.getSourceDistanceMeters() == null ? 0L : dto.getSourceDistanceMeters());
             entity.setSourceStartLatitude(defaultDouble(dto.getSourceStartLatitude()));
             entity.setSourceStartLongitude(defaultDouble(dto.getSourceStartLongitude()));
@@ -261,6 +272,7 @@ public class GeoPulseTimelineDetailsImporter {
         int stayNames = 0;
         for (TimelineOverridesDataDto.StayNameOverrideDto dto : emptyIfNull(data.getStayNameOverrides())) {
             if (dto.getStayStartTime() == null || dto.getStayEndTime() == null || dto.getLocationName() == null
+                    || dto.getLocationName().isBlank()
                     || shouldSkipDueToDateFilter(dto.getStayStartTime(), job)) {
                 continue;
             }

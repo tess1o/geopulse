@@ -1,5 +1,15 @@
 [
   {
+    "version": "2.2.1",
+    "title": "GeoPulse 2.2.1",
+    "highlights": [
+      "Fixed an upgrade failure in 2.2.0 where a manual transport-type correction with an empty time range could stop the database migration and leave the backend restarting",
+      "The upgrade now repairs these corrections automatically: the trip duration is restored where possible, and corrections that can no longer be applied are skipped",
+      "Saved corrections with an unknown transport type or a blank visit label no longer interrupt timeline rebuilding"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.2.1"
+  },
+  {
     "version": "2.2.0",
     "title": "GeoPulse 2.2.0",
     "highlights": [
