@@ -8,7 +8,7 @@ configure multiple providers with automatic fallback support. **This configurati
 | Property                      | Default | Description                                                                                                                                                            |
 |-------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GEOPULSE_GEOCODING_DELAY_MS` | `1000`  | A delay in milliseconds between sending requests to geocoding provider.<br/> Nomatim's default rate limit is 1req/s. For selfhosted solutions change it to lower value |
-| `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` | `5000` | Maximum provider bounding box area (km²) accepted for cache containment matching. Oversized bboxes are dropped and matching falls back to coordinate tolerance. |
+| `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` | `5000` | Maximum provider bounding box area (km²) accepted for cache containment matching. The area is measured on the lon/lat rectangle used for containment matching, so world-spanning and antimeridian-crossing boxes are also rejected. Oversized bboxes are dropped and matching falls back to coordinate tolerance. |
 
 ## Resilience Tuning
 
@@ -96,7 +96,7 @@ primary/fallback setting first, then edit or remove the provider.
 > **Provider switch behavior:** changing primary/fallback provider affects only new lookups.
 > Existing cached geocoding records are reused until you run reconciliation from the Reverse Geocoding Management page.
 >
-> **BBox safety behavior:** provider bboxes larger than `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` are automatically dropped, so they cannot over-match unrelated points.
+> **BBox safety behavior:** provider bboxes larger than `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` are automatically dropped, so they cannot over-match unrelated points. Area is measured on the same lon/lat rectangle used for containment matching, which also catches boxes spanning the full longitude range or the antimeridian.
 
 ## Service Setup
 

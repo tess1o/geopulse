@@ -128,6 +128,8 @@ public class GeocodingCopyOnWriteHandler {
         ReverseGeocodingLocationEntity userCopy = entityMapper.createUserCopyWithValues(
                 userId, original,
                 updateDTO.getDisplayName(), updateDTO.getCity(), updateDTO.getCountry());
+        userCopy.setBoundingBox(boundingBoxGuardService.sanitizeForPersistence(
+                userCopy.getBoundingBox(), userCopy.getProviderName(), null));
 
         repository.persist(userCopy);
 
