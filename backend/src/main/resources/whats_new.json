@@ -1,5 +1,21 @@
 [
   {
+    "version": "2.2.0",
+    "title": "GeoPulse 2.2.0",
+    "highlights": [
+      "GeoPulse is now available in German, alongside English and Ukrainian",
+      "Faster timeline loading and lower memory use during timeline generation, with improvements for large GPS histories, map paths, map matching and statistics",
+      "Expanded timeline editing: change visit locations, visit labels, times and transport types; split visits, add missed stops, merge compatible visits or trips, and remove incorrect events. Review structural changes before saving",
+      "New Add missing activity flow on Timeline & Map and in Trip Workspace: fill missing time with one or more visits or trips, choose places on the map, and enter times or use recorded GPS timestamps. Recorded GPS data stays unchanged",
+      "Choose the correct place from a provider's results when reconciling a single location in Geocoding Management. Review address details and distance from the recorded coordinates before saving",
+      "New \"Show Unknown Activity\" setting in Profile -> Timeline Display: hide gap cards and dates without recorded visits or trips without changing your timeline data",
+      "Walking trips are less likely to be mistaken for running when GPS position jumps inflate the calculated distance",
+      "Memos now automatically detects the supported API path, improving compatibility across Memos versions",
+      "Fixed Admin settings backup restore when the application log level is inherited from deployment settings"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.2.0"
+  },
+  {
     "version": "2.1.1",
     "title": "GeoPulse 2.1.1",
     "highlights": [
