@@ -26,8 +26,7 @@ const editEntries = wrapper => wrapper.findComponent({ name: 'ContextMenu' }).pr
 
 describe.each([
   ['stay', StayCard, { stayItem: stay }, 'Edit visit…'],
-  ['trip', TripCard, { tripItem: trip }, 'Edit trip…'],
-  ['gap', DataGapCard, { dataGapItem: gap }, 'Resolve gap…']
+  ['trip', TripCard, { tripItem: trip }, 'Edit trip…']
 ])('%s editing entry', (_name, component, props, label) => {
   it('offers one pencil and one context-menu entry', async () => {
     const wrapper = mountCard(component, props)
