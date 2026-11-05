@@ -23754,7 +23754,7 @@ paths:
       - apiKey: []
 info:
   title: GeoPulse API
-  version: 2.2.0
+  version: 2.2.1
   description: "REST API of GeoPulse, a self-hosted location timeline. Authentication,\
     \ examples, and guides: https://geopulse.cc/docs/api/intro"
   contact:
