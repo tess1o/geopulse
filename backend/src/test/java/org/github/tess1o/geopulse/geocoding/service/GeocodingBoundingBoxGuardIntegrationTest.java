@@ -60,6 +60,38 @@ class GeocodingBoundingBoxGuardIntegrationTest {
 
     @Test
     @Transactional
+    @DisplayName("World-spanning provider bbox is dropped during cache persistence")
+    void testWorldSpanningBboxIsDroppedOnCacheWrite() {
+        // Issue #648: ST_Area(::geography) reports 0 for this box because the
+        // -180/+180 edges collapse onto the antimeridian.
+        Point point = coord(18.060445, 59.330409);
+        Polygon worldBbox = GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -180, 180);
+
+        cacheGeocodingService.cacheGeocodingResult(buildResult(point, worldBbox, "Nominatim World"));
+
+        ReverseGeocodingLocationEntity persisted = repository.findOriginalByExactCoordinates(point);
+        assertNotNull(persisted);
+        assertNull(persisted.getBoundingBox(), "World-spanning bbox should be stored as null");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Near-world-spanning provider bbox is dropped during cache persistence")
+    void testNearWorldSpanningBboxIsDroppedOnCacheWrite() {
+        // Geography area sees only the tiny antimeridian-side complement here,
+        // while planar containment covers almost the whole planet.
+        Point point = coord(18.060545, 59.330509);
+        Polygon nearWorldBbox = GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -179.9995, 179.9995);
+
+        cacheGeocodingService.cacheGeocodingResult(buildResult(point, nearWorldBbox, "Nominatim Near World"));
+
+        ReverseGeocodingLocationEntity persisted = repository.findOriginalByExactCoordinates(point);
+        assertNotNull(persisted);
+        assertNull(persisted.getBoundingBox(), "Near-world-spanning bbox should be stored as null");
+    }
+
+    @Test
+    @Transactional
     @DisplayName("Safe provider bbox is preserved during cache persistence")
     void testSafeBboxIsPreservedOnCacheWrite() {
         Point point = coord(18.060145, 59.330109);
@@ -74,9 +106,10 @@ class GeocodingBoundingBoxGuardIntegrationTest {
 
     @Test
     @Transactional
-    @DisplayName("Migration update nulls oversized bbox and keeps safe bbox")
+    @DisplayName("Migration update nulls oversized and world-spanning bboxes and keeps safe bbox")
     void testMigrationSqlBehavior() {
         Point oversizedPoint = coord(18.060245, 59.330209);
+        Point worldPoint = coord(18.060645, 59.330609);
         Point safePoint = coord(18.060345, 59.330309);
 
         ReverseGeocodingLocationEntity oversized = new ReverseGeocodingLocationEntity();
@@ -88,6 +121,16 @@ class GeocodingBoundingBoxGuardIntegrationTest {
         oversized.setCity("Stockholm");
         oversized.setCountry("Sweden");
         repository.persist(oversized);
+
+        ReverseGeocodingLocationEntity worldSpanning = new ReverseGeocodingLocationEntity();
+        worldSpanning.setRequestCoordinates(worldPoint);
+        worldSpanning.setResultCoordinates(worldPoint);
+        worldSpanning.setBoundingBox(GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -180, 180));
+        worldSpanning.setDisplayName("World For Migration");
+        worldSpanning.setProviderName("Nominatim");
+        worldSpanning.setCity("Stockholm");
+        worldSpanning.setCountry("Sweden");
+        repository.persist(worldSpanning);
 
         ReverseGeocodingLocationEntity safe = new ReverseGeocodingLocationEntity();
         safe.setRequestCoordinates(safePoint);
@@ -105,19 +148,22 @@ class GeocodingBoundingBoxGuardIntegrationTest {
                 UPDATE reverse_geocoding_location
                 SET bounding_box = NULL
                 WHERE bounding_box IS NOT NULL
-                  AND ST_Area(bounding_box::geography) > 5000000000
+                  AND geopulse_geocoding_bbox_area_km2(bounding_box) > 5000
                 """).executeUpdate();
 
-        assertTrue(updatedRows >= 1, "At least the seeded oversized row should be nulled");
+        assertTrue(updatedRows >= 2, "The seeded oversized and world-spanning rows should be nulled");
 
         entityManager.flush();
         entityManager.clear();
 
         ReverseGeocodingLocationEntity oversizedReloaded = repository.findById(oversized.getId());
+        ReverseGeocodingLocationEntity worldSpanningReloaded = repository.findById(worldSpanning.getId());
         ReverseGeocodingLocationEntity safeReloaded = repository.findById(safe.getId());
         assertNotNull(oversizedReloaded);
+        assertNotNull(worldSpanningReloaded);
         assertNotNull(safeReloaded);
         assertNull(oversizedReloaded.getBoundingBox(), "Oversized bbox should be nulled");
+        assertNull(worldSpanningReloaded.getBoundingBox(), "World-spanning bbox should be nulled");
         assertNotNull(safeReloaded.getBoundingBox(), "Safe bbox should remain");
     }
 

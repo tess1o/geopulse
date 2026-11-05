@@ -69,7 +69,7 @@ public class CacheGeocodingService {
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaSquareMeters()
+                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaKm2()
             );
 
             if (match != null) {
@@ -104,7 +104,7 @@ public class CacheGeocodingService {
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaSquareMeters()
+                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaKm2()
             );
 
             if (match != null) {
@@ -230,10 +230,10 @@ public class CacheGeocodingService {
             || message.contains("duplicate key value");
     }
 
-    private double getMaxBboxAreaSquareMeters() {
+    private double getMaxBboxAreaKm2() {
         double maxArea = settingsService == null
                 ? maxBboxAreaKm2
                 : settingsService.getInteger("geocoding.cache.max-bbox-area-km2");
-        return Math.max(0d, maxArea) * 1_000_000d;
+        return Math.max(0d, maxArea);
     }
 }

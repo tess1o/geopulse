@@ -332,7 +332,7 @@ class ReverseGeocodingLocationRepositoryTest {
         entityManager.flush();
 
         ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
-                USER_A_ID, queryCoords, 25.0, 5_000_000_000d);
+                USER_A_ID, queryCoords, 25.0, 5_000d);
 
         if (result != null) {
             assertNotEquals(entity.getId(), result.getId(),
@@ -359,7 +359,7 @@ class ReverseGeocodingLocationRepositoryTest {
         entityManager.flush();
 
         ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
-                USER_A_ID, queryCoords, 1.0, 5_000_000_000d);
+                USER_A_ID, queryCoords, 1.0, 5_000d);
 
         assertNotNull(result, "Safe bbox should still be usable for containment");
         assertEquals(entity.getId(), result.getId());
@@ -382,10 +382,80 @@ class ReverseGeocodingLocationRepositoryTest {
         entityManager.flush();
 
         ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
-                USER_A_ID, queryCoords, 25.0, 5_000_000_000d);
+                USER_A_ID, queryCoords, 25.0, 5_000d);
 
         assertNotNull(result);
         assertEquals(distanceMatch.getId(), result.getId(), "Distance match must be ranked before bbox-only match");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Test 11e: Spatial query ignores world-spanning bounding boxes")
+    void testSpatialQueryIgnoresWorldSpanningBoundingBox() {
+        // Reporter data from issue #648: Nominatim's country-level bbox for the
+        // United States. ST_Area(bbox::geography) reports 0 for it, while planar
+        // containment covers every point in its latitude band.
+        Point requestCoords = coord(-91.07738813, 29.12097313);
+        Point queryCoords = coord(-80.34112934, 36.06629856);
+
+        Polygon worldBbox = GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -180, 180);
+        ReverseGeocodingLocationEntity entity = createOriginalWithBoundingBox(requestCoords, "World BBox", worldBbox);
+        repository.persist(entity);
+        entityManager.flush();
+
+        ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
+                USER_A_ID, queryCoords, 25.0, 5_000d);
+
+        if (result != null) {
+            assertNotEquals(entity.getId(), result.getId(),
+                    "World-spanning bbox containment should be ignored");
+        }
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Test 11f: Batch query ignores world-spanning bounding boxes")
+    void testBatchQueryIgnoresWorldSpanningBoundingBox() {
+        Point requestCoords = coord(-91.07748813, 29.12107313);
+        Point queryCoords = coord(-80.34122934, 36.06639856);
+
+        Polygon worldBbox = GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -180, 180);
+        ReverseGeocodingLocationEntity entity = createOriginalWithBoundingBox(requestCoords, "World BBox Batch", worldBbox);
+        repository.persist(entity);
+        entityManager.flush();
+
+        Map<String, ReverseGeocodingLocationEntity> results = repository.findByCoordinatesBatchReal(
+                USER_A_ID, List.of(queryCoords), 25.0, 5_000d);
+
+        ReverseGeocodingLocationEntity result = results.get(queryCoords.getX() + "," + queryCoords.getY());
+        if (result != null) {
+            assertNotEquals(entity.getId(), result.getId(),
+                    "World-spanning bbox containment should be ignored in batch mode");
+        }
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Test 11g: User-specific copy with world-spanning bbox cannot hijack lookups")
+    void testUserCopyWithWorldSpanningBboxDoesNotHijackLookups() {
+        // The reported failure: a renamed copy (user-specific rows win the
+        // ordering) with a country-level bbox matched unrelated stays.
+        Point requestCoords = coord(-91.07758813, 29.12117313);
+        Point queryCoords = coord(-80.34132934, 36.06649856);
+
+        Polygon worldBbox = GeoUtils.buildBoundingBoxPolygon(-14.7608358, 71.5889534, -180, 180);
+        ReverseGeocodingLocationEntity userCopy = createUserCopy(USER_A_ID, requestCoords, "Stone Mountain State Park");
+        userCopy.setBoundingBox(worldBbox);
+        repository.persist(userCopy);
+        entityManager.flush();
+
+        ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
+                USER_A_ID, queryCoords, 25.0, 5_000d);
+
+        if (result != null) {
+            assertNotEquals(userCopy.getId(), result.getId(),
+                    "User-specific world-spanning bbox must not match unrelated points");
+        }
     }
 
     // ==================== Edge Case Tests ====================
