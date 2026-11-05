@@ -29,6 +29,78 @@
         "enum" : [ "SETTING_CHANGED", "SETTING_RESET", "ADMIN_SETTINGS_EXPORTED", "ADMIN_SETTINGS_IMPORTED", "ADMIN_FULL_BACKUP_CREATED", "ADMIN_FULL_BACKUP_DOWNLOADED", "ADMIN_FULL_BACKUP_IMPORTED", "ADMIN_FULL_BACKUP_DELETED", "ADMIN_FULL_RESTORE_RETRIED", "ADMIN_FULL_RESTORE_DISCARDED", "USER_ENABLED", "USER_DISABLED", "USER_DELETED", "USER_ROLE_CHANGED", "USER_PASSWORD_RESET", "OIDC_PROVIDER_CREATED", "OIDC_PROVIDER_UPDATED", "OIDC_PROVIDER_DELETED", "OIDC_PROVIDER_RESET", "INVITATION_CREATED", "INVITATION_REVOKED", "API_TOKEN_CREATED", "API_TOKEN_UPDATED", "API_TOKEN_REVOKED", "API_TOKEN_ADMIN_REVOKED", "TIMELINE_REGENERATION_CAMPAIGN_CREATED", "TIMELINE_REGENERATION_CAMPAIGN_RETRIED", "MAP_MATCHING_HISTORICAL_REBUILD", "MAP_MATCHING_CACHE_CLEARED", "ADMIN_LOGIN" ],
         "type" : "string"
       },
+      "Activity" : {
+        "required" : [ "segmentType", "startTime", "endTime" ],
+        "type" : "object",
+        "properties" : {
+          "segmentType" : {
+            "pattern" : "\\S",
+            "type" : "string",
+            "example" : "TRIP"
+          },
+          "startTime" : {
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2025-06-01T09:00:00Z"
+          },
+          "endTime" : {
+            "type" : "string",
+            "allOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            } ],
+            "example" : "2025-06-01T11:30:00Z"
+          },
+          "locationName" : {
+            "maxLength" : 500,
+            "type" : "string",
+            "example" : "Train to Lviv"
+          },
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number",
+            "example" : 49.8397
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number",
+            "example" : 24.0297
+          },
+          "favoriteId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "movementType" : {
+            "type" : "string",
+            "example" : "TRAIN"
+          },
+          "waypoints" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TripReconstructionWaypointDto"
+            }
+          },
+          "startPlace" : {
+            "$ref" : "#/components/schemas/Place"
+          },
+          "endPlace" : {
+            "$ref" : "#/components/schemas/Place"
+          },
+          "visitName" : {
+            "maxLength" : 500,
+            "type" : "string"
+          }
+        }
+      },
       "ActivityChartData" : {
         "type" : "object",
         "properties" : {
@@ -377,7 +449,7 @@
         }
       },
       "ApiErrorCode" : {
-        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "API_TOKEN_SCOPE_REQUIRED", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_DISABLED", "GPS_SOURCE_NOT_CONNECTED", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "POI_IMAGE_NOT_FOUND", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_GPS_POINT_EDIT", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "MOVEMENT_OVERRIDE_NOT_FOUND", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_LOGOUT_TOKEN_INVALID", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "PASSWORD_REGISTRATION_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "ROUTING_UNAVAILABLE", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_IN_PROGRESS", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
+        "enum" : [ "AI_API_KEY_REQUIRED", "AI_CONNECTION_FAILED", "AI_CONTEXT_TOO_LARGE", "AI_DISABLED", "AI_PROVIDER_AUTHENTICATION_FAILED", "AI_RATE_LIMITED", "API_TOKEN_INVALID", "API_TOKEN_SCOPE_REQUIRED", "ADMIN_SELF_DISABLE_FORBIDDEN", "ADMIN_SELF_DELETE_FORBIDDEN", "ADMIN_USER_NOT_FOUND", "ADMIN_USER_UPDATE_INVALID", "BOAT_SETUP_JOB_NOT_FOUND", "BACKUP_FAILED", "BACKUP_OPERATION_CONFLICT", "COVERAGE_DISABLED", "COVERAGE_ENABLED_REQUIRED", "COVERAGE_RECALCULATION_CONFLICT", "CITY_NOT_FOUND", "COUNTRY_NOT_FOUND", "CSRF_TOKEN_INVALID", "APPRISE_TEST_FAILED", "EXPORT_EXPIRED", "EXPORT_FILE_MISSING", "EXPORT_NOT_FOUND", "EXPORT_NOT_READY", "FAVORITE_ACCESS_DENIED", "FAVORITE_NOT_FOUND", "FAVORITES_BULK_CREATE_FAILED", "FAVORITES_BULK_UPDATE_FAILED", "FRIEND_INVITATION_ACCESS_DENIED", "FRIEND_INVITATION_NOT_FOUND", "FRIEND_INVITATION_RECIPIENT_NOT_FOUND", "FRIEND_INVITATION_WRONG_STATUS", "FRIEND_LOCATION_ACCESS_DENIED", "FRIEND_LOCATION_NOT_FOUND", "FRIEND_RELATIONSHIP_NOT_FOUND", "GPS_POINT_ACCESS_DENIED", "GPS_POINT_DUPLICATE", "GPS_POINT_NOT_FOUND", "GPS_SOURCE_DISABLED", "GPS_SOURCE_NOT_CONNECTED", "GPS_SOURCE_NOT_FOUND", "GEOCODING_ACCESS_DENIED", "GEOCODING_RESULT_NOT_FOUND", "IMMICH_PHOTO_NOT_FOUND", "INVALID_BOUNDING_BOX", "INVALID_POI_REQUEST", "POI_UNAVAILABLE", "POI_IMAGE_NOT_FOUND", "INVALID_BACKUP_REQUEST", "INVALID_AI_REQUEST", "INVALID_CREDENTIALS", "INVALID_DATE_RANGE", "INVALID_DEBUG_EXPORT_REQUEST", "INVALID_DIGEST_MONTH", "INVALID_DIGEST_VIEW_MODE", "INVALID_DIGEST_YEAR", "INVALID_EXPORT_REQUEST", "INVALID_FAVORITE", "INVALID_FRIEND_ID", "INVALID_FRIEND_INVITATION", "INVALID_FRIEND_TRAIL_RANGE", "INVALID_GEOFENCE_QUERY", "INVALID_GEOFENCE_RULE", "INVALID_GEOCODING_REQUEST", "INVALID_CUSTOM_GEOCODING_PROVIDER", "INVALID_GPS_SOURCE", "INVALID_GPS_QUERY", "INVALID_GPS_POINT_EDIT", "INVALID_IMMICH_CONFIG", "INVALID_IMMICH_SEARCH", "INVALID_HEATMAP_LAYER", "INVALID_HEATMAP_RANGE", "INVALID_LIMIT", "INVALID_LOCATION_SEARCH", "INVALID_LOCATION_LOOKUP", "INVALID_MAP_MATCHING_REQUEST", "INVALID_PAGE", "INVALID_STATISTICS_RANGE", "INVALID_PLACE_REQUEST", "INVALID_MEMOS_CONFIG", "INVALID_NOTE_RANGE", "INVALID_NOTE_REQUEST", "INVALID_NOTIFICATION_PREFERENCES", "INVALID_NOTIFICATION_TEMPLATE", "INVALID_TIMELINE_LABEL_DELETE_MODE", "INVALID_TIMELINE_LABEL_RANGE", "INVALID_TIMELINE_LABEL", "INVALID_RELEASE_ANNOUNCEMENT", "INVALID_RECONCILIATION_JOB_ID", "INVALID_TELEMETRY_MAPPING", "INVALID_TIMELINE_JOB_ID", "INVALID_TIMELINE_REQUEST", "INVALID_TRIP_PLAN_ITEM", "INVALID_TRIP_RECONSTRUCTION", "INVALID_TRIP_REQUEST", "INVALID_TRIP_SEARCH", "INVALID_USER_ID", "INVALID_AVATAR", "INVALID_PASSWORD", "INVALID_TIMELINE_PREFERENCES", "INVALID_ADMIN_SETTINGS", "INVALID_ADMIN_SETTINGS_BACKUP", "MAP_MATCHING_DISABLED", "MAP_MATCHING_BACKFILL_DISABLED", "MAP_MATCHING_PROVIDER_NOT_CONFIGURED", "MAP_MATCHING_MODE_INVALID", "INVALID_DEMO_PERSONA", "INVALID_INVITATION", "INVALID_IMPORT_FORMAT", "INVALID_IMPORT_FILE", "INVALID_IMPORT_FILE_TYPE", "INVALID_IMPORT_REQUEST", "INVALID_IMPORT_CHUNK", "INVALID_IMPORT_CHUNK_INDEX", "INVALID_REFRESH_TOKEN", "INVITATION_NOT_FOUND", "IMPORT_JOB_NOT_FOUND", "IMPORT_ACTIVE_JOB_CONFLICT", "IMPORT_ACTIVE_UPLOAD_CONFLICT", "IMPORT_UPLOAD_NOT_FOUND", "IMPORT_UPLOAD_EXPIRED", "IMPORT_UPLOAD_INVALID_STATE", "IMPORT_UPLOAD_INCOMPLETE", "IMPORT_FILE_TOO_LARGE", "IMPORT_CHUNK_SAVE_FAILED", "IMPORT_ASSEMBLY_FAILED", "IMPORT_FAILED", "INVALID_DEBUG_IMPORT", "DEBUG_IMPORT_FAILED", "MOBILE_SESSION_CODE_INVALID", "MOVEMENT_OVERRIDE_NOT_FOUND", "NO_FAVORITES_PROVIDED", "GEOFENCE_EVENT_NOT_FOUND", "GEOFENCE_RULE_NOT_FOUND", "NOTIFICATION_NOT_FOUND", "NOTIFICATION_TEMPLATE_NOT_FOUND", "NORMALIZATION_RULE_ACCESS_DENIED", "NORMALIZATION_RULE_NOT_FOUND", "NOTE_NOT_FOUND", "OIDC_ACCOUNT_LINKING_FAILED", "OIDC_ACCOUNT_LINKING_REQUIRED", "OIDC_AUTHENTICATION_FAILED", "OIDC_LOGIN_DISABLED", "OIDC_LOGOUT_TOKEN_INVALID", "OIDC_PROVIDER_INVALID", "OIDC_PROVIDER_NOT_FOUND", "OIDC_PROVIDER_CONFLICT", "OIDC_PROVIDER_ENVIRONMENT_ONLY", "OIDC_PROVIDER_ENVIRONMENT_MISSING", "OIDC_PROVIDER_CONNECTION_FAILED", "OIDC_REGISTRATION_DISABLED", "PASSWORD_LOGIN_DISABLED", "PASSWORD_REGISTRATION_DISABLED", "DEMO_LOGIN_UNAVAILABLE", "DEMO_PERSONA_NOT_FOUND", "REFRESH_TOKEN_REQUIRED", "PLACE_NOT_FOUND", "PLACE_RENAME_NOT_ALLOWED", "TIMELINE_LABEL_NOT_FOUND", "LOCATION_VISITS_NOT_FOUND", "RECONCILIATION_ALREADY_ACTIVE", "RECONCILIATION_JOB_ACCESS_DENIED", "RECONCILIATION_JOB_NOT_FOUND", "RESTORE_OPERATION_CONFLICT", "RESTORE_PREPARATION_FAILED", "RESTORE_IN_PROGRESS", "ROUTING_UNAVAILABLE", "SHARED_LINK_ACCESS_DENIED", "SHARED_LINK_LIMIT_EXCEEDED", "SHARED_LINK_NOT_FOUND", "SHARED_LINK_PASSWORD_INVALID", "SHARED_LINK_TOKEN_REQUIRED", "SHARED_LOCATION_NOT_FOUND", "INVALID_SHARE_LINK", "INVALID_SHARED_TIME_RANGE", "STAY_NOT_FOUND", "DATA_GAP_NOT_FOUND", "DATA_GAP_OVERRIDE_NOT_FOUND", "TIMELINE_JOB_ACCESS_DENIED", "TIMELINE_JOB_ALREADY_ACTIVE", "TIMELINE_JOB_NOT_FOUND", "TIMELINE_REGENERATION_IN_PROGRESS", "TIMELINE_EDIT_CONFLICT", "TIMELINE_EDIT_NOT_FOUND", "TIMELINE_REGENERATION_CAMPAIGN_INVALID", "TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND", "TRIP_NOT_FOUND", "TRIP_PLAN_ITEM_NOT_FOUND", "TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA", "TRIP_SPLIT_OVERRIDE_NOT_FOUND", "UNSUPPORTED_COVERAGE_GRID", "USER_REGISTRATION_CONFLICT", "WEATHER_BACKFILL_INVALID", "WEATHER_TARGET_NOT_FOUND", "VALIDATION_FAILED", "BAD_REQUEST", "AUTHENTICATION_REQUIRED", "ACCESS_DENIED", "NOT_FOUND", "METHOD_NOT_ALLOWED", "CONFLICT", "GONE", "PAYLOAD_TOO_LARGE", "UNSUPPORTED_MEDIA_TYPE", "UNPROCESSABLE_ENTITY", "RATE_LIMIT_EXCEEDED", "INTERNAL_ERROR", "BAD_GATEWAY", "SERVICE_UNAVAILABLE", "GATEWAY_TIMEOUT" ],
         "type" : "string"
       },
       "ApiProblemResponse" : {
@@ -1107,6 +1179,42 @@
             "type" : "integer"
           },
           "distance" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "Candidate" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "city" : {
+            "type" : "string"
+          },
+          "country" : {
+            "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "distanceMeters" : {
             "format" : "double",
             "type" : "number"
           }
@@ -3303,6 +3411,106 @@
           }
         }
       },
+      "DigestReplay" : {
+        "type" : "object",
+        "properties" : {
+          "year" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "month" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "trips" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DigestReplayTrip"
+            }
+          }
+        }
+      },
+      "DigestReplayPathPoint" : {
+        "type" : "object",
+        "properties" : {
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "altitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "DigestReplayTrip" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "tripDuration" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "distanceMeters" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "movementType" : {
+            "type" : "string"
+          },
+          "startLatitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "startLongitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "endLatitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "endLongitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "path" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DigestReplayPathPoint"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "legCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "originName" : {
+            "type" : "string"
+          },
+          "destinationName" : {
+            "type" : "string"
+          }
+        }
+      },
       "DistanceTraveled" : {
         "type" : "object",
         "properties" : {
@@ -3509,6 +3717,26 @@
           "explanation" : {
             "type" : "object",
             "additionalProperties" : { }
+          }
+        }
+      },
+      "Event1" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "start" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "end" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "locationName" : {
+            "type" : "string"
           }
         }
       },
@@ -3863,6 +4091,46 @@
         "properties" : {
           "version" : {
             "type" : "string"
+          }
+        }
+      },
+      "GeocodingCandidatePreview" : {
+        "type" : "object",
+        "properties" : {
+          "previewId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "candidates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Candidate"
+            }
+          }
+        }
+      },
+      "GeocodingCandidateRequest" : {
+        "required" : [ "providerName" ],
+        "type" : "object",
+        "properties" : {
+          "providerName" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "GeocodingCandidateSelection" : {
+        "required" : [ "previewId", "candidateId" ],
+        "type" : "object",
+        "properties" : {
+          "previewId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "candidateId" : {
+            "format" : "int32",
+            "maximum" : 9,
+            "minimum" : 0,
+            "type" : "integer"
           }
         }
       },
@@ -5447,6 +5715,14 @@
           "name" : {
             "type" : "string"
           },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
           "type" : {
             "type" : "string"
           },
@@ -5586,6 +5862,14 @@
           },
           "name" : {
             "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
           },
           "displayName" : {
             "type" : "string"
@@ -7041,6 +7325,30 @@
         "enum" : [ "BOAT_SETUP_IS_READY", "GPS_WATER_EVIDENCE_NEEDS_ENRICHMENT", "WATER_DATASET_IS_NOT_IMPORTED", "STARTING_BOAT_SETUP", "BOAT_SETUP_COMPLETED", "RECLASSIFYING_EXISTING_TRIPS", "WATER_DATASET_READY", "PREPARING_WATER_DATASET_ARTIFACT", "IMPORTING_WATER_POLYGONS", "USING_LOCAL_WATER_DATASET_FILE", "DOWNLOADING_WATER_DATASET", "GPS_WATER_EVIDENCE_READY", "CLASSIFYING_GPS_WATER_EVIDENCE", "WAITING_FOR_WATER_DATASET_IMPORT", "WAITING_FOR_GPS_WATER_EVIDENCE", "BOAT_SETUP_WORKER_DID_NOT_START", "WATER_DATASET_SETUP_FAILED", "BOAT_SETUP_FAILED", "UNKNOWN" ],
         "type" : "string"
       },
+      "Place" : {
+        "type" : "object",
+        "properties" : {
+          "favoriteId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "locationName" : {
+            "type" : "string"
+          }
+        }
+      },
       "PlaceDetailsDTO" : {
         "type" : "object",
         "properties" : {
@@ -7431,6 +7739,23 @@
           }
         }
       },
+      "Preview" : {
+        "type" : "object",
+        "properties" : {
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Event1"
+            }
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "Properties" : {
         "type" : "object",
         "properties" : {
@@ -7738,11 +8063,55 @@
           }
         }
       },
+      "Request" : {
+        "required" : [ "activities" ],
+        "type" : "object",
+        "properties" : {
+          "tripId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "activities" : {
+            "maxItems" : 100,
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Activity"
+            }
+          },
+          "contextStart" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "contextEnd" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "ResetPasswordResponse" : {
         "type" : "object",
         "properties" : {
           "temporaryPassword" : {
             "type" : "string"
+          }
+        }
+      },
+      "Response" : {
+        "type" : "object",
+        "properties" : {
+          "groupId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "edits" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TimelineEditDTO"
+            }
+          },
+          "timelineJobId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "timelineJobQueued" : {
+            "type" : "boolean"
           }
         }
       },
@@ -8792,6 +9161,10 @@
           "ongoing" : {
             "type" : "boolean"
           },
+          "activeEditCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "explanation" : {
             "$ref" : "#/components/schemas/TimelineExplanationDTO"
           },
@@ -8860,6 +9233,9 @@
           "showCurrentLocationTelemetry" : {
             "type" : "boolean"
           },
+          "showUnknownActivity" : {
+            "type" : "boolean"
+          },
           "enable3dBuildingsByDefault" : {
             "type" : "boolean"
           },
@@ -8920,6 +9296,151 @@
           },
           "capabilities" : {
             "$ref" : "#/components/schemas/TimelineDisplayCapabilities"
+          }
+        }
+      },
+      "TimelineEditDTO" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "groupId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "seq" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/TimelineEditKind"
+          },
+          "anchorStart" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "anchorEnd" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "affectedFrom" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "affectedTo" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "payload" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "beforeValues" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/TimelineEditStatus"
+          },
+          "applied" : {
+            "type" : "boolean"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/TimelineEditTargetDTO"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "TimelineEditKind" : {
+        "enum" : [ "SET_MOVEMENT_TYPE", "SET_PLACE", "SET_VISIT_NAME", "FORCE_STAY", "FORCE_TRIP", "SET_TIMES", "SPLIT_STAY", "MERGE", "REMOVE_EVENT" ],
+        "type" : "string"
+      },
+      "TimelineEditMutationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "edit" : {
+            "$ref" : "#/components/schemas/TimelineEditDTO"
+          },
+          "timelineJobId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "timelineJobQueued" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "TimelineEditPreviewDTO" : {
+        "type" : "object",
+        "properties" : {
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Event1"
+            }
+          }
+        }
+      },
+      "TimelineEditRequest" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/TimelineEditKind"
+          },
+          "anchorStart" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "anchorEnd" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "affectedFrom" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "affectedTo" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "payload" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "favoriteId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "placeName" : {
+            "type" : "string"
+          },
+          "supersede" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "TimelineEditStatus" : {
+        "enum" : [ "ACTIVE", "SUPERSEDED", "REVERTED" ],
+        "type" : "string"
+      },
+      "TimelineEditTargetDTO" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         }
       },
@@ -9593,6 +10114,13 @@
           "locationName" : {
             "type" : "string"
           },
+          "visitName" : {
+            "type" : "string"
+          },
+          "activeEditCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "city" : {
             "type" : "string"
           },
@@ -9664,11 +10192,21 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "manualRoute" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TripReconstructionWaypointDto"
+            }
+          },
           "movementType" : {
             "type" : "string"
           },
           "movementTypeSource" : {
             "type" : "string"
+          },
+          "activeEditCount" : {
+            "format" : "int32",
+            "type" : "integer"
           },
           "explanation" : {
             "$ref" : "#/components/schemas/TimelineExplanationDTO"
@@ -10318,7 +10856,7 @@
             "example" : "2025-06-01T11:30:00Z"
           },
           "locationName" : {
-            "maxLength" : 255,
+            "maxLength" : 500,
             "type" : "string",
             "example" : "Train to Lviv"
           },
@@ -10335,6 +10873,14 @@
             "minimum" : -180.0,
             "type" : "number",
             "example" : 24.0297
+          },
+          "favoriteId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
           },
           "movementType" : {
             "type" : "string",
@@ -12168,7 +12714,7 @@
             "example" : "CELSIUS"
           },
           "dateFormat" : {
-            "pattern" : "^(MDY|DMY|YMD)$",
+            "pattern" : "^(MDY|DMY|DMY_DOT|YMD)$",
             "type" : "string",
             "example" : "DMY"
           },
@@ -16894,6 +17440,66 @@
         } ]
       }
     },
+    "/api/v1/digests/monthly-replay" : {
+      "get" : {
+        "summary" : "Get a monthly cinematic replay",
+        "description" : "Returns at most one chapter per seven days of the month (days 1–7, 8–14, 15–21, 22–28 and 29–31) in the user's timezone, chosen like the chapters of the yearly replay.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "DigestResource_getMonthlyReplay",
+        "tags" : [ "Digests" ],
+        "parameters" : [ {
+          "description" : "Month, from 1 to 12.",
+          "example" : 6,
+          "name" : "month",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "description" : "Year, from 2000 to 2100.",
+          "example" : 2025,
+          "name" : "year",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Monthly cinematic replay data retrieved",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DigestReplay"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid digest period",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblemResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
     "/api/v1/digests/pdf" : {
       "get" : {
         "summary" : "Download a digest as PDF",
@@ -16994,6 +17600,57 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TimeDigest"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid digest year",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiProblemResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/digests/yearly-replay" : {
+      "get" : {
+        "summary" : "Get a yearly cinematic replay",
+        "description" : "Returns at most one chapter per month in the user's timezone, each with a bounded path: a named trip from the Trips feature that starts that month, or else the month's longest timeline trip with the places it started and ended at.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "DigestResource_getYearlyReplay",
+        "tags" : [ "Digests" ],
+        "parameters" : [ {
+          "description" : "Year, from 2000 to 2100.",
+          "example" : 2025,
+          "name" : "year",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Yearly cinematic replay data retrieved",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DigestReplay"
                 }
               }
             }
@@ -19251,6 +19908,112 @@
         }, {
           "apiKey" : [ ]
         } ]
+      }
+    },
+    "/api/v1/geocoding/{id}/reconciliation-candidates" : {
+      "post" : {
+        "summary" : "Preview provider candidates for a single geocoding entry",
+        "operationId" : "ReverseGeocodingResource_previewCandidates",
+        "tags" : [ "Geocoding" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GeocodingCandidateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GeocodingCandidatePreview"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
+      }
+    },
+    "/api/v1/geocoding/{id}/reconciliation-selection" : {
+      "post" : {
+        "summary" : "Apply a previewed candidate to the user's linked stays",
+        "operationId" : "ReverseGeocodingResource_selectCandidate",
+        "tags" : [ "Geocoding" ],
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GeocodingCandidateSelection"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReverseGeocodingDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
       }
     },
     "/api/v1/geofences/events" : {
@@ -26107,6 +26870,172 @@
         } ]
       }
     },
+    "/api/v1/timeline/activity-corrections" : {
+      "post" : {
+        "summary" : "Save a reversible group of manual activities without generating GPS points",
+        "operationId" : "ActivityCorrectionResource_save",
+        "tags" : [ "Timeline Corrections" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Request"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
+      }
+    },
+    "/api/v1/timeline/activity-corrections/preview" : {
+      "post" : {
+        "summary" : "Review activities proposed for empty timeline intervals",
+        "operationId" : "ActivityCorrectionResource_preview",
+        "tags" : [ "Timeline Corrections" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Request"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
+      }
+    },
+    "/api/v1/timeline/activity-corrections/{groupId}/restore" : {
+      "post" : {
+        "summary" : "Restore a correction group when its intervals remain empty",
+        "operationId" : "ActivityCorrectionResource_restore",
+        "tags" : [ "Timeline Corrections" ],
+        "parameters" : [ {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
+      }
+    },
+    "/api/v1/timeline/activity-corrections/{groupId}/revert" : {
+      "post" : {
+        "summary" : "Undo a complete activity correction group",
+        "operationId" : "ActivityCorrectionResource_revert",
+        "tags" : [ "Timeline Corrections" ],
+        "parameters" : [ {
+          "name" : "groupId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ],
+        "description" : "**Access:** Any signed-in user, with a session or an API token."
+      }
+    },
     "/api/v1/timeline/count" : {
       "get" : {
         "summary" : "Count timeline items",
@@ -26316,6 +27245,206 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/DataGapStayConversionPreviewDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/edits" : {
+      "get" : {
+        "summary" : "List timeline edits",
+        "description" : "Lists every one-off edit of the signed-in user's timeline in application order.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "StreamingTimelineResource_listEdits",
+        "tags" : [ "Timeline Corrections" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/TimelineEditDTO"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Create a timeline edit",
+        "description" : "Stores one reversible edit and durably requests timeline regeneration.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "StreamingTimelineResource_createEdit",
+        "tags" : [ "Timeline Corrections" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TimelineEditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEditMutationResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/edits/preview" : {
+      "post" : {
+        "summary" : "Preview a timeline edit",
+        "description" : "Applies one proposed edit in memory and returns the affected event sequence without saving it.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "StreamingTimelineResource_previewEdit",
+        "tags" : [ "Timeline Corrections" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TimelineEditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEditPreviewDTO"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/edits/{editId}/restore" : {
+      "post" : {
+        "summary" : "Restore a reverted timeline edit",
+        "description" : "Reactivates a reverted edit when it does not conflict with a newer active edit.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "StreamingTimelineResource_restoreEdit",
+        "tags" : [ "Timeline Corrections" ],
+        "parameters" : [ {
+          "name" : "editId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEditMutationResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/timeline/edits/{editId}/revert" : {
+      "post" : {
+        "summary" : "Revert a timeline edit",
+        "description" : "Deactivates one edit and durably requests timeline regeneration.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "operationId" : "StreamingTimelineResource_revertEdit",
+        "tags" : [ "Timeline Corrections" ],
+        "parameters" : [ {
+          "name" : "editId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TimelineEditMutationResponse"
                 }
               }
             }
@@ -28733,7 +29862,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "2.1.1",
+    "version" : "2.2.0",
     "description" : "REST API of GeoPulse, a self-hosted location timeline. Authentication, examples, and guides: https://geopulse.cc/docs/api/intro",
     "contact" : {
       "name" : "tess1o",
