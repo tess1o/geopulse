@@ -32,14 +32,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -309,10 +312,10 @@ class DebugExportRoundTripIntegrationTest {
         return QuarkusTransaction.requiringNew().call(() -> entityManager.find(UserEntity.class, userId).getTimezone());
     }
 
-    private byte[] withEntry(byte[] zip, String name, java.util.function.Consumer<JsonNode> change) throws IOException {
-        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+    private byte[] withEntry(byte[] zip, String name, Consumer<JsonNode> change) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(zip));
-             java.util.zip.ZipOutputStream copy = new java.util.zip.ZipOutputStream(output)) {
+             ZipOutputStream copy = new ZipOutputStream(output)) {
             ZipEntry entry;
             while ((entry = input.getNextEntry()) != null) {
                 byte[] content = input.readAllBytes();

@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -814,8 +815,7 @@ public class DebugExportService {
         }
     }
 
-    private static void shiftNumber(Map<String, Object> payload, String key,
-                                    java.util.function.Function<Double, Double> shifter) {
+    private static void shiftNumber(Map<String, Object> payload, String key, Function<Double, Double> shifter) {
         Object value = payload.get(key);
         if (value instanceof Number number) payload.put(key, shifter.apply(number.doubleValue()));
     }

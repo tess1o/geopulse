@@ -22,6 +22,7 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Google Maps geocoding service that handles API calls and response transformation.
@@ -64,7 +65,7 @@ public class GoogleMapsGeocodingService {
     @Retry
     @Bulkhead(value = 5, waitingTaskQueue = 20)
     @CircuitBreaker
-    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+    public Uni<List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
         return reverse(requestCoordinates, response -> {
             if (response != null && response.getStatus() != null && !"OK".equals(response.getStatus())
                     && !"ZERO_RESULTS".equals(response.getStatus())) {
@@ -74,7 +75,7 @@ public class GoogleMapsGeocodingService {
         });
     }
 
-    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<GoogleMapsResponse, T> adapt) {
+    private <T> Uni<T> reverse(Point requestCoordinates, Function<GoogleMapsResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled"));
         }

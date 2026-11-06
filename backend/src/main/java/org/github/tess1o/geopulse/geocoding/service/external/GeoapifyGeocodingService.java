@@ -21,6 +21,7 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 @ApplicationScoped
 @Slf4j
@@ -49,11 +50,11 @@ public class GeoapifyGeocodingService {
     @Retry
     @Bulkhead(value = 5, waitingTaskQueue = 20)
     @CircuitBreaker
-    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+    public Uni<List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
         return reverse(requestCoordinates, true, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
     }
 
-    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, java.util.function.Function<GeoapifyResponse, T> adapt) {
+    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, Function<GeoapifyResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Geoapify provider is disabled"));
         }

@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 import javax.sql.DataSource;
 
@@ -988,7 +989,7 @@ public class BoatSetupService {
         QuarkusTransaction.requiringNew().run(runnable);
     }
 
-    private <T> T inTxResult(java.util.function.Supplier<T> supplier) {
+    private <T> T inTxResult(Supplier<T> supplier) {
         AtomicReference<T> result = new AtomicReference<>();
         inTx(() -> result.set(supplier.get()));
         return result.get();

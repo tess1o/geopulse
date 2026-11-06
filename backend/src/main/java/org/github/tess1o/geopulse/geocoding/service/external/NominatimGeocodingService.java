@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * Nominatim geocoding service that handles API calls and response transformation.
@@ -88,11 +89,11 @@ public class NominatimGeocodingService {
     @Retry
     @Bulkhead(value = 2, waitingTaskQueue = 10)
     @CircuitBreaker
-    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+    public Uni<List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
         return reverse(requestCoordinates, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
     }
 
-    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<NominatimResponse, T> adapt) {
+    private <T> Uni<T> reverse(Point requestCoordinates, Function<NominatimResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
         }
