@@ -196,6 +196,31 @@ class ExportImportIntegrationTest {
     }
 
     @Test
+    void polygonAreasSurviveNativeRoundTripAndRepeatedImportWithoutCollapsingOverlaps() throws Exception {
+        var shape = new org.github.tess1o.geopulse.favorites.model.AreaGeometry("Polygon", List.of(List.of(
+                List.of(30.,50.), List.of(30.03,50.), List.of(30.03,50.01), List.of(30.01,50.01),
+                List.of(30.01,50.03), List.of(30.,50.03), List.of(30.,50.)))).toPolygon();
+        var rectangle = GeoUtils.buildBoundingBoxPolygon(50., 50.03, 30., 30.03);
+        QuarkusTransaction.requiringNew().run(() -> {
+            for (var geometry : List.of(shape, rectangle)) {
+                favoritesRepository.persist(FavoritesEntity.builder().user(entityManager.getReference(UserEntity.class, testUser.getId()))
+                        .name("Overlapping areas").type(FavoriteLocationType.AREA).geometry(geometry).build());
+            }
+        });
+        byte[] exported = exportAllNativeData();
+        deleteAndVerifyUserDomainData();
+        importAllNativeData(exported);
+        importAllNativeData(exported);
+        QuarkusTransaction.requiringNew().run(() -> {
+            var areas = favoritesRepository.findByUserId(testUser.getId()).stream()
+                    .filter(f -> f.getType() == FavoriteLocationType.AREA).toList();
+            assertEquals(2, areas.size());
+            assertTrue(areas.stream().anyMatch(f -> f.getGeometry().equalsTopo(shape)));
+            assertTrue(areas.stream().anyMatch(f -> f.getGeometry().equalsTopo(rectangle)));
+        });
+    }
+
+    @Test
     void testCompleteExportImportCycleRestoresAllNativeSections() throws Exception {
         OriginalData originalData = captureOriginalData();
         byte[] exportedData = exportAllNativeData();

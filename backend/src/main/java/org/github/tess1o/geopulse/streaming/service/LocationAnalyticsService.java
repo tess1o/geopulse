@@ -62,7 +62,7 @@ public class LocationAnalyticsService {
                     .findByUserIdAndNameContaining(userId, query, 10);
 
             for (FavoritesEntity favorite : favorites) {
-                var center = favorite.getGeometry() == null ? null : favorite.getGeometry().getCentroid();
+                var center = favorite.getGeometry() == null ? null : favorite.getGeometry().getInteriorPoint();
                 long visitCount = stayRepository.countByFavoriteLocationId(favorite.getId(), userId);
                 results.add(LocationSearchResultDTO.builder()
                         .type("place")

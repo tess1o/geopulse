@@ -21,20 +21,25 @@ public class AddAreaToFavoritesDto {
     @DecimalMin(value = "-90.0", message = "North-East latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "North-East latitude must be between -90 and 90")
     @Schema(examples = "50.452")
-    private double northEastLat;
+    private Double northEastLat;
     
     @DecimalMin(value = "-180.0", message = "North-East longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "North-East longitude must be between -180 and 180")
     @Schema(examples = "30.526")
-    private double northEastLon;
+    private Double northEastLon;
     
     @DecimalMin(value = "-90.0", message = "South-West latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "South-West latitude must be between -90 and 90")
     @Schema(examples = "50.449")
-    private double southWestLat;
+    private Double southWestLat;
     
     @DecimalMin(value = "-180.0", message = "South-West longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "South-West longitude must be between -180 and 180")
     @Schema(examples = "30.521")
-    private double southWestLon;
+    private Double southWestLon;
+    private AreaGeometry geometry;
+
+    public AddAreaToFavoritesDto(String name, double north, double east, double south, double west) {
+        this(name, north, east, south, west, null);
+    }
 }

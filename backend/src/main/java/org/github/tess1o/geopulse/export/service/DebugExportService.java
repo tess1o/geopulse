@@ -727,6 +727,11 @@ public class DebugExportService {
                     shifted.put("name", name);
                     shifted.put("type", area.getType());
 
+                    if (area.getGeometry() != null) {
+                        var rings = area.getGeometry().getCoordinates().stream().map(ring -> ring.stream()
+                                .map(c -> List.of(shift.longitude(c.get(0)), shift.latitude(c.get(1)))).toList()).toList();
+                        shifted.put("geometry", new org.github.tess1o.geopulse.favorites.model.AreaGeometry("Polygon", rings));
+                    }
                     // Shift all 4 boundary coordinates
                     shifted.put("northEastLat", shift.latitude(area.getNorthEastLat()));
                     shifted.put("northEastLon", shift.longitude(area.getNorthEastLon()));

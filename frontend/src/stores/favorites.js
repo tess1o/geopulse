@@ -1,3 +1,4 @@
+import {areaPayload} from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import {normalizeApiError} from '@/utils/apiErrorDetail'
@@ -158,15 +159,12 @@ export const useFavoritesStore = defineStore('favorites', {
             }
         },
 
-        async addAreaToFavorites(name, northEastLat, northEastLon, southWestLat, southWestLon) {
+        async addAreaToFavorites(name, northEastLat, northEastLon, southWestLat, southWestLon, geometry = null) {
             this.error = null
             try {
                 const response = await apiService.post(`/favorites/areas`, {
                     name,
-                    northEastLat,
-                    northEastLon,
-                    southWestLat,
-                    southWestLon
+                    ...areaPayload({geometry, northEastLat, northEastLon, southWestLat, southWestLon})
                 })
 
                 // Refresh favorites to get the updated list from backend
@@ -189,10 +187,7 @@ export const useFavoritesStore = defineStore('favorites', {
 
                 // Include bounds if provided (for area favorites)
                 if (bounds) {
-                    payload.northEastLat = bounds.northEastLat
-                    payload.northEastLon = bounds.northEastLon
-                    payload.southWestLat = bounds.southWestLat
-                    payload.southWestLon = bounds.southWestLon
+                    Object.assign(payload, areaPayload(bounds))
                 }
 
                 const response = await apiService.put(`/favorites/${id}`, payload)
@@ -251,7 +246,7 @@ export const useFavoritesStore = defineStore('favorites', {
             })
         },
 
-        addAreaToPending(name, northEastLat, northEastLon, southWestLat, southWestLon) {
+        addAreaToPending(name, northEastLat, northEastLon, southWestLat, southWestLon, geometry = null) {
             const tempId = `area-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
             this.pendingFavorites.areas.push({
                 name,
@@ -259,12 +254,13 @@ export const useFavoritesStore = defineStore('favorites', {
                 northEastLon,
                 southWestLat,
                 southWestLon,
+                geometry,
                 tempId
             })
         },
 
         queueUpdate(favorite) {
-            if (!this.pendingDeletes[favorite.id]) this.pendingUpdates[favorite.id] = { ...favorite }
+            if (!this.pendingDeletes[favorite.id]) this.pendingUpdates[favorite.id] = JSON.parse(JSON.stringify(favorite))
         },
 
         queueDelete(favorite) {
@@ -286,16 +282,15 @@ export const useFavoritesStore = defineStore('favorites', {
             const { points, areas } = this.pendingFavorites
             const changes = Object.values(this.pendingUpdates)
                 .filter(item => !this.pendingDeletes[item.id])
-                .map(({ id, name, city, country, type, northEastLat, northEastLon, southWestLat, southWestLon }) => ({
+                .map(({ id, name, city, country, type, geometry, northEastLat, northEastLon, southWestLat, southWestLon }) => ({
                     favoriteId: id,
-                    changes: { name, city, country, ...(type === 'AREA' ? {
-                        northEastLat, northEastLon, southWestLat, southWestLon
-                    } : {}) }
+                    changes: { name, city, country, ...(type === 'AREA'
+                        ? areaPayload({geometry, northEastLat, northEastLon, southWestLat, southWestLon}) : {}) }
                 }))
             try {
                 const result = await apiService.post('/favorites/bulk-apply', {
                     points: points.map(({ tempId, ...point }) => point),
-                    areas: areas.map(({ tempId, ...area }) => area),
+                    areas: areas.map(area => ({name: area.name, ...areaPayload(area)})),
                     updates: changes,
                     deleteIds: Object.values(this.pendingDeletes).map(item => item.id)
                 })

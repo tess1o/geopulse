@@ -151,7 +151,7 @@ public class FavoritesResource {
     @Path("/areas")
     @APIResponse(responseCode = "201", description = "Area favorite created")
     @Operation(summary = "Add a favorite area",
-            description = "Creates a favorite covering a rectangular area, such as a campus or a park. Stays inside "
+            description = "Creates a favorite covering a polygon or rectangle, such as a campus or a park. Stays inside "
                     + "the area use the favorite's name. Starts a background timeline regeneration so existing "
                     + "stays pick up the change; the response contains the job ID to poll with `GET "
                     + "/api/v1/timeline/jobs/{jobId}`." + ALREADY_RUNNING_JOB_NOTE)

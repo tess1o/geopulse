@@ -43,13 +43,22 @@
             <span class="bounds-title">{{ t('favoritesGeocodingDialogs.editFavorite.areaBoundariesTitle') }}</span>
           </div>
           <Button
-            :label="isDrawing() ? t('favoritesGeocodingDialogs.editFavorite.drawing') : t('favoritesGeocodingDialogs.editFavorite.redrawArea')"
+            v-if="!isDrawing()"
+            :label="t('favoritesGeocodingDialogs.areaDrawing.adjust')"
+            icon="pi pi-arrows-alt"
+            size="small"
+            @click="handleAdjustVertices"
+          />
+          <Button
+            v-if="!isDrawing()"
+            :label="t('favoritesGeocodingDialogs.editFavorite.redrawArea')"
             icon="pi pi-pencil"
             size="small"
             @click="handleRedrawArea"
-            :disabled="isDrawing()"
           />
         </div>
+
+        <AreaDrawingControls inline :state="drawingState" @shape="startDrawing" @preview-pause="clearPointerPreview" @finish="finishPolygon" @undo="undoPoint" @cancel="stopDrawing" />
 
         <!-- Map for drawing area -->
         <div class="map-container">
@@ -62,11 +71,7 @@
             @map-ready="handleMapReady"
             ref="baseMapRef"
           />
-          <!-- Drawing instruction overlay -->
-          <div v-if="isDrawing()" class="drawing-instruction">
-            <i class="pi pi-info-circle"></i>
-            <span>{{ t('favoritesGeocodingDialogs.editFavorite.drawInstruction') }}</span>
-          </div>
+
         </div>
 
         <!-- Coordinates Display (read-only) -->
@@ -89,6 +94,7 @@
       <Button
         :label="t('favoritesGeocodingDialogs.editFavorite.save')"
         @click="onEditButton"
+        :disabled="isDrawing()"
       />
     </template>
   </Dialog>
@@ -101,9 +107,11 @@ import Button from "primevue/button"
 import Dialog from "primevue/dialog"
 import InputText from "primevue/inputtext"
 import BaseMap from '@/components/maps/BaseMap.vue'
-import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
+import AreaDrawingControls from '@/components/maps/AreaDrawingControls.vue'
+import { useAreaDrawingRuntime } from '@/composables/useAreaDrawingRuntime'
 import { createFavoriteAreaOverlayAdapter } from '@/maps/favoritesEdit/runtime/createFavoriteAreaOverlayAdapter'
 import {
+  getAreaPolygonLngLat,
   getAreaCenterLatLng,
   toLeafletBounds
 } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
@@ -134,17 +142,25 @@ const isAreaFavorite = computed(() => props.favoriteLocation?.type === 'AREA')
 
 // Rectangle drawing composable
 const {
+  drawingState,
+  startEditing,
+  clearPointerPreview,
+  undoPoint,
+  finishPolygon,
   isDrawing,
   initialize: initializeDrawing,
   startDrawing,
   stopDrawing,
   cleanupTempLayer
-} = useRectangleDrawingRuntime({
+} = useAreaDrawingRuntime({
   onRectangleCreated: (data) => {
     const bounds = data.bounds
     const southWest = bounds.getSouthWest()
     const northEast = bounds.getNorthEast()
 
+    props.favoriteLocation.geometry = data.geometry
+    props.favoriteLocation.latitude = null
+    props.favoriteLocation.longitude = null
     // Update the favoriteLocation with new bounds
     props.favoriteLocation.northEastLat = northEast.lat
     props.favoriteLocation.northEastLon = northEast.lng
@@ -153,7 +169,8 @@ const {
 
     // Redraw the rectangle on the map
     drawCurrentArea()
-  }
+  },
+  onDrawingEnd: () => drawCurrentArea()
 })
 
 const clearCurrentAreaOverlay = () => {
@@ -199,6 +216,12 @@ const drawCurrentArea = () => {
   areaOverlayAdapter.value?.draw?.(props.favoriteLocation)
 }
 
+const handleAdjustVertices = () => {
+  if (!mapInstance.value) return
+  clearCurrentAreaOverlay()
+  startEditing({type: 'Polygon', coordinates: [getAreaPolygonLngLat(props.favoriteLocation)]})
+}
+
 const handleRedrawArea = () => {
   if (!mapInstance.value) return
 
@@ -221,6 +244,9 @@ const onEditButton = () => {
 
   // If it's an area favorite, also include bounds data
   if (isAreaFavorite.value) {
+    basicData.geometry = props.favoriteLocation.geometry
+    basicData.latitude = props.favoriteLocation.latitude
+    basicData.longitude = props.favoriteLocation.longitude
     basicData.northEastLat = props.favoriteLocation.northEastLat
     basicData.northEastLon = props.favoriteLocation.northEastLon
     basicData.southWestLat = props.favoriteLocation.southWestLat
@@ -255,6 +281,7 @@ watch(internalVisible, (val) => {
 
 watch(
   () => [
+    props.favoriteLocation?.geometry,
     props.favoriteLocation?.northEastLat,
     props.favoriteLocation?.northEastLon,
     props.favoriteLocation?.southWestLat,

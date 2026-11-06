@@ -482,7 +482,7 @@ public class TimelineEditService {
             payload.remove(geocodingKey);
             payload.put(placeKey(prefix, "locationName"), favorite.getName());
             if (favorite.getGeometry() != null && !favorite.getGeometry().isEmpty()) {
-                var point = favorite.getGeometry().getCentroid();
+                var point = favorite.getGeometry().getInteriorPoint();
                 payload.put(placeKey(prefix, "latitude"), point.getY());
                 payload.put(placeKey(prefix, "longitude"), point.getX());
             }

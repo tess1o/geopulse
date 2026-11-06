@@ -720,7 +720,7 @@ public class DataGapStayOverrideService {
         if (geometry instanceof Point point) {
             return point;
         }
-        return geometry.getCentroid();
+        return geometry.getInteriorPoint();
     }
 
     private String normalizeLocationName(String locationName) {

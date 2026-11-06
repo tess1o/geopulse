@@ -292,7 +292,7 @@ public class TripPlanSearchService {
             return point;
         }
 
-        Point centroid = geometry.getCentroid();
+        Point centroid = geometry.getInteriorPoint();
         return centroid == null || centroid.isEmpty() ? null : centroid;
     }
 

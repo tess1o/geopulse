@@ -83,6 +83,7 @@
           </div>
         </div>
         <div class="map-container" :inert="isBulkSaving">
+          <AreaDrawingControls :state="drawingState" @shape="startDrawing" @preview-pause="clearPointerPreview" @finish="finishPolygon" @undo="undoPoint" @cancel="stopDrawing" />
           <BaseMap
               v-if="isMapBootstrapReady"
               mapId="favorites-map"
@@ -371,7 +372,8 @@ import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useFavoritesStore} from '@/stores/favorites'
 import {useGeocodingStore} from '@/stores/geocoding'
-import {useRectangleDrawingRuntime} from '@/composables/useRectangleDrawingRuntime'
+import AreaDrawingControls from '@/components/maps/AreaDrawingControls.vue'
+import {useAreaDrawingRuntime} from '@/composables/useAreaDrawingRuntime'
 import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
 import {getFriendlyErrorMessage} from '@/utils/errorHandler'
 import {
@@ -512,12 +514,16 @@ const isMapBootstrapReady = ref(false)
 
 // Rectangle drawing composable
 const {
+  drawingState,
+  clearPointerPreview,
+  undoPoint,
+  finishPolygon,
   isDrawing,
   initialize: initializeDrawing,
   startDrawing,
   stopDrawing,
   cleanupTempLayer
-} = useRectangleDrawingRuntime({
+} = useAreaDrawingRuntime({
   onRectangleCreated: (data) => {
     // Store bounds for area favorite
     const bounds = data.bounds
@@ -525,6 +531,7 @@ const {
     const northEast = bounds.getNorthEast()
 
     pendingAddBounds.value = {
+      geometry: data.geometry,
       southWestLat: southWest.lat,
       southWestLon: southWest.lng,
       northEastLat: northEast.lat,
@@ -980,7 +987,8 @@ const handleAddFavorite = (name) => {
         pendingAddBounds.value.northEastLat,
         pendingAddBounds.value.northEastLon,
         pendingAddBounds.value.southWestLat,
-        pendingAddBounds.value.southWestLon
+        pendingAddBounds.value.southWestLon,
+        pendingAddBounds.value.geometry
       )
       toast.add({
         severity: 'info',
@@ -1019,6 +1027,7 @@ const handleAddFavorite = (name) => {
     )
     successMessage = t('sharing.favorites.managementPage.toasts.favoriteAddedMessage', { name })
   } else if (pendingAddBounds.value) {
+    const geometry = pendingAddBounds.value.geometry
     const northEastLat = pendingAddBounds.value.northEastLat
     const northEastLon = pendingAddBounds.value.northEastLon
     const southWestLat = pendingAddBounds.value.southWestLat
@@ -1028,27 +1037,27 @@ const handleAddFavorite = (name) => {
         northEastLat,
         northEastLon,
         southWestLat,
-        southWestLon
+        southWestLon,
+        geometry
     )
     successMessage = t('sharing.favorites.managementPage.toasts.areaFavoriteAddedMessage', { name })
   } else {
     return // Should not happen
   }
 
-  // Close dialog and clean up immediately
-  showAddDialog.value = false
-  pendingAddCoordinates.value = null
-  pendingAddBounds.value = null
-  addDialogInitialName.value = ''
-
-  mapAdapter.value?.clearTempPoint?.()
-  cleanupTempLayer()
-
   withTimelineRegeneration(action, {
     modalType: 'favorite',
     successMessage: successMessage,
     errorMessage: t('sharing.favorites.managementPage.toasts.addFavoriteFailedMessage'),
     onSuccess: () => {
+      // Keep the draft until the server accepts it.
+      showAddDialog.value = false
+      pendingAddCoordinates.value = null
+      pendingAddBounds.value = null
+      addDialogInitialName.value = ''
+      mapAdapter.value?.clearTempPoint?.()
+      cleanupTempLayer()
+
       // Refresh data after successful addition
       loadFavorites()
     }

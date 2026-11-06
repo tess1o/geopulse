@@ -10,6 +10,7 @@
       'map-view-container--trip-replay-restore': showTripReplayRestoreButton
     }"
   >
+    <AreaDrawingControls :state="drawingState" @shape="startDrawing" @preview-pause="clearPointerPreview" @finish="finishPolygon" @undo="undoPoint" @cancel="stopDrawing" />
     <!-- Confirmation Dialog -->
     <ConfirmDialog />
     <MapContainer
@@ -514,7 +515,8 @@ import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import LocationLookupDialog from '@/components/dialogs/LocationLookupDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
-import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
+import AreaDrawingControls from '@/components/maps/AreaDrawingControls.vue'
+import { useAreaDrawingRuntime } from '@/composables/useAreaDrawingRuntime'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -858,12 +860,15 @@ let locationLookupRequestId = 0
 // Rectangle drawing composable
 const {
   drawingState,
+  clearPointerPreview,
+  undoPoint,
+  finishPolygon,
   initialize: initializeDrawing,
   startDrawing,
   stopDrawing,
   cleanupTempLayer,
   isDrawing
-} = useRectangleDrawingRuntime({
+} = useAreaDrawingRuntime({
   onRectangleCreated: (rectangle) => {
     drawingState.value.tempAreaLayer = rectangle.layer
     dialogState.value.addAreaVisible = true
@@ -1898,6 +1903,7 @@ const onFavoriteAreaSubmit = (favoriteData) => {
   const bounds = drawingState.value.tempAreaLayer.getBounds()
   const newFavorite = {
     name: favoriteData,
+    geometry: drawingState.value.geometry,
     type: 'area',
     northEastLat: bounds.getNorthEast().lat,
     northEastLon: bounds.getNorthEast().lng,
@@ -1905,16 +1911,14 @@ const onFavoriteAreaSubmit = (favoriteData) => {
     southWestLon: bounds.getSouthWest().lng
   }
 
-  // Close the add favorite dialog
-  closeAddFavoriteArea()
-
   // Use the composable to handle the timeline regeneration
   const action = () => favoritesStore.addAreaToFavorites(
     newFavorite.name,
     newFavorite.northEastLat,
     newFavorite.northEastLon,
     newFavorite.southWestLat,
-    newFavorite.southWestLon
+    newFavorite.southWestLon,
+    newFavorite.geometry
   )
 
   withTimelineRegeneration(action, {
@@ -1922,6 +1926,7 @@ const onFavoriteAreaSubmit = (favoriteData) => {
     successMessage: 'Favorite area added. Timeline is regenerating.',
     errorMessage: 'Failed to add favorite area.',
     onSuccess: () => {
+      closeAddFavoriteArea()
       toggleFavorites(true)
     }
   })

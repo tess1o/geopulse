@@ -811,6 +811,29 @@ test.describe('Timeline Map Interactions', () => {
     });
   });
 
+  test('should create a polygon favorite from the timeline map', async ({page,isolatedUsers,dbManager,mapMode}) => {
+    const timelinePage=new TimelinePage(page),mapPage=new TimelineMapPage(page);
+    const {user}=await setupTimelineWithMapMode(timelinePage,dbManager,MapTestData.insertMapTestStaysData,createManagedUser(isolatedUsers),null,mapMode);
+    await mapPage.waitForMapReady();
+    await mapPage.rightClickOnMap(300,300); await mapPage.waitForMapContextMenu();
+    await mapPage.clickContextMenuItem('Add an area to Favorites');
+    await page.getByRole('button',{name:'Polygon',exact:true}).click();
+    const host=mapPage.mapHarness.getMapHostLocator({mapId:'map-dashboard'}),box=await host.boundingBox();
+    for(const [x,y] of [[0.25,0.45],[0.55,0.45],[0.4,0.65],[0.25,0.8]]) await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
+    await expect(page.locator('.gp-area-vertex')).toHaveCount(4);
+    await page.getByRole('button',{name:'Finish shape',exact:true}).click();
+    const request=page.waitForResponse(r=>r.url().endsWith('/favorites/areas') && r.request().method()==='POST');
+    await mapPage.submitAddAreaFavoriteDialog('Timeline polygon');
+    const response=await request;
+    expect(response.ok()).toBe(true);
+    const sent=response.request().postDataJSON().geometry;
+    expect(sent.coordinates[0]).toHaveLength(5);
+    await expect.poll(async()=>{
+      const result=await dbManager.client.query("SELECT ST_NPoints(geometry) AS vertices FROM favorite_locations WHERE user_id=$1 AND name='Timeline polygon'",[user.id]);
+      return result.rows[0]?.vertices;
+    },{timeout:20000}).toBe(5);
+  });
+
   test.describe('Rectangle Drawing Tool', () => {
     test('should enter drawing mode when starting area creation', async ({page, isolatedUsers, dbManager, mapMode}) => {
       const timelinePage = new TimelinePage(page);

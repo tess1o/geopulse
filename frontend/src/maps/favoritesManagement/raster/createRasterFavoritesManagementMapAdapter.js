@@ -2,6 +2,7 @@ import L from 'leaflet'
 import {
   buildBoundsPoints,
   getAreaCenterLatLng,
+  toLeafletPolygon,
   getFavoritePointLatLng,
   getPendingPointLatLng,
   toLeafletBounds
@@ -116,7 +117,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
       return
     }
 
-    const rectangle = L.rectangle(bounds, {
+    const rectangle = L.polygon(toLeafletPolygon(favorite), {
       color: '#ef4444',
       fillColor: '#ef4444',
       fillOpacity: 0.2,
@@ -197,7 +198,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
       return
     }
 
-    const rectangle = L.rectangle(bounds, {
+    const rectangle = L.polygon(toLeafletPolygon(pendingArea), {
       color: '#f59e0b',
       fillColor: '#f59e0b',
       fillOpacity: 0.2,

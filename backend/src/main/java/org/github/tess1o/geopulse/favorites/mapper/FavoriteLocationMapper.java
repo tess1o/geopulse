@@ -31,7 +31,7 @@ public class FavoriteLocationMapper {
     public FavoritesEntity toEntity(AddAreaToFavoritesDto favorite, UUID userId) {
         return FavoritesEntity.builder()
                 .user(entityManager.getReference(UserEntity.class, userId))
-                .geometry(GeoUtils.createRectangleFromLeafletBounds(favorite.getNorthEastLat(),
+                .geometry(AreaGeometry.resolve(favorite.getGeometry(), favorite.getNorthEastLat(),
                         favorite.getNorthEastLon(),
                         favorite.getSouthWestLat(),
                         favorite.getSouthWestLon()))
@@ -81,6 +81,9 @@ public class FavoriteLocationMapper {
         dto.setNorthEastLon(envelope.getMaxX());
         dto.setSouthWestLat(envelope.getMinY());
         dto.setSouthWestLon(envelope.getMinX());
+        dto.setGeometry(AreaGeometry.from(favorite.getGeometry()));
+        dto.setLatitude(favorite.getGeometry().getInteriorPoint().getY());
+        dto.setLongitude(favorite.getGeometry().getInteriorPoint().getX());
         dto.setName(favorite.getName());
         dto.setUserId(favorite.getUser().getId());
         dto.setType(FavoriteLocationType.AREA.name());

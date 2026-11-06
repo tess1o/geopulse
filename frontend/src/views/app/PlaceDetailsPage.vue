@@ -785,6 +785,11 @@ const handleOpenEditDialog = () => {
 
     // Include bounds only if AREA favorite (northEast/southWest are only populated for AREA type)
     if (geometryType === 'AREA' && placeDetails.value?.geometry?.northEast && placeDetails.value?.geometry?.southWest) {
+      if (placeDetails.value.geometry.coordinates?.length) {
+        favoriteData.geometry = {type: 'Polygon', coordinates: [placeDetails.value.geometry.coordinates.map(([lat, lon]) => [lon, lat])]}
+      }
+      favoriteData.latitude = placeDetails.value.geometry.latitude
+      favoriteData.longitude = placeDetails.value.geometry.longitude
       favoriteData.northEastLat = placeDetails.value.geometry.northEast[0]
       favoriteData.northEastLon = placeDetails.value.geometry.northEast[1]
       favoriteData.southWestLat = placeDetails.value.geometry.southWest[0]

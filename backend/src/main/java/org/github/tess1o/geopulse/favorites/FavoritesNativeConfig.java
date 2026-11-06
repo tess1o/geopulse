@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.favorites.model.*;
         FavoriteLocationsDto.class,
         FavoritePointDto.class,
         FavoriteAreaDto.class,
+        AreaGeometry.class,
         AddAreaToFavoritesDto.class,
         AddPointToFavoritesDto.class,
         EditFavoriteDto.class,

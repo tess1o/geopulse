@@ -75,6 +75,11 @@ public class TimelineEventFinalizationService {
             userState.getActiveExplanation().note(TimelineReason.of(TimelineReasons.FAVORITE_AREA));
         }
 
+        var anchorArea = FavoriteAreas.containing(firstPoint, userState.getFavoriteAreas());
+        if (anchorArea != null && !anchorArea.preparedGeometry().covers(
+                org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(centroid.getLongitude(), centroid.getLatitude()))) {
+            centroid = firstPoint;
+        }
         Duration stayDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
 
         Stay stay = Stay.builder()

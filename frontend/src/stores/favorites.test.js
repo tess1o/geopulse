@@ -90,3 +90,28 @@ describe('queued favorite changes', () => {
         expect(store.hasPendingFavorites).toBe(true)
     })
 })
+
+describe('polygon favorites', () => {
+    const geometry = {type:'Polygon',coordinates:[[[30,50],[31,50],[30.5,50.5],[30,51],[30,50]]]}
+    it('sends full polygon geometry instead of derived bounds in immediate and bulk additions', async () => {
+        apiService.post.mockResolvedValue({jobId:'polygon-job'})
+        apiService.get.mockResolvedValue({points:[],areas:[]})
+        await store.addAreaToFavorites('Polygon',51,31,50,30,geometry)
+        expect(apiService.post).toHaveBeenLastCalledWith('/favorites/areas',{name:'Polygon',geometry})
+        store.addAreaToPending('Pending polygon',51,31,50,30,geometry)
+        await store.applyPendingChanges()
+        expect(apiService.post).toHaveBeenLastCalledWith('/favorites/bulk-apply', {
+            points:[],areas:[{name:'Pending polygon',geometry}],updates:[],deleteIds:[]
+        })
+    })
+    it('copies queued polygon edits and keeps them on a failed atomic save', async () => {
+        const edit={...area,geometry:structuredClone(geometry)}
+        store.queueUpdate(edit)
+        edit.geometry.coordinates[0][1][0]=99
+        expect(store.previewFavorites[1].geometry).toEqual(geometry)
+        apiService.post.mockRejectedValue(new Error('Failed'))
+        await expect(store.applyPendingChanges()).rejects.toBeTruthy()
+        expect(store.pendingCount).toBe(1)
+        expect(apiService.post.mock.calls[0][1].updates[0].changes).toEqual({name:'Office',city:undefined,country:undefined,geometry})
+    })
+})

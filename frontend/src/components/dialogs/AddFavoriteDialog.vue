@@ -46,8 +46,6 @@ export default {
   methods: {
     onSaveButton() {
       this.$emit('add-to-favorites', this.locationName);
-      this.locationName = ''; // reset input
-      this.internalVisible = false;
     },
     onDialogHide() {
       this.internalVisible = false;
