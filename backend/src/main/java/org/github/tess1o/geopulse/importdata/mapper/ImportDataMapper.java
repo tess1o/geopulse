@@ -28,15 +28,12 @@ public class ImportDataMapper {
     }
 
     public Polygon createPolygonFromCoordinates(FavoritesDataDto.FavoriteAreaDto areaDto) {
+        if (areaDto != null && areaDto.getGeometry() != null) return areaDto.getGeometry().toPolygon();
         if (areaDto == null || areaDto.getSouthWestLatitude() == null || areaDto.getNorthEastLatitude() == null ||
                 areaDto.getSouthWestLongitude() == null || areaDto.getNorthEastLongitude() == null) {
             return null;
         }
-        return GeoUtils.buildBoundingBoxPolygon(
-                areaDto.getSouthWestLatitude(),
-                areaDto.getNorthEastLatitude(),
-                areaDto.getSouthWestLongitude(),
-                areaDto.getNorthEastLongitude()
-        );
+        return org.github.tess1o.geopulse.favorites.model.AreaGeometry.resolve(null, areaDto.getNorthEastLatitude(),
+                areaDto.getNorthEastLongitude(), areaDto.getSouthWestLatitude(), areaDto.getSouthWestLongitude());
     }
 }

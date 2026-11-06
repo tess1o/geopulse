@@ -328,7 +328,7 @@ public class PlaceDetailsService {
             }
 
             // Calculate center for convenience
-            Point centroid = polygon.getCentroid();
+            Point centroid = polygon.getInteriorPoint();
 
             return PlaceGeometryDTO.builder()
                     .type("area")

@@ -151,7 +151,9 @@ const renderFavoriteArea = (favorite, index) => {
   let coordinates = []
   
   // Handle different coordinate formats
-  if (favorite.coordinates && Array.isArray(favorite.coordinates)) {
+  if (favorite.geometry?.type === 'Polygon') {
+    coordinates = favorite.geometry.coordinates[0].map(([lon, lat]) => [lat, lon])
+  } else if (favorite.coordinates && Array.isArray(favorite.coordinates)) {
     coordinates = favorite.coordinates
   } else if (favorite.northEastLat !== undefined && favorite.southWestLat !== undefined) {
     // Convert bounds to rectangle coordinates

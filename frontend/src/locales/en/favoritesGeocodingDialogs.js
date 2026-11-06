@@ -9,6 +9,26 @@
  * `reconcile.geocoding.*`.
  */
 export default {
+    areaDrawing: {
+        "done": "Done",
+        "adjustInstruction": "Drag a vertex to move it, or drag an edge to add a vertex and reshape it. Done applies changes; Cancel discards them.",
+        "adjust": "Adjust vertices",
+        "corner": "Vertex {number}. Drag or use arrow keys to move. Press + to split the next edge. Shift moves faster.",
+    "title": "Draw favorite area",
+    "rectangle": "Rectangle",
+    "polygon": "Polygon",
+    "undo": "Undo last point",
+    "finish": "Finish shape",
+    "rectangleInstruction": "Drag to draw a rectangle.",
+    "polygonInstruction": "Click or tap to add corners. Drag corners for precision. Select the first or last corner, or Finish shape, to close. Escape cancels.",
+    "errors": {
+        "vertices": "Use between 3 and 500 corners.",
+        "coordinates": "Use valid longitude and latitude coordinates.",
+        "closed": "The shape must be closed.",
+        "crossing": "Edges must not cross or overlap; the shape must have positive area.",
+        "antimeridian": "Shapes crossing the antimeridian are not supported."
+    }
+},
     addFavorite: {
         locationNamePlaceholder: 'Location name',
         save: 'Save'

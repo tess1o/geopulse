@@ -1,6 +1,9 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
+    :closable="!loading"
+    :dismissable-mask="false"
+    :close-on-escape="!loading"
     modal
     :header="t('miscDialogs.bulkSaveConfirm.header')"
     class="gp-dialog-sm"
@@ -14,6 +17,8 @@
           <ul class="summary-list">
             <li v-if="pointsCount > 0">{{ t('miscDialogs.bulkSaveConfirm.pointsItem', { count: pointsCount }, pointsCount) }}</li>
             <li v-if="areasCount > 0">{{ t('miscDialogs.bulkSaveConfirm.areasItem', { count: areasCount }, areasCount) }}</li>
+            <li v-if="updatesCount > 0">{{ t('miscDialogs.bulkSaveConfirm.updatesItem', { count: updatesCount }) }}</li>
+            <li v-if="deletesCount > 0">{{ t('miscDialogs.bulkSaveConfirm.deletesItem', { count: deletesCount }) }}</li>
           </ul>
         </div>
       </div>
@@ -65,6 +70,8 @@ const props = defineProps({
     type: Number,
     default: 0
   },
+  updatesCount: { type: Number, default: 0 },
+  deletesCount: { type: Number, default: 0 },
   loading: {
     type: Boolean,
     default: false
@@ -75,7 +82,7 @@ const emit = defineEmits(['close', 'confirm'])
 
 const internalVisible = ref(props.visible)
 
-const totalCount = computed(() => props.pointsCount + props.areasCount)
+const totalCount = computed(() => props.pointsCount + props.areasCount + props.updatesCount + props.deletesCount)
 
 watch(() => props.visible, (val) => {
   internalVisible.value = val

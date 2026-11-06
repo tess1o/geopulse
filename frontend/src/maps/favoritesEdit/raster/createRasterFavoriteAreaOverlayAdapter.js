@@ -1,5 +1,5 @@
 import L from 'leaflet'
-import { toLeafletBounds } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
+import { toLeafletBounds, toLeafletPolygon } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 
 export const createRasterFavoriteAreaOverlayAdapter = () => {
   let map = null
@@ -24,7 +24,7 @@ export const createRasterFavoriteAreaOverlayAdapter = () => {
     }
 
     clear()
-    rectangleLayer = L.rectangle(bounds, {
+    rectangleLayer = L.polygon(toLeafletPolygon(areaLike), {
       color: '#ef4444',
       fillColor: '#ef4444',
       fillOpacity: 0.2,

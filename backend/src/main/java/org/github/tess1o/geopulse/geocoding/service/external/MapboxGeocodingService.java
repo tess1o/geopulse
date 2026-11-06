@@ -22,6 +22,7 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Mapbox geocoding service that handles API calls and response transformation.
@@ -64,11 +65,11 @@ public class MapboxGeocodingService {
     @Retry
     @Bulkhead(value = 3, waitingTaskQueue = 15)
     @CircuitBreaker
-    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+    public Uni<List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
         return reverse(requestCoordinates, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
     }
 
-    private <T> Uni<T> reverse(Point requestCoordinates, java.util.function.Function<MapboxResponse, T> adapt) {
+    private <T> Uni<T> reverse(Point requestCoordinates, Function<MapboxResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled"));
         }

@@ -24,13 +24,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 @Slf4j
@@ -118,9 +115,7 @@ public class FavoriteLocationService {
 
         // Get geocoding data using the center point of the area
         try {
-            double centerLat = (favorite.getNorthEastLat() + favorite.getSouthWestLat()) / 2.0;
-            double centerLon = (favorite.getNorthEastLon() + favorite.getSouthWestLon()) / 2.0;
-            Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
+            Point centerPoint = entity.getGeometry().getInteriorPoint();
 
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
             UserLocationNormalizationService.NormalizedLocation normalized =
@@ -137,6 +132,43 @@ public class FavoriteLocationService {
         repository.persist(entity);
 
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
+    }
+
+    @Transactional
+    public void applyBulkChanges(UUID userId, BulkApplyFavoritesDto request) {
+        if (request.getPoints().isEmpty() && request.getAreas().isEmpty()
+                && request.getUpdates().isEmpty() && request.getDeleteIds().isEmpty()) {
+            throw new IllegalArgumentException("No favorite changes provided");
+        }
+        var ids = new HashSet<Long>();
+        for (var update : request.getUpdates()) {
+            var changes = update.getChanges();
+            long boundsCount = Stream.of(changes.getNorthEastLat(), changes.getNorthEastLon(),
+                    changes.getSouthWestLat(), changes.getSouthWestLon()).filter(Objects::nonNull).count();
+            if (boundsCount != 0 && boundsCount != 4) {
+                throw new IllegalArgumentException("All four area bounds must be provided together");
+            }
+            if (!ids.add(update.getFavoriteId())) {
+                throw new IllegalArgumentException("Duplicate favorite change");
+            }
+        }
+        for (Long id : request.getDeleteIds()) {
+            if (!ids.add(id)) {
+                throw new IllegalArgumentException("Duplicate or conflicting favorite change");
+            }
+        }
+        for (Long id : ids) {
+            var favorite = repository.findById(id);
+            if (favorite == null) throw new IllegalArgumentException("Favorite not found");
+            if (!favorite.getUser().getId().equals(userId)) {
+                throw new SecurityException("Not authorized to change this favorite");
+            }
+        }
+        for (var point : request.getPoints()) addFavorite(userId, point);
+        for (var area : request.getAreas()) addFavorite(userId, area);
+        for (var update : request.getUpdates()) updateFavorite(userId, update.getFavoriteId(), update.getChanges());
+        for (Long id : request.getDeleteIds()) deleteFavorite(userId, id);
+        repository.flush();
     }
 
     @Transactional
@@ -190,9 +222,7 @@ public class FavoriteLocationService {
 
                 // Get geocoding data using the center point of the area
                 try {
-                    double centerLat = (areaDto.getNorthEastLat() + areaDto.getSouthWestLat()) / 2.0;
-                    double centerLon = (areaDto.getNorthEastLon() + areaDto.getSouthWestLon()) / 2.0;
-                    Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
+                    Point centerPoint = entity.getGeometry().getInteriorPoint();
 
                     FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
                     UserLocationNormalizationService.NormalizedLocation normalized =
@@ -406,41 +436,17 @@ public class FavoriteLocationService {
         favoritesEntity.setCity(dto.getCity());
         favoritesEntity.setCountry(dto.getCountry());
 
-        // Update bounds if provided (for area favorites)
-        if (dto.getNorthEastLat() != null && dto.getNorthEastLon() != null &&
-            dto.getSouthWestLat() != null && dto.getSouthWestLon() != null) {
-
+        boolean hasBounds = dto.getNorthEastLat() != null || dto.getNorthEastLon() != null
+                || dto.getSouthWestLat() != null || dto.getSouthWestLon() != null;
+        if (dto.getGeometry() != null || hasBounds) {
             if (favoritesEntity.getType() != FavoriteLocationType.AREA) {
-                log.warn("Attempted to update bounds for non-area favorite {}", favoriteId);
-                throw new IllegalArgumentException("Can only update bounds for area favorites");
+                throw new IllegalArgumentException("Can only update geometry for area favorites");
             }
-
-            // Validate bounds
-            validateCoordinate("northEastLat", dto.getNorthEastLat(), -90.0, 90.0);
-            validateCoordinate("northEastLon", dto.getNorthEastLon(), -180.0, 180.0);
-            validateCoordinate("southWestLat", dto.getSouthWestLat(), -90.0, 90.0);
-            validateCoordinate("southWestLon", dto.getSouthWestLon(), -180.0, 180.0);
-
-            if (dto.getNorthEastLat() <= dto.getSouthWestLat()) {
-                throw new IllegalArgumentException("North-East latitude must be greater than South-West latitude");
-            }
-
-            if (dto.getNorthEastLon() <= dto.getSouthWestLon()) {
-                throw new IllegalArgumentException("North-East longitude must be greater than South-West longitude");
-            }
-
-            // Create new polygon with updated bounds
-            // buildBoundingBoxPolygon expects: (south lat, north lat, west lon, east lon)
-            Polygon newPolygon = GeoUtils.buildBoundingBoxPolygon(
-                    dto.getSouthWestLat(), dto.getNorthEastLat(),
-                    dto.getSouthWestLon(), dto.getNorthEastLon()
-            );
-
-            // Check if bounds actually changed
-            if (!favoritesEntity.getGeometry().equals(newPolygon)) {
-                favoritesEntity.setGeometry(newPolygon);
-                boundsChanged = true;
-                log.info("User {} updated bounds for area favorite {}", userId, favoriteId);
+            Polygon polygon = AreaGeometry.resolve(dto.getGeometry(), dto.getNorthEastLat(), dto.getNorthEastLon(),
+                    dto.getSouthWestLat(), dto.getSouthWestLon());
+            boundsChanged = !favoritesEntity.getGeometry().equalsTopo(polygon);
+            if (!favoritesEntity.getGeometry().equalsExact(polygon)) {
+                favoritesEntity.setGeometry(polygon);
             }
         }
 
@@ -602,7 +608,7 @@ public class FavoriteLocationService {
             } else {
                 // For areas, use the center point
                 Polygon polygon = (Polygon) favorite.getGeometry();
-                Coordinate centroid = polygon.getCentroid().getCoordinate();
+                Coordinate centroid = polygon.getInteriorPoint().getCoordinate();
                 point = GeoUtils.createPoint(centroid.x, centroid.y);
             }
 
@@ -715,7 +721,8 @@ public class FavoriteLocationService {
         return new BulkDomainApplyResult(processed, updated, failed);
     }
 
-    public record BulkDomainApplyResult(int processed, int updated, int failed) {}
+    public record BulkDomainApplyResult(int processed, int updated, int failed) {
+    }
 
     // Validation methods
     private void validatePointFavorite(AddPointToFavoritesDto favorite) {
@@ -735,20 +742,8 @@ public class FavoriteLocationService {
 
         validateName(favorite.getName());
 
-        // Validate individual coordinates
-        validateCoordinate("northEastLat", favorite.getNorthEastLat(), -90.0, 90.0);
-        validateCoordinate("northEastLon", favorite.getNorthEastLon(), -180.0, 180.0);
-        validateCoordinate("southWestLat", favorite.getSouthWestLat(), -90.0, 90.0);
-        validateCoordinate("southWestLon", favorite.getSouthWestLon(), -180.0, 180.0);
-
-        // Validate that NE is actually northeast of SW
-        if (favorite.getNorthEastLat() <= favorite.getSouthWestLat()) {
-            throw new IllegalArgumentException("North-East latitude must be greater than South-West latitude");
-        }
-
-        if (favorite.getNorthEastLon() <= favorite.getSouthWestLon()) {
-            throw new IllegalArgumentException("North-East longitude must be greater than South-West longitude");
-        }
+        AreaGeometry.resolve(favorite.getGeometry(), favorite.getNorthEastLat(), favorite.getNorthEastLon(),
+                favorite.getSouthWestLat(), favorite.getSouthWestLon());
     }
 
     private void validateName(String name) {

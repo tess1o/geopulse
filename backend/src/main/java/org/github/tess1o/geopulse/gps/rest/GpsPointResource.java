@@ -38,11 +38,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.jboss.resteasy.reactive.RestHeader;
 
-import java.time.DateTimeException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -537,7 +533,7 @@ public class GpsPointResource {
                 // Try parsing as date
                 try {
                     LocalDate date = LocalDate.parse(startTime.trim());
-                    builder.startTime(date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+                    builder.startTime(date.atStartOfDay().toInstant(ZoneOffset.UTC));
                 } catch (DateTimeParseException ex) {
                     log.warn("Failed to parse startTime: {}", startTime);
                 }
@@ -552,7 +548,7 @@ public class GpsPointResource {
                 // Try parsing as date
                 try {
                     LocalDate date = LocalDate.parse(endTime.trim());
-                    builder.endTime(date.atTime(23, 59, 59).toInstant(java.time.ZoneOffset.UTC));
+                    builder.endTime(date.atTime(23, 59, 59).toInstant(ZoneOffset.UTC));
                 } catch (DateTimeParseException ex) {
                     log.warn("Failed to parse endTime: {}", endTime);
                 }

@@ -165,8 +165,8 @@ public class TimelineLocationLookupService {
                 .id(favorite.getId())
                 .name(favorite.getName())
                 .type(favorite.getType() != null ? favorite.getType().name().toLowerCase(Locale.ROOT) : null)
-                .latitude(favorite.getGeometry() == null ? null : favorite.getGeometry().getCentroid().getY())
-                .longitude(favorite.getGeometry() == null ? null : favorite.getGeometry().getCentroid().getX())
+                .latitude(favorite.getGeometry() == null ? null : favorite.getGeometry().getInteriorPoint().getY())
+                .longitude(favorite.getGeometry() == null ? null : favorite.getGeometry().getInteriorPoint().getX())
                 .relation(area ? "inside area" : "nearby point")
                 .distanceMeters(distance)
                 .build();

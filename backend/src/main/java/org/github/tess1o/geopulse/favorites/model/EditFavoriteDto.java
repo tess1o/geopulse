@@ -44,4 +44,9 @@ public class EditFavoriteDto {
     @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
     @Schema(examples = "30.521")
     private Double southWestLon;
+    private AreaGeometry geometry;
+
+    public EditFavoriteDto(String name, String city, String country, Double north, Double east, Double south, Double west) {
+        this(name, city, country, north, east, south, west, null);
+    }
 }

@@ -22,4 +22,25 @@ public class FavoriteAreaDto {
     private double southWestLon;
     private String city;
     private String country;
+    private AreaGeometry geometry;
+    private Double latitude;
+    private Double longitude;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.Getter(lombok.AccessLevel.NONE)
+    @lombok.Setter(lombok.AccessLevel.NONE)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private transient org.locationtech.jts.geom.prep.PreparedGeometry preparedGeometry;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public org.locationtech.jts.geom.prep.PreparedGeometry preparedGeometry() {
+        if (preparedGeometry == null) {
+            preparedGeometry = org.locationtech.jts.geom.prep.PreparedGeometryFactory.prepare(
+                    AreaGeometry.resolve(geometry, geometry == null ? northEastLat : null,
+                            geometry == null ? northEastLon : null, geometry == null ? southWestLat : null,
+                            geometry == null ? southWestLon : null));
+        }
+        return preparedGeometry;
+    }
 }

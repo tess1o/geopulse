@@ -19913,6 +19913,7 @@
     "/api/v1/geocoding/{id}/reconciliation-candidates" : {
       "post" : {
         "summary" : "Preview provider candidates for a single geocoding entry",
+        "description" : "Fetches candidates from the selected enabled geocoding provider without changing the entry. Returns a preview ID and candidate IDs for selection. The preview expires after ten minutes or when the user requests another preview.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ReverseGeocodingResource_previewCandidates",
         "tags" : [ "Geocoding" ],
         "parameters" : [ {
@@ -19959,13 +19960,13 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/geocoding/{id}/reconciliation-selection" : {
       "post" : {
         "summary" : "Apply a previewed candidate to the user's linked stays",
+        "description" : "Applies a candidate from the user's current preview to the geocoding entry and their linked stays. Rejects expired previews or entries changed since preview, and preserves other users' data when the entry is shared.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ReverseGeocodingResource_selectCandidate",
         "tags" : [ "Geocoding" ],
         "parameters" : [ {
@@ -20012,8 +20013,7 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/geofences/events" : {
@@ -26873,6 +26873,7 @@
     "/api/v1/timeline/activity-corrections" : {
       "post" : {
         "summary" : "Save a reversible group of manual activities without generating GPS points",
+        "description" : "Saves manual stays and trips in empty intervals as one reversible correction group and schedules timeline regeneration. Returns the group, saved edits, and timeline job status without generating GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_save",
         "tags" : [ "Timeline Corrections" ],
         "requestBody" : {
@@ -26910,13 +26911,13 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/timeline/activity-corrections/preview" : {
       "post" : {
         "summary" : "Review activities proposed for empty timeline intervals",
+        "description" : "Validates proposed manual stays and trips for empty intervals and returns a timeline preview with surrounding events and remaining gaps. Does not save corrections or generate GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_preview",
         "tags" : [ "Timeline Corrections" ],
         "requestBody" : {
@@ -26954,13 +26955,13 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/timeline/activity-corrections/{groupId}/restore" : {
       "post" : {
         "summary" : "Restore a correction group when its intervals remain empty",
+        "description" : "Reactivates all edits in the signed-in user's correction group after checking that its intervals remain empty, then schedules timeline regeneration. Rejects restoration if existing activities or manual corrections conflict.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_restore",
         "tags" : [ "Timeline Corrections" ],
         "parameters" : [ {
@@ -26993,13 +26994,13 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/timeline/activity-corrections/{groupId}/revert" : {
       "post" : {
         "summary" : "Undo a complete activity correction group",
+        "description" : "Deactivates all edits in the signed-in user's correction group and schedules timeline regeneration from the earliest affected interval. Keeps the group available for restoration.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_revert",
         "tags" : [ "Timeline Corrections" ],
         "parameters" : [ {
@@ -27032,8 +27033,7 @@
           "bearerAuth" : [ ]
         }, {
           "apiKey" : [ ]
-        } ],
-        "description" : "**Access:** Any signed-in user, with a session or an API token."
+        } ]
       }
     },
     "/api/v1/timeline/count" : {

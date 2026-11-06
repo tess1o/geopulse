@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.friends.service.FriendService;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -90,7 +91,7 @@ public class AIFriendLiveTools {
 
         Instant timestamp = livePoint.getTimestamp();
         long secondsAgo = timestamp != null
-                ? Math.max(0, java.time.Duration.between(timestamp, Instant.now()).getSeconds())
+                ? Math.max(0, Duration.between(timestamp, Instant.now()).getSeconds())
                 : Long.MAX_VALUE;
         boolean liveNow = timestamp != null && secondsAgo <= LIVE_NOW_THRESHOLD_SECONDS;
         boolean stale = !liveNow;

@@ -1,3 +1,4 @@
+import {areaGeometryKey, areaPayload} from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 import { ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useFavoritesStore } from '@/stores/favorites'
@@ -37,18 +38,11 @@ export function useFavoriteEditor() {
    * @param {Object} favorite - The favorite to edit (must include id, name, type, and bounds if AREA)
    */
   const openEditor = (favorite) => {
-    selectedFavorite.value = { ...favorite }
-
-    console.log('favorite:', favorite)
+    selectedFavorite.value = JSON.parse(JSON.stringify(favorite))
 
     // Store original bounds for comparison (only for AREA favorites)
     if (favorite.type === 'AREA') {
-      originalBounds.value = {
-        northEastLat: favorite.northEastLat,
-        northEastLon: favorite.northEastLon,
-        southWestLat: favorite.southWestLat,
-        southWestLon: favorite.southWestLon
-      }
+      originalBounds.value = areaGeometryKey(favorite)
     } else {
       originalBounds.value = null
     }
@@ -73,12 +67,7 @@ export function useFavoriteEditor() {
   const hasBoundsChanged = (newBounds) => {
     if (!newBounds || !originalBounds.value) return false
 
-    return (
-      newBounds.northEastLat !== originalBounds.value.northEastLat ||
-      newBounds.northEastLon !== originalBounds.value.northEastLon ||
-      newBounds.southWestLat !== originalBounds.value.southWestLat ||
-      newBounds.southWestLon !== originalBounds.value.southWestLon
-    )
+    return areaGeometryKey(newBounds) !== originalBounds.value
   }
 
   /**
@@ -91,12 +80,7 @@ export function useFavoriteEditor() {
    */
   const handleSave = async (updatedData, options = {}) => {
     // Prepare bounds if it's an area favorite
-    const bounds = updatedData.type === 'AREA' ? {
-      northEastLat: updatedData.northEastLat,
-      northEastLon: updatedData.northEastLon,
-      southWestLat: updatedData.southWestLat,
-      southWestLon: updatedData.southWestLon
-    } : null
+    const bounds = updatedData.type === 'AREA' ? areaPayload(updatedData) : null
 
     // Capture values to avoid closure issues
     const favoriteId = updatedData.id
@@ -106,9 +90,6 @@ export function useFavoriteEditor() {
 
     // Check if bounds changed
     const boundsChanged = hasBoundsChanged(bounds)
-
-    // Close dialog immediately (initiates hide transition)
-    showDialog.value = false
 
     if (boundsChanged) {
       // Bounds changed: use timeline regeneration flow
@@ -124,7 +105,10 @@ export function useFavoriteEditor() {
         modalType: 'favorite',
         successMessage: `Favorite "${favoriteName}" updated successfully. Timeline is regenerating.`,
         errorMessage: 'Failed to update favorite location.',
-        onSuccess: options.onSuccess
+        onSuccess: () => {
+          showDialog.value = false
+          options.onSuccess?.()
+        }
       })
     } else {
       // No bounds change: simple update
@@ -137,6 +121,7 @@ export function useFavoriteEditor() {
           bounds
         )
 
+        showDialog.value = false
         toast.add({
           severity: 'success',
           summary: 'Updated',

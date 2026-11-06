@@ -25,6 +25,8 @@ import org.github.tess1o.geopulse.user.repository.UserAvatarRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.net.URI;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
@@ -286,9 +288,9 @@ public class UserService {
         normalizedTimezone = TIMEZONE_MAPPING.getOrDefault(normalizedTimezone, normalizedTimezone);
 
         try {
-            java.time.ZoneId.of(normalizedTimezone);
+            ZoneId.of(normalizedTimezone);
             return normalizedTimezone;
-        } catch (java.time.DateTimeException e) {
+        } catch (DateTimeException e) {
             log.warn("Invalid timezone provided: {}, defaulting to UTC", timezone);
             return "UTC";
         }

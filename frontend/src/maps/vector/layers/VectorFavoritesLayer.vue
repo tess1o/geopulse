@@ -67,6 +67,7 @@ const resetMapCursor = () => {
 }
 
 const normalizeAreaRing = (favorite) => {
+  if (favorite.geometry?.type === 'Polygon') return favorite.geometry.coordinates[0]
   if (Array.isArray(favorite?.coordinates) && favorite.coordinates.length >= 3) {
     const ring = favorite.coordinates
       .map((coordinate) => {

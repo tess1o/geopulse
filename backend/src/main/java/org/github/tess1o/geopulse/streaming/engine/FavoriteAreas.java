@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * How stay detection uses favorite areas: a point outside the stay radius still belongs to the stay when it is in the
- * same favorite area as the stay centre.
+ * same favorite area as the first stay point.
  */
 final class FavoriteAreas {
 
@@ -16,11 +16,11 @@ final class FavoriteAreas {
 
     /**
      * Whether the stay has points outside its radius that belong to it only because they share a favorite area with
-     * its centre. Decided from the stay's own points, so it comes out the same however the points arrived.
+     * its first point. Decided from the stay's own points, so it comes out the same however the points arrived.
      */
     static boolean keepsPointsOutsideRadius(List<GPSPoint> stayPoints, GPSPoint centre, double radiusMeters,
                                             List<FavoriteAreaDto> favoriteAreas) {
-        FavoriteAreaDto centreArea = containing(centre, favoriteAreas);
+        FavoriteAreaDto centreArea = containing(stayPoints.isEmpty() ? centre : stayPoints.getFirst(), favoriteAreas);
         if (centreArea == null) {
             return false;
         }
@@ -34,21 +34,16 @@ final class FavoriteAreas {
     }
 
     /**
-     * The favorite area that contains the point, using rectangular bounding box containment, or null if none does.
+     * The favorite area that contains the point, using polygon coverage, or null if none does.
      */
     static FavoriteAreaDto containing(GPSPoint point, List<FavoriteAreaDto> favoriteAreas) {
         if (point == null || favoriteAreas == null || favoriteAreas.isEmpty()) {
             return null;
         }
 
-        double pointLat = point.getLatitude();
-        double pointLon = point.getLongitude();
-
+        var location = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(point.getLongitude(), point.getLatitude());
         for (FavoriteAreaDto area : favoriteAreas) {
-            if (pointLat >= area.getSouthWestLat() && pointLat <= area.getNorthEastLat() &&
-                    pointLon >= area.getSouthWestLon() && pointLon <= area.getNorthEastLon()) {
-                return area;
-            }
+            if (area.preparedGeometry().covers(location)) return area;
         }
 
         return null;

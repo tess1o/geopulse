@@ -479,15 +479,17 @@ public class DebugImportService {
         for (JsonNode area : areas) {
             try {
                 String name = area.get("name").asText();
-                double northEastLat = area.get("northEastLat").asDouble();
-                double northEastLon = area.get("northEastLon").asDouble();
-                double southWestLat = area.get("southWestLat").asDouble();
-                double southWestLon = area.get("southWestLon").asDouble();
-
-                AddAreaToFavoritesDto areaToFavoritesDto = new AddAreaToFavoritesDto(
-                        name, northEastLat, northEastLon, southWestLat, southWestLon
-                );
-
+                AddAreaToFavoritesDto areaToFavoritesDto = new AddAreaToFavoritesDto();
+                areaToFavoritesDto.setName(name);
+                if (area.hasNonNull("geometry")) {
+                    areaToFavoritesDto.setGeometry(objectMapper.treeToValue(area.get("geometry"),
+                            org.github.tess1o.geopulse.favorites.model.AreaGeometry.class));
+                } else {
+                    areaToFavoritesDto.setNorthEastLat(area.get("northEastLat").asDouble());
+                    areaToFavoritesDto.setNorthEastLon(area.get("northEastLon").asDouble());
+                    areaToFavoritesDto.setSouthWestLat(area.get("southWestLat").asDouble());
+                    areaToFavoritesDto.setSouthWestLon(area.get("southWestLon").asDouble());
+                }
                 persistFavorite(favoriteLocationMapper.toEntity(areaToFavoritesDto, userId), area, referenceMaps);
 
             } catch (Exception e) {

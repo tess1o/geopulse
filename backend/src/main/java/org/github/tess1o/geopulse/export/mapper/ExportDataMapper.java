@@ -170,6 +170,7 @@ public class ExportDataMapper {
                 .name(favorite.getName())
                 .city(favorite.getCity())
                 .country(favorite.getCountry())
+                .geometry(org.github.tess1o.geopulse.favorites.model.AreaGeometry.from(favorite.getGeometry()))
                 .northEastLatitude(env.getMaxY())
                 .northEastLongitude(env.getMaxX())
                 .southWestLatitude(env.getMinY())

@@ -3,6 +3,26 @@
  * or geocoding results against a provider, and edit a single geocoding result.
  */
 export default {
+    areaDrawing: {
+        "done": "Fertig",
+        "adjustInstruction": "Einen Eckpunkt ziehen, um ihn zu verschieben, oder eine Kante ziehen, um einen Eckpunkt hinzuzufügen und die Form anzupassen. Mit Fertig übernehmen oder mit Abbrechen verwerfen.",
+        "adjust": "Eckpunkte verschieben",
+        "corner": "Eckpunkt {number}. Ziehen oder mit Pfeiltasten verschieben. + teilt die nächste Kante. Umschalt bewegt schneller.",
+    "title": "Favoritenbereich zeichnen",
+    "rectangle": "Rechteck",
+    "polygon": "Polygon",
+    "undo": "Letzten Punkt entfernen",
+    "finish": "Form abschließen",
+    "rectangleInstruction": "Ziehen, um ein Rechteck zu zeichnen.",
+    "polygonInstruction": "Klicken oder tippen, um Eckpunkte hinzuzufügen. Eckpunkte zur Feinabstimmung ziehen. Zum Schließen den ersten oder letzten Punkt oder Form abschließen wählen. Escape bricht ab.",
+    "errors": {
+        "vertices": "Zwischen 3 und 500 Eckpunkte verwenden.",
+        "coordinates": "Gültige Längen- und Breitengrade verwenden.",
+        "closed": "Die Form muss geschlossen sein.",
+        "crossing": "Kanten dürfen sich nicht kreuzen oder überlappen; die Fläche muss positiv sein.",
+        "antimeridian": "Formen über dem Antimeridian werden nicht unterstützt."
+    }
+},
     addFavorite: {
         locationNamePlaceholder: 'Name des Orts',
         save: 'Speichern'

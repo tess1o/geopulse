@@ -306,11 +306,13 @@ public class GeoPulsePlacesImporter {
                 // Create Polygon geometry
                 Polygon geometry = importDataMapper.createPolygonFromCoordinates(areaDto);
                 // Convert to Point for duplicate detection (use centroid)
-                Point centroid = geometry.getCentroid();
+                Point centroid = geometry.getInteriorPoint();
 
                 // Check for duplicates by user + name + location (centroid)
                 List<FavoritesEntity> duplicates = favoritesRepository.findByUserAndNameAndLocation(
                         job.getUserId(), areaDto.getName(), centroid);
+                duplicates = duplicates.stream().filter(f -> f.getType() == FavoriteLocationType.AREA
+                        && f.getGeometry().equalsTopo(geometry)).toList();
 
                 if (duplicates.isEmpty()) {
                     // Create new favorite entity

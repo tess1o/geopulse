@@ -77,7 +77,10 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/{id}/reconciliation-candidates")
-    @Operation(summary = "Preview provider candidates for a single geocoding entry")
+    @Operation(summary = "Preview provider candidates for a single geocoding entry",
+            description = "Fetches candidates from the selected enabled geocoding provider without changing the entry. "
+                    + "Returns a preview ID and candidate IDs for selection. The preview expires after ten minutes "
+                    + "or when the user requests another preview.")
     public GeocodingCandidatePreview previewCandidates(
             @PathParam("id") Long id,
             @Valid @jakarta.validation.constraints.NotNull GeocodingCandidateRequest request) {
@@ -86,7 +89,10 @@ public class ReverseGeocodingResource {
 
     @POST
     @Path("/{id}/reconciliation-selection")
-    @Operation(summary = "Apply a previewed candidate to the user's linked stays")
+    @Operation(summary = "Apply a previewed candidate to the user's linked stays",
+            description = "Applies a candidate from the user's current preview to the geocoding entry and their linked "
+                    + "stays. Rejects expired previews or entries changed since preview, and preserves other users' "
+                    + "data when the entry is shared.")
     public ReverseGeocodingDTO selectCandidate(@PathParam("id") Long id,
             @Valid @jakarta.validation.constraints.NotNull GeocodingCandidateSelection selection) {
         return reconciliationService.selectCandidate(currentUserService.getCurrentUserId(), id, selection);

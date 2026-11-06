@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -87,7 +88,7 @@ class AccessLoggingIntegrationTest {
         assertThat(records).isEmpty();
     }
 
-    private Response capture(List<LogRecord> records, java.util.function.Supplier<Response> request) {
+    private Response capture(List<LogRecord> records, Supplier<Response> request) {
         List<LogRecord> synchronizedRecords = Collections.synchronizedList(records);
         Logger logger = LogContext.getLogContext().getLogger(CATEGORY);
         Handler handler = new Handler() {

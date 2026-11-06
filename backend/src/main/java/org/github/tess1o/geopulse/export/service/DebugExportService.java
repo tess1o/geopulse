@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -726,6 +727,11 @@ public class DebugExportService {
                     shifted.put("name", name);
                     shifted.put("type", area.getType());
 
+                    if (area.getGeometry() != null) {
+                        var rings = area.getGeometry().getCoordinates().stream().map(ring -> ring.stream()
+                                .map(c -> List.of(shift.longitude(c.get(0)), shift.latitude(c.get(1)))).toList()).toList();
+                        shifted.put("geometry", new org.github.tess1o.geopulse.favorites.model.AreaGeometry("Polygon", rings));
+                    }
                     // Shift all 4 boundary coordinates
                     shifted.put("northEastLat", shift.latitude(area.getNorthEastLat()));
                     shifted.put("northEastLon", shift.longitude(area.getNorthEastLon()));
@@ -814,8 +820,7 @@ public class DebugExportService {
         }
     }
 
-    private static void shiftNumber(Map<String, Object> payload, String key,
-                                    java.util.function.Function<Double, Double> shifter) {
+    private static void shiftNumber(Map<String, Object> payload, String key, Function<Double, Double> shifter) {
         Object value = payload.get(key);
         if (value instanceof Number number) payload.put(key, shifter.apply(number.doubleValue()));
     }

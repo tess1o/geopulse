@@ -127,6 +127,7 @@ const placeFavoriteData = computed(() => {
       return [
         {
           id: 'place-area',
+          coordinates: props.geometry.coordinates,
           name: props.locationName || t('place.map.defaultAreaName'),
           type: 'area',
           northEastLat,

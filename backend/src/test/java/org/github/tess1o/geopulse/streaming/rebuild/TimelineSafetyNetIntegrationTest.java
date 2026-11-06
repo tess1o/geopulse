@@ -140,7 +140,7 @@ class TimelineSafetyNetIntegrationTest {
     @Test
     void userWithAPendingRebuildIsLeftToTheRealtimeJob() {
         UUID userId = userWithRecentDays("safety-pending", 53);
-        Instant from = Instant.now().minus(WINDOW);
+        Instant from = Instant.now().minus(WINDOW).truncatedTo(ChronoUnit.MICROS); // Postgres keeps microseconds
         harness.ingest(userId, List.of(Track.message(49.8420, 24.0310, Instant.now().minusSeconds(60), 10.0, 0.0)));
 
         assertThat(safetyNetService.verifyUser(userId, from)).isEqualTo(Outcome.DEFERRED);

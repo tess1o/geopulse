@@ -115,7 +115,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLocationStore } from '@/stores/location'
 import { useFriendsStore } from '@/stores/friends'
 import { useGeofencesStore } from '@/stores/geofences'
-import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
+import { useAreaDrawingRuntime } from '@/composables/useAreaDrawingRuntime'
 import { useTimezone } from '@/composables/useTimezone'
 import { useGeofenceTemplateEditor } from '@/composables/useGeofenceTemplateEditor'
 import { createGeofenceRulesMapAdapter } from '@/maps/geofences/runtime/createGeofenceRulesMapAdapter'
@@ -262,7 +262,7 @@ const statusOptions = computed(() => [
 ])
 
 const ruleForm = ref(defaultRuleForm())
-const rectangleDrawing = useRectangleDrawingRuntime({
+const rectangleDrawing = useAreaDrawingRuntime({
   onRectangleCreated: ({ bounds }) => {
     const areaLike = buildAreaLikeFromBoundsApi(bounds)
     if (!areaLike) {

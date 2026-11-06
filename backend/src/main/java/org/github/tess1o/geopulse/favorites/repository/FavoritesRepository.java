@@ -76,7 +76,7 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                 OR (
                     type = 'AREA'
                     AND (
-                        ST_Contains(geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
+                        ST_Covers(geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
                         OR ST_DWithin(
                             ST_Boundary(geometry)::geography,
                             ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,

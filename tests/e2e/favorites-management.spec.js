@@ -282,6 +282,222 @@ test.describe('Favorites Management Page', () => {
         });
     });
 
+    test.describe('Polygon favorite areas', () => {
+        const startPolygon = async (page, favoritesPage) => {
+            await favoritesPage.rightClickOnMap(100, 200);
+            await favoritesPage.waitForMapContextMenu();
+            await favoritesPage.clickContextMenuItem('Add an area to Favorites');
+            await page.getByRole('button', {name:'Polygon',exact:true}).click();
+            const host = favoritesPage.mapHarness.getMapHostLocator({mapId:'favorites-map'});
+            const box = await host.boundingBox();
+            const vertices = [[0.18,0.45],[0.42,0.45],[0.42,0.65],[0.30,0.65],[0.30,0.85],[0.18,0.85]];
+            for (const [x,y] of vertices) await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(6);
+            return box;
+        };
+        const readShape = async (dbManager,user) => {
+            const result = await dbManager.client.query(
+                "SELECT id, name, ST_AsGeoJSON(geometry)::json AS geometry FROM favorite_locations WHERE user_id=$1 AND type='AREA' ORDER BY id",[user.id]);
+            return result.rows;
+        };
+        const renderedRings = async (page,mapMode) => page.evaluate((mode) => {
+            const map=window.__GP_E2E_MAPS['favorites-map'];
+            if(mode==='VECTOR') return Object.values(map.getStyle().sources)
+                .flatMap(source => source.data?.features || []).filter(f=>f.geometry?.type==='Polygon').map(f=>f.geometry.coordinates[0]);
+            const rings=[];
+            map.eachLayer(layer=>{
+                if(layer.toGeoJSON) {
+                    const feature=layer.toGeoJSON(15);
+                    if(feature.geometry?.type==='Polygon') rings.push(feature.geometry.coordinates[0]);
+                }
+            });
+            return rings;
+        },mapMode);
+
+        test('should draw, refine, persist and reload a concave polygon', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            await startPolygon(page,favoritesPage);
+            const second=page.locator('.gp-area-vertex').nth(1), bounds=await second.boundingBox();
+            await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+            await page.mouse.down(); await page.mouse.move(bounds.x-20,bounds.y+12,{steps:8}); await page.mouse.up();
+            await expect.poll(async()=> (await second.boundingBox()).x).toBeLessThan(bounds.x-10);
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(6);
+            await page.getByRole('button',{name:'Finish shape',exact:true}).click();
+            const request=page.waitForRequest(r=>r.url().endsWith('/favorites/areas') && r.method()==='POST');
+            await favoritesPage.fillAddDialog('Concave polygon');
+            await favoritesPage.submitAddDialog();
+            const payload=(await request).postDataJSON();
+            expect(payload.geometry.coordinates[0]).toHaveLength(7);
+            expect(payload.northEastLat).toBeUndefined();
+            await expect.poll(async()=> (await readShape(dbManager,user)).length,{timeout:30000}).toBe(1);
+            await favoritesPage.waitForTimelineRegenerationCycle({optional:true});
+            await page.reload(); await favoritesPage.waitForPageLoad();
+            const saved=(await readShape(dbManager,user))[0];
+            for(let i=0;i<7;i++) for(let axis=0;axis<2;axis++) expect(saved.geometry.coordinates[0][i][axis]).toBeCloseTo(payload.geometry.coordinates[0][i][axis],7);
+            await expect.poll(async()=> (await renderedRings(page,mapMode)).some(r=>r.length===7),{timeout:15000}).toBe(true);
+            const rings=await renderedRings(page,mapMode);
+            const rendered=rings.find(r=>r.length===7);
+            for(let i=0;i<7;i++) for(let axis=0;axis<2;axis++) expect(rendered[i][axis]).toBeCloseTo(payload.geometry.coordinates[0][i][axis],7);
+
+            await favoritesPage.clickEditInTable(0);
+            await favoritesPage.waitForEditAreaMapReady();
+            await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(6);
+            await expect(page.getByRole('button',{name:'Polygon',exact:true})).toHaveCount(0);
+            const toolbar=await page.locator('.area-drawing-controls').boundingBox();
+            const mapBox=await page.locator('#edit-area-map').boundingBox();
+            expect(toolbar.y+toolbar.height).toBeLessThanOrEqual(mapBox.y);
+            await page.mouse.click(mapBox.x+mapBox.width*0.9,mapBox.y+mapBox.height*0.9);
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(6);
+            await page.locator('.gp-area-vertex').nth(3).focus();
+            await page.keyboard.press('Shift+ArrowLeft');
+            await page.getByRole('button',{name:'Done',exact:true}).click();
+            const update=page.waitForResponse(r=>r.url().endsWith('/favorites/'+saved.id) && r.request().method()==='PUT');
+            await favoritesPage.submitEditDialog();
+            const response=await update;
+            expect(response.ok()).toBe(true);
+            expect((await response.json()).jobId).toBeTruthy();
+            const updated=(await readShape(dbManager,user))[0];
+            expect(updated.geometry.coordinates[0][3][0]).not.toBe(saved.geometry.coordinates[0][3][0]);
+            // An interior corner moved: the envelope stays the same.
+            expect(Math.max(...updated.geometry.coordinates[0].map(c=>c[0]))).toBe(Math.max(...saved.geometry.coordinates[0].map(c=>c[0])));
+        });
+
+        test('should refine a rectangle by dragging an edge', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            const id=await TestSetupHelper.createFavoriteArea(dbManager,user.id,{
+                name:'Rectangle to refine',southWestLat:50.4,southWestLon:30.4,northEastLat:50.5,northEastLon:30.6
+            });
+            await page.reload(); await favoritesPage.waitForPageLoad();
+            await favoritesPage.clickEditInTable(0); await favoritesPage.waitForEditAreaMapReady();
+            await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(4);
+            await expect(page.locator('.gp-area-midpoint')).toHaveCount(0);
+            const dragFirstEdge=async()=>{
+                const a=await page.locator('.gp-area-vertex').nth(0).boundingBox();
+                const b=await page.locator('.gp-area-vertex').nth(1).boundingBox();
+                const x=(a.x+a.width/2+b.x+b.width/2)/2;
+                const y=(a.y+a.height/2+b.y+b.height/2)/2;
+                await page.mouse.move(x,y);
+                await page.mouse.down();
+                await page.mouse.move(x,y+20,{steps:8});
+                await page.mouse.up();
+            };
+            await dragFirstEdge();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(5);
+            await expect(page.locator('.gp-area-midpoint')).toHaveCount(0);
+            await page.locator('.area-drawing-controls').getByRole('button',{name:'Cancel',exact:true}).click();
+            await expect(page.locator('.gp-area-midpoint')).toHaveCount(0);
+            expect((await readShape(dbManager,user))[0].geometry.coordinates[0]).toHaveLength(5);
+            await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(4);
+            await dragFirstEdge();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(5);
+            await page.locator('.gp-area-vertex').nth(1).focus();
+            await page.keyboard.press('Shift+ArrowDown');
+            await page.getByRole('button',{name:'Done',exact:true}).click();
+            const update=page.waitForResponse(r=>r.url().endsWith('/favorites/'+id) && r.request().method()==='PUT');
+            await favoritesPage.submitEditDialog();
+            expect((await update).ok()).toBe(true);
+            const saved=(await readShape(dbManager,user))[0].geometry.coordinates[0];
+            expect(saved).toHaveLength(6);
+            expect(saved[1][1]).not.toBe(50.4);
+            expect(saved[0]).toEqual(saved.at(-1));
+            await favoritesPage.waitForTimelineRegenerationCycle({optional:true});
+            await page.reload(); await favoritesPage.waitForPageLoad();
+            await favoritesPage.clickEditInTable(0); await favoritesPage.waitForEditAreaMapReady();
+            await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(5);
+            await expect(page.locator('.gp-area-midpoint')).toHaveCount(0);
+        });
+
+        test('should keep invalid polygon drafts, undo points and cancel without saving', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            await startPolygon(page,favoritesPage);
+            const first=page.locator('.gp-area-vertex').first();
+            await first.focus();
+            await page.keyboard.press('ArrowRight');
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(6);
+            await page.getByRole('button',{name:'Undo last point',exact:true}).click();
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(5);
+            for (let i=0;i<5;i++) await page.getByRole('button',{name:'Undo last point',exact:true}).click();
+            const box=await favoritesPage.mapHarness.getMapHostLocator({mapId:'favorites-map'}).boundingBox();
+            for (const [x,y] of [[0.18,0.45],[0.42,0.8],[0.18,0.8],[0.42,0.45]]) {
+                await page.mouse.click(box.x+box.width*x,box.y+box.height*y);
+            }
+            await page.getByRole('button',{name:'Finish shape',exact:true}).click();
+            await expect(page.locator('.area-drawing-controls [role="alert"]')).toContainText('Edges must not cross');
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(4);
+            await page.keyboard.press('Escape');
+            await expect(page.locator('.area-drawing-controls')).toHaveCount(0);
+            await expect(page.locator('.gp-area-vertex')).toHaveCount(0);
+            expect(await readShape(dbManager,user)).toEqual([]);
+            const restored=await page.evaluate(()=>{
+                const map=window.__GP_E2E_MAPS['favorites-map'];
+                return map.dragging?.enabled() ?? map.dragPan.isEnabled();
+            });
+            expect(restored).toBe(true);
+        });
+
+        test('should keep the outline fixed over the toolbar and finish by clicking the last corner', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            await startPolygon(page,favoritesPage);
+            await page.getByRole('button',{name:'Finish shape',exact:true}).hover();
+            const lines=await page.evaluate(mode=>{
+                const map=window.__GP_E2E_MAPS['favorites-map'];
+                if(mode==='VECTOR') return Object.entries(map.getStyle().sources)
+                    .filter(([id])=>id.includes('gp-rect-preview-'))
+                    .flatMap(([id])=>map.getSource(id)._data.features.map(f=>f.geometry.coordinates));
+                const segments=[];
+                map.eachLayer(layer=>{
+                    const geometry=layer.toGeoJSON?.(15)?.geometry;
+                    if(geometry?.type==='MultiLineString') segments.push(...geometry.coordinates);
+                    else if(geometry?.type==='LineString') segments.push(geometry.coordinates);
+                });
+                return segments;
+            },mapMode);
+            expect(lines).toHaveLength(1);
+            expect(lines[0]).toHaveLength(6);
+            expect(lines[0][0]).not.toEqual(lines[0].at(-1));
+            await page.locator('.gp-area-vertex').last().click();
+            await favoritesPage.waitForAddDialog();
+            await expect(page.locator('.area-drawing-controls')).toHaveCount(0);
+            await favoritesPage.closeAddDialog();
+            expect(await readShape(dbManager,user)).toEqual([]);
+        });
+
+        test('should retain a polygon and its name when saving fails', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            await startPolygon(page,favoritesPage);
+            await page.getByRole('button',{name:'Finish shape',exact:true}).click();
+            await page.route('**/api/v1/favorites/areas',route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({title:'Invalid area',detail:'Rejected polygon'})}));
+            const failed=page.waitForResponse(r=>r.url().endsWith('/favorites/areas') && r.request().method()==='POST');
+            await favoritesPage.fillAddDialog('Retained polygon');
+            await favoritesPage.submitAddDialog();
+            expect((await failed).status()).toBe(400);
+            await expect(page.locator('.p-dialog:visible input').first()).toHaveValue('Retained polygon');
+            expect(await readShape(dbManager,user)).toEqual([]);
+            await page.unroute('**/api/v1/favorites/areas');
+        });
+
+        test('should save polygon additions and edits in one atomic bulk request', async ({page,isolatedUsers,dbManager,mapMode}) => {
+            const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
+            await favoritesPage.toggleBulkMode();
+            await startPolygon(page,favoritesPage);
+            await page.getByRole('button',{name:'Finish shape',exact:true}).click();
+            await favoritesPage.fillAddDialog('Pending polygon'); await favoritesPage.submitAddDialog();
+            expect(await readShape(dbManager,user)).toEqual([]);
+            await expect.poll(async()=> (await renderedRings(page,mapMode)).some(r=>r.length===7)).toBe(true);
+            const save=page.waitForRequest(r=>r.url().endsWith('/favorites/bulk-apply') && r.method()==='POST');
+            await favoritesPage.clickSavePending();
+            await favoritesPage.confirmBulkSave();
+            const payload=(await save).postDataJSON();
+            expect(payload.areas[0].geometry.coordinates[0]).toHaveLength(7);
+            expect(payload.areas[0].northEastLat).toBeUndefined();
+            await expect.poll(async()=> (await readShape(dbManager,user)).length,{timeout:30000}).toBe(1);
+        });
+    });
+
     test.describe('Bulk Add Mode', () => {
         test('should enable and disable bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
@@ -355,6 +571,63 @@ test.describe('Favorites Management Page', () => {
             // Verify pending marker appears on map
             const pendingMarkerCount = await favoritesPage.countPendingMarkers();
             expect(pendingMarkerCount).toBe(1);
+        });
+
+        test('should queue edits and deletions without requests and undo or discard them', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
+                page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Queued Point', city: 'Kyiv', country: 'Ukraine', latitude: 50.45, longitude: 30.52
+            });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await favoritesPage.toggleBulkMode();
+            const mutations = [];
+            page.on('request', request => {
+                if (request.url().includes('/api/v1/favorites') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) {
+                    mutations.push(request.url());
+                }
+            });
+            await favoritesPage.clickEditInTable(0);
+            await favoritesPage.fillEditDialog('Queued Edit');
+            await favoritesPage.submitEditDialog();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Edit');
+            await favoritesPage.clickDeleteInTable(0);
+            await expect(page.locator('.pending-panel')).toContainText('Deletion');
+            await expect.poll(() => TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
+            await page.locator('.pending-panel button[aria-label="Undo pending change"]').click();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Edit');
+            await page.locator('.pending-panel button', {hasText: 'Clear All'}).click();
+            await favoritesPage.confirmDialog();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Point');
+            await expect(page.locator('.pending-panel')).toHaveCount(0);
+            expect(mutations).toEqual([]);
+        });
+
+        test('should keep pending deletions when Save All fails', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
+                page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Keep on failure', latitude: 50.45, longitude: 30.52
+            });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await favoritesPage.toggleBulkMode();
+            await favoritesPage.clickDeleteInTable(0);
+            let batch;
+            await page.route('**/api/v1/favorites/bulk-apply', route => {
+                batch = route.request().postDataJSON();
+                return route.fulfill({status: 400, contentType: 'application/problem+json',
+                    body: JSON.stringify({title: 'Invalid favorite', detail: 'Batch rejected', status: 400})});
+            });
+            await favoritesPage.clickSavePending();
+            await favoritesPage.confirmBulkSave();
+            await expect.poll(() => batch?.deleteIds?.length).toBe(1);
+            await expect(page.locator('.pending-panel')).toContainText('Keep on failure');
+            await expect(page.locator('.pending-panel')).toContainText('Deletion');
+            await expect(page.locator('.save-pending-button')).toBeEnabled();
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
+            expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
         });
 
         test('should save all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {

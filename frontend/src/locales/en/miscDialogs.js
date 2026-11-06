@@ -137,6 +137,7 @@ export default {
         updating: 'Updating...',
         updateButton: 'Update {count} Items',
         toasts: {
+            queuedDetail: 'Queued {count} edits. Use Save All to apply them.',
             completeSummary: 'Bulk Update Complete',
             partialDetail: 'Updated {success} of {total} items ({failed} failed)',
             successDetail: 'Successfully updated {count} {itemType}',
@@ -145,11 +146,13 @@ export default {
         }
     },
     bulkSaveConfirm: {
+        updatesItem: '{count} favorites to edit',
+        deletesItem: '{count} favorites to delete',
         header: 'Confirm Bulk Save',
-        summaryTitle: 'You are about to save {count} favorite location: | You are about to save {count} favorite locations:',
-        pointsItem: '{count} point location | {count} point locations',
-        areasItem: '{count} area | {count} areas',
-        infoMessage: 'These favorite locations will be saved and after that a full timeline regeneration will be triggered.',
+        summaryTitle: 'Apply {count} pending change: | Apply {count} pending changes:',
+        pointsItem: '{count} point to add | {count} points to add',
+        areasItem: '{count} area to add | {count} areas to add',
+        infoMessage: 'All changes will be applied together, followed by one timeline rebuild.',
         confirm: 'Confirm'
     }
 }

@@ -143,6 +143,7 @@ export default {
         updating: 'Оновлення...',
         updateButton: 'Оновити {count} елементів',
         toasts: {
+            queuedDetail: 'Редагування додано до черги: {count}. Натисніть «Зберегти все», щоб застосувати їх.',
             completeSummary: 'Масове оновлення завершено',
             partialDetail: 'Оновлено {success} з {total} елементів ({failed} не вдалося)',
             successDetail: 'Успішно оновлено {count} {itemType}',
@@ -151,11 +152,13 @@ export default {
         }
     },
     bulkSaveConfirm: {
+        updatesItem: 'Місця для редагування: {count}',
+        deletesItem: 'Місця для видалення: {count}',
         header: 'Підтвердження масового збереження',
-        summaryTitle: 'Ви збираєтеся зберегти {count} обране місце: | Ви збираєтеся зберегти {count} обраних місця: | Ви збираєтеся зберегти {count} обраних місць:',
-        pointsItem: '{count} точкове місце | {count} точкових місця | {count} точкових місць',
-        areasItem: '{count} область | {count} області | {count} областей',
-        infoMessage: 'Ці обрані місця буде збережено, після чого запуститься повна регенерація хронології.',
+        summaryTitle: 'Застосувати зміни: {count}',
+        pointsItem: 'Точки для додавання: {count}',
+        areasItem: 'Області для додавання: {count}',
+        infoMessage: 'Усі зміни буде застосовано разом, після чого хронологію буде перебудовано один раз.',
         confirm: 'Підтвердити'
     }
 }

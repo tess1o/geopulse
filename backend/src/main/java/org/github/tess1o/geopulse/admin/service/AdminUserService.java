@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -115,9 +116,9 @@ public class AdminUserService {
     /**
      * Get the timestamp of the last GPS point for a user.
      */
-    public java.time.Instant getLastGpsPointTimestamp(UUID userId) {
+    public Instant getLastGpsPointTimestamp(UUID userId) {
         try {
-            return (java.time.Instant) entityManager.createQuery(
+            return (Instant) entityManager.createQuery(
                     "SELECT MAX(g.timestamp) FROM GpsPointEntity g WHERE g.user.id = :userId"
             ).setParameter("userId", userId).getSingleResult();
         } catch (Exception e) {

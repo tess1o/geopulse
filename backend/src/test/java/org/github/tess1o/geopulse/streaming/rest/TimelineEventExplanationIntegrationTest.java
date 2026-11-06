@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -249,7 +250,7 @@ class TimelineEventExplanationIntegrationTest {
         return response.jsonPath();
     }
 
-    private static List<Map<String, Object>> points(JsonPath json, java.util.function.Predicate<Map<String, Object>> filter) {
+    private static List<Map<String, Object>> points(JsonPath json, Predicate<Map<String, Object>> filter) {
         List<Map<String, Object>> points = json.getList("points");
         return points.stream().filter(filter).toList();
     }

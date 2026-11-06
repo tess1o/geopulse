@@ -11,6 +11,7 @@
             severity="secondary"
             size="small"
             outlined
+            :disabled="disabled"
             @click="$emit('clear-all')"
           />
           <Button
@@ -18,6 +19,7 @@
             icon="pi pi-check"
             severity="success"
             size="small"
+            :disabled="disabled"
             @click="$emit('save-all')"
           />
         </div>
@@ -31,15 +33,15 @@
         class="pending-item"
       >
         <div class="item-icon">
-          <i :class="item.type === 'point' ? 'pi pi-map-marker' : 'pi pi-stop'" />
+          <i :class="['point', 'POINT'].includes(item.type) ? 'pi pi-map-marker' : 'pi pi-stop'" />
         </div>
         <div class="item-details">
-          <div class="item-name">{{ item.name }}</div>
+          <div class="item-name">{{ item.name }} <Tag :value="t(`sharing.favorites.pendingPanel.${item.operation}`)" /></div>
           <div class="item-location">
-            <span v-if="item.type === 'point'">
+            <span v-if="item.operation === 'add' && item.type === 'point'">
               {{ t('sharing.favorites.pendingPanel.pointLocation', { lat: item.lat.toFixed(4), lon: item.lon.toFixed(4) }) }}
             </span>
-            <span v-else>
+            <span v-else-if="item.operation === 'add'">
               {{ t('sharing.favorites.pendingPanel.areaLocation', {
                 southWestLat: item.southWestLat.toFixed(2),
                 southWestLon: item.southWestLon.toFixed(2),
@@ -50,7 +52,9 @@
           </div>
         </div>
         <Button
-          icon="pi pi-trash"
+          :icon="item.operation === 'add' ? 'pi pi-trash' : 'pi pi-undo'"
+          :aria-label="t('sharing.favorites.pendingPanel.undo')"
+          :disabled="disabled"
           severity="danger"
           size="small"
           text
@@ -76,6 +80,8 @@ import { useFavoritesStore } from '@/stores/favorites'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+
+defineProps({ disabled: Boolean })
 
 defineEmits(['clear-all', 'save-all', 'remove'])
 

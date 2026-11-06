@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.favorites.rest;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusMock;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -36,6 +38,10 @@ import static org.github.tess1o.geopulse.testsupport.GeocodingTestMocks.failWith
 import static org.github.tess1o.geopulse.testsupport.JobPolling.awaitTerminal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.clearInvocations;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -45,6 +51,7 @@ class FavoritesResourceContractTest {
     private static final String FAVORITES = "/api/v1/favorites";
     private static final String PASSWORD = "password123";
 
+    private AsyncTimelineGenerationService timelineGeneration;
     @Inject UserService userService;
     @Inject AuthenticationService authenticationService;
     @Inject ReconciliationJobProgressService reconciliationProgressService;
@@ -59,6 +66,10 @@ class FavoritesResourceContractTest {
     void setUp() {
         geocodingProvider = GeocodingTestMocks.install();
         AsyncTimelineTestMocks.install();
+        timelineGeneration = mock(AsyncTimelineGenerationService.class);
+        when(timelineGeneration.requestFullRegeneration(any(UUID.class))).thenAnswer(ignored -> UUID.randomUUID());
+        QuarkusMock.installMockForType(timelineGeneration,
+                AsyncTimelineGenerationService.class);
 
         String ownerEmail = TestIds.uniqueEmail("favorites-owner");
         UserEntity owner = userService.registerUser(ownerEmail, PASSWORD, "Favorites Owner", "UTC");
@@ -68,6 +79,104 @@ class FavoritesResourceContractTest {
         String otherEmail = TestIds.uniqueEmail("favorites-other");
         userService.registerUser(otherEmail, PASSWORD, "Favorites Other", "UTC");
         otherToken = authenticationService.authenticate(otherEmail, PASSWORD).getAccessToken();
+    }
+
+    @Inject org.github.tess1o.geopulse.favorites.repository.FavoritesRepository favoritesRepository;
+
+    private Map<String, Object> polygonGeometry() {
+        return Map.of("type", "Polygon", "coordinates", List.of(List.of(
+                List.of(30.,50.), List.of(30.03,50.), List.of(30.03,50.01), List.of(30.01,50.01),
+                List.of(30.01,50.03), List.of(30.,50.03), List.of(30.,50.))));
+    }
+
+    @Test
+    void polygonRoundTripMetadataEditAndSameEnvelopeRedraw() {
+        var geometry = polygonGeometry();
+        assertThat(authenticated(ownerToken).body(Map.of("name", "Polygon", "geometry", geometry))
+                .post(FAVORITES + "/areas").statusCode()).isEqualTo(201);
+        var saved = favorite(authenticated(ownerToken).get(FAVORITES), "areas", "Polygon");
+        long id = ((Number) saved.get("id")).longValue();
+        assertThat(saved.get("geometry")).isEqualTo(geometry);
+        clearInvocations(timelineGeneration);
+        assertThat(authenticated(ownerToken).body(Map.of("name", "Renamed"))
+                .put(FAVORITES + "/" + id).statusCode()).isEqualTo(200);
+        assertThat(favorite(authenticated(ownerToken).get(FAVORITES), "areas", "Renamed").get("geometry")).isEqualTo(geometry);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+        assertThat(authenticated(ownerToken).body(Map.of("name", "Renamed", "geometry", geometry))
+                .put(FAVORITES + "/" + id).statusCode()).isEqualTo(200);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+        var reversed = new java.util.ArrayList<>(List.of(
+                List.of(30.,50.), List.of(30.03,50.), List.of(30.03,50.01), List.of(30.01,50.01),
+                List.of(30.01,50.03), List.of(30.,50.03), List.of(30.,50.)));
+        java.util.Collections.reverse(reversed);
+        assertThat(authenticated(ownerToken).body(Map.of("name", "Renamed", "geometry",
+                Map.of("type", "Polygon", "coordinates", List.of(reversed))))
+                .put(FAVORITES + "/" + id).statusCode()).isEqualTo(200);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+        var changed = Map.of("type", "Polygon", "coordinates", List.of(List.of(
+                List.of(30.,50.), List.of(30.03,50.), List.of(30.03,50.02), List.of(30.02,50.02),
+                List.of(30.02,50.03), List.of(30.,50.03), List.of(30.,50.))));
+        assertJobResponse(authenticated(ownerToken).body(Map.of("name", "Renamed", "geometry", changed))
+                .put(FAVORITES + "/" + id), 200);
+        verify(timelineGeneration).requestFullRegeneration(ownerId);
+        assertThat(authenticated(otherToken).body(Map.of("name", "Stolen", "geometry", changed))
+                .put(FAVORITES + "/" + id).statusCode()).isEqualTo(403);
+        assertJobResponse(authenticated(ownerToken).delete(FAVORITES + "/" + id), 200);
+    }
+
+    @Test
+    void savesAdditionalVerticesOnUnchangedEdgesWithoutRegeneratingTimeline() {
+        long id = createArea(ownerToken, "Rectangle to refine");
+        clearInvocations(timelineGeneration);
+        var geometry = Map.of("type", "Polygon", "coordinates", List.of(List.of(
+                List.of(30.40,50.40), List.of(30.50,50.40), List.of(30.60,50.40),
+                List.of(30.60,50.50), List.of(30.40,50.50), List.of(30.40,50.40))));
+        assertThat(authenticated(ownerToken).body(Map.of("name", "Rectangle to refine", "geometry", geometry))
+                .put(FAVORITES + "/" + id).statusCode()).isEqualTo(200);
+        assertThat(favorite(authenticated(ownerToken).get(FAVORITES), "areas", "Rectangle to refine").get("geometry"))
+                .isEqualTo(geometry);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+    }
+
+    @Test
+    @Transactional
+    void postgisSingleAndBatchRespectPolygonAndBoundaryTolerance() {
+        authenticated(ownerToken).body(Map.of("name", "Spatial polygon", "geometry", polygonGeometry()))
+                .post(FAVORITES + "/areas").then().statusCode(201);
+        var inside = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30.005, 50.02);
+        var missingCorner = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30.02, 50.02);
+        var edge = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30.01, 50.02);
+        var vertex = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30., 50.);
+        var near = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(30.01001, 50.02);
+        for (var point : List.of(inside, edge, vertex)) {
+            assertThat(favoritesRepository.findAllByPoint(ownerId, point, 0, 0)).hasSize(1);
+        }
+        assertThat(favoritesRepository.findAllByPoint(ownerId, missingCorner, 0, 5)).isEmpty();
+        assertThat(favoritesRepository.findAllByPoint(ownerId, near, 0, 0)).isEmpty();
+        assertThat(favoritesRepository.findAllByPoint(ownerId, near, 0, 5)).hasSize(1);
+        assertThat(favoritesRepository.findByPointsBatch(ownerId, List.of(inside, missingCorner, edge, vertex, near), 0, 5)).hasSize(4);
+        assertThat(favoritesRepository.findAllByPoint(UUID.randomUUID(), inside, 0, 5)).isEmpty();
+    }
+
+    @Test
+    void polygonBulkRollsBackAndRejectsMixedOrInvalidShapes() {
+        clearInvocations(timelineGeneration);
+        var mixed = new java.util.HashMap<String, Object>(areaBody("Mixed"));
+        mixed.put("geometry", polygonGeometry());
+        assertThat(authenticated(ownerToken).body(mixed).post(FAVORITES + "/areas").statusCode()).isEqualTo(400);
+        var crossing = Map.of("type", "Polygon", "coordinates", List.of(List.of(
+                List.of(30.,50.), List.of(31.,51.), List.of(30.,51.), List.of(31.,50.), List.of(30.,50.))));
+        assertThat(authenticated(ownerToken).body(Map.of("areas", List.of(
+                Map.of("name", "Rollback polygon", "geometry", polygonGeometry()),
+                Map.of("name", "Bad polygon", "geometry", crossing))))
+                .post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(400);
+        assertThat(names(authenticated(ownerToken).get(FAVORITES), "areas")).doesNotContain("Rollback polygon");
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+        assertJobResponse(authenticated(ownerToken).body(Map.of("areas", List.of(
+                Map.of("name", "Bulk polygon", "geometry", polygonGeometry()), areaBody("Bulk rectangle")),
+                "points", List.of(pointBody("Bulk point"))))
+                .post(FAVORITES + "/bulk-apply"), 200);
+        verify(timelineGeneration).requestFullRegeneration(ownerId);
     }
 
     @Test
@@ -112,6 +221,92 @@ class FavoritesResourceContractTest {
 
         assertJobResponse(authenticated(ownerToken).when().delete(FAVORITES + "/" + favoriteId), 200);
         assertThat(names(authenticated(ownerToken).when().get(FAVORITES), "points")).doesNotContain(updatedName);
+    }
+
+    @Test
+    void appliesMixedChangesWithOneRegeneration() {
+        long pointId = createPoint(ownerToken, "Original");
+        long areaId = createArea(ownerToken, "Delete area");
+        clearInvocations(timelineGeneration);
+        Response response = authenticated(ownerToken).body(Map.of(
+                "points", List.of(pointBody("Added")),
+                "updates", List.of(Map.of("favoriteId", pointId, "changes", Map.of("name", "Edited"))),
+                "deleteIds", List.of(areaId)))
+                .when().post(FAVORITES + "/bulk-apply");
+        assertJobResponse(response, 200);
+        Response favorites = authenticated(ownerToken).when().get(FAVORITES);
+        assertThat(names(favorites, "points")).contains("Added", "Edited").doesNotContain("Original");
+        assertThat(names(favorites, "areas")).doesNotContain("Delete area");
+        verify(timelineGeneration).requestFullRegeneration(ownerId);
+    }
+
+    @Test
+    void rollsBackEarlierCreationsAndRenamesWhenLaterUpdateFails() {
+        long pointId = createPoint(ownerToken, "Original");
+        long areaId = createArea(ownerToken, "Original area");
+        clearInvocations(timelineGeneration);
+        Response response = authenticated(ownerToken).body(Map.of(
+                "points", List.of(pointBody("Must roll back")),
+                "updates", List.of(
+                        Map.of("favoriteId", pointId, "changes", Map.of("name", "Must roll back")),
+                        Map.of("favoriteId", areaId, "changes", Map.of("name", "Invalid area",
+                                "northEastLat", 49, "northEastLon", 31,
+                                "southWestLat", 50, "southWestLon", 30)))))
+                .when().post(FAVORITES + "/bulk-apply");
+        assertThat(response.statusCode()).isEqualTo(400);
+        Response favorites = authenticated(ownerToken).when().get(FAVORITES);
+        assertThat(names(favorites, "points")).contains("Original").doesNotContain("Must roll back");
+        assertThat(names(favorites, "areas")).contains("Original area");
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+    }
+
+    @Test
+    void rejectsForeignMissingConflictingAndEmptyBatches() {
+        long foreignId = createPoint(otherToken, "Private");
+        long ownId = createPoint(ownerToken, "Keep");
+        clearInvocations(timelineGeneration);
+        assertThat(authenticated(ownerToken).body(Map.of("deleteIds", List.of(foreignId)))
+                .post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(403);
+        assertThat(authenticated(ownerToken).body(Map.of("deleteIds", List.of(Long.MAX_VALUE)))
+                .post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(400);
+        assertThat(authenticated(ownerToken).body(Map.of("deleteIds", List.of(ownId, ownId)))
+                .post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(400);
+        assertThat(authenticated(ownerToken).body(Map.of("deleteIds", List.of(ownId),
+                        "updates", List.of(Map.of("favoriteId", ownId, "changes", Map.of("name", "Edit")))))
+                .post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(400);
+        assertThat(authenticated(ownerToken).body(Map.of()).post(FAVORITES + "/bulk-apply").statusCode()).isEqualTo(400);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+    }
+
+    @Test
+    void appliesAreaEditOnlyAndRejectsPartialBounds() {
+        long areaId = createArea(ownerToken, "Area");
+        clearInvocations(timelineGeneration);
+        Response partial = authenticated(ownerToken).body(Map.of("updates", List.of(
+                Map.of("favoriteId", areaId, "changes", Map.of("name", "Invalid", "northEastLat", 52)))))
+                .post(FAVORITES + "/bulk-apply");
+        assertThat(partial.statusCode()).isEqualTo(400);
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+        assertJobResponse(authenticated(ownerToken).body(Map.of("updates", List.of(
+                Map.of("favoriteId", areaId, "changes", Map.of("name", "Resized", "city", "Kyiv",
+                        "northEastLat", 52, "northEastLon", 32, "southWestLat", 50, "southWestLon", 30)))))
+                .post(FAVORITES + "/bulk-apply"), 200);
+        Map<String, Object> updated = favorite(authenticated(ownerToken).get(FAVORITES), "areas", "Resized");
+        assertThat(updated).containsEntry("city", "Kyiv");
+        verify(timelineGeneration).requestFullRegeneration(ownerId);
+    }
+
+    @Test
+    void appliesDeletionOnlyBatch() {
+        long pointId = createPoint(ownerToken, "Delete point");
+        long areaId = createArea(ownerToken, "Delete area");
+        clearInvocations(timelineGeneration);
+        assertJobResponse(authenticated(ownerToken).body(Map.of("deleteIds", List.of(pointId, areaId)))
+                .post(FAVORITES + "/bulk-apply"), 200);
+        Response favorites = authenticated(ownerToken).get(FAVORITES);
+        assertThat(names(favorites, "points")).doesNotContain("Delete point");
+        assertThat(names(favorites, "areas")).doesNotContain("Delete area");
+        verify(timelineGeneration).requestFullRegeneration(ownerId);
     }
 
     @Test
@@ -308,7 +503,8 @@ class FavoritesResourceContractTest {
     }
 
     private RequestSpecification authenticated(String token) {
-        return given()
+        return given().config(io.restassured.config.RestAssuredConfig.config().jsonConfig(
+                io.restassured.config.JsonConfig.jsonConfig().numberReturnType(io.restassured.path.json.config.JsonPathConfig.NumberReturnType.DOUBLE)))
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + token);
     }

@@ -69,9 +69,12 @@ class TimelineLoggingIntegrationTest {
             @Override public void close() {}
         };
         logger.addHandler(handler);
+        Level originalLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
         try {
             assertThat(generation.regenerateFullTimeline(user)).isTrue();
         } finally {
+            logger.setLevel(originalLevel);
             logger.removeHandler(handler);
         }
         assertThat(warnings).isEmpty();

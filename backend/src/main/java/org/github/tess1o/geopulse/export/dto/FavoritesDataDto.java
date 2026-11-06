@@ -40,6 +40,7 @@ public class FavoritesDataDto {
         private String name;
         private String city;
         private String country;
+        private org.github.tess1o.geopulse.favorites.model.AreaGeometry geometry;
         private Double northEastLatitude;
         private Double northEastLongitude;
         private Double southWestLatitude;

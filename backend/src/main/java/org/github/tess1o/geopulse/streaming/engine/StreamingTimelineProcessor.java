@@ -309,7 +309,7 @@ public class StreamingTimelineProcessor {
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
             // Before transitioning to trip, check if both points are within same favorite area
             if (FavoriteAreas.sameArea(FavoriteAreas.containing(point, userFavoriteAreas),
-                    FavoriteAreas.containing(centroid, userFavoriteAreas))) {
+                    FavoriteAreas.containing(userState.getFirstActivePoint(), userFavoriteAreas))) {
                 // Both points within same favorite area - continue stay detection despite distance
                 userState.addActivePoint(point);
 
@@ -354,7 +354,7 @@ public class StreamingTimelineProcessor {
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
             // Before finalizing stay, check if both points are within same favorite area
             if (FavoriteAreas.sameArea(FavoriteAreas.containing(point, userFavoriteAreas),
-                    FavoriteAreas.containing(centroid, userFavoriteAreas))) {
+                    FavoriteAreas.containing(userState.getFirstActivePoint(), userFavoriteAreas))) {
                 // Both points within same favorite area - continue stay despite distance
                 userState.addActivePoint(point);
                 return ProcessingResult.withStateOnly(userState);
