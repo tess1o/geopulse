@@ -14,6 +14,7 @@
             :icon="bulkAddMode ? 'pi pi-check-square' : 'pi pi-square'"
             :severity="bulkAddMode ? 'success' : 'secondary'"
             size="small"
+            :disabled="isBulkSaving || hasPendingFavorites"
             @click="toggleBulkMode"
             v-tooltip.bottom="t('sharing.favorites.managementPage.bulkModeTooltip')"
           />
@@ -23,6 +24,7 @@
             icon="pi pi-save"
             severity="success"
             size="small"
+            :disabled="isBulkSaving"
             @click="handleBulkSaveClick"
             class="save-pending-button"
             v-tooltip.bottom="t('sharing.favorites.managementPage.savePendingTooltip')"
@@ -33,7 +35,7 @@
             severity="secondary"
             size="small"
             @click="reconcileAll"
-            :disabled="totalRecords === 0"
+            :disabled="totalRecords === 0 || isBulkSaving"
           />
           <Button
             v-if="selectedRows.length > 0"
@@ -41,6 +43,7 @@
             icon="pi pi-pencil"
             severity="secondary"
             size="small"
+            :disabled="isBulkSaving"
             @click="bulkEditSelected"
             class="bulk-action-button"
           />
@@ -51,6 +54,7 @@
             severity="info"
             size="small"
             @click="reconcileSelected"
+            :disabled="isBulkSaving"
             class="bulk-action-button"
           />
         </div>
@@ -78,7 +82,7 @@
             />
           </div>
         </div>
-        <div class="map-container">
+        <div class="map-container" :inert="isBulkSaving">
           <BaseMap
               v-if="isMapBootstrapReady"
               mapId="favorites-map"
@@ -99,6 +103,7 @@
 
       <!-- Pending Favorites Panel -->
       <PendingFavoritesPanel
+          :disabled="isBulkSaving"
           @clear-all="handleClearPending"
           @save-all="handleBulkSaveClick"
           @remove="handleRemovePending"
@@ -261,6 +266,7 @@
 
       <!-- Edit Dialog -->
       <EditFavoriteDialog
+          :inert="isBulkSaving"
           v-if="selectedFavorite"
           :visible="showEditDialog"
           :header="t('place.detailsPage.editFavoriteDialogHeader')"
@@ -306,7 +312,7 @@
           :selected-items="selectedRows"
           :item-type-name="t('sharing.favorites.managementPage.itemTypeName')"
           :store="favoritesStore"
-          bulk-update-method="bulkUpdateFavorites"
+          :bulk-update-method="bulkAddMode ? 'queueBulkUpdate' : 'bulkUpdateFavorites'"
           distinct-values-method="fetchDistinctValues"
           @close="showBulkEditDialog = false"
           @save="handleBulkEditSave"
@@ -317,6 +323,8 @@
           :visible="showBulkSaveDialog"
           :points-count="pendingPointsCount"
           :areas-count="pendingAreasCount"
+          :updates-count="Object.keys(favoritesStore.pendingUpdates).filter(id => !favoritesStore.pendingDeletes[id]).length"
+          :deletes-count="Object.keys(favoritesStore.pendingDeletes).length"
           :loading="isBulkSaving"
           @close="showBulkSaveDialog = false"
           @confirm="handleBulkSaveConfirm"
@@ -426,7 +434,7 @@ const {
   selectedFavorite,
   openEditor: openFavoriteEditor,
   closeEditor: handleCloseEditDialog,
-  handleSave: handleEditSave,
+  handleSave: saveFavoriteImmediately,
   timelineRegenerationVisible: editTimelineVisible,
   timelineRegenerationType: editTimelineType,
   currentJobId: editJobId,
@@ -537,11 +545,7 @@ const getErrorMessage = (error, fallbackMessage) => {
 }
 
 // Computed properties
-const allFavorites = computed(() => {
-  const points = favoritesStore.getFavoritePoints.map(p => ({...p, type: 'POINT'}))
-  const areas = favoritesStore.getFavoriteAreas.map(a => ({...a, type: 'AREA'}))
-  return [...points, ...areas]
-})
+const allFavorites = computed(() => favoritesStore.previewFavorites)
 
 const displayedFavorites = computed(() => {
   let filtered = [...allFavorites.value]
@@ -746,11 +750,28 @@ const viewDetails = (favorite) => {
   router.push(`/app/place-details/favorite/${favorite.id}`)
 }
 
+const handleEditSave = (data, options) => {
+  if (isBulkSaving.value) return
+  if (bulkAddMode.value) {
+    favoritesStore.queueUpdate(data)
+    handleCloseEditDialog()
+    return
+  }
+  return saveFavoriteImmediately(data, options)
+}
+
 const editFavorite = (favorite) => {
+  if (isBulkSaving.value) return
   openFavoriteEditor(favorite)
 }
 
 const deleteFavorite = (favorite) => {
+  if (isBulkSaving.value) return
+  if (bulkAddMode.value) {
+    favoritesStore.queueDelete(favorite)
+    selectedRows.value = selectedRows.value.filter(item => item.id !== favorite.id)
+    return
+  }
   confirm.require({
     message: t('sharing.favorites.managementPage.toasts.deleteConfirmMessage'),
     header: t('sharing.favorites.managementPage.toasts.deleteConfirmHeader'),
@@ -776,6 +797,7 @@ const deleteFavorite = (favorite) => {
 
 
 const bulkEditSelected = () => {
+  if (isBulkSaving.value) return
   showBulkEditDialog.value = true
 }
 
@@ -935,6 +957,7 @@ const handleAddAreaFromContextMenu = () => {
 }
 
 const handleAddFavorite = (name) => {
+  if (isBulkSaving.value) return
   if (!name || !name.trim()) return
 
   // If bulk mode is enabled, add to pending list instead of immediate save
@@ -1054,6 +1077,7 @@ const handleCloseAddDialog = () => {
 
 // Bulk mode methods
 const toggleBulkMode = () => {
+  if (isBulkSaving.value || hasPendingFavorites.value) return
   bulkAddMode.value = !bulkAddMode.value
   const modeText = bulkAddMode.value
     ? t('sharing.favorites.managementPage.toasts.bulkModeEnabled')
@@ -1074,11 +1098,12 @@ const handleBulkSaveClick = () => {
 }
 
 const handleBulkSaveConfirm = async () => {
+  if (isBulkSaving.value || !hasPendingFavorites.value) return
   isBulkSaving.value = true
 
   try {
     const action = async () => {
-      const result = await favoritesStore.bulkCreateFavorites()
+      const result = await favoritesStore.applyPendingChanges()
       return result.jobId
     }
 
@@ -1088,11 +1113,12 @@ const handleBulkSaveConfirm = async () => {
       errorMessage: t('sharing.favorites.managementPage.toasts.bulkSaveErrorMessage'),
       onSuccess: () => {
         loadFavorites()
+        selectedRows.value = []
         bulkAddMode.value = false
       }
     })
 
-    showBulkSaveDialog.value = false
+    if (!hasPendingFavorites.value) showBulkSaveDialog.value = false
   } catch (error) {
     console.error('Error bulk saving favorites:', error)
     toast.add({
@@ -1107,6 +1133,7 @@ const handleBulkSaveConfirm = async () => {
 }
 
 const handleClearPending = () => {
+  if (isBulkSaving.value) return
   confirm.require({
     message: t('sharing.favorites.managementPage.toasts.clearPendingConfirmMessage', { count: pendingCount.value }),
     header: t('sharing.favorites.managementPage.toasts.clearPendingConfirmHeader'),
@@ -1125,6 +1152,7 @@ const handleClearPending = () => {
 }
 
 const handleRemovePending = (tempId) => {
+  if (isBulkSaving.value) return
   favoritesStore.removeFromPending(tempId)
   renderMapMarkers()
   toast.add({

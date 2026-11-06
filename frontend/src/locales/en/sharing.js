@@ -1,20 +1,21 @@
 /**
  * Share links (the timeline share creation dialog and its post-create success state) and the
  * pending-favorites panel.
- *
- * EN values are copied verbatim from the literals they replace: the test suite is pinned to English
- * and asserts exact copy, so these files are a snapshot rather than a chance to reword.
  */
 export default {
     favorites: {
         pendingPanel: {
-            title: 'Pending Favorites',
+            add: 'Addition',
+            update: 'Edit',
+            delete: 'Deletion',
+            undo: 'Undo pending change',
+            title: 'Pending Changes',
             pendingCount: '{count} pending',
             clearAll: 'Clear All',
             saveAll: 'Save All',
             pointLocation: 'Point: {lat}, {lon}',
             areaLocation: 'Area: {southWestLat}, {southWestLon} to {northEastLat}, {northEastLon}',
-            footerInfo: 'Timeline regeneration will happen once for all favorites'
+            footerInfo: 'All changes are applied together with one timeline rebuild'
         },
         managementPage: {
             title: 'Favorite Locations Management',
@@ -22,9 +23,9 @@ export default {
             headerInfo: 'Right-click on map to add favorites',
             bulkModeOn: 'Bulk Mode: ON',
             bulkModeOff: 'Bulk Mode: OFF',
-            bulkModeTooltip: 'Enable bulk mode to add multiple favorites before timeline regeneration',
+            bulkModeTooltip: 'Queue additions, edits and deletions, then Save All or Clear All before turning bulk mode off',
             savePending: 'Save {count} Pending',
-            savePendingTooltip: 'Save all pending favorites and regenerate timeline',
+            savePendingTooltip: 'Apply all pending changes and rebuild the timeline',
             reconcileAll: 'Reconcile All ({count})',
             bulkEdit: 'Bulk Edit ({count})',
             reconcileSelected: 'Reconcile Selected ({count})',
@@ -89,22 +90,22 @@ export default {
                 bulkModeSummary: 'Bulk Mode',
                 bulkModeEnabled: 'enabled',
                 bulkModeDisabled: 'disabled',
-                bulkModeDetail: 'Bulk add mode {state}. {followUp}',
-                bulkModeFollowUpEnabled: 'Favorites will be added to pending list.',
+                bulkModeDetail: 'Bulk mode {state}. {followUp}',
+                bulkModeFollowUpEnabled: 'Additions, edits and deletions will be queued.',
                 bulkModeFollowUpDisabled: 'Favorites will be saved immediately.',
-                bulkSaveSuccessMessage: 'Saved {count} favorites. Timeline is regenerating.',
-                bulkSaveErrorMessage: 'Failed to bulk save favorites.',
+                bulkSaveSuccessMessage: 'Applied {count} changes. Timeline is regenerating.',
+                bulkSaveErrorMessage: 'Failed to apply changes. Nothing was saved.',
                 bulkSaveFailedSummary: 'Bulk Save Failed',
-                bulkSaveFailedDetail: 'Failed to save pending favorites',
-                clearPendingConfirmMessage: 'Are you sure you want to clear {count} pending favorite(s)?',
-                clearPendingConfirmHeader: 'Clear Pending Favorites',
+                bulkSaveFailedDetail: 'Failed to apply pending changes',
+                clearPendingConfirmMessage: 'Discard all {count} pending changes?',
+                clearPendingConfirmHeader: 'Discard Pending Changes',
                 clearedSummary: 'Cleared',
-                clearedDetail: 'Pending favorites cleared',
+                clearedDetail: 'Pending changes discarded',
                 removedSummary: 'Removed',
-                removedDetail: 'Favorite removed from pending list',
+                removedDetail: 'Pending change undone',
                 loadFailedDetail: 'Failed to load favorite locations',
-                unsavedPendingMessage: 'You have {count} unsaved pending favorite(s). If you leave, they will be lost. Are you sure you want to leave?',
-                unsavedPendingHeader: 'Unsaved Pending Favorites'
+                unsavedPendingMessage: 'You have {count} unsaved changes. Leaving will discard them. Leave this page?',
+                unsavedPendingHeader: 'Unsaved Changes'
             }
         }
     },

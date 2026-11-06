@@ -12,6 +12,8 @@ export const useFavoritesStore = defineStore('favorites', {
             points: [],  // Array of { name, lat, lon, tempId }
             areas: []    // Array of { name, northEastLat, northEastLon, southWestLat, southWestLon, tempId }
         },
+        pendingUpdates: {},
+        pendingDeletes: {},
         loading: false,
         error: null
     }),
@@ -90,24 +92,22 @@ export const useFavoritesStore = defineStore('favorites', {
         getPendingPoints: (state) => state.pendingFavorites.points || [],
         getPendingAreas: (state) => state.pendingFavorites.areas || [],
 
-        hasPendingFavorites: (state) => {
-            const points = state.pendingFavorites.points || []
-            const areas = state.pendingFavorites.areas || []
-            return points.length > 0 || areas.length > 0
-        },
+        previewFavorites: (state) => [
+            ...state.favoritePlaces.points.map(p => ({ ...p, type: 'POINT' })),
+            ...state.favoritePlaces.areas.map(a => ({ ...a, type: 'AREA' }))
+        ].filter(item => !state.pendingDeletes[item.id])
+            .map(item => ({ ...item, ...state.pendingUpdates[item.id] })),
 
-        pendingCount: (state) => {
-            const points = state.pendingFavorites.points || []
-            const areas = state.pendingFavorites.areas || []
-            return points.length + areas.length
-        },
-
-        getAllPending: (state) => {
-            return [
-                ...(state.pendingFavorites.points || []).map(p => ({ ...p, type: 'point' })),
-                ...(state.pendingFavorites.areas || []).map(a => ({ ...a, type: 'area' }))
-            ]
-        }
+        hasPendingFavorites() { return this.pendingCount > 0 },
+        pendingCount() { return this.getAllPending.length },
+        getAllPending: (state) => [
+            ...state.pendingFavorites.points.map(p => ({ ...p, type: 'point', operation: 'add' })),
+            ...state.pendingFavorites.areas.map(a => ({ ...a, type: 'area', operation: 'add' })),
+            ...Object.values(state.pendingUpdates).filter(item => !state.pendingDeletes[item.id])
+                .map(item => ({ ...item, tempId: `update-${item.id}`, operation: 'update' })),
+            ...Object.values(state.pendingDeletes)
+                .map(item => ({ ...item, tempId: `delete-${item.id}`, operation: 'delete' }))
+        ]
     },
 
     actions: {
@@ -263,40 +263,61 @@ export const useFavoritesStore = defineStore('favorites', {
             })
         },
 
+        queueUpdate(favorite) {
+            if (!this.pendingDeletes[favorite.id]) this.pendingUpdates[favorite.id] = { ...favorite }
+        },
+
+        queueDelete(favorite) {
+            this.pendingDeletes[favorite.id] = { ...favorite }
+        },
+
+        queueBulkUpdate(favoriteIds, updateCity, city, updateCountry, country) {
+            for (const id of favoriteIds) {
+                const favorite = this.previewFavorites.find(item => item.id === id)
+                if (!favorite) continue
+                this.queueUpdate({ ...favorite,
+                    ...(updateCity ? { city } : {}), ...(updateCountry ? { country } : {}) })
+            }
+            return { queued: true, successCount: favoriteIds.length, failedCount: 0 }
+        },
+
+        async applyPendingChanges() {
+            this.error = null
+            const { points, areas } = this.pendingFavorites
+            const changes = Object.values(this.pendingUpdates)
+                .filter(item => !this.pendingDeletes[item.id])
+                .map(({ id, name, city, country, type, northEastLat, northEastLon, southWestLat, southWestLon }) => ({
+                    favoriteId: id,
+                    changes: { name, city, country, ...(type === 'AREA' ? {
+                        northEastLat, northEastLon, southWestLat, southWestLon
+                    } : {}) }
+                }))
+            try {
+                const result = await apiService.post('/favorites/bulk-apply', {
+                    points: points.map(({ tempId, ...point }) => point),
+                    areas: areas.map(({ tempId, ...area }) => area),
+                    updates: changes,
+                    deleteIds: Object.values(this.pendingDeletes).map(item => item.id)
+                })
+                this.clearPending()
+                return result
+            } catch (error) {
+                throw this.fail(error, 'Failed to apply favorite changes')
+            }
+        },
+
         removeFromPending(tempId) {
+            if (tempId.startsWith('update-')) delete this.pendingUpdates[tempId.slice(7)]
+            if (tempId.startsWith('delete-')) delete this.pendingDeletes[tempId.slice(7)]
             this.pendingFavorites.points = this.pendingFavorites.points.filter(p => p.tempId !== tempId)
             this.pendingFavorites.areas = this.pendingFavorites.areas.filter(a => a.tempId !== tempId)
         },
 
         clearPending() {
+            this.pendingUpdates = {}
+            this.pendingDeletes = {}
             this.pendingFavorites.points = []
             this.pendingFavorites.areas = []
-        },
-
-        async bulkCreateFavorites() {
-            this.error = null
-            try {
-                // Prepare the bulk request - remove tempId from each item
-                const points = this.pendingFavorites.points.map(({ tempId, ...point }) => point)
-                const areas = this.pendingFavorites.areas.map(({ tempId, ...area }) => area)
-
-                const response = await apiService.post('/favorites/bulk', {
-                    points,
-                    areas
-                })
-
-                // Clear pending list after successful creation
-                this.clearPending()
-
-                // Refresh favorites to get the updated list from backend
-                await this.fetchFavoritePlaces()
-
-                // Return the result which includes jobId, successCount, failedCount, etc.
-                return response
-            } catch (error) {
-                console.error('Error bulk creating favorites:', error)
-                throw this.fail(error, 'Failed to create favorites')
-            }
         },
 
         async bulkUpdateFavorites(favoriteIds, updateCity, city, updateCountry, country) {

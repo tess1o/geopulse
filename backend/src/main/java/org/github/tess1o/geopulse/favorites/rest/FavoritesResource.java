@@ -26,6 +26,7 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.favorites.model.AddAreaToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.BulkAddFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.BulkApplyFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.BulkAddFavoritesResult;
 import org.github.tess1o.geopulse.favorites.model.BulkUpdateFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.BulkUpdateFavoritesResult;
@@ -163,6 +164,23 @@ public class FavoritesResource {
         } catch (IllegalArgumentException exception) {
             throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
+    }
+
+    @POST
+    @Path("/bulk-apply")
+    @Operation(summary = "Apply queued favorite changes",
+            description = "Atomically creates, edits and deletes favorites. Any failure rolls back all changes. "
+                    + "Starts one timeline regeneration after committing the batch." + ALREADY_RUNNING_JOB_NOTE)
+    public JobResponse applyBulkChanges(@NotNull @Valid BulkApplyFavoritesDto request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        try {
+            service.applyBulkChanges(userId, request);
+        } catch (SecurityException exception) {
+            throw new GeoPulseException(FAVORITE_ACCESS_DENIED, "Not authorized to change this favorite", exception);
+        } catch (IllegalArgumentException exception) {
+            throw new GeoPulseException(INVALID_FAVORITE, exception.getMessage(), exception);
+        }
+        return new JobResponse(service.createTimelineRegenerationJob(userId));
     }
 
     @POST

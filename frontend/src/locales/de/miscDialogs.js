@@ -141,6 +141,7 @@ export default {
         updating: 'Wird aktualisiert …',
         updateButton: '{count} Einträge aktualisieren',
         toasts: {
+            queuedDetail: '{count} Änderungen vorgemerkt. Klicke auf „Alle speichern“, um sie zu übernehmen.',
             completeSummary: 'Gemeinsame Änderung abgeschlossen',
             partialDetail: '{success} von {total} Einträgen aktualisiert ({failed} fehlgeschlagen)',
             successDetail: '{count} {itemType} aktualisiert',
@@ -149,11 +150,13 @@ export default {
         }
     },
     bulkSaveConfirm: {
+        updatesItem: '{count} Favoriten zum Bearbeiten',
+        deletesItem: '{count} Favoriten zum Löschen',
         header: 'Gemeinsames Speichern bestätigen',
-        summaryTitle: 'Du speicherst gleich {count} Favoriten: | Du speicherst gleich {count} Favoriten:',
-        pointsItem: '{count} Punkt | {count} Punkte',
-        areasItem: '{count} Bereich | {count} Bereiche',
-        infoMessage: 'Diese Favoriten werden gespeichert, danach wird die Zeitleiste vollständig neu berechnet.',
+        summaryTitle: 'Du übernimmst gleich {count} vorgemerkte Änderung: | Du übernimmst gleich {count} vorgemerkte Änderungen:',
+        pointsItem: '{count} Punkt zum Hinzufügen | {count} Punkte zum Hinzufügen',
+        areasItem: '{count} Bereich zum Hinzufügen | {count} Bereiche zum Hinzufügen',
+        infoMessage: 'Alle Änderungen werden gemeinsam übernommen. Danach wird die Zeitleiste einmal vollständig neu berechnet.',
         confirm: 'Bestätigen'
     }
 }

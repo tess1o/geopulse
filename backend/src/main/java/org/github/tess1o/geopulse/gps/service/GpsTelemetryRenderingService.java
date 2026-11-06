@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class GpsTelemetryRenderingService {
@@ -37,7 +38,7 @@ public class GpsTelemetryRenderingService {
         Set<GpsSourceType> sourceTypes = pointsWithTelemetry.stream()
                 .map(GpsPointEntity::getSourceType)
                 .distinct()
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         Map<GpsSourceType, List<GpsTelemetryMappingEntry>> mappingBySourceType =
                 telemetryConfigService.getResolvedMappings(userId, sourceTypes);

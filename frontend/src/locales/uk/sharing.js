@@ -7,13 +7,17 @@
 export default {
     favorites: {
         pendingPanel: {
-            title: 'Обране в очікуванні',
+            add: 'Додавання',
+            update: 'Редагування',
+            delete: 'Видалення',
+            undo: 'Скасувати зміну',
+            title: 'Незбережені зміни',
             pendingCount: '{count} очікує',
             clearAll: 'Очистити все',
             saveAll: 'Зберегти все',
             pointLocation: 'Точка: {lat}, {lon}',
             areaLocation: 'Область: {southWestLat}, {southWestLon} до {northEastLat}, {northEastLon}',
-            footerInfo: 'Регенерація хронології відбудеться один раз для всіх обраних'
+            footerInfo: 'Усі зміни застосовуються разом з однією перебудовою хронології'
         },
         managementPage: {
             title: 'Керування обраними місцями',
@@ -21,9 +25,9 @@ export default {
             headerInfo: 'Клацніть правою кнопкою миші на карті, щоб додати обране',
             bulkModeOn: 'Масовий режим: УВІМК',
             bulkModeOff: 'Масовий режим: ВИМК',
-            bulkModeTooltip: "Увімкніть масовий режим, щоб додати кілька обраних перед регенерацією хронології",
+            bulkModeTooltip: 'Накопичуйте додавання, редагування та видалення. Збережіть або скасуйте всі зміни, перш ніж вимкнути масовий режим',
             savePending: 'Зберегти {count} в очікуванні',
-            savePendingTooltip: 'Зберегти всі обрані в очікуванні та регенерувати хронологію',
+            savePendingTooltip: 'Застосувати всі зміни та перебудувати хронологію',
             reconcileAll: 'Узгодити всі ({count})',
             bulkEdit: 'Масове редагування ({count})',
             reconcileSelected: 'Узгодити вибрані ({count})',
@@ -88,22 +92,22 @@ export default {
                 bulkModeSummary: 'Масовий режим',
                 bulkModeEnabled: 'увімкнено',
                 bulkModeDisabled: 'вимкнено',
-                bulkModeDetail: 'Масовий режим додавання {state}. {followUp}',
-                bulkModeFollowUpEnabled: 'Обране буде додано до списку очікування.',
+                bulkModeDetail: 'Масовий режим {state}. {followUp}',
+                bulkModeFollowUpEnabled: 'Додавання, редагування та видалення накопичуватимуться.',
                 bulkModeFollowUpDisabled: 'Обране буде збережено негайно.',
-                bulkSaveSuccessMessage: 'Збережено {count} обраних. Хронологія регенерується.',
-                bulkSaveErrorMessage: 'Не вдалося масово зберегти обрані.',
+                bulkSaveSuccessMessage: 'Застосовано змін: {count}. Хронологія перебудовується.',
+                bulkSaveErrorMessage: 'Не вдалося застосувати зміни. Нічого не збережено.',
                 bulkSaveFailedSummary: 'Помилка масового збереження',
-                bulkSaveFailedDetail: 'Не вдалося зберегти обрані в очікуванні',
-                clearPendingConfirmMessage: 'Ви впевнені, що хочете очистити {count} обраних в очікуванні?',
-                clearPendingConfirmHeader: 'Очистити обрані в очікуванні',
+                bulkSaveFailedDetail: 'Не вдалося застосувати незбережені зміни',
+                clearPendingConfirmMessage: 'Скасувати всі незбережені зміни ({count})?',
+                clearPendingConfirmHeader: 'Скасувати незбережені зміни',
                 clearedSummary: 'Очищено',
-                clearedDetail: 'Обрані в очікуванні очищено',
+                clearedDetail: 'Незбережені зміни скасовано',
                 removedSummary: 'Видалено',
-                removedDetail: 'Обране видалено зі списку очікування',
+                removedDetail: 'Зміну скасовано',
                 loadFailedDetail: 'Не вдалося завантажити обрані місця',
-                unsavedPendingMessage: 'У вас є {count} незбережених обраних в очікуванні. Якщо ви підете, вони будуть втрачені. Ви впевнені, що хочете вийти?',
-                unsavedPendingHeader: 'Незбережені обрані в очікуванні'
+                unsavedPendingMessage: 'У вас є незбережені зміни ({count}). Вихід скасує їх. Залишити сторінку?',
+                unsavedPendingHeader: 'Незбережені зміни'
             }
         }
     },

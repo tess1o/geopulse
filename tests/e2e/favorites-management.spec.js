@@ -357,6 +357,63 @@ test.describe('Favorites Management Page', () => {
             expect(pendingMarkerCount).toBe(1);
         });
 
+        test('should queue edits and deletions without requests and undo or discard them', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
+                page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Queued Point', city: 'Kyiv', country: 'Ukraine', latitude: 50.45, longitude: 30.52
+            });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await favoritesPage.toggleBulkMode();
+            const mutations = [];
+            page.on('request', request => {
+                if (request.url().includes('/api/v1/favorites') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method())) {
+                    mutations.push(request.url());
+                }
+            });
+            await favoritesPage.clickEditInTable(0);
+            await favoritesPage.fillEditDialog('Queued Edit');
+            await favoritesPage.submitEditDialog();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Edit');
+            await favoritesPage.clickDeleteInTable(0);
+            await expect(page.locator('.pending-panel')).toContainText('Deletion');
+            await expect.poll(() => TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
+            await page.locator('.pending-panel button[aria-label="Undo pending change"]').click();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Edit');
+            await page.locator('.pending-panel button', {hasText: 'Clear All'}).click();
+            await favoritesPage.confirmDialog();
+            await expect(page.locator('.favorites-table')).toContainText('Queued Point');
+            await expect(page.locator('.pending-panel')).toHaveCount(0);
+            expect(mutations).toEqual([]);
+        });
+
+        test('should keep pending deletions when Save All fails', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
+                page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Keep on failure', latitude: 50.45, longitude: 30.52
+            });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await favoritesPage.toggleBulkMode();
+            await favoritesPage.clickDeleteInTable(0);
+            let batch;
+            await page.route('**/api/v1/favorites/bulk-apply', route => {
+                batch = route.request().postDataJSON();
+                return route.fulfill({status: 400, contentType: 'application/problem+json',
+                    body: JSON.stringify({title: 'Invalid favorite', detail: 'Batch rejected', status: 400})});
+            });
+            await favoritesPage.clickSavePending();
+            await favoritesPage.confirmBulkSave();
+            await expect.poll(() => batch?.deleteIds?.length).toBe(1);
+            await expect(page.locator('.pending-panel')).toContainText('Keep on failure');
+            await expect(page.locator('.pending-panel')).toContainText('Deletion');
+            await expect(page.locator('.save-pending-button')).toBeEnabled();
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
+            expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
+        });
+
         test('should save all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
             const {
                 favoritesPage,

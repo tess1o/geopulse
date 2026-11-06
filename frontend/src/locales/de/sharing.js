@@ -5,13 +5,17 @@
 export default {
     favorites: {
         pendingPanel: {
-            title: 'Vorgemerkte Favoriten',
+            add: 'Hinzufügen',
+            update: 'Bearbeiten',
+            delete: 'Löschen',
+            undo: 'Vorgemerkte Änderung rückgängig machen',
+            title: 'Vorgemerkte Änderungen',
             pendingCount: '{count} vorgemerkt',
             clearAll: 'Alle verwerfen',
             saveAll: 'Alle speichern',
             pointLocation: 'Punkt: {lat}, {lon}',
             areaLocation: 'Bereich: {southWestLat}, {southWestLon} bis {northEastLat}, {northEastLon}',
-            footerInfo: 'Die Zeitleiste wird einmal für alle Favoriten neu berechnet'
+            footerInfo: 'Alle Änderungen werden gemeinsam übernommen und die Zeitleiste wird einmal neu berechnet'
         },
         managementPage: {
             title: 'Favoriten verwalten',
@@ -19,9 +23,9 @@ export default {
             headerInfo: 'Rechtsklick auf die Karte, um Favoriten hinzuzufügen',
             bulkModeOn: 'Sammelmodus: AN',
             bulkModeOff: 'Sammelmodus: AUS',
-            bulkModeTooltip: 'Sammelmodus aktivieren, um mehrere Favoriten hinzuzufügen, bevor die Zeitleiste neu berechnet wird',
+            bulkModeTooltip: 'Hinzufügen, Bearbeiten und Löschen vormerken. Vor dem Ausschalten alle Änderungen speichern oder verwerfen',
             savePending: '{count} vorgemerkte speichern',
-            savePendingTooltip: 'Alle vorgemerkten Favoriten speichern und Zeitleiste neu berechnen',
+            savePendingTooltip: 'Alle vorgemerkten Änderungen übernehmen und die Zeitleiste neu berechnen',
             reconcileAll: 'Alle abgleichen ({count})',
             bulkEdit: 'Gemeinsam bearbeiten ({count})',
             reconcileSelected: 'Auswahl abgleichen ({count})',
@@ -87,21 +91,21 @@ export default {
                 bulkModeEnabled: 'aktiviert',
                 bulkModeDisabled: 'deaktiviert',
                 bulkModeDetail: 'Sammelmodus {state}. {followUp}',
-                bulkModeFollowUpEnabled: 'Favoriten werden vorgemerkt.',
+                bulkModeFollowUpEnabled: 'Hinzufügen, Bearbeiten und Löschen werden vorgemerkt.',
                 bulkModeFollowUpDisabled: 'Favoriten werden sofort gespeichert.',
-                bulkSaveSuccessMessage: '{count} Favoriten gespeichert. Die Zeitleiste wird neu berechnet.',
-                bulkSaveErrorMessage: 'Favoriten konnten nicht gemeinsam gespeichert werden.',
+                bulkSaveSuccessMessage: '{count} Änderungen übernommen. Die Zeitleiste wird neu berechnet.',
+                bulkSaveErrorMessage: 'Änderungen konnten nicht übernommen werden. Es wurde nichts gespeichert.',
                 bulkSaveFailedSummary: 'Speichern fehlgeschlagen',
-                bulkSaveFailedDetail: 'Vorgemerkte Favoriten konnten nicht gespeichert werden',
-                clearPendingConfirmMessage: 'Möchtest du wirklich alle vorgemerkten Favoriten verwerfen ({count})?',
-                clearPendingConfirmHeader: 'Vorgemerkte Favoriten verwerfen',
+                bulkSaveFailedDetail: 'Vorgemerkte Änderungen konnten nicht übernommen werden',
+                clearPendingConfirmMessage: 'Möchtest du alle {count} vorgemerkten Änderungen verwerfen?',
+                clearPendingConfirmHeader: 'Vorgemerkte Änderungen verwerfen',
                 clearedSummary: 'Verworfen',
-                clearedDetail: 'Vorgemerkte Favoriten verworfen',
+                clearedDetail: 'Vorgemerkte Änderungen verworfen',
                 removedSummary: 'Entfernt',
-                removedDetail: 'Favorit aus den Vormerkungen entfernt',
+                removedDetail: 'Vorgemerkte Änderung rückgängig gemacht',
                 loadFailedDetail: 'Favoriten konnten nicht geladen werden',
-                unsavedPendingMessage: 'Du hast ungespeicherte vorgemerkte Favoriten ({count}). Wenn du die Seite verlässt, gehen sie verloren. Wirklich verlassen?',
-                unsavedPendingHeader: 'Ungespeicherte Vormerkungen'
+                unsavedPendingMessage: 'Du hast {count} ungespeicherte Änderungen. Wenn du die Seite verlässt, werden sie verworfen. Seite verlassen?',
+                unsavedPendingHeader: 'Ungespeicherte Änderungen'
             }
         }
     },

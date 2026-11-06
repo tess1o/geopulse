@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.ai.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Instant;
+
 /**
  * AI-optimized DTO for aggregated stay statistics.
  * Contains statistical analysis of stays grouped by various criteria.
@@ -64,7 +66,7 @@ public class AIStayStatsDTO {
     /**
      * Timestamp of the earliest stay in this group
      */
-    private java.time.Instant firstStayStart;
+    private Instant firstStayStart;
     
     /**
      * Location name that had the most total time in this group

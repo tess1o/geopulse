@@ -24,13 +24,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 @Slf4j
@@ -137,6 +134,43 @@ public class FavoriteLocationService {
         repository.persist(entity);
 
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
+    }
+
+    @Transactional
+    public void applyBulkChanges(UUID userId, BulkApplyFavoritesDto request) {
+        if (request.getPoints().isEmpty() && request.getAreas().isEmpty()
+                && request.getUpdates().isEmpty() && request.getDeleteIds().isEmpty()) {
+            throw new IllegalArgumentException("No favorite changes provided");
+        }
+        var ids = new HashSet<Long>();
+        for (var update : request.getUpdates()) {
+            var changes = update.getChanges();
+            long boundsCount = Stream.of(changes.getNorthEastLat(), changes.getNorthEastLon(),
+                    changes.getSouthWestLat(), changes.getSouthWestLon()).filter(Objects::nonNull).count();
+            if (boundsCount != 0 && boundsCount != 4) {
+                throw new IllegalArgumentException("All four area bounds must be provided together");
+            }
+            if (!ids.add(update.getFavoriteId())) {
+                throw new IllegalArgumentException("Duplicate favorite change");
+            }
+        }
+        for (Long id : request.getDeleteIds()) {
+            if (!ids.add(id)) {
+                throw new IllegalArgumentException("Duplicate or conflicting favorite change");
+            }
+        }
+        for (Long id : ids) {
+            var favorite = repository.findById(id);
+            if (favorite == null) throw new IllegalArgumentException("Favorite not found");
+            if (!favorite.getUser().getId().equals(userId)) {
+                throw new SecurityException("Not authorized to change this favorite");
+            }
+        }
+        for (var point : request.getPoints()) addFavorite(userId, point);
+        for (var area : request.getAreas()) addFavorite(userId, area);
+        for (var update : request.getUpdates()) updateFavorite(userId, update.getFavoriteId(), update.getChanges());
+        for (Long id : request.getDeleteIds()) deleteFavorite(userId, id);
+        repository.flush();
     }
 
     @Transactional
@@ -408,7 +442,7 @@ public class FavoriteLocationService {
 
         // Update bounds if provided (for area favorites)
         if (dto.getNorthEastLat() != null && dto.getNorthEastLon() != null &&
-            dto.getSouthWestLat() != null && dto.getSouthWestLon() != null) {
+                dto.getSouthWestLat() != null && dto.getSouthWestLon() != null) {
 
             if (favoritesEntity.getType() != FavoriteLocationType.AREA) {
                 log.warn("Attempted to update bounds for non-area favorite {}", favoriteId);
@@ -715,7 +749,8 @@ public class FavoriteLocationService {
         return new BulkDomainApplyResult(processed, updated, failed);
     }
 
-    public record BulkDomainApplyResult(int processed, int updated, int failed) {}
+    public record BulkDomainApplyResult(int processed, int updated, int failed) {
+    }
 
     // Validation methods
     private void validatePointFavorite(AddPointToFavoritesDto favorite) {

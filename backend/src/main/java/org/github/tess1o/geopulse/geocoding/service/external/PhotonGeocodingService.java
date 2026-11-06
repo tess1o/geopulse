@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * Photon-compatible geocoding service that handles API calls and response transformation.
@@ -92,11 +93,11 @@ public class PhotonGeocodingService {
     @Retry
     @Bulkhead(value = 2, waitingTaskQueue = 10)
     @CircuitBreaker
-    public Uni<java.util.List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
+    public Uni<List<GeocodingCandidate>> reverseCandidates(Point requestCoordinates) {
         return reverse(requestCoordinates, true, response -> adapter.adaptCandidates(response, requestCoordinates, getProviderName()));
     }
 
-    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, java.util.function.Function<PhotonResponse, T> adapt) {
+    private <T> Uni<T> reverse(Point requestCoordinates, boolean candidates, Function<PhotonResponse, T> adapt) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException(getProviderName() + " provider is disabled"));
         }

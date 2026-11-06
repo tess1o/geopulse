@@ -318,7 +318,9 @@ const proceedWithUpdate = async () => {
         updateCountry.value ? countryValue.value.trim() : null
     )
 
-    const successMsg = result.failedCount > 0
+    const successMsg = result.queued
+        ? t('miscDialogs.bulkEdit.toasts.queuedDetail', { count: result.successCount })
+        : result.failedCount > 0
         ? t('miscDialogs.bulkEdit.toasts.partialDetail', { success: result.successCount, total: result.totalRequested, failed: result.failedCount })
         : t('miscDialogs.bulkEdit.toasts.successDetail', { count: result.successCount, itemType: props.itemTypeName.toLowerCase() })
 
@@ -330,6 +332,7 @@ const proceedWithUpdate = async () => {
     })
 
     emit('save')
+    saving.value = false
     handleClose()
   } catch (error) {
     console.error(`Error bulk updating ${props.itemTypeName}:`, error)
