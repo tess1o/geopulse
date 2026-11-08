@@ -1,0 +1,123 @@
+export default {
+    candidates: {
+        "save": "Opslaan",
+        "current": "Huidige locatie",
+        "linkedStays": "Het opslaan van wijzigingen werkt alle verblijfplaatsen bij die aan deze locatie zijn gekoppeld.",
+        "load": "Kandidaten laden",
+        "empty": "Geen kandidaten geretourneerd. Probeer een andere provider.",
+        "single": "Deze provider heeft één kandidaat geretourneerd.",
+        "choose": "Kies de juiste locatie",
+        "distance": "{distance} m van opgenomen coördinaten",
+        "loadFailed": "Kandidaten konden niet worden geladen. Probeer het opnieuw.",
+        "saveFailed": "Deze selectie kon niet worden opgeslagen. Laad kandidaten opnieuw en probeer het opnieuw."
+    },
+    page: {
+        title: 'Omgekeerde Geocoderingsbeheer',
+        subtitle: 'Uw geocoderingsresultaten beheren en bijwerken',
+        reconcileAllButton: 'Alle Reconcile ({count})',
+        bulkEditButton: 'Bulk Bewerken ({count})',
+        reconcileSelectedButton: 'Geselecteerde Reconcile ({count})',
+        providerSwitchInfo: 'Providerwijzigingen hebben alleen invloed op nieuwe opzoeken. Gebruik Reconcile Selected/Reconcile All om bestaande gecachete records te vernieuwen.',
+        normalization: {
+            title: 'Normalisatieregels',
+            subtitle: 'Per-gebruiker mapping regels voor land en stadnamen. Nieuwe geocoderingsresultaten gebruiken deze regels automatisch; gebruik Pas Regels Nu Toe om bestaande opgeslagen geocodering en favorieten bij te werken.',
+            collapse: 'Inklappen',
+            expand: 'Uitklappen',
+            addRule: 'Regel toevoegen',
+            applyRulesNow: 'Regels Nu Toepassen',
+            collapsedHint: 'Sectie ingeklapt. Vouw uit om regels te beheren.',
+            empty: 'Nog geen normalisatieregels.',
+            typeColumn: 'Type',
+            typeCountry: 'Land',
+            typeCity: 'Stad',
+            fromColumn: 'Van',
+            toColumn: 'Naar',
+            actionsColumn: 'Acties',
+            valueDash: '-'
+        },
+        filters: {
+            providerLabel: 'Provider:',
+            allProviders: 'Alle Providers',
+            searchLabel: 'Zoeken:',
+            searchPlaceholder: 'Zoeken op locatie, stad of land',
+            clearFilters: 'Filters Wissen'
+        },
+        table: {
+            title: 'Geocoderingsresultaten',
+            emptyTitle: 'Geen Geocoderingsresultaten Gevonden',
+            emptyDescription: 'Geen geocoderingsdata beschikbaar voor de geselecteerde criteria.',
+            displayNameColumn: 'Weergavenaam',
+            cityColumn: 'Stad',
+            countryColumn: 'Land',
+            providerColumn: 'Provider',
+            coordinatesColumn: 'Coördinaten',
+            lastUsedColumn: 'Laatst Gebruikt',
+            actionsColumn: 'Acties',
+            nullValue: '-',
+            viewDetailsTooltip: 'Details Bekijken',
+            editTooltip: 'Bewerken',
+            reconcileTooltip: 'Herleiden'
+        },
+        bulkEdit: {
+            itemTypeName: 'Geocoderingsresultaten'
+        },
+        ruleDialog: {
+            editHeader: 'Normalisatieregeld Bewerken',
+            addHeader: 'Normalisatieregeld Toevoegen',
+            ruleTypeLabel: 'Regeltype',
+            fromCountryLabel: 'Van Land',
+            toCountryLabel: 'Naar Land',
+            fromCityLabel: 'Van Stad',
+            toCityLabel: 'Naar Stad',
+            countryPlaceholderFrom: 'bijv. Болгарія',
+            countryPlaceholderTo: 'bijv. Bulgarije',
+            cityPlaceholderFrom: 'bijv. Sofia',
+            cityPlaceholderTo: 'bijв. Софія',
+            cancel: 'Annuleren',
+            save: 'Opslaan'
+        },
+        applyRulesDialog: {
+            applySelectedHeader: 'Geselecteerde Regel Toepassen',
+            applyAllHeader: 'Normalisatieregels Toepassen',
+            applying: 'Toepassen: {source} → {target}',
+            applyToGeocoding: 'Toepassen op omgekeerde geocoderingsentiteiten',
+            applyToFavorites: 'Toepassen op favorieten',
+            cancel: 'Annuleren',
+            apply: 'Toepassen'
+        },
+        ruleTypeOptions: {
+            country: 'Land',
+            city: 'Stad'
+        },
+        deleteRuleConfirm: 'Mapping "{source} → {target}" verwijderen?',
+        toasts: {
+            loadResultsFailed: 'Geocoderingsresultaten laden is mislukt',
+            loadRulesFailed: 'Normalisatieregels laden is mislukt',
+            ruleUpdatedSummary: 'Regel Bijgewerkt',
+            ruleUpdatedDetail: 'Normalisatieregel succesvol bijgewerkt',
+            ruleAddedSummary: 'Regel Toegevoegd',
+            ruleAddedDetail: 'Normalisatieregel succesvol gemaakt',
+            saveFailedSummary: 'Opslaan Mislukt',
+            saveRuleFailedFallback: 'Normalisatieregeld opslaan is mislukt',
+            ruleDeletedSummary: 'Regel Verwijderd',
+            ruleDeletedDetail: 'Normalisatieregel succesvol verwijderd',
+            deleteFailedSummary: 'Verwijderen Mislukt',
+            deleteRuleFailedFallback: 'Normalisatieregeld verwijderen is mislukt',
+            normalizationStartedSummary: 'Normalisatie Gestart',
+            normalizationStartedSingleDetail: 'Geselecteerde regel op de achtergrond toepassen...',
+            normalizationStartedAllDetail: 'Regels op de achtergrond toepassen...',
+            applyFailedSummary: 'Toepassen Mislukt',
+            applyFailedFallback: 'Normalisatie toepassen baan starten is mislukt',
+            updateSuccessDetail: 'Geocoderingsresultaat succesvol bijgewerkt',
+            updateFailedSummary: 'Bijwerken Mislukt',
+            updateFailedFallback: 'Geocoderingsresultaat bijwerken is mislukt',
+            reconciliationFailedSummary: 'Herleiding Mislukt',
+            reconciliationFailedFallback: 'Herleiding starten is mislukt',
+            reconciliationCompleteSummary: 'Herleiding Voltooid',
+            reconciliationCompleteDetail: 'Succesvol herleid {success} van {total} resultaten',
+            normalizationCompleteSummary: 'Normalisatie Toepassen Voltooid',
+            normalizationCompleteDetail: '{geocodingUpdated} geocoderingsresultaten en {favoritesUpdated} favorieten bijgewerkt',
+            normalizationCompleteFailedSuffix: ' ({count} mislukt)'
+        }
+    }
+}
