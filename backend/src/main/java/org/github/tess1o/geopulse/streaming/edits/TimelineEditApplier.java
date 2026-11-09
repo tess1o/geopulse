@@ -46,6 +46,7 @@ public class TimelineEditApplier {
                                     Consumer<Trip> recalculateTrip) {
         List<TimelineEvent> events = source.stream().map(TimelineEditApplier::copy).collect(ArrayList::new,
                 ArrayList::add, ArrayList::addAll);
+        events.sort(Comparator.comparing(TimelineEvent::getStartTime).thenComparing(TimelineEvent::getEndTime));
         Map<Long, TimelineEvent> applications = new LinkedHashMap<>();
         List<Long> unapplied = new ArrayList<>();
 
@@ -60,7 +61,7 @@ public class TimelineEditApplier {
                     recalculateTrip.accept(trip);
                 }
             }
-            events.sort(Comparator.comparing(TimelineEvent::getStartTime));
+            events.sort(Comparator.comparing(TimelineEvent::getStartTime).thenComparing(TimelineEvent::getEndTime));
             if (applied == null) {
                 unapplied.add(command.id());
             } else {
@@ -215,6 +216,12 @@ public class TimelineEditApplier {
         Instant start = current.getStartTime();
         Instant end = current.getEndTime();
         String resolution = requiredText(edit, "resolution");
+        if ("DISMISS".equals(resolution)) {
+            if (!(current instanceof Trip) || !current.getDuration().isZero() || events.size() == 1) return null;
+            events.remove(index);
+            // Attach the removal to a surviving neighbour so it can be found and undone after regeneration.
+            return events.get(index > 0 ? index - 1 : 0);
+        }
         // Preferences can remove a required neighbour; an unapplied edit must leave every event intact.
         if (("EXTEND_PREVIOUS".equals(resolution) && index == 0)
                 || ("EXTEND_NEXT".equals(resolution) && index + 1 == events.size())
@@ -257,6 +264,11 @@ public class TimelineEditApplier {
             if (edit.payload().get("sourceType") != null
                     && !event.getType().name().equals(edit.payload().get("sourceType"))) continue;
             if (event instanceof Trip trip && !tripAnchorMatches(edit.payload(), trip)) continue;
+            if (edit.anchorStart().equals(edit.anchorEnd())) {
+                if (event instanceof Trip && event.getDuration().isZero()
+                        && event.getStartTime().equals(edit.anchorStart())) return event;
+                continue;
+            }
             long shared = overlapSeconds(edit.anchorStart(), edit.anchorEnd(), event.getStartTime(), event.getEndTime());
             long eventSeconds = event.getDuration().getSeconds();
             if (shared * 2 > anchorSeconds && shared * 2 > eventSeconds && shared > bestShared) {

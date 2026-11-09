@@ -1,3 +1,4 @@
+import { createNativeClusterMirror } from '@/maps/vector/utils/nativeClusterMirror'
 import RawGpsPointPopup from '@/maps/shared/popups/RawGpsPointPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import {
@@ -183,6 +184,20 @@ export const groupRawGpsPoints = (points) => {
   })
 }
 
+export const createRawGpsInspectionClusters = () => {
+  const clusters = createNativeClusterMirror({ clusterRadius: 34, clusterMaxZoom: 24 })
+  return {
+    getRenderedEntities(points, zoom) {
+      return clusters.getRenderedEntities(points, zoom).map(entity => ({
+        ...entity,
+        // Use recorded coordinates rather than Supercluster's rounded projected coordinates.
+        latitude: entity.indices.reduce((sum, index) => sum + points[index].latitude, 0) / entity.indices.length,
+        longitude: entity.indices.reduce((sum, index) => sum + points[index].longitude, 0) / entity.indices.length
+      }))
+    }
+  }
+}
+
 export const formatRawGpsDateTime = (timezone, value) => {
   if (!value) return 'Unknown time'
   try {
@@ -204,8 +219,11 @@ const scheduleRenderNotification = (callback) => {
 
 export const createRawGpsPopupMount = (group, {
   timezone,
+  container,
   resolveLocation,
   onSelectPoint,
+  onInspectPoint,
+  activePointIndex = 0,
   onRender
 } = {}) => {
   let popupMount = null
@@ -213,16 +231,37 @@ export const createRawGpsPopupMount = (group, {
     scheduleRenderNotification(() => onRender?.(popupMount?.element))
   }
 
-  popupMount = mountMapPopup(RawGpsPointPopup, {
+  const popupProps = {
     group,
     timezone,
     resolveLocation,
     onSelectPoint,
+    activePointIndex,
+    embedded: Boolean(container),
+    onInspectPoint: (pointIndex) => {
+      if (!Number.isInteger(pointIndex) || !group.points[pointIndex]) return
+      popupProps.activePointIndex = pointIndex
+      popupMount.updateProps(popupProps)
+      onInspectPoint?.(group.points[pointIndex], pointIndex)
+    },
     onRender: notifyRender
-  })
+  }
+  popupMount = mountMapPopup(RawGpsPointPopup, popupProps)
+  container?.appendChild(popupMount.element)
 
   notifyRender()
-  return popupMount
+  return {
+    ...popupMount,
+    unmount() {
+      popupMount.unmount()
+      popupMount.element.remove()
+    },
+    inspectPoint: popupProps.onInspectPoint,
+    setSelectPoint(callback) {
+      popupProps.onSelectPoint = callback
+      popupMount.updateProps(popupProps)
+    }
+  }
 }
 
 export const RAW_GPS_POPUP_CLASS_NAME = getMapPopupVariantClassName('wide', 'gp-raw-gps-popup-container')

@@ -54,6 +54,7 @@ const visibleEdits = computed(() => {
     const attributeType = { SET_VISIT_NAME: 'stay', SET_PLACE: 'stay', SET_MOVEMENT_TYPE: 'trip' }[edit.kind]
     if (attributeType) {
       if (edit.target || props.item.type !== attributeType) return false
+      if (start === end) return Date.parse(edit.anchorStart) === start && Date.parse(edit.anchorEnd) === end
       return Date.parse(edit.anchorStart) < end && Date.parse(edit.anchorEnd) > start
     }
     return Date.parse(edit.affectedFrom || edit.anchorStart) < end && Date.parse(edit.affectedTo || edit.anchorEnd) > start
@@ -107,7 +108,8 @@ function value(edit, before) {
     GAP: 'gap',
     MERGE: 'merge',
     EXTEND_PREVIOUS: 'previous',
-    EXTEND_NEXT: 'next'
+    EXTEND_NEXT: 'next',
+    DISMISS: 'dismiss'
   }[data.resolution]}`)
   if (edit.kind === 'MERGE') return before ? period(data.start, data.end) : t(`timeline.edit.${data.direction === 'PREVIOUS' ? 'previousEvent' : 'nextEvent'}`)
   return period(edit.anchorStart, edit.anchorEnd)

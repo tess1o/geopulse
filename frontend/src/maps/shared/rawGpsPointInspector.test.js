@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/utils/calculationsHelpers', () => ({
@@ -6,6 +7,7 @@ vi.mock('@/utils/calculationsHelpers', () => ({
 
 import {
   createRawGpsPopupMount,
+  createRawGpsInspectionClusters,
   groupRawGpsPoints,
   STATIONARY_GROUP_METERS
 } from './rawGpsPointInspector'
@@ -211,6 +213,110 @@ describe('raw GPS point selection for reconstruction', () => {
     await waitForRenderNotification()
     Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent.includes('Select this time')).click()
     expect(onSelectPoint).toHaveBeenCalledWith(expect.objectContaining({ id: 2, timestamp: points[1].timestamp }))
+    popup.unmount()
+  })
+})
+
+describe('raw GPS inspection clustering', () => {
+  it('separates nearby samples as screen space allows and keeps coincident samples at their recorded coordinates', () => {
+    const points = [pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 10, 0), pointOffsetByMeters(3, 0, 0)]
+    const clusters = createRawGpsInspectionClusters()
+    expect(clusters.getRenderedEntities(points, 16)).toHaveLength(1)
+    const zoomed = clusters.getRenderedEntities(points, 22)
+    expect(zoomed).toHaveLength(2)
+    const overlapping = zoomed.find(entity => entity.isCluster)
+    expect(overlapping.indices.sort()).toEqual([0, 2])
+    expect(overlapping.latitude).toBe(points[0].latitude)
+    expect(overlapping.longitude).toBe(points[0].longitude)
+    const single = zoomed.find(entity => !entity.isCluster)
+    expect(single.latitude).toBe(points[1].latitude)
+    expect(single.longitude).toBe(points[1].longitude)
+  })
+
+  it('keeps hundreds of dense samples clustered instead of drawing a dot for every sample', () => {
+    const points = Array.from({length: 467}, (_, index) => pointOffsetByMeters(index, index / 466 * 15, 0))
+    const entities = createRawGpsInspectionClusters().getRenderedEntities(points, 18)
+    expect(entities).toHaveLength(1)
+    expect(entities[0].indices).toHaveLength(467)
+  })
+})
+
+describe('raw GPS sample inspection', () => {
+  it('synchronizes list and map inspection without selecting a boundary, including overlapping points', async () => {
+    const group = groupRawGpsPoints([pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 0, 0)])[0]
+    const onInspectPoint = vi.fn(), onSelectPoint = vi.fn()
+    const popup = createRawGpsPopupMount(group, { timezone, onInspectPoint, onSelectPoint })
+    popup.element.querySelectorAll('.raw-gps-stack-row')[1].click()
+    await nextTick()
+    expect(onInspectPoint).toHaveBeenLastCalledWith(group.points[1], 1)
+    expect(popup.element.querySelectorAll('.raw-gps-stack-row')[1].getAttribute('aria-pressed')).toBe('true')
+    expect(onSelectPoint).not.toHaveBeenCalled()
+    popup.inspectPoint(0)
+    await nextTick()
+    expect(popup.element.querySelectorAll('.raw-gps-stack-row')[0].classList.contains('is-selected')).toBe(true)
+    expect(onSelectPoint).not.toHaveBeenCalled()
+    popup.unmount()
+  })
+
+  it('shows more timestamps and reveals and scrolls to a sample chosen beyond the first page', async () => {
+    const group = groupRawGpsPoints(Array.from({ length: 170 }, (_, id) => ({
+      id, latitude: 1, longitude: 2, timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, id)).toISOString()
+    })))[0]
+    const popup = createRawGpsPopupMount(group, { timezone })
+    expect(popup.element.querySelectorAll('.raw-gps-stack-row')).toHaveLength(80)
+    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent === 'Show more').click()
+    await nextTick()
+    expect(popup.element.querySelectorAll('.raw-gps-stack-row')).toHaveLength(160)
+    const bounds = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      return this.dataset.pointIndex === '169' ? { top: 500, bottom: 550 } : { top: 0, bottom: 300 }
+    })
+    try {
+      popup.inspectPoint(169)
+      await nextTick(); await nextTick()
+      expect(popup.element.querySelectorAll('.raw-gps-stack-row')).toHaveLength(170)
+      expect(popup.element.querySelector('[data-point-index="169"]').classList.contains('is-selected')).toBe(true)
+      expect(popup.element.querySelector('.raw-gps-stack-list').scrollTop).toBe(250)
+      expect(popup.element.textContent).not.toContain('Show more')
+    } finally {
+      bounds.mockRestore()
+      popup.unmount()
+    }
+  })
+
+  it('keeps the selected timestamp visible when the list is resized without scrolling the editor', async () => {
+    let onResize
+    const disconnect = vi.fn()
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback) { onResize = callback }
+      observe() {}
+      disconnect() { disconnect() }
+    })
+    const popup = createRawGpsPopupMount(groupRawGpsPoints([pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 0, 0)])[0], { timezone })
+    await nextTick()
+    const list = popup.element.querySelector('.raw-gps-stack-list')
+    vi.spyOn(list, 'getBoundingClientRect').mockReturnValue({ top: 0, bottom: 100 })
+    vi.spyOn(list.firstElementChild, 'getBoundingClientRect').mockReturnValue({ top: 150, bottom: 180 })
+    onResize()
+    expect(list.scrollTop).toBe(80)
+    expect(popup.element.scrollTop).toBe(0)
+    popup.unmount()
+    expect(disconnect).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('updates boundary-selection availability without resetting inspection', async () => {
+    const group = groupRawGpsPoints([pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 1, 1)])[0]
+    const popup = createRawGpsPopupMount(group, { timezone })
+    popup.inspectPoint(1)
+    const select = vi.fn()
+    popup.setSelectPoint(select)
+    await nextTick()
+    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent === 'Select this time').click()
+    expect(select).toHaveBeenCalledWith(group.points[1])
+    popup.setSelectPoint(null)
+    await nextTick()
+    expect(popup.element.textContent).not.toContain('Select this time')
+    expect(popup.element.querySelector('[data-point-index="1"]').classList.contains('is-selected')).toBe(true)
     popup.unmount()
   })
 })

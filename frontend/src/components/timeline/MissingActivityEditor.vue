@@ -88,17 +88,20 @@
           <Button v-if="mapTarget !== null" :label="t(mapTarget === 'via' ? 'missingActivity.doneMap' : 'common.back')" :icon="mapTarget === 'via' ? 'pi pi-check' : 'pi pi-arrow-left'" size="small" @click="finishMap" />
           <Button v-if="active?.segmentType === 'TRIP'" :label="t('missingActivity.showRoute')" icon="pi pi-expand" text size="small" :disabled="!mapMarkers.length" @click="focusPlaces()" />
         </div>
-        <MapContainer :map-id="mapId" :center="initialViewport?.center || fallbackCenter" :zoom="initialViewport?.zoom ?? 13"
-          :show-controls="false" :map-options="{ attributionControl: { compact: true } }" height="var(--missing-activity-map-height)" width="100%" @map-ready="mapReady" @map-click="mapClick">
-          <template #overlays="{ map, isReady }">
-            <RawGpsPointsLayer v-if="map && isReady" :map="map" :points="recordedPoints" :select-point="selectingTimes ? selectGpsPoint : null" />
-            <TripReconstructionMapOverlay v-if="map && isReady" :map="map" :context-points="displayMarkers" :context-trip-lines="mapLines" :editable-context="!selectingTimes && !saving" @context-point-dragged="dragPoint" :id-prefix="mapId" />
-          </template>
-        </MapContainer>
-        <div v-if="active?.segmentType === 'TRIP' || (!active?.segmentType && chosenGap)" class="map-marker-legend">
+        <div class="gps-map-workspace">
+          <MapContainer class="activity-editor-map-canvas" :map-id="mapId" :center="initialViewport?.center || fallbackCenter" :zoom="initialViewport?.zoom ?? 13"
+            :show-controls="false" :map-options="{ attributionControl: { compact: true } }" height="100%" width="100%" @map-ready="mapReady" @map-click="mapClick">
+            <template #overlays="{ map, isReady }">
+              <RawGpsPointsLayer v-if="visible && map && isReady" :map="map" :points="recordedPoints" :inspector-container="gpsInspector" :select-point="selectingTimes ? selectGpsPoint : null" />
+              <TripReconstructionMapOverlay v-if="map && isReady" :map="map" :context-points="displayMarkers" :context-trip-lines="mapLines" :editable-context="!selectingTimes && !saving" @context-point-dragged="dragPoint" :id-prefix="mapId" />
+            </template>
+          </MapContainer>
+          <div ref="gpsInspector" class="gps-inspector" role="region" :aria-label="t('maps.popups.rawGps.rawGpsPoint')" />
+        </div>
+        <div v-if="active?.segmentType === 'TRIP' && !selectingTimes" class="map-marker-legend">
           <span><b class="marker-start">A</b> {{ t('missingActivity.origin') }}</span><span><b class="marker-end">B</b> {{ t('missingActivity.destination') }}</span>
         </div>
-        <small v-if="chosenGap && (!active?.startPlace || !active?.endPlace) && active?.segmentType !== 'STAY'">{{ t('missingActivity.boundaryHint') }}</small>
+        <small v-if="chosenGap && (!active?.startPlace || !active?.endPlace) && active?.segmentType === 'TRIP' && !selectingTimes">{{ t('missingActivity.boundaryHint') }}</small>
       </div>
     </div>
     <section v-if="review" class="activity-review" aria-live="polite">
@@ -148,6 +151,7 @@ const { t } = useI18n()
 const timezone = useTimezone()
 const store = useTimelineStore()
 const chosenGap = ref(null), editorMap = shallowRef(null), mapTarget = ref(null)
+const gpsInspector = ref(null)
 const mapSection = ref(null), formSection = ref(null), mapReturnTarget = shallowRef(null)
 const activities = ref([]), activeId = ref(null), review = ref(null), error = ref('')
 const saving = ref(false), previewing = ref(false), selectingTimes = ref(false), firstPoint = ref(null), secondPoint = ref(null)
@@ -170,6 +174,7 @@ const boundaryPlaces = computed(() => {
 })
 const mapMarkers = computed(() => {
   const a = active.value
+  if (!a?.segmentType) return []
   const marker = (point, label) => Number.isFinite(point?.latitude) && Number.isFinite(point?.longitude)
     ? { latitude: point.latitude, longitude: point.longitude, label } : null
   const stay = a?.place || a?.pickedPoint
@@ -184,6 +189,7 @@ const mapMarkers = computed(() => {
     ...(!startMarker && !endMarker && props.locationSuggestion ? [marker(props.locationSuggestion, '•')] : [])].filter(Boolean)
 })
 const displayMarkers = computed(() => {
+  if (selectingTimes.value) return []
   const a = active.value
   const preview = a?.segmentType === 'STAY' ? a.previewPlace : a?.previewStart || a?.previewEnd
   return preview ? [...mapMarkers.value, { latitude: preview.latitude, longitude: preview.longitude, label: '◇', draggable: false }] : mapMarkers.value
@@ -201,7 +207,7 @@ function expandPlace(activity, field, expanded) {
     if (mapTarget.value === field) mapTarget.value = null
   }
 }
-const mapLines = computed(() => active.value?.segmentType === 'TRIP' && mapMarkers.value.length > 1
+const mapLines = computed(() => !selectingTimes.value && active.value?.segmentType === 'TRIP' && mapMarkers.value.length > 1
   ? [mapMarkers.value.map(point => [point.latitude, point.longitude])] : [])
 function focusPlaces(onlyIfOutside = false) {
   const map = editorMap.value, points = mapMarkers.value
@@ -257,6 +263,9 @@ function returnToPlace() {
 function finishMap() { mapTarget.value = null; returnToPlace() }
 function mapClick(event) {
   if (selectingTimes.value || !active.value) return
+  // Vector layer clicks also reach the map handler before the layer's click handler.
+  if (event?.point && editorMap.value?.queryRenderedFeatures?.(event.point)
+    .some(feature => feature.properties?.groupRaw || feature.properties?.raw_count != null)) return
   const point = event?.latlng || event?.lngLat || event
   const latitude = point?.lat, longitude = point?.lng
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
@@ -335,7 +344,7 @@ async function save() {
 }
 </script>
 <style>
-.missing-activity-editor { --missing-activity-map-height: 480px; width: min(72rem, 96vw); max-height: 94dvh; }
+.missing-activity-editor { --missing-activity-map-height: clamp(24rem, calc(100dvh - 19rem), 38rem); width: min(90rem, 96vw); max-height: 94dvh; }
 @media (max-width: 768px) {
   .missing-activity-editor { --missing-activity-map-height: clamp(220px, 32dvh, 280px); width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
   .missing-activity-editor .p-dialog-header { padding: .75rem 1rem; }
@@ -347,7 +356,7 @@ async function save() {
 <style scoped>
 .mobile-editor-help { display: none; }
 .editor-help { color: var(--gp-text-secondary); margin: 0 0 1rem; line-height: 1.5; }
-.activity-editor-layout { display: grid; grid-template-columns: minmax(19rem, 1fr) minmax(0, 1.4fr); gap: 1rem; }
+.activity-editor-layout { display: grid; grid-template-columns: minmax(19rem, .8fr) minmax(0, 1.8fr); gap: 1rem; }
 .activity-editor-form { display: grid; gap: .875rem; align-content: start; }
 .activity-form { border: 1px solid var(--gp-border); padding: 1rem; border-radius: var(--gp-radius-medium); display: grid; gap: .75rem; }
 .activity-form.selected { border-color: var(--gp-primary); }
@@ -358,6 +367,27 @@ label :deep(input), label :deep(.p-select), label :deep(.p-datepicker) { width: 
 .map-instruction, small, .gps-time-choices p { font-size: .8rem; color: var(--gp-text-secondary); line-height: 1.5; }
 h4 { margin: .25rem 0 0; font-size: .875rem; }
 .gps-time-choices { display: grid; gap: .5rem; padding: .75rem; background: var(--gp-surface-ground); border-radius: var(--gp-radius-small); }
+.gps-map-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; height: var(--missing-activity-map-height); min-height: 0; }
+.gps-map-workspace:has(.gps-inspector:not(:empty)) { grid-template-columns: minmax(0, 1.2fr) minmax(16rem, .8fr); }
+.activity-editor-map-canvas { height: 100%; min-width: 0; min-height: 0; }
+.activity-editor-map-canvas :deep(.base-map) { min-height: 0; }
+.gps-inspector:empty { display: none; }
+.gps-inspector { min-width: 0; min-height: 0; overflow: hidden; background: var(--gp-map-popup-background); border: 1px solid var(--gp-map-popup-border); border-radius: var(--gp-radius-medium); }
+.gps-inspector :deep([data-v-app]) { height: 100%; }
+.gps-inspector :deep(.raw-gps-popup) { width: 100%; min-width: 0; max-width: 100%; height: 100%; max-height: none; overflow: hidden; padding: .75rem; }
+.gps-inspector :deep(.gp-map-popup-header), .gps-inspector :deep(.raw-gps-point-details), .gps-inspector :deep(.p-button) { flex-shrink: 0; }
+.gps-inspector :deep(.raw-gps-point-details) { margin-top: .5rem; }
+.gps-inspector :deep(summary) { cursor: pointer; padding: .375rem 0; font-weight: 600; }
+.gps-inspector :deep(.raw-gps-popup-grid) { grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .5rem; margin-top: .5rem; }
+.gps-inspector :deep(.p-button) { min-height: 2.5rem; padding: .5rem .75rem; }
+.gps-inspector :deep(.raw-gps-popup-location) { display: none; }
+.gps-inspector :deep(.raw-gps-stack-list) { max-height: none; overflow: auto; }
+.gps-inspector :deep(.raw-gps-stack-row) { grid-template-columns: minmax(0, 1fr); gap: .25rem; }
+.gps-inspector :deep(.raw-gps-stack-telemetry) { justify-content: flex-start; flex-wrap: wrap; }
+@media (max-width: 1100px) {
+  .gps-map-workspace:has(.gps-inspector:not(:empty)) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); height: min(40rem, calc(100dvh - 16rem)); }
+  .gps-map-workspace:has(.gps-inspector details[open]) { grid-template-rows: minmax(7rem, .5fr) minmax(0, 1.5fr); }
+}
 .activity-editor-map { min-width: 0; align-self: start; position: sticky; top: 0; }
 .activity-review { margin-top: 1rem; padding: 1rem; background: var(--gp-surface-ground); border-radius: var(--gp-radius-medium); }
 .activity-review li { display: grid; gap: .25rem; margin: .75rem 0; }

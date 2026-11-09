@@ -43,6 +43,33 @@ class TimelineEditLifecycleIntegrationTest {
     @BeforeEach
     void mocks() { GeocodingTestMocks.install(); }
 
+    @org.junit.jupiter.api.Test
+    void insertedStayPreservesShortTripLegsThroughPreviewSaveAndRebuild() {
+        UUID user = day.ingest(harness, "short-split-legs");
+        var original = tripRows(user).getFirst();
+        Instant tripEnd = original.getTimestamp().plusSeconds(original.getTripDuration());
+        var request = new TimelineEditRequest();
+        request.setKind(TimelineEditKind.FORCE_STAY);
+        request.setAnchorStart(original.getTimestamp().plusSeconds(23));
+        request.setAnchorEnd(tripEnd.minusSeconds(113));
+        request.setAffectedFrom(at("06:00"));
+        request.setAffectedTo(at("22:00"));
+        request.setPayload(new LinkedHashMap<>(Map.of("locationName", "Stop",
+                "latitude", day.bakery[0], "longitude", day.bakery[1])));
+
+        var preview = edits.preview(user, request);
+        assertThat(preview.events()).filteredOn(event -> event.type().equals("TRIP"))
+                .extracting(event -> Duration.between(event.start(), event.end()).getSeconds())
+                .containsExactly(23L, 113L);
+        var edit = edits.create(user, request);
+        for (int rebuild = 0; rebuild < 2; rebuild++) {
+            harness.fullRebuild(user);
+            assertThat(tripRows(user)).extracting(TimelineTripEntity::getTripDuration).containsExactly(23L, 113L);
+            assertPreviewMatchesStored(user, preview);
+            assertApplied(user, edit.id());
+        }
+    }
+
     @ParameterizedTest(name = "{0}: persisted output, undo, redo and incremental replay")
     @ValueSource(strings = {"SET_MOVEMENT_TYPE", "SET_PLACE", "SET_VISIT_NAME", "FORCE_STAY", "FORCE_TRIP",
             "SET_TIMES", "SPLIT_STAY", "FORCE_STAY_SUBMINUTE", "MERGE_PREVIOUS", "MERGE_NEXT", "REMOVE_GAP",

@@ -267,6 +267,8 @@ export default {
             rawGpsPoint: 'Roher GPS-Punkt',
             favoriteSource: 'Favorit',
             geocodingSource: 'Geocodierung',
+            pointDetails: 'GPS-Punktdetails',
+            showMore: 'Mehr anzeigen',
             showingPoints: 'Die ersten {shown} von {total} Punkten',
             notAvailable: '–'
         }

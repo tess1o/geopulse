@@ -16,6 +16,41 @@ const points = [
 ]
 
 describe('trip stay split selection', () => {
+  const shortTripPoints = (nearOrigin = false) => [
+    ['19:49:38', nearOrigin ? 50 : 50.0056],
+    ['19:50:01', 50.0002],
+    ['19:53:49', 50.0003],
+    ['19:55:42', nearOrigin ? 50.0056 : 50]
+  ].map(([time, latitude]) => ({ timestamp: `2026-11-05T${time}Z`, latitude, longitude: 30 }))
+
+  it.each([false, true])('allows an interior stop whose cluster touches an endpoint (origin: %s)', (nearOrigin) => {
+    const path = shortTripPoints(nearOrigin)
+    const options = { tripStart: path[0].timestamp, tripEnd: path[3].timestamp }
+    const selection = resolveStayWindowFromSelection(path, path[1], options)
+
+    expect(selection.error).toBeUndefined()
+    expect(selection.startIndex).toBe(nearOrigin ? 0 : 1)
+    expect(selection.endIndex).toBe(nearOrigin ? 2 : 3)
+    expect(Date.parse(selection.startTime)).toBeGreaterThan(Date.parse(options.tripStart))
+    expect(Date.parse(selection.endTime)).toBeLessThan(Date.parse(options.tripEnd))
+    expect(validateStayWindowSelection(path, selection.point, selection, options)).toEqual({ valid: true })
+
+    const range = { start: path[1].timestamp, end: path[2].timestamp }
+    expect(validateStayWindowSelection(path, selection.point, range, options)).toEqual({ valid: true })
+    expect((Date.parse(range.start) - Date.parse(options.tripStart)) / 1000).toBe(23)
+    expect((Date.parse(range.end) - Date.parse(range.start)) / 1000).toBe(228)
+    expect((Date.parse(options.tripEnd) - Date.parse(range.end)) / 1000).toBe(113)
+  })
+
+  it.each([0, 3])('rejects an actual trip endpoint in both checks (index: %s)', (index) => {
+    const path = shortTripPoints()
+    const options = { tripStart: path[0].timestamp, tripEnd: path[3].timestamp }
+    expect(resolveStayWindowFromSelection(path, path[index], options).error).toContain('intermediate stop')
+    expect(validateStayWindowSelection(path, path[index], {
+      start: options.tripStart, end: options.tripEnd
+    }, options).error).toContain('intermediate stop')
+  })
+
   it('uses the nearby contiguous cluster as the stay window', () => {
     const result = resolveStayWindowFromSelection(points, { latitude: 49.551, longitude: 25.6704 }, {
       radiusMeters: 150,

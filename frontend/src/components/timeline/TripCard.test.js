@@ -8,6 +8,7 @@ const mountCard = (props = {}) => shallowMount(TripCard, {
   global: {
     plugins: [createPinia()],
     stubs: {
+      Card: { template: '<div><slot name="title" /><slot name="subtitle" /><slot name="content" /></div>' },
       ContextMenu: {
         name: 'ContextMenu',
         props: ['model'],
@@ -21,6 +22,34 @@ const menuItems = (wrapper) => wrapper.findComponent({ name: 'ContextMenu' }).pr
 
 const mapMatchingDetailsItem = (wrapper) =>
   menuItems(wrapper).find(item => item.label === 'Map matching details...')
+
+describe('unrecorded transitions', () => {
+  it('shows unknown travel time and estimated distance with a neutral explanation', () => {
+    const wrapper = mountCard({ tripItem: { ...tripItem(), tripDuration: 0, movementType: 'UNKNOWN', distanceMeters: 78 },
+      nextItem: { type: 'stay', locationName: 'Shop' } })
+    expect(wrapper.text()).toContain('Unrecorded transition')
+    expect(wrapper.text()).toContain('Shop')
+    expect(wrapper.text()).toContain('Duration: Unknown')
+    expect(wrapper.text()).toContain('Estimated distance:')
+    expect(wrapper.find('[role="note"]').text()).toContain('no travel was recorded')
+    expect(wrapper.find('.trip-hint').exists()).toBe(false)
+    expect(wrapper.find('.timeline-card').classes()).toContain('timeline-card--unrecorded')
+  })
+
+  it('keeps the transition explanation after the movement type is corrected', () => {
+    const wrapper = mountCard({ tripItem: { ...tripItem(), tripDuration: 0, movementType: 'WALK', movementTypeSource: 'MANUAL' } })
+    expect(wrapper.text()).toContain('Unrecorded transition')
+    expect(wrapper.text()).toContain('Walk')
+    expect(wrapper.text()).toContain('Edited')
+  })
+
+  it('keeps normal trips unchanged', () => {
+    const wrapper = mountCard()
+    expect(wrapper.text()).not.toContain('Unrecorded transition')
+    expect(wrapper.text()).not.toContain('Estimated distance:')
+    expect(wrapper.find('[role="note"]').exists()).toBe(false)
+  })
+})
 
 describe('TripCard map matching details menu item', () => {
   it('stays hidden when map matching has nothing to say about the trip', () => {

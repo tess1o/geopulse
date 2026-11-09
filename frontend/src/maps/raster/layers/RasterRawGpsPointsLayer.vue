@@ -16,7 +16,9 @@ import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import {
   createRawGpsPopupMount,
+  createRawGpsInspectionClusters,
   groupRawGpsPoints,
+  formatRawGpsDateTime,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH_PX
 } from '@/maps/shared/rawGpsPointInspector'
@@ -34,6 +36,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  inspectorContainer: { type: Object, default: null },
   selectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
@@ -45,6 +48,84 @@ const baseLayerRef = ref(null)
 const markerClusterGroup = ref(null)
 const markers = []
 const timezone = useTimezone()
+let popup = null, popupMount = null, expandedMarker = null, inspectionZoomHandler = null, inspectionMap = null
+const inspectionMarkers = []
+const inspectionClusters = createRawGpsInspectionClusters()
+
+const closePopup = () => {
+  popup?.remove()
+  popupMount?.unmount()
+  popup = null
+  popupMount = null
+}
+
+const clearInspection = (restoreOverview = true) => {
+  closePopup()
+  if (inspectionZoomHandler) inspectionMap.off('zoomend', inspectionZoomHandler)
+  inspectionZoomHandler = null
+  inspectionMap = null
+  inspectionMarkers.forEach(marker => marker.remove())
+  inspectionMarkers.length = 0
+  if (expandedMarker && restoreOverview) markerClusterGroup.value?.addLayer(expandedMarker)
+  expandedMarker = null
+}
+
+const openGroup = (group, pointIndex = 0) => {
+  clearInspection()
+  expandedMarker = markers.find(marker => marker.options.rawGpsGroup.key === group.key)
+  if (expandedMarker) markerClusterGroup.value?.removeLayer(expandedMarker)
+  let selectedIndex = pointIndex
+  const renderSamples = () => {
+    inspectionMarkers.forEach(marker => marker.remove())
+    inspectionMarkers.length = 0
+    inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()).forEach(entity => {
+      const marker = L.marker([entity.latitude, entity.longitude], {
+        icon: createRawPointIcon(entity.indices.length),
+        title: entity.isCluster ? String(entity.indices.length) : formatRawGpsDateTime(timezone, group.points[entity.indices[0]].timestamp),
+        bubblingMouseEvents: false,
+        rawGpsSampleIndices: entity.indices,
+        zIndexOffset: 5000
+      }).addTo(props.map)
+      const element = marker.getElement()
+      element?.classList.add('raw-gps-inspection-marker')
+      element?.classList.toggle('is-selected', entity.indices.includes(selectedIndex))
+      element?.setAttribute('aria-pressed', String(entity.indices.includes(selectedIndex)))
+      marker.on('click', () => {
+        if (!popupMount) { openGroup(group, entity.isCluster ? selectedIndex : entity.indices[0]); return }
+        if (entity.isCluster) props.map.setView([entity.latitude, entity.longitude], Math.min(props.map.getZoom() + 2, props.map.getMaxZoom()))
+        else popupMount.inspectPoint(entity.indices[0])
+      })
+      inspectionMarkers.push(marker)
+    })
+  }
+  const highlightPoint = (_, index) => { selectedIndex = index; renderSamples() }
+  popupMount = createRawGpsPopupMount(group, {
+    timezone,
+    container: props.inspectorContainer,
+    resolveLocation: props.resolveLocation,
+    onSelectPoint: props.selectPoint,
+    activePointIndex: pointIndex,
+    onInspectPoint: highlightPoint,
+    onRender: () => popup?.update()
+  })
+  if (!props.inspectorContainer) {
+    popup = L.popup({
+      maxWidth: RAW_GPS_POPUP_MAX_WIDTH_PX,
+      closeButton: true,
+      autoPan: true,
+      className: RAW_GPS_POPUP_CLASS_NAME
+    }).setLatLng([group.latitude, group.longitude]).setContent(popupMount.element).openOn(props.map)
+    const mountedPopup = popupMount
+    popup.on('remove', () => {
+      mountedPopup.unmount()
+      if (popupMount === mountedPopup) { popupMount = null; popup = null }
+    })
+  }
+  inspectionZoomHandler = renderSamples
+  inspectionMap = props.map
+  props.map.on('zoomend', inspectionZoomHandler)
+  renderSamples()
+}
 
 const createRawPointIcon = (count = 1) => {
   const isStack = count > 1
@@ -74,6 +155,7 @@ const createClusterIcon = (cluster) => {
 }
 
 const clearMarkers = () => {
+  clearInspection(false)
   if (markerClusterGroup.value) {
     markerClusterGroup.value.clearLayers()
   } else if (baseLayerRef.value) {
@@ -89,41 +171,15 @@ const renderMarkers = () => {
   const groups = groupRawGpsPoints(props.points)
 
   groups.forEach((group) => {
-    let popup = null
-    let popupMount = null
-    const cleanupPopupMount = () => {
-      popupMount?.unmount?.()
-      popupMount = null
-      popup = null
-    }
-
     const marker = L.marker([group.latitude, group.longitude], {
       icon: createRawPointIcon(group.count),
       keyboard: false,
       rawGpsGroup: group,
-      rawGpsCount: group.count
+      rawGpsCount: group.count,
+      bubblingMouseEvents: false
     })
 
-    marker.on('click', () => {
-      cleanupPopupMount()
-      popupMount = createRawGpsPopupMount(group, {
-        timezone,
-        resolveLocation: props.resolveLocation,
-        onSelectPoint: props.selectPoint,
-        onRender: () => {
-          popup?.update?.()
-        }
-      })
-
-      popup = marker.bindPopup(popupMount.element, {
-        maxWidth: RAW_GPS_POPUP_MAX_WIDTH_PX,
-        closeButton: true,
-        autoPan: true,
-        className: RAW_GPS_POPUP_CLASS_NAME
-      }).openPopup().getPopup()
-    })
-    marker.on('popupclose', cleanupPopupMount)
-    marker.on('remove', cleanupPopupMount)
+    marker.on('click', () => openGroup(group))
 
     markers.push(marker)
     if (markerClusterGroup.value) {
@@ -135,6 +191,7 @@ const renderMarkers = () => {
 }
 
 const handleLayerReady = () => {
+  if (markerClusterGroup.value) { renderMarkers(); return }
   markerClusterGroup.value = L.markerClusterGroup({
     maxClusterRadius: 42,
     spiderfyOnMaxZoom: false,
@@ -161,6 +218,7 @@ const handleLayerReady = () => {
 watch(
   () => props.visible,
   (visible) => {
+    if (!visible) clearInspection()
     if (!props.map || !markerClusterGroup.value) return
     if (visible && !props.map.hasLayer(markerClusterGroup.value)) {
       props.map.addLayer(markerClusterGroup.value)
@@ -175,6 +233,9 @@ watch(
   () => renderMarkers(),
   { deep: true }
 )
+
+watch(() => props.map, () => clearInspection(false))
+watch(() => props.selectPoint, callback => popupMount?.setSelectPoint(callback))
 
 onBeforeUnmount(() => {
   clearMarkers()

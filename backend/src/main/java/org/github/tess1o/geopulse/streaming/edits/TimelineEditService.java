@@ -378,7 +378,7 @@ public class TimelineEditService {
         stayRepository.findOverlapping(userId, from, to).forEach(stay -> result.add(fromEntity(stay)));
         tripRepository.findOverlapping(userId, from, to).forEach(trip -> result.add(fromEntity(trip)));
         gapRepository.findByUserIdAndTimeRange(userId, from, to).forEach(gap -> result.add(fromEntity(gap)));
-        result.sort(Comparator.comparing(TimelineEvent::getStartTime));
+        result.sort(Comparator.comparing(TimelineEvent::getStartTime).thenComparing(TimelineEvent::getEndTime));
         return result;
     }
 
@@ -518,11 +518,21 @@ public class TimelineEditService {
 
     private static void validateRequest(TimelineEditRequest request) {
         if (request == null || request.getKind() == null || request.getAnchorStart() == null
-                || request.getAnchorEnd() == null || !request.getAnchorEnd().isAfter(request.getAnchorStart())) {
-            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "A kind and a positive anchor interval are required");
+                || request.getAnchorEnd() == null || request.getAnchorEnd().isBefore(request.getAnchorStart())) {
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "A kind and a valid anchor interval are required");
+        }
+        boolean pointAnchor = request.getAnchorStart().equals(request.getAnchorEnd());
+        if (pointAnchor && request.getKind() != TimelineEditKind.SET_MOVEMENT_TYPE
+                && request.getKind() != TimelineEditKind.SET_TIMES && request.getKind() != TimelineEditKind.REMOVE_EVENT) {
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "This edit requires a positive anchor interval");
+        }
+        if (pointAnchor && request.getKind() == TimelineEditKind.REMOVE_EVENT
+                && (request.getPayload() == null || !"DISMISS".equals(request.getPayload().get("resolution")))) {
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "A zero-duration transition must be dismissed without filling time");
         }
         if (request.getAffectedFrom() == null) request.setAffectedFrom(request.getAnchorStart());
-        if (request.getAffectedTo() == null) request.setAffectedTo(request.getAnchorEnd());
+        if (request.getAffectedTo() == null) request.setAffectedTo(pointAnchor
+                ? request.getAnchorEnd().plusSeconds(1) : request.getAnchorEnd());
         if (!request.getAffectedTo().isAfter(request.getAffectedFrom())) {
             throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Affected end must be after affected start");
         }
@@ -548,6 +558,9 @@ public class TimelineEditService {
 
     private static boolean mutualMajorityOverlap(Instant firstStart, Instant firstEnd,
                                                  Instant secondStart, Instant secondEnd) {
+        if (firstStart.equals(firstEnd) || secondStart.equals(secondEnd)) {
+            return firstStart.equals(secondStart) && firstEnd.equals(secondEnd);
+        }
         Instant overlapStart = firstStart.isAfter(secondStart) ? firstStart : secondStart;
         Instant overlapEnd = firstEnd.isBefore(secondEnd) ? firstEnd : secondEnd;
         if (!overlapEnd.isAfter(overlapStart)) return false;
@@ -557,6 +570,9 @@ public class TimelineEditService {
     }
 
     private static boolean overlaps(TimelineEvent event, Instant from, Instant to) {
+        if (event instanceof Trip && event.getDuration().isZero()) {
+            return !event.getStartTime().isBefore(from) && event.getStartTime().isBefore(to);
+        }
         return event.getStartTime().isBefore(to) && event.getEndTime().isAfter(from);
     }
 

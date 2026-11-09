@@ -13,6 +13,7 @@
         <span class="timeline-edit-summary-icon" aria-hidden="true"><i :class="summaryIcon" /></span>
         <div>
           <strong>{{ summary }}</strong>
+          <p v-if="zeroDurationTrip" role="note">{{ t('timeline.trip.unrecordedHint') }}</p>
         </div>
       </div>
 
@@ -113,7 +114,8 @@
           </div>
         </template>
         <template v-else-if="action.id === 'REMOVE_EVENT'">
-          <label>{{ t('timeline.edit.removeResolution') }}
+          <p v-if="zeroDurationTrip">{{ t('timeline.edit.dismissTransitionHint') }}</p>
+          <label v-else>{{ t('timeline.edit.removeResolution') }}
             <Select v-model="form.resolution" :options="resolutions" option-label="label" option-value="value" />
           </label>
         </template>
@@ -230,13 +232,14 @@ const interval = computed(() => {
   const seconds = props.item.stayDuration ?? props.item.tripDuration ?? props.item.durationSeconds
   return { start, end: props.item.endTime || new Date(new Date(start).getTime() + seconds * 1000).toISOString() }
 })
+const zeroDurationTrip = computed(() => props.item?.type === 'trip' && Date.parse(interval.value.start) === Date.parse(interval.value.end))
 
 const header = computed(() => t(`timeline.edit.header.${props.item?.type || 'stay'}`))
 const summaryIcon = computed(() => props.item?.type === 'trip'
   ? 'pi pi-directions'
   : props.item?.type === 'dataGap' ? 'pi pi-exclamation-triangle' : 'pi pi-map-marker')
 const summary = computed(() => [
-  props.item?.locationName || movementLabel(props.item?.movementType),
+  zeroDurationTrip.value ? t('timeline.trip.unrecordedTransition') : props.item?.locationName || movementLabel(props.item?.movementType),
   props.item?.visitName,
   formatPeriod(interval.value.start, interval.value.end)
 ].filter(Boolean).join(' · '))
@@ -261,6 +264,7 @@ const detailActions = computed(() => {
 const structuralActions = computed(() => {
   if (groupedActivity.value) return props.item?.type === 'stay'
     ? [entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil')] : []
+  if (zeroDurationTrip.value) return [entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true, 'dismissTransition')]
   const merge = directions.value.length
     ? [entry('MERGE', 'merge', 'pi pi-link', true, props.item?.type === 'trip' ? 'mergeTrip' : 'mergeStay')]
     : []
@@ -361,7 +365,7 @@ function selectAction(selected) {
   form.place = null
   action.value = selected
   if (selected.id === 'MERGE') form.direction = directions.value[0]?.value
-  if (selected.id === 'REMOVE_EVENT') form.resolution = null
+  if (selected.id === 'REMOVE_EVENT') form.resolution = zeroDurationTrip.value ? 'DISMISS' : null
   initialForm = JSON.stringify(form)
   preview.value = null
   error.value = ''
@@ -374,9 +378,10 @@ function request() {
   if (action.value.id === 'SET_VISIT_NAME') payload.visitName = form.visitName.trim()
   if (action.value.id === 'SET_PLACE') Object.assign(payload, placePayload(form.place))
   if (action.value.id === 'SET_MOVEMENT_TYPE') payload.movementType = form.movementType
-  if (action.value.id === 'SET_MOVEMENT_TYPE') {
-    payload.sourceStartLatitude = props.item.startLatitude
-    payload.sourceStartLongitude = props.item.startLongitude
+  if (action.value.id === 'SET_MOVEMENT_TYPE' || zeroDurationTrip.value) {
+    payload.sourceType = 'TRIP'
+    payload.sourceStartLatitude = props.item.startLatitude ?? props.item.latitude
+    payload.sourceStartLongitude = props.item.startLongitude ?? props.item.longitude
     payload.sourceEndLatitude = props.item.endLatitude
     payload.sourceEndLongitude = props.item.endLongitude
   }

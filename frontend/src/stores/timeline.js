@@ -169,6 +169,7 @@ export const useTimelineStore = defineStore('timeline', {
 
                 let results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
                     (a, b) => timezone.fromUtc(a.timestamp).valueOf() - timezone.fromUtc(b.timestamp).valueOf()
+                        || (a.stayDuration ?? a.tripDuration ?? a.durationSeconds ?? 0) - (b.stayDuration ?? b.tripDuration ?? b.durationSeconds ?? 0)
                 )
 
                 if (timezone.isLocationTimeMode() && startTime && endTime) {

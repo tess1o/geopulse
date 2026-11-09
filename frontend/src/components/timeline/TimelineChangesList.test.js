@@ -79,6 +79,15 @@ describe('TimelineChangesList', () => {
 
 
 describe('event-specific history', () => {
+  it('keeps reverted point edits reachable on a zero-duration trip', async () => {
+    const pointEdit = { ...edit, kind: 'SET_MOVEMENT_TYPE', anchorEnd: start, status: 'REVERTED', target: null,
+      payload: { movementType: 'WALK' }, beforeValues: { movementType: 'UNKNOWN' } }
+    const { wrapper } = setup([pointEdit], { id: 7, type: 'trip', timestamp: start, tripDuration: 0 })
+    await flushPromises()
+    expect(wrapper.findAll('article')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Walk')
+    expect(wrapper.text()).toContain('Redo')
+  })
   const wideRange = { affectedFrom: '2026-10-08T09:00:00Z', affectedTo: '2026-10-08T12:00:00Z' }
   it.each(['ACTIVE', 'REVERTED', 'SUPERSEDED'])('excludes a neighboring visit label from trips when %s', async status => {
     const label = { ...edit, ...wideRange, status, target: status === 'ACTIVE' ? edit.target : null }

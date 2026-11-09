@@ -355,6 +355,7 @@
     />
 
     <MissingActivityEditor
+      v-if="showReconstructionDialog"
       :visible="showReconstructionDialog"
       :trip-id="tripId"
       :trip="currentTrip"

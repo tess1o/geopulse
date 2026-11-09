@@ -129,6 +129,7 @@
         />
 
         <MissingActivityEditor
+            v-if="showReconstructionDialog"
             :visible="showReconstructionDialog"
             :context-start-time="timelineReconstructionStart"
             :context-end-time="timelineReconstructionEnd"

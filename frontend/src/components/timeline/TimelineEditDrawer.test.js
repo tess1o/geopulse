@@ -31,6 +31,41 @@ const buttonLabel = button => (button.find('.edit-action-text > span').exists()
 const clickButton = (wrapper, label) => wrapper.findAll('button').find(button => buttonLabel(button) === label).trigger('click')
 
 describe('TimelineEditDrawer action overview', () => {
+  it('lets a zero-duration transition be classified, retimed or dismissed, without splitting or merging', async () => {
+    const item = { type: 'trip', timestamp: '2026-10-08T10:00:00Z', tripDuration: 0,
+      movementType: 'UNKNOWN', latitude: 50, longitude: 30, endLatitude: 50.001, endLongitude: 30.001 }
+    const previousItem = { type: 'stay', timestamp: '2026-10-08T09:00:00Z', stayDuration: 3600, locationName: 'Home' }
+    const nextItem = { type: 'stay', timestamp: item.timestamp, stayDuration: 3600, locationName: 'Shop' }
+    const wrapper = mountDrawer(item, { previousItem, nextItem })
+    const store = useTimelineStore()
+    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 1 } })
+    expect(wrapper.text()).toContain('Unrecorded transition')
+    expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(['SET_MOVEMENT_TYPE', 'SET_TIMES'])
+    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(['REMOVE_EVENT'])
+
+    await clickButton(wrapper, 'Movement type')
+    wrapper.vm.form.movementType = 'WALK'
+    await wrapper.vm.$nextTick()
+    await wrapper.find('form').trigger('submit')
+    expect(store.createTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'SET_MOVEMENT_TYPE', anchorStart: item.timestamp, anchorEnd: '2026-10-08T10:00:00.000Z',
+      payload: expect.objectContaining({ movementType: 'WALK', sourceType: 'TRIP', sourceStartLatitude: 50, sourceStartLongitude: 30 })
+    }))
+    await flushPromises()
+    await clickButton(wrapper, 'Back')
+    await clickButton(wrapper, 'Remove')
+    expect(wrapper.find('select').exists()).toBe(false)
+    expect(wrapper.text()).toContain('without changing either stay')
+    await clickButton(wrapper, 'Review changes')
+    await flushPromises()
+    await wrapper.find('form').trigger('submit')
+    expect(store.createTimelineEdit).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: 'REMOVE_EVENT', payload: expect.objectContaining({ resolution: 'DISMISS' }),
+      affectedFrom: previousItem.timestamp, affectedTo: '2026-10-08T11:00:00.000Z'
+    }))
+    wrapper.unmount()
+  })
   it('names the movement selector for keyboard and screen reader users', async () => {
     const wrapper = mountDrawer({ type: 'trip', timestamp: '2026-10-08T10:00:00Z', tripDuration: 3600, movementType: 'CAR' })
     await clickButton(wrapper, 'Movement type')

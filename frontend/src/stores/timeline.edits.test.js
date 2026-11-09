@@ -16,6 +16,16 @@ const actions = [
 
 beforeEach(() => { setActivePinia(createPinia()); vi.resetAllMocks() })
 
+it('orders a zero-duration connector before the stay starting at the same instant', async () => {
+  const store = useTimelineStore()
+  apiService.get.mockResolvedValue({
+    stays: [{ id: 1, timestamp: edit.anchorStart, stayDuration: 3600 }],
+    trips: [{ id: 2, timestamp: edit.anchorStart, tripDuration: 0 }]
+  })
+  await store.fetchMovementTimeline(edit.anchorStart, edit.anchorEnd)
+  expect(store.timelineData.map(item => item.id)).toEqual([2, 1])
+})
+
 describe.each(actions)('%s', (action, method, request, args, fallback) => {
   it('sends the exact request and returns the response', async () => {
     const store = useTimelineStore()

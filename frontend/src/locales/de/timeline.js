@@ -1,5 +1,6 @@
 export default {
     "edit": {
+        "dismissTransitionHint": "Entfernt diesen Übergang, ohne einen der Aufenthalte zu ändern. Dies lässt sich im Änderungsverlauf rückgängig machen.",
         "groupStructureHint": "Um Zeiten zu ändern oder diese Aktivitäten zu teilen, zusammenzuführen oder zu entfernen, mache die Korrekturgruppe unter „Deine Änderungen“ rückgängig und füge sie erneut hinzu.",
         "reviewChanges": "Änderungen prüfen",
         "reviewFirst": "Schritt 1 von 2 · Nimm deine Änderungen vor und gehe dann zur Prüfung weiter.",
@@ -140,6 +141,7 @@ export default {
             "gapToTrip": "In Strecke umwandeln"
         },
         "actionHint": {
+            "dismissTransition": "Diese Markierung entfernen, ohne einen der Aufenthalte zu ändern",
             "location": "Wo dieser Besuch stattgefunden hat",
             "visitLabel": "Ein Titel nur für diesen Besuch, etwa „Abendessen mit Alex“",
             "renameLocation": "Ändert den Namen dieses Standorts für alle Besuche",
@@ -157,7 +159,8 @@ export default {
             "merge": "Passende benachbarte Ereignisse zusammenführen",
             "previous": "Vorheriges Ereignis verlängern",
             "next": "Nächstes Ereignis verlängern",
-            "gap": "Datenlücke belassen"
+            "gap": "Datenlücke belassen",
+            "dismiss": "Nicht aufgezeichneten Übergang entfernen"
         },
         "kind": {
             "SET_MOVEMENT_TYPE": "Fortbewegungsart",
@@ -231,6 +234,10 @@ export default {
         "forDuration": "Für"
     },
     "trip": {
+        "unrecordedTransition": "Nicht aufgezeichneter Übergang",
+        "unrecordedHint": "Dein Standort hat sich zwischen diesen Aufenthalten geändert, aber es wurde keine Bewegung aufgezeichnet. Die Reisezeit ist unbekannt.",
+        "unknownDuration": "Unbekannt",
+        "estimatedDistanceLabel": "Geschätzte Entfernung:",
         "edited": "Bearbeitet",
         "transitionTo": "Unterwegs zu",
         "transitionToNewPlace": "Unterwegs zu neuem Ort",
