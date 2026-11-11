@@ -44,6 +44,7 @@ export default {
         "history": "Zeitleistenänderungen",
         "editedCount": "{count} Zeitleistenänderungen",
         "details": "Details",
+        renameUnlinked: "Zum Umbenennen ist ein verknüpfter Ort nötig. Verknüpfe ihn unter „Ort“ oder benenne diesen Besuch unter „Besuchslabel“.",
         "moreChanges": "Weitere Änderungen",
         "visitLabel": "Besuchsbezeichnung",
         "visitLabelPlaceholder": "Zum Beispiel: Abendessen mit Alex",
@@ -53,6 +54,7 @@ export default {
         "splitStayQuestion": "Wo warst du nach diesem Zeitpunkt?",
         "splitStayHint": "Der Besuch wird in zwei Besuche geteilt. Der erste Teil bleibt bei {location}.",
         "place": {
+            useLinkedPlace: "Verknüpften Ort verwenden: {name}",
             "current": "Aktueller Standort",
             "selected": "Gewählter Standort",
             "unnamed": "Unbenannter Ort",

@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -50,7 +51,12 @@ public class TimelineEditApplier {
         Map<Long, TimelineEvent> applications = new LinkedHashMap<>();
         List<Long> unapplied = new ArrayList<>();
 
+        Map<Long, Long> appliedSequences = new HashMap<>();
         commands.stream().sorted(Comparator.comparingLong(TimelineEditCommand::seq)).forEach(command -> {
+            if (!appliedSequences.keySet().containsAll(command.prerequisiteSequences())) {
+                unapplied.add(command.id());
+                return;
+            }
             Set<List<Instant>> tripRanges = events.stream().filter(Trip.class::isInstance)
                     .map(event -> List.of(event.getStartTime(), event.getEndTime())).collect(Collectors.toSet());
             TimelineEvent applied = applyOne(events, command);
@@ -65,7 +71,13 @@ public class TimelineEditApplier {
             if (applied == null) {
                 unapplied.add(command.id());
             } else {
+                // A prerequisite consumed by a merge is still applied to the resulting event.
+                for (Long sequence : command.prerequisiteSequences()) {
+                    applications.computeIfPresent(appliedSequences.get(sequence),
+                            (id, prior) -> events.contains(prior) ? prior : applied);
+                }
                 applications.put(command.id(), applied);
+                appliedSequences.put(command.seq(), command.id());
             }
         });
         return new TimelineEditResult(List.copyOf(events),
@@ -269,6 +281,8 @@ public class TimelineEditApplier {
                         && event.getStartTime().equals(edit.anchorStart())) return event;
                 continue;
             }
+            if (!edit.prerequisiteSequences().isEmpty()
+                    && (!event.getStartTime().equals(edit.anchorStart()) || !event.getEndTime().equals(edit.anchorEnd()))) continue;
             long shared = overlapSeconds(edit.anchorStart(), edit.anchorEnd(), event.getStartTime(), event.getEndTime());
             long eventSeconds = event.getDuration().getSeconds();
             if (shared * 2 > anchorSeconds && shared * 2 > eventSeconds && shared > bestShared) {

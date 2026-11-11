@@ -107,6 +107,31 @@ public class TimelineGeocodingSyncService {
                 .setParameter("userId", userId)
                 .executeUpdate();
 
+        entityManager.createNativeQuery("""
+                        UPDATE timeline_edits
+                        SET place_geocoding_id = :newGeocodingId,
+                            place_name = CASE WHEN payload ->> 'locationNameCustom' = 'true'
+                                              THEN place_name ELSE :locationName END
+                        WHERE place_geocoding_id = :oldGeocodingId AND user_id = :userId
+                        """)
+                .setParameter("oldGeocodingId", oldGeocodingId)
+                .setParameter("newGeocodingId", newGeocodingId)
+                .setParameter("userId", userId)
+                .setParameter("locationName", locationName)
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                        UPDATE timeline_edits
+                        SET payload = jsonb_set(jsonb_set(payload, '{rightGeocodingId}', to_jsonb(CAST(:newGeocodingId AS bigint))),
+                                                '{rightLocationName}', to_jsonb(CAST(:locationName AS text)))
+                        WHERE kind = 'SPLIT_STAY' AND payload ->> 'rightGeocodingId' = CAST(:oldGeocodingId AS text)
+                          AND user_id = :userId
+                        """)
+                .setParameter("oldGeocodingId", oldGeocodingId)
+                .setParameter("newGeocodingId", newGeocodingId)
+                .setParameter("userId", userId)
+                .setParameter("locationName", locationName)
+                .executeUpdate();
+
         return updatedCount;
     }
 }

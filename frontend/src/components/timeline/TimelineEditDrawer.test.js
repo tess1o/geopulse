@@ -16,16 +16,20 @@ const placePickerStub = {
   setup: () => ({ gym })
 }
 const datePickerStub = { name: 'DatePicker', props: ['modelValue', 'minDate', 'maxDate'], emits: ['update:modelValue'], template: '<span class="date-picker" />' }
-const mountDrawer = (item, props = {}) => mount(TimelineEditDrawer, {
-  props: { visible: true, item, ...props },
-  global: {
-    plugins: [createPinia()],
-    stubs: {
-      Drawer: drawerStub, Button: buttonStub, InputText: { props: ['modelValue'], emits: ['update:modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' }, Select: { template: '<select />' },
-      TimelinePlacePicker: placePickerStub, DatePicker: datePickerStub
+const mountDrawer = (item, props = {}) => {
+  const pinia = createPinia()
+  vi.spyOn(useTimelineStore(pinia), 'fetchTimelineEdits').mockResolvedValue([])
+  return mount(TimelineEditDrawer, {
+    props: { visible: true, item, ...props },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        Drawer: drawerStub, Button: buttonStub, InputText: { props: ['modelValue'], emits: ['update:modelValue'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' }, Select: { template: '<select />' },
+        TimelinePlacePicker: placePickerStub, DatePicker: datePickerStub
+      }
     }
-  }
-})
+  })
+}
 const buttonLabel = button => (button.find('.edit-action-text > span').exists()
   ? button.find('.edit-action-text > span') : button).text()
 const clickButton = (wrapper, label) => wrapper.findAll('button').find(button => buttonLabel(button) === label).trigger('click')
@@ -74,7 +78,7 @@ describe('TimelineEditDrawer action overview', () => {
 
   beforeEach(() => { vi.spyOn(window, 'confirm').mockReturnValue(true) })
   it('shows stay details and structural actions without permanent tabs', () => {
-    const item = { type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' }
+    const item = { type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', favoriteId: 1 }
     const wrapper = mountDrawer(item, { mergeNextItem: { ...item, timestamp: '2026-10-08T12:00:00Z' } })
     expect(wrapper.text()).toContain('Location')
     expect(wrapper.text()).toContain('Where this visit happened')
@@ -84,6 +88,13 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).toContain('Split stay')
     expect(wrapper.text()).toContain('Merge')
     expect(wrapper.text()).toContain('Remove')
+  })
+
+  it('explains why an unlinked stay cannot rename a place', () => {
+    const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Pinned stop' })
+    expect(wrapper.text()).toContain('Global rename needs a linked place')
+    expect(wrapper.text()).not.toContain('Rename location everywhere')
+    wrapper.unmount()
   })
 
   it('shows trip-specific actions', () => {
@@ -96,8 +107,9 @@ describe('TimelineEditDrawer action overview', () => {
 
   it.each(['stay', 'trip'])('limits grouped %s activities to supported detail edits', async type => {
     const item = { id: 5, type, timestamp: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z',
-      stayDuration: 3600, tripDuration: 3600, movementType: 'CAR', locationName: 'Home' }
+      stayDuration: 3600, tripDuration: 3600, movementType: 'CAR', locationName: 'Home', geocodingId: 4 }
     const wrapper = mountDrawer(item)
+    await flushPromises()
     wrapper.vm.savedEdits = [{ id: 9, groupId: 'group', kind: type === 'stay' ? 'FORCE_STAY' : 'FORCE_TRIP', status: 'ACTIVE' }]
     await wrapper.vm.$nextTick()
     expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(type === 'stay'

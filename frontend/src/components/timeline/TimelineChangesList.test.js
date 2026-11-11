@@ -23,6 +23,27 @@ describe('TimelineChangesList', () => {
     expect(wrapper.text()).toContain('Previous value unavailable')
     expect(wrapper.findAll('article').filter(entry => entry.text().includes('Related change'))).toHaveLength(1)
   })
+  it('focuses a blocking correction on a neighboring event', async () => {
+    const neighbor = { ...edit, id: 9, kind: 'MERGE', anchorStart: end, anchorEnd: '2026-10-08T12:00:00Z',
+      target: { type: 'STAY', id: 8 }, payload: { direction: 'NEXT' } }
+    const { wrapper } = setup([neighbor])
+    await flushPromises()
+    expect(wrapper.find('[data-edit-id="9"]').exists()).toBe(false)
+    await wrapper.vm.focusChange(9)
+    expect(wrapper.find('[data-edit-id="9"]').exists()).toBe(true)
+  })
+
+  it('offers trip insertion for an applied standalone forced stay', async () => {
+    const original = { ...edit, kind: 'FORCE_STAY', payload: { locationName: 'Gym' } }
+    const grouped = { ...original, id: 2, groupId: 'group' }
+    const { wrapper } = setup([original, grouped])
+    await flushPromises()
+    const buttons = wrapper.findAll('button').filter(button => button.text() === 'Insert trip into forced stay')
+    expect(buttons).toHaveLength(1)
+    await buttons[0].trigger('click')
+    expect(wrapper.emitted('replace-stay')[0][0].id).toBe(original.id)
+  })
+
   it('blocks duplicate undo while regeneration runs and reloads after completion', async () => {
     const { wrapper, store } = setup([edit])
     vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit, timelineJobId: 'job' })

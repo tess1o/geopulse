@@ -17,7 +17,7 @@
         </div>
       </div>
 
-      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" /></div>
+      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" @replace-stay="emit('replace-stay', $event)" /></div>
       <template v-if="!action">
         <p v-if="groupedActivity" role="note">{{ t('timeline.edit.groupStructureHint') }}</p>
 
@@ -33,8 +33,9 @@
             <i class="pi pi-chevron-right edit-action-chevron" />
           </button>
         </section>
-        <section v-if="structuralActions.length" class="edit-action-section">
+        <section v-if="structuralActions.length || item.type === 'stay'" class="edit-action-section">
           <h3>{{ t('timeline.edit.moreChanges') }}</h3>
+          <p v-if="item.type === 'stay' && !renameAction" role="note">{{ t('timeline.edit.renameUnlinked') }}</p>
           <button v-for="entry in structuralActions" :key="entry.id" class="edit-action-row"
             :class="{ 'is-danger': entry.id === 'REMOVE_EVENT' }" @click="selectAction(entry)">
             <span class="edit-action-icon"><i :class="entry.icon" /></span>
@@ -180,7 +181,7 @@ const props = defineProps({
   mergePreviousItem: { type: Object, default: null },
   mergeNextItem: { type: Object, default: null }
 })
-const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay'])
+const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay', 'replace-stay'])
 const { t, te } = useI18n()
 const store = useTimelineStore()
 const timezone = useTimezone()
@@ -261,14 +262,15 @@ const detailActions = computed(() => {
   ]
   return []
 })
+const renameAction = computed(() => props.item?.type === 'stay' && (props.item.favoriteId || props.item.geocodingId)
+  ? entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil') : null)
 const structuralActions = computed(() => {
-  if (groupedActivity.value) return props.item?.type === 'stay'
-    ? [entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil')] : []
+  if (groupedActivity.value) return renameAction.value ? [renameAction.value] : []
   if (zeroDurationTrip.value) return [entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true, 'dismissTransition')]
   const merge = directions.value.length
     ? [entry('MERGE', 'merge', 'pi pi-link', true, props.item?.type === 'trip' ? 'mergeTrip' : 'mergeStay')]
     : []
-  if (props.item?.type === 'stay') return [entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil'), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  if (props.item?.type === 'stay') return [...(renameAction.value ? [renameAction.value] : []), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
   if (props.item?.type === 'trip') return [...(props.item.manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
   return []
 })

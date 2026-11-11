@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import {computed, defineComponent, h, ref, watch} from 'vue'
+import {computed, defineComponent, h, nextTick, ref, watch} from 'vue'
 import {useI18n} from 'vue-i18n'
 import Button from 'primevue/button'
 import {useTimelineStore} from '@/stores/timeline'
@@ -31,7 +31,7 @@ import {useTimezone} from '@/composables/useTimezone'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 const props = defineProps({visible: Boolean, item: {type: Object, default: null}, edits: {type: Array, default: null}, reload: Function})
-const emit = defineEmits(['changed', 'loaded'])
+const emit = defineEmits(['changed', 'loaded', 'replace-stay'])
 const {t, te} = useI18n()
 const timezone = useTimezone()
 const store = useTimelineStore()
@@ -40,6 +40,7 @@ const loading = ref(false)
 const error = ref('')
 const busy = ref(null)
 const conflictId = ref(null)
+const focusedEditId = ref(null)
 const section = ref(null)
 let loadVersion = 0
 const period = (start, end) => `${timezone.formatDateTimeDisplay(start)} – ${timezone.formatDateTimeDisplay(end)}`
@@ -62,10 +63,12 @@ const visibleEdits = computed(() => {
 })
 const groupedEntries = computed(() => {
   const groups = new Map()
-  for (const edit of visibleEdits.value) {
+  const allEdits = props.edits || edits.value
+  const focused = allEdits.find(edit => Number(edit.id) === Number(focusedEditId.value))
+  for (const edit of focused ? [...visibleEdits.value, focused] : visibleEdits.value) {
     const key = edit.groupId || edit.id
     if (groups.has(key)) continue
-    const members = edit.groupId ? (props.edits || edits.value).filter(value => value.groupId === edit.groupId) : [edit]
+    const members = edit.groupId ? allEdits.filter(value => value.groupId === edit.groupId) : [edit]
     groups.set(key, { ...edit, members,
       anchorStart: members.map(value => value.anchorStart).sort()[0],
       anchorEnd: members.map(value => value.anchorEnd).sort().at(-1),
@@ -76,6 +79,7 @@ const groupedEntries = computed(() => {
 const active = computed(() => groupedEntries.value.filter(edit => edit.status === 'ACTIVE').sort((a, b) => b.seq - a.seq))
 const past = computed(() => groupedEntries.value.filter(edit => edit.status !== 'ACTIVE').sort((a, b) => b.seq - a.seq))
 watch(() => [props.visible, props.item], () => {
+  focusedEditId.value = null
   if (props.visible && props.edits === null) load()
 }, {immediate: true})
 
@@ -115,8 +119,11 @@ function value(edit, before) {
   return period(edit.anchorStart, edit.anchorEnd)
 }
 
-function focusChange(id) {
-  const entry = section.value?.querySelector(`[data-edit-id="${id}"]`)
+async function focusChange(id) {
+  focusedEditId.value = id
+  await nextTick()
+  const groupEntry = groupedEntries.value.find(edit => edit.members.some(member => Number(member.id) === Number(id)))
+  const entry = section.value?.querySelector(`[data-edit-id="${groupEntry?.id}"]`)
   const details = entry?.closest('details')
   if (details) details.open = true
   entry?.focus()
@@ -159,6 +166,13 @@ const ChangeEntry = defineComponent({
       edit.groupId ? h('ul', edit.members.map(member => h('li', `${t(`timeline.edit.kind.${member.kind}`)} · ${period(member.anchorStart, member.anchorEnd)}`))) : null,
       edit.payload?.reconstruction ? h('p', t('trips.reconstructionContext.undoHint')) : null,
       edit.status === 'ACTIVE' && !edit.applied ? h('p', {role: 'status'}, t('timeline.edit.unapplied')) : null,
+      edit.status === 'ACTIVE' && edit.kind === 'FORCE_STAY' && !edit.groupId && edit.target?.type === 'STAY'
+        && !edit.payload?.reconstruction ? h(Button, {
+          label: t('missingActivity.replaceStay'),
+          text: true,
+          disabled: busy.value !== null,
+          onClick: () => emit('replace-stay', edit)
+        }) : null,
       ['ACTIVE', 'REVERTED'].includes(edit.status) ? h(Button, {
         label: t(`timeline.edit.${edit.status === 'ACTIVE' ? 'revert' : 'restore'}`),
         icon: edit.status === 'ACTIVE' ? 'pi pi-undo' : 'pi pi-replay',

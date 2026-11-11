@@ -1,4 +1,6 @@
 export default {
+    replaceStay: "Insert trip into forced stay",
+    replaceStayHint: "Choose the trip’s times and route. The remaining time stays at the original place.",
     "add": "Add missing activity…",
     "fillGap": "Fill missing time…",
     "help": "Describe what happened during an empty period. Recorded GPS data stays unchanged.",

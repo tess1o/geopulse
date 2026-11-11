@@ -53,6 +53,7 @@ export default {
         history: 'Timeline changes',
         editedCount: '{count} timeline changes',
         details: 'Details',
+        renameUnlinked: "Global rename needs a linked place. Use Location to link a place or Visit label to name this visit.",
         moreChanges: 'More changes',
         visitLabel: 'Visit label',
         visitLabelPlaceholder: 'For example, Dinner with Alex',
@@ -62,6 +63,7 @@ export default {
         splitStayQuestion: 'Where were you after this time?',
         splitStayHint: 'The visit becomes two visits. The first part stays at {location}.',
         place: {
+            useLinkedPlace: "Use linked place: {name}",
             current: 'Current location',
             selected: 'Selected location',
             unnamed: 'Unnamed place',

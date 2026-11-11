@@ -78,8 +78,14 @@ public class TimelineEditService {
         return editRepository.findByUser(userId).stream().map(TimelineEditService::toDto).toList();
     }
 
+    @Transactional
     public TimelineEditPreviewDTO preview(UUID userId, TimelineEditRequest request) {
         validateRequest(request);
+        checkedConflicts(userId, request);
+        return previewEdit(userId, request);
+    }
+
+    private List<TimelineEditEntity> checkedConflicts(UUID userId, TimelineEditRequest request) {
         if (request.getKind().structural()) {
             Instant from = request.getAnchorStart().isBefore(request.getAffectedFrom()) ? request.getAnchorStart() : request.getAffectedFrom();
             Instant to = request.getAnchorEnd().isAfter(request.getAffectedTo()) ? request.getAnchorEnd() : request.getAffectedTo();
@@ -91,6 +97,28 @@ public class TimelineEditService {
                                 Map.of("conflictingEditId", edit.getId()));
                     });
         }
+        var conflicts = editRepository.findActiveOverlapping(userId, request.getAffectedFrom(), request.getAffectedTo())
+                .stream().filter(existing -> conflicts(existing, request)).toList();
+        if (request.getKind().structural() && !conflicts.isEmpty() && !request.isSupersede()
+                && !canChain(request, conflicts)) {
+            var conflict = conflicts.getFirst();
+            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "The edit overlaps an active timeline correction",
+                    Map.of("conflictingEditId", conflict.getId(),
+                            "from", conflict.getAffectedFrom(), "to", conflict.getAffectedTo()));
+        }
+        return conflicts;
+    }
+
+    private static boolean canChain(TimelineEditRequest request, List<TimelineEditEntity> conflicts) {
+        boolean merge = request.getKind() == TimelineEditKind.MERGE;
+        boolean mergeByRemoval = request.getKind() == TimelineEditKind.REMOVE_EVENT && request.getPayload() != null
+                && "MERGE".equals(request.getPayload().get("resolution"));
+        return (merge || mergeByRemoval) && conflicts.getLast().getApplication() != null
+                && conflicts.stream().allMatch(edit -> edit.getKind() == TimelineEditKind.SET_TIMES
+                        || (merge && edit.getKind() == TimelineEditKind.MERGE));
+    }
+
+    TimelineEditPreviewDTO previewEdit(UUID userId, TimelineEditRequest request) {
         if (insertsAtAnchor(request.getKind()) && !(request.getPayload() != null && Boolean.TRUE.equals(request.getPayload().get("activityCorrection")))) {
             gpsPoints.findLatest(userId).ifPresent(latest -> {
                 boolean ongoing = gapRepository.findByUserIdAndTimeRange(userId,
@@ -119,22 +147,24 @@ public class TimelineEditService {
     public TimelineEditDTO create(UUID userId, TimelineEditRequest request) {
         validateRequest(request);
         if (!userLock.tryLock(userId)) throw new TimelineGenerationLockException(userId);
-        preview(userId, request);
+        var conflicts = checkedConflicts(userId, request);
+        previewEdit(userId, request);
 
-        List<TimelineEditEntity> conflicts = editRepository.findActiveOverlapping(userId,
-                        request.getAffectedFrom(), request.getAffectedTo()).stream()
-                .filter(existing -> conflicts(existing, request))
-                .toList();
-        Optional<TimelineEditEntity> structuralConflict = conflicts.stream()
-                .filter(conflict -> conflict.getKind().structural()).findFirst();
-        if (structuralConflict.isPresent() && !request.isSupersede()) {
-            TimelineEditEntity conflict = structuralConflict.get();
-            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "The edit overlaps an active timeline correction",
-                    Map.of("conflictingEditId", conflict.getId(),
-                            "from", conflict.getAffectedFrom(), "to", conflict.getAffectedTo()));
+        var prerequisites = request.getKind().structural() && !request.isSupersede() ? conflicts : List.<TimelineEditEntity>of();
+        var beforeValues = captureBeforeValues(userId, request);
+        Instant affectedFrom = request.getAffectedFrom();
+        Instant affectedTo = request.getAffectedTo();
+        if (!prerequisites.isEmpty()) {
+            if (beforeValues == null) throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Select a current event to chain edits");
+            beforeValues.put("prerequisiteSequences", prerequisites.stream().map(TimelineEditEntity::getSeq).toList());
+            for (var prerequisite : prerequisites) {
+                if (prerequisite.getAffectedFrom().isBefore(affectedFrom)) affectedFrom = prerequisite.getAffectedFrom();
+                if (prerequisite.getAffectedTo().isAfter(affectedTo)) affectedTo = prerequisite.getAffectedTo();
+            }
         }
 
         LinkedHashMap<String, Object> payload = resolvedPayload(userId, request);
+        payload.remove("replacesStaySequence");
         Long favoriteId = request.getFavoriteId() != null ? request.getFavoriteId() : longValue(payload, "favoriteId");
         Long geocodingId = request.getGeocodingId() != null ? request.getGeocodingId() : longValue(payload, "geocodingId");
         FavoritesEntity favorite = favorite(userId, favoriteId);
@@ -145,10 +175,10 @@ public class TimelineEditService {
                 .kind(request.getKind())
                 .anchorStart(request.getAnchorStart())
                 .anchorEnd(request.getAnchorEnd())
-                .affectedFrom(request.getAffectedFrom())
-                .affectedTo(request.getAffectedTo())
+                .affectedFrom(affectedFrom)
+                .affectedTo(affectedTo)
                 .payload(payload)
-                .beforeValues(captureBeforeValues(userId, request))
+                .beforeValues(beforeValues)
                 .placeFavorite(favorite)
                 .placeGeocoding(geocoding)
                 .placeLatitude(doubleValue(payload, "latitude"))
@@ -158,12 +188,13 @@ public class TimelineEditService {
                 .build();
         editRepository.persist(entity);
         entityManager.flush();
-        for (TimelineEditEntity conflict : conflicts) {
+        for (TimelineEditEntity conflict : prerequisites.isEmpty() ? conflicts : List.<TimelineEditEntity>of()) {
+            requireNoDependent(userId, conflict);
             conflict.setStatus(TimelineEditStatus.SUPERSEDED);
             conflict.setSupersededBy(entity);
             applicationRepository.deleteById(conflict.getId());
         }
-        rebuildRequestRepository.request(userId, request.getAffectedFrom());
+        rebuildRequestRepository.request(userId, affectedFrom);
         return toDto(entity);
     }
 
@@ -172,6 +203,12 @@ public class TimelineEditService {
         if (!userLock.tryLock(userId)) throw new TimelineGenerationLockException(userId);
         Optional<TimelineEditEntity> found = editRepository.findByIdAndUser(editId, userId);
         found.ifPresent(edit -> {
+            if (edit.getStatus() == TimelineEditStatus.SUPERSEDED && edit.getSupersededBy() != null
+                    && edit.getSupersededBy().getGroupId() != null) {
+                throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "Undo the replacement group first",
+                        Map.of("conflictingEditId", edit.getSupersededBy().getId()));
+            }
+            requireNoDependent(userId, edit);
             edit.setStatus(TimelineEditStatus.REVERTED);
             applicationRepository.deleteById(edit.getId());
             rebuildRequestRepository.request(userId, edit.getAffectedFrom());
@@ -187,10 +224,14 @@ public class TimelineEditService {
             if (edit.getStatus() != TimelineEditStatus.REVERTED) {
                 throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Only a reverted edit can be restored");
             }
-            Optional<TimelineEditEntity> conflict = editRepository.findActiveOverlapping(userId,
-                            edit.getAffectedFrom(), edit.getAffectedTo()).stream()
+            var activeEdits = editRepository.findActiveOverlapping(userId, edit.getAffectedFrom(), edit.getAffectedTo());
+            var prerequisites = prerequisiteSequences(edit);
+            if (!activeEdits.stream().map(TimelineEditEntity::getSeq).toList().containsAll(prerequisites)) {
+                throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "Restore the earlier corrections before restoring this edit");
+            }
+            Optional<TimelineEditEntity> conflict = activeEdits.stream()
                     .filter(active -> active.getId() != null && !active.getId().equals(edit.getId()))
-                    .filter(active -> conflicts(active, edit))
+                    .filter(active -> !prerequisites.contains(active.getSeq()) && conflicts(active, edit))
                     .findFirst();
             if (conflict.isPresent()) {
                 throw new GeoPulseException(TIMELINE_EDIT_CONFLICT,
@@ -201,6 +242,23 @@ public class TimelineEditService {
             rebuildRequestRepository.request(userId, edit.getAffectedFrom());
         });
         return found.map(TimelineEditService::toDto);
+    }
+
+    private void requireNoDependent(UUID userId, TimelineEditEntity edit) {
+        if (!edit.getKind().structural()) return;
+        editRepository.findActiveOverlapping(userId, edit.getAffectedFrom(), edit.getAffectedTo()).stream()
+                .filter(active -> prerequisiteSequences(active).contains(edit.getSeq()))
+                .findFirst().ifPresent(active -> {
+                    throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "Undo the later correction first",
+                            Map.of("conflictingEditId", active.getId()));
+                });
+    }
+
+    private static List<Long> prerequisiteSequences(TimelineEditEntity edit) {
+        if (edit.getBeforeValues() != null && edit.getBeforeValues().get("prerequisiteSequences") instanceof List<?> values) {
+            return values.stream().filter(Number.class::isInstance).map(value -> ((Number) value).longValue()).toList();
+        }
+        return List.of();
     }
 
     public boolean grouped(UUID userId, Long editId) {
@@ -429,7 +487,7 @@ public class TimelineEditService {
             else putIfPresent(payload, "locationName", entity.getPlaceName());
         }
         return new TimelineEditCommand(entity.getId(), entity.getSeq(), entity.getKind(),
-                entity.getAnchorStart(), entity.getAnchorEnd(), payload);
+                entity.getAnchorStart(), entity.getAnchorEnd(), payload, prerequisiteSequences(entity));
     }
 
     private static LinkedHashMap<String, Object> normalizedPayload(TimelineEditRequest request) {

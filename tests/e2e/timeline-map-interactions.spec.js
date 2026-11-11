@@ -815,8 +815,11 @@ test.describe('Timeline Map Interactions', () => {
     const timelinePage=new TimelinePage(page),mapPage=new TimelineMapPage(page);
     const {user}=await setupTimelineWithMapMode(timelinePage,dbManager,MapTestData.insertMapTestStaysData,createManagedUser(isolatedUsers),null,mapMode);
     await mapPage.waitForMapReady();
+    // Keep the closing menu over the map long enough to check that it cannot intercept drawing.
+    await page.addStyleTag({content: '.p-contextmenu.p-anchored-overlay-leave-active { animation-duration: 5s !important; }'});
     await mapPage.rightClickOnMap(300,300); await mapPage.waitForMapContextMenu();
     await mapPage.clickContextMenuItem('Add an area to Favorites');
+    await expect(page.locator('.p-contextmenu.p-anchored-overlay-leave-active')).toHaveCSS('pointer-events', 'none');
     await page.getByRole('button',{name:'Polygon',exact:true}).click();
     const host=mapPage.mapHarness.getMapHostLocator({mapId:'map-dashboard'}),box=await host.boundingBox();
     for(const [x,y] of [[0.25,0.45],[0.55,0.45],[0.4,0.65],[0.25,0.8]]) await page.mouse.click(box.x+box.width*x,box.y+box.height*y);

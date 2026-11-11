@@ -554,11 +554,13 @@ test.describe('Timeline Edit desktop release checks', () => {
     await page.reload(); await page.waitForLoadState('networkidle');
     await open(page, 'stay', 1); await action(page, 'Remove').click();
     await drawer(page).getByRole('combobox').click();
-    await page.getByRole('option', { name: 'Leaving a data gap' }).click(); await review(page);
-    const response = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/timeline/edits');
-    await drawer(page).getByRole('button', { name: 'Save changes', exact: true }).click();
+    await page.getByRole('option', { name: 'Leaving a data gap' }).click();
+    const response = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/timeline/edits/preview');
+    await drawer(page).getByRole('button', { name: 'Review changes', exact: true }).click();
     expect((await response).status()).toBe(409);
     await expect(drawer(page).getByRole('alert')).toContainText('overlaps');
+    await expect(drawer(page).getByRole('combobox')).toContainText('Leaving a data gap');
+    await expect(drawer(page).getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
     await expect(drawer(page).getByRole('button', { name: 'View change', exact: true })).toBeVisible();
     page.once('dialog', dialog => dialog.accept());
     await drawer(page).getByRole('button', { name: 'View change', exact: true }).click();

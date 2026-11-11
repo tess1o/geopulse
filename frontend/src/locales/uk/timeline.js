@@ -52,6 +52,7 @@ export default {
         history: 'Зміни хронології',
         editedCount: 'Виправлень хронології: {count}',
         details: 'Деталі',
+        renameUnlinked: "Для перейменування потрібне прив’язане місце. Прив’яжіть його в полі «Місце» або назвіть цей візит у полі «Підпис відвідування».",
         moreChanges: 'Інші зміни',
         visitLabel: 'Підпис відвідування',
         visitLabelPlaceholder: 'Наприклад, Вечеря з Олексою',
@@ -61,6 +62,7 @@ export default {
         splitStayQuestion: 'Де ви були після цього часу?',
         splitStayHint: 'Відвідування стане двома. Перша частина залишиться в «{location}».',
         place: {
+            useLinkedPlace: "Використати прив’язане місце: {name}",
             current: 'Поточне місце',
             selected: 'Вибране місце',
             unnamed: 'Місце без назви',

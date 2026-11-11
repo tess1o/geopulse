@@ -1,10 +1,10 @@
 <template>
-  <Dialog :visible="visible" modal class="missing-activity-editor" :header="t(chosenGap ? 'missingActivity.fillGap' : 'missingActivity.add')"
+  <Dialog :visible="visible" modal class="missing-activity-editor" :header="t(replaceStay ? 'missingActivity.replaceStay' : chosenGap ? 'missingActivity.fillGap' : 'missingActivity.add')"
     :closable="!saving" :close-on-escape="!saving" @update:visible="value => !value && emit('close')">
     <p v-if="contextStartTime || trip?.startTime" class="editor-help">{{ t('missingActivity.dateContext', { date: timezone.formatDateDisplay(contextStartTime || trip.startTime) }) }}</p>
-    <p class="editor-help">{{ t('missingActivity.help') }}</p>
+    <p class="editor-help">{{ t(replaceStay ? 'missingActivity.replaceStayHint' : 'missingActivity.help') }}</p>
     <p class="mobile-editor-help">{{ t('missingActivity.mobileHelp') }}</p>
-    <label v-if="gapOptions.length > 1" class="gap-choice">{{ t('missingActivity.chooseGap') }}
+    <label v-if="!replaceStay && gapOptions.length > 1" class="gap-choice">{{ t('missingActivity.chooseGap') }}
       <Select :model-value="chosenGap" :options="gapOptions" option-label="label" option-value="gap"
         :placeholder="t('missingActivity.chooseGap')" :aria-label="t('missingActivity.chooseGap')" @update:model-value="chooseGap" />
     </label>
@@ -25,7 +25,7 @@
               <ActivityDateTimeField v-model="activity.end" :label="t('missingActivity.to')" :context-date="contextDate" />
             </label>
           </div>
-          <Button :label="t('missingActivity.useGps')" icon="pi pi-clock" text size="small"
+          <Button v-if="!replaceStay" :label="t('missingActivity.useGps')" icon="pi pi-clock" text size="small"
             :aria-pressed="selectingTimes && activeId === activity.id" @click="toggleGps(activity)" />
           <div v-if="selectingTimes && activeId === activity.id" class="gps-time-choices">
             <p>{{ t('missingActivity.gpsHelp') }}</p>
@@ -39,7 +39,7 @@
             <Button :label="t('missingActivity.applyTimes')" size="small" :disabled="!gpsRange" @click="applyGpsTimes" />
             <Button :label="t('common.cancel')" text size="small" @click="selectingTimes = false" />
           </div>
-          <label>{{ t('missingActivity.whatHappened') }}
+          <label v-if="!replaceStay">{{ t('missingActivity.whatHappened') }}
             <Select v-model="activity.segmentType" :options="activityTypes" option-label="label" option-value="value"
               :placeholder="t('missingActivity.chooseActivity')" :aria-label="t('missingActivity.whatHappened')" />
           </label>
@@ -80,7 +80,7 @@
             </ol>
           </template>
         </article>
-        <Button :label="t('missingActivity.addAnother')" icon="pi pi-plus" outlined size="small" @click="addActivity" />
+        <Button v-if="!replaceStay" :label="t('missingActivity.addAnother')" icon="pi pi-plus" outlined size="small" @click="addActivity" />
       </div>
       <div ref="mapSection" class="activity-editor-map" :class="{ 'map-not-needed': !active?.segmentType && !selectingTimes }">
         <p class="map-instruction" role="status">{{ t(selectingTimes ? 'missingActivity.gpsHelp' : mapTarget === 'stay' ? 'timeline.edit.place.mapHint' : mapTarget === 'start' ? 'missingActivity.clickStart' : mapTarget === 'end' ? 'missingActivity.clickEnd' : mapTarget === 'via' ? 'missingActivity.clickRoutePoints' : Number.isInteger(mapTarget) ? 'missingActivity.clickMovePoint' : active?.segmentType === 'TRIP' ? 'missingActivity.routeHelp' : active?.segmentType === 'STAY' ? 'missingActivity.pickStay' : 'missingActivity.mapHelp') }}</p>
@@ -142,7 +142,7 @@ import '@/maps/shared/styles/tripReconstructionMarkers.css'
 import { fitMapToBounds, setMapView } from '@/maps/tripReconstruction/shared/tripReconstructionViewport'
 
 const props = defineProps({ visible: Boolean, tripId: { type: Number, default: null }, trip: Object,
-  contextStartTime: String, contextEndTime: String, suggestedRange: Object, initialViewport: Object,
+  contextStartTime: String, contextEndTime: String, suggestedRange: Object, initialViewport: Object, replaceStay: Object,
   availableGaps: { type: Array, default: () => [] }, timelineData: { type: Array, default: () => [] },
   recordedPoints: { type: Array, default: () => [] }, locationSuggestion: Object,
   fallbackCenter: { type: Array, default: () => [37.7749, -122.4194] }, readOnly: Boolean })
@@ -233,6 +233,11 @@ function removeActivity(index) { activities.value.splice(index, 1); activeId.val
 watch(() => props.visible, visible => {
   if (!visible) return
   version++; activities.value = []; addActivity(); review.value = null; error.value = ''; selectingTimes.value = false
+  if (props.replaceStay) {
+    chooseGap({ startTime: props.replaceStay.anchorStart, endTime: props.replaceStay.anchorEnd })
+    active.value.segmentType = 'TRIP'
+    return
+  }
   const supplied = props.suggestedRange
   chooseGap(supplied ? { ...props.availableGaps.find(gap => gap.id != null && gap.id === supplied.id), ...supplied }
     : props.availableGaps.length === 1 ? props.availableGaps[0] : null)
@@ -315,7 +320,7 @@ function applyGpsTimes() {
   active.value.startInvalid = false; active.value.endInvalid = false; selectingTimes.value = false
 }
 function payload() {
-  return { tripId: props.tripId, contextStart: chosenGap.value?.startTime, contextEnd: chosenGap.value?.endTime,
+  return { tripId: props.tripId, ...(props.replaceStay ? { replaceStayEditId: props.replaceStay.id } : {}), contextStart: chosenGap.value?.startTime, contextEnd: chosenGap.value?.endTime,
     activities: activities.value.map(activity => {
       const startTime = timelinePickerToUtc(activity.start, timezone, activity.originalStart)
       const endTime = timelinePickerToUtc(activity.end, timezone, activity.originalEnd)

@@ -262,6 +262,9 @@ class TimelineEditResourceIntegrationTest {
                 "anchorEnd", END.toString(),
                 "payload", Map.of("resolution", "GAP"));
         String beforeConflict = storedState(owner);
+        var previewConflict = authenticated(owner).body(remove).post(EDITS + "/preview");
+        assertProblemEnvelope(previewConflict, 409, "TIMELINE_EDIT_CONFLICT");
+        assertThat(previewConflict.jsonPath().getLong("parameters.conflictingEditId")).isEqualTo(firstId);
         assertProblemEnvelope(authenticated(owner).body(remove).post(EDITS),
                 409, "TIMELINE_EDIT_CONFLICT");
         assertThat(storedState(owner)).isEqualTo(beforeConflict);

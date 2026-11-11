@@ -9,6 +9,8 @@
       <Button v-if="!isChoosing" :label="t('missingActivity.changePlace')" text size="small" @click="open" />
     </div>
     <Button v-else-if="!isChoosing" :label="t('missingActivity.choosePlaceAction')" icon="pi pi-map-marker" outlined @click="open" />
+    <Button v-if="mapPlace && modelValue?.source === 'custom' && !isChoosing"
+      :label="t('timeline.edit.place.useLinkedPlace', { name: mapPlace.locationName })" text size="small" @click="choose(mapPlace)" />
     <section v-if="isChoosing" class="place-picker-section">
       <label v-if="allowSearch" class="place-picker-search">{{ t('missingActivity.findPlace') }}
         <InputText ref="searchInput" v-model="query" :placeholder="t('missingActivity.findPlace')"
@@ -73,6 +75,7 @@ const timelineStore = useTimelineStore(), locationAnalyticsStore = useLocationAn
 const choosing = ref(!props.modelValue), query = ref(''), mapOpen = ref(false), previewPoint = ref(null)
 const picker = ref(null)
 const searchInput = ref(null), optionList = ref(null), selectedSummary = ref(null)
+const mapPlace = ref(null)
 const lookupOptions = ref([]), searchResults = ref([])
 const lookupLoading = ref(false), searchLoading = ref(false), lookupError = ref(''), searchError = ref('')
 let lookupToken = 0, pickToken = 0, searchToken = 0, searchTimer
@@ -135,6 +138,7 @@ function requestMap() {
 }
 function choose(option, focusSummary = true) {
   pickToken++; searchToken++; clearTimeout(searchTimer); clearPreview()
+  mapPlace.value = null
   emit('update:modelValue', {
     favoriteId: option.favoriteId ?? null, geocodingId: option.geocodingId ?? null,
     latitude: option.latitude ?? null, longitude: option.longitude ?? null,
@@ -184,7 +188,11 @@ async function pickPoint(raw) {
   try {
     const suggestion = await tripsStore.getPlanSuggestion(selected.latitude, selected.longitude, { redirectOnServerError: false })
     if (token === pickToken && suggestion?.title?.trim()) {
-      emit('update:modelValue', { ...selected, favoriteId: null, geocodingId: null, locationName: suggestion.title.trim(), source: 'custom' })
+      const locationName = suggestion.title.trim()
+      emit('update:modelValue', { ...selected, favoriteId: null, geocodingId: null, locationName, source: 'custom' })
+      if (suggestion.favoriteId || suggestion.geocodingId) {
+        mapPlace.value = { ...selected, favoriteId: suggestion.favoriteId, geocodingId: suggestion.geocodingId, locationName }
+      }
     }
   } catch { /* Coordinates remain usable without an address. */ }
 }

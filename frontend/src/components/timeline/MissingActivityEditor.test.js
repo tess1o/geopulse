@@ -35,6 +35,20 @@ describe('Unified missing activity editor', () => {
     expect(wrapper.findAllComponents(DateStub).map(component => component.props('modelValue'))).toEqual([null, null])
     expect(wrapper.findAllComponents(SelectStub)[0].props('modelValue')).toBeNull()
   })
+  it('reviews a single trip inside the forced stay', async () => {
+    const store = useTimelineStore()
+    const preview = vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
+    const wrapper = await open({ replaceStay: { id: 91, anchorStart: times.startTime, anchorEnd: times.endTime } })
+    expect(wrapper.text()).not.toContain('What happened?')
+    const endpoints = wrapper.findAll('.pick-place')
+    expect(endpoints).toHaveLength(2)
+    for (const endpoint of endpoints) await endpoint.trigger('click')
+    await click(wrapper, 'Review changes')
+    expect(preview).toHaveBeenCalledWith(expect.objectContaining({
+      replaceStayEditId: 91,
+      activities: [expect.objectContaining({ segmentType: 'TRIP', startTime: times.startTime, endTime: times.endTime })]
+    }))
+  })
   it('reviews and saves a correction without calling reconstruction or renaming a source', async () => {
     const store = useTimelineStore(), trips = useTripsStore()
     vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)

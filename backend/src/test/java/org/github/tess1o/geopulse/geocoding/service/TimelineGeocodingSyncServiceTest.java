@@ -7,7 +7,12 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestCoordinates;
@@ -19,6 +24,9 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +45,9 @@ class TimelineGeocodingSyncServiceTest {
 
     @Inject
     TimelineGeocodingSyncService syncService;
+
+    @Inject
+    TimelineEditService edits;
 
     @Inject
     EntityManager entityManager;
@@ -396,6 +407,37 @@ class TimelineGeocodingSyncServiceTest {
         assertEquals("Favorite Restaurant", updated2.getLocationName());
     }
     // ==================== Helper Methods ====================
+    @Test
+    @Transactional
+    void forcedStaysReplayWithTheRenamedPlaceForTheOwnerOnly() {
+        Point point = coord(TEST_LON, TEST_LAT);
+        var original = createGeocodingEntity(point, "Street");
+        var copy = createGeocodingEntity(point, "Parking", USER_A_ID);
+        entityManager.persist(original);
+        entityManager.persist(copy);
+        Instant start = Instant.parse("2026-09-15T14:00:00Z");
+        Instant end = start.plusSeconds(600);
+        for (UUID user : List.of(USER_A_ID, USER_B_ID)) {
+            entityManager.persist(TimelineEditEntity.builder()
+                    .user(entityManager.getReference(UserEntity.class, user))
+                    .seq(1).kind(TimelineEditKind.FORCE_STAY).status(TimelineEditStatus.ACTIVE)
+                    .anchorStart(start).anchorEnd(end).affectedFrom(start).affectedTo(end)
+                    .placeGeocoding(original).placeName("Street").placeLatitude(TEST_LAT).placeLongitude(TEST_LON)
+                    .payload(new LinkedHashMap<>(Map.of("locationName", "Street", "activityCorrection", true))).build());
+        }
+        entityManager.flush();
+
+        syncService.switchToNewGeocodingReference(USER_A_ID, original.getId(), copy.getId(), "Parking");
+        entityManager.clear();
+
+        var renamed = (Stay) edits.apply(USER_A_ID, List.of(), start, end).events().getFirst();
+        assertEquals(copy.getId(), renamed.getGeocodingId());
+        assertEquals("Parking", renamed.getLocationName());
+        var other = (Stay) edits.apply(USER_B_ID, List.of(), start, end).events().getFirst();
+        assertEquals(original.getId(), other.getGeocodingId());
+        assertEquals("Street", other.getLocationName());
+    }
+
     private ReverseGeocodingLocationEntity createGeocodingEntity(Point coords, String displayName) {
         return createGeocodingEntity(coords, displayName, null);
     }
