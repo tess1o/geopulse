@@ -373,7 +373,9 @@ test.describe('Favorites Management Page', () => {
             await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
             await expect(page.locator('.gp-area-vertex')).toHaveCount(4);
             await expect(page.locator('.gp-area-midpoint')).toHaveCount(0);
+            const mapHost = favoritesPage.mapHarness.getMapHostLocator({mapId: 'edit-area-map'});
             const dragFirstEdge=async()=>{
+                await mapHost.scrollIntoViewIfNeeded();
                 const a=await page.locator('.gp-area-vertex').nth(0).boundingBox();
                 const b=await page.locator('.gp-area-vertex').nth(1).boundingBox();
                 const x=(a.x+a.width/2+b.x+b.width/2)/2;
@@ -443,11 +445,13 @@ test.describe('Favorites Management Page', () => {
             const {favoritesPage,user}=await TestSetupHelper.loginAndNavigateToFavoritesPage(page,dbManager,createManagedUser(isolatedUsers),{mapMode});
             await startPolygon(page,favoritesPage);
             await page.getByRole('button',{name:'Finish shape',exact:true}).hover();
-            const lines=await page.evaluate(mode=>{
+            const lines=await page.evaluate(async mode=>{
                 const map=window.__GP_E2E_MAPS['favorites-map'];
-                if(mode==='VECTOR') return Object.entries(map.getStyle().sources)
-                    .filter(([id])=>id.includes('gp-rect-preview-'))
-                    .flatMap(([id])=>map.getSource(id)._data.features.map(f=>f.geometry.coordinates));
+                if (mode === 'VECTOR') {
+                    const sources = Object.keys(map.getStyle().sources).filter(id => id.startsWith('gp-rect-preview-'));
+                    const data = await Promise.all(sources.map(id => map.getSource(id).getData()));
+                    return data.flatMap(source => source.features.map(feature => feature.geometry.coordinates));
+                }
                 const segments=[];
                 map.eachLayer(layer=>{
                     const geometry=layer.toGeoJSON?.(15)?.geometry;
@@ -772,8 +776,7 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.waitForConfirmDialog();
 
             // Verify confirmation dialog shows correct message
-            const dialogText = await page.locator('.p-confirmdialog').textContent();
-            expect(dialogText).toContain('unsaved pending favorite');
+            await expect(page.locator('.p-confirmdialog')).toContainText(/You have 1 unsaved changes?\. Leaving will discard them\./);
 
             // Reject navigation
             await favoritesPage.rejectDialog();
@@ -929,25 +932,19 @@ test.describe('Favorites Management Page', () => {
             const redrawButton = page.locator('.p-dialog button:has-text("Redraw")');
             await expect(redrawButton).toBeEnabled({timeout: 10000});
             await redrawButton.click();
-            await favoritesPage.waitForEditAreaDrawingMode();
 
             // Draw new rectangle on the edit dialog map with smaller coordinates
             // Dialog map is smaller, so use coordinates closer to top-left
             await favoritesPage.drawRectangle(50, 50, 200, 150, 'edit-area-map');
             await favoritesPage.waitForEditAreaBoundsToChange(originalBoundsText);
 
-            // Submit the edit
+            const update = page.waitForResponse(response =>
+                response.url().endsWith(`/favorites/${favoriteId}`) && response.request().method() === 'PUT');
             await favoritesPage.submitEditDialog();
 
-            // Timeline regeneration should occur for geometry changes
-            try {
-                await favoritesPage.waitForTimelineRegenerationModal();
-                await favoritesPage.waitForTimelineRegenerationToComplete();
-            } catch (error) {
-                // If modal doesn't appear or completes too quickly, just wait for success
-                await favoritesPage.waitForSuccessToast();
-                await page.waitForTimeout(2000);
-            }
+            const response = await update;
+            expect(response.ok()).toBe(true);
+            expect((await response.json()).jobId).toBeTruthy();
 
             await expect.poll(async () => {
                 const result = await dbManager.client.query(`

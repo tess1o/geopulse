@@ -312,6 +312,7 @@
       @rename-place="handleRenameStay"
       @split-trip-with-stay="handleSplitTripFromEditor"
       @submitted="handleEditSubmitted"
+      @replace-stay="openStayReplacement"
     />
     <TimelineEditHistoryDrawer
       :visible="editHistoryVisible"
@@ -320,7 +321,11 @@
       :reload="loadEditHistory"
       @close="closeEditHistory"
       @changed="handleEditSubmitted"
+      @replace-stay="openStayReplacement"
     />
+    <MissingActivityEditor v-if="stayReplacement" visible :replace-stay="stayReplacement"
+      :fallback-center="replacementCenter" :read-only="effectiveReadOnly"
+      @close="stayReplacement = null" @committed="finishStayReplacement" />
   </div>
 </template>
 
@@ -351,6 +356,8 @@ import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
 import { showDemoModeToast } from '@/utils/demoMode'
 import { canMergeTimelineEvents } from '@/utils/timelineEditPlace'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+
+const MissingActivityEditor = defineAsyncComponent(() => import('./MissingActivityEditor.vue'))
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -712,6 +719,22 @@ const openEditHistory = (item) => {
 const closeEditHistory = () => {
   editHistoryVisible.value = false
   selectedItemForHistory.value = null
+}
+
+const stayReplacement = ref(null)
+const replacementCenter = computed(() => {
+  const { latitude, longitude } = stayReplacement.value?.payload || {}
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? [latitude, longitude] : undefined
+})
+const openStayReplacement = (edit) => {
+  if (effectiveReadOnly.value) return
+  closeEditor()
+  closeEditHistory()
+  stayReplacement.value = edit
+}
+const finishStayReplacement = (result) => {
+  stayReplacement.value = null
+  handleEditSubmitted({ ...result, operation: 'create' })
 }
 
 const handleEditSubmitted = (result) => {

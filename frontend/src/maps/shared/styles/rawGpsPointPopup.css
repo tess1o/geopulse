@@ -119,3 +119,32 @@
   color: var(--gp-map-popup-text-muted);
   font-size: 0.9rem;
 }
+
+.raw-gps-inspection-dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 2px solid #eff6ff;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.raw-gps-inspection-cluster {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #ccfbf1;
+  border-radius: 50%;
+  color: #fff;
+  background: #0f766e;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.raw-gps-inspection-marker { cursor: pointer; box-sizing: border-box; border-radius: 50%; }
+.raw-gps-inspection-marker.is-selected { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.raw-gps-inspection-marker:focus-visible { outline: 3px solid #111827; outline-offset: 3px; }
+
+.maplibregl-popup.gp-raw-gps-popup-container {
+  z-index: 3;
+}

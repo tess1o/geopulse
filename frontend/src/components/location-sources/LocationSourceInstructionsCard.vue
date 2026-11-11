@@ -579,7 +579,7 @@ const owntracksUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/ow
 const overlandUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/overland`)
 const traccarUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/traccar`)
 const gpsLoggerUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/gpslogger`)
-const dawarichUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/dawarich`)
+const dawarichUrl = computed(() => `${browserOrigin.value}/api/dawarich`)
 const colotaUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/colota`)
 
 const traccarXmlSnippet = computed(() => `<entry key='forward.enable'>true</entry>

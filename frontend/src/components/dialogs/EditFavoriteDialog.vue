@@ -65,7 +65,6 @@
           <BaseMap
             mapId="edit-area-map"
             :center="mapCenter"
-            :zoom="mapZoom"
             height="100%"
             width="100%"
             @map-ready="handleMapReady"
@@ -134,8 +133,8 @@ const internalHeader = ref(props.header)
 const baseMapRef = ref(null)
 const mapInstance = ref(null)
 const areaOverlayAdapter = ref(null)
-const mapCenter = ref([51.505, -0.09])
-const mapZoom = ref(13)
+const initialCenter = getAreaCenterLatLng(props.favoriteLocation)
+const mapCenter = initialCenter ? [initialCenter.lat, initialCenter.lng] : [51.505, -0.09]
 
 // Computed
 const isAreaFavorite = computed(() => props.favoriteLocation?.type === 'AREA')
@@ -192,20 +191,12 @@ const handleMapReady = (map) => {
   initializeDrawing(mapInstance.value)
   initializeAreaOverlayAdapter(mapInstance.value)
 
-  // If it's an area favorite, center on it and draw it
   if (isAreaFavorite.value && props.favoriteLocation) {
-    const center = getAreaCenterLatLng(props.favoriteLocation)
-    if (center) {
-      mapCenter.value = [center.lat, center.lng]
-    }
-
-    // Fit bounds to show the entire area
     const bounds = toLeafletBounds(props.favoriteLocation)
     if (bounds) {
-      mapInstance.value.fitBounds(bounds, {padding: [50, 50]})
+      baseMapRef.value.fitBounds(bounds, {padding: [50, 50], animate: false})
     }
 
-    // Draw the current area
     drawCurrentArea()
   }
 }

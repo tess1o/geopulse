@@ -269,6 +269,8 @@ export default {
             rawGpsPoint: 'Необроблена GPS-точка',
             favoriteSource: 'Обране',
             geocodingSource: 'Геокодування',
+            pointDetails: 'Дані GPS-точки',
+            showMore: 'Показати ще',
             showingPoints: 'Показано перші {shown} з {total} точок',
             notAvailable: 'Н/Д'
         }

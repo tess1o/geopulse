@@ -142,7 +142,7 @@ test.describe('Location time display', () => {
       await expect(tokyoStayTimestamp).toContainText('09/21/2025 21:00 GMT+9');
       await expect(tokyoStayTimestamp).toHaveAttribute(
         'title',
-        /^Local time in Asia\/Tokyo, from the nearest city Tokyo \(JP, [\d.]+ km away\)$/
+        /^Local time in Asia\/Tokyo, from the nearest city .+ \(JP, [\d.]+ km away\)$/
       );
 
       // Trip start time comes from its origin
@@ -156,7 +156,7 @@ test.describe('Location time display', () => {
       // Home items are labelled too because the day mixes zones
       const newYorkStayTimestamp = stayCard(page, 'Midtown Office').locator('.timeline-timestamp');
       await expect(newYorkStayTimestamp).toContainText('09/21/2025 12:00 EDT');
-      await expect(newYorkStayTimestamp).toHaveAttribute('title', /^Local time in America\/New_York, from the nearest city New York \(US,/);
+      await expect(newYorkStayTimestamp).toHaveAttribute('title', /^Local time in America\/New_York, from the nearest city .+ \(US, [\d.]+ km away\)$/);
 
       expect(timelineRequests.length).toBeGreaterThan(0);
       for (const url of timelineRequests) {

@@ -7,25 +7,28 @@
   >
     <Button v-if="onSelectPoint" :label="t('trips.reconstructionContext.usePoint')"
       @click.stop="onSelectPoint(selectedPoint)" />
-    <div class="raw-gps-popup-grid">
-      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.coordinates') }}</div>
-      <div class="gp-map-popup-value">
-        <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.latitude) }}</span>
-        <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.longitude) }}</span>
+    <component :is="embedded ? 'details' : 'div'" class="raw-gps-point-details">
+      <summary v-if="embedded">{{ t('maps.popups.rawGps.pointDetails') }}</summary>
+      <div class="raw-gps-popup-grid">
+        <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.coordinates') }}</div>
+        <div class="gp-map-popup-value">
+          <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.latitude) }}</span>
+          <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.longitude) }}</span>
+        </div>
+
+        <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.accuracy') }}</div>
+        <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.accuracy) }}</div>
+
+        <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.battery') }}</div>
+        <div class="gp-map-popup-value">{{ formatBattery(selectedPoint?.battery) }}</div>
+
+        <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.speed') }}</div>
+        <div class="gp-map-popup-value">{{ formatSpeed(selectedPoint?.velocity) }}</div>
+
+        <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.altitude') }}</div>
+        <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.altitude) }}</div>
       </div>
-
-      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.accuracy') }}</div>
-      <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.accuracy) }}</div>
-
-      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.battery') }}</div>
-      <div class="gp-map-popup-value">{{ formatBattery(selectedPoint?.battery) }}</div>
-
-      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.speed') }}</div>
-      <div class="gp-map-popup-value">{{ formatSpeed(selectedPoint?.velocity) }}</div>
-
-      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.altitude') }}</div>
-      <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.altitude) }}</div>
-    </div>
+    </component>
 
     <div class="raw-gps-popup-location">
       <template v-if="locationStatus === 'resolved' && locationName">
@@ -38,12 +41,14 @@
       <div v-else class="raw-gps-popup-location-muted">{{ t('maps.popups.rawGps.findingLocation') }}</div>
     </div>
 
-    <div v-if="isStack" class="raw-gps-stack-list">
+    <div v-if="isStack" ref="pointList" class="raw-gps-stack-list">
       <button
         v-for="(point, pointIndex) in visiblePoints"
         :key="point.id ?? pointIndex"
         type="button"
-        :class="['raw-gps-stack-row', pointIndex === selectedPointIndex ? 'is-selected' : '']"
+        :class="['raw-gps-stack-row', pointIndex === activePointIndex ? 'is-selected' : '']"
+        :aria-pressed="pointIndex === activePointIndex"
+        :data-point-index="pointIndex"
         @click.stop.prevent="selectPoint(pointIndex)"
       >
         <span class="raw-gps-stack-time">{{ formatRawGpsDateTime(timezone, point.timestamp, pointLocationTimezone) }}</span>
@@ -60,13 +65,14 @@
       </button>
       <div v-if="overflowCount > 0" class="raw-gps-stack-overflow">
         {{ t('maps.popups.rawGps.showingPoints', { shown: visiblePoints.length, total: group.count }) }}
+        <Button :label="t('maps.popups.rawGps.showMore')" @click.stop="showMore" />
       </div>
     </div>
   </MapPopupCard>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { t } from '@/locales'
 import { formatSpeed } from '@/utils/calculationsHelpers'
 import MapPopupCard from './MapPopupCard.vue'
@@ -82,6 +88,9 @@ const props = defineProps({
     required: true
   },
   onSelectPoint: { type: Function, default: null },
+  activePointIndex: { type: Number, default: 0 },
+  embedded: Boolean,
+  onInspectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
     default: null
@@ -92,16 +101,17 @@ const props = defineProps({
   }
 })
 
-const selectedPointIndex = ref(0)
+const visiblePointCount = ref(Math.max(80, props.activePointIndex + 1))
+const pointList = ref(null)
 const locationStatus = ref('loading')
 const resolvedLocation = ref(null)
 
 const points = computed(() => Array.isArray(props.group?.points) ? props.group.points : [])
 const isStack = computed(() => Number(props.group?.count || 0) > 1)
 const selectedPoint = computed(() => (
-  points.value[selectedPointIndex.value] || props.group?.representative || points.value[0] || null
+  points.value[props.activePointIndex] || props.group?.representative || points.value[0] || null
 ))
-const visiblePoints = computed(() => points.value.slice(0, 80))
+const visiblePoints = computed(() => points.value.slice(0, visiblePointCount.value))
 const overflowCount = computed(() => Math.max(0, points.value.length - visiblePoints.value.length))
 const title = computed(() => (
   isStack.value
@@ -126,7 +136,30 @@ const notifyRender = () => {
 }
 
 const selectPoint = (pointIndex) => {
-  selectedPointIndex.value = pointIndex
+  props.onInspectPoint?.(pointIndex)
+}
+
+const revealSelectedPoint = () => {
+  const container = pointList.value
+  const row = container?.querySelector(`[data-point-index="${props.activePointIndex}"]`)
+  if (row) {
+    const bounds = container.getBoundingClientRect(), rowBounds = row.getBoundingClientRect()
+    if (rowBounds.top < bounds.top) container.scrollTop += rowBounds.top - bounds.top
+    else if (rowBounds.bottom > bounds.bottom) container.scrollTop += rowBounds.bottom - bounds.bottom
+  }
+}
+watch(() => props.activePointIndex, async (pointIndex) => {
+  visiblePointCount.value = Math.max(visiblePointCount.value, pointIndex + 1)
+  await nextTick()
+  revealSelectedPoint()
+  notifyRender()
+}, { immediate: true })
+
+let listResizeObserver = null
+onBeforeUnmount(() => listResizeObserver?.disconnect())
+
+const showMore = () => {
+  visiblePointCount.value += 80
   notifyRender()
 }
 
@@ -148,6 +181,10 @@ const loadLocation = async () => {
 }
 
 onMounted(() => {
+  if (pointList.value && typeof ResizeObserver !== 'undefined') {
+    listResizeObserver = new ResizeObserver(revealSelectedPoint)
+    listResizeObserver.observe(pointList.value)
+  }
   notifyRender()
   loadLocation()
 })

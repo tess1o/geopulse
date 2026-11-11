@@ -44,7 +44,7 @@ async function rows(db, user) {
   return result.rows.map(row => ({ ...row, start: iso(row.start), finish: iso(row.finish) }));
 }
 
-async function setup(page, db, users, { timezone = 'UTC', overnight = false } = {}) {
+async function setup(page, db, users, { timezone = 'UTC', overnight = false, zeroDuration = false } = {}) {
   const timeline = new TimelinePage(page);
   const managed = buildManagedUser(users, { timezone });
   await timeline.loginAndNavigate(managed, { dbManager: db, mapMode: await resolvePageMapMode(page) });
@@ -73,15 +73,20 @@ async function setup(page, db, users, { timezone = 'UTC', overnight = false } = 
     }
   };
   stay(places.Home, at('06:00'), at('08:00'));
-  drive(places.Home, places.Bakery, at('08:01'), at('08:15'));
-  stay(places.Bakery, at('08:16'), at('08:20'));
-  drive(places.Bakery, places.Pharmacy, at('08:21'), at('08:26'));
-  stay(places.Pharmacy, at('08:27'), at('08:31'));
-  drive(places.Pharmacy, places.Office, at('08:32'), at('08:45'));
-  stay(places.Office, at('08:46'), at('12:00'));
-  drive(places.Office, places.Home, at('12:01'), at('12:45'));
-  stay(places.Home, at('12:46'), at('18:00'));
-  stay(places.Office, at(overnight ? '20:00' : '21:00'), overnight ? '2026-09-16T02:00:00.000Z' : at('22:00'));
+  if (zeroDuration) {
+    // Different coordinates at the same timestamp leave no recorded travel interval between the stays.
+    stay(places.Office, at('08:00'), at('12:00'));
+  } else {
+    drive(places.Home, places.Bakery, at('08:01'), at('08:15'));
+    stay(places.Bakery, at('08:16'), at('08:20'));
+    drive(places.Bakery, places.Pharmacy, at('08:21'), at('08:26'));
+    stay(places.Pharmacy, at('08:27'), at('08:31'));
+    drive(places.Pharmacy, places.Office, at('08:32'), at('08:45'));
+    stay(places.Office, at('08:46'), at('12:00'));
+    drive(places.Office, places.Home, at('12:01'), at('12:45'));
+    stay(places.Home, at('12:46'), at('18:00'));
+    stay(places.Office, at(overnight ? '20:00' : '21:00'), overnight ? '2026-09-16T02:00:00.000Z' : at('22:00'));
+  }
   // Keep the realtime worker from reading a partially seeded day.
   await db.client.query('BEGIN');
   try {
@@ -97,9 +102,9 @@ async function setup(page, db, users, { timezone = 'UTC', overnight = false } = 
   const url = `/app/timeline?start=${DAY}&end=${overnight ? '2026-09-16' : DAY}`;
   await page.goto(url);
   await page.waitForLoadState('networkidle');
-  await expect(page.locator(STAYS)).toHaveCount(overnight ? 5 : 4);
+  await expect(page.locator(STAYS)).toHaveCount(zeroDuration ? 2 : overnight ? 5 : 4);
   const baseline = await rows(db, user.id);
-  expect(baseline.filter(row => row.type === 'trip')).toHaveLength(2);
+  expect(baseline.filter(row => row.type === 'trip')).toHaveLength(zeroDuration ? 1 : 2);
   return { user: user.id, favorites, baseline, url, timezone, overnight };
 }
 
@@ -125,7 +130,8 @@ async function review(page) {
   expect(events.length).toBeGreaterThan(0);
   for (const event of events) {
     expect(['STAY', 'TRIP', 'DATA_GAP']).toContain(event.type);
-    expect(Date.parse(event.end)).toBeGreaterThan(Date.parse(event.start));
+    if (event.type === 'TRIP') expect(Date.parse(event.end)).toBeGreaterThanOrEqual(Date.parse(event.start));
+    else expect(Date.parse(event.end)).toBeGreaterThan(Date.parse(event.start));
   }
   await expect(drawer(page).locator('.edit-preview')).toContainText('After');
   await expect(drawer(page).locator('.edit-preview')).toBeFocused();
@@ -140,7 +146,10 @@ async function save(page, button = drawer(page).getByRole('button', { name: 'Sav
   const result = await saved.json();
   expect(result.edit.id).toBeTruthy();
   expect(result.edit.status).toBe('ACTIVE');
-  expect(Date.parse(result.edit.anchorEnd)).toBeGreaterThan(Date.parse(result.edit.anchorStart));
+  expect(Date.parse(result.edit.anchorEnd)).toBeGreaterThanOrEqual(Date.parse(result.edit.anchorStart));
+  if (Date.parse(result.edit.anchorEnd) === Date.parse(result.edit.anchorStart)) {
+    expect(['SET_MOVEMENT_TYPE', 'SET_TIMES', 'REMOVE_EVENT']).toContain(result.edit.kind);
+  }
   await waitJob(page, result);
   await expect(page.locator('.timeline-edit-drawer:visible, .trip-stay-split-dialog:visible')).toHaveCount(0);
   return result.edit;
@@ -213,6 +222,72 @@ const scenarios = ['movement', 'place', 'label', 'times', 'split stay',
 test.describe('Timeline Edit desktop release checks', () => {
   test.setTimeout(240000);
   test.use({ timezoneId: 'America/New_York', viewport: { width: 1440, height: 1000 } });
+  for (const correction of ['movement', 'times', 'remove']) {
+    test(`zero-duration transition: ${correction} survives regeneration, reload, undo and redo`, async ({ page, dbManager, isolatedUsers }, testInfo) => {
+      const context = await setup(page, dbManager, isolatedUsers, { zeroDuration: true });
+      const trip = context.baseline.find(row => row.type === 'trip');
+      expect(trip).toMatchObject({ start: at('08:00'), finish: at('08:00'), movement: 'UNKNOWN', source: 'AUTO' });
+      expect(Number(trip.distance)).toBeGreaterThan(0);
+      const generated = await dbManager.client.query('SELECT explanation FROM timeline_trips WHERE user_id=$1', [context.user]);
+      expect(generated.rows[0].explanation.start.code).toBe('CONTINUITY');
+      const card = page.locator('.timeline-card--unrecorded');
+      await expect(card).toHaveCount(1);
+      await expect(card).toContainText('Unrecorded transition');
+      await expect(card).toContainText('Duration: Unknown');
+      await expect(card).toContainText('Estimated distance:');
+      await expect(card.getByRole('note')).toContainText('no travel was recorded');
+      await expect(card.locator('.trip-hint')).toHaveCount(0);
+      await testInfo.attach('unrecorded-transition', { body: await card.screenshot(), contentType: 'image/png' });
+      await open(page, 'trip');
+      await expect(action(page, 'Add a stop')).toHaveCount(0);
+      await expect(action(page, 'Merge')).toHaveCount(0);
+      if (correction === 'movement') {
+        await action(page, 'Movement type').click();
+        await drawer(page).getByRole('combobox', { name: 'Movement type' }).click();
+        await page.getByRole('option', { name: 'Walk', exact: true }).click();
+      } else if (correction === 'times') {
+        await action(page, 'Time').click();
+        await drawer(page).getByRole('combobox', { name: 'Start', exact: true }).fill(`${DAY} 07:59`);
+        await drawer(page).getByRole('combobox', { name: 'End', exact: true }).fill(`${DAY} 08:01`);
+        await review(page);
+      } else {
+        await action(page, 'Remove').click();
+        await expect(drawer(page)).toContainText('without changing either stay');
+        await expect(drawer(page).getByRole('combobox')).toHaveCount(0);
+        await review(page);
+      }
+      const edit = await save(page);
+      expect(edit.anchorStart).toBe(edit.anchorEnd);
+      if (correction === 'remove') expect(edit.payload.resolution).toBe('DISMISS');
+      const saved = await rows(dbManager, context.user);
+      const regenerated = await page.request.post('/api/v1/timeline/jobs');
+      expect(regenerated.ok()).toBe(true);
+      await waitJob(page, await regenerated.json());
+      expect(await rows(dbManager, context.user)).toEqual(saved);
+      await page.reload(); await page.waitForLoadState('networkidle');
+      await lifecycle(page, dbManager, context, edit, async values => {
+        const trips = values.filter(row => row.type === 'trip');
+        const stays = values.filter(row => row.type === 'stay');
+        expect(values.filter(row => row.type === 'gap')).toHaveLength(0);
+        if (correction === 'movement') {
+          expect(trips).toEqual([{ ...trip, movement: 'WALK', source: 'MANUAL' }]);
+          expect(stays).toEqual(context.baseline.filter(row => row.type === 'stay'));
+          await expect(card).toContainText('Walk');
+          await expect(card).toContainText('Duration: Unknown');
+        } else if (correction === 'times') {
+          expect(trips).toHaveLength(1);
+          expect(trips[0]).toMatchObject({ start: at('07:59'), finish: at('08:01') });
+          expect(stays[0].finish).toBe(at('07:59'));
+          expect(stays[1].start).toBe(at('08:01'));
+          await expect(card).toHaveCount(0);
+        } else {
+          expect(trips).toHaveLength(0);
+          expect(stays).toEqual(context.baseline.filter(row => row.type === 'stay'));
+          await expect(card).toHaveCount(0);
+        }
+      });
+    });
+  }
   for (const scenario of scenarios) {
     test(`${scenario}: real save, persisted values, reload, undo and redo`, async ({ page, dbManager, isolatedUsers }) => {
       const context = await setup(page, dbManager, isolatedUsers);
@@ -479,11 +554,13 @@ test.describe('Timeline Edit desktop release checks', () => {
     await page.reload(); await page.waitForLoadState('networkidle');
     await open(page, 'stay', 1); await action(page, 'Remove').click();
     await drawer(page).getByRole('combobox').click();
-    await page.getByRole('option', { name: 'Leaving a data gap' }).click(); await review(page);
-    const response = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/timeline/edits');
-    await drawer(page).getByRole('button', { name: 'Save changes', exact: true }).click();
+    await page.getByRole('option', { name: 'Leaving a data gap' }).click();
+    const response = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/timeline/edits/preview');
+    await drawer(page).getByRole('button', { name: 'Review changes', exact: true }).click();
     expect((await response).status()).toBe(409);
     await expect(drawer(page).getByRole('alert')).toContainText('overlaps');
+    await expect(drawer(page).getByRole('combobox')).toContainText('Leaving a data gap');
+    await expect(drawer(page).getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
     await expect(drawer(page).getByRole('button', { name: 'View change', exact: true })).toBeVisible();
     page.once('dialog', dialog => dialog.accept());
     await drawer(page).getByRole('button', { name: 'View change', exact: true }).click();

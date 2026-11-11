@@ -18,7 +18,9 @@ import {
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import {
   createRawGpsPopupMount,
+  createRawGpsInspectionClusters,
   groupRawGpsPoints,
+  formatRawGpsDateTime,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH,
   RAW_GPS_POPUP_OFFSET
@@ -37,6 +39,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  inspectorContainer: { type: Object, default: null },
   selectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,
@@ -57,6 +60,9 @@ const state = {
   listeners: [],
   popup: null,
   popupMount: null,
+  inspectionMarkers: [],
+  inspectedGroup: null,
+  inspectionZoomHandler: null,
   styleLoadHandler: null,
   boundMap: null
 }
@@ -70,6 +76,7 @@ state.stackCountLayerId = `${state.token}-stack-count`
 
 const buildCollection = () => {
   const features = groupRawGpsPoints(props.points)
+    .filter(group => group.key !== state.inspectedGroup?.key)
     .map((group) => ({
       type: 'Feature',
       geometry: {
@@ -108,6 +115,18 @@ const closePopup = () => {
   }
 }
 
+const clearInspection = () => {
+  closePopup()
+  if (state.inspectionZoomHandler) (state.boundMap || props.map).off('zoomend', state.inspectionZoomHandler)
+  state.inspectionZoomHandler = null
+  state.inspectionMarkers.forEach(marker => marker.remove())
+  state.inspectionMarkers = []
+  if (state.inspectedGroup) {
+    state.inspectedGroup = null
+    getMapLibreSource(state.boundMap || props.map, state.sourceId)?.setData(buildCollection())
+  }
+}
+
 const getPopupAnchor = (coordinates) => {
   if (!isMapLibreMap(props.map)) return 'bottom'
 
@@ -122,18 +141,45 @@ const getPopupAnchor = (coordinates) => {
   return horizontalAnchor ? `${verticalAnchor}-${horizontalAnchor}` : verticalAnchor
 }
 
-const openGroupPopup = (event) => {
-  if (!isMapLibreMap(props.map)) return
-  const group = parseGroup(event)
-  const coordinates = event?.features?.[0]?.geometry?.coordinates
-  if (!group || !Array.isArray(coordinates)) return
-
-  closePopup()
+const openGroupPopup = (group, pointIndex = 0) => {
+  if (!isMapLibreMap(props.map) || !group) return
+  const coordinates = [group.longitude, group.latitude]
+  clearInspection()
+  state.inspectedGroup = group
+  getMapLibreSource(props.map, state.sourceId)?.setData(buildCollection())
+  let selectedIndex = pointIndex
+  const inspectionClusters = createRawGpsInspectionClusters()
+  const renderSamples = () => {
+    state.inspectionMarkers.forEach(marker => marker.remove())
+    state.inspectionMarkers = inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()).map(entity => {
+      const element = document.createElement('button')
+      element.type = 'button'
+      element.className = `raw-gps-inspection-marker ${entity.isCluster ? 'raw-gps-inspection-cluster' : 'raw-gps-inspection-dot'}`
+      element.textContent = entity.isCluster ? String(entity.indices.length) : ''
+      element.title = entity.isCluster ? String(entity.indices.length) : formatRawGpsDateTime(timezone, group.points[entity.indices[0]].timestamp)
+      element.setAttribute('aria-label', element.title)
+      element.classList.toggle('is-selected', entity.indices.includes(selectedIndex))
+      element.setAttribute('aria-pressed', String(entity.indices.includes(selectedIndex)))
+      element.style.zIndex = '2'
+      element.addEventListener('click', event => {
+        event.stopPropagation()
+        if (!state.popupMount) { openGroupPopup(group, entity.isCluster ? selectedIndex : entity.indices[0]); return }
+        if (entity.isCluster) props.map.easeTo({ center: [entity.longitude, entity.latitude], zoom: Math.min(props.map.getZoom() + 2, props.map.getMaxZoom()), duration: 280 })
+        else state.popupMount.inspectPoint(entity.indices[0])
+      })
+      element.addEventListener('dblclick', event => event.stopPropagation())
+      return new maplibregl.Marker({ element }).setLngLat([entity.longitude, entity.latitude]).addTo(props.map)
+    })
+  }
+  const highlightPoint = (_, index) => { selectedIndex = index; renderSamples() }
   let popup = null
   const popupMount = createRawGpsPopupMount(group, {
     timezone,
+    container: props.inspectorContainer,
     resolveLocation: props.resolveLocation,
     onSelectPoint: props.selectPoint,
+    activePointIndex: pointIndex,
+    onInspectPoint: highlightPoint,
     onRender: () => {
       if (state.popup === popup && popup?.isOpen?.()) {
         popup.setLngLat(coordinates)
@@ -141,31 +187,36 @@ const openGroupPopup = (event) => {
     }
   })
 
-  popup = new maplibregl.Popup({
-    closeButton: true,
-    closeOnClick: true,
-    closeOnMove: false,
-    maxWidth: RAW_GPS_POPUP_MAX_WIDTH,
-    offset: RAW_GPS_POPUP_OFFSET,
-    anchor: getPopupAnchor(coordinates),
-    className: RAW_GPS_POPUP_CLASS_NAME
-  })
-    .setLngLat(coordinates)
-    .setDOMContent(popupMount.element)
-    .addTo(props.map)
+  if (!props.inspectorContainer) {
+    popup = new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: true,
+      closeOnMove: false,
+      maxWidth: RAW_GPS_POPUP_MAX_WIDTH,
+      offset: RAW_GPS_POPUP_OFFSET,
+      anchor: getPopupAnchor(coordinates),
+      className: RAW_GPS_POPUP_CLASS_NAME
+    })
+      .setLngLat(coordinates)
+      .setDOMContent(popupMount.element)
+      .addTo(props.map)
 
-  popup.on('close', () => {
-    if (state.popup === popup) {
-      state.popup = null
-    }
-    if (state.popupMount === popupMount) {
-      state.popupMount = null
-    }
-    popupMount.unmount()
-  })
+    popup.on('close', () => {
+      if (state.popup === popup) {
+        state.popup = null
+      }
+      if (state.popupMount === popupMount) {
+        state.popupMount = null
+      }
+      popupMount.unmount()
+    })
+  }
 
   state.popup = popup
   state.popupMount = popupMount
+  state.inspectionZoomHandler = renderSamples
+  props.map.on('zoomend', state.inspectionZoomHandler)
+  renderSamples()
 }
 
 const registerEvents = () => {
@@ -193,7 +244,7 @@ const registerEvents = () => {
 
   const handlePointClick = (event) => {
     event.preventDefault()
-    openGroupPopup(event)
+    openGroupPopup(parseGroup(event))
   }
 
   const handleHover = () => {
@@ -349,7 +400,7 @@ const renderLayer = () => {
 
 const clearLayer = () => {
   unregisterEvents()
-  closePopup()
+  clearInspection()
 
   if (state.boundMap && state.styleLoadHandler) {
     state.boundMap.off('style.load', state.styleLoadHandler)
@@ -396,6 +447,10 @@ watch(
   },
   { immediate: true, deep: true }
 )
+
+watch(() => props.points, () => clearInspection(), { deep: true })
+watch(() => props.visible, visible => { if (!visible) clearInspection() })
+watch(() => props.selectPoint, callback => state.popupMount?.setSelectPoint(callback))
 
 onBeforeUnmount(() => {
   clearLayer()

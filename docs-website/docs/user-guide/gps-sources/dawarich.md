@@ -36,3 +36,7 @@ After setting up the source in GeoPulse, configure the Dawarich app on your mobi
 3.  In the **API Key** field, paste the API Key that you created in GeoPulse in Step 1.
 
 Once saved, the Dawarich app will begin sending location updates to your GeoPulse account, which will be automatically processed to build your timeline.
+
+If opening the Server URL in a browser returns `404`, that's expected. The app appends its API paths to that base URL.
+To check whether the health endpoint is reachable, open `https://geopulse.yourdomain.com/api/dawarich/api/v1/health`.
+It should return `{"status":"ok"}`. Use **Test Connection** in the Dawarich app to check your setup with the API key.

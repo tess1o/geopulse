@@ -90,6 +90,14 @@ describe('location chooser', () => {
     await flushPromises(); pending.resolve({ title: 'Street 5' }); await flushPromises()
     expect(wrapper.emitted('update:modelValue').at(-1)[0]).toMatchObject({ ...point, favoriteId: null, locationName: 'Street 5' })
   })
+  it('offers the geocoded place separately from the exact map pin', async () => {
+    useTripsStore().getPlanSuggestion.mockResolvedValue({ title: 'Street 5', geocodingId: 19 })
+    const wrapper = mountPicker({ point })
+    await flushPromises(); await syncSelection(wrapper)
+    expect(wrapper.props('modelValue')).toMatchObject({ ...point, geocodingId: null })
+    await click(wrapper, 'Use linked place: Street 5')
+    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toMatchObject({ geocodingId: 19, source: 'known' })
+  })
   it('keeps usable coordinates when address lookup fails', async () => {
     useTripsStore().getPlanSuggestion.mockRejectedValue(new Error('offline'))
     const wrapper = mountPicker({ point }); await flushPromises(); await syncSelection(wrapper)

@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 @QuarkusTest
@@ -40,7 +41,60 @@ class TimelineEditMigrationIntegrationTest {
     @Inject TimelineStayRepository stays;
     @Inject TimelineTripRepository trips;
     @Inject TimelineEditService edits;
+    @Inject ActivityCorrectionService activities;
     @Inject EntityManager em;
+
+    @Test
+    void replacesPartOfAMigratedGapStayAndRestoresTheOriginalOnUndo() throws Exception {
+        GeocodingTestMocks.install();
+        var day = new CommuteWithStops();
+        UUID user = day.ingest(harness, "migration-replace-stay");
+        var gapEnd = CommuteWithStops.at("16:00");
+        harness.ingest(user, new Track().stay(day.office, gapEnd, CommuteWithStops.at("18:00"), 2).messages());
+        harness.fullRebuild(user);
+        var gap = QuarkusTransaction.requiringNew().call(() -> gaps.findByUserId(user).stream()
+                .filter(row -> row.getEndTime().equals(gapEnd)).findFirst().orElseThrow());
+        var conversion = new DataGapStayOverrideRequest();
+        conversion.setLocationStrategy("SELECTED_LOCATION");
+        conversion.setLatitude(day.pharmacy[0]); conversion.setLongitude(day.pharmacy[1]); conversion.setLocationName("Gym");
+        gapEdits.convertGapToStay(user, gap.getId(), conversion);
+        String migration = scopedUnifyMigration(user);
+        QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(migration).executeUpdate());
+        harness.fullRebuild(user);
+
+        var original = edits.list(user).getFirst();
+        var trip = new ActivityCorrectionService.Activity();
+        trip.setSegmentType("TRIP");
+        trip.setStartTime(CommuteWithStops.at("14:00"));
+        trip.setEndTime(CommuteWithStops.at("15:00"));
+        trip.setStartPlace(new ActivityCorrectionService.Place(
+                null, null, day.pharmacy[0], day.pharmacy[1], "Gym"));
+        trip.setEndPlace(new ActivityCorrectionService.Place(
+                null, null, day.bakery[0], day.bakery[1], "Bakery"));
+        var replacement = new ActivityCorrectionService.Request(
+                null, java.util.List.of(trip), null, null, original.id());
+        assertThat(activities.preview(user, replacement).events()).extracting(event -> event.type())
+                .containsExactly("STAY", "TRIP", "STAY");
+        trip.setEndTime(original.anchorEnd().plusSeconds(1));
+        assertThatThrownBy(() -> activities.save(user, replacement)).hasMessageContaining("within the forced stay");
+        assertThat(edits.list(user)).containsExactly(original);
+        trip.setEndTime(CommuteWithStops.at("15:00"));
+        var saved = activities.save(user, replacement);
+        assertThat(saved.edits()).hasSize(3);
+        for (boolean restore : new boolean[] {false, true}) {
+            harness.fullRebuild(user);
+            QuarkusTransaction.requiringNew().run(() ->
+                    assertThat(stays.find("user.id = ?1 and locationName = ?2", user, "Gym").list()).hasSize(2));
+            activities.changeStatus(user, saved.groupId(), false);
+            harness.fullRebuild(user);
+            QuarkusTransaction.requiringNew().run(() -> {
+                var restored = stays.find("user.id = ?1 and locationName = ?2", user, "Gym").singleResult();
+                assertThat(restored.getTimestamp()).isEqualTo(original.anchorStart());
+                assertThat(restored.getTimestamp().plusSeconds(restored.getStayDuration())).isEqualTo(original.anchorEnd());
+            });
+            if (!restore) activities.changeStatus(user, saved.groupId(), true);
+        }
+    }
 
     @Test
     void seededLegacyCorrectionsMigrateAndReplayWithoutApplyingTwice() throws Exception {

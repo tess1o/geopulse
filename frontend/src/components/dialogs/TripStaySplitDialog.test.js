@@ -7,6 +7,7 @@ vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
 import TripStaySplitDialog from './TripStaySplitDialog.vue'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
+import { useTimezone } from '@/composables/useTimezone'
 
 const START = Date.parse('2026-10-08T10:00:00Z')
 // A straight route with a point every kilometre and five minutes, so a click picks exactly one point.
@@ -46,6 +47,46 @@ describe('TripStaySplitDialog', () => {
         TimelinePlacePicker: placePickerStub
       }
     }
+  })
+
+  it.each([false, true])('previews and saves a short trip with a stop near an endpoint (origin: %s)', async (nearOrigin) => {
+    const path = [
+      ['19:49:38', nearOrigin ? 50 : 50.0056],
+      ['19:50:01', 50.0002], ['19:53:49', 50.0003],
+      ['19:55:42', nearOrigin ? 50.0056 : 50]
+    ].map(([time, latitude]) => ({ timestamp: `2026-11-05T${time}Z`, latitude, longitude: 30 }))
+    store.fetchTripPath.mockResolvedValue({ points: path })
+    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [
+      { type: 'TRIP', start: path[0].timestamp, end: path[1].timestamp },
+      { type: 'STAY', start: path[1].timestamp, end: path[2].timestamp },
+      { type: 'TRIP', start: path[2].timestamp, end: path[3].timestamp }
+    ] })
+    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 12 } })
+    const wrapper = mountDialog()
+    await wrapper.setProps({ visible: true, trip: { id: 4, timestamp: path[0].timestamp, tripDuration: 364 } })
+    await flushPromises()
+    wrapper.findComponent({ name: 'MapContainer' }).vm.$emit('map-click', path[1])
+    await flushPromises()
+
+    const timezone = useTimezone()
+    const pickers = wrapper.findAllComponents({ name: 'DatePicker' })
+    for (const [index, point] of [path[1], path[2]].entries()) {
+      const local = timezone.fromUtc(point.timestamp)
+      pickers[index].vm.$emit('update:modelValue', new Date(local.year(), local.month(), local.date(), local.hour(), local.minute(), local.second()))
+    }
+    await wrapper.find('.pick').trigger('click')
+    await vi.advanceTimersByTimeAsync(300)
+    await flushPromises()
+    const request = store.previewTimelineEdit.mock.calls.at(-1)[0]
+    expect(request.anchorStart).toBe(new Date(path[1].timestamp).toISOString())
+    expect(request.anchorEnd).toBe(new Date(path[2].timestamp).toISOString())
+    const save = wrapper.findAll('.action').find(button => button.text() === 'Save Split')
+    expect(save.attributes('disabled')).toBeUndefined()
+    await save.trigger('click')
+    await flushPromises()
+    expect(store.createTimelineEdit).toHaveBeenCalledWith(request)
+    expect(wrapper.emitted('split')[0][0].edit.id).toBe(12)
+    wrapper.unmount()
   })
 
   it('saves the stop as one unified timeline edit with the chosen place by reference', async () => {

@@ -35,6 +35,20 @@ describe('Unified missing activity editor', () => {
     expect(wrapper.findAllComponents(DateStub).map(component => component.props('modelValue'))).toEqual([null, null])
     expect(wrapper.findAllComponents(SelectStub)[0].props('modelValue')).toBeNull()
   })
+  it('reviews a single trip inside the forced stay', async () => {
+    const store = useTimelineStore()
+    const preview = vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
+    const wrapper = await open({ replaceStay: { id: 91, anchorStart: times.startTime, anchorEnd: times.endTime } })
+    expect(wrapper.text()).not.toContain('What happened?')
+    const endpoints = wrapper.findAll('.pick-place')
+    expect(endpoints).toHaveLength(2)
+    for (const endpoint of endpoints) await endpoint.trigger('click')
+    await click(wrapper, 'Review changes')
+    expect(preview).toHaveBeenCalledWith(expect.objectContaining({
+      replaceStayEditId: 91,
+      activities: [expect.objectContaining({ segmentType: 'TRIP', startTime: times.startTime, endTime: times.endTime })]
+    }))
+  })
   it('reviews and saves a correction without calling reconstruction or renaming a source', async () => {
     const store = useTimelineStore(), trips = useTripsStore()
     vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
@@ -207,6 +221,110 @@ describe('Unified missing activity editor', () => {
       wrapper.findComponent({ name: 'MapContainer' }).vm.$emit('map-click', { latlng: { lat: 50, lng: 30 } }); await flushPromises()
       expect(placeScroll).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' })
     } finally { window.matchMedia = original }
+  })
+
+  it('inspects vector GPS groups without placing a stay or route point or changing times', async () => {
+    const wrapper = await open({ suggestedRange: times })
+    await stay(wrapper)
+    const type = wrapper.findAllComponents(SelectStub).find(select => select.props('ariaLabel') === 'What happened?')
+    const queryRenderedFeatures = vi.fn(() => [{ properties: { groupRaw: '{}' } }])
+    const map = wrapper.findComponent({ name: 'MapContainer' })
+    map.vm.$emit('map-ready', { queryRenderedFeatures, setView: vi.fn(), fitBounds: vi.fn() })
+    await flushPromises()
+    const originalTimes = wrapper.findAllComponents(DateStub).map(field => field.props('modelValue'))
+    const clickGps = async () => {
+      map.vm.$emit('map-click', { point: { x: 10, y: 20 }, latlng: { lat: 1, lng: 2 } })
+      await flushPromises()
+    }
+    await clickGps()
+    expect(wrapper.findComponent(PlaceStub).props('point')).toBeNull()
+    type.vm.$emit('update:modelValue', 'TRIP'); await flushPromises()
+    for (const picker of wrapper.findAllComponents(PlaceStub)) picker.vm.$emit('update:modelValue', place)
+    await flushPromises()
+    await click(wrapper, 'Add route points')
+    await clickGps()
+    expect(wrapper.find('.route-points').exists()).toBe(false)
+    expect(wrapper.findAllComponents(DateStub).map(field => field.props('modelValue'))).toEqual(originalTimes)
+    queryRenderedFeatures.mockReturnValue([{ properties: { raw_count: 9 } }])
+    await clickGps()
+    expect(wrapper.find('.route-points').exists()).toBe(false)
+    queryRenderedFeatures.mockReturnValue([])
+    await clickGps()
+    expect(wrapper.findAll('.route-points li')).toHaveLength(1)
+    await wrapper.setProps({ visible: false })
+    expect(wrapper.findComponent({ name: 'RawGpsPointsLayer' }).exists()).toBe(false)
+  })
+
+  it('keeps seconds when applying GPS sample boundaries from the map', async () => {
+    const points = [{ ...place, timestamp: '2026-09-15T14:24:17Z' }, { ...place, timestamp: '2026-09-15T14:25:47Z' }]
+    const wrapper = await open({ recordedPoints: points })
+    await click(wrapper, 'Use GPS timestamps')
+    const layer = wrapper.findComponent({ name: 'RawGpsPointsLayer' })
+    layer.props('selectPoint')(points[1]); layer.props('selectPoint')(points[0])
+    await flushPromises()
+    await click(wrapper, 'Use these times')
+    const values = wrapper.findAllComponents(DateStub).map(field => timelinePickerToUtc(field.props('modelValue'), useTimezone()))
+    expect(values.map(value => new Date(value).toISOString())).toEqual(points.map(point => point.timestamp.replace('Z', '.000Z')))
+    expect(wrapper.findComponent({ name: 'RawGpsPointsLayer' }).props('selectPoint')).toBeNull()
+  })
+
+  it('mounts GPS inspection beside the editor map and outside its clipped viewport', async () => {
+    const wrapper = await open({})
+    const panel = wrapper.find('.gps-inspector')
+    expect(wrapper.findComponent({ name: 'RawGpsPointsLayer' }).props('inspectorContainer')).toBe(panel.element)
+    expect(panel.element.closest('.map-stub')).toBeNull()
+    expect(panel.attributes('role')).toBe('region')
+    wrapper.unmount()
+  })
+
+  it('keeps GPS samples unobstructed until an activity is chosen and during timestamp selection', async () => {
+    const wrapper = await open({ suggestedRange: times, recordedPoints: [
+      { ...place, timestamp: times.startTime }, { ...place, timestamp: times.endTime }
+    ] })
+    const markers = () => wrapper.findComponent({ name: 'TripReconstructionMapOverlay' }).props('contextPoints')
+    expect(markers()).toEqual([])
+    expect(wrapper.find('.map-marker-legend').exists()).toBe(false)
+    wrapper.findAllComponents(SelectStub).find(select => select.props('ariaLabel') === 'What happened?').vm.$emit('update:modelValue', 'TRIP')
+    await flushPromises()
+    expect(markers().map(marker => marker.label)).toEqual(['A', 'B'])
+    await click(wrapper, 'Use GPS timestamps')
+    expect(markers()).toEqual([])
+    expect(wrapper.find('.map-marker-legend').exists()).toBe(false)
+    await click(wrapper, 'Cancel')
+    expect(markers().map(marker => marker.label)).toEqual(['A', 'B'])
+    wrapper.unmount()
+  })
+
+  it('discards unsaved times, places, GPS boundaries, and review when closed and reopened', async () => {
+    const recordedPoints = [{ ...place, timestamp: times.startTime }, { ...place, timestamp: times.endTime }]
+    const wrapper = await open({ suggestedRange: times, recordedPoints })
+    await stay(wrapper)
+    const startField = wrapper.findAllComponents(DateStub)[0]
+    startField.vm.$emit('update:modelValue', new Date(startField.props('modelValue').getTime() + 77000))
+    await flushPromises()
+    vi.spyOn(useTimelineStore(), 'previewActivityCorrection').mockResolvedValue(previewResult)
+    await click(wrapper, 'Review changes')
+    expect(wrapper.find('.activity-review').exists()).toBe(true)
+    await click(wrapper, 'Cancel')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    const activityChoice = wrapper.findAllComponents(SelectStub).find(select => select.props('ariaLabel') === 'What happened?')
+    expect(activityChoice.props('modelValue')).toBeNull()
+    expect(wrapper.findComponent(PlaceStub).exists()).toBe(false)
+    expect(wrapper.find('.activity-review').exists()).toBe(false)
+    expect(wrapper.find('.gps-inspector').element.children).toHaveLength(0)
+    const values = wrapper.findAllComponents(DateStub).map(field => timelinePickerToUtc(field.props('modelValue'), useTimezone()))
+    expect(values.map(value => new Date(value).toISOString())).toEqual([times.startTime, times.endTime].map(value => value.replace('Z', '.000Z')))
+    await click(wrapper, 'Use GPS timestamps')
+    const layer = wrapper.findComponent({ name: 'RawGpsPointsLayer' })
+    layer.props('selectPoint')(recordedPoints[0])
+    await flushPromises()
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    await click(wrapper, 'Use GPS timestamps')
+    expect(wrapper.findAllComponents(SelectStub).filter(select => ['First GPS point', 'Second GPS point'].includes(select.props('ariaLabel'))).map(select => select.props('modelValue'))).toEqual([null, null])
+    wrapper.unmount()
   })
 
 })

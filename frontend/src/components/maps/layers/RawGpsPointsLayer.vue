@@ -7,6 +7,7 @@
     :visible="visible"
     :resolve-location="resolveLocation"
     :select-point="selectPoint"
+    :inspector-container="inspectorContainer"
   />
 </template>
 
@@ -29,6 +30,7 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  inspectorContainer: { type: Object, default: null },
   selectPoint: { type: Function, default: null },
   resolveLocation: {
     type: Function,

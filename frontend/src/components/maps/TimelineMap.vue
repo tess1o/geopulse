@@ -275,6 +275,7 @@
         <!-- Context Menus -->
         <ContextMenu
           ref="mapContextMenuRef"
+          class="timeline-map-context-menu"
           :model="mapMenuItems"
           :popup="true"
         />
@@ -2224,6 +2225,10 @@ defineExpose({
 </script>
 
 <style scoped>
+:global(.timeline-map-context-menu.p-anchored-overlay-leave-active) {
+  pointer-events: none;
+}
+
 .map-view-container {
   width: 100%;
   height: 100%;

@@ -6,6 +6,7 @@
  */
 export default {
     edit: {
+        dismissTransitionHint: 'Removes this transition without changing either stay. You can undo this in Timeline changes.',
     groupStructureHint: 'To change times, split, merge, or remove these activities, undo the correction group in Your changes and add it again.',
         reviewChanges: 'Review changes',
         reviewFirst: 'Step 1 of 2 · Make your changes, then continue to review.',
@@ -52,6 +53,7 @@ export default {
         history: 'Timeline changes',
         editedCount: '{count} timeline changes',
         details: 'Details',
+        renameUnlinked: "Global rename needs a linked place. Use Location to link a place or Visit label to name this visit.",
         moreChanges: 'More changes',
         visitLabel: 'Visit label',
         visitLabelPlaceholder: 'For example, Dinner with Alex',
@@ -61,6 +63,7 @@ export default {
         splitStayQuestion: 'Where were you after this time?',
         splitStayHint: 'The visit becomes two visits. The first part stays at {location}.',
         place: {
+            useLinkedPlace: "Use linked place: {name}",
             current: 'Current location',
             selected: 'Selected location',
             unnamed: 'Unnamed place',
@@ -127,6 +130,7 @@ export default {
             merge: 'Merge', remove: 'Remove', gapToStay: 'Convert to stay', gapToTrip: 'Convert to trip'
         },
         actionHint: {
+            dismissTransition: 'Remove this marker without changing either stay',
             location: 'Where this visit happened',
             visitLabel: 'A title for this visit only, such as "Dinner with Alex"',
             renameLocation: 'Changes the name of this location for all its visits',
@@ -140,7 +144,7 @@ export default {
             gapToStay: 'You stayed in one place during the gap',
             gapToTrip: 'You were travelling during the gap'
         },
-        resolution: { merge: 'Merging compatible neighbours', previous: 'Extending the previous event', next: 'Extending the next event', gap: 'Leaving a data gap' },
+        resolution: { merge: 'Merging compatible neighbours', previous: 'Extending the previous event', next: 'Extending the next event', gap: 'Leaving a data gap', dismiss: 'Removing the unrecorded transition' },
         kind: {
             SET_MOVEMENT_TYPE: 'Movement type', SET_PLACE: 'Location', SET_VISIT_NAME: 'Visit label',
             FORCE_STAY: 'Forced stay', FORCE_TRIP: 'Forced trip', SET_TIMES: 'Time', SPLIT_STAY: 'Split stay',
@@ -204,6 +208,10 @@ export default {
         forDuration: 'For'
     },
     trip: {
+        unrecordedTransition: 'Unrecorded transition',
+        unrecordedHint: 'Your location changed between these stays, but no travel was recorded. Travel time is unknown.',
+        unknownDuration: 'Unknown',
+        estimatedDistanceLabel: 'Estimated distance:',
         edited: 'Edited',
         transitionTo: 'Transition to',
         transitionToNewPlace: 'Transition to new place',

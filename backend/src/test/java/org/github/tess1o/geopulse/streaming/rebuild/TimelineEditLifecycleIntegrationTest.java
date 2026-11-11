@@ -43,6 +43,106 @@ class TimelineEditLifecycleIntegrationTest {
     @BeforeEach
     void mocks() { GeocodingTestMocks.install(); }
 
+    @org.junit.jupiter.api.Test
+    void insertedStayPreservesShortTripLegsThroughPreviewSaveAndRebuild() {
+        UUID user = day.ingest(harness, "short-split-legs");
+        var original = tripRows(user).getFirst();
+        Instant tripEnd = original.getTimestamp().plusSeconds(original.getTripDuration());
+        var request = new TimelineEditRequest();
+        request.setKind(TimelineEditKind.FORCE_STAY);
+        request.setAnchorStart(original.getTimestamp().plusSeconds(23));
+        request.setAnchorEnd(tripEnd.minusSeconds(113));
+        request.setAffectedFrom(at("06:00"));
+        request.setAffectedTo(at("22:00"));
+        request.setPayload(new LinkedHashMap<>(Map.of("locationName", "Stop",
+                "latitude", day.bakery[0], "longitude", day.bakery[1])));
+
+        var preview = edits.preview(user, request);
+        assertThat(preview.events()).filteredOn(event -> event.type().equals("TRIP"))
+                .extracting(event -> Duration.between(event.start(), event.end()).getSeconds())
+                .containsExactly(23L, 113L);
+        var edit = edits.create(user, request);
+        for (int rebuild = 0; rebuild < 2; rebuild++) {
+            harness.fullRebuild(user);
+            assertThat(tripRows(user)).extracting(TimelineTripEntity::getTripDuration).containsExactly(23L, 113L);
+            assertPreviewMatchesStored(user, preview);
+            assertApplied(user, edit.id());
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void successiveTripMergesReplayAndUndoInOrder() {
+        UUID user = day.ingest(harness, "chained-trip-merges");
+        harness.ingest(user, new Track().drive(day.office, day.home, at("12:01"), at("12:45"))
+                .stay(day.home, at("12:46"), at("13:59"), 2)
+                .drive(day.home, day.office, at("14:00"), at("14:45"))
+                .stay(day.office, at("14:46"), at("18:00"), 2).messages());
+        harness.fullRebuild(user);
+        assertThat(tripRows(user)).hasSize(3);
+
+        var first = edits.create(user, mergeNext(tripRows(user).getFirst(), at("13:30")));
+        harness.fullRebuild(user);
+        assertThat(tripRows(user)).hasSize(2);
+        var intermediate = snapshot(user);
+        var secondRequest = mergeNext(tripRows(user).getFirst(), at("18:00"));
+        assertThat(edits.preview(user, secondRequest).events()).filteredOn(event -> event.type().equals("TRIP")).hasSize(1);
+        var second = edits.create(user, secondRequest);
+        generation.generateTimelineFromTimestamp(user, second.affectedFrom());
+        assertThat(tripRows(user)).hasSize(1);
+        harness.fullRebuild(user);
+        assertThat(tripRows(user)).hasSize(1);
+        assertApplied(user, first.id());
+        assertApplied(user, second.id());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> edits.revert(user, first.id()))
+                .hasMessageContaining("Undo the later correction first");
+        edits.revert(user, second.id()).orElseThrow();
+        harness.fullRebuild(user);
+        assertThat(snapshot(user)).containsExactlyElementsOf(intermediate);
+        edits.restore(user, second.id()).orElseThrow();
+        harness.fullRebuild(user);
+        assertThat(tripRows(user)).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"MERGE_NEXT", "REMOVE_MERGE"})
+    void mergeAfterChangingStayTimesReplaysBothEdits(String scenario) {
+        UUID user = day.ingest(harness, "merge-after-retime");
+        harness.ingest(user, new Track().drive(day.office, day.home, at("12:01"), at("12:45"))
+                .stay(day.home, at("12:46"), at("18:00"), 2).messages());
+        harness.fullRebuild(user);
+        var office = stayRows(user).stream().filter(row -> row.getTimestamp().equals(at("08:46")))
+                .findFirst().orElseThrow();
+        var officeEnd = office.getTimestamp().plusSeconds(office.getStayDuration());
+        var originalTrips = tripRows(user);
+        var retime = request("SET_TIMES", originalTrips.getFirst(), originalTrips.getLast(), office, officeEnd, user);
+        var earlier = edits.create(user, retime);
+        harness.fullRebuild(user);
+        var retimed = snapshot(user);
+        var currentTrips = tripRows(user);
+        var currentOffice = stayRows(user).stream().filter(row -> row.getTimestamp().equals(at("08:50")))
+                .findFirst().orElseThrow();
+        var merge = request(scenario, currentTrips.getFirst(), currentTrips.getLast(), currentOffice, officeEnd, user);
+        var later = edits.create(user, merge);
+        harness.fullRebuild(user);
+        assertThat(tripRows(user)).hasSize(1);
+        assertApplied(user, earlier.id());
+        assertApplied(user, later.id());
+        edits.revert(user, later.id()).orElseThrow();
+        harness.fullRebuild(user);
+        assertThat(snapshot(user)).containsExactlyElementsOf(retimed);
+    }
+
+    private static TimelineEditRequest mergeNext(TimelineTripEntity trip, Instant affectedTo) {
+        var request = new TimelineEditRequest();
+        request.setKind(TimelineEditKind.MERGE);
+        request.setAnchorStart(trip.getTimestamp());
+        request.setAnchorEnd(trip.getTimestamp().plusSeconds(trip.getTripDuration()));
+        request.setAffectedFrom(at("06:00"));
+        request.setAffectedTo(affectedTo);
+        request.getPayload().put("direction", "NEXT");
+        return request;
+    }
+
     @ParameterizedTest(name = "{0}: persisted output, undo, redo and incremental replay")
     @ValueSource(strings = {"SET_MOVEMENT_TYPE", "SET_PLACE", "SET_VISIT_NAME", "FORCE_STAY", "FORCE_TRIP",
             "SET_TIMES", "SPLIT_STAY", "FORCE_STAY_SUBMINUTE", "MERGE_PREVIOUS", "MERGE_NEXT", "REMOVE_GAP",

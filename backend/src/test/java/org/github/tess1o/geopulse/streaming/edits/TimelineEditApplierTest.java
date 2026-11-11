@@ -25,6 +25,56 @@ class TimelineEditApplierTest {
     private final TimelineEditApplier applier = new TimelineEditApplier();
 
     @Test
+    void zeroDurationConnectorCanBeClassifiedDismissedAndRetimedWithoutMatchingAdjacentStays() {
+        var previous = stay(-60, 60, "Home");
+        var connector = trip(0, 0, TripType.UNKNOWN);
+        var next = stay(0, 60, "Shop");
+        // Loading stays before trips must still put the connector before the stay at the same timestamp.
+        var source = List.<TimelineEvent>of(previous, next, connector);
+        var classify = edit(1, TimelineEditKind.SET_MOVEMENT_TYPE, 0, 0, Map.of("movementType", "WALK"));
+        var classified = applier.apply(source, List.of(classify));
+        assertThat(classified.appliedEditIds()).containsExactly(1L);
+        assertThat(classified.events().get(1)).isInstanceOfSatisfying(Trip.class, trip -> {
+            assertThat(trip.getTripType()).isEqualTo(TripType.WALK);
+            assertThat(trip.getDuration()).isZero();
+            assertThat(trip.getMovementTypeSource()).isEqualTo(MovementTypeSource.MANUAL);
+        });
+
+        var dismiss = edit(2, TimelineEditKind.REMOVE_EVENT, 0, 0, Map.of("resolution", "DISMISS"));
+        var removed = applier.apply(source, List.of(classify, dismiss));
+        assertThat(removed.appliedEditIds()).containsExactly(1L, 2L);
+        assertThat(removed.events()).hasSize(2).allMatch(Stay.class::isInstance);
+        assertThat(removed.events().getFirst().getEndTime()).isEqualTo(ZERO);
+        assertThat(removed.events().getLast().getStartTime()).isEqualTo(ZERO);
+        assertThat(removed.applications().get(2L)).isSameAs(removed.events().getFirst());
+        assertThat(applier.apply(source, List.of(classify)).events()).hasSize(3);
+
+        var retime = edit(3, TimelineEditKind.SET_TIMES, 0, 0,
+                Map.of("start", at(-2).toString(), "end", at(2).toString()));
+        var timed = applier.apply(source, List.of(classify, retime));
+        assertThat(timed.appliedEditIds()).containsExactly(1L, 3L);
+        assertThat(timed.events().getFirst().getEndTime()).isEqualTo(at(-2));
+        assertThat(timed.events().get(1).getDuration()).isEqualTo(Duration.ofMinutes(4));
+        assertThat(timed.events().getLast().getStartTime()).isEqualTo(at(2));
+        assertThat(connector.getTripType()).isEqualTo(TripType.UNKNOWN);
+    }
+
+    @Test
+    void pointAnchorDoesNotMatchPositiveTripsDifferentTimesOrDistantEndpoints() {
+        var command = edit(1, TimelineEditKind.SET_MOVEMENT_TYPE, 0, 0, Map.of(
+                "movementType", "WALK", "sourceStartLatitude", 1.0, "sourceStartLongitude", 1.0,
+                "sourceEndLatitude", 2.0, "sourceEndLongitude", 2.0));
+        var distant = trip(0, 0, TripType.UNKNOWN);
+        distant.setEndPoint(GPSPoint.builder().timestamp(ZERO).latitude(3).longitude(3).build());
+        for (var candidate : List.of(trip(0, 1, TripType.UNKNOWN), trip(1, 0, TripType.UNKNOWN),
+                distant, stay(0, 60, "Shop"))) {
+            var result = applier.apply(List.of(candidate), List.of(command));
+            assertThat(result.appliedEditIds()).isEmpty();
+            assertThat(result.unappliedEditIds()).containsExactly(1L);
+        }
+    }
+
+    @Test
     void reconstructedShortStayIsExactEvenWithoutAutomaticEvents() {
         var correction = edit(1, TimelineEditKind.FORCE_STAY, 0, 3,
                 Map.of("latitude", 50.0, "longitude", 30.0, "reconstruction", true));

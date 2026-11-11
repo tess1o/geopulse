@@ -1,6 +1,7 @@
 <template>
   <Card
     class="timeline-card timeline-card--trip"
+    :class="{ 'timeline-card--unrecorded': isUnrecordedTransition }"
     v-bind="longPressBindings"
     @click="handleClick"
     @contextmenu="showContextMenu"
@@ -37,7 +38,11 @@
     <template #subtitle>
       <div class="timeline-subtitle">
         <p class="transition-title">
-          <template v-if="transitionDestinationName">
+          <template v-if="isUnrecordedTransition">
+            <i class="pi pi-info-circle" aria-hidden="true" /> {{ t('timeline.trip.unrecordedTransition') }}
+            <span v-if="transitionDestinationName" class="transition-destination"> · {{ transitionDestinationName }}</span>
+          </template>
+          <template v-else-if="transitionDestinationName">
             🔄 {{ t('timeline.trip.transitionTo') }} <span class="transition-destination">{{ transitionDestinationName }}</span>
           </template>
           <template v-else>
@@ -52,10 +57,10 @@
       <div class="trip-content">
         <p class="trip-detail">
           ⏱️ {{ t('timeline.trip.durationLabel') }}
-          <span class="font-bold">{{ formatDuration(tripItem.tripDuration) }}</span>
+          <span class="font-bold">{{ isUnrecordedTransition ? t('timeline.trip.unknownDuration') : formatDuration(tripItem.tripDuration) }}</span>
         </p>
         <p class="trip-detail">
-          📏 {{ t('timeline.trip.distanceLabel') }}
+          📏 {{ t(isUnrecordedTransition ? 'timeline.trip.estimatedDistanceLabel' : 'timeline.trip.distanceLabel') }}
           <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
         </p>
         <p class="trip-detail">
@@ -66,7 +71,10 @@
             <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="movement-edited-indicator">{{ t('timeline.trip.edited') }}</span>
           </span>
         </p>
-        <p v-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
+        <p v-if="isUnrecordedTransition" class="unrecorded-hint" role="note">
+          {{ t('timeline.trip.unrecordedHint') }}
+        </p>
+        <p v-else-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
           {{ t('timeline.trip.unrecognizedHint') }}
         </p>
       </div>
@@ -253,6 +261,7 @@ const contextMenuItems = computed(() => {
 })
 
 const timezone = useTimezone()
+const isUnrecordedTransition = computed(() => props.tripItem.tripDuration === 0)
 
 const { matchingPhotos } = useTimelineCardPhotoMatching({
   itemRef: computed(() => props.tripItem),
@@ -359,6 +368,16 @@ const formattedTimestamp = computed(() => {
 .timeline-card--trip {
   background-color: var(--gp-timeline-card-trip);
   border-left: 4px solid var(--gp-success);
+}
+
+.timeline-card--unrecorded {
+  border-left-color: var(--gp-text-secondary);
+}
+
+.unrecorded-hint {
+  margin: 4px 0 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
 }
 
 .transition-title {

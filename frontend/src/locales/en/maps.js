@@ -270,6 +270,8 @@ export default {
             rawGpsPoint: 'Raw GPS point',
             favoriteSource: 'Favorite',
             geocodingSource: 'Geocoding',
+            pointDetails: 'Point details',
+            showMore: 'Show more',
             showingPoints: 'Showing first {shown} of {total} points',
             notAvailable: 'N/A'
         }

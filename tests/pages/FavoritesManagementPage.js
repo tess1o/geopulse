@@ -154,20 +154,20 @@ export class FavoritesManagementPage {
   // MAP OPERATIONS
   // ===========================================
 
-  async waitForMapReady() {
+  async waitForMapReady(mapId = 'favorites-map') {
     await this.mapHarness.waitForMapReady({
-      mapId: 'favorites-map',
+      mapId,
       timeout: 15000,
       settleMs: 1200
     });
+    await expect.poll(async () => (await this.mapHarness.getRegisteredMapSummary({ mapId })).isRegistered, {
+      timeout: 15000,
+      message: `Wait for ${mapId} to initialize`
+    }).toBe(true);
   }
 
   async waitForEditAreaMapReady() {
-    await this.mapHarness.waitForMapReady({
-      mapId: 'edit-area-map',
-      timeout: 15000,
-      settleMs: 1200
-    });
+    await this.waitForMapReady('edit-area-map');
   }
 
   async rightClickOnMap(x, y) {
@@ -193,52 +193,11 @@ export class FavoritesManagementPage {
 
   async drawRectangle(startX, startY, endX, endY, mapId = null) {
     const resolvedMapId = mapId || 'favorites-map';
-    await this.waitForDrawingMode(resolvedMapId, { required: true, timeout: 10000 });
-    await this.page.waitForTimeout(120);
+    await expect(this.page.getByRole('group', { name: 'Draw favorite area', exact: true })).toBeVisible();
+    await this.mapHarness.getMapHostLocator({ mapId: resolvedMapId }).scrollIntoViewIfNeeded();
     await this.mapHarness.drawRectangle(startX, startY, endX, endY, {
       mapId: resolvedMapId
     });
-  }
-
-  async waitForDrawingMode(mapId = 'favorites-map', options = {}) {
-    const mapHost = this.mapHarness.getMapHostLocator({ mapId });
-    const drawingInstruction = mapId === 'edit-area-map'
-      ? this.page.locator(`${this.selectors.editDialog} .drawing-instruction`).first()
-      : null;
-    const timeout = options.timeout ?? 3500;
-    const required = options.required ?? false;
-
-    try {
-      await expect.poll(async () => {
-        if (drawingInstruction) {
-          const hasDrawingInstruction = await drawingInstruction.isVisible().catch(() => false);
-          if (hasDrawingInstruction) {
-            return true;
-          }
-        }
-
-        return mapHost.evaluate((element) => {
-          const nodes = [element, ...element.querySelectorAll('*')];
-          return nodes.some((node) => {
-            const cursor = window.getComputedStyle(node).cursor || '';
-            return cursor.includes('crosshair') || cursor.includes('cell');
-          });
-        }).catch(() => false);
-      }, { timeout }).toBe(true);
-
-      return true;
-    } catch (error) {
-      if (required) {
-        throw error;
-      }
-      return false;
-    }
-  }
-
-  async waitForEditAreaDrawingMode(options = {}) {
-    const timeout = options.timeout ?? 10000;
-    const drawingInstruction = this.page.locator(`${this.selectors.editDialog} .drawing-instruction`).first();
-    await expect(drawingInstruction).toBeVisible({ timeout });
   }
 
   async cancelDrawing() {

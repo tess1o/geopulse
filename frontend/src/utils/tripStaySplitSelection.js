@@ -4,7 +4,7 @@ import { normalizeLatLngPoint } from '@/maps/shared/coordinateUtils'
 const DEFAULT_RADIUS_METERS = 150
 const DEFAULT_SINGLE_POINT_PADDING_SECONDS = 300
 const MIN_STAY_SECONDS = 60
-const ENDPOINT_CLUSTER_ERROR = 'Select an intermediate stop, not the trip start or end.'
+const ENDPOINT_ERROR = 'Select an intermediate stop, not the trip start or end.'
 
 export const resolveSplitSelectionRadiusMeters = (preferences = null) => {
   const configured = Number(preferences?.staypointRadiusMeters)
@@ -69,6 +69,17 @@ export const resolveStayWindowFromSelection = (points, coordinate, options = {})
   }
 
   const center = nearest.point
+  const anchorTime = toTime(center.timestamp)
+  const tripStart = toTime(options.tripStart)
+  const tripEnd = toTime(options.tripEnd)
+  if ((tripStart && anchorTime <= tripStart) || (tripEnd && anchorTime >= tripEnd)) {
+    return {
+      error: ENDPOINT_ERROR,
+      nearestDistanceMeters: nearest.distanceMeters,
+      radiusMeters
+    }
+  }
+
   let startIndex = nearest.index
   let endIndex = nearest.index
 
@@ -78,14 +89,6 @@ export const resolveStayWindowFromSelection = (points, coordinate, options = {})
 
   while (endIndex < points.length - 1 && haversineDistanceMeters(points[endIndex + 1], center) <= radiusMeters) {
     endIndex += 1
-  }
-
-  if (startIndex === 0 || endIndex === points.length - 1) {
-    return {
-      error: ENDPOINT_CLUSTER_ERROR,
-      nearestDistanceMeters: nearest.distanceMeters,
-      radiusMeters
-    }
   }
 
   const { startTime, endTime } = resolveBoundedInterval(
@@ -125,13 +128,11 @@ export const validateStayWindowSelection = (points, selectedPoint, range, option
     return { error: 'Selected place is not near GPS points in this time range.' }
   }
   if ((tripStart && anchorTime <= tripStart) || (tripEnd && anchorTime >= tripEnd)) {
-    return { error: ENDPOINT_CLUSTER_ERROR }
+    return { error: ENDPOINT_ERROR }
   }
 
-  const cluster = findContiguousCluster(points, selectedPoint, radiusMeters)
-  if (!cluster) return { error: 'No trip path points are available.' }
-  if (cluster.startIndex === 0 || cluster.endIndex === points.length - 1) {
-    return { error: ENDPOINT_CLUSTER_ERROR }
+  if (findAnchorPathIndex(points, selectedPoint, radiusMeters) < 0) {
+    return { error: 'No trip path points are available.' }
   }
 
   const hasPointInRange = points.some((point) => {
@@ -145,25 +146,6 @@ export const validateStayWindowSelection = (points, selectedPoint, range, option
   return hasPointInRange
     ? { valid: true }
     : { error: 'Selected place is not near GPS points in this time range.' }
-}
-
-const findContiguousCluster = (points, center, radiusMeters) => {
-  const anchorIndex = findAnchorPathIndex(points, center, radiusMeters)
-  if (anchorIndex < 0) return null
-
-  const anchorPoint = points[anchorIndex]
-  let startIndex = anchorIndex
-  let endIndex = anchorIndex
-
-  while (startIndex > 0 && haversineDistanceMeters(points[startIndex - 1], anchorPoint) <= radiusMeters) {
-    startIndex -= 1
-  }
-
-  while (endIndex < points.length - 1 && haversineDistanceMeters(points[endIndex + 1], anchorPoint) <= radiusMeters) {
-    endIndex += 1
-  }
-
-  return { startIndex, endIndex }
 }
 
 const findAnchorPathIndex = (points, selectedPoint, radiusMeters) => {
