@@ -140,7 +140,7 @@ export default {
         blockedBadge: 'GEBLOKKEERD',
         scheduledBackupsDisabled: 'Geplande back-ups zijn uitgeschakeld',
         noLocalBackupFound: 'Geen lokale back-up gevonden',
-        backupOlderThanLimit: 'Laatste back-up is ouder dan de ingestelde {dagens}-dagenlimiet',
+        backupOlderThanLimit: 'Laatste back-up is ouder dan de ingestelde {days}-dagenlimiet',
         noGpsDataReceived: 'Geen GPS-data ontvangen',
         gpsIngestionInactive: 'GPS-opname is meer dan 24 uur inactief geweest',
         reverseGeocodingNeedsAttention: 'Omgekeerde geocodering heeft aandacht nodig',

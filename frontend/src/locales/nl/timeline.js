@@ -6,6 +6,7 @@
  */
 export default {
     edit: {
+        dismissTransitionHint: 'Verwijdert deze overgang zonder een van beide verblijfplaatsen te wijzigen. U kunt dit ongedaan maken in Tijdlijnwijzigingen.',
         groupStructureHint: 'Om tijden te wijzigen, splits, samenvoegen of deze activiteiten te verwijderen, maak de correctiegroep in Uw wijzigingen ongedaan en voeg deze opnieuw toe.',
         reviewChanges: 'Wijzigingen bekijken',
         reviewFirst: 'Stap 1 van 2 · Maak uw wijzigingen, ga dan verder naar controle.',
@@ -50,6 +51,7 @@ export default {
         editedCount: '{count} tijdlijnwijzigingen',
         details: 'Details',
         moreChanges: 'Meer wijzigingen',
+        renameUnlinked: 'Overal hernoemen vereist een gekoppelde plaats. Gebruik Locatie om een plaats te koppelen of Bezoeklabel om dit bezoek een naam te geven.',
         visitLabel: 'Bezoeklabel',
         visitLabelPlaceholder: 'Bijv. Diner met Alex',
         visitLabelHint: 'Alleen voor dit bezoek getoond. De locatie behoudt de naam "{location}" elders.',
@@ -58,6 +60,7 @@ export default {
         splitStayQuestion: 'Waar was u na dit tijdstip?',
         splitStayHint: 'Het bezoek wordt twee bezoeklocaties. Het eerste deel blijft bij {location}.',
         place: {
+            useLinkedPlace: 'Gekoppelde plaats gebruiken: {name}',
             current: 'Huidige locatie',
             selected: 'Geselecteerde locatie',
             unnamed: 'Onbenoemde plaats',
@@ -124,6 +127,7 @@ export default {
             merge: 'Samenvoegen', remove: 'Verwijderen', gapToStay: 'Converteren naar verblijfplaats', gapToTrip: 'Converteren naar reis'
         },
         actionHint: {
+            dismissTransition: 'Deze markering verwijderen zonder een van beide verblijfplaatsen te wijzigen',
             location: 'Waar dit bezoek plaatsvond',
             visitLabel: 'Een titel voor dit bezoek alleen, bijvoorbeeld "Diner met Alex"',
             renameLocation: 'Wijzigt de naam van deze locatie voor al haar bezoeklocaties',
@@ -137,7 +141,7 @@ export default {
             gapToStay: 'U bleef op één plaats gedurende de leemte',
             gapToTrip: 'U reisde gedurende de leemte'
         },
-        resolution: { merge: 'Compatibele buren samenvoegen', previous: 'Het vorige evenement verlengen', next: 'Het volgende evenement verlengen', gap: 'Een datagap achterlaten' },
+        resolution: { merge: 'Compatibele buren samenvoegen', previous: 'Het vorige evenement verlengen', next: 'Het volgende evenement verlengen', gap: 'Een datagap achterlaten', dismiss: 'De niet-geregistreerde overgang verwijderen' },
         kind: {
             SET_MOVEMENT_TYPE: 'Bewegingstype', SET_PLACE: 'Locatie', SET_VISIT_NAME: 'Bezoeklabel',
             FORCE_STAY: 'Gedwongen verblijfplaats', FORCE_TRIP: 'Gedwongen reis', SET_TIMES: 'Tijd', SPLIT_STAY: 'Verblijf splitsen',
@@ -201,6 +205,10 @@ export default {
         forDuration: 'Gedurende'
     },
     trip: {
+        unrecordedTransition: 'Niet-geregistreerde overgang',
+        unrecordedHint: 'Uw locatie is tussen deze verblijfplaatsen veranderd, maar er is geen reis geregistreerd. De reistijd is onbekend.',
+        unknownDuration: 'Onbekend',
+        estimatedDistanceLabel: 'Geschatte afstand:',
         edited: 'Bewerkt',
         transitionTo: 'Overgang naar',
         transitionToNewPlace: 'Overgang naar nieuwe plaats',

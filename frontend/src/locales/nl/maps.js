@@ -262,6 +262,8 @@ export default {
             avatarAlt: 'Avatar'
         },
         rawGps: {
+            pointDetails: 'Puntdetails',
+            showMore: 'Meer tonen',
             coordinates: 'Coördinaten',
             altitude: 'Hoogte',
             locationUnavailable: 'Locatie niet beschikbaar',

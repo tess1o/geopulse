@@ -386,7 +386,7 @@ export default {
             stepFailed: 'Tijdlijngeneratie mislukt.',
             stepPreparing: 'Tijdlijngeneratie voorbereiden...',
             secondsShort: '{count}s',
-            minutesSecondsShort: '{minutes}m {seconden}s',
+            minutesSecondsShort: '{minutes}m {seconds}s',
             minutesShort: '{count}m',
             hoursMinutesShort: '{hours}u {minutes}m',
             hoursShort: '{count}u'

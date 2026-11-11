@@ -52,8 +52,8 @@ export default {
             viewDetails: 'Details bekijken'
         },
         notAvailable: 'Nvt',
-        durationSeconds: '{seconden}s',
-        durationMinutesSeconds: '{minuten}m {seconden}s'
+        durationSeconds: '{seconds}s',
+        durationMinutesSeconds: '{minutes}m {seconds}s'
     },
     detailsPage: {
         title: 'Tijdlijngeneratievoortgang',
@@ -132,9 +132,9 @@ export default {
             message: 'Uw tijdlijn is succesvol geregenereerd met alle nieuwste GPS-gegevens.'
         },
         durationZero: '0s',
-        durationSeconds: '{seconden}s',
-        durationMinutesSeconds: '{minuten}m {seconden}s',
-        durationHoursMinutesSeconds: '{uren}u {minuten}m {seconden}s'
+        durationSeconds: '{seconds}s',
+        durationMinutesSeconds: '{minutes}m {seconds}s',
+        durationHoursMinutesSeconds: '{hours}u {minutes}m {seconds}s'
     },
     regeneration: {
         alreadyRunning: {

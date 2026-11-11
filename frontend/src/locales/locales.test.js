@@ -48,14 +48,14 @@ describe('locale catalogs', () => {
         expect(computeCoverage(en, catalogs.uk).missing).toEqual([])
     })
 
-    it('keeps German complete with matching message parameters and plural forms', () => {
-        expect(computeCoverage(en, catalogs.de).missing).toEqual([])
+    it.each(['de', 'nl'])('keeps %s complete with matching message parameters and plural forms', locale => {
+        expect(computeCoverage(en, catalogs[locale]).missing).toEqual([])
         const parameters = value => [...String(value).matchAll(/\{[A-Za-z_]\w*\}|@:[\w.-]+/g)]
             .map(match => match[0]).sort()
-        const german = flattenValues(catalogs.de)
+        const translated = flattenValues(catalogs[locale])
         for (const [key, value] of Object.entries(flattenValues(en))) {
-            expect(parameters(german[key]), key).toEqual(parameters(value))
-            expect(String(german[key]).split('|').length, key).toBe(String(value).split('|').length)
+            expect(parameters(translated[key]), key).toEqual(parameters(value))
+            expect(String(translated[key]).split('|').length, key).toBe(String(value).split('|').length)
         }
     })
 
@@ -79,6 +79,22 @@ describe('locale catalogs', () => {
                 .filter(([, value]) => !String(value ?? '').trim())
                 .map(([key]) => `${locale}:${key}`))
         expect(empty).toEqual([])
+    })
+
+    it('renders Dutch plurals and interpolated durations', async () => {
+        await loadLocale('nl')
+        const previous = i18n.global.locale.value
+        try {
+            i18n.global.locale.value = 'nl'
+            for (const count of [0, 1, 2]) {
+                expect(t('insights.places.visits', { count }, count))
+                    .toBe(`${count} ${count === 1 ? 'bezoek' : 'bezoeken'}`)
+            }
+            expect(t('timelineJobs.detailsPage.durationHoursMinutesSeconds', { hours: 1, minutes: 2, seconds: 3 }))
+                .toBe('1u 2m 3s')
+        } finally {
+            i18n.global.locale.value = previous
+        }
     })
 
     it('resolves linked message references instead of leaking them', async () => {
@@ -141,7 +157,7 @@ describe('message syntax', () => {
   // must be written {'{z}'}. Left raw it renders as a blank, which is silent -- the URL-template help
   // text and its validation message both lost their {z}, {x}, {y} placeholders this way.
   it('renders literal braces in the tile-URL copy', () => {
-    for (const locale of ['en', 'uk', 'de']) {
+    for (const locale of ['en', 'uk', 'de', 'nl']) {
       const previous = i18n.global.locale.value
       i18n.global.locale.value = locale
       for (const key of ['profile.timeline.validation.tilePlaceholders', 'profile.timeline.sources.rasterTiles.details']) {
@@ -294,6 +310,14 @@ describe('lazy locale loading', () => {
             expect(Array.isArray(pack.monthNames)).toBe(true)
             expect(pack.monthNames).toHaveLength(12)
         }
+    })
+
+    it('loads Dutch widget labels and date names', async () => {
+        const pack = await loadPrimeVueLocale('nl')
+        expect(pack.monthNames[0]).toBe('januari')
+        const dates = await LOCALE_REGISTRY.find(entry => entry.code === 'nl').loadDayjs()
+        expect(dates.default.name).toBe('nl')
+        expect(dates.default.months[0]).toBe('januari')
     })
 
     it('falls back to the default locale for an unsupported request', async () => {
