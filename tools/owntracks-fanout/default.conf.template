@@ -1,12 +1,8 @@
-# OwnTracks fan-out: every request goes to PROD (its response is returned to the
-# phone) and a fire-and-forget copy goes to DEV (its response is discarded).
-# PROD_URL and DEV_URL are full ingest URLs; the incoming path is replaced by
-# theirs and only the query string is carried over.
-# ${PROD_URL}, ${DEV_URL} and ${RESOLVER} are filled in from the environment at
-# container start by the nginx image's envsubst step.
+# OwnTracks fan-out: PROD responds to the phone. DEV and optional THIRD get
+# copies. Each target uses its configured ingest path and the incoming query.
+# The nginx image fills in the URLs and resolver from the environment at startup.
 
-# Upstreams are resolved per request, so a DEV that is down or not yet in DNS
-# never stops nginx from starting.
+# Upstream DNS is resolved at request time so a missing target cannot block startup.
 resolver ${RESOLVER} valid=30s ipv6=off;
 
 server {
@@ -15,6 +11,7 @@ server {
 
     location / {
         mirror /__dev_mirror;
+        mirror /__third_mirror;
         mirror_request_body on;
 
         set $prod_upstream ${PROD_URL};
@@ -32,6 +29,22 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
         # Keep a slow or dead DEV from holding the phone's connection open.
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 5s;
+        proxy_read_timeout 5s;
+    }
+
+    location = /__third_mirror {
+        internal;
+
+        set $third_upstream "${THIRD_URL}";
+        if ($third_upstream = "") {
+            return 204;
+        }
+
+        proxy_pass $third_upstream$is_args$args;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_connect_timeout 3s;
         proxy_send_timeout 5s;
         proxy_read_timeout 5s;
