@@ -18,6 +18,8 @@ public enum SupportedLanguages {
     EN("en"),
     UK("uk"),
     DE("de"),
+    NL("nl"),
+
     // add-locale:entries -- `npm run i18n:add` inserts new constants above this line.
     ;
 

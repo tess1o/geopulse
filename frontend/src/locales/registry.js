@@ -77,6 +77,16 @@ export const LOCALE_REGISTRY = [
         loadPrimeVue: () => import('primelocale/de.json'),
         loadDayjs: () => import('dayjs/locale/de')
     },
+    {
+        code: 'nl',
+        name: 'Nederlands',
+        intl: 'nl-NL',
+        status: 'ready',
+        loadCatalog: () => import('./nl/index.js'),
+        loadPrimeVue: () => import('primelocale/en.json'),
+        loadDayjs: null
+    },
+
     // add-locale:entries -- `npm run i18n:add` inserts new entries above this line.
 ]
 
