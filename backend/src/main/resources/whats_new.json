@@ -1,5 +1,23 @@
 [
   {
+    "version": "2.3.0",
+    "title": "GeoPulse 2.3.0",
+    "highlights": [
+      "Favorite areas can now have any shape, instead of being limited to rectangles",
+      "Bulk mode in Favorites now includes deletions, so additions, edits and removals can be reviewed and saved together with one timeline regeneration",
+      "GeoPulse is now available in Dutch, alongside English, Ukrainian and German",
+      "Fixed oversized geocoding cache areas assigning the same place name to unrelated locations. The upgrade also clears previously cached oversized areas",
+      "Add a stop now accepts valid stays close to a trip's start or end, preserving short trip segments on either side",
+      "Zero-duration transitions are now identified as unrecorded movement with unknown duration and estimated distance. You can change their transport type, set times or dismiss them",
+      "Add Missing Activity now lets you inspect individual GPS samples within a group, match timestamps to map positions and use their exact times, including seconds",
+      "Insert a trip into a forced stay, including a stay converted from an old data gap, while keeping the remaining time at the original place. Undo restores the original stay",
+      "Merge trips successively or merge compatible events after correcting stay times. Earlier corrections are preserved, and conflicts are reported during review",
+      "Fixed Rename location everywhere for manually added stays linked to a saved place. Unlinked stays now explain why a global rename is unavailable, and place renames are retained when timeline edits replay",
+      "Corrected the Dawarich Server URL shown in Location Sources to /api/dawarich and clarified connection checks in the setup guide"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.3.0"
+  },
+  {
     "version": "2.2.1",
     "title": "GeoPulse 2.2.1",
     "highlights": [
