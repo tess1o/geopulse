@@ -148,6 +148,8 @@ components:
           minimum: -180.0
           type: number
           example: 30.521
+        geometry:
+          $ref: "#/components/schemas/AreaGeometry"
     AddPointToFavoritesDto:
       required:
       - name
@@ -745,6 +747,20 @@ components:
           type: integer
         detail:
           type: string
+    AreaGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+        coordinates:
+          type: array
+          items:
+            type: array
+            items:
+              type: array
+              items:
+                format: double
+                type: number
     AuditLogResponse:
       type: object
       properties:
@@ -981,6 +997,33 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AddAreaToFavoritesDto"
+    BulkApplyFavoritesDto:
+      required:
+      - points
+      - areas
+      - updates
+      - deleteIds
+      type: object
+      properties:
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/AddPointToFavoritesDto"
+        areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/AddAreaToFavoritesDto"
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Update"
+        deleteIds:
+          type: array
+          items:
+            format: int64
+            minimum: 0
+            exclusiveMinimum: true
+            type: integer
     BulkDeleteGpsPointsDto:
       required:
       - gpsPointIds
@@ -2960,6 +3003,8 @@ components:
           minimum: -180.0
           type: number
           example: 30.521
+        geometry:
+          $ref: "#/components/schemas/AreaGeometry"
     EditGpsPointDto:
       required:
       - coordinates
@@ -3152,6 +3197,14 @@ components:
           type: string
         country:
           type: string
+        geometry:
+          $ref: "#/components/schemas/AreaGeometry"
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
     FavoriteLocationType:
       enum:
       - POINT
@@ -6253,6 +6306,9 @@ components:
           $ref: "#/components/schemas/Instant"
         contextEnd:
           $ref: "#/components/schemas/Instant"
+        replaceStayEditId:
+          format: int64
+          type: integer
     ResetPasswordResponse:
       type: object
       properties:
@@ -8588,6 +8644,19 @@ components:
         latestUnreadId:
           format: int64
           type: integer
+    Update:
+      required:
+      - favoriteId
+      - changes
+      type: object
+      properties:
+        favoriteId:
+          format: int64
+          minimum: 0
+          exclusiveMinimum: true
+          type: integer
+        changes:
+          $ref: "#/components/schemas/EditFavoriteDto"
     UpdateApiTokenRequest:
       required:
       - name
@@ -14209,7 +14278,7 @@ paths:
     post:
       summary: Add a favorite area
       description: |-
-        Creates a favorite covering a rectangular area, such as a campus or a park. Stays inside the area use the favorite's name. Starts a background timeline regeneration so existing stays pick up the change; the response contains the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`. If a timeline job is already running, its job ID is returned instead and the regeneration runs after it finishes.
+        Creates a favorite covering a polygon or rectangle, such as a campus or a park. Stays inside the area use the favorite's name. Starts a background timeline regeneration so existing stays pick up the change; the response contains the job ID to poll with `GET /api/v1/timeline/jobs/{jobId}`. If a timeline job is already running, its job ID is returned instead and the regeneration runs after it finishes.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: FavoritesResource_addAreaToFavorites
@@ -14254,6 +14323,40 @@ paths:
       responses:
         "201":
           description: Favorites created
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      security:
+      - bearerAuth: []
+      - apiKey: []
+  /api/v1/favorites/bulk-apply:
+    post:
+      summary: Apply queued favorite changes
+      description: |-
+        Atomically creates, edits and deletes favorites. Any failure rolls back all changes. Starts one timeline regeneration after committing the batch. If a timeline job is already running, its job ID is returned instead and the regeneration runs after it finishes.
+
+        **Access:** Any signed-in user, with a session or an API token.
+      operationId: FavoritesResource_applyBulkChanges
+      tags:
+      - Favorites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkApplyFavoritesDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -23772,7 +23875,7 @@ paths:
       - apiKey: []
 info:
   title: GeoPulse API
-  version: 2.2.1
+  version: 2.3.0
   description: "REST API of GeoPulse, a self-hosted location timeline. Authentication,\
     \ examples, and guides: https://geopulse.cc/docs/api/intro"
   contact:
