@@ -76,6 +76,8 @@ class ImportJobServiceCoverageTest {
         job.setDataProcessingCompleted(true);
         job.setGpsDataImported(true);
         job.setTimelineJobId(timelineJobId);
+        // ImportDataService ran finishTimelineJob for this timeline job, which recalculates badges.
+        job.setBadgesRecalculatedAfterImport(true);
 
         TimelineJobProgress timelineJob = TimelineJobProgress.builder()
                 .jobId(timelineJobId)

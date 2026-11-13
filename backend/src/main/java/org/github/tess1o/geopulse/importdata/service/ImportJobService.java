@@ -273,7 +273,7 @@ public class ImportJobService {
                     if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.FAILED) {
                         // GPS data was imported successfully, but timeline generation failed
                         // Mark import as failed but include helpful message
-                        String errorMessage = "GPS data imported successfully, but timeline generation failed: " +
+                        String errorMessage = "Import data was saved, but timeline generation failed: " +
                                 (timelineJob.getErrorMessage() != null ? timelineJob.getErrorMessage() : "Unknown error");
 
                         importJob.setStatus(ImportStatus.FAILED);
@@ -300,7 +300,9 @@ public class ImportJobService {
                 }
 
                 // Timeline imports already recalculate badges in TimelineImportHelper.finishTimelineJob().
-                completeImportJob(importJob, importJob.getTimelineJobId() == null);
+                // A favorites-only import waits on an async regeneration that does not recalculate them.
+                completeImportJob(importJob,
+                        importJob.getTimelineJobId() == null || !importJob.isBadgesRecalculatedAfterImport());
             } catch (Exception e) {
                 log.error("Error monitoring timeline job for import {}: {}", importJob.getJobId(), e.getMessage(), e);
             }

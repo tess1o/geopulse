@@ -16,6 +16,8 @@ import org.github.tess1o.geopulse.export.dto.ExportMetadataDto;
 import org.github.tess1o.geopulse.export.dto.FavoritesDataDto;
 import org.github.tess1o.geopulse.export.dto.RawGpsDataDto;
 import org.github.tess1o.geopulse.export.dto.ReverseGeocodingDataDto;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
+import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
@@ -105,6 +107,8 @@ class GeoPulseImportClearModeFailureTransactionBoundaryTest {
         installFailingBatchProcessor();
 
         seedGpsPoint("existing-device", GPS_TIME, coordinateScope.point(-0.127600, 51.507400));
+        String existingFavoriteName = TestIds.uniqueValue("Clear Failure Existing Favorite");
+        seedFavorite(existingFavoriteName, coordinateScope.point(-0.127600, 51.507400));
 
         Point geocodedPoint = coordinateScope.point(-0.127700, 51.507500);
         Point importedGpsPoint = coordinateScope.point(-0.128000, 51.507800);
@@ -136,6 +140,8 @@ class GeoPulseImportClearModeFailureTransactionBoundaryTest {
                 "Reverse geocoding data must survive the failed import transaction");
         assertEquals(0, countFavoriteRows(favoriteName),
                 "Favorites imported in the failed transaction must roll back");
+        assertEquals(1, countFavoriteRows(existingFavoriteName),
+                "Favorites deleted by clear mode must roll back with the import transaction");
     }
 
     private void installFailingBatchProcessor() {
@@ -165,6 +171,19 @@ class GeoPulseImportClearModeFailureTransactionBoundaryTest {
             gpsPoint.setSourceType(GpsSourceType.GPX);
             gpsPoint.setCreatedAt(Instant.now());
             gpsPointRepository.persist(gpsPoint);
+        });
+    }
+
+    private void seedFavorite(String name, Point point) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            UserEntity user = userRepository.findById(testUserId);
+            FavoritesEntity favorite = FavoritesEntity.builder()
+                    .user(user)
+                    .name(name)
+                    .type(FavoriteLocationType.POINT)
+                    .geometry(point)
+                    .build();
+            entityManager.persist(favorite);
         });
     }
 

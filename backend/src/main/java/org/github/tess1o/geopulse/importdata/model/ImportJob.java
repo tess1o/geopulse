@@ -51,6 +51,12 @@ public class ImportJob {
     // Tracks that a coverage rebuild has been triggered for this import.
     private boolean coverageRecalculationStarted = false;
 
+    // True when clear mode replaced the user's favorites, so the timeline must be regenerated in full.
+    private boolean favoritesReplaced = false;
+
+    // True when finishTimelineJob already recalculated the achievement badges for this import.
+    private boolean badgesRecalculatedAfterImport = false;
+
     @ToString.Exclude
     private byte[] fileData;
 

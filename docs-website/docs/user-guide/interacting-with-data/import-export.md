@@ -212,11 +212,13 @@ Optional:
 - Only location points within this range will be imported
 - Useful for partial imports or testing
 
-**Replace Existing Data in Time Range:**
-- **Enabled:** Deletes existing data in the import time range before importing new data
-  - 🧹 **Cleaner data** - Ensures no duplicates
-  - ⚠️ **Warning:** Permanently deletes existing data in the time range
-  - **Use for:** First-time imports or when re-importing corrected data
+**Replace Existing Data Before Import:**
+- **Enabled:** Deletes existing data that the import replaces before importing new data
+  - **GPS/timeline data:** deleted within the import date range
+  - **Favorites:** favorites are not time-based, so **all existing favorites are deleted** and replaced by the archive's favorites, regardless of the date range
+  - The timeline is regenerated in full after the import, including when only favorites are imported
+  - ⚠️ **Warning:** Permanently deletes the data described above
+  - **Use for:** First-time imports or when re-importing corrected data, including added, deleted, or resized favorites
 - **Disabled:** Merges new data with existing data
   - Checks for duplicates before inserting
   - **Use for:** Incremental imports or adding new data to existing timeline
@@ -533,7 +535,7 @@ This architecture allows you to import years of location history with efficient 
 **Problem:** Duplicate data after import
 
 **Solutions:**
-- If you see duplicates, enable "Replace existing data in time range" for your next import
+- If you see duplicates, enable "Replace existing data before import" for your next import. Favorites are replaced as a complete set, so added, deleted, and resized favorites all propagate without duplicates.
 - To clean up duplicates, export data and re-import with replace mode enabled
 - Use date range filters to target specific periods
 
@@ -629,7 +631,7 @@ A: The default maximum is 10GB, which can be increased via configuration. GeoPul
 A: No, GeoPulse processes one import job at a time per user to ensure data integrity. Wait for the current job to complete before starting another.
 
 **Q: Will importing data delete my existing location history?**
-A: Only if you enable "Replace existing data in time range." Otherwise, data is merged with duplicate detection.
+A: Location history only if you enable "Replace existing data before import," and only within the imported date range. If the import includes favorites, enabling that option replaces **all** existing favorites with the archive's favorites (favorites have no time range); otherwise favorites are merged.
 
 **Q: How long are export files stored on the server?**
 A: Export files are temporary. Download them promptly after creation. The system may clean up old exports after a period of time.

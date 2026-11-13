@@ -282,7 +282,7 @@ A: Yes! Create separate location sources for each app. GeoPulse will merge all d
 A: GeoPulse uses efficient streaming parsers and can handle years of location history. Import files up to 2GB are supported (200MB default, configurable).
 
 **Q: Will importing data delete my existing location history?**
-A: Only if you enable "Replace existing data in time range." Otherwise, new data is merged with existing data (slower but safer).
+A: Location history only if you enable "Replace existing data before import," and only within the imported date range. If favorites are included, that option replaces all existing favorites with the archive's favorites, since favorites have no time range. Otherwise, new data is merged with existing data (slower but safer).
 
 **Q: How do I increase the 200MB upload limit?**
 A: Administrators can increase the limit by setting `CLIENT_MAX_BODY_SIZE` in the deployment configuration. See [Frontend Configuration](/docs/system-administration/configuration/frontend).

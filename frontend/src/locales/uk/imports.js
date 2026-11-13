@@ -7,7 +7,7 @@ export default {
     phase: {
         validating: 'Перевірка формату файлу...',
         importing: 'Імпортування даних... ({progress}%)',
-        clearing_existing_data: 'Очищення наявних даних у діапазоні дат...',
+        clearing_existing_data: 'Очищення наявних даних...',
         timeline_generation: 'Генерація хронології...',
         coverage_recalculation: 'Перерахунок покриття...',
         completed: 'Імпорт завершено',

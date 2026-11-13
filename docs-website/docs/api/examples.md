@@ -177,7 +177,7 @@ curl -sS -X POST "$GEOPULSE_URL/api/v1/imports" \
 | Option                  | Description                                                                                                      |
 |-------------------------|------------------------------------------------------------------------------------------------------------------|
 | `startTime`, `endTime`  | Import only points between these ISO-8601 instants. Send both or neither. Without them, all points are imported. |
-| `clearDataBeforeImport` | Delete your existing data in the imported date range before importing. Defaults to `false`.                      |
+| `clearDataBeforeImport` | Delete your existing data that the import replaces before importing. GPS data is deleted in the imported date range; favorites are not time-based, so when favorites are included the whole favorites set is replaced regardless of the range, and the timeline is regenerated in full. Defaults to `false`. |
 
 ### Check the import status
 

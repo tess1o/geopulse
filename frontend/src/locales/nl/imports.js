@@ -12,7 +12,7 @@ export default {
     phase: {
         validating: 'Bestandindeling valideren...',
         importing: 'Gegevens importeren... ({progress}%)',
-        clearing_existing_data: 'Bestaande gegevens in datumbereik wissen...',
+        clearing_existing_data: 'Bestaande gegevens wissen...',
         timeline_generation: 'Tijdlijn genereren...',
         coverage_recalculation: 'Dekking opnieuw berekenen...',
         completed: 'Import voltooid',

@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,6 +30,9 @@ public class ImportDataService {
 
     @Inject
     TimelineImportHelper timelineImportHelper;
+
+    @Inject
+    AsyncTimelineGenerationService asyncTimelineGenerationService;
 
     @Inject
     TransactionManager transactionManager;
@@ -80,8 +85,20 @@ public class ImportDataService {
 
         if (timelineJobId != null) {
             timelineImportHelper.finishTimelineJob(timelineJobId, job);
+            job.setBadgesRecalculatedAfterImport(true);
         }
-        
+
+        // A favorites-only import replaces the whole favorites set but has no GPS data to trigger the existing
+        // regeneration path, so the full timeline is regenerated here, after the import transaction committed.
+        if (job.isFavoritesReplaced() && timelineJobId == null) {
+            UUID regenerationJobId = asyncTimelineGenerationService.requestFullRegeneration(job.getUserId());
+            if (regenerationJobId != null) {
+                job.setTimelineJobId(regenerationJobId);
+                job.setPhase(ImportPhase.TIMELINE_GENERATION);
+                job.updateProgress(75, "Timeline generation in progress...");
+            }
+        }
+
         log.info("Import processing completed for user: {}", job.getUserId());
     }
 

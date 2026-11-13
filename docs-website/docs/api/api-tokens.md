@@ -29,7 +29,7 @@ narrowest access it needs.
 | `write` | Changing or deleting data and settings (`POST`, `PUT`, `PATCH` and `DELETE` requests). |
 | `gps:ingest` | Sending GPS points with the token, for example to `POST /api/v1/gps/ingest/home-assistant`. |
 | `export` | Creating, checking and downloading exports. |
-| `import` | Uploading files and running imports that add data. An import that replaces existing data (`clearDataBeforeImport`) also needs `write`. |
+| `import` | Uploading files and running imports that add data. An import that replaces existing data (`clearDataBeforeImport`) also needs `write`; this includes replacing all favorites when a GeoPulse archive includes favorites. |
 
 The create dialog offers presets for common cases:
 

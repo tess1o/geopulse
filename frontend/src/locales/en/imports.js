@@ -12,7 +12,7 @@ export default {
     phase: {
         validating: 'Validating file format...',
         importing: 'Importing data... ({progress}%)',
-        clearing_existing_data: 'Clearing existing data in date range...',
+        clearing_existing_data: 'Clearing existing data...',
         timeline_generation: 'Generating timeline...',
         coverage_recalculation: 'Recalculating coverage...',
         completed: 'Import completed',

@@ -272,6 +272,16 @@
           }
         }
       },
+      "AdminBackupPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "example" : "a-long-backup-passphrase",
+            "writeOnly" : true
+          }
+        }
+      },
       "AdminBackupStatusDto" : {
         "type" : "object",
         "properties" : {
@@ -313,6 +323,20 @@
           },
           "sizeBytes" : {
             "format" : "int64",
+            "type" : "integer"
+          },
+          "bytesWritten" : {
+            "format" : "int64",
+            "description" : "Bytes written to the archive while a backup is running.",
+            "type" : "integer"
+          },
+          "downloadTransfer" : {
+            "description" : "Browser download transfer state after the archive is built: running, completed, or failed.",
+            "type" : "string"
+          },
+          "downloadTransferredBytes" : {
+            "format" : "int64",
+            "description" : "Bytes streamed to the browser for the current download transfer.",
             "type" : "integer"
           },
           "phase" : {
@@ -5422,7 +5446,7 @@
             "example" : "2026-01-31T23:59:59Z"
           },
           "clearDataBeforeImport" : {
-            "description" : "Delete existing data in the imported date range before importing.",
+            "description" : "Delete existing data in the imported date range before importing. Favorites are not time-based: when favorites are included, all existing favorites are replaced by the archive's favorites regardless of the date range, and the timeline is regenerated in full.",
             "default" : false,
             "type" : "boolean"
           }
@@ -8156,9 +8180,8 @@
           "contextEnd" : {
             "$ref" : "#/components/schemas/Instant"
           },
-          "replaceStayEditId" : {
-            "format" : "int64",
-            "type" : "integer"
+          "replaceExisting" : {
+            "type" : "boolean"
           }
         }
       },
@@ -13882,7 +13905,7 @@
     "/api/v1/admin/backups/download" : {
       "get" : {
         "summary" : "Create and download a backup",
-        "description" : "Creates an encrypted full database backup, saves it in the backup folder, and streams it as the response. Requires a backup password to be configured. Fails with `409` while another backup or restore is running.\n\n**Access:** Administrators only.",
+        "description" : "Creates a temporary encrypted full database backup under the backup work path and streams it as the response. The archive is deleted after the transfer, is not saved in the local backup folder, is not listed by the files endpoint, and does not affect retention. Requires a backup password to be configured. Fails with `409` while another backup or restore is running.\n\n**Access:** Administrators only.",
         "operationId" : "AdminFullBackupResource_downloadFullBackup",
         "tags" : [ "Admin: Backups" ],
         "responses" : {
@@ -14008,6 +14031,50 @@
           },
           "403" : {
             "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        }, {
+          "apiKey" : [ ]
+        } ]
+      }
+    },
+    "/api/v1/admin/backups/password" : {
+      "put" : {
+        "summary" : "Set or change the backup password",
+        "description" : "Updates the password used to encrypt new full backups. This does not require a valid scheduled-backup configuration or a writable backup folder. Changing the password affects new backups only.\n\n**Access:** Administrators only.",
+        "operationId" : "AdminFullBackupResource_updatePassword",
+        "tags" : [ "Admin: Backups" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdminBackupPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Backup password updated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminBackupConfigDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
           }
         },
         "security" : [ {
@@ -14175,8 +14242,8 @@
     },
     "/api/v1/admin/backups/run-now" : {
       "post" : {
-        "summary" : "Create a backup",
-        "description" : "Creates an encrypted full database backup in the backup folder and returns its file name and size. Requires a backup password to be configured.\n\n**Access:** Administrators only.",
+        "summary" : "Create a local backup",
+        "description" : "Creates an encrypted full database backup in the backup folder and returns its file name and size. The file is listed by the files endpoint and counts toward retention. Requires a backup password to be configured.\n\n**Access:** Administrators only.",
         "operationId" : "AdminFullBackupResource_runBackupNow",
         "tags" : [ "Admin: Backups" ],
         "responses" : {
@@ -27007,7 +27074,7 @@
     "/api/v1/timeline/activity-corrections" : {
       "post" : {
         "summary" : "Save a reversible group of manual activities without generating GPS points",
-        "description" : "Saves manual stays and trips in empty intervals as one reversible correction group and schedules timeline regeneration. Returns the group, saved edits, and timeline job status without generating GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Saves manual stays and trips as one reversible correction group and schedules timeline regeneration. With replaceExisting=true the activities are carved out of the selected interval and the remaining time keeps the original event. Does not generate GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_save",
         "tags" : [ "Timeline Corrections" ],
         "requestBody" : {
@@ -27050,8 +27117,8 @@
     },
     "/api/v1/timeline/activity-corrections/preview" : {
       "post" : {
-        "summary" : "Review activities proposed for empty timeline intervals",
-        "description" : "Validates proposed manual stays and trips for empty intervals and returns a timeline preview with surrounding events and remaining gaps. Does not save corrections or generate GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "summary" : "Review activities for an empty interval or a rebuild of an existing one",
+        "description" : "Validates proposed manual stays and trips for empty intervals or for rebuilding an existing interval, and returns a timeline preview with surrounding events and remaining gaps. Does not save corrections or generate GPS points.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_preview",
         "tags" : [ "Timeline Corrections" ],
         "requestBody" : {
@@ -27094,8 +27161,8 @@
     },
     "/api/v1/timeline/activity-corrections/{groupId}/restore" : {
       "post" : {
-        "summary" : "Restore a correction group when its intervals remain empty",
-        "description" : "Reactivates all edits in the signed-in user's correction group after checking that its intervals remain empty, then schedules timeline regeneration. Rejects restoration if existing activities or manual corrections conflict.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "summary" : "Restore a correction group when its intervals allow it",
+        "description" : "Reactivates all edits in the signed-in user's correction group after checking that a rebuilt interval is free of newer corrections, or that an empty interval stayed empty, then schedules timeline regeneration. Rejects restoration if existing activities or manual corrections conflict.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_restore",
         "tags" : [ "Timeline Corrections" ],
         "parameters" : [ {
@@ -27134,7 +27201,7 @@
     "/api/v1/timeline/activity-corrections/{groupId}/revert" : {
       "post" : {
         "summary" : "Undo a complete activity correction group",
-        "description" : "Deactivates all edits in the signed-in user's correction group and schedules timeline regeneration from the earliest affected interval. Keeps the group available for restoration.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Deactivates all edits in the signed-in user's correction group and schedules timeline regeneration from the earliest affected interval. With cascade=true, also reverts the later active corrections that depend on it. Keeps the group available for restoration.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "ActivityCorrectionResource_revert",
         "tags" : [ "Timeline Corrections" ],
         "parameters" : [ {
@@ -27143,6 +27210,13 @@
           "required" : true,
           "schema" : {
             "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "cascade",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -27560,7 +27634,7 @@
     "/api/v1/timeline/edits/{editId}/revert" : {
       "post" : {
         "summary" : "Revert a timeline edit",
-        "description" : "Deactivates one edit and durably requests timeline regeneration.\n\n**Access:** Any signed-in user, with a session or an API token.",
+        "description" : "Deactivates one edit and durably requests timeline regeneration. With cascade=true, also reverts the later active edits that depend on it.\n\n**Access:** Any signed-in user, with a session or an API token.",
         "operationId" : "StreamingTimelineResource_revertEdit",
         "tags" : [ "Timeline Corrections" ],
         "parameters" : [ {
@@ -27570,6 +27644,13 @@
           "schema" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        }, {
+          "name" : "cascade",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         } ],
         "responses" : {

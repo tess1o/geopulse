@@ -36,8 +36,13 @@ public class ImportOptions {
      * - User's selected date range filter (if any)
      * - The actual min/max dates found in the import file
      * This ensures only data where replacements exist will be deleted.
+     * Favorites have no timestamps, so when favorites are imported the whole favorites set is
+     * replaced regardless of the range, and the timeline is regenerated in full.
      */
-    @Schema(description = "Delete existing data in the imported date range before importing.",
+    @Schema(description = "Delete existing data in the imported date range before importing. "
+            + "Favorites are not time-based: when favorites are included, all existing favorites are "
+            + "replaced by the archive's favorites regardless of the date range, and the timeline is "
+            + "regenerated in full.",
             defaultValue = "false")
     private boolean clearDataBeforeImport = false;
 

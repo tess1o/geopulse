@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -172,7 +173,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Reset sequences after import to prevent future ID conflicts
         log.info("Resetting sequences after import...");
         sequenceResetService.resetAllSequences();
-        if (job.getTimelineJobId() == null) {
+        if (job.getTimelineJobId() == null && !job.isFavoritesReplaced()) {
             job.setProgress(100);
         }
     }
@@ -216,25 +217,31 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        // 2. Import favorites (no dependencies)
-        if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
-            placesImporter.importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job, referenceMaps);
-            totalProgress += 10;
-            job.setProgress(totalProgress);
-        }
-
         // Check if GPS data exists for import
         boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
         boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
         boolean snapshotRestore = job.getOptions().isSnapshotRestore();
+        boolean restoresTimelineSnapshot = snapshotRestore && hasTimelineData;
 
-        // Handle data clearing before import if requested
+        // Handle data clearing before importing anything it may replace. Favorites are replaced as a whole
+        // set, so they must be cleared before the favorites step; the clear step also deletes the stays
+        // referencing them, which the following regeneration rebuilds.
         if (job.getOptions().isClearDataBeforeImport()) {
+            job.setFavoritesReplaced(
+                    fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)
+                            && !restoresTimelineSnapshot);
             job.setPhase(ImportPhase.CLEARING_EXISTING_DATA);
             clearExistingDataBeforeImport(fileContents, job);
             totalProgress += 10;
             job.setProgress(totalProgress);
             job.setPhase(ImportPhase.IMPORTING);
+        }
+
+        // 2. Import favorites (no dependencies)
+        if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
+            placesImporter.importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job, referenceMaps);
+            totalProgress += 10;
+            job.setProgress(totalProgress);
         }
 
         // 3. Import GPS data first
@@ -247,7 +254,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
 
         // 4. Full backup restores are snapshots: import stored timeline rows instead of regenerating.
-        boolean restoresTimelineSnapshot = snapshotRestore && hasTimelineData;
         if (restoresTimelineSnapshot) {
             timelineSnapshotImporter.importTimelineDataSnapshot(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job, referenceMaps);
             totalProgress += 35;
@@ -269,9 +275,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             // Update progress FIRST, before blocking timeline trigger
             job.updateProgress(totalProgress, "Triggering timeline generation...");
 
+            // Replacing favorites also removed the stays that referenced them, including stays outside any
+            // imported GPS range, so the whole timeline must be rebuilt.
+            Instant regenerationStart = job.isFavoritesReplaced()
+                    ? StreamingTimelineGenerationService.DEFAULT_START_DATE
+                    : firstGpsTimestamp;
+
             // Trigger timeline generation (may block for 30s with retry logic)
             // Note: timelineJobId is set inside this method, which also updates progress
-            UUID timelineJobId = timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+            UUID timelineJobId = timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, regenerationStart);
             log.info("Timeline job {} triggered for import {}", timelineJobId, job.getJobId());
 
             // Note: Import will be marked as completed by ImportService once timeline job completes
@@ -412,7 +424,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
      * restores clear timeline rows up front and import them directly from the backup.
      */
     private void clearExistingDataBeforeImport(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
-        log.info("Clearing existing GPS data before GeoPulse import for user {}", job.getUserId());
+        log.info("Clearing existing data before GeoPulse import for user {}", job.getUserId());
 
         // Calculate deletion range for GPS data if present
         if (fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA)) {
@@ -422,6 +434,11 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         if (job.getOptions().isSnapshotRestore()
                 && fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA)) {
             timelineSnapshotImporter.clearTimelineSnapshotData(job.getUserId());
+        }
+
+        // Favorites have no timestamps, so the whole set is replaced regardless of the time range.
+        if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
+            placesImporter.clearFavoritesForImport(job.getUserId());
         }
     }
 }

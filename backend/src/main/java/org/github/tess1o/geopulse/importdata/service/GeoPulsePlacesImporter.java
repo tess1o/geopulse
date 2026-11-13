@@ -346,6 +346,28 @@ public class GeoPulsePlacesImporter {
     }
 
     /**
+     * Deletes the user's favorites for a full snapshot replacement. Stays referencing a favorite must go first
+     * (timeline_stays.favorite_id has no ON DELETE action); the regeneration that follows the import rebuilds
+     * them as ordinary places.
+     *
+     * @return number of deleted favorites
+     */
+    @Transactional
+    public int clearFavoritesForImport(UUID userId) {
+        int deletedStays = entityManager.createNativeQuery(
+                        "DELETE FROM timeline_stays WHERE user_id = :userId AND favorite_id IS NOT NULL")
+                .setParameter("userId", userId)
+                .executeUpdate();
+        int deletedFavorites = entityManager.createNativeQuery(
+                        "DELETE FROM favorite_locations WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+        log.info("Cleared {} favorites and {} favorite-linked stays for user {} before import",
+                deletedFavorites, deletedStays, userId);
+        return deletedFavorites;
+    }
+
+    /**
      * Update existing favorite with better data if available
      */
     private void updateFavoriteIfNecessary(FavoritesEntity existing, String newCity, String newCountry) {
