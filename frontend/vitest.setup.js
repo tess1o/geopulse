@@ -10,9 +10,15 @@
  */
 import { config } from '@vue/test-utils'
 import { afterEach, beforeEach } from 'vitest'
+import { PrimeVueConfirmSymbol } from 'primevue/useconfirm'
 import { i18n, DEFAULT_LOCALE } from '@/locales'
 
 config.global.plugins = [...(config.global.plugins || []), i18n]
+// Components ask for a confirmation service; tests supply a no-op one and override it where they check behavior.
+config.global.provide = {
+    ...(config.global.provide || {}),
+    [PrimeVueConfirmSymbol]: { require: () => {}, close: () => {} }
+}
 
 beforeEach(() => {
     // A test may switch locale to exercise the Ukrainian catalog; reset so the next test starts from

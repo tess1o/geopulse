@@ -202,13 +202,17 @@ public class LocationPointResolver {
                 cachedResults.size(), userId, (System.currentTimeMillis() - step2StartTime) / 1000.0d);
 
         List<Point> needExternalGeocoding = new java.util.ArrayList<>();
+        // Normalization without rules returns the same id; skip its per-location transaction then.
+        boolean normalize = !needGeocoding.isEmpty() && geocodingManagementService.hasNormalizationRules(userId);
 
         for (Point point : needGeocoding) {
             String coordKey = point.getX() + "," + point.getY();
 
             if (cachedResults.containsKey(coordKey)) {
                 FormattableGeocodingResult cached = cachedResults.get(coordKey);
-                Long cachedId = normalizeGeocodingReference(userId, cachedIds.get(coordKey));
+                Long cachedId = normalize
+                        ? normalizeGeocodingReference(userId, cachedIds.get(coordKey))
+                        : cachedIds.get(coordKey);
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                         cached.getFormattedDisplayName(), cachedId));
             } else {
@@ -230,7 +234,9 @@ public class LocationPointResolver {
 
             if (individualResult.isPresent()) {
                 log.debug("Batch missed but individual lookup found cached location for user {}", userId);
-                Long normalizedId = normalizeGeocodingReference(userId, individualId.orElse(null));
+                Long normalizedId = normalize
+                        ? normalizeGeocodingReference(userId, individualId.orElse(null))
+                        : individualId.orElse(null);
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                     individualResult.get().getFormattedDisplayName(), normalizedId));
             } else {

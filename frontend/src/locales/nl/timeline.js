@@ -7,7 +7,6 @@
 export default {
     edit: {
         dismissTransitionHint: 'Verwijdert deze overgang zonder een van beide verblijfplaatsen te wijzigen. U kunt dit ongedaan maken in Tijdlijnwijzigingen.',
-        groupStructureHint: 'Om tijden te wijzigen, splits, samenvoegen of deze activiteiten te verwijderen, maak de correctiegroep in Uw wijzigingen ongedaan en voeg deze opnieuw toe.',
         reviewChanges: 'Wijzigingen bekijken',
         reviewFirst: 'Stap 1 van 2 · Maak uw wijzigingen, ga dan verder naar controle.',
         reviewReady: 'Stap 2 van 2 · Controleer het resultaat hieronder, sla dan uw wijzigingen op.',
@@ -15,6 +14,7 @@ export default {
         validTimesRequired: 'Voer een volledige, geldige datum en tijd in.',
         savedValue: 'Opgeslagen',
         placeRequired: 'Kies een locatie voordat u beoordeelt.',
+        placeNameRequired: 'Geef deze plaats een naam voordat u opslaat.',
         unchanged: 'Wijzig een waarde om op te slaan.',
         allVisits: 'Wijzigt alle bezoeken aan deze locatie',
         changeCount: '1 wijziging | {count} wijzigingen',
@@ -51,7 +51,7 @@ export default {
         editedCount: '{count} tijdlijnwijzigingen',
         details: 'Details',
         moreChanges: 'Meer wijzigingen',
-        renameUnlinked: 'Overal hernoemen vereist een gekoppelde plaats. Gebruik Locatie om een plaats te koppelen of Bezoeklabel om dit bezoek een naam te geven.',
+        renameUnlinked: 'Deze plaats is niet gekoppeld aan een favoriet of geocoderingsrecord. Gebruik Locatie om haar voor dit bezoek een naam te geven, of koppel een plaats om haar overal te hernoemen.',
         visitLabel: 'Bezoeklabel',
         visitLabelPlaceholder: 'Bijv. Diner met Alex',
         visitLabelHint: 'Alleen voor dit bezoek getoond. De locatie behoudt de naam "{location}" elders.',
@@ -61,6 +61,8 @@ export default {
         splitStayHint: 'Het bezoek wordt twee bezoeklocaties. Het eerste deel blijft bij {location}.',
         place: {
             useLinkedPlace: 'Gekoppelde plaats gebruiken: {name}',
+            customName: 'Plaatsnaam',
+            customNamePlaceholder: 'Geef deze plaats een naam, bijvoorbeeld Parkeerplaats',
             current: 'Huidige locatie',
             selected: 'Geselecteerde locatie',
             unnamed: 'Onbenoemde plaats',
@@ -115,6 +117,10 @@ export default {
         revert: 'Ongedaan',
         restore: 'Herstellen',
         undo: 'Ongedaan',
+        undoDependents: {
+            header: 'Ook latere wijzigingen ongedaan maken?',
+            message: '{count} latere wijzigingen zijn afhankelijk van deze en worden samen met haar ongedaan gemaakt.'
+        },
         undoFailed: 'Kon deze tijdlijnwijziging niet ongedaan maken.',
         previewFailed: 'Kon deze correctie niet in voorbeeld tonen.',
         saveFailed: 'Kon deze correctie niet opslaan.',
@@ -124,10 +130,12 @@ export default {
         action: {
             location: 'Locatie', visitLabel: 'Bezoeklabel', renameLocation: 'Overal locatie hernoemen', times: 'Tijd',
             movement: 'Bewegingstype', splitStay: 'Verblijf splitsen', splitTrip: 'Stop toevoegen',
-            merge: 'Samenvoegen', remove: 'Verwijderen', gapToStay: 'Converteren naar verblijfplaats', gapToTrip: 'Converteren naar reis'
+            merge: 'Samenvoegen', remove: 'Verwijderen', gapToStay: 'Converteren naar verblijfplaats', gapToTrip: 'Converteren naar reis',
+            rebuildInterval: 'Dit interval opnieuw opbouwen'
         },
         actionHint: {
             dismissTransition: 'Deze markering verwijderen zonder een van beide verblijfplaatsen te wijzigen',
+            rebuildInterval: 'Beschrijf wat hier gebeurde; de overige tijd blijft ongewijzigd',
             location: 'Waar dit bezoek plaatsvond',
             visitLabel: 'Een titel voor dit bezoek alleen, bijvoorbeeld "Diner met Alex"',
             renameLocation: 'Wijzigt de naam van deze locatie voor al haar bezoeklocaties',

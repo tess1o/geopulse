@@ -94,6 +94,11 @@ public class UserLocationNormalizationService {
         repository.delete(entity);
     }
 
+    /** Whether the user has any city/country normalization rule (one cheap query for batch callers). */
+    public boolean hasRules(UUID userId) {
+        return repository.count("user.id", userId) > 0;
+    }
+
     public NormalizedLocation normalizeForUser(UUID userId, String city, String country) {
         String normalizedCityValue = clean(city);
         String normalizedCountryValue = clean(country);

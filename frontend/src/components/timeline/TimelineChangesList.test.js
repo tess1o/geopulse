@@ -1,8 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TimelineChangesList from './TimelineChangesList.vue'
 import { useTimelineStore } from '@/stores/timeline'
+const confirmation = vi.hoisted(() => ({ require: vi.fn() }))
+vi.mock('primevue/useconfirm', () => ({ useConfirm: () => confirmation }))
 const start = '2026-10-08T10:00:00Z'
 const end = '2026-10-08T11:00:00Z'
 const item = { id: 5, type: 'stay', timestamp: start, stayDuration: 3600 }
@@ -15,6 +17,10 @@ function setup(edits, selectedItem = item) {
   return { wrapper, store }
 }
 describe('TimelineChangesList', () => {
+  beforeEach(() => {
+    confirmation.require.mockReset()
+    confirmation.require.mockImplementation(({accept}) => accept?.())
+  })
   it('shows recorded values and distinguishes related changes without inventing previous values', async () => {
     const { wrapper } = setup([edit, { ...edit, id: 2, kind: 'SET_TIMES', payload: { start, end }, beforeValues: null, target: { type: 'STAY', id: 8 } }])
     await flushPromises()
@@ -33,15 +39,34 @@ describe('TimelineChangesList', () => {
     expect(wrapper.find('[data-edit-id="9"]').exists()).toBe(true)
   })
 
-  it('offers trip insertion for an applied standalone forced stay', async () => {
-    const original = { ...edit, kind: 'FORCE_STAY', payload: { locationName: 'Gym' } }
-    const grouped = { ...original, id: 2, groupId: 'group' }
-    const { wrapper } = setup([original, grouped])
+  it('undoes a dependent chain together after confirmation', async () => {
+    const first = { ...edit, kind: 'SET_TIMES', seq: 1, payload: { start, end }, beforeValues: null }
+    const dependent = { ...edit, id: 2, seq: 2, kind: 'SET_TIMES', payload: { start, end }, target: { type: 'STAY', id: 5 },
+      beforeValues: { prerequisiteSequences: [1] } }
+    const { wrapper, store } = setup([first, dependent])
+    vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: first, timelineJobId: 'job' })
     await flushPromises()
-    const buttons = wrapper.findAll('button').filter(button => button.text() === 'Insert trip into forced stay')
-    expect(buttons).toHaveLength(1)
-    await buttons[0].trigger('click')
-    expect(wrapper.emitted('replace-stay')[0][0].id).toBe(original.id)
+
+    await wrapper.find('[data-edit-id="1"] button').trigger('click')
+    await flushPromises()
+
+    expect(confirmation.require).toHaveBeenCalledOnce()
+    expect(store.revertTimelineEdit).toHaveBeenCalledWith(first.id, true)
+  })
+
+  it('keeps the correction when the cascade confirmation is declined', async () => {
+    confirmation.require.mockImplementation(({reject}) => reject?.())
+    const first = { ...edit, kind: 'SET_TIMES', seq: 1, payload: { start, end }, beforeValues: null }
+    const dependent = { ...edit, id: 2, seq: 2, kind: 'SET_TIMES', payload: { start, end }, target: { type: 'STAY', id: 5 },
+      beforeValues: { prerequisiteSequences: [1] } }
+    const { wrapper, store } = setup([first, dependent])
+    vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: first, timelineJobId: 'job' })
+    await flushPromises()
+
+    await wrapper.find('[data-edit-id="1"] button').trigger('click')
+    await flushPromises()
+
+    expect(store.revertTimelineEdit).not.toHaveBeenCalled()
   })
 
   it('blocks duplicate undo while regeneration runs and reloads after completion', async () => {
@@ -82,7 +107,7 @@ describe('TimelineChangesList', () => {
     await flushPromises()
     await wrapper.find('button').trigger('click')
     await flushPromises()
-    expect(store.revertTimelineEdit).toHaveBeenCalledWith(stale.id)
+    expect(store.revertTimelineEdit).toHaveBeenCalledWith(stale.id, false)
     expect(wrapper.emitted('changed')[0][0].operation).toBe('undo')
   })
 

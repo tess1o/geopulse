@@ -9,16 +9,22 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.edits.*;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.repository.*;
 import org.github.tess1o.geopulse.streaming.service.*;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.testsupport.*;
+import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,15 +78,15 @@ class TimelineEditMigrationIntegrationTest {
         trip.setEndPlace(new ActivityCorrectionService.Place(
                 null, null, day.bakery[0], day.bakery[1], "Bakery"));
         var replacement = new ActivityCorrectionService.Request(
-                null, java.util.List.of(trip), null, null, original.id());
+                null, java.util.List.of(trip), original.anchorStart(), original.anchorEnd(), true);
         assertThat(activities.preview(user, replacement).events()).extracting(event -> event.type())
                 .containsExactly("STAY", "TRIP", "STAY");
         trip.setEndTime(original.anchorEnd().plusSeconds(1));
-        assertThatThrownBy(() -> activities.save(user, replacement)).hasMessageContaining("within the forced stay");
+        assertThatThrownBy(() -> activities.save(user, replacement)).hasMessageContaining("inside");
         assertThat(edits.list(user)).containsExactly(original);
         trip.setEndTime(CommuteWithStops.at("15:00"));
         var saved = activities.save(user, replacement);
-        assertThat(saved.edits()).hasSize(3);
+        assertThat(saved.edits()).hasSize(1);
         for (boolean restore : new boolean[] {false, true}) {
             harness.fullRebuild(user);
             QuarkusTransaction.requiringNew().run(() ->
@@ -316,6 +322,178 @@ class TimelineEditMigrationIntegrationTest {
                             "UPDATE " + table + " SET migrated_to_timeline_edits = TRUE WHERE user_id = '" + user + "';");
         }
         return dataMigration;
+    }
+
+    @Test
+    void importedLegacyReplaceStayGroupsBecomeOrdinaryChains() {
+        GeocodingTestMocks.install();
+        var source = harness.createUser("import-replace-group");
+        var forced = new TimelineEditRequest();
+        forced.setKind(TimelineEditKind.FORCE_STAY);
+        forced.setAnchorStart(CommuteWithStops.at("14:24"));
+        forced.setAnchorEnd(CommuteWithStops.at("15:24"));
+        forced.setAffectedFrom(CommuteWithStops.at("14:24"));
+        forced.setAffectedTo(CommuteWithStops.at("15:24"));
+        forced.setLatitude(49.82);
+        forced.setLongitude(24.01);
+        forced.setPlaceName("Knowle Lane");
+        forced.getPayload().put("activityCorrection", true);
+        var original = edits.create(source, forced);
+        harness.fullRebuild(source);
+
+        var trip = new ActivityCorrectionService.Activity();
+        trip.setSegmentType("TRIP");
+        trip.setStartTime(CommuteWithStops.at("14:30"));
+        trip.setEndTime(CommuteWithStops.at("14:34"));
+        trip.setStartPlace(new ActivityCorrectionService.Place(null, null, 49.82, 24.01, "Start"));
+        trip.setEndPlace(new ActivityCorrectionService.Place(null, null, 49.83, 24.03, "End"));
+        trip.setWaypoints(List.of(new TripReconstructionWaypointDto(49.825, 24.025)));
+        var group = activities.save(source, new ActivityCorrectionService.Request(null, List.of(trip),
+                original.anchorStart(), original.anchorEnd(), true));
+        var groupFirst = group.edits().getFirst().id();
+        // Reproduce the 2.3.0 shape: the group's first edit remembers the original seq and the original is superseded.
+        QuarkusTransaction.requiringNew().run(() -> {
+            em.createNativeQuery("UPDATE timeline_edits SET payload = jsonb_set(payload, "
+                            + "'{replacesStaySequence}', to_jsonb(CAST(?2 AS bigint))) WHERE id = ?1")
+                    .setParameter(1, groupFirst).setParameter(2, original.seq()).executeUpdate();
+            em.createNativeQuery("UPDATE timeline_edits SET status = 'SUPERSEDED', superseded_by = ?2 WHERE id = ?1")
+                    .setParameter(1, original.id()).setParameter(2, groupFirst).executeUpdate();
+        });
+
+        var archive = manual.exportOf(source, CommuteWithStops.at("00:00"), CommuteWithStops.at("23:59"));
+        var target = harness.createUser("import-replace-group-target");
+        manual.importInto(target, archive);
+        harness.fullRebuild(target);
+
+        var imported = edits.list(target);
+        assertThat(imported).filteredOn(edit -> edit.seq() == original.seq())
+                .singleElement().satisfies(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE));
+        assertThat(imported).allSatisfy(edit -> assertThat(edit.payload()).doesNotContainKey("replacesStaySequence"));
+        assertThat(imported).filteredOn(edit -> edit.groupId() != null)
+                .singleElement().satisfies(edit -> assertThat(edit.beforeValues()).containsKey("prerequisiteSequences"));
+        List<org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity> importedStays =
+                QuarkusTransaction.requiringNew().call(() -> stays.find("user.id = ?1 order by timestamp", target).list());
+        assertThat(importedStays)
+                .extracting(stay -> stay.getTimestamp() + "/" + stay.getStayDuration())
+                .containsExactly(CommuteWithStops.at("14:24") + "/360", CommuteWithStops.at("14:34") + "/3000");
+        List<TimelineTripEntity> importedTrips = QuarkusTransaction.requiringNew()
+                .call(() -> trips.find("user.id = ?1", target).list());
+        assertThat(importedTrips)
+                .singleElement().satisfies(row -> assertThat(row.getTimestamp()).isEqualTo(CommuteWithStops.at("14:30")));
+    }
+
+    @Test
+    void replaceStayGroupMigrationIsSafeForEveryDataShape() throws Exception {
+        GeocodingTestMocks.install();
+        UUID untouched = harness.createUser("mig-untouched");
+        UUID affected = harness.createUser("mig-affected");
+        UUID malformed = harness.createUser("mig-malformed");
+        UUID externallySuperseded = harness.createUser("mig-external");
+        UUID undone = harness.createUser("mig-undone");
+
+        UUID affectedGroup = UUID.randomUUID();
+        long affectedFirst = seedEdit(affected, 2, TimelineEditKind.FORCE_TRIP, "14:30", "14:34",
+                Map.of("replacesStaySequence", 1L), TimelineEditStatus.ACTIVE, affectedGroup, null);
+        long affectedOriginal = seedEdit(affected, 1, TimelineEditKind.FORCE_STAY, "14:24", "15:24",
+                Map.of("locationName", "Knowle Lane"), TimelineEditStatus.SUPERSEDED, null, affectedFirst);
+
+        UUID malformedGroup = UUID.randomUUID();
+        long malformedFirst = seedEdit(malformed, 2, TimelineEditKind.FORCE_TRIP, "14:30", "14:34",
+                Map.of("replacesStaySequence", "abc"), TimelineEditStatus.ACTIVE, malformedGroup, null);
+        seedEdit(malformed, 3, TimelineEditKind.FORCE_TRIP, "14:31", "14:34",
+                Map.of("replacesStaySequence", "999999999999999999999999999"),
+                TimelineEditStatus.ACTIVE, malformedGroup, null);
+        var nullMarker = new LinkedHashMap<String, Object>();
+        nullMarker.put("replacesStaySequence", null);
+        seedEdit(malformed, 4, TimelineEditKind.FORCE_TRIP, "14:32", "14:34", nullMarker,
+                TimelineEditStatus.ACTIVE, malformedGroup, null);
+        seedEdit(malformed, 5, TimelineEditKind.FORCE_TRIP, "14:33", "14:34",
+                Map.of("replacesStaySequence", true), TimelineEditStatus.ACTIVE, malformedGroup, null);
+        seedEdit(malformed, 6, TimelineEditKind.FORCE_TRIP, "14:34", "14:35",
+                Map.of("replacesStaySequence", Map.of("a", 1)), TimelineEditStatus.ACTIVE, malformedGroup, null);
+        seedEdit(malformed, 7, TimelineEditKind.FORCE_TRIP, "14:35", "14:36",
+                Map.of("replacesStaySequence", List.of(1)), TimelineEditStatus.ACTIVE, malformedGroup, null);
+        long malformedOriginal = seedEdit(malformed, 1, TimelineEditKind.FORCE_STAY, "14:24", "15:24",
+                Map.of("locationName", "Knowle Lane"), TimelineEditStatus.SUPERSEDED, null, malformedFirst);
+
+        UUID externalGroup = UUID.randomUUID();
+        long externalOther = seedEdit(externallySuperseded, 3, TimelineEditKind.FORCE_STAY, "16:00", "16:30",
+                Map.of("locationName", "Other"), TimelineEditStatus.ACTIVE, null, null);
+        seedEdit(externallySuperseded, 2, TimelineEditKind.FORCE_TRIP, "14:30", "14:34",
+                Map.of("replacesStaySequence", 1L), TimelineEditStatus.ACTIVE, externalGroup, null);
+        long externalOriginal = seedEdit(externallySuperseded, 1, TimelineEditKind.FORCE_STAY, "14:24", "15:24",
+                Map.of("locationName", "Knowle Lane"), TimelineEditStatus.SUPERSEDED, null, externalOther);
+
+        UUID undoneGroup = UUID.randomUUID();
+        seedEdit(undone, 2, TimelineEditKind.FORCE_TRIP, "14:30", "14:34",
+                Map.of("replacesStaySequence", 1L), TimelineEditStatus.REVERTED, undoneGroup, null);
+        long undoneOriginal = seedEdit(undone, 1, TimelineEditKind.FORCE_STAY, "14:24", "15:24",
+                Map.of("locationName", "Knowle Lane"), TimelineEditStatus.ACTIVE, null, null);
+
+        runMigrationFile("/db/migration/V36.88.0__Normalize_replace_stay_groups.sql");
+
+        assertThat(findEdit(affectedOriginal).getStatus()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(findEdit(affectedOriginal).getSupersededBy()).isNull();
+        assertThat(findEdit(affectedFirst).getPayload()).doesNotContainKey("replacesStaySequence");
+        assertThat(findEdit(affectedFirst).getBeforeValues()).containsKey("prerequisiteSequences");
+        assertThatThrownBy(() -> edits.revert(affected, affectedOriginal, false))
+                .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class)
+                .hasMessageContaining("Undo the later correction first");
+        assertThat(harness.pendingRebuild(affected).orElseThrow().rebuildFrom()).isEqualTo(CommuteWithStops.at("14:24"));
+
+        assertThat(findEdit(malformedOriginal).getStatus()).isEqualTo(TimelineEditStatus.SUPERSEDED);
+        assertNoMarkers(malformed);
+        assertThat(harness.pendingRebuild(malformed)).isEmpty();
+
+        assertThat(findEdit(externalOriginal).getStatus()).isEqualTo(TimelineEditStatus.SUPERSEDED);
+        assertNoMarkers(externallySuperseded);
+        assertThat(findEdit(externalOther).getBeforeValues()).isNull();
+        assertThat(harness.pendingRebuild(externallySuperseded)).isEmpty();
+
+        assertThat(findEdit(undoneOriginal).getStatus()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertNoMarkers(undone);
+        assertThat(harness.pendingRebuild(undone)).isEmpty();
+
+        assertThat(edits.list(untouched)).isEmpty();
+        assertThat(harness.pendingRebuild(untouched)).isEmpty();
+
+        // A second run (or an imported copy of the same data) must be a no-op rather than a failure.
+        runMigrationFile("/db/migration/V36.88.0__Normalize_replace_stay_groups.sql");
+        assertThat(findEdit(affectedOriginal).getStatus()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertNoMarkers(malformed);
+    }
+
+    private long seedEdit(UUID user, long seq, TimelineEditKind kind, String from, String to,
+                          Map<String, Object> payload, TimelineEditStatus status, UUID groupId, Long supersededBy) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var edit = TimelineEditEntity.builder()
+                    .user(em.getReference(UserEntity.class, user))
+                    .seq(seq)
+                    .kind(kind)
+                    .anchorStart(CommuteWithStops.at(from))
+                    .anchorEnd(CommuteWithStops.at(to))
+                    .affectedFrom(CommuteWithStops.at(from))
+                    .affectedTo(CommuteWithStops.at(to))
+                    .payload(new LinkedHashMap<>(payload))
+                    .status(status)
+                    .groupId(groupId)
+                    .build();
+            if (supersededBy != null) {
+                edit.setSupersededBy(em.getReference(TimelineEditEntity.class, supersededBy));
+            }
+            em.persist(edit);
+            em.flush();
+            return edit.getId();
+        });
+    }
+
+    private TimelineEditEntity findEdit(long id) {
+        return QuarkusTransaction.requiringNew().call(() -> em.find(TimelineEditEntity.class, id));
+    }
+
+    private void assertNoMarkers(UUID user) {
+        assertThat(edits.list(user)).allSatisfy(edit ->
+                assertThat(edit.payload()).doesNotContainKey("replacesStaySequence"));
     }
 
     private void runMigrationFile(String path) throws Exception {

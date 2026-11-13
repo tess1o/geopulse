@@ -5,7 +5,11 @@
       <span class="place-picker-name">{{ current.locationName }}</span>
     </div>
     <div v-if="modelValue" ref="selectedSummary" class="place-picker-selected" aria-live="polite">
-      <span class="place-picker-name"><i class="pi pi-map-marker" aria-hidden="true" />{{ modelValue.locationName || t('missingActivity.selectedLocation') }}</span>
+      <InputText v-if="modelValue.source === 'custom'" class="place-picker-custom-name"
+        :model-value="modelValue.locationName" maxlength="500"
+        :aria-label="t('timeline.edit.place.customName')" :placeholder="t('timeline.edit.place.customNamePlaceholder')"
+        @update:model-value="renameCustomPlace" />
+      <span v-else class="place-picker-name"><i class="pi pi-map-marker" aria-hidden="true" />{{ modelValue.locationName || t('missingActivity.selectedLocation') }}</span>
       <Button v-if="!isChoosing" :label="t('missingActivity.changePlace')" text size="small" @click="open" />
     </div>
     <Button v-else-if="!isChoosing" :label="t('missingActivity.choosePlaceAction')" icon="pi pi-map-marker" outlined @click="open" />
@@ -76,6 +80,8 @@ const choosing = ref(!props.modelValue), query = ref(''), mapOpen = ref(false), 
 const picker = ref(null)
 const searchInput = ref(null), optionList = ref(null), selectedSummary = ref(null)
 const mapPlace = ref(null)
+// A name typed for a picked point must not be replaced by a reverse-geocoded suggestion that arrives later.
+const nameEdited = ref(false)
 const lookupOptions = ref([]), searchResults = ref([])
 const lookupLoading = ref(false), searchLoading = ref(false), lookupError = ref(''), searchError = ref('')
 let lookupToken = 0, pickToken = 0, searchToken = 0, searchTimer
@@ -139,6 +145,7 @@ function requestMap() {
 function choose(option, focusSummary = true) {
   pickToken++; searchToken++; clearTimeout(searchTimer); clearPreview()
   mapPlace.value = null
+  nameEdited.value = false
   emit('update:modelValue', {
     favoriteId: option.favoriteId ?? null, geocodingId: option.geocodingId ?? null,
     latitude: option.latitude ?? null, longitude: option.longitude ?? null,
@@ -146,6 +153,11 @@ function choose(option, focusSummary = true) {
   })
   setChoosing(false)
   if (focusSummary) nextTick(() => selectedSummary.value?.querySelector('button')?.focus())
+}
+function renameCustomPlace(locationName) {
+  if (!props.modelValue) return
+  nameEdited.value = true
+  emit('update:modelValue', {...props.modelValue, locationName})
 }
 async function lookup(point) {
   const token = ++lookupToken
@@ -187,7 +199,7 @@ async function pickPoint(raw) {
   lookup(selected)
   try {
     const suggestion = await tripsStore.getPlanSuggestion(selected.latitude, selected.longitude, { redirectOnServerError: false })
-    if (token === pickToken && suggestion?.title?.trim()) {
+    if (token === pickToken && !nameEdited.value && suggestion?.title?.trim()) {
       const locationName = suggestion.title.trim()
       emit('update:modelValue', { ...selected, favoriteId: null, geocodingId: null, locationName, source: 'custom' })
       if (suggestion.favoriteId || suggestion.geocodingId) {
@@ -203,6 +215,7 @@ async function pickPoint(raw) {
 .place-picker-current { display: grid; gap: .25rem; color: var(--gp-text-secondary); }
 .place-picker-selected { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem; border: 1px solid var(--gp-primary-soft-border); border-radius: var(--gp-radius-medium); background: color-mix(in srgb, var(--gp-primary) 7%, var(--gp-surface-card)); }
 .place-picker-name { display: flex; gap: .5rem; align-items: center; overflow-wrap: anywhere; min-width: 0; }
+.place-picker-custom-name { flex: 1; min-width: 0; }
 .place-picker-caption { font-size: .75rem; color: var(--gp-text-secondary); }
 .place-picker-search { display: grid; gap: .4rem; font-size: .85rem; }
 .place-picker-search :deep(input) { width: 100%; }

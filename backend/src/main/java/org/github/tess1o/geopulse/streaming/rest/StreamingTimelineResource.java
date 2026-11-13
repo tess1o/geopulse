@@ -234,9 +234,11 @@ public class StreamingTimelineResource {
     @Path("/edits/{editId}/revert")
     @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
     @Operation(summary = "Revert a timeline edit",
-            description = "Deactivates one edit and durably requests timeline regeneration.")
-    public TimelineEditMutationResponse revertEdit(@PathParam("editId") Long editId) {
-        return changeEditStatus(editId, false);
+            description = "Deactivates one edit and durably requests timeline regeneration. With cascade=true, also "
+                    + "reverts the later active edits that depend on it.")
+    public TimelineEditMutationResponse revertEdit(@PathParam("editId") Long editId,
+            @QueryParam("cascade") @DefaultValue("false") boolean cascade) {
+        return changeEditStatus(editId, false, cascade);
     }
 
     @POST
@@ -245,15 +247,16 @@ public class StreamingTimelineResource {
     @Operation(summary = "Restore a reverted timeline edit",
             description = "Reactivates a reverted edit when it does not conflict with a newer active edit.")
     public TimelineEditMutationResponse restoreEdit(@PathParam("editId") Long editId) {
-        return changeEditStatus(editId, true);
+        return changeEditStatus(editId, true, false);
     }
 
-    private TimelineEditMutationResponse changeEditStatus(Long editId, boolean restore) {
+    private TimelineEditMutationResponse changeEditStatus(Long editId, boolean restore, boolean cascade) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
             if (timelineEditService.grouped(userId, editId))
                 throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Use the activity correction group to undo or restore this change");
-            var edit = (restore ? timelineEditService.restore(userId, editId) : timelineEditService.revert(userId, editId))
+            var edit = (restore ? timelineEditService.restore(userId, editId)
+                    : timelineEditService.revert(userId, editId, cascade))
                     .orElseThrow(() -> new GeoPulseException(TIMELINE_EDIT_NOT_FOUND,
                             "Timeline edit not found or access denied", Map.of("editId", editId)));
             var scheduling = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(

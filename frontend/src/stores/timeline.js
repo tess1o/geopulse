@@ -374,7 +374,9 @@ export const useTimelineStore = defineStore('timeline', {
 
         async previewActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections/preview', payload) },
         async saveActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections', payload) },
-        async revertActivityCorrection(groupId) { return apiService.post(`/timeline/activity-corrections/${groupId}/revert`) },
+        async revertActivityCorrection(groupId, cascade = false) {
+            return apiService.post(`/timeline/activity-corrections/${groupId}/revert${cascade ? '?cascade=true' : ''}`)
+        },
         async restoreActivityCorrection(groupId) { return apiService.post(`/timeline/activity-corrections/${groupId}/restore`) },
         async fetchTimelineEdits() {
             try {
@@ -403,9 +405,9 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
-        async revertTimelineEdit(editId) {
+        async revertTimelineEdit(editId, cascade = false) {
             try {
-                return await apiService.post(`/timeline/edits/${editId}/revert`)
+                return await apiService.post(`/timeline/edits/${editId}/revert${cascade ? '?cascade=true' : ''}`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to revert timeline correction')
                 throw this.error

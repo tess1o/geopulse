@@ -277,6 +277,9 @@ public class PlaceDetailsService {
         }
 
         ReverseGeocodingLocationEntity geocoding = geocodingOpt.get();
+        if (geocoding.getUser() != null && !geocoding.isOwnedBy(userId)) {
+            return Optional.empty();
+        }
         PlaceStatisticsDTO statistics = calculateGeocodingStatistics(geocodingId, userId, timezone);
         PlaceGeometryDTO geometry = extractGeocodingGeometry(geocoding);
 

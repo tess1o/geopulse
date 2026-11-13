@@ -33,7 +33,7 @@ describe('TimelineEditHistoryDrawer', () => {
 
     await wrapper.findAll('button').find(button => button.text() === 'Undo').trigger('click')
     await flushPromises()
-    expect(store.revertTimelineEdit).toHaveBeenCalledWith(1)
+    expect(store.revertTimelineEdit).toHaveBeenCalledWith(1, false)
     expect(wrapper.emitted('changed')?.[0]?.[0].timelineJobId).toBe('revert-job')
 
     await wrapper.emitted('changed')[0][0].onUpdated()
@@ -79,7 +79,7 @@ describe('TimelineEditHistoryDrawer', () => {
     expect(wrapper.text()).toContain('2 manual activities')
     await wrapper.findAll('button').find(button => button.text() === 'Undo').trigger('click')
     await flushPromises()
-    expect(revert).toHaveBeenCalledWith('group')
+    expect(revert).toHaveBeenCalledWith('group', false)
     expect(single).not.toHaveBeenCalled()
   })
 

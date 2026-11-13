@@ -168,35 +168,47 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                     .append(", :lat").append(j).append(")");
         }
 
-        // Step 1: Get matching favorite IDs and their corresponding input coordinates
+        // Step 1: Get matching favorite IDs and their corresponding input coordinates.
+        // Each coordinate probes the (user_id, geometry) GiST index with a bounding box (&&) that is a
+        // superset of both distance limits, then applies the exact geography predicates. The geography
+        // casts alone can't use a geometry index, so a plain cross join compared every coordinate with
+        // every favorite (40k stays x 1.2k favorites took minutes). The box is padded 10% beyond the
+        // longest meridian/parallel degree; longitude padding is capped at 89 degrees latitude, and a
+        // favorite across the antimeridian from a stay is not matched.
         String matchingQuery = """
                 WITH input_coords AS (
-                    SELECT input_point, input_lon, input_lat
+                    SELECT input_point, input_lon, input_lat,
+                           GREATEST(CAST(:maxDistanceFromPoint AS float8), CAST(:maxDistanceFromArea AS float8)) * 1.1 AS reach
                     FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
                 )
-                SELECT DISTINCT ON (ic.input_lon, ic.input_lat)
-                       f.id, ic.input_lon, ic.input_lat
-                FROM favorite_locations f
-                CROSS JOIN input_coords ic
-                WHERE f.user_id = :userId
-                  AND (
-                      (f.type = 'POINT'
-                       AND ST_DWithin(f.geometry::geography, ic.input_point::geography, :maxDistanceFromPoint)
+                SELECT f.id, ic.input_lon, ic.input_lat
+                FROM input_coords ic
+                CROSS JOIN LATERAL (
+                    SELECT f.id
+                    FROM favorite_locations f
+                    WHERE f.user_id = :userId
+                      AND f.geometry && ST_Expand(ic.input_point,
+                              ic.reach / (111000.0 * cos(radians(LEAST(abs(ic.input_lat), 89.0)))),
+                              ic.reach / 110000.0)
+                      AND (
+                          (f.type = 'POINT'
+                           AND ST_DWithin(f.geometry::geography, ic.input_point::geography, :maxDistanceFromPoint)
+                          )
+                          OR
+                          (f.type = 'AREA'
+                           AND (ST_Covers(f.geometry, ic.input_point)
+                                OR ST_DWithin(ST_Boundary(f.geometry)::geography, ic.input_point::geography, :maxDistanceFromArea)
+                               )
+                          )
                       )
-                      OR
-                      (f.type = 'AREA'
-                       AND (ST_Covers(f.geometry, ic.input_point)
-                            OR ST_DWithin(ST_Boundary(f.geometry)::geography, ic.input_point::geography, :maxDistanceFromArea)
-                           )
-                      )
-                  )
-                ORDER BY ic.input_lon, ic.input_lat,
-                         CASE
-                             WHEN f.type = 'AREA' AND ST_Covers(f.geometry, ic.input_point) THEN 1
-                             WHEN f.type = 'AREA' THEN 2
-                             ELSE 3
-                         END,
-                         ST_Distance(f.geometry::geography, ic.input_point::geography)
+                    ORDER BY CASE
+                                 WHEN f.type = 'AREA' AND ST_Covers(f.geometry, ic.input_point) THEN 1
+                                 WHEN f.type = 'AREA' THEN 2
+                                 ELSE 3
+                             END,
+                             ST_Distance(f.geometry::geography, ic.input_point::geography)
+                    LIMIT 1
+                ) f
                 """.formatted(valuesClause.toString());
 
         var matchingQueryExec = em.createNativeQuery(matchingQuery)

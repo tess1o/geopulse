@@ -25,14 +25,16 @@
 <script setup>
 import {computed, defineComponent, h, nextTick, ref, watch} from 'vue'
 import {useI18n} from 'vue-i18n'
+import {useConfirm} from 'primevue/useconfirm'
 import Button from 'primevue/button'
 import {useTimelineStore} from '@/stores/timeline'
 import {useTimezone} from '@/composables/useTimezone'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 const props = defineProps({visible: Boolean, item: {type: Object, default: null}, edits: {type: Array, default: null}, reload: Function})
-const emit = defineEmits(['changed', 'loaded', 'replace-stay'])
+const emit = defineEmits(['changed', 'loaded'])
 const {t, te} = useI18n()
+const confirm = useConfirm()
 const timezone = useTimezone()
 const store = useTimelineStore()
 const edits = ref([])
@@ -130,15 +132,67 @@ async function focusChange(id) {
   entry?.scrollIntoView?.({block: 'nearest'})
 }
 
+const allEdits = () => props.edits || edits.value
+// A later correction that lists an earlier one as a prerequisite cannot be replayed without it. Undo them together
+// rather than making the user find and undo each one first; a group moves as one unit.
+function dependentsOf(entry) {
+  const all = allEdits()
+  const members = entry.members?.length ? entry.members : [entry]
+  const memberIds = new Set(members.map(member => Number(member.id)))
+  const sequences = new Set(members.map(member => Number(member.seq)))
+  const dependents = new Map()
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const edit of all) {
+      if (edit.status !== 'ACTIVE' || memberIds.has(Number(edit.id)) || dependents.has(Number(edit.id))) continue
+      const prerequisites = (edit.beforeValues?.prerequisiteSequences || []).map(Number)
+      if (!prerequisites.some(sequence => sequences.has(sequence))) continue
+      const group = edit.groupId
+        ? all.filter(member => member.groupId === edit.groupId && member.status === 'ACTIVE')
+        : [edit]
+      let added = false
+      for (const member of group) {
+        if (memberIds.has(Number(member.id))) continue
+        if (!dependents.has(Number(member.id))) {
+          dependents.set(Number(member.id), member)
+          added = true
+        }
+        sequences.add(Number(member.seq))
+      }
+      if (added) changed = true
+    }
+  }
+  return [...dependents.values()]
+}
+
+function confirmCascade(entry, dependents) {
+  return new Promise(resolve => confirm.require({
+    header: t('timeline.edit.undoDependents.header'),
+    message: t('timeline.edit.undoDependents.message', {count: dependents.length}),
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => resolve(true),
+    reject: () => resolve(false)
+  }))
+}
+
 async function change(edit, restore) {
   if (busy.value) return
+  let cascade = false
+  if (!restore) {
+    const dependents = dependentsOf(edit)
+    if (dependents.length) {
+      if (!await confirmCascade(edit, dependents)) return
+      cascade = true
+    }
+  }
   busy.value = edit.id;
   error.value = '';
   conflictId.value = null
   try {
     const result = edit.groupId
-      ? await (restore ? store.restoreActivityCorrection(edit.groupId) : store.revertActivityCorrection(edit.groupId))
-      : await (restore ? store.restoreTimelineEdit(edit.id) : store.revertTimelineEdit(edit.id))
+      ? await (restore ? store.restoreActivityCorrection(edit.groupId) : store.revertActivityCorrection(edit.groupId, cascade))
+      : await (restore ? store.restoreTimelineEdit(edit.id) : store.revertTimelineEdit(edit.id, cascade))
     const finish = async () => {
       busy.value = null;
       await load()
@@ -166,13 +220,6 @@ const ChangeEntry = defineComponent({
       edit.groupId ? h('ul', edit.members.map(member => h('li', `${t(`timeline.edit.kind.${member.kind}`)} · ${period(member.anchorStart, member.anchorEnd)}`))) : null,
       edit.payload?.reconstruction ? h('p', t('trips.reconstructionContext.undoHint')) : null,
       edit.status === 'ACTIVE' && !edit.applied ? h('p', {role: 'status'}, t('timeline.edit.unapplied')) : null,
-      edit.status === 'ACTIVE' && edit.kind === 'FORCE_STAY' && !edit.groupId && edit.target?.type === 'STAY'
-        && !edit.payload?.reconstruction ? h(Button, {
-          label: t('missingActivity.replaceStay'),
-          text: true,
-          disabled: busy.value !== null,
-          onClick: () => emit('replace-stay', edit)
-        }) : null,
       ['ACTIVE', 'REVERTED'].includes(edit.status) ? h(Button, {
         label: t(`timeline.edit.${edit.status === 'ACTIVE' ? 'revert' : 'restore'}`),
         icon: edit.status === 'ACTIVE' ? 'pi pi-undo' : 'pi pi-replay',

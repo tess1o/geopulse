@@ -282,6 +282,16 @@ public class ReverseGeocodingManagementService {
         return normalizeGeocodingForUser(currentUserId, geocodingId, false);
     }
 
+    /**
+     * Whether {@link #normalizeGeocodingForResolution} can change anything for this user. Without
+     * rules it always returns the same geocoding id, so batch resolution checks this once instead of
+     * paying a transaction, an entity load and a rule load per cached location.
+     */
+    @Transactional
+    public boolean hasNormalizationRules(UUID userId) {
+        return userLocationNormalizationService.hasRules(userId);
+    }
+
     private ReverseGeocodingDTO normalizeGeocodingForUser(UUID currentUserId, Long geocodingId, boolean syncTimeline) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {

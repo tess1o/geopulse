@@ -360,7 +360,80 @@ public class GeoPulseTimelineDetailsImporter {
             TimelineEditEntity edit = importedByOldId.get(dto.getId());
             if (edit != null) edit.setSupersededBy(importedByOldId.get(dto.getSupersededById()));
         }
+        // An export from 2.3.0 can carry the old replace-stay groups; make them ordinary chained groups like the
+        // V36.88.0 migration does, so they can be undone and replayed by the current edit model.
+        normalizeReplacementGroups(job.getUserId());
         log.info("Imported/updated {} timeline edits for user {}", importedByOldId.size(), job.getUserId());
+    }
+
+    private void normalizeReplacementGroups(UUID userId) {
+        entityManager.createNativeQuery("""
+                        WITH replacements AS (
+                            SELECT e.group_id,
+                                   CASE WHEN (e.payload ->> 'replacesStaySequence') ~ '^[0-9]{1,18}$'
+                                        THEN (e.payload ->> 'replacesStaySequence')::bigint END AS original_seq
+                            FROM timeline_edits e
+                            WHERE e.user_id = :userId
+                              AND e.group_id IS NOT NULL
+                              AND jsonb_typeof(e.payload) = 'object'
+                        )
+                        UPDATE timeline_edits original
+                        SET status = 'ACTIVE',
+                            superseded_by = NULL,
+                            updated_at = NOW()
+                        FROM replacements
+                        WHERE original.user_id = :userId
+                          AND original.seq = replacements.original_seq
+                          AND original.status = 'SUPERSEDED'
+                          AND original.superseded_by IN (
+                              SELECT member.id
+                              FROM timeline_edits member
+                              WHERE member.user_id = :userId
+                                AND member.group_id = replacements.group_id
+                          )
+                        """)
+                .setParameter("userId", userId)
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                        WITH replacements AS (
+                            SELECT e.group_id,
+                                   CASE WHEN (e.payload ->> 'replacesStaySequence') ~ '^[0-9]{1,18}$'
+                                        THEN (e.payload ->> 'replacesStaySequence')::bigint END AS original_seq
+                            FROM timeline_edits e
+                            WHERE e.user_id = :userId
+                              AND e.group_id IS NOT NULL
+                              AND jsonb_typeof(e.payload) = 'object'
+                        )
+                        UPDATE timeline_edits member
+                        SET before_values = COALESCE(member.before_values, '{}'::jsonb)
+                                            || jsonb_build_object('prerequisiteSequences',
+                                                                  jsonb_build_array(replacements.original_seq))
+                        FROM replacements
+                        WHERE member.user_id = :userId
+                          AND member.group_id = replacements.group_id
+                          AND replacements.original_seq IS NOT NULL
+                          AND member.seq <> replacements.original_seq
+                          AND (member.before_values IS NULL OR jsonb_typeof(member.before_values) = 'object')
+                          AND NOT jsonb_exists(COALESCE(member.before_values, '{}'::jsonb), 'prerequisiteSequences')
+                          AND EXISTS (
+                              SELECT 1
+                              FROM timeline_edits original
+                              WHERE original.user_id = :userId
+                                AND original.seq = replacements.original_seq
+                                AND original.status = 'ACTIVE'
+                          )
+                        """)
+                .setParameter("userId", userId)
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                        UPDATE timeline_edits
+                        SET payload = payload - 'replacesStaySequence'
+                        WHERE user_id = :userId
+                          AND jsonb_typeof(payload) = 'object'
+                          AND jsonb_exists(payload, 'replacesStaySequence')
+                        """)
+                .setParameter("userId", userId)
+                .executeUpdate();
     }
 
     private static Long payloadId(Map<String, Object> payload, String key) {

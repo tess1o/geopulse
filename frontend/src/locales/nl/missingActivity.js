@@ -1,6 +1,6 @@
 export default {
-    "replaceStay": "Reis invoegen in gedwongen verblijfplaats",
-    "replaceStayHint": "Kies de tijdstippen en route van de reis. De resterende tijd blijft op de oorspronkelijke plaats.",
+    "rebuildInterval": "Dit interval opnieuw opbouwen…",
+    "rebuildIntervalHint": "Beschrijf wat er in dit tijdsbereik gebeurde. Tijd die u openlaat blijft op de oorspronkelijke plaats.",
     "add": "Ontbrekende activiteit toevoegen…",
     "fillGap": "Ontbrekende tijd invullen…",
     "help": "Beschrijf wat er gebeurde tijdens een lege periode. Opgenomen GPS-gegevens blijven ongewijzigd.",
