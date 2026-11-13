@@ -910,11 +910,16 @@ export default {
         noSettingsDescription: 'Meldingsinstellingen zijn verplaatst naar het Meldingen-tabblad.'
     },
     backupTab: {
+        tabs: {
+            ariaLabel: 'Back-upsecties',
+            fullDatabaseBackup: 'Volledige databaseback-up',
+            adminSettings: 'Admin-instellingen'
+        },
         exportSection: {
-            title: 'Admin-instellingen export',
-            subtitle: 'Draagbare door beheerder beheerde instellingen en providerconfiguratie.',
-            panelTitle: 'Instellingen exporteren',
-            panelDescription: 'Download een JSON-back-up met draagbare door beheerder beheerde gedrag en providerreferenties.',
+            title: 'Admin-instellingen exporteren (JSON)',
+            subtitle: 'Alleen configuratie: door beheerder beheerde instellingen en providerreferenties. Geen databaseback-up en geen gebruikers- of GPS-gegevens.',
+            panelTitle: 'Configuratie exporteren',
+            panelDescription: 'Download een JSON-bestand met overdraagbare door de beheerder beheerde instellingen en providerreferenties.',
             button: 'Instellingen exporteren'
         },
         importSection: {
@@ -924,7 +929,7 @@ export default {
             button: 'Instellingen importeren'
         },
         warnMessage: 'De instellingenexport bevat platte tekst API-sleutels, OIDC-clientgeheimen, tokens en aangepaste providerkoppen.',
-        infoMessage: 'Instellingenexportbereik is door beheerder beheerd app-gedrag plus OIDC/aangepaste providerconfiguraties.',
+        infoMessage: 'Gebruik Volledige databaseback-up voor gebruikers, GPS-geschiedenis en database-inhoud. Deze JSON-export bevat alleen door de beheerder beheerde configuratie.',
         importDialog: {
             header: 'Admin-instellingen vervangen?',
             message: 'Het importeren van dit bestand vervangt huidige globale instellingen, OIDC-providers en aangepaste geocoderingsproviders.',
@@ -933,7 +938,7 @@ export default {
         },
         toasts: {
             exportStarted: 'Export gestart',
-            exportStartedDetail: 'Admin-instellingen backup-download is gestart.',
+            exportStartedDetail: 'Het configuratiebestand is klaar en de browserdownload is gestart.',
             exportFailed: 'Export mislukt',
             exportFailedFallback: 'Kon admin-instellingen backup niet exporteren',
             importComplete: 'Import voltooid',
@@ -943,17 +948,39 @@ export default {
         }
     },
     fullBackupSection: {
-        title: 'Volledige App Back-up',
-        subtitle: 'Wachtwoordversleutelde PostgreSQL-back-up van toepassingsgegevens en geheimen.',
+        title: 'Volledige databaseback-up',
+        subtitle: 'Wachtwoordversleutelde PostgreSQL-back-up van database-inhoud en geheimen.',
+        passwordSection: {
+            title: 'Versleutelingswachtwoord voor back-ups',
+            description: 'Versleutelt elke nieuwe volledige back-up. Een wachtwoord is vereist voordat u een back-up downloadt of maakt.',
+            configured: 'Er is een back-upwachtwoord ingesteld.',
+            notConfigured: 'Er is nog geen back-upwachtwoord ingesteld. Stel er een in om back-ups te maken.',
+            setButton: 'Wachtwoord instellen',
+            changeButton: 'Wachtwoord wijzigen',
+            changeNote: 'Bewaar het wachtwoord buiten GeoPulse: het kan niet worden hersteld. Wijzigingen gelden alleen voor nieuwe back-ups.'
+        },
+        passwordDialog: {
+            titleSet: 'Back-upwachtwoord instellen',
+            titleChange: 'Back-upwachtwoord wijzigen',
+            description: 'Dit wachtwoord versleutelt nieuwe volledige back-ups. Bewaar het buiten GeoPulse; het kan niet worden hersteld.',
+            passwordLabel: 'Nieuw wachtwoord',
+            confirmLabel: 'Nieuw wachtwoord bevestigen',
+            lengthHint: 'Gebruik 12–1024 tekens.',
+            save: 'Wachtwoord opslaan',
+            saving: 'Opslaan',
+            mismatch: 'De back-upwachtwoorden komen niet overeen.',
+            lengthError: 'Het back-upwachtwoord moet 12–1024 tekens bevatten.',
+            required: 'Een back-upwachtwoord is vereist.'
+        },
         downloadPanel: {
             title: 'Volledige back-up downloaden',
-            description: 'Genereer een volledige back-up en download deze in deze browser.',
+            description: 'Maak een tijdelijke versleutelde back-up en download deze hier. Het bestand wordt na de overdracht verwijderd en verschijnt niet bij Lokale back-ups.',
             button: 'Volledige back-up downloaden'
         },
         runNowPanel: {
-            title: 'Nu back-up uitvoeren',
-            description: 'Maak een back-upbestand in de gekoppelde lokale map.',
-            button: 'Nu back-up uitvoeren'
+            title: 'Lokale back-up maken',
+            description: 'Bewaar een versleutelde back-up in de geconfigureerde servermap. Deze verschijnt bij Lokale back-ups en telt mee voor bewaring.',
+            button: 'Lokale back-up maken'
         },
         warnMessage: 'Volledige back-ups worden versleuteld met uw back-upwachtwoord. Bewaar dat wachtwoord buiten GeoPulse: zonder het kan de back-up niet worden hersteld. Herstel alleen vertrouwde back-ups. Herstelvoorbereiding wordt online uitgevoerd; activering stopt GeoPulse kort en start de backend automatisch opnieuw.',
         restorePreparationFailedTitle: 'Herstelvoorbereiding mislukt',
@@ -970,17 +997,21 @@ export default {
             lastBackupCompleted: 'Laatste back-upbewerking voltooid',
             lastBackupFailed: 'Laatste back-upbewerking mislukt',
             backupStatus: 'Back-upstatus',
+            backupPhaseSnapshot: 'Consistente databasesnapshot wordt gemaakt…',
+            backupPhaseDumping: 'Databasegegevens worden gedumpt…',
+            backupPhaseFinalizing: 'Back-upbestand wordt versleuteld en afgerond…',
+            elapsed: 'Verstreken: {duration}',
+            bytesWritten: '{size} geschreven',
+            downloadInProgress: 'Back-up wordt gedownload',
+            downloadKeepPageOpen: 'Houd deze pagina open. Als de browser vraagt of het bestand behouden moet blijven, kies dan “Behouden”.',
+            downloadTransferred: '{transferred} van {size} overgedragen',
             restorePreparingMessage: 'Herstel wordt op de achtergrond voorbereid. GeoPulse blijft beschikbaar tot activering.',
             waitingForStatus: 'Wachten op status'
         },
         scheduledSection: {
             title: 'Geplande Lokale Back-ups',
             description: 'Configureer automatische back-ups die naar de gekoppelde back-upmap worden geschreven.',
-            backupPassword: 'Back-upwachtwoord',
-            changePasswordLabel: 'Wachtwoord wijzigen (laat leeg om te behouden)',
-            passwordRequiredLabel: 'Wachtwoord vereist voor alle volledige back-ups',
-            confirmNewPassword: 'Nieuw wachtwoord bevestigen',
-            passwordLengthHint: 'Nieuwe wachtwoorden moeten 12–1024 tekens bevatten.',
+            passwordRequiredHint: 'Geplande back-ups gebruiken het hierboven ingestelde versleutelingswachtwoord.',
             schedule: 'Schema',
             enabled: 'Ingeschakeld',
             cron: 'Cron',
@@ -1039,9 +1070,23 @@ export default {
             loadFilesFailedFallback: 'Lokale back-ups laden is mislukt',
             loadConfigFailedFallback: 'Back-upinstellingen laden is mislukt',
             downloadStarted: 'Download gestart',
-            downloadStartedDetail: 'Volledige back-updownload is gestart.',
+            downloadStartedDetail: 'Het versleutelde archief is klaar en de browserdownload is gestart.',
+            downloadComplete: 'Download voltooid',
+            downloadCompleteDetail: 'Het back-uparchief is gedownload. Als de browser vraagt of het bestand behouden moet blijven, kies dan “Behouden”.',
+            downloadCompleteBanner: 'Download voltooid — {fileName}. Als de browser vraagt of het bestand behouden moet blijven, kies dan “Behouden”.',
+            downloadInterrupted: 'Download onderbroken',
+            downloadInterruptedDetail: 'Het bestand is niet volledig gedownload. Probeer het opnieuw en houd deze pagina open tot het klaar is.',
+            downloadInterruptedBanner: 'Download onderbroken. Het bestand is niet volledig gedownload — probeer het opnieuw en houd deze pagina open tot het klaar is.',
             downloadFailed: 'Download mislukt',
             downloadFailedFallback: 'Volledige back-up downloaden is mislukt',
+            downloadNotStarted: 'Download niet gestart',
+            downloadNotStartedDetail: 'Het back-upverzoek heeft de server niet bereikt. Controleer uw sessie en probeer het opnieuw.',
+            downloadConflict: 'Back-up wordt al uitgevoerd',
+            downloadConflictDetail: 'Wacht tot de huidige back-up of herstelbewerking is voltooid en probeer het opnieuw.',
+            localDownloadStartedDetail: 'Uw browser downloadt {fileName}.',
+            passwordSaved: 'Wachtwoord opgeslagen',
+            passwordSavedDetail: 'Het versleutelingswachtwoord voor back-ups is bijgewerkt. Het geldt alleen voor nieuwe back-ups.',
+            passwordSaveFailedFallback: 'Back-upwachtwoord opslaan is mislukt',
             backupComplete: 'Back-up voltooid',
             backupCompleteDetail: '{fileName} gemaakt',
             backupFailed: 'Back-up mislukt',

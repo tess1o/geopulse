@@ -8,13 +8,35 @@
     </div>
 
     <div class="backup-section-body">
+      <section class="backup-panel password-panel">
+        <div class="backup-panel-header">
+          <div>
+            <h4>{{ t('adminSettings.fullBackupSection.passwordSection.title') }}</h4>
+            <p class="text-muted">{{ t('adminSettings.fullBackupSection.passwordSection.description') }}</p>
+          </div>
+          <i class="pi pi-lock backup-panel-icon"></i>
+        </div>
+        <div class="password-status">
+          <Message :severity="passwordConfigured ? 'success' : 'warn'" :closable="false">
+            {{ passwordConfigured ? t('adminSettings.fullBackupSection.passwordSection.configured') : t('adminSettings.fullBackupSection.passwordSection.notConfigured') }}
+          </Message>
+          <Button
+            :label="passwordConfigured ? t('adminSettings.fullBackupSection.passwordSection.changeButton') : t('adminSettings.fullBackupSection.passwordSection.setButton')"
+            icon="pi pi-key"
+            :disabled="adminReadOnly || operationRunning"
+            @click="openPasswordDialog('set')"
+          />
+        </div>
+        <small class="text-muted">{{ t('adminSettings.fullBackupSection.passwordSection.changeNote') }}</small>
+      </section>
+
       <div class="backup-grid">
         <section class="backup-panel">
           <div class="backup-panel-header">
             <div><h4>{{ t('adminSettings.fullBackupSection.downloadPanel.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.downloadPanel.description') }}</p></div>
             <i class="pi pi-download backup-panel-icon"></i>
           </div>
-          <Button :label="t('adminSettings.fullBackupSection.downloadPanel.button')" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="downloadFullBackup" />
+          <Button :label="t('adminSettings.fullBackupSection.downloadPanel.button')" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning" @click="downloadFullBackup" />
         </section>
 
         <section class="backup-panel">
@@ -22,7 +44,7 @@
             <div><h4>{{ t('adminSettings.fullBackupSection.runNowPanel.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.runNowPanel.description') }}</p></div>
             <i class="pi pi-save backup-panel-icon"></i>
           </div>
-          <Button :label="t('adminSettings.fullBackupSection.runNowPanel.button')" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="runBackupNow" />
+          <Button :label="t('adminSettings.fullBackupSection.runNowPanel.button')" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning" @click="runBackupNow" />
         </section>
       </div>
 
@@ -54,23 +76,48 @@
       <div v-if="showBackupProgress" class="backup-progress">
         <div class="progress-heading">
           <div><h4>{{ backupProgressTitle }}</h4><span>{{ backupProgressMessage }}</span></div>
-          <strong>{{ backupProgressValue }}%</strong>
+          <strong v-if="!backupProgressIndeterminate">{{ backupProgressValue }}%</strong>
         </div>
-        <ProgressBar :value="backupProgressValue" :showValue="false" />
-        <div class="progress-caption"><span>{{ backupStatus?.fileName || '' }}</span></div>
+        <ProgressBar v-if="restorePreparationFailed" :value="backupProgressValue" :showValue="false" />
+        <ProgressBar v-else-if="backupProgressIndeterminate" mode="indeterminate" :showValue="false" />
+        <ProgressBar v-else :value="backupProgressValue" :showValue="false" />
+        <div class="progress-caption">
+          <span v-if="backupStatus?.fileName">{{ backupStatus.fileName }}</span>
+          <span v-if="progressMeta">{{ progressMeta }}</span>
+        </div>
+      </div>
+
+      <div v-if="downloadTransferRunning" class="backup-progress download-transfer-progress" role="status">
+        <div class="progress-heading">
+          <div>
+            <h4>{{ t('adminSettings.fullBackupSection.progress.downloadInProgress') }}</h4>
+            <span>{{ t('adminSettings.fullBackupSection.progress.downloadKeepPageOpen') }}</span>
+          </div>
+          <strong v-if="!downloadTransferIndeterminate">{{ downloadTransferPercent }}%</strong>
+        </div>
+        <ProgressBar v-if="downloadTransferIndeterminate" mode="indeterminate" :showValue="false" />
+        <ProgressBar v-else :value="downloadTransferPercent" :showValue="false" />
+        <div class="progress-caption">
+          <span v-if="downloadTracking?.fileName">{{ downloadTracking.fileName }}</span>
+          <span v-if="downloadTransferMeta">{{ downloadTransferMeta }}</span>
+        </div>
+      </div>
+
+      <div v-if="showBackupResult" class="backup-result" :class="backupResultClass" role="status">
+        <i :class="backupResultClass === 'failed' ? 'pi pi-exclamation-circle' : 'pi pi-check-circle'" aria-hidden="true" />
+        <span>{{ backupResultText }}</span>
+      </div>
+
+      <div v-if="downloadResult" class="backup-result" :class="downloadResult.status" role="status">
+        <i :class="downloadResult.status === 'failed' ? 'pi pi-exclamation-circle' : 'pi pi-check-circle'" aria-hidden="true" />
+        <span>{{ downloadResultText }}</span>
       </div>
 
       <section class="backup-subsection">
         <div class="subsection-header"><div><h4>{{ t('adminSettings.fullBackupSection.scheduledSection.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.scheduledSection.description') }}</p></div></div>
+        <small class="text-muted subsection-hint">{{ t('adminSettings.fullBackupSection.scheduledSection.passwordRequiredHint') }}</small>
         <div class="config-grid">
           <div class="config-group schedule-group">
-            <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.backupPassword') }}</h5>
-            <label class="config-field">
-              <span>{{ backupConfig.passwordConfigured ? t('adminSettings.fullBackupSection.scheduledSection.changePasswordLabel') : t('adminSettings.fullBackupSection.scheduledSection.passwordRequiredLabel') }}</span>
-              <InputText v-model="backupPassword" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="adminReadOnly" />
-            </label>
-            <label class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.confirmNewPassword') }}</span><InputText v-model="backupPasswordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="adminReadOnly" /></label>
-            <small class="text-muted">{{ t('adminSettings.fullBackupSection.scheduledSection.passwordLengthHint') }}</small>
             <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.schedule') }}</h5>
             <label class="config-field" data-setting-id="backup.scheduled.enabled"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.enabled') }}</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
             <label class="config-field" data-setting-id="backup.scheduled.cron"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.cron') }}</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
@@ -166,6 +213,34 @@
         <Button :label="t('adminSettings.fullBackupSection.deleteDialog.delete')" icon="pi pi-trash" severity="danger" :loading="deleting" @click="deleteBackup" />
       </template>
     </Dialog>
+
+    <Dialog
+      v-model:visible="passwordDialogVisible"
+      :header="passwordConfigured ? t('adminSettings.fullBackupSection.passwordDialog.titleChange') : t('adminSettings.fullBackupSection.passwordDialog.titleSet')"
+      modal
+      :closable="!savingPassword"
+      :closeOnEscape="!savingPassword"
+      :style="{ width: '32rem' }"
+      @hide="onPasswordDialogHide"
+    >
+      <div class="password-dialog-content">
+        <p class="text-muted">{{ t('adminSettings.fullBackupSection.passwordDialog.description') }}</p>
+        <label class="config-field">
+          <span>{{ t('adminSettings.fullBackupSection.passwordDialog.passwordLabel') }}</span>
+          <InputText v-model="passwordDraft.password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="savingPassword" />
+        </label>
+        <label class="config-field">
+          <span>{{ t('adminSettings.fullBackupSection.passwordDialog.confirmLabel') }}</span>
+          <InputText v-model="passwordDraft.confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="savingPassword" />
+        </label>
+        <small class="text-muted">{{ t('adminSettings.fullBackupSection.passwordDialog.lengthHint') }}</small>
+        <small v-if="passwordDialogError" class="password-error" role="alert">{{ passwordDialogError }}</small>
+      </div>
+      <template #footer>
+        <Button :label="t('common.cancel')" icon="pi pi-times" text :disabled="savingPassword" @click="closePasswordDialog" />
+        <Button :label="savingPassword ? t('adminSettings.fullBackupSection.passwordDialog.saving') : t('adminSettings.fullBackupSection.passwordDialog.save')" icon="pi pi-save" :loading="savingPassword" @click="savePassword" />
+      </template>
+    </Dialog>
   </section>
 </template>
 
@@ -194,8 +269,6 @@ const { t } = useI18n()
 const adminService = useAdminStore()
 const props = defineProps({ adminReadOnly: { type: Boolean, default: false } })
 const toast = useToast()
-const backupPassword = ref('')
-const backupPasswordConfirmation = ref('')
 const restorePassword = ref('')
 const fullFileUpload = ref(null)
 const fullDownloading = ref(false)
@@ -214,53 +287,210 @@ const deleting = ref(false)
 const backupStatus = ref(null)
 const statusPoller = ref(null)
 const restoreStatusPending = ref(false)
-const backupConfig = ref({ scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120, healthMaxAgeDays: 2, healthAppriseEnabled: false, healthAppriseRoutingMode: 'URLS', healthAppriseDestination: '', healthAppriseConfigKey: '', healthAppriseTag: '' })
+const now = ref(Date.now())
+const downloadTracking = ref(null)
+const downloadResult = ref(null)
+const passwordDialogVisible = ref(false)
+const passwordDialogPurpose = ref(null)
+const passwordDraft = ref({ password: '', confirmation: '' })
+const passwordDialogError = ref('')
+const savingPassword = ref(false)
+let downloadWatchdog = null
+let statusRequestInFlight = false
+const backupConfig = ref({ passwordConfigured: false, scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120, healthMaxAgeDays: 2, healthAppriseEnabled: false, healthAppriseRoutingMode: 'URLS', healthAppriseDestination: '', healthAppriseConfigKey: '', healthAppriseTag: '' })
 const appriseRoutingOptions = computed(() => [
   { label: t('adminSettings.fullBackupSection.scheduledSection.appriseRoutingOptions.destinationUrls'), value: 'URLS' },
   { label: t('adminSettings.fullBackupSection.scheduledSection.appriseRoutingOptions.configKeyAndTag'), value: 'KEY_TAG' }
 ])
 
+const BACKUP_PHASE_KEYS = {
+  snapshot: 'adminSettings.fullBackupSection.progress.backupPhaseSnapshot',
+  dumping: 'adminSettings.fullBackupSection.progress.backupPhaseDumping',
+  finalizing: 'adminSettings.fullBackupSection.progress.backupPhaseFinalizing'
+}
 const RESTORE_TERMINAL_STATES = new Set(['PREPARATION_FAILED', 'ACTIVATION_RETRYABLE', 'ACTIVATION_FAILED', 'COMPLETED', 'DISCARDED'])
+
+const passwordConfigured = computed(() => Boolean(backupConfig.value.passwordConfigured))
 const operationRunning = computed(() => backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning || restoring.value || runningNow.value || fullDownloading.value)
 const restoreProgressInDialog = computed(() => restoreDialogVisible.value && (restoring.value || backupStatus.value?.restoreRunning))
 const restoreStarting = computed(() => restoring.value && restoreStatusPending.value)
 const restorePreparationFailed = computed(() => backupStatus.value?.state === 'PREPARATION_FAILED')
 const restoreTerminal = computed(() => RESTORE_TERMINAL_STATES.has(backupStatus.value?.state))
 const restoreFailureMessage = computed(() => backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || t('adminSettings.fullBackupSection.restorePreparationFailedFallback'))
-const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || restorePreparationFailed.value || ['completed', 'failed'].includes(backupStatus.value?.status))
+const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || restorePreparationFailed.value)
+const backupProgressIndeterminate = computed(() => Boolean(backupStatus.value?.backupRunning && backupStatus.value?.progressPercent == null))
 const backupProgressValue = computed(() => Math.max(0, Math.min(100, backupStatus.value?.progressPercent ?? 0)))
+const showBackupResult = computed(() => !backupStatus.value?.backupRunning && !backupStatus.value?.restoreRunning
+  && !['restore', 'download'].includes(backupStatus.value?.operation)
+  && !downloadTracking.value && ['completed', 'failed'].includes(backupStatus.value?.status) && !restorePreparationFailed.value)
+const backupResultClass = computed(() => backupStatus.value?.status === 'failed' ? 'failed' : 'completed')
+const backupResultText = computed(() => {
+  if (backupStatus.value?.status === 'failed') {
+    return backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || t('adminSettings.fullBackupSection.progress.lastBackupFailed')
+  }
+  const fileName = backupStatus.value?.fileName ? ` — ${backupStatus.value.fileName}` : ''
+  return `${t('adminSettings.fullBackupSection.progress.lastBackupCompleted')}${fileName}`
+})
 const backupProgressTitle = computed(() => {
   if (restoreStarting.value || backupStatus.value?.restoreRunning) return t('adminSettings.fullBackupSection.progress.restoreInProgress')
   if (restorePreparationFailed.value) return t('adminSettings.fullBackupSection.progress.restorePreparationFailed')
   if (backupStatus.value?.backupRunning) return t('adminSettings.fullBackupSection.progress.backupInProgress')
-  if (backupStatus.value?.status === 'completed') return t('adminSettings.fullBackupSection.progress.lastBackupCompleted')
-  if (backupStatus.value?.status === 'failed') return t('adminSettings.fullBackupSection.progress.lastBackupFailed')
   return t('adminSettings.fullBackupSection.progress.backupStatus')
 })
 const backupProgressMessage = computed(() => {
   if (restoreStarting.value) return t('adminSettings.fullBackupSection.progress.restorePreparingMessage')
+  if (backupStatus.value?.backupRunning) {
+    const phaseKey = BACKUP_PHASE_KEYS[backupStatus.value?.phase]
+    if (phaseKey) return t(phaseKey)
+    return formatMessageDescriptor(backupStatus.value?.message) || backupStatus.value?.phase || t('adminSettings.fullBackupSection.progress.waitingForStatus')
+  }
   return backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || backupStatus.value?.phase || t('adminSettings.fullBackupSection.progress.waitingForStatus')
+})
+const progressMeta = computed(() => {
+  if (!backupStatus.value?.backupRunning) return ''
+  const parts = []
+  if (backupStatus.value?.bytesWritten > 0) {
+    parts.push(t('adminSettings.fullBackupSection.progress.bytesWritten', { size: formatBytes(backupStatus.value.bytesWritten) }))
+  }
+  const elapsed = elapsedText.value
+  if (elapsed) parts.push(t('adminSettings.fullBackupSection.progress.elapsed', { duration: elapsed }))
+  return parts.join(' · ')
+})
+const elapsedText = computed(() => {
+  const startedAt = backupStatus.value?.startedAt
+  if (!startedAt || !backupStatus.value?.backupRunning) return ''
+  const seconds = Math.max(0, Math.floor((now.value - Date.parse(startedAt)) / 1000))
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const rest = seconds % 60
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${rest}s`
+  return `${rest}s`
+})
+const downloadTransferRunning = computed(() => Boolean(downloadTracking.value?.transferRunning))
+const downloadTransferIndeterminate = computed(() => !downloadTracking.value?.sizeBytes)
+const downloadTransferPercent = computed(() => {
+  const tracking = downloadTracking.value
+  if (!tracking?.sizeBytes) return 0
+  return Math.max(0, Math.min(100, Math.floor(((tracking.transferredBytes || 0) * 100) / tracking.sizeBytes)))
+})
+const downloadTransferMeta = computed(() => {
+  const tracking = downloadTracking.value
+  if (!tracking?.sizeBytes) return ''
+  return t('adminSettings.fullBackupSection.progress.downloadTransferred', {
+    transferred: formatBytes(tracking.transferredBytes || 0),
+    size: formatBytes(tracking.sizeBytes)
+  })
+})
+const downloadResultText = computed(() => {
+  const result = downloadResult.value
+  if (!result) return ''
+  if (result.status === 'failed') {
+    if (result.interrupted) return t('adminSettings.fullBackupSection.toasts.downloadInterruptedBanner')
+    return result.error || t('adminSettings.fullBackupSection.toasts.downloadFailedFallback')
+  }
+  return t('adminSettings.fullBackupSection.toasts.downloadCompleteBanner', { fileName: result.fileName })
 })
 
 const onFullFileSelect = (event) => { selectedFullFile.value = event.files?.[0] || null }
 const onFullFileClear = () => { selectedFullFile.value = null }
 const showError = (summary, error, fallback) => toast.add({ severity: 'error', summary, detail: formatApiErrorDetail(error, fallback), life: 5000 })
 
+const finishDownloadTracking = (outcome) => {
+  clearDownloadWatchdog()
+  downloadTracking.value = null
+  fullDownloading.value = false
+  downloadResult.value = {
+    status: outcome.status,
+    fileName: outcome.fileName || '',
+    interrupted: outcome.interrupted === true,
+    error: outcome.error || ''
+  }
+  if (outcome.status === 'failed') {
+    toast.add({
+      severity: 'error',
+      summary: t(outcome.interrupted
+        ? 'adminSettings.fullBackupSection.toasts.downloadInterrupted'
+        : 'adminSettings.fullBackupSection.toasts.downloadFailed'),
+      detail: outcome.interrupted
+        ? t('adminSettings.fullBackupSection.toasts.downloadInterruptedDetail')
+        : outcome.error || t('adminSettings.fullBackupSection.toasts.downloadFailedFallback'),
+      life: 10000
+    })
+  } else {
+    toast.add({
+      severity: 'success',
+      summary: t('adminSettings.fullBackupSection.toasts.downloadComplete'),
+      detail: t('adminSettings.fullBackupSection.toasts.downloadCompleteDetail'),
+      life: 10000
+    })
+  }
+  stopBackupStatusPolling(false)
+}
+
+const updateDownloadTracking = (status) => {
+  const tracking = downloadTracking.value
+  if (!tracking || !status) return
+  if (status.backupRunning && status.operation === 'download') {
+    tracking.sawRunning = true
+    tracking.operationId = status.operationId
+    clearDownloadWatchdog()
+  }
+  if (status.backupRunning) return
+
+  const startedAt = status.startedAt ? Date.parse(status.startedAt) : Number.NaN
+  const isOurOperation = tracking.operationId
+    ? status.operationId === tracking.operationId
+    : status.operation === 'download' && Number.isFinite(startedAt) && startedAt >= tracking.requestedAt - 5000
+  if (!isOurOperation) {
+    if (tracking.sawRunning) finishDownloadTracking({ status: 'completed', fileName: tracking.fileName })
+    return
+  }
+  if (status.status === 'failed') {
+    finishDownloadTracking({ status: 'failed', error: status.error || '' })
+    return
+  }
+  if (status.status !== 'completed') return
+
+  tracking.fileName = status.fileName || tracking.fileName
+  tracking.sizeBytes = status.sizeBytes ?? tracking.sizeBytes
+  tracking.transferredBytes = status.downloadTransferredBytes ?? tracking.transferredBytes
+
+  if (status.downloadTransfer === 'running') {
+    tracking.transferRunning = true
+    return
+  }
+  if (status.downloadTransfer === 'failed') {
+    finishDownloadTracking({ status: 'failed', fileName: status.fileName, interrupted: true })
+    return
+  }
+  finishDownloadTracking({ status: 'completed', fileName: status.fileName })
+}
+
 const loadBackupStatus = async () => {
+  if (statusRequestInFlight) return
+  statusRequestInFlight = true
   try {
     backupStatus.value = await adminService.getBackupStatus()
+    now.value = Date.now()
     if (restoreTerminal.value) {
       restoreStatusPending.value = false
       await refreshMaintenance()
     }
+    updateDownloadTracking(backupStatus.value)
     const localOperationRunning = restoring.value || runningNow.value || fullDownloading.value
     const remoteOperationRunning = backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning
-    if (statusPoller.value && !remoteOperationRunning && !localOperationRunning && (!restoreStatusPending.value || restoreTerminal.value)) stopBackupStatusPolling(false)
-  } catch { backupStatus.value = null }
+    if (statusPoller.value && !remoteOperationRunning && !localOperationRunning && !downloadTracking.value
+      && (!restoreStatusPending.value || restoreTerminal.value)) stopBackupStatusPolling(false)
+  } catch {
+    // Keep the last known status on a transient poll failure.
+  } finally {
+    statusRequestInFlight = false
+  }
 }
-const startBackupStatusPolling = () => {
+const startBackupStatusPolling = (immediate = true) => {
   stopBackupStatusPolling(false)
-  loadBackupStatus()
+  if (immediate) loadBackupStatus()
   statusPoller.value = window.setInterval(loadBackupStatus, 1000)
 }
 const stopBackupStatusPolling = async (refresh = true) => {
@@ -276,18 +506,84 @@ const loadBackupConfig = async () => {
   try { backupConfig.value = { ...backupConfig.value, ...await adminService.getBackupConfig() } } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.loadFilesFailed'), error, t('adminSettings.fullBackupSection.toasts.loadConfigFailedFallback')) }
 }
 
+const clearDownloadWatchdog = () => {
+  if (downloadWatchdog) window.clearTimeout(downloadWatchdog)
+  downloadWatchdog = null
+}
+const armDownloadWatchdog = () => {
+  clearDownloadWatchdog()
+  downloadWatchdog = window.setTimeout(async () => {
+    const tracking = downloadTracking.value
+    if (!tracking || tracking.sawRunning || tracking.operationId) return
+    downloadTracking.value = null
+    fullDownloading.value = false
+    backupStatus.value = null
+    await stopBackupStatusPolling(true)
+    toast.add({ severity: 'error', summary: t('adminSettings.fullBackupSection.toasts.downloadNotStarted'), detail: t('adminSettings.fullBackupSection.toasts.downloadNotStartedDetail'), life: 6000 })
+  }, 20000)
+}
+
 const downloadFullBackup = async () => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
-  fullDownloading.value = true
-  startBackupStatusPolling()
+  if (!passwordConfigured.value) return openPasswordDialog('download')
+  if (operationRunning.value) {
+    return toast.add({ severity: 'error', summary: t('adminSettings.fullBackupSection.toasts.downloadConflict'), detail: t('adminSettings.fullBackupSection.toasts.downloadConflictDetail'), life: 5000 })
+  }
+  let status
   try {
-    await adminService.downloadFullBackup()
-    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.downloadStarted'), detail: t('adminSettings.fullBackupSection.toasts.downloadStartedDetail'), life: 3000 })
-  } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadFailedFallback')) } finally { fullDownloading.value = false; await stopBackupStatusPolling() }
+    status = await adminService.getBackupStatus()
+  } catch (error) {
+    return showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadFailedFallback'))
+  }
+  if (status?.backupRunning || status?.restoreRunning) {
+    return toast.add({ severity: 'error', summary: t('adminSettings.fullBackupSection.toasts.downloadConflict'), detail: t('adminSettings.fullBackupSection.toasts.downloadConflictDetail'), life: 5000 })
+  }
+  fullDownloading.value = true
+  downloadResult.value = null
+  downloadTracking.value = {
+    requestedAt: Date.now(),
+    sawRunning: false,
+    operationId: null,
+    transferRunning: false,
+    fileName: '',
+    sizeBytes: 0,
+    transferredBytes: 0
+  }
+  backupStatus.value = {
+    status: 'running',
+    operation: 'download',
+    backupRunning: true,
+    progressPercent: null,
+    bytesWritten: 0,
+    phase: 'snapshot',
+    startedAt: new Date().toISOString()
+  }
+  startBackupStatusPolling(false)
+  armDownloadWatchdog()
+  try {
+    adminService.downloadFullBackup()
+  } catch (error) {
+    downloadTracking.value = null
+    fullDownloading.value = false
+    backupStatus.value = null
+    clearDownloadWatchdog()
+    await stopBackupStatusPolling(true)
+    showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadFailedFallback'))
+  }
 }
 const runBackupNow = async () => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
+  if (!passwordConfigured.value) return openPasswordDialog('run')
   runningNow.value = true
+  backupStatus.value = {
+    status: 'running',
+    operation: 'manual-local',
+    backupRunning: true,
+    progressPercent: null,
+    bytesWritten: 0,
+    phase: 'snapshot',
+    startedAt: new Date().toISOString()
+  }
   startBackupStatusPolling()
   try {
     const result = await adminService.runFullBackupNow()
@@ -297,19 +593,70 @@ const runBackupNow = async () => {
 }
 const saveBackupConfig = async () => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
-  const newPasswordLength = backupPassword.value.length
-  if (backupPassword.value !== backupPasswordConfirmation.value) return showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), new Error(t('adminSettings.fullBackupSection.toasts.passwordsDoNotMatch')), '')
-  if (newPasswordLength > 0 && (newPasswordLength < 12 || newPasswordLength > 1024)) return showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), new Error(t('adminSettings.fullBackupSection.toasts.passwordLengthError')), '')
+  if (backupConfig.value.scheduledEnabled && !passwordConfigured.value) return openPasswordDialog('save-scheduled')
   savingConfig.value = true
   try {
-    backupConfig.value = await adminService.updateBackupConfig({ ...backupConfig.value, password: backupPassword.value || undefined })
-    backupPassword.value = ''; backupPasswordConfirmation.value = ''
+    backupConfig.value = { ...backupConfig.value, ...await adminService.updateBackupConfig({ ...backupConfig.value }) }
     toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.settingsSaved'), detail: t('adminSettings.fullBackupSection.toasts.settingsSavedDetail'), life: 3000 })
     await loadBackupFiles()
   } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), error, t('adminSettings.fullBackupSection.toasts.saveConfigFailedFallback')) } finally { savingConfig.value = false }
 }
-const downloadLocalBackup = async (fileName) => {
-  try { await adminService.downloadLocalBackup(fileName) } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadLocalFailedFallback')) }
+
+const openPasswordDialog = (purpose) => {
+  if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
+  passwordDialogPurpose.value = purpose
+  passwordDraft.value = { password: '', confirmation: '' }
+  passwordDialogError.value = ''
+  passwordDialogVisible.value = true
+}
+const closePasswordDialog = () => {
+  if (savingPassword.value) return
+  passwordDialogVisible.value = false
+  passwordDialogPurpose.value = null
+}
+const onPasswordDialogHide = () => {
+  if (savingPassword.value) return
+  passwordDialogPurpose.value = null
+  passwordDraft.value = { password: '', confirmation: '' }
+  passwordDialogError.value = ''
+}
+const savePassword = async () => {
+  const password = passwordDraft.value.password
+  if (password.length < 12 || password.length > 1024) {
+    passwordDialogError.value = t('adminSettings.fullBackupSection.passwordDialog.lengthError')
+    return
+  }
+  if (password !== passwordDraft.value.confirmation) {
+    passwordDialogError.value = t('adminSettings.fullBackupSection.passwordDialog.mismatch')
+    return
+  }
+  savingPassword.value = true
+  passwordDialogError.value = ''
+  const purpose = passwordDialogPurpose.value
+  try {
+    const config = await adminService.updateBackupPassword(password)
+    backupConfig.value = { ...backupConfig.value, ...(config || {}), passwordConfigured: true }
+    passwordDialogVisible.value = false
+    passwordDialogPurpose.value = null
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.passwordSaved'), detail: t('adminSettings.fullBackupSection.toasts.passwordSavedDetail'), life: 4000 })
+    if (purpose === 'download') await downloadFullBackup()
+    else if (purpose === 'run') await runBackupNow()
+    else if (purpose === 'save-scheduled') await saveBackupConfig()
+  } catch (error) {
+    passwordDialogError.value = formatApiErrorDetail(error, t('adminSettings.fullBackupSection.toasts.passwordSaveFailedFallback'))
+  } finally {
+    savingPassword.value = false
+  }
+}
+
+const downloadLocalBackup = (fileName) => {
+  if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
+  try {
+    adminService.downloadLocalBackup(fileName)
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.downloadStarted'), detail: t('adminSettings.fullBackupSection.toasts.localDownloadStartedDetail', { fileName }), life: 4000 })
+  } catch (error) {
+    showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadLocalFailedFallback'))
+  }
 }
 const openDeleteDialog = (fileName) => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
@@ -375,8 +722,14 @@ const formatBytes = (bytes = 0) => {
 }
 const formatDate = (value) => value ? new Date(value).toLocaleString() : ''
 
-onMounted(() => { loadBackupConfig(); loadBackupFiles(); loadBackupStatus() })
-onUnmounted(() => { stopBackupStatusPolling(false) })
+onMounted(async () => {
+  await Promise.all([loadBackupConfig(), loadBackupFiles(), loadBackupStatus()])
+  if (backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning) startBackupStatusPolling()
+})
+onUnmounted(() => {
+  clearDownloadWatchdog()
+  stopBackupStatusPolling(false)
+})
 </script>
 
 <style scoped>
@@ -388,12 +741,20 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 .backup-grid, .config-grid, .config-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .backup-panel, .backup-subsection, .config-group { border: 1px solid var(--gp-border-medium); border-radius: 8px; padding: 1.15rem; background: var(--gp-surface-muted); }
 .backup-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
+.password-panel { background: color-mix(in srgb, var(--gp-primary) 5%, var(--gp-surface-muted)); }
+.password-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; width: 100%; }
+.password-status :deep(.p-message) { flex: 1 1 18rem; }
 .backup-panel-header, .subsection-header, .progress-heading, .progress-caption { display: flex; justify-content: space-between; gap: 1rem; width: 100%; }
 .backup-panel h4, .subsection-header h4, .progress-heading h4 { margin: 0 0 0.35rem; color: var(--gp-text-primary); }
 .backup-panel-icon { color: var(--gp-primary); font-size: 1.25rem; }
 .backup-progress { padding: 1.1rem; border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-radius: 8px; display: grid; gap: 0.75rem; background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-card)); }
 .progress-heading span, .progress-caption { color: var(--gp-text-secondary); font-size: 0.9rem; }
-.restore-progress, .backup-subsection, .config-group, .retryable-restore, .restore-failure { display: grid; gap: 1rem; }
+.progress-caption { flex-wrap: wrap; }
+.backup-result { display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 0.85rem; border-radius: 6px; border: 1px solid var(--gp-border-medium); color: var(--gp-text-secondary); font-size: 0.9rem; overflow-wrap: anywhere; }
+.backup-result.completed i { color: var(--p-green-500); }
+.backup-result.failed { color: var(--p-red-500); }
+.restore-progress, .backup-subsection, .config-group, .retryable-restore, .restore-failure, .password-dialog-content { display: grid; gap: 1rem; }
+.subsection-hint { margin-top: -0.5rem; }
 .restore-failure h4 { margin: 0 0 0.5rem; color: var(--gp-text-primary); }
 .restore-failure p { margin: 0 0 0.45rem; line-height: 1.5; overflow-wrap: anywhere; }
 .restore-failure p:last-child { margin-bottom: 0; }
@@ -410,6 +771,7 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 .confirm-content { display: flex; gap: 1rem; align-items: flex-start; }
 .confirm-content > i { color: var(--p-red-500); font-size: 1.5rem; }
 .confirm-content p { margin: 0 0 0.75rem; line-height: 1.5; }
+.password-error { color: var(--p-red-500); }
 
 @media (max-width: 768px) {
   .backup-grid, .config-grid, .config-row, .restore-upload-row { grid-template-columns: 1fr; }
@@ -453,6 +815,7 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
   .file-actions :deep(.p-button) { max-width: 100%; }
   .section-actions :deep(.p-button),
   .restore-upload-row > :deep(.p-button) { width: 100%; }
+  .password-status :deep(.p-button) { width: 100%; }
   .inline-upload :deep(.p-fileupload-choose) {
     max-width: 100%;
     white-space: normal;
@@ -494,7 +857,4 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
     padding: 0;
   }
 }
-</style>
-
-<style>
 </style>

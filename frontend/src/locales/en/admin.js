@@ -58,7 +58,7 @@ export default {
     },
     backupsPage: {
         title: 'Backups & Restore',
-        subtitle: 'Protect the instance and recover it when needed.',
+        subtitle: 'Full database backups, restore, and configuration export.',
         learnMore: 'Learn more in the documentation',
         breadcrumbTitle: 'Backups & Restore'
     },

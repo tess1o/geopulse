@@ -1,135 +1,79 @@
 <template>
   <div class="settings-section backup-page">
-    <section class="backup-section">
-      <div class="backup-section-header">
-        <div>
-          <h3>{{ t('adminSettings.backupTab.exportSection.title') }}</h3>
-          <p class="text-muted">{{ t('adminSettings.backupTab.exportSection.subtitle') }}</p>
-        </div>
-      </div>
+    <div class="backup-tabs" role="tablist" :aria-label="t('adminSettings.backupTab.tabs.ariaLabel')">
+      <button
+        id="backup-tab-full"
+        type="button"
+        role="tab"
+        :class="{ active: activeTab === 'full' }"
+        :aria-selected="activeTab === 'full'"
+        aria-controls="backup-panel-full"
+        :tabindex="activeTab === 'full' ? 0 : -1"
+        @click="selectTab('full')"
+        @keydown.left.prevent="selectTab('settings')"
+        @keydown.right.prevent="selectTab('settings')"
+        @keydown.home.prevent="selectTab('full')"
+        @keydown.end.prevent="selectTab('settings')"
+      >
+        <i class="pi pi-database" aria-hidden="true" />
+        {{ t('adminSettings.backupTab.tabs.fullDatabaseBackup') }}
+      </button>
+      <button
+        id="backup-tab-settings"
+        type="button"
+        role="tab"
+        :class="{ active: activeTab === 'settings' }"
+        :aria-selected="activeTab === 'settings'"
+        aria-controls="backup-panel-settings"
+        :tabindex="activeTab === 'settings' ? 0 : -1"
+        @click="selectTab('settings')"
+        @keydown.left.prevent="selectTab('full')"
+        @keydown.right.prevent="selectTab('full')"
+        @keydown.home.prevent="selectTab('full')"
+        @keydown.end.prevent="selectTab('settings')"
+      >
+        <i class="pi pi-cog" aria-hidden="true" />
+        {{ t('adminSettings.backupTab.tabs.adminSettings') }}
+      </button>
+    </div>
 
-      <div class="backup-section-body">
-        <div class="backup-grid">
-          <section class="backup-panel">
-            <div class="backup-panel-header">
-              <div>
-                <h4>{{ t('adminSettings.backupTab.exportSection.panelTitle') }}</h4>
-                <p class="text-muted">{{ t('adminSettings.backupTab.exportSection.panelDescription') }}</p>
-              </div>
-              <i class="pi pi-download backup-panel-icon"></i>
-            </div>
-            <Button :label="t('adminSettings.backupTab.exportSection.button')" icon="pi pi-download" :loading="exporting" :disabled="adminReadOnly" @click="exportBackup" />
-          </section>
-
-          <section class="backup-panel">
-            <div class="backup-panel-header">
-              <div>
-                <h4>{{ t('adminSettings.backupTab.importSection.panelTitle') }}</h4>
-                <p class="text-muted">{{ t('adminSettings.backupTab.importSection.panelDescription') }}</p>
-              </div>
-              <i class="pi pi-upload backup-panel-icon"></i>
-            </div>
-            <div class="inline-upload">
-              <FileUpload ref="fileUpload" mode="basic" accept=".json,application/json" :chooseLabel="t('adminSettings.backupTab.importSection.chooseFile')" :auto="false" :disabled="adminReadOnly || importing" @select="onFileSelect" @clear="onFileClear" />
-              <div v-if="selectedFile" class="selected-file"><i class="pi pi-file"></i><span>{{ selectedFile.name }}</span></div>
-            </div>
-            <Button :label="t('adminSettings.backupTab.importSection.button')" icon="pi pi-upload" severity="danger" :loading="importing" :disabled="adminReadOnly || !selectedFile" @click="openImportDialog" />
-          </section>
-        </div>
-
-        <div class="message-stack">
-          <Message severity="warn" :closable="false">
-            {{ t('adminSettings.backupTab.warnMessage') }}
-          </Message>
-          <Message severity="info" :closable="false">
-            {{ t('adminSettings.backupTab.infoMessage') }}
-          </Message>
-        </div>
-      </div>
+    <section
+      id="backup-panel-full"
+      role="tabpanel"
+      aria-labelledby="backup-tab-full"
+      v-show="activeTab === 'full'"
+    >
+      <AdminFullBackupSection :admin-read-only="adminReadOnly" />
     </section>
 
-    <AdminFullBackupSection :admin-read-only="adminReadOnly" />
-
-    <Dialog v-model:visible="importDialogVisible" :header="t('adminSettings.backupTab.importDialog.header')" modal :style="{ width: '32rem' }">
-      <div class="confirm-content">
-        <i class="pi pi-exclamation-triangle"></i>
-        <div>
-          <p>{{ t('adminSettings.backupTab.importDialog.message') }}</p>
-          <p class="text-muted">{{ t('adminSettings.backupTab.importDialog.note') }}</p>
-        </div>
-      </div>
-      <template #footer>
-        <Button :label="t('common.cancel')" icon="pi pi-times" text @click="importDialogVisible = false" />
-        <Button :label="t('adminSettings.backupTab.importDialog.import')" icon="pi pi-upload" severity="danger" :loading="importing" @click="importBackup" />
-      </template>
-    </Dialog>
+    <section
+      id="backup-panel-settings"
+      role="tabpanel"
+      aria-labelledby="backup-tab-settings"
+      v-show="activeTab === 'settings'"
+    >
+      <AdminSettingsExportSection :admin-read-only="adminReadOnly" />
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
-import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
-import FileUpload from 'primevue/fileupload'
-import Message from 'primevue/message'
-import { useToast } from 'primevue/usetoast'
 import AdminFullBackupSection from '@/components/admin/settings/sections/AdminFullBackupSection.vue'
+import AdminSettingsExportSection from '@/components/admin/settings/sections/AdminSettingsExportSection.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useAdminStore } from '@/stores/admin'
-import { showDemoReadOnlyToast } from '@/utils/demoMode'
-import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const { t } = useI18n()
-const adminService = useAdminStore()
-const toast = useToast()
 const authStore = useAuthStore()
 const { adminReadOnly } = storeToRefs(authStore)
-const exporting = ref(false)
-const importing = ref(false)
-const selectedFile = ref(null)
-const importDialogVisible = ref(false)
-const fileUpload = ref(null)
+const activeTab = ref('full')
 
-const onFileSelect = (event) => { selectedFile.value = event.files?.[0] || null }
-const onFileClear = () => { selectedFile.value = null }
-
-const exportBackup = async () => {
-  if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
-  exporting.value = true
-  try {
-    await adminService.exportAdminSettingsBackup()
-    toast.add({ severity: 'success', summary: t('adminSettings.backupTab.toasts.exportStarted'), detail: t('adminSettings.backupTab.toasts.exportStartedDetail'), life: 3000 })
-  } catch (error) {
-    toast.add({ severity: 'error', summary: t('adminSettings.backupTab.toasts.exportFailed'), detail: error.message || t('adminSettings.backupTab.toasts.exportFailedFallback'), life: 4000 })
-  } finally {
-    exporting.value = false
-  }
-}
-
-const openImportDialog = () => {
-  if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
-  importDialogVisible.value = true
-}
-
-const importBackup = async () => {
-  if (!selectedFile.value) return
-  importing.value = true
-  try {
-    const result = await adminService.importAdminSettingsBackup(selectedFile.value)
-    importDialogVisible.value = false
-    selectedFile.value = null
-    fileUpload.value?.clear?.()
-    const settings = result.settingsImported ?? 0
-    const oidc = result.oidcProvidersImported ?? 0
-    const custom = result.customGeocodingProvidersImported ?? 0
-    toast.add({ severity: 'success', summary: t('adminSettings.backupTab.toasts.importComplete'), detail: t('adminSettings.backupTab.toasts.importCompleteDetail', { settings, oidc, custom }), life: 5000 })
-  } catch (error) {
-    toast.add({ severity: 'error', summary: t('adminSettings.backupTab.toasts.importFailed'), detail: formatApiErrorDetail(error, t('adminSettings.backupTab.toasts.importFailedFallback')), life: 5000 })
-  } finally {
-    importing.value = false
-  }
+const selectTab = async (tab) => {
+  activeTab.value = tab
+  await nextTick()
+  document.getElementById(`backup-tab-${tab}`)?.focus()
 }
 </script>
 
@@ -138,47 +82,68 @@ const importBackup = async () => {
 
 .backup-page {
   display: grid;
-  gap: 1.75rem;
+  gap: 1.25rem;
   padding: 0 1rem 1.5rem;
 }
 
-.backup-section {
-  border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium));
-  border-left: 4px solid var(--gp-primary);
+.backup-tabs {
+  display: flex;
+  gap: 0.35rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.35rem;
+  border: 1px solid var(--gp-border-medium);
   border-radius: 8px;
-  overflow: hidden;
+  background: var(--gp-surface-muted);
+  overflow-x: auto;
+}
+
+.backup-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gp-text-secondary);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.backup-tabs button:hover {
+  color: var(--gp-text-primary);
+}
+
+.backup-tabs button.active {
   background: var(--gp-surface-card);
+  color: var(--gp-primary);
+  font-weight: 600;
   box-shadow: var(--gp-shadow-card);
 }
 
-.backup-section-header {
-  padding: 1.25rem 1.45rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium));
-  background: color-mix(in srgb, var(--gp-primary) 7%, var(--gp-surface-card));
+.backup-tabs button:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
 }
-
-.backup-section-header h3 { margin: 0 0 0.35rem; color: var(--gp-primary); }
-.backup-section-header p, .backup-panel p { margin: 0; line-height: 1.5; }
-.backup-section-body { display: grid; gap: 1.5rem; padding: 1.45rem; }
-.backup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.backup-panel { border: 1px solid var(--gp-border-medium); border-radius: 8px; padding: 1.15rem; display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; background: var(--gp-surface-muted); }
-.backup-panel-header { width: 100%; display: flex; justify-content: space-between; gap: 1rem; }
-.backup-panel h4 { margin: 0 0 0.35rem; font-size: 1rem; color: var(--gp-text-primary); }
-.backup-panel-icon { color: var(--gp-primary); font-size: 1.25rem; }
-.inline-upload { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; width: 100%; }
-.selected-file { display: inline-flex; align-items: center; gap: 0.5rem; max-width: 100%; color: var(--gp-text-secondary); font-size: 0.9rem; }
-.selected-file span { overflow-wrap: anywhere; }
-.message-stack { display: grid; gap: 0.75rem; }
-.confirm-content { display: flex; gap: 1rem; align-items: flex-start; }
-.confirm-content > i { color: var(--p-red-500); font-size: 1.5rem; }
-.confirm-content p { margin: 0 0 0.75rem; line-height: 1.5; }
 
 @media (max-width: 768px) {
-  .backup-grid { grid-template-columns: 1fr; }
-  .backup-page { padding: 0 0.5rem 1rem; gap: 1rem; }
-  .backup-section-header, .backup-section-body { padding: 1rem; }
-}
-</style>
+  .backup-page {
+    padding: 0 0.5rem 1rem;
+  }
 
-<style>
+  .backup-tabs {
+    width: 100%;
+  }
+
+  .backup-tabs button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.9rem;
+    white-space: normal;
+    text-align: left;
+  }
+}
 </style>

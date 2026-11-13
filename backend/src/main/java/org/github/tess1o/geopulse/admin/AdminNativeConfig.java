@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.admin.model.*;
                 AdminSettingsBackupDto.CustomGeocodingProviderBackupDto.class,
                 AdminSettingsImportResult.class,
                 AdminBackupConfigDto.class,
+                AdminBackupPasswordRequest.class,
                 AdminBackupFileDto.class,
                 AdminBackupStatusDto.class,
                 MapMatchingProviderTestResponse.class,

@@ -13,11 +13,13 @@ import org.github.tess1o.geopulse.admin.dto.backup.MaintenanceStatusDto;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Locale;
@@ -41,6 +43,7 @@ public class BackupMaintenanceService {
     private boolean exclusive;
     private boolean operationLocked;
     private boolean backupRunning;
+    private Path backupOutputFile;
     private RestoreState restore;
     private AdminBackupStatusDto backupStatus = AdminBackupStatusDto.builder().status("idle").build();
 
@@ -58,6 +61,10 @@ public class BackupMaintenanceService {
                 value("quarkus.application.version", "unknown"));
         restore = context.journal().read();
         reconcileStartup();
+        int removedDownloads = BackupDownloadFiles.deleteStale(context.workPath(), Duration.ofHours(48));
+        if (removedDownloads > 0) {
+            log.info("Removed {} stale temporary backup download file(s)", removedDownloads);
+        }
         coordination = postgres.connect(postgres.maintenanceDatabase(), true);
         if (!instanceLock("pg_try_advisory_lock_shared")) {
             throw new IllegalStateException("Another GeoPulse backend is activating a restore");
@@ -123,8 +130,9 @@ public class BackupMaintenanceService {
         }
         String operationId = UUID.randomUUID().toString();
         backupRunning = true;
+        backupOutputFile = null;
         backupStatus = AdminBackupStatusDto.builder().operationId(operationId).backupRunning(true)
-                .status("running").operation(operation).phase("snapshot")
+                .status("running").operation(operation).phase("snapshot").bytesWritten(0L)
                 .message(message("backup.creating", "Creating encrypted PostgreSQL backup"))
                 .startedAt(Instant.now()).build();
         log.info("Backup operation {} started; type={}", operationId, operation);
@@ -259,14 +267,48 @@ public class BackupMaintenanceService {
     }
     public synchronized void updateBackupFile(String name) { backupStatus.setFileName(name); }
 
+    public synchronized void updateBackupOutput(Path file) { backupOutputFile = file; }
+
+    public synchronized void updateBackupPhase(BackupPhase phase) {
+        if (!backupRunning || phase == null) return;
+        backupStatus.setPhase(phase.wireName());
+        backupStatus.setMessage(message("backup." + phase.wireName(), phase.fallbackMessage()));
+    }
+
+    public synchronized void beginDownloadTransfer(String operationId) {
+        if (!isCurrentBackupOperation(operationId)) return;
+        backupStatus.setDownloadTransfer("running");
+        backupStatus.setDownloadTransferredBytes(0L);
+    }
+
+    public synchronized void updateDownloadTransferProgress(String operationId, long bytes) {
+        if (!isCurrentBackupOperation(operationId)) return;
+        Long transferred = backupStatus.getDownloadTransferredBytes();
+        backupStatus.setDownloadTransferredBytes((transferred == null ? 0L : transferred) + bytes);
+    }
+
+    public synchronized void finishDownloadTransfer(String operationId, boolean completed) {
+        if (!isCurrentBackupOperation(operationId)) return;
+        backupStatus.setDownloadTransfer(completed ? "completed" : "failed");
+        if (completed && backupStatus.getSizeBytes() != null) {
+            backupStatus.setDownloadTransferredBytes(backupStatus.getSizeBytes());
+        }
+    }
+
+    private boolean isCurrentBackupOperation(String operationId) {
+        return operationId != null && backupStatus != null && operationId.equals(backupStatus.getOperationId());
+    }
+
     public synchronized void finishSuccess(String name, Long size) {
         String operationId = backupStatus.getOperationId();
         releaseOperation();
         backupRunning = false;
+        backupOutputFile = null;
         backupStatus.setBackupRunning(false);
         backupStatus.setStatus("completed");
         backupStatus.setFileName(name);
         backupStatus.setSizeBytes(size);
+        backupStatus.setBytesWritten(size);
         backupStatus.setProgressPercent(100);
         backupStatus.setCompletedAt(Instant.now());
         backupStatus.setMessage(message("backup.completed", "Backup completed successfully."));
@@ -283,6 +325,7 @@ public class BackupMaintenanceService {
             String operationId = backupStatus.getOperationId();
             releaseOperation();
             backupRunning = false;
+            backupOutputFile = null;
             backupStatus.setBackupRunning(false);
             backupStatus.setStatus("failed");
             backupStatus.setError(error);
@@ -308,6 +351,7 @@ public class BackupMaintenanceService {
     }
 
     public synchronized AdminBackupStatusDto getStatus() {
+        refreshBackupBytes();
         if (restore == null || backupRunning || backupFinishedAfterRestore()) return backupStatus;
         return AdminBackupStatusDto.builder().operationId(restore.operationId).state(restore.state.name())
                 .status(restore.state.name().toLowerCase(Locale.ROOT)).stagingDatabase(restore.stagingDatabase)
@@ -322,6 +366,15 @@ public class BackupMaintenanceService {
 
     private MessageDescriptor message(String key, String fallback) {
         return new MessageDescriptor(key, java.util.Map.of(), fallback);
+    }
+
+    private void refreshBackupBytes() {
+        if (!backupRunning || backupOutputFile == null) return;
+        try {
+            backupStatus.setBytesWritten(Files.size(backupOutputFile));
+        } catch (IOException ignored) {
+            // The temporary file does not exist yet or was already published; keep the last known value.
+        }
     }
 
     private boolean backupFinishedAfterRestore() {

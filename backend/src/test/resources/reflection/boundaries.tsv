@@ -2,7 +2,7 @@
 JACKSON org/github/tess1o/geopulse/admin/backup/NativeDatabaseBackup.java#describe(Connection): JSON.writeValueAsBytes(result.schema)	!Schema is List<List<String>>; no application POJOs.
 JACKSON org/github/tess1o/geopulse/admin/backup/NativeDatabaseBackup.java#prepare(Path,char[],RestoreState,Instant,Consumer<RestorePhase>): JSON.readValue(metadata, NativeBackupManifest.class)	org.github.tess1o.geopulse.admin.backup.NativeBackupManifest
 JACKSON org/github/tess1o/geopulse/admin/backup/NativeDatabaseBackup.java#reencrypt(Connection,KeyCipher,KeyCipher,Instant): JSON.writeValueAsString(json)	!JsonNode tree read from database JSON; no application POJOs.
-JACKSON org/github/tess1o/geopulse/admin/backup/NativeDatabaseBackup.java#write(Path,char[],Instant,String): JSON.writeValueAsBytes(manifest)	org.github.tess1o.geopulse.admin.backup.NativeBackupManifest
+JACKSON org/github/tess1o/geopulse/admin/backup/NativeDatabaseBackup.java#write(Path,char[],Instant,String,BackupPhaseListener): JSON.writeValueAsBytes(manifest)	org.github.tess1o.geopulse.admin.backup.NativeBackupManifest
 JACKSON org/github/tess1o/geopulse/admin/backup/RestoreJournal.java#archive(RestoreState): JSON.writeValueAsBytes(state)	org.github.tess1o.geopulse.admin.backup.RestoreState
 JACKSON org/github/tess1o/geopulse/admin/backup/RestoreJournal.java#read(): JSON.treeToValue(tree, RestoreState.class)	org.github.tess1o.geopulse.admin.backup.RestoreState
 JACKSON org/github/tess1o/geopulse/admin/backup/RestoreJournal.java#write(RestoreState): JSON.writeValueAsBytes(state)	org.github.tess1o.geopulse.admin.backup.RestoreState

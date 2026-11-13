@@ -21,15 +21,18 @@ import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupConfigDto;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupCreatedResponse;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupFileDto;
+import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupPasswordRequest;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupStatusDto;
 import org.github.tess1o.geopulse.admin.dto.backup.RestoreAcceptedResponse;
 import org.github.tess1o.geopulse.admin.dto.backup.RestoreLocalBackupRequest;
+import org.github.tess1o.geopulse.admin.backup.BackupDownloadFiles;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AdminFullBackupService;
 import org.github.tess1o.geopulse.admin.service.AdminFullBackupScheduler;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
+import org.github.tess1o.geopulse.admin.service.PreparedDownloadBackup;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
@@ -39,6 +42,7 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -83,35 +87,58 @@ public class AdminFullBackupResource {
             content = @Content(mediaType = "application/octet-stream",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
     @Operation(summary = "Create and download a backup",
-            description = "Creates an encrypted full database backup, saves it in the backup folder, and streams it "
-                    + "as the response. Requires a backup password to be configured. Fails with `409` while another "
-                    + "backup or restore is running.")
+            description = "Creates a temporary encrypted full database backup under the backup work path and streams "
+                    + "it as the response. The archive is deleted after the transfer, is not saved in the local "
+                    + "backup folder, is not listed by the files endpoint, and does not affect retention. Requires a "
+                    + "backup password to be configured. Fails with `409` while another backup or restore is running.")
     public Response downloadFullBackup() {
         if (!maintenanceService.tryStartBackup("download")) {
             throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
         }
+        String operationId = maintenanceService.currentOperationId();
+        PreparedDownloadBackup prepared = null;
         try {
-            String operationId = maintenanceService.currentOperationId();
-            String fileName = backupService.writeLocalBackup();
-            java.nio.file.Path completed = backupService.resolveLocalBackup(fileName);
-            long size = Files.size(completed);
-            InputStream download = Files.newInputStream(completed);
-            maintenanceService.finishSuccess(fileName, size);
+            prepared = backupService.writeDownloadBackup(operationId);
+            PreparedDownloadBackup backup = prepared;
+            long size = backup.sizeBytes();
+            java.nio.file.Path file = backup.path();
+            maintenanceService.finishSuccess(backup.fileName(), size);
+            maintenanceService.beginDownloadTransfer(operationId);
             StreamingOutput stream = output -> {
-                try (download) {
-                    download.transferTo(output);
-                    log.info("Backup operation {} download completed; file={}", operationId, fileName);
+                try (InputStream download = Files.newInputStream(file)) {
+                    byte[] buffer = new byte[64 * 1024];
+                    int read;
+                    while ((read = download.read(buffer)) != -1) {
+                        output.write(buffer, 0, read);
+                        maintenanceService.updateDownloadTransferProgress(operationId, read);
+                    }
+                    maintenanceService.finishDownloadTransfer(operationId, true);
+                    log.info("Backup operation {} download completed; file={}", operationId, backup.fileName());
                 } catch (IOException e) {
-                    log.warn("Backup operation {} file was created but browser download was interrupted; file={}",
-                            operationId, fileName);
+                    maintenanceService.finishDownloadTransfer(operationId, false);
+                    log.warn("Backup operation {} temporary backup download was interrupted; file={}",
+                            operationId, backup.fileName());
                     throw e;
+                } finally {
+                    BackupDownloadFiles.deleteQuietly(file);
                 }
             };
-            audit(ActionType.ADMIN_FULL_BACKUP_CREATED, fileName, operationId, httpRequest);
-            audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, fileName, operationId, httpRequest);
-            return Response.ok(stream).header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
-                    .header("Content-Type", "application/octet-stream").build();
+            audit(ActionType.ADMIN_FULL_BACKUP_CREATED, backup.fileName(), operationId,
+                    Map.of("ephemeral", true), httpRequest);
+            audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, backup.fileName(), operationId,
+                    Map.of("ephemeral", true), httpRequest);
+            return Response.ok(stream)
+                    .header("Content-Length", size)
+                    .header("Content-Disposition", "attachment; filename=\"" + backup.fileName() + "\"")
+                    .header("Content-Type", "application/octet-stream")
+                    .header("Cache-Control", "no-store")
+                    .build();
+        } catch (IllegalArgumentException e) {
+            deleteTemporary(prepared);
+            maintenanceService.finishFailure(e.getMessage());
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
         } catch (Exception e) { // NOPMD - backup API exposes checked Exception; this try contains no application problems
+            deleteTemporary(prepared);
             maintenanceService.finishFailure(BACKUP_FAILURE_MESSAGE);
             throw new GeoPulseException(BACKUP_FAILED, BACKUP_FAILURE_MESSAGE, e);
         }
@@ -120,9 +147,10 @@ public class AdminFullBackupResource {
     @POST
     @Path("/run-now")
     @RolesAllowed(SecurityRoles.ADMIN)
-    @Operation(summary = "Create a backup",
+    @Operation(summary = "Create a local backup",
             description = "Creates an encrypted full database backup in the backup folder and returns its file name "
-                    + "and size. Requires a backup password to be configured.")
+                    + "and size. The file is listed by the files endpoint and counts toward retention. Requires a "
+                    + "backup password to be configured.")
     public AdminBackupCreatedResponse runBackupNow() {
         if (!maintenanceService.tryStartBackup("manual-local")) {
             throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
@@ -169,6 +197,7 @@ public class AdminFullBackupResource {
             @PathParam("fileName") String fileName) {
         try {
             java.nio.file.Path file = backupService.resolveLocalBackup(fileName);
+            long size = Files.size(file);
             InputStream download = Files.newInputStream(file);
             String operationId = UUID.randomUUID().toString();
             StreamingOutput stream = output -> {
@@ -182,8 +211,10 @@ public class AdminFullBackupResource {
             };
             audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, fileName, operationId, httpRequest);
             return Response.ok(stream)
+                    .header("Content-Length", size)
                     .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
                     .header("Content-Type", "application/octet-stream")
+                    .header("Cache-Control", "no-store")
                     .build();
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
@@ -293,6 +324,26 @@ public class AdminFullBackupResource {
         }
     }
 
+    @PUT
+    @Path("/password")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    @APIResponseSchema(value = AdminBackupConfigDto.class, responseCode = "200",
+            responseDescription = "Backup password updated")
+    @Operation(summary = "Set or change the backup password",
+            description = "Updates the password used to encrypt new full backups. This does not require a valid "
+                    + "scheduled-backup configuration or a writable backup folder. Changing the password affects new "
+                    + "backups only.")
+    public AdminBackupConfigDto updatePassword(AdminBackupPasswordRequest request) {
+        UUID adminId = currentUserService.getCurrentUserId();
+        try {
+            backupService.updatePassword(request == null ? null : request.getPassword(), adminId);
+            auditSettingChange(adminId, "backup.password");
+            return backupService.getConfig();
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
+        }
+    }
+
     @GET
     @Path("/status")
     @RolesAllowed(SecurityRoles.ADMIN)
@@ -360,17 +411,40 @@ public class AdminFullBackupResource {
     }
 
     private void audit(ActionType actionType, String fileName, String operationId, HttpServerRequest httpRequest) {
+        audit(actionType, fileName, operationId, Map.of(), httpRequest);
+    }
+
+    private void audit(ActionType actionType, String fileName, String operationId,
+                       Map<String, Object> extraDetails, HttpServerRequest httpRequest) {
         try {
+            Map<String, Object> details = new HashMap<>(extraDetails);
+            details.put("fileName", fileName == null ? "" : fileName);
+            details.put("operationId", operationId);
             auditLogService.logAction(
                     currentUserService.getCurrentUserId(),
                     actionType,
                     TargetType.BACKUP,
                     fileName,
-                    Map.of("fileName", fileName == null ? "" : fileName, "operationId", operationId),
+                    details,
                     UserIpAddress.resolve(httpRequest)
             );
         } catch (Exception e) {
             log.warn("Failed to write backup audit log for {} {}", actionType, fileName, e);
+        }
+    }
+
+    private void auditSettingChange(UUID adminId, String key) {
+        try {
+            auditLogService.logAction(adminId, ActionType.SETTING_CHANGED, TargetType.SETTING,
+                    key, Map.of(), UserIpAddress.resolve(httpRequest));
+        } catch (Exception e) {
+            log.warn("Failed to write setting audit log for {}", key, e);
+        }
+    }
+
+    private void deleteTemporary(PreparedDownloadBackup prepared) {
+        if (prepared != null) {
+            BackupDownloadFiles.deleteQuietly(prepared.path());
         }
     }
 }

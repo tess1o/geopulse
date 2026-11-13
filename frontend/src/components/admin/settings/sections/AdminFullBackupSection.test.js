@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   getBackupFiles: vi.fn(),
   getBackupStatus: vi.fn(),
   updateBackupConfig: vi.fn(),
+  updateBackupPassword: vi.fn(),
+  downloadFullBackup: vi.fn(),
+  downloadLocalBackup: vi.fn(),
   restoreLocalFullBackup: vi.fn(),
   restoreUploadedFullBackup: vi.fn(),
   refreshMaintenance: vi.fn()
@@ -19,12 +22,13 @@ vi.mock('@/stores/admin', () => ({
     getBackupFiles: mocks.getBackupFiles,
     getBackupStatus: mocks.getBackupStatus,
     updateBackupConfig: mocks.updateBackupConfig,
+    updateBackupPassword: mocks.updateBackupPassword,
     restoreLocalFullBackup: mocks.restoreLocalFullBackup,
     restoreUploadedFullBackup: mocks.restoreUploadedFullBackup,
     deleteLocalBackup: vi.fn(),
     discardPreparedRestore: vi.fn(),
-    downloadFullBackup: vi.fn(),
-    downloadLocalBackup: vi.fn(),
+    downloadFullBackup: mocks.downloadFullBackup,
+    downloadLocalBackup: mocks.downloadLocalBackup,
     retryPreparedRestore: vi.fn(),
     runFullBackupNow: vi.fn()
   })
@@ -49,63 +53,137 @@ const mountSection = () => mount(AdminFullBackupSection, {
       Button: ButtonStub,
       Column: true,
       DataTable: { template: '<div><slot /></div>' },
-      Dialog: { template: '<div><slot /><slot name="footer" /></div>' },
+      Dialog: {
+        props: ['visible', 'header'],
+        template: '<div v-if="visible" class="dialog-stub"><span class="dialog-header">{{ header }}</span><slot /><slot name="footer" /></div>'
+      },
       FileUpload: true,
       InputNumber: true,
       InputText: InputTextStub,
       Message: { template: '<div><slot /></div>' },
-      ProgressBar: true,
+      ProgressBar: {
+        props: ['value', 'mode', 'showValue'],
+        template: '<div class="progress-stub" :data-mode="mode || \'determinate\'" :data-value="value" />'
+      },
+      Select: true,
       ToggleSwitch: true
     },
     directives: { tooltip: () => {} }
   }
 })
 
-describe('AdminFullBackupSection password validation', () => {
+const button = (wrapper, label) => wrapper.findAll('button').find(item => item.text() === label)
+const config = (overrides = {}) => ({
+  passwordConfigured: true,
+  scheduledEnabled: false,
+  scheduledCron: '0 0 3 * * ?',
+  localPath: '/backups',
+  retentionCount: 7,
+  operationTimeoutMinutes: 120,
+  ...overrides
+})
+
+describe('AdminFullBackupSection backup UX', () => {
   beforeEach(() => {
     vi.useRealTimers()
     mocks.toast.add.mockReset()
-    mocks.getBackupConfig.mockReset().mockResolvedValue({
-      passwordConfigured: true,
-      scheduledEnabled: false,
-      scheduledCron: '0 0 3 * * ?',
-      localPath: '/backups',
-      retentionCount: 7,
-      operationTimeoutMinutes: 120
-    })
+    mocks.getBackupConfig.mockReset().mockResolvedValue(config())
     mocks.getBackupFiles.mockReset().mockResolvedValue([])
     mocks.getBackupStatus.mockReset().mockResolvedValue({ status: 'idle' })
-    mocks.updateBackupConfig.mockReset().mockImplementation(async config => ({ ...config, passwordConfigured: true }))
+    mocks.updateBackupConfig.mockReset().mockImplementation(async value => ({ ...value, passwordConfigured: true }))
+    mocks.updateBackupPassword.mockReset().mockResolvedValue(config({ passwordConfigured: true }))
+    mocks.downloadFullBackup.mockReset()
+    mocks.downloadLocalBackup.mockReset()
     mocks.restoreLocalFullBackup.mockReset().mockResolvedValue({ operationId: 'restore-operation', state: 'PREPARING' })
     mocks.restoreUploadedFullBackup.mockReset().mockResolvedValue({ operationId: 'restore-operation', state: 'PREPARING' })
     mocks.refreshMaintenance.mockReset().mockResolvedValue()
   })
 
-  it('enforces the new-password bounds before calling the API', async () => {
+  it('keeps download enabled without a password and opens the password dialog on click', async () => {
+    mocks.getBackupConfig.mockResolvedValue(config({ passwordConfigured: false }))
     const wrapper = mountSection()
     await flushPromises()
-    const passwordInputs = wrapper.findAll('input[type="password"]')
-    expect(passwordInputs[0].attributes('minlength')).toBe('12')
-    expect(passwordInputs[0].attributes('maxlength')).toBe('1024')
 
-    await passwordInputs[0].setValue('too-short')
-    await passwordInputs[1].setValue('too-short')
-    await wrapper.findAll('button').find(button => button.text() === 'Save Backup Settings').trigger('click')
+    const download = button(wrapper, 'Download Full Backup')
+    expect(download.attributes('disabled')).toBeUndefined()
+
+    await download.trigger('click')
     await flushPromises()
 
-    expect(mocks.updateBackupConfig).not.toHaveBeenCalled()
-    expect(mocks.toast.add).toHaveBeenCalledWith(expect.objectContaining({ detail: 'New backup password must contain 12–1024 characters' }))
-
-    await passwordInputs[0].setValue('twelve-chars!')
-    await passwordInputs[1].setValue('twelve-chars!')
-    await wrapper.findAll('button').find(button => button.text() === 'Save Backup Settings').trigger('click')
-    await flushPromises()
-
-    expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ password: 'twelve-chars!' }))
+    expect(wrapper.text()).toContain('Set Backup Password')
+    expect(wrapper.findAll('input[type="password"]')).toHaveLength(2)
+    expect(mocks.downloadFullBackup).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
-  it('saves zero days to disable backup freshness alerts', async () => {
+  it('validates and saves the password, then resumes the download', async () => {
+    mocks.getBackupConfig.mockResolvedValue(config({ passwordConfigured: false }))
+    const wrapper = mountSection()
+    await flushPromises()
+
+    await button(wrapper, 'Download Full Backup').trigger('click')
+    await flushPromises()
+    let inputs = wrapper.findAll('input[type="password"]')
+    await inputs[0].setValue('short')
+    await inputs[1].setValue('short')
+    await button(wrapper, 'Save Password').trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateBackupPassword).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('must contain 12–1024 characters')
+
+    inputs = wrapper.findAll('input[type="password"]')
+    await inputs[0].setValue('twelve-chars!')
+    await inputs[1].setValue('twelve-chars!')
+    await button(wrapper, 'Save Password').trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateBackupPassword).toHaveBeenCalledWith('twelve-chars!')
+    expect(mocks.downloadFullBackup).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).not.toContain('Set Backup Password')
+    wrapper.unmount()
+  })
+
+  it('renders indeterminate progress with phase and bytes while a backup runs', async () => {
+    mocks.getBackupStatus.mockResolvedValue({
+      status: 'running',
+      operation: 'download',
+      backupRunning: true,
+      progressPercent: null,
+      bytesWritten: 123456,
+      phase: 'dumping',
+      startedAt: new Date().toISOString()
+    })
+    const wrapper = mountSection()
+    await flushPromises()
+
+    const progress = wrapper.find('.progress-stub')
+    expect(progress.attributes('data-mode')).toBe('indeterminate')
+    expect(wrapper.text()).toContain('Dumping database data…')
+    expect(wrapper.text()).toContain('120.6 KB written')
+    expect(wrapper.text()).not.toContain('0%')
+    wrapper.unmount()
+  })
+
+  it('keeps determinate restore progress percentages', async () => {
+    mocks.getBackupStatus.mockResolvedValue({
+      state: 'PREPARING',
+      status: 'preparing',
+      operation: 'restore',
+      restoreRunning: true,
+      progressPercent: 20
+    })
+    const wrapper = mountSection()
+    await flushPromises()
+
+    const progress = wrapper.find('.progress-stub')
+    expect(progress.attributes('data-mode')).toBe('determinate')
+    expect(progress.attributes('data-value')).toBe('20')
+    expect(wrapper.text()).toContain('20%')
+    wrapper.unmount()
+  })
+
+  it('does not send a password with scheduled backup settings', async () => {
     const wrapper = mountSection()
     await flushPromises()
 
@@ -113,7 +191,108 @@ describe('AdminFullBackupSection password validation', () => {
     wrapper.vm.backupConfig.healthAppriseEnabled = false
     await wrapper.vm.saveBackupConfig()
 
-    expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ healthMaxAgeDays: 0, healthAppriseEnabled: false }))
+    expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.not.objectContaining({ password: expect.anything() }))
+    wrapper.unmount()
+  })
+
+  it('opens the password dialog before saving schedules without a password', async () => {
+    mocks.getBackupConfig.mockResolvedValue(config({ passwordConfigured: false }))
+    const wrapper = mountSection()
+    await flushPromises()
+
+    wrapper.vm.backupConfig.scheduledEnabled = true
+    await wrapper.vm.saveBackupConfig()
+    await flushPromises()
+    expect(mocks.updateBackupConfig).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Set Backup Password')
+
+    const inputs = wrapper.findAll('input[type="password"]')
+    await inputs[0].setValue('twelve-chars!')
+    await inputs[1].setValue('twelve-chars!')
+    await button(wrapper, 'Save Password').trigger('click')
+    await flushPromises()
+
+    expect(mocks.updateBackupPassword).toHaveBeenCalledWith('twelve-chars!')
+    expect(mocks.updateBackupConfig).toHaveBeenCalledTimes(1)
+    expect(mocks.updateBackupConfig.mock.calls[0][0]).not.toHaveProperty('password')
+    wrapper.unmount()
+  })
+
+  it('tracks an anchor-triggered download through status and reports completion once', async () => {
+    vi.useFakeTimers()
+    const startedAt = new Date().toISOString()
+    mocks.getBackupStatus
+      .mockResolvedValueOnce({ status: 'completed', operation: 'download', operationId: 'old', startedAt: '2025-01-01T00:00:00Z', completedAt: '2025-01-01T00:00:00Z' })
+      .mockResolvedValueOnce({ status: 'idle' })
+      .mockResolvedValueOnce({ status: 'running', operation: 'download', backupRunning: true, operationId: 'new', phase: 'dumping', progressPercent: null, startedAt })
+      .mockResolvedValueOnce({ status: 'completed', operation: 'download', operationId: 'new', fileName: 'backup.gpb', sizeBytes: 100, startedAt, completedAt: new Date().toISOString(), downloadTransfer: 'running', downloadTransferredBytes: 25 })
+      .mockResolvedValueOnce({ status: 'completed', operation: 'download', operationId: 'new', fileName: 'backup.gpb', sizeBytes: 100, startedAt, completedAt: new Date().toISOString(), downloadTransfer: 'completed', downloadTransferredBytes: 100 })
+    const wrapper = mountSection()
+    await flushPromises()
+    const fileRequests = mocks.getBackupFiles.mock.calls.length
+
+    await button(wrapper, 'Download Full Backup').trigger('click')
+    await flushPromises()
+    expect(mocks.downloadFullBackup).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+
+    // The server built the archive and is still streaming it to the browser.
+    expect(wrapper.text()).toContain('Downloading backup')
+    expect(wrapper.text()).toContain('25 B of 100 B transferred')
+    expect(mocks.toast.add).not.toHaveBeenCalledWith(expect.objectContaining({ summary: 'Download Complete' }))
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+
+    const successToasts = mocks.toast.add.mock.calls.filter(([value]) => value.summary === 'Download Complete')
+    expect(successToasts).toHaveLength(1)
+    expect(successToasts[0][0].detail).toContain('choose Keep')
+    expect(wrapper.text()).toContain('Download complete — backup.gpb')
+    expect(wrapper.text()).not.toContain('Downloading backup')
+    expect(mocks.getBackupFiles.mock.calls.length).toBe(fileRequests)
+    wrapper.unmount()
+  })
+
+  it('reports an interrupted transfer and keeps a visible result', async () => {
+    vi.useFakeTimers()
+    const startedAt = new Date().toISOString()
+    mocks.getBackupStatus
+      .mockResolvedValueOnce({ status: 'idle' })
+      .mockResolvedValueOnce({ status: 'idle' })
+      .mockResolvedValueOnce({ status: 'running', operation: 'download', backupRunning: true, operationId: 'new', phase: 'dumping', progressPercent: null, startedAt })
+      .mockResolvedValueOnce({ status: 'completed', operation: 'download', operationId: 'new', fileName: 'backup.gpb', sizeBytes: 100, startedAt, downloadTransfer: 'failed', downloadTransferredBytes: 25 })
+    const wrapper = mountSection()
+    await flushPromises()
+
+    await button(wrapper, 'Download Full Backup').trigger('click')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+
+    expect(mocks.toast.add).toHaveBeenCalledWith(expect.objectContaining({ severity: 'error', summary: 'Download Interrupted' }))
+    expect(wrapper.text()).toContain('Download interrupted.')
+    expect(wrapper.text()).not.toContain('Downloading backup')
+    wrapper.unmount()
+  })
+
+  it('reports a download that never reaches the server', async () => {
+    vi.useFakeTimers()
+    mocks.getBackupStatus.mockResolvedValue({ status: 'idle' })
+    const wrapper = mountSection()
+    await flushPromises()
+
+    await button(wrapper, 'Download Full Backup').trigger('click')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(20000)
+    await flushPromises()
+
+    expect(mocks.toast.add).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Download Did Not Start' }))
     wrapper.unmount()
   })
 

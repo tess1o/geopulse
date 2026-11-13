@@ -905,11 +905,16 @@ export default {
         noSettingsDescription: 'Die Benachrichtigungseinstellungen sind in den Tab Benachrichtigungen umgezogen.'
     },
     backupTab: {
+        tabs: {
+            ariaLabel: 'Sicherungsbereiche',
+            fullDatabaseBackup: 'Vollständige Datenbanksicherung',
+            adminSettings: 'Admin-Einstellungen'
+        },
         exportSection: {
-            title: 'Export der Admin-Einstellungen',
-            subtitle: 'Übertragbare Admin-Einstellungen und Anbieterkonfiguration.',
-            panelTitle: 'Einstellungen exportieren',
-            panelDescription: 'Lade eine JSON-Sicherung mit den übertragbaren Admin-Einstellungen und den Zugangsdaten der Anbieter herunter.',
+            title: 'Export der Admin-Einstellungen (JSON)',
+            subtitle: 'Nur Konfiguration: von der Administration verwaltete Einstellungen und Anbieter-Zugangsdaten. Keine Datenbanksicherung und keine Benutzer- oder GPS-Daten.',
+            panelTitle: 'Konfiguration exportieren',
+            panelDescription: 'Lade eine JSON-Datei mit übertragbaren Admin-Einstellungen und Anbieter-Zugangsdaten herunter.',
             button: 'Einstellungen exportieren'
         },
         importSection: {
@@ -919,7 +924,7 @@ export default {
             button: 'Einstellungen importieren'
         },
         warnMessage: 'Der Export der Einstellungen enthält API-Schlüssel, OIDC-Client-Secrets, Tokens und eigene Anbieter-Header im Klartext.',
-        infoMessage: 'Der Export umfasst das von der Administration gesteuerte Verhalten der App sowie OIDC- und eigene Anbieterkonfigurationen.',
+        infoMessage: 'Nutze „Vollständige Datenbanksicherung“ für Benutzer, GPS-Verlauf und Datenbankinhalte. Dieser JSON-Export enthält nur die von der Administration verwaltete Konfiguration.',
         importDialog: {
             header: 'Admin-Einstellungen ersetzen?',
             message: 'Der Import dieser Datei ersetzt die aktuellen globalen Einstellungen, OIDC-Anbieter und eigenen Geocodierungsanbieter.',
@@ -928,7 +933,7 @@ export default {
         },
         toasts: {
             exportStarted: 'Export gestartet',
-            exportStartedDetail: 'Der Download der Sicherung der Admin-Einstellungen hat begonnen.',
+            exportStartedDetail: 'Die Konfigurationsdatei ist bereit und der Browser-Download hat begonnen.',
             exportFailed: 'Export fehlgeschlagen',
             exportFailedFallback: 'Sicherung der Admin-Einstellungen konnte nicht exportiert werden',
             importComplete: 'Import abgeschlossen',
@@ -938,17 +943,39 @@ export default {
         }
     },
     fullBackupSection: {
-        title: 'Vollständige App-Sicherung',
-        subtitle: 'Passwortverschlüsselte PostgreSQL-Sicherung der Anwendungsdaten und Geheimnisse.',
+        title: 'Vollständige Datenbanksicherung',
+        subtitle: 'Passwortverschlüsselte PostgreSQL-Sicherung der Datenbankinhalte und Geheimnisse.',
+        passwordSection: {
+            title: 'Verschlüsselungspasswort für Sicherungen',
+            description: 'Verschlüsselt jede neue vollständige Sicherung. Vor dem Herunterladen oder Erstellen einer Sicherung ist ein Passwort erforderlich.',
+            configured: 'Ein Sicherungspasswort ist konfiguriert.',
+            notConfigured: 'Es ist noch kein Sicherungspasswort konfiguriert. Lege eines fest, um Sicherungen zu erstellen.',
+            setButton: 'Passwort festlegen',
+            changeButton: 'Passwort ändern',
+            changeNote: 'Bewahre das Passwort außerhalb von GeoPulse auf: Es kann nicht wiederhergestellt werden. Änderungen gelten nur für neue Sicherungen.'
+        },
+        passwordDialog: {
+            titleSet: 'Sicherungspasswort festlegen',
+            titleChange: 'Sicherungspasswort ändern',
+            description: 'Dieses Passwort verschlüsselt neue vollständige Sicherungen. Bewahre es außerhalb von GeoPulse auf; es kann nicht wiederhergestellt werden.',
+            passwordLabel: 'Neues Passwort',
+            confirmLabel: 'Neues Passwort bestätigen',
+            lengthHint: 'Verwende 12–1.024 Zeichen.',
+            save: 'Passwort speichern',
+            saving: 'Wird gespeichert',
+            mismatch: 'Die Sicherungspasswörter stimmen nicht überein.',
+            lengthError: 'Das Sicherungspasswort muss 12–1.024 Zeichen lang sein.',
+            required: 'Ein Sicherungspasswort ist erforderlich.'
+        },
         downloadPanel: {
             title: 'Vollständige Sicherung herunterladen',
-            description: 'Eine vollständige Sicherung erstellen und in diesem Browser herunterladen.',
+            description: 'Erstelle eine temporäre verschlüsselte Sicherung und lade sie hier herunter. Sie wird nach der Übertragung gelöscht und nicht zu den lokalen Sicherungen hinzugefügt.',
             button: 'Vollständige Sicherung herunterladen'
         },
         runNowPanel: {
-            title: 'Sicherung jetzt ausführen',
-            description: 'Eine Sicherungsdatei im eingebundenen lokalen Ordner erstellen.',
-            button: 'Sicherung jetzt ausführen'
+            title: 'Lokale Sicherung erstellen',
+            description: 'Eine verschlüsselte Sicherung im konfigurierten Serverordner behalten. Sie erscheint bei den lokalen Sicherungen und zählt für die Aufbewahrung.',
+            button: 'Lokale Sicherung erstellen'
         },
         warnMessage: 'Vollständige Sicherungen werden mit deinem Sicherungspasswort verschlüsselt. Bewahre dieses Passwort außerhalb von GeoPulse auf: Ohne es lässt sich die Sicherung nicht wiederherstellen. Stelle nur vertrauenswürdige Sicherungen wieder her. Die Vorbereitung läuft im laufenden Betrieb; bei der Aktivierung hält GeoPulse kurz an und startet das Backend automatisch neu.',
         restorePreparationFailedTitle: 'Vorbereitung der Wiederherstellung fehlgeschlagen',
@@ -965,17 +992,21 @@ export default {
             lastBackupCompleted: 'Letzter Sicherungsvorgang abgeschlossen',
             lastBackupFailed: 'Letzter Sicherungsvorgang fehlgeschlagen',
             backupStatus: 'Sicherungsstatus',
+            backupPhaseSnapshot: 'Konsistenter Datenbank-Snapshot wird erstellt…',
+            backupPhaseDumping: 'Datenbankdaten werden exportiert…',
+            backupPhaseFinalizing: 'Sicherungsdatei wird verschlüsselt und abgeschlossen…',
+            elapsed: 'Verstrichen: {duration}',
+            bytesWritten: '{size} geschrieben',
+            downloadInProgress: 'Sicherung wird heruntergeladen',
+            downloadKeepPageOpen: 'Lass diese Seite geöffnet. Wenn der Browser fragt, ob die Datei behalten werden soll, wähle „Behalten“.',
+            downloadTransferred: '{transferred} von {size} übertragen',
             restorePreparingMessage: 'Die Wiederherstellung wird im Hintergrund vorbereitet. GeoPulse bleibt bis zur Aktivierung verfügbar.',
             waitingForStatus: 'Warte auf Status'
         },
         scheduledSection: {
             title: 'Geplante lokale Sicherungen',
             description: 'Automatische Sicherungen in den eingebundenen Sicherungsordner einrichten.',
-            backupPassword: 'Sicherungspasswort',
-            changePasswordLabel: 'Passwort ändern (leer lassen, um es zu behalten)',
-            passwordRequiredLabel: 'Passwort für alle vollständigen Sicherungen erforderlich',
-            confirmNewPassword: 'Neues Passwort bestätigen',
-            passwordLengthHint: 'Neue Passwörter müssen 12–1.024 Zeichen lang sein.',
+            passwordRequiredHint: 'Geplante Sicherungen verwenden das oben konfigurierte Verschlüsselungspasswort.',
             schedule: 'Zeitplan',
             enabled: 'Aktiviert',
             cron: 'Cron',
@@ -1034,9 +1065,23 @@ export default {
             loadFilesFailedFallback: 'Lokale Sicherungen konnten nicht geladen werden',
             loadConfigFailedFallback: 'Sicherungseinstellungen konnten nicht geladen werden',
             downloadStarted: 'Download gestartet',
-            downloadStartedDetail: 'Der Download der vollständigen Sicherung hat begonnen.',
+            downloadStartedDetail: 'Das verschlüsselte Archiv ist bereit und der Browser-Download hat begonnen.',
+            downloadComplete: 'Download abgeschlossen',
+            downloadCompleteDetail: 'Das Sicherungsarchiv wurde heruntergeladen. Wenn der Browser fragt, ob die Datei behalten werden soll, wähle „Behalten“.',
+            downloadCompleteBanner: 'Download abgeschlossen — {fileName}. Wenn der Browser fragt, ob die Datei behalten werden soll, wähle „Behalten“.',
+            downloadInterrupted: 'Download unterbrochen',
+            downloadInterruptedDetail: 'Die Datei wurde nicht vollständig heruntergeladen. Versuche es erneut und lass diese Seite bis zum Ende geöffnet.',
+            downloadInterruptedBanner: 'Download unterbrochen. Die Datei wurde nicht vollständig heruntergeladen — versuche es erneut und lass diese Seite bis zum Ende geöffnet.',
             downloadFailed: 'Download fehlgeschlagen',
             downloadFailedFallback: 'Vollständige Sicherung konnte nicht heruntergeladen werden',
+            downloadNotStarted: 'Download nicht gestartet',
+            downloadNotStartedDetail: 'Die Sicherungsanfrage hat den Server nicht erreicht. Prüfe deine Sitzung und versuche es erneut.',
+            downloadConflict: 'Sicherung läuft bereits',
+            downloadConflictDetail: 'Warte, bis der aktuelle Sicherungs- oder Wiederherstellungsvorgang abgeschlossen ist, und versuche es erneut.',
+            localDownloadStartedDetail: 'Dein Browser lädt {fileName} herunter.',
+            passwordSaved: 'Passwort gespeichert',
+            passwordSavedDetail: 'Das Verschlüsselungspasswort für Sicherungen wurde aktualisiert. Es gilt nur für neue Sicherungen.',
+            passwordSaveFailedFallback: 'Sicherungspasswort konnte nicht gespeichert werden',
             backupComplete: 'Sicherung abgeschlossen',
             backupCompleteDetail: '{fileName} erstellt',
             backupFailed: 'Sicherung fehlgeschlagen',

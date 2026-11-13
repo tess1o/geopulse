@@ -58,7 +58,7 @@ export default {
     },
     backupsPage: {
         title: 'Back-ups & Herstellen',
-        subtitle: 'Bescherm de instantie en herstel deze wanneer nodig.',
+        subtitle: 'Volledige databaseback-ups, herstel en configuratie-export.',
         learnMore: 'Lees meer in de documentatie',
         breadcrumbTitle: 'Back-ups & Herstellen'
     },

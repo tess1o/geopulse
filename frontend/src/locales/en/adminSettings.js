@@ -910,11 +910,16 @@ export default {
         noSettingsDescription: 'Notification settings were moved to the Notifications tab.'
     },
     backupTab: {
+        tabs: {
+            ariaLabel: 'Backup sections',
+            fullDatabaseBackup: 'Full Database Backup',
+            adminSettings: 'Admin Settings'
+        },
         exportSection: {
-            title: 'Admin Settings Export',
-            subtitle: 'Portable admin-managed settings and provider configuration.',
-            panelTitle: 'Export Settings',
-            panelDescription: 'Download a JSON backup with portable admin-managed behavior and provider credentials.',
+            title: 'Admin Settings Export (JSON)',
+            subtitle: 'Configuration only: admin-managed settings and provider credentials. This is not a database backup and contains no users or GPS history.',
+            panelTitle: 'Export Configuration',
+            panelDescription: 'Download a JSON file with portable admin-managed settings and provider credentials.',
             button: 'Export Settings'
         },
         importSection: {
@@ -924,7 +929,7 @@ export default {
             button: 'Import Settings'
         },
         warnMessage: 'The settings export includes plaintext API keys, OIDC client secrets, tokens, and custom provider headers.',
-        infoMessage: 'Settings export scope is admin-managed app behavior plus OIDC/custom provider configs.',
+        infoMessage: 'Use Full Database Backup for users, GPS history, and database contents. This JSON export only covers admin-managed configuration.',
         importDialog: {
             header: 'Replace Admin Settings?',
             message: 'Importing this file will replace current global settings, OIDC providers, and custom geocoding providers.',
@@ -933,7 +938,7 @@ export default {
         },
         toasts: {
             exportStarted: 'Export Started',
-            exportStartedDetail: 'Admin settings backup download has started.',
+            exportStartedDetail: 'The configuration file is ready and your browser download has started.',
             exportFailed: 'Export Failed',
             exportFailedFallback: 'Failed to export admin settings backup',
             importComplete: 'Import Complete',
@@ -943,17 +948,39 @@ export default {
         }
     },
     fullBackupSection: {
-        title: 'Full App Backup',
-        subtitle: 'Password-encrypted PostgreSQL backup of application data and secrets.',
+        title: 'Full Database Backup',
+        subtitle: 'Password-encrypted PostgreSQL backup of database contents and secrets.',
+        passwordSection: {
+            title: 'Backup Encryption Password',
+            description: 'Encrypts every new full backup. A password is required before downloading or creating a backup.',
+            configured: 'A backup password is configured.',
+            notConfigured: 'No backup password is configured yet. Set one to create backups.',
+            setButton: 'Set Password',
+            changeButton: 'Change Password',
+            changeNote: 'Store the password outside GeoPulse: it cannot be recovered. Changing it affects new backups only.'
+        },
+        passwordDialog: {
+            titleSet: 'Set Backup Password',
+            titleChange: 'Change Backup Password',
+            description: 'This password encrypts new full backups. Store it outside GeoPulse; it cannot be recovered.',
+            passwordLabel: 'New password',
+            confirmLabel: 'Confirm new password',
+            lengthHint: 'Use 12–1024 characters.',
+            save: 'Save Password',
+            saving: 'Saving',
+            mismatch: 'The backup passwords do not match.',
+            lengthError: 'The backup password must contain 12–1024 characters.',
+            required: 'A backup password is required.'
+        },
         downloadPanel: {
             title: 'Download Full Backup',
-            description: 'Generate a full backup and download it in this browser.',
+            description: 'Create a temporary encrypted archive and download it here. It is deleted after the transfer and is not added to Local Backups.',
             button: 'Download Full Backup'
         },
         runNowPanel: {
-            title: 'Run Backup Now',
-            description: 'Create a backup file in the mounted local folder.',
-            button: 'Run Backup Now'
+            title: 'Create Local Backup',
+            description: 'Keep an encrypted backup in the configured server folder. It appears in Local Backups and counts toward retention.',
+            button: 'Create Local Backup'
         },
         warnMessage: 'Full backups are encrypted with your backup password. Save that password outside GeoPulse: without it, the backup cannot be recovered. Restore only trusted backups. Restore preparation runs online; activation briefly stops GeoPulse and restarts the backend automatically.',
         restorePreparationFailedTitle: 'Restore preparation failed',
@@ -970,17 +997,21 @@ export default {
             lastBackupCompleted: 'Last backup operation completed',
             lastBackupFailed: 'Last backup operation failed',
             backupStatus: 'Backup status',
+            backupPhaseSnapshot: 'Creating a consistent database snapshot…',
+            backupPhaseDumping: 'Dumping database data…',
+            backupPhaseFinalizing: 'Encrypting and finalizing the backup file…',
+            elapsed: 'Elapsed: {duration}',
+            bytesWritten: '{size} written',
+            downloadInProgress: 'Downloading backup',
+            downloadKeepPageOpen: 'Keep this page open. If your browser asks whether to keep the file, choose Keep.',
+            downloadTransferred: '{transferred} of {size} transferred',
             restorePreparingMessage: 'Restoration is being prepared in the background. GeoPulse remains available until activation.',
             waitingForStatus: 'Waiting for status'
         },
         scheduledSection: {
             title: 'Scheduled Local Backups',
             description: 'Configure automatic backups written to the mounted backup folder.',
-            backupPassword: 'Backup password',
-            changePasswordLabel: 'Change password (leave empty to keep)',
-            passwordRequiredLabel: 'Password required for all full backups',
-            confirmNewPassword: 'Confirm new password',
-            passwordLengthHint: 'New passwords must contain 12–1024 characters.',
+            passwordRequiredHint: 'Scheduled backups use the backup encryption password configured above.',
             schedule: 'Schedule',
             enabled: 'Enabled',
             cron: 'Cron',
@@ -1039,9 +1070,23 @@ export default {
             loadFilesFailedFallback: 'Failed to load local backups',
             loadConfigFailedFallback: 'Failed to load backup settings',
             downloadStarted: 'Download Started',
-            downloadStartedDetail: 'Full backup download has started.',
+            downloadStartedDetail: 'The encrypted archive is ready and your browser download has started.',
+            downloadComplete: 'Download Complete',
+            downloadCompleteDetail: 'The backup archive was downloaded. If your browser asks whether to keep the file, choose Keep.',
+            downloadCompleteBanner: 'Download complete — {fileName}. If your browser asks whether to keep the file, choose Keep.',
+            downloadInterrupted: 'Download Interrupted',
+            downloadInterruptedDetail: 'The file was not fully downloaded. Try again and keep this page open until it finishes.',
+            downloadInterruptedBanner: 'Download interrupted. The file was not fully downloaded — try again and keep this page open until it finishes.',
             downloadFailed: 'Download Failed',
             downloadFailedFallback: 'Failed to download full backup',
+            downloadNotStarted: 'Download Did Not Start',
+            downloadNotStartedDetail: 'The backup request did not reach the server. Check your session and try again.',
+            downloadConflict: 'Backup Already Running',
+            downloadConflictDetail: 'Wait for the current backup or restore operation to finish, then try again.',
+            localDownloadStartedDetail: 'Your browser is downloading {fileName}.',
+            passwordSaved: 'Password Saved',
+            passwordSavedDetail: 'The backup encryption password was updated. It applies to new backups only.',
+            passwordSaveFailedFallback: 'Failed to save the backup password',
             backupComplete: 'Backup Complete',
             backupCompleteDetail: 'Created {fileName}',
             backupFailed: 'Backup Failed',
