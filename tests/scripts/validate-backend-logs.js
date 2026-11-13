@@ -19,7 +19,7 @@ export function findFailures(log) {
     if (jsonStart >= 0) {
       try { message = JSON.stringify(JSON.parse(line.slice(jsonStart))); } catch { /* Plain text log. */ }
     }
-    return diagnostics.some(pattern => pattern.test(message)) q? [line] : [];
+    return diagnostics.some(pattern => pattern.test(message)) ? [line] : [];
   });
 }
 

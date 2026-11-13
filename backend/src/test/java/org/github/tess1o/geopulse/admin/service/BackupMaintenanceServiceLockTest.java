@@ -66,6 +66,57 @@ class BackupMaintenanceServiceLockTest {
         assertThat(service.getStatus().getMessage().fallback()).isEqualTo("Backup completed successfully.");
     }
 
+    @Test
+    void tracksDownloadTransferStateOnTheCompletedBackup() throws Exception {
+        BackupMaintenanceService service = new BackupMaintenanceService();
+        set(service, "backupRunning", true);
+        set(service, "backupStatus", AdminBackupStatusDto.builder().operationId("backup-id").status("running").build());
+
+        service.finishSuccess("backup.gpb", 100L);
+        service.beginDownloadTransfer("backup-id");
+
+        assertThat(service.getStatus().getDownloadTransfer()).isEqualTo("running");
+        assertThat(service.getStatus().getDownloadTransferredBytes()).isZero();
+
+        service.updateDownloadTransferProgress("backup-id", 40);
+        service.updateDownloadTransferProgress("backup-id", 10);
+        assertThat(service.getStatus().getDownloadTransferredBytes()).isEqualTo(50L);
+
+        service.finishDownloadTransfer("backup-id", true);
+        assertThat(service.getStatus().getDownloadTransfer()).isEqualTo("completed");
+        assertThat(service.getStatus().getDownloadTransferredBytes()).isEqualTo(100L);
+    }
+
+    @Test
+    void reportsInterruptedDownloadTransferWithoutChangingBackupStatus() throws Exception {
+        BackupMaintenanceService service = new BackupMaintenanceService();
+        set(service, "backupRunning", true);
+        set(service, "backupStatus", AdminBackupStatusDto.builder().operationId("backup-id").status("running").build());
+        service.finishSuccess("backup.gpb", 100L);
+        service.beginDownloadTransfer("backup-id");
+        service.updateDownloadTransferProgress("backup-id", 25);
+
+        service.finishDownloadTransfer("backup-id", false);
+
+        assertThat(service.getStatus().getDownloadTransfer()).isEqualTo("failed");
+        assertThat(service.getStatus().getDownloadTransferredBytes()).isEqualTo(25L);
+        assertThat(service.getStatus().getStatus()).isEqualTo("completed");
+    }
+
+    @Test
+    void ignoresDownloadTransferEventsForSupersededOperations() throws Exception {
+        BackupMaintenanceService service = new BackupMaintenanceService();
+        set(service, "backupRunning", true);
+        set(service, "backupStatus", AdminBackupStatusDto.builder().operationId("new-id").status("running").build());
+
+        service.beginDownloadTransfer("old-id");
+        service.updateDownloadTransferProgress("old-id", 10);
+        service.finishDownloadTransfer("old-id", true);
+
+        assertThat(service.getStatus().getDownloadTransfer()).isNull();
+        assertThat(service.getStatus().getDownloadTransferredBytes()).isNull();
+    }
+
     private BackupMaintenanceService serviceWithLockResults(Boolean... results) throws Exception {
         Deque<Boolean> values = new ArrayDeque<>(java.util.List.of(results));
         Connection connection = mock(Connection.class);

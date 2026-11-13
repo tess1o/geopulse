@@ -55,7 +55,7 @@ export default {
     },
     backupsPage: {
         title: 'Sicherung & Wiederherstellung',
-        subtitle: 'Sichere die Instanz und stell sie bei Bedarf wieder her.',
+        subtitle: 'Vollständige Datenbanksicherungen, Wiederherstellung und Konfigurationsexport.',
         learnMore: 'Mehr dazu in der Dokumentation',
         breadcrumbTitle: 'Sicherung & Wiederherstellung'
     },

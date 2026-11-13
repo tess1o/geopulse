@@ -6,10 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @Tag("unit")
@@ -32,6 +35,32 @@ class AdminFullBackupServiceTest {
     @Test
     void rejectsNullConfiguration() {
         assertThatThrownBy(() -> service().validateConfig(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void dedicatedPasswordUpdateWritesOnlyThePasswordSetting() {
+        SystemSettingsService settings = mock(SystemSettingsService.class);
+        AdminFullBackupService service = new AdminFullBackupService();
+        service.settingsService = settings;
+        UUID adminId = UUID.randomUUID();
+
+        service.updatePassword("twelve-chars!", adminId);
+
+        verify(settings).setValue("backup.password", "twelve-chars!", adminId);
+        verifyNoMoreInteractions(settings);
+    }
+
+    @Test
+    void dedicatedPasswordUpdateRejectsBlankAndOutOfBoundsPasswords() {
+        AdminFullBackupService service = service();
+        UUID adminId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.updatePassword(null, adminId)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.updatePassword("", adminId)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.updatePassword("short", adminId))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("12 and 1024");
+        assertThatThrownBy(() -> service.updatePassword("a".repeat(1025), adminId))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("12 and 1024");
     }
 
     private AdminFullBackupService service() {

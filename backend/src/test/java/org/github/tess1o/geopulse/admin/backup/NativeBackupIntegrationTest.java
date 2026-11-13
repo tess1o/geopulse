@@ -141,12 +141,14 @@ class NativeBackupIntegrationTest {
                 throw new RuntimeException(e);
             }
         });
+        List<BackupPhase> phases = new ArrayList<>();
         try {
-            new NativeDatabaseBackup(source).write(archive, password, deadline(), "integration-backup");
+            new NativeDatabaseBackup(source).write(archive, password, deadline(), "integration-backup", phases::add);
         } finally {
             writing.set(false);
             writer.join();
         }
+        assertThat(phases).containsExactly(BackupPhase.SNAPSHOT, BackupPhase.DUMPING, BackupPhase.FINALIZING);
         RestoreState state = prepare();
         assertOriginalUntouched();
         byte[] destinationKeyFile = Files.readAllBytes(Path.of(destination.keyLocation()));

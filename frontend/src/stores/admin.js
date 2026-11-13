@@ -313,7 +313,7 @@ const actions = {
     },
 
     async downloadFullBackup() {
-        return apiService.download('/admin/backups/download');
+        return apiService.downloadViaBrowser('/admin/backups/download');
     },
 
     async runFullBackupNow() {
@@ -325,11 +325,15 @@ const actions = {
     },
 
     async downloadLocalBackup(fileName) {
-        return apiService.download(`/admin/backups/files/${encodeURIComponent(fileName)}`);
+        return apiService.downloadViaBrowser(`/admin/backups/files/${encodeURIComponent(fileName)}`);
     },
 
     async deleteLocalBackup(fileName) {
         return apiService.delete(`/admin/backups/files/${encodeURIComponent(fileName)}`);
+    },
+
+    async updateBackupPassword(password) {
+        return apiService.put('/admin/backups/password', { password });
     },
 
     async restoreUploadedFullBackup(file, password) {

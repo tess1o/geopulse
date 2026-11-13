@@ -30,8 +30,15 @@ public final class NativeDatabaseBackup {
     }
 
     public void write(Path output, char[] password, Instant deadline, String operationId) throws Exception {
+        write(output, password, deadline, operationId, phase -> {
+        });
+    }
+
+    public void write(Path output, char[] password, Instant deadline, String operationId,
+                      BackupPhaseListener phaseListener) throws Exception {
         log.info("Backup operation {} creating encrypted native database backup; file={}", operationId, output.getFileName());
         KeyCipher key = KeyCipher.load(context.keyLocation());
+        phaseListener.onPhase(BackupPhase.SNAPSHOT);
         RestoreJournal.createPrivateFile(output);
         try (Connection snapshot = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline _ = new ConnectionDeadline(snapshot, deadline)) {
             snapshot.setAutoCommit(false);
@@ -53,11 +60,13 @@ public final class NativeDatabaseBackup {
                 zip.setLevel(0); // pg_dump custom format already compresses table data.
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 zip.putNextEntry(new ZipEntry("database.dump"));
+                phaseListener.onPhase(BackupPhase.DUMPING);
                 tools.run(operationId, "pg_dump", List.of("--format=custom", "--snapshot=" + snapshotId,
                                 "--exclude-table-data=public.oidc_session_states", "--exclude-table-data=public.mobile_auth_codes"),
                         context.postgres().database(), false,
                         new DigestOutputStream(zip, digest), deadline);
                 zip.closeEntry();
+                phaseListener.onPhase(BackupPhase.FINALIZING);
                 manifest.dumpSha256 = HexFormat.of().formatHex(digest.digest());
                 manifest.sourceKeyFingerprint = key.fingerprint();
                 entry(zip, "manifest.json", JSON.writeValueAsBytes(manifest));

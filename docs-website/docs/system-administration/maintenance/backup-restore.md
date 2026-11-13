@@ -31,6 +31,8 @@ If you back up GeoPulse with `pg_dump`, also back up the AI encryption key confi
 
 Use **Administration > Settings > Backup** for complete, password-encrypted `.gpb` backups. GeoPulse streams a native PostgreSQL custom-format dump from one consistent snapshot. The application remains usable during backup. Files appear in the backup list only after encryption and writing succeed; retention runs after successful publication.
 
+**Download Full Backup** creates a temporary archive under the private backup working directory, streams it to the browser, and deletes it when the transfer ends. It does not appear in **Local Backups**, does not count toward retention, and is not available to other administrators. Keep the page open until the download finishes. Browsers may ask you to confirm keeping a large file; choose **Keep** to save it. Use **Create Local Backup** or scheduled backups when you want to keep an archive in the configured backup folder.
+
 A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted database-stored settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes.
 
 :::warning Runtime configuration is not backed up
@@ -39,7 +41,7 @@ Full backups do **not** include `.env` files, Docker Compose files, Helm values,
 
 ### Passwords
 
-Configure a 12–1024 character backup password before using **Run Backup Now**, **Download Full Backup**, or scheduled backups. GeoPulse stores this password encrypted with the installation key and never returns it in configuration responses. Changing it affects new backups only. Restoration always asks for the password used to create that particular backup. Restore accepts any non-empty password up to 1024 characters so archives created with an older, shorter password remain recoverable.
+Configure a 12–1024 character backup password before using **Download Full Backup**, **Create Local Backup**, or scheduled backups. The password is set independently in the **Backup Encryption Password** card at the top of the page; it does not require scheduled backups or a writable backup folder. GeoPulse stores this password encrypted with the installation key and never returns it in configuration responses. Changing it affects new backups only. Restoration always asks for the password used to create that particular backup. Restore accepts any non-empty password up to 1024 characters so archives created with an older, shorter password remain recoverable.
 
 :::warning Keep the password outside GeoPulse
 Save the backup password in a password manager or another secure location independent of this installation. There is no password recovery or bypass. Losing it makes the archive unusable, even if you still have the destination installation's key. A settings export intentionally does not contain this password.
@@ -93,7 +95,7 @@ The working directory must survive **process, container, and pod replacement**, 
 | `GEOPULSE_BACKUP_RESTORE_USERNAME` | Application username | Optional dedicated restore role |
 | `GEOPULSE_BACKUP_RESTORE_PASSWORD` | Application password | Dedicated restore role password |
 
-Set these and the datasource/key settings through environment variables or `-D` JVM properties. Connection details must point directly to a single PostgreSQL server, not a transaction-pooling endpoint. Budget filesystem space for encrypted uploads plus the extracted native dump, and PostgreSQL space for the live, staged, and retained previous databases plus WAL/index construction. The operation timeout is configured in the admin page. Streaming avoids loading whole backups into the Java heap; Argon2 additionally needs 64 MiB per operation.
+Set these and the datasource/key settings through environment variables or `-D` JVM properties. Connection details must point directly to a single PostgreSQL server, not a transaction-pooling endpoint. Budget filesystem space for encrypted uploads, temporary download archives, plus the extracted native dump, and PostgreSQL space for the live, staged, and retained previous databases plus WAL/index construction. The operation timeout is configured in the admin page. Streaming avoids loading whole backups into the Java heap; Argon2 additionally needs 64 MiB per operation.
 
 Compose mounts `./backups` at `/data/geopulse-backups`. Unraid uses the `backups` directory under `GEOPULSE_APPDATA`. For the default backend UID, prepare host permissions with:
 

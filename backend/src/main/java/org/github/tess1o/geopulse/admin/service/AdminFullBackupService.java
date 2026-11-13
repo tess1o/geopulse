@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRouting
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
@@ -19,6 +20,7 @@ import java.util.*;
 public class AdminFullBackupService {
     static final int MIN_NEW_BACKUP_PASSWORD_LENGTH = 12;
     static final int MAX_BACKUP_PASSWORD_LENGTH = 1024;
+    private static final Duration STALE_DOWNLOAD_AGE = Duration.ofHours(48);
 
     @Inject
     SystemSettingsService settingsService;
@@ -60,6 +62,12 @@ public class AdminFullBackupService {
         settingsService.setValue("backup.health.apprise.tag", nullToEmpty(config.getHealthAppriseTag()), adminId);
     }
 
+    @Transactional
+    public void updatePassword(String password, UUID adminId) {
+        validatePassword(password);
+        settingsService.setValue("backup.password", password, adminId);
+    }
+
     public void validateConfig(AdminBackupConfigDto config) {
         if (config == null || config.getScheduledCron() == null || config.getScheduledCron().isBlank())
             throw new IllegalArgumentException("A valid cron expression is required");
@@ -74,10 +82,9 @@ public class AdminFullBackupService {
         if (config.isHealthAppriseEnabled() && (routingMode(config) == AppriseExternalRoutingMode.KEY_TAG
                 ? isBlank(config.getHealthAppriseConfigKey()) : isBlank(config.getHealthAppriseDestination())))
             throw new IllegalArgumentException("Configure an Apprise destination or config key before enabling backup health alerts");
-        if (config.getPassword() != null && !config.getPassword().isEmpty()
-                && (config.getPassword().length() < MIN_NEW_BACKUP_PASSWORD_LENGTH
-                || config.getPassword().length() > MAX_BACKUP_PASSWORD_LENGTH))
-            throw new IllegalArgumentException("Backup password must be between 12 and 1024 characters");
+        if (config.getPassword() != null && !config.getPassword().isEmpty()) {
+            validatePassword(config.getPassword());
+        }
         if (config.isScheduledEnabled() && (config.getPassword() == null || config.getPassword().isEmpty()) && !getConfig().isPasswordConfigured())
             throw new IllegalArgumentException("Configure a backup password before enabling scheduled backups");
         try {
@@ -89,26 +96,85 @@ public class AdminFullBackupService {
     }
 
     public String writeLocalBackup() throws Exception {
-        char[] password = settingsService.getString("backup.password").toCharArray();
-        if (password.length == 0)
-            throw new IllegalArgumentException("Configure a backup password first and save a recovery copy outside GeoPulse");
+        char[] password = requirePassword();
         Path dir = storageService.directory();
         Files.createDirectories(dir);
-        String name = "geopulse-full-backup-" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + ".gpb";
+        String name = newBackupFileName();
         Path temp = storageService.newTemporaryFile(name);
         maintenanceService.updateBackupFile(name);
+        maintenanceService.updateBackupOutput(temp);
         String operationId = maintenanceService.currentOperationId();
         try {
-            new NativeDatabaseBackup(maintenanceService.context()).write(temp, password, deadline(), operationId);
-            try (FileChannel channel = FileChannel.open(temp, StandardOpenOption.WRITE)) {
-                channel.force(true);
-            }
+            writeArchive(temp, password, operationId);
             storageService.publish(temp, name);
             storageService.prune(settingsService.getInteger("backup.retention.count"), operationId);
             return name;
         } finally {
             Arrays.fill(password, '\0');
             Files.deleteIfExists(temp);
+        }
+    }
+
+    /**
+     * Creates a temporary archive for a single browser download. It is never published to the local backup
+     * folder, never counted by retention, and must be deleted by the caller after streaming.
+     */
+    public PreparedDownloadBackup writeDownloadBackup(String operationId) throws Exception {
+        char[] password = requirePassword();
+        Path workPath = maintenanceService.context().workPath();
+        BackupDownloadFiles.deleteStale(workPath, STALE_DOWNLOAD_AGE);
+        String name = newBackupFileName();
+        Path temp = BackupDownloadFiles.temporaryFile(workPath, name);
+        maintenanceService.updateBackupFile(name);
+        maintenanceService.updateBackupOutput(temp);
+        boolean prepared = false;
+        try {
+            writeArchive(temp, password, operationId);
+            PreparedDownloadBackup backup = new PreparedDownloadBackup(temp, name, Files.size(temp));
+            prepared = true;
+            return backup;
+        } finally {
+            Arrays.fill(password, '\0');
+            if (!prepared) BackupDownloadFiles.deleteQuietly(temp);
+        }
+    }
+
+    void writeArchive(Path temp, char[] password, String operationId) throws Exception {
+        archiveWriter().write(temp, password, deadline(), operationId, maintenanceService::updateBackupPhase);
+        try (FileChannel channel = FileChannel.open(temp, StandardOpenOption.WRITE)) {
+            channel.force(true);
+        }
+    }
+
+    ArchiveWriter archiveWriter() {
+        return new NativeDatabaseBackup(maintenanceService.context())::write;
+    }
+
+    @FunctionalInterface
+    interface ArchiveWriter {
+        void write(Path output, char[] password, Instant deadline, String operationId,
+                   BackupPhaseListener phaseListener) throws Exception;
+    }
+
+    private char[] requirePassword() {
+        char[] password = settingsService.getString("backup.password").toCharArray();
+        if (password.length == 0) {
+            throw new IllegalArgumentException(
+                    "Configure a backup password first and save a recovery copy outside GeoPulse");
+        }
+        return password;
+    }
+
+    private String newBackupFileName() {
+        return "geopulse-full-backup-" + Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + ".gpb";
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.isEmpty()) {
+            throw new IllegalArgumentException("Backup password is required");
+        }
+        if (password.length() < MIN_NEW_BACKUP_PASSWORD_LENGTH || password.length() > MAX_BACKUP_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("Backup password must be between 12 and 1024 characters");
         }
     }
 
