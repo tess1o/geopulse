@@ -86,13 +86,15 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).toContain('A title for this visit only')
     expect(wrapper.text()).toContain('Rename location everywhere')
     expect(wrapper.text()).toContain('Split stay')
+    expect(wrapper.text()).toContain('Rebuild this interval')
     expect(wrapper.text()).toContain('Merge')
     expect(wrapper.text()).toContain('Remove')
   })
 
-  it('explains why an unlinked stay cannot rename a place', () => {
+  it('explains how an unlinked stay can name its place', () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Pinned stop' })
-    expect(wrapper.text()).toContain('Global rename needs a linked place')
+    expect(wrapper.text()).toContain("isn't linked to a Favorite")
+    expect(wrapper.text()).toContain('Use Location to name it for this stay')
     expect(wrapper.text()).not.toContain('Rename location everywhere')
     wrapper.unmount()
   })
@@ -105,7 +107,7 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).not.toContain('Visit label')
   })
 
-  it.each(['stay', 'trip'])('limits grouped %s activities to supported detail edits', async type => {
+  it.each(['stay', 'trip'])('lets grouped %s activities be edited again', async type => {
     const item = { id: 5, type, timestamp: '2026-10-08T10:00:00Z', endTime: '2026-10-08T11:00:00Z',
       stayDuration: 3600, tripDuration: 3600, movementType: 'CAR', locationName: 'Home', geocodingId: 4 }
     const wrapper = mountDrawer(item)
@@ -113,12 +115,30 @@ describe('TimelineEditDrawer action overview', () => {
     wrapper.vm.savedEdits = [{ id: 9, groupId: 'group', kind: type === 'stay' ? 'FORCE_STAY' : 'FORCE_TRIP', status: 'ACTIVE' }]
     await wrapper.vm.$nextTick()
     expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(type === 'stay'
-      ? ['SET_PLACE', 'SET_VISIT_NAME'] : ['SET_MOVEMENT_TYPE'])
-    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(type === 'stay' ? ['RENAME_PLACE'] : [])
-    expect(wrapper.text()).toContain('undo the correction group')
-    await wrapper.setProps({ item: { ...item, id: 6 } })
-    expect(wrapper.vm.detailActions.map(entry => entry.id)).toContain('SET_TIMES')
+      ? ['SET_PLACE', 'SET_VISIT_NAME', 'SET_TIMES'] : ['SET_MOVEMENT_TYPE', 'SET_TIMES'])
+    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(type === 'stay'
+      ? ['RENAME_PLACE', 'SPLIT_STAY', 'REBUILD_INTERVAL', 'REMOVE_EVENT']
+      : ['SPLIT_TRIP', 'REBUILD_INTERVAL', 'REMOVE_EVENT'])
+    expect(wrapper.text()).not.toContain('undo the correction group')
     wrapper.unmount()
+  })
+
+  it('hands an interval rebuild to the activity editor', async () => {
+    const item = { type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Forced stay' }
+    const wrapper = mountDrawer(item)
+
+    await clickButton(wrapper, 'Rebuild this interval')
+
+    expect(wrapper.emitted('rebuild-interval')?.[0]?.[0]).toEqual(item)
+    expect(wrapper.find('form').exists()).toBe(false)
+  })
+
+  it('does not rebuild a manually routed trip', () => {
+    const item = { type: 'trip', timestamp: '2026-10-08T10:00:00Z', tripDuration: 3600, movementType: 'CAR',
+      manualRoute: [{ latitude: 50, longitude: 30 }, { latitude: 50.1, longitude: 30.1 }] }
+    const wrapper = mountDrawer(item)
+
+    expect(wrapper.vm.structuralActions.map(entry => entry.id)).not.toContain('REBUILD_INTERVAL')
   })
 
   it('hands trip splitting to the route-map dialog instead of asking for coordinates', async () => {
@@ -374,7 +394,7 @@ it('removes an existing label through its active correction without submitting a
   await clickButton(wrapper, 'Visit label')
   await clickButton(wrapper, 'Remove label')
   await flushPromises()
-  expect(store.revertTimelineEdit).toHaveBeenCalledWith(9)
+  expect(store.revertTimelineEdit).toHaveBeenCalledWith(9, false)
   expect(store.createTimelineEdit).not.toHaveBeenCalled()
   expect(wrapper.emitted('submitted')[0][0].operation).toBe('undo')
 })

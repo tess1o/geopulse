@@ -35,17 +35,21 @@ describe('Unified missing activity editor', () => {
     expect(wrapper.findAllComponents(DateStub).map(component => component.props('modelValue'))).toEqual([null, null])
     expect(wrapper.findAllComponents(SelectStub)[0].props('modelValue')).toBeNull()
   })
-  it('reviews a single trip inside the forced stay', async () => {
+  it('reviews a rebuild of an existing interval as a replace request', async () => {
     const store = useTimelineStore()
     const preview = vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
-    const wrapper = await open({ replaceStay: { id: 91, anchorStart: times.startTime, anchorEnd: times.endTime } })
-    expect(wrapper.text()).not.toContain('What happened?')
+    const wrapper = await open({ rebuildRange: { startTime: times.startTime, endTime: times.endTime, type: 'stay' } })
+    expect(wrapper.text()).toContain('Describe what happened inside this time range')
+    expect(wrapper.text()).toContain('What happened?')
+    expect(wrapper.findAll('button').some(button => button.text() === 'Add another activity')).toBe(true)
     const endpoints = wrapper.findAll('.pick-place')
     expect(endpoints).toHaveLength(2)
     for (const endpoint of endpoints) await endpoint.trigger('click')
     await click(wrapper, 'Review changes')
     expect(preview).toHaveBeenCalledWith(expect.objectContaining({
-      replaceStayEditId: 91,
+      replaceExisting: true,
+      contextStart: times.startTime,
+      contextEnd: times.endTime,
       activities: [expect.objectContaining({ segmentType: 'TRIP', startTime: times.startTime, endTime: times.endTime })]
     }))
   })

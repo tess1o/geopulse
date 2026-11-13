@@ -151,7 +151,7 @@ class ActivityCorrectionIntegrationTest {
         assertThat(harness.pointIds(actor.userId(), at("00:00"), at("23:59"))).isEmpty();
     }
 
-    @Test void structuralEditsAndPartialSupersessionLeaveTheWholeGroupReversible() {
+    @Test void aGroupCannotBePartiallySuperseded() {
         var actor = users.createAuthenticatedUser("activity-structure");
         var user = actor.userId();
         var saved = service.save(user, request(stay("14:24", "14:27"), travel("14:30", "15:00")));
@@ -163,20 +163,19 @@ class ActivityCorrectionIntegrationTest {
             command.getPayload().put("splitAt", at("14:25").toString());
             command.getPayload().put("resolution", "GAP");
             command.getPayload().put("direction", "NEXT");
-            for (boolean supersede : List.of(false, true)) {
-                command.setSupersede(supersede);
-                for (var endpoint : List.of("/api/v1/timeline/edits/preview", "/api/v1/timeline/edits")) {
-                    io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
-                            .header("Authorization", "Bearer " + actor.accessToken()).body(command)
-                            .post(endpoint).then().statusCode(409)
-                            .body("detail", org.hamcrest.Matchers.containsString("Undo the activity correction group"));
-                }
+            command.setSupersede(true);
+            for (var endpoint : List.of("/api/v1/timeline/edits/preview", "/api/v1/timeline/edits")) {
+                io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
+                        .header("Authorization", "Bearer " + actor.accessToken()).body(command)
+                        .post(endpoint).then().statusCode(409)
+                        .body("detail", org.hamcrest.Matchers.containsString("cannot be partially replaced"));
             }
         }
         var misleadingRange = editRequest("FORCE_STAY", "14:24", "14:27");
         misleadingRange.setAffectedFrom(at("16:00")); misleadingRange.setAffectedTo(at("17:00"));
+        misleadingRange.setSupersede(true);
         assertThatThrownBy(() -> edits.preview(user, misleadingRange))
-                .isInstanceOf(GeoPulseException.class).hasMessageContaining("Undo the activity correction group");
+                .isInstanceOf(GeoPulseException.class).hasMessageContaining("cannot be partially replaced");
         assertThat(edits.list(user)).hasSize(2).allSatisfy(edit -> {
             assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
             assertThat(edit.groupId()).isEqualTo(saved.groupId());

@@ -44,9 +44,10 @@ public class ActivityCorrectionResource {
     @POST
     @Path("/preview")
     @RequiresApiTokenScope(ApiTokenScope.READ)
-    @Operation(summary = "Review activities proposed for empty timeline intervals",
-            description = "Validates proposed manual stays and trips for empty intervals and returns a timeline preview "
-                    + "with surrounding events and remaining gaps. Does not save corrections or generate GPS points.")
+    @Operation(summary = "Review activities for an empty interval or a rebuild of an existing one",
+            description = "Validates proposed manual stays and trips for empty intervals or for rebuilding an existing "
+                    + "interval, and returns a timeline preview with surrounding events and remaining gaps. Does not "
+                    + "save corrections or generate GPS points.")
     public ActivityCorrectionService.Preview preview(@Valid ActivityCorrectionService.Request request) {
         return checked(() -> service.preview(currentUser.getCurrentUserId(), request));
     }
@@ -54,9 +55,9 @@ public class ActivityCorrectionResource {
     @POST
     @RequiresApiTokenScope(ApiTokenScope.WRITE)
     @Operation(summary = "Save a reversible group of manual activities without generating GPS points",
-            description = "Saves manual stays and trips in empty intervals as one reversible correction group and "
-                    + "schedules timeline regeneration. Returns the group, saved edits, and timeline job status "
-                    + "without generating GPS points.")
+            description = "Saves manual stays and trips as one reversible correction group and schedules timeline "
+                    + "regeneration. With replaceExisting=true the activities are carved out of the selected interval "
+                    + "and the remaining time keeps the original event. Does not generate GPS points.")
     public Response save(@Valid ActivityCorrectionService.Request request) {
         return checked(() -> schedule(service.save(currentUser.getCurrentUserId(), request)));
     }
@@ -66,18 +67,21 @@ public class ActivityCorrectionResource {
     @RequiresApiTokenScope(ApiTokenScope.WRITE)
     @Operation(summary = "Undo a complete activity correction group",
             description = "Deactivates all edits in the signed-in user's correction group and schedules timeline "
-                    + "regeneration from the earliest affected interval. Keeps the group available for restoration.")
-    public Response revert(@PathParam("groupId") UUID groupId) {
-        return checked(() -> schedule(service.changeStatus(currentUser.getCurrentUserId(), groupId, false)));
+                    + "regeneration from the earliest affected interval. With cascade=true, also reverts the later "
+                    + "active corrections that depend on it. Keeps the group available for restoration.")
+    public Response revert(@PathParam("groupId") UUID groupId,
+            @QueryParam("cascade") @DefaultValue("false") boolean cascade) {
+        return checked(() -> schedule(service.changeStatus(currentUser.getCurrentUserId(), groupId, false, cascade)));
     }
 
     @POST
     @Path("/{groupId}/restore")
     @RequiresApiTokenScope(ApiTokenScope.WRITE)
-    @Operation(summary = "Restore a correction group when its intervals remain empty",
-            description = "Reactivates all edits in the signed-in user's correction group after checking that its "
-                    + "intervals remain empty, then schedules timeline regeneration. Rejects restoration if existing "
-                    + "activities or manual corrections conflict.")
+    @Operation(summary = "Restore a correction group when its intervals allow it",
+            description = "Reactivates all edits in the signed-in user's correction group after checking that a "
+                    + "rebuilt interval is free of newer corrections, or that an empty interval stayed empty, then "
+                    + "schedules timeline regeneration. Rejects restoration if existing activities or manual "
+                    + "corrections conflict.")
     public Response restore(@PathParam("groupId") UUID groupId) {
         return checked(() -> schedule(service.changeStatus(currentUser.getCurrentUserId(), groupId, true)));
     }

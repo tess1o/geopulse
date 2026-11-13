@@ -1,7 +1,6 @@
 export default {
     "edit": {
         "dismissTransitionHint": "Entfernt diesen Übergang, ohne einen der Aufenthalte zu ändern. Dies lässt sich im Änderungsverlauf rückgängig machen.",
-        "groupStructureHint": "Um Zeiten zu ändern oder diese Aktivitäten zu teilen, zusammenzuführen oder zu entfernen, mache die Korrekturgruppe unter „Deine Änderungen“ rückgängig und füge sie erneut hinzu.",
         "reviewChanges": "Änderungen prüfen",
         "reviewFirst": "Schritt 1 von 2 · Nimm deine Änderungen vor und gehe dann zur Prüfung weiter.",
         "reviewReady": "Schritt 2 von 2 · Prüfe das Ergebnis unten und speichere dann deine Änderungen.",
@@ -9,6 +8,7 @@ export default {
         "validTimesRequired": "Gib ein vollständiges, gültiges Datum mit Uhrzeit ein.",
         "savedValue": "Gespeichert",
         "placeRequired": "Wähle vor der Prüfung einen Standort.",
+        "placeNameRequired": "Gib diesem Ort vor dem Speichern einen Namen.",
         "unchanged": "Ändere einen Wert, um speichern zu können.",
         "allVisits": "Ändert alle Besuche an diesem Standort",
         "changeCount": "1 Änderung | {count} Änderungen",
@@ -44,7 +44,7 @@ export default {
         "history": "Zeitleistenänderungen",
         "editedCount": "{count} Zeitleistenänderungen",
         "details": "Details",
-        renameUnlinked: "Zum Umbenennen ist ein verknüpfter Ort nötig. Verknüpfe ihn unter „Ort“ oder benenne diesen Besuch unter „Besuchslabel“.",
+        renameUnlinked: "Dieser Ort ist mit keinem Favoriten und keinem Geocoding-Eintrag verknüpft. Benenne ihn unter „Ort“ für diesen Aufenthalt oder verknüpfe einen Ort, um ihn überall umzubenennen.",
         "moreChanges": "Weitere Änderungen",
         "visitLabel": "Besuchsbezeichnung",
         "visitLabelPlaceholder": "Zum Beispiel: Abendessen mit Alex",
@@ -55,6 +55,8 @@ export default {
         "splitStayHint": "Der Besuch wird in zwei Besuche geteilt. Der erste Teil bleibt bei {location}.",
         "place": {
             useLinkedPlace: "Verknüpften Ort verwenden: {name}",
+            customName: "Ortsname",
+            customNamePlaceholder: "Benenne diesen Ort, zum Beispiel Parkplatz",
             "current": "Aktueller Standort",
             "selected": "Gewählter Standort",
             "unnamed": "Unbenannter Ort",
@@ -119,6 +121,10 @@ export default {
         "revert": "Rückgängig",
         "restore": "Wiederherstellen",
         "undo": "Rückgängig",
+        "undoDependents": {
+            "header": "Auch spätere Änderungen rückgängig machen?",
+            "message": "{count} spätere Änderungen hängen von dieser ab und werden mit ihr rückgängig gemacht."
+        },
         "undoFailed": "Diese Zeitleistenänderung konnte nicht rückgängig gemacht werden.",
         "previewFailed": "Die Vorschau dieser Korrektur konnte nicht geladen werden.",
         "saveFailed": "Diese Korrektur konnte nicht gespeichert werden.",
@@ -138,12 +144,14 @@ export default {
             "splitStay": "Aufenthalt teilen",
             "splitTrip": "Stopp hinzufügen",
             "merge": "Zusammenführen",
+            "rebuildInterval": "Dieses Intervall neu aufbauen",
             "remove": "Entfernen",
             "gapToStay": "In Aufenthalt umwandeln",
             "gapToTrip": "In Strecke umwandeln"
         },
         "actionHint": {
             "dismissTransition": "Diese Markierung entfernen, ohne einen der Aufenthalte zu ändern",
+            "rebuildInterval": "Beschreibe, was hier passiert ist; die übrige Zeit bleibt unverändert",
             "location": "Wo dieser Besuch stattgefunden hat",
             "visitLabel": "Ein Titel nur für diesen Besuch, etwa „Abendessen mit Alex“",
             "renameLocation": "Ändert den Namen dieses Standorts für alle Besuche",

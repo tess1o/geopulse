@@ -248,33 +248,38 @@ class TimelineEditResourceIntegrationTest {
     }
 
     @Test
-    void structuralConflictsRequireExplicitSuperseding() {
-        Map<String, Object> split = Map.of(
-                "kind", "SPLIT_STAY",
+    void overlappingStructuralEditsChainInsteadOfConflicting() {
+        Map<String, Object> times = Map.of(
+                "kind", "SET_TIMES",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
-                "payload", Map.of("splitAt", START.plusSeconds(3600).toString()));
-        long firstId = authenticated(owner).body(split).post(EDITS).jsonPath().getLong("edit.id");
+                "payload", Map.of("start", START.toString(), "end", START.plusSeconds(5400).toString()));
+        long firstId = authenticated(owner).body(times).post(EDITS).jsonPath().getLong("edit.id");
+        long firstSeq = authenticated(owner).get(EDITS).jsonPath().getLong("find { it.id == " + firstId + " }.seq");
 
-        Map<String, Object> remove = Map.of(
-                "kind", "REMOVE_EVENT",
-                "anchorStart", START.toString(),
-                "anchorEnd", END.toString(),
-                "payload", Map.of("resolution", "GAP"));
-        String beforeConflict = storedState(owner);
-        var previewConflict = authenticated(owner).body(remove).post(EDITS + "/preview");
-        assertProblemEnvelope(previewConflict, 409, "TIMELINE_EDIT_CONFLICT");
-        assertThat(previewConflict.jsonPath().getLong("parameters.conflictingEditId")).isEqualTo(firstId);
-        assertProblemEnvelope(authenticated(owner).body(remove).post(EDITS),
+        Map<String, Object> insertedStay = Map.of(
+                "kind", "FORCE_STAY",
+                "anchorStart", START.plusSeconds(600).toString(),
+                "anchorEnd", START.plusSeconds(1200).toString(),
+                "payload", Map.of("latitude", 50.45, "longitude", 30.52, "locationName", "Lunch stop"));
+        assertThat(authenticated(owner).body(insertedStay).post(EDITS + "/preview").statusCode()).isEqualTo(200);
+        Response chained = authenticated(owner).body(insertedStay).post(EDITS);
+        assertThat(chained.statusCode()).isEqualTo(200);
+        long secondId = chained.jsonPath().getLong("edit.id");
+
+        var edits = authenticated(owner).get(EDITS).jsonPath();
+        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("ACTIVE");
+        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("ACTIVE");
+        assertThat(edits.getList("find { it.id == " + secondId + " }.beforeValues.prerequisiteSequences",
+                Long.class)).containsExactly(firstSeq);
+
+        assertProblemEnvelope(authenticated(owner).post(EDITS + "/" + firstId + "/revert"),
                 409, "TIMELINE_EDIT_CONFLICT");
-        assertThat(storedState(owner)).isEqualTo(beforeConflict);
-
-        Map<String, Object> supersedingRemove = new java.util.LinkedHashMap<>(remove);
-        supersedingRemove.put("supersede", true);
-        Response replacement = authenticated(owner).body(supersedingRemove).post(EDITS);
-        assertThat(replacement.statusCode()).isEqualTo(200);
-        assertThat(authenticated(owner).get(EDITS).jsonPath()
-                .getString("find { it.id == " + firstId + " }.status")).isEqualTo("SUPERSEDED");
+        assertThat(authenticated(owner).post(EDITS + "/" + firstId + "/revert?cascade=true").statusCode())
+                .isEqualTo(200);
+        edits = authenticated(owner).get(EDITS).jsonPath();
+        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("REVERTED");
+        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("REVERTED");
     }
 
     @Test

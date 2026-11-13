@@ -7,7 +7,6 @@
 export default {
     edit: {
         dismissTransitionHint: 'Removes this transition without changing either stay. You can undo this in Timeline changes.',
-    groupStructureHint: 'To change times, split, merge, or remove these activities, undo the correction group in Your changes and add it again.',
         reviewChanges: 'Review changes',
         reviewFirst: 'Step 1 of 2 · Make your changes, then continue to review.',
         reviewReady: 'Step 2 of 2 · Check the result below, then save your changes.',
@@ -16,6 +15,7 @@ export default {
         validTimesRequired: 'Enter a complete, valid date and time.',
         savedValue: 'Saved',
         placeRequired: 'Choose a location before reviewing.',
+        placeNameRequired: 'Give this place a name before saving.',
         unchanged: 'Change a value to save.',
         allVisits: 'Changes all visits to this location',
 
@@ -53,7 +53,7 @@ export default {
         history: 'Timeline changes',
         editedCount: '{count} timeline changes',
         details: 'Details',
-        renameUnlinked: "Global rename needs a linked place. Use Location to link a place or Visit label to name this visit.",
+        renameUnlinked: "This place isn't linked to a Favorite or geocoding record. Use Location to name it for this stay, or link a place to rename it everywhere.",
         moreChanges: 'More changes',
         visitLabel: 'Visit label',
         visitLabelPlaceholder: 'For example, Dinner with Alex',
@@ -64,6 +64,8 @@ export default {
         splitStayHint: 'The visit becomes two visits. The first part stays at {location}.',
         place: {
             useLinkedPlace: "Use linked place: {name}",
+            customName: 'Place name',
+            customNamePlaceholder: 'Name this place, for example Car Park',
             current: 'Current location',
             selected: 'Selected location',
             unnamed: 'Unnamed place',
@@ -118,6 +120,10 @@ export default {
         revert: 'Undo',
         restore: 'Redo',
         undo: 'Undo',
+        undoDependents: {
+            header: 'Undo later changes too?',
+            message: '{count} later changes depend on this one and will be undone together with it.'
+        },
         undoFailed: 'Could not undo this timeline change.',
         previewFailed: 'Could not preview this correction.',
         saveFailed: 'Could not save this correction.',
@@ -127,10 +133,12 @@ export default {
         action: {
             location: 'Location', visitLabel: 'Visit label', renameLocation: 'Rename location everywhere', times: 'Time',
             movement: 'Movement type', splitStay: 'Split stay', splitTrip: 'Add a stop',
-            merge: 'Merge', remove: 'Remove', gapToStay: 'Convert to stay', gapToTrip: 'Convert to trip'
+            merge: 'Merge', remove: 'Remove', gapToStay: 'Convert to stay', gapToTrip: 'Convert to trip',
+            rebuildInterval: 'Rebuild this interval'
         },
         actionHint: {
             dismissTransition: 'Remove this marker without changing either stay',
+            rebuildInterval: 'Describe what happened here; the rest of the time stays as it is',
             location: 'Where this visit happened',
             visitLabel: 'A title for this visit only, such as "Dinner with Alex"',
             renameLocation: 'Changes the name of this location for all its visits',

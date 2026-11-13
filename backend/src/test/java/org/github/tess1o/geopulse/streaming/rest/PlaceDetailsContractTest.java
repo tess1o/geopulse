@@ -97,6 +97,39 @@ class PlaceDetailsContractTest {
         assertThat(details.statusCode()).isEqualTo(200);
         assertThat(details.jsonPath().getString("locationName")).isEqualTo("Geocoding place row");
         assertThat(details.jsonPath().getBoolean("canEdit")).isFalse();
+
+        assertThat(authenticated(ownerToken).when()
+                .get(PLACES + "/geocoding/" + geocodingId + "/visits/export").statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void crossTenantGeocodingDetailsAreNotFound() {
+        long geocodingId = seedGeocodingRow("Private home");
+
+        assertProblemEnvelope(authenticated(otherToken).when().get(PLACES + "/geocoding/" + geocodingId),
+                404, "PLACE_NOT_FOUND");
+    }
+
+    @Test
+    void crossTenantGeocodingExportsAreNotFound() {
+        long geocodingId = seedGeocodingRow("Private home");
+
+        assertProblemEnvelope(authenticated(otherToken).when()
+                        .get(PLACES + "/geocoding/" + geocodingId + "/visits/export"),
+                404, "PLACE_NOT_FOUND");
+    }
+
+    @Test
+    void sharedGeocodingPlacesAreReadableByBothUsers() {
+        long geocodingId = seedGeocodingRow("Shared provider place", null);
+
+        for (String token : List.of(ownerToken, otherToken)) {
+            Response details = authenticated(token).when().get(PLACES + "/geocoding/" + geocodingId);
+            assertThat(details.statusCode()).isEqualTo(200);
+            assertThat(details.jsonPath().getString("locationName")).isEqualTo("Shared provider place");
+            assertThat(authenticated(token).when()
+                    .get(PLACES + "/geocoding/" + geocodingId + "/visits/export").statusCode()).isEqualTo(200);
+        }
     }
 
     @Test
@@ -169,10 +202,14 @@ class PlaceDetailsContractTest {
     }
 
     private long seedGeocodingRow(String displayName) {
+        return seedGeocodingRow(displayName, owner);
+    }
+
+    private long seedGeocodingRow(String displayName, UserEntity user) {
         // Committed so the HTTP request on another thread can see it.
         return QuarkusTransaction.requiringNew().call(() -> {
             ReverseGeocodingLocationEntity entity = new ReverseGeocodingLocationEntity();
-            entity.setUser(owner);
+            entity.setUser(user);
             entity.setRequestCoordinates(coords.point(30.52, 50.45));
             entity.setResultCoordinates(coords.point(30.52, 50.45));
             entity.setDisplayName(displayName);

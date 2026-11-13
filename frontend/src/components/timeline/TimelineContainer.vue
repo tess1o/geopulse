@@ -312,7 +312,7 @@
       @rename-place="handleRenameStay"
       @split-trip-with-stay="handleSplitTripFromEditor"
       @submitted="handleEditSubmitted"
-      @replace-stay="openStayReplacement"
+      @rebuild-interval="openIntervalRebuild"
     />
     <TimelineEditHistoryDrawer
       :visible="editHistoryVisible"
@@ -321,11 +321,12 @@
       :reload="loadEditHistory"
       @close="closeEditHistory"
       @changed="handleEditSubmitted"
-      @replace-stay="openStayReplacement"
     />
-    <MissingActivityEditor v-if="stayReplacement" visible :replace-stay="stayReplacement"
-      :fallback-center="replacementCenter" :read-only="effectiveReadOnly"
-      @close="stayReplacement = null" @committed="finishStayReplacement" />
+    <MissingActivityEditor v-if="rebuildTarget" visible :rebuild-range="rebuildTarget"
+      :context-start-time="rebuildTarget.startTime" :context-end-time="rebuildTarget.endTime"
+      :fallback-center="rebuildCenter" :initial-viewport="rebuildViewport"
+      :timeline-data="timelineData" :read-only="effectiveReadOnly"
+      @close="rebuildTarget = null" @committed="finishIntervalRebuild" />
   </div>
 </template>
 
@@ -721,19 +722,32 @@ const closeEditHistory = () => {
   selectedItemForHistory.value = null
 }
 
-const stayReplacement = ref(null)
-const replacementCenter = computed(() => {
-  const { latitude, longitude } = stayReplacement.value?.payload || {}
+const rebuildTarget = ref(null)
+const rebuildCenter = computed(() => {
+  const { latitude, longitude } = rebuildTarget.value || {}
   return Number.isFinite(latitude) && Number.isFinite(longitude) ? [latitude, longitude] : undefined
 })
-const openStayReplacement = (edit) => {
+const rebuildViewport = computed(() => rebuildCenter.value ? { center: rebuildCenter.value, zoom: 15 } : undefined)
+const itemEnd = item => {
+  const start = item.timestamp || item.startTime
+  const seconds = item.stayDuration ?? item.tripDuration ?? item.durationSeconds ?? 0
+  return item.endTime || new Date(new Date(start).getTime() + seconds * 1000).toISOString()
+}
+const openIntervalRebuild = (item) => {
   if (effectiveReadOnly.value) return
   closeEditor()
   closeEditHistory()
-  stayReplacement.value = edit
+  rebuildTarget.value = {
+    id: item.id, type: item.type,
+    startTime: item.timestamp || item.startTime, endTime: itemEnd(item),
+    latitude: item.latitude ?? item.startLatitude,
+    longitude: item.longitude ?? item.startLongitude,
+    movementType: item.movementType,
+    label: item.locationName || item.visitName
+  }
 }
-const finishStayReplacement = (result) => {
-  stayReplacement.value = null
+const finishIntervalRebuild = (result) => {
+  rebuildTarget.value = null
   handleEditSubmitted({ ...result, operation: 'create' })
 }
 

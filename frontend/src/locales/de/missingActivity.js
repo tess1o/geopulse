@@ -1,6 +1,6 @@
 export default {
-    replaceStay: "Fahrt in manuellen Aufenthalt einfügen",
-    replaceStayHint: "Wähle Zeit und Route der Fahrt. Die restliche Zeit bleibt am ursprünglichen Ort.",
+    "rebuildInterval": "Dieses Intervall neu aufbauen…",
+    "rebuildIntervalHint": "Beschreibe, was in diesem Zeitraum passiert ist. Nicht abgedeckte Zeit bleibt am ursprünglichen Ort.",
     "add": "Fehlende Aktivität ergänzen…",
     "fillGap": "Fehlenden Zeitraum ergänzen…",
     "help": "Beschreibe, was in einem leeren Zeitraum passiert ist. Aufgezeichnete GPS-Daten bleiben unverändert.",

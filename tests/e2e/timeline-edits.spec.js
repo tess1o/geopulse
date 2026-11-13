@@ -545,7 +545,7 @@ test.describe('Timeline Edit desktop release checks', () => {
     });
   });
 
-  test('structural conflict keeps the form and links to the saved change', async ({ page, dbManager, isolatedUsers }) => {
+  test('overlapping structural changes chain instead of blocking', async ({ page, dbManager, isolatedUsers }) => {
     const context = await setup(page, dbManager, isolatedUsers);
     await open(page, 'stay', 1); await action(page, 'Split stay').click();
     await drawer(page).getByRole('combobox', { name: 'Split at', exact: true }).fill(`${DAY} 10:00`);
@@ -555,17 +555,13 @@ test.describe('Timeline Edit desktop release checks', () => {
     await open(page, 'stay', 1); await action(page, 'Remove').click();
     await drawer(page).getByRole('combobox').click();
     await page.getByRole('option', { name: 'Leaving a data gap' }).click();
-    const response = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/timeline/edits/preview');
-    await drawer(page).getByRole('button', { name: 'Review changes', exact: true }).click();
-    expect((await response).status()).toBe(409);
-    await expect(drawer(page).getByRole('alert')).toContainText('overlaps');
-    await expect(drawer(page).getByRole('combobox')).toContainText('Leaving a data gap');
-    await expect(drawer(page).getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
-    await expect(drawer(page).getByRole('button', { name: 'View change', exact: true })).toBeVisible();
-    page.once('dialog', dialog => dialog.accept());
-    await drawer(page).getByRole('button', { name: 'View change', exact: true }).click();
-    await expect(drawer(page).locator(`[data-edit-id="${first.id}"]`)).toBeFocused();
-    expect((await dbManager.client.query('SELECT id FROM timeline_edits WHERE user_id=$1', [context.user])).rowCount).toBe(1);
+    await review(page);
+    const second = await save(page);
+
+    const edits = await (await page.request.get('/api/v1/timeline/edits')).json();
+    const original = edits.find(edit => edit.id === first.id);
+    expect(original.status).toBe('ACTIVE');
+    expect(edits.find(edit => edit.id === second.id).beforeValues.prerequisiteSequences).toContain(original.seq);
   });
 
   test('server validation leaves the form editable and a corrected preview can save', async ({ page, dbManager, isolatedUsers }) => {

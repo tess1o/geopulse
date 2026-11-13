@@ -101,8 +101,16 @@ describe('location chooser', () => {
   it('keeps usable coordinates when address lookup fails', async () => {
     useTripsStore().getPlanSuggestion.mockRejectedValue(new Error('offline'))
     const wrapper = mountPicker({ point }); await flushPromises(); await syncSelection(wrapper)
-    expect(wrapper.find('.place-picker-selected').text()).toContain('Selected location')
+    expect(wrapper.find('.place-picker-selected input').element.value).toBe('Selected location')
     expect(wrapper.props('modelValue')).toMatchObject(point)
+  })
+  it('lets a picked point be named and keeps the typed name over a late suggestion', async () => {
+    const pending = deferred(); useTripsStore().getPlanSuggestion.mockReturnValue(pending.promise)
+    const wrapper = mountPicker({ point }); await flushPromises(); await syncSelection(wrapper)
+    await wrapper.find('.place-picker-selected input').setValue('Car Park')
+    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toMatchObject({ ...point, locationName: 'Car Park' })
+    pending.resolve({ title: 'Knowle Lane' }); await flushPromises()
+    expect(wrapper.emitted('update:modelValue').at(-1)[0].locationName).toBe('Car Park')
   })
   it('ignores an old address after a newer point or explicit place was chosen', async () => {
     const old = deferred(), latest = deferred()

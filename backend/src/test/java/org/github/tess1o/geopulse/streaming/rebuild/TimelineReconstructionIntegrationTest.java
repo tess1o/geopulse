@@ -34,6 +34,7 @@ import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Reconstructing a stretch without data adds points for the stays and trips the user describes. What the user says
@@ -207,6 +208,37 @@ class TimelineReconstructionIntegrationTest {
     }
 
     @Test
+    void reconstructionChainsOverAnExistingManualCorrection() {
+        UUID userId = harness.createUser("reconstruct-chain");
+        var forced = new TimelineEditRequest();
+        forced.setKind(TimelineEditKind.FORCE_STAY);
+        forced.setAnchorStart(at("14:24")); forced.setAnchorEnd(at("14:27"));
+        forced.setAffectedFrom(at("14:24")); forced.setAffectedTo(at("14:27"));
+        forced.setLatitude(grandma[0]); forced.setLongitude(grandma[1]);
+        forced.setPlaceName("Earlier correction");
+        var earlier = timelineEdits.create(userId, forced);
+
+        var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Visit")));
+        TripReconstructionCommitResponseDto result = reconstructionService.commit(userId, request);
+        if (result.jobId() != null) edits.awaitJob(UUID.fromString(result.jobId()));
+        harness.fullRebuild(userId);
+
+        assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).isNotEmpty();
+        assertExactShortStay(userId);
+        var reconstruction = timelineEdits.list(userId).stream()
+                .filter(edit -> edit.kind() == TimelineEditKind.FORCE_STAY && edit.status() == TimelineEditStatus.ACTIVE)
+                .filter(edit -> Boolean.TRUE.equals(edit.payload().get("reconstruction")))
+                .findFirst().orElseThrow();
+        assertThat(reconstruction.beforeValues()).isNotNull();
+        assertThat(reconstruction.beforeValues().get("prerequisiteSequences")).isNotNull();
+        assertThat(timelineEdits.list(userId)).filteredOn(edit -> edit.id().equals(earlier.id())).singleElement()
+                .satisfies(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE));
+        assertThatThrownBy(() -> timelineEdits.revert(userId, earlier.id(), false))
+                .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class)
+                .hasMessageContaining("Undo the later correction first");
+    }
+
+    @Test
     void structuralConflictRollsBackGeneratedPoints() {
         UUID userId = harness.createUser("reconstruct-conflict");
         var forced = new TimelineEditRequest();
@@ -214,11 +246,18 @@ class TimelineReconstructionIntegrationTest {
         forced.setAnchorStart(at("14:24")); forced.setAnchorEnd(at("14:27"));
         forced.setAffectedFrom(at("14:24")); forced.setAffectedTo(at("14:27"));
         forced.setLatitude(grandma[0]); forced.setLongitude(grandma[1]);
-        timelineEdits.create(userId, forced);
+        forced.getPayload().put("reconstruction", true);
+        var grouped = timelineEdits.create(userId, forced);
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery(
+                        "UPDATE timeline_edits SET group_id = gen_random_uuid() WHERE id = ?1")
+                .setParameter(1, grouped.id()).executeUpdate());
+
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Visit")));
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> reconstructionService.commit(userId, request))
-                .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class);
+                .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class)
+                .hasMessageContaining("cannot be partially replaced");
         assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).isEmpty();
+        assertThat(timelineEdits.list(userId)).hasSize(1);
     }
 
     private void assertExactShortStay(UUID userId) {

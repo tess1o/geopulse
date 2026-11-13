@@ -36,7 +36,8 @@ class ActivityCorrectionServiceTest {
         service.stays = mock(TimelineStayRepository.class);
         service.tripRepository = mock(TimelineTripRepository.class);
         service.editRepository = mock(TimelineEditRepository.class);
-        when(edits.preview(eq(user), any())).thenReturn(new TimelineEditPreviewDTO(List.of()));
+        when(edits.previewCommands(eq(user), anyList(), any(), any()))
+                .thenReturn(new TimelineEditResult(List.of(), Map.of(), List.of()));
     }
 
     @Test
@@ -102,7 +103,7 @@ class ActivityCorrectionServiceTest {
         trip.setWaypoints(List.of(new TripReconstructionWaypointDto(Double.NaN, 24.0)));
         assertThatThrownBy(() -> service.preview(user, request(trip)))
                 .isInstanceOf(GeoPulseException.class).hasCauseInstanceOf(IllegalArgumentException.class);
-        verify(edits, never()).preview(any(), any());
+        verify(edits, never()).previewCommands(any(), any(), any(), any());
     }
 
     @Test
@@ -116,7 +117,7 @@ class ActivityCorrectionServiceTest {
         var future = activity("STAY", 0, 60);
         future.setEndTime(Instant.now().plusSeconds(3600));
         assertThatThrownBy(() -> service.preview(user, request(future))).isInstanceOf(GeoPulseException.class);
-        verify(edits, never()).preview(any(), any());
+        verify(edits, never()).previewCommands(any(), any(), any(), any());
     }
 
     @Test
@@ -137,9 +138,12 @@ class ActivityCorrectionServiceTest {
     }
 
     private List<TimelineEditRequest> commands(int count) {
-        var captor = ArgumentCaptor.forClass(TimelineEditRequest.class);
-        verify(edits, times(count)).preview(eq(user), captor.capture());
-        return captor.getAllValues();
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TimelineEditRequest>> captor = ArgumentCaptor.forClass(List.class);
+        verify(edits).previewCommands(eq(user), captor.capture(), any(), any());
+        var captured = captor.getValue();
+        assertThat(captured).hasSize(count);
+        return captured;
     }
 
     private ActivityCorrectionService.Activity trip() {

@@ -17,10 +17,8 @@
         </div>
       </div>
 
-      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" @replace-stay="emit('replace-stay', $event)" /></div>
+      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" /></div>
       <template v-if="!action">
-        <p v-if="groupedActivity" role="note">{{ t('timeline.edit.groupStructureHint') }}</p>
-
         <section class="edit-action-section">
           <h3>{{ t('timeline.edit.details') }}</h3>
           <button v-for="entry in detailActions" :key="entry.id" class="edit-action-row" @click="selectAction(entry)">
@@ -181,7 +179,7 @@ const props = defineProps({
   mergePreviousItem: { type: Object, default: null },
   mergeNextItem: { type: Object, default: null }
 })
-const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay', 'replace-stay'])
+const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay', 'rebuild-interval'])
 const { t, te } = useI18n()
 const store = useTimelineStore()
 const timezone = useTimezone()
@@ -248,30 +246,34 @@ const entry = (id, key, icon, structural = false, hintKey = key) => ({
   id, label: t(`timeline.edit.action.${key}`), icon, structural,
   hint: te(`timeline.edit.actionHint.${hintKey}`) ? t(`timeline.edit.actionHint.${hintKey}`) : ''
 })
-const groupedActivity = computed(() => savedEdits.value.some(edit => edit.groupId && edit.status === 'ACTIVE'
-  && ['FORCE_STAY', 'FORCE_TRIP'].includes(edit.kind)))
 const detailActions = computed(() => {
   if (props.item?.type === 'stay') return [
     entry('SET_PLACE', 'location', 'pi pi-map-marker'),
     entry('SET_VISIT_NAME', 'visitLabel', 'pi pi-tag'),
-    ...(!groupedActivity.value ? [entry('SET_TIMES', 'times', 'pi pi-clock', true)] : [])
+    entry('SET_TIMES', 'times', 'pi pi-clock', true)
   ]
   if (props.item?.type === 'trip') return [
     entry('SET_MOVEMENT_TYPE', 'movement', 'pi pi-car'),
-    ...(!groupedActivity.value ? [entry('SET_TIMES', 'times', 'pi pi-clock', true)] : [])
+    entry('SET_TIMES', 'times', 'pi pi-clock', true)
   ]
   return []
 })
 const renameAction = computed(() => props.item?.type === 'stay' && (props.item.favoriteId || props.item.geocodingId)
   ? entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil') : null)
 const structuralActions = computed(() => {
-  if (groupedActivity.value) return renameAction.value ? [renameAction.value] : []
   if (zeroDurationTrip.value) return [entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true, 'dismissTransition')]
   const merge = directions.value.length
     ? [entry('MERGE', 'merge', 'pi pi-link', true, props.item?.type === 'trip' ? 'mergeTrip' : 'mergeStay')]
     : []
-  if (props.item?.type === 'stay') return [...(renameAction.value ? [renameAction.value] : []), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
-  if (props.item?.type === 'trip') return [...(props.item.manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge, entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  if (props.item?.type === 'stay') return [...(renameAction.value ? [renameAction.value] : []), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REBUILD_INTERVAL', 'rebuildInterval', 'pi pi-sync', true), entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  if (props.item?.type === 'trip') {
+    // A manual route is copied as-is when an event is carved, so rebuilding a reconstructed trip would leave the
+    // remainder with the whole route. Such trips can be removed or merged, not rebuilt.
+    const manualRoute = props.item.manualRoute
+    return [...(manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge,
+      ...(manualRoute ? [] : [entry('REBUILD_INTERVAL', 'rebuildInterval', 'pi pi-sync', true)]),
+      entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  }
   return []
 })
 const movementTypes = computed(() => ['WALK', 'BICYCLE', 'RUNNING', 'CAR', 'MOTORCYCLE', 'PUBLIC_TRANSPORT', 'TRAIN', 'FLIGHT', 'BOAT', 'UNKNOWN']
@@ -313,6 +315,7 @@ const validInput = computed(() => {
   if (action.value.id === 'SET_MOVEMENT_TYPE' && form.movementType === props.item?.movementType) return false
   if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return false
   if (placeActions.includes(action.value.id) && !form.place) return false
+  if (action.value.id === 'SET_PLACE' && form.place?.source === 'custom' && !form.place.locationName?.trim()) return false
   if (action.value.id === 'SET_PLACE' && samePlace(form.place, currentPlace.value)) return false
   if (action.value.id === 'SPLIT_STAY' && (!fromPickerDate(form.splitAt) || splitAtOutside.value)) return false
   if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)) || (Date.parse(fromPickerDate(form.start)) === Date.parse(interval.value.start) && Date.parse(fromPickerDate(form.end)) === Date.parse(interval.value.end)))) return false
@@ -327,6 +330,7 @@ const validationMessage = computed(() => {
   if (action.value.id === 'SPLIT_STAY' && !form.splitAtInvalid && form.splitAt && !fromPickerDate(form.splitAt)) return t('timeline.edit.uncertainTime')
   if ((action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end))) || (action.value.id === 'SPLIT_STAY' && (form.splitAtInvalid || !fromPickerDate(form.splitAt)))) return t('timeline.edit.validTimesRequired')
   if (placeActions.includes(action.value.id) && !form.place) return t('timeline.edit.placeRequired')
+  if (action.value.id === 'SET_PLACE' && form.place?.source === 'custom' && !form.place.locationName?.trim()) return t('timeline.edit.placeNameRequired')
   if (action.value.id === 'SET_VISIT_NAME' && !form.visitName?.trim()) return t('timeline.edit.labelRequired')
   if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)))) return t('timeline.edit.invalidTimes')
   if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return t('timeline.edit.chooseResolution')
@@ -364,7 +368,13 @@ function selectAction(selected) {
     emit('split-trip-with-stay', props.item)
     return
   }
-  form.place = null
+  if (selected.id === 'REBUILD_INTERVAL') {
+    // The activity editor rebuilds the whole event interval, so it owns the map and the time range itself.
+    emit('rebuild-interval', props.item)
+    return
+  }
+  // The place picker starts from the current place so a custom point's name can be edited in place.
+  form.place = selected.id === 'SET_PLACE' ? currentPlace.value : null
   action.value = selected
   if (selected.id === 'MERGE') form.direction = directions.value[0]?.value
   if (selected.id === 'REMOVE_EVENT') form.resolution = zeroDurationTrip.value ? 'DISMISS' : null
