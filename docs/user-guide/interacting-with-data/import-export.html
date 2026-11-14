@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.8af0ec31.js" defer="defer"></script>
-<script src="/assets/js/main.fa824a92.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.162fc8b4.js" defer="defer"></script>
+<script src="/assets/js/main.00bd8282.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -175,13 +175,15 @@ When CSV is selected, you&#x27;ll see:</p>
 <li class="">Only location points within this range will be imported</li>
 <li class="">Useful for partial imports or testing</li>
 </ul>
-<p><strong>Replace Existing Data in Time Range:</strong></p>
+<p><strong>Replace Existing Data Before Import:</strong></p>
 <ul>
-<li class=""><strong>Enabled:</strong> Deletes existing data in the import time range before importing new data<!-- -->
+<li class=""><strong>Enabled:</strong> Deletes existing data that the import replaces before importing new data<!-- -->
 <ul>
-<li class="">🧹 <strong>Cleaner data</strong> - Ensures no duplicates</li>
-<li class="">⚠️ <strong>Warning:</strong> Permanently deletes existing data in the time range</li>
-<li class=""><strong>Use for:</strong> First-time imports or when re-importing corrected data</li>
+<li class=""><strong>GPS/timeline data:</strong> deleted within the import date range</li>
+<li class=""><strong>Favorites:</strong> favorites are not time-based, so <strong>all existing favorites are deleted</strong> and replaced by the archive&#x27;s favorites, regardless of the date range</li>
+<li class="">The timeline is regenerated in full after the import, including when only favorites are imported</li>
+<li class="">⚠️ <strong>Warning:</strong> Permanently deletes the data described above</li>
+<li class=""><strong>Use for:</strong> First-time imports or when re-importing corrected data, including added, deleted, or resized favorites</li>
 </ul>
 </li>
 <li class=""><strong>Disabled:</strong> Merges new data with existing data<!-- -->
@@ -436,7 +438,7 @@ When GPS data import reaches ~70%, timeline generation begins automatically. You
 <p><strong>Problem:</strong> Duplicate data after import</p>
 <p><strong>Solutions:</strong></p>
 <ul>
-<li class="">If you see duplicates, enable &quot;Replace existing data in time range&quot; for your next import</li>
+<li class="">If you see duplicates, enable &quot;Replace existing data before import&quot; for your next import. Favorites are replaced as a complete set, so added, deleted, and resized favorites all propagate without duplicates.</li>
 <li class="">To clean up duplicates, export data and re-import with replace mode enabled</li>
 <li class="">Use date range filters to target specific periods</li>
 </ul>
@@ -467,7 +469,7 @@ A: The default maximum is 10GB, which can be increased via configuration. GeoPul
 <p><strong>Q: Can I import data while the system is still processing a previous import?</strong>
 A: No, GeoPulse processes one import job at a time per user to ensure data integrity. Wait for the current job to complete before starting another.</p>
 <p><strong>Q: Will importing data delete my existing location history?</strong>
-A: Only if you enable &quot;Replace existing data in time range.&quot; Otherwise, data is merged with duplicate detection.</p>
+A: Location history only if you enable &quot;Replace existing data before import,&quot; and only within the imported date range. If the import includes favorites, enabling that option replaces <strong>all</strong> existing favorites with the archive&#x27;s favorites (favorites have no time range); otherwise favorites are merged.</p>
 <p><strong>Q: How long are export files stored on the server?</strong>
 A: Export files are temporary. Download them promptly after creation. The system may clean up old exports after a period of time.</p>
 <p><strong>Q: Can I schedule automatic exports?</strong>

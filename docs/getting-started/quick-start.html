@@ -8,8 +8,8 @@
 
 
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/assets/css/styles.6c46fa1d.css">
-<script src="/assets/js/runtime~main.8af0ec31.js" defer="defer"></script>
-<script src="/assets/js/main.fa824a92.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.162fc8b4.js" defer="defer"></script>
+<script src="/assets/js/main.00bd8282.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -253,7 +253,7 @@ A: Yes! Create separate location sources for each app. GeoPulse will merge all d
 <p><strong>Q: How much data can GeoPulse handle?</strong>
 A: GeoPulse uses efficient streaming parsers and can handle years of location history. Import files up to 2GB are supported (200MB default, configurable).</p>
 <p><strong>Q: Will importing data delete my existing location history?</strong>
-A: Only if you enable &quot;Replace existing data in time range.&quot; Otherwise, new data is merged with existing data (slower but safer).</p>
+A: Location history only if you enable &quot;Replace existing data before import,&quot; and only within the imported date range. If favorites are included, that option replaces all existing favorites with the archive&#x27;s favorites, since favorites have no time range. Otherwise, new data is merged with existing data (slower but safer).</p>
 <p><strong>Q: How do I increase the 200MB upload limit?</strong>
 A: Administrators can increase the limit by setting <code>CLIENT_MAX_BODY_SIZE</code> in the deployment configuration. See <a class="" href="/docs/system-administration/configuration/frontend">Frontend Configuration</a>.</p>
 <hr>
