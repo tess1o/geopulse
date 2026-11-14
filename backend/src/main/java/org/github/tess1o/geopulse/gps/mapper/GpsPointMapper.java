@@ -78,11 +78,12 @@ public class GpsPointMapper {
         entity.setUser(userId);
         entity.setCoordinates(GeoUtils.createPoint(message.getGeometry().getLongitude(), message.getGeometry().getLatitude()));
         entity.setTimestamp(message.getProperties().getTimestamp());
-        entity.setAccuracy(message.getProperties().getVerticalAccuracy());
+        entity.setAccuracy(message.getProperties().getHorizontalAccuracy());
         // Convert speed from m/s to km/h for consistent storage (Dawarich sends m/s)
         Double speedMs = message.getProperties().getSpeed();
         entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
-        entity.setAltitude(Math.round(message.getProperties().getAltitude()) * 1.0);
+        Double altitude = message.getProperties().getAltitude();
+        entity.setAltitude(altitude != null ? Math.round(altitude) * 1.0 : null);
         entity.setBattery(-1.0);
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
