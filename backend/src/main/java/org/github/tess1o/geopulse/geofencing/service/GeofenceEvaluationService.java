@@ -13,9 +13,9 @@ import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleStateReposit
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -330,23 +330,12 @@ public class GeofenceEvaluationService {
     }
 
     private String formatTimestampForOwner(Instant timestamp, UserEntity owner) {
-        ZoneId zoneId = resolveZoneId(owner != null ? owner.getTimezone() : null);
+        ZoneId zoneId = TimestampUtils.resolveZone(owner != null ? owner.getTimezone() : null);
         DateTimeFormatter formatter = resolveDateTimeFormatter(
                 owner != null ? owner.getUiPreferences().getDateFormat() : null,
                 owner != null ? owner.getUiPreferences().getTimeFormat() : null
         );
         return timestamp.atZone(zoneId).format(formatter);
-    }
-
-    private ZoneId resolveZoneId(String timezone) {
-        if (timezone == null || timezone.isBlank()) {
-            return ZoneId.of("UTC");
-        }
-        try {
-            return ZoneId.of(timezone);
-        } catch (DateTimeException ignored) {
-            return ZoneId.of("UTC");
-        }
     }
 
     private DateTimeFormatter resolveDateTimeFormatter(String dateFormat, String timeFormat) {

@@ -17,6 +17,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class StatisticsRepositoryTest {
+    private static final ZoneId UTC = ZoneOffset.UTC;
+    private static final ZoneId KOLKATA = ZoneId.of("Asia/Kolkata");
     @Inject
     StatisticsRepository statisticsRepository;
     @Inject
@@ -72,7 +76,7 @@ class StatisticsRepositoryTest {
     @Test
     void getTripAggregations_WithValidData_ReturnsCorrectResults() {
         // When
-        TripAggregationResult result = statisticsRepository.getTripAggregations(testUserId, testStart, testEnd);
+        TripAggregationResult result = statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, UTC);
         // Then
         assertNotNull(result);
         assertEquals(38000.0, result.getTotalDistanceMeters()); // 10k + 15k + 5k + 8k
@@ -84,7 +88,7 @@ class StatisticsRepositoryTest {
         // Given - user with no trips
         UUID emptyUserId = UUID.randomUUID();
         // When
-        TripAggregationResult result = statisticsRepository.getTripAggregations(emptyUserId, testStart, testEnd);
+        TripAggregationResult result = statisticsRepository.getTripAggregations(emptyUserId, testStart, testEnd, UTC);
         // Then
         assertNotNull(result);
         assertEquals(0.0, result.getTotalDistanceMeters());
@@ -135,7 +139,7 @@ class StatisticsRepositoryTest {
     @Test
     void getMostActiveDay_WithValidData_ReturnsCorrectDay() {
         // When
-        MostActiveDayDto result = statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd);
+        MostActiveDayDto result = statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, UTC);
         // Then
         assertNotNull(result);
         assertNotNull(result.getDate());
@@ -150,14 +154,14 @@ class StatisticsRepositoryTest {
         // Given - user with no trips
         UUID emptyUserId = UUID.randomUUID();
         // When
-        MostActiveDayDto result = statisticsRepository.getMostActiveDay(emptyUserId, testStart, testEnd);
+        MostActiveDayDto result = statisticsRepository.getMostActiveDay(emptyUserId, testStart, testEnd, UTC);
         // Then
         assertNull(result);
     }
     @Test
     void getChartDataByDays_WithValidData_ReturnsCorrectData() {
         // When
-        List<ChartDataPoint> chartData = statisticsRepository.getChartDataByDays(testUserId, testStart, testEnd, "CAR");
+        List<ChartDataPoint> chartData = statisticsRepository.getChartDataByDays(testUserId, testStart, testEnd, "CAR", UTC);
         // Then
         assertNotNull(chartData);
         assertTrue(chartData.size() > 0);
@@ -170,7 +174,7 @@ class StatisticsRepositoryTest {
     @Test
     void getChartDataByDays_FiltersByMovementType() {
         // When - get only WALK trips
-        List<ChartDataPoint> walkData = statisticsRepository.getChartDataByDays(testUserId, testStart, testEnd, "WALK");
+        List<ChartDataPoint> walkData = statisticsRepository.getChartDataByDays(testUserId, testStart, testEnd, "WALK", UTC);
         // Then
         assertNotNull(walkData);
         assertTrue(walkData.size() > 0);
@@ -183,7 +187,7 @@ class StatisticsRepositoryTest {
     @Test
     void getChartDataByWeeks_WithValidData_ReturnsCorrectData() {
         // When
-        List<ChartDataPoint> chartData = statisticsRepository.getChartDataByWeeks(testUserId, testStart, testEnd, null);
+        List<ChartDataPoint> chartData = statisticsRepository.getChartDataByWeeks(testUserId, testStart, testEnd, null, UTC);
         // Then
         assertNotNull(chartData);
         assertTrue(chartData.size() > 0);
@@ -235,7 +239,7 @@ class StatisticsRepositoryTest {
         Instant boundaryStart = Instant.parse("2024-01-02T00:00:00Z");
         Instant boundaryEnd = Instant.parse("2024-01-02T23:59:59Z");
         // When
-        TripAggregationResult result = statisticsRepository.getTripAggregations(testUserId, boundaryStart, boundaryEnd);
+        TripAggregationResult result = statisticsRepository.getTripAggregations(testUserId, boundaryStart, boundaryEnd, UTC);
         // Then
         assertNotNull(result);
         // Should include trips from 2024-01-02
@@ -252,18 +256,70 @@ class StatisticsRepositoryTest {
         entityManager.flush();
         Instant end = testEnd.plusSeconds(14 * 86400L);
         for (boolean weeks : new boolean[]{false, true}) {
-            var charts = statisticsRepository.getChartDataByMovementType(testUserId, testStart, end, weeks);
+            var charts = statisticsRepository.getChartDataByMovementType(testUserId, testStart, end, weeks, UTC);
             for (var type : org.github.tess1o.geopulse.streaming.model.shared.TripType.values()) {
                 if (type == org.github.tess1o.geopulse.streaming.model.shared.TripType.UNKNOWN) continue;
                 var expected = weeks
-                        ? statisticsRepository.getChartDataByWeeks(testUserId, testStart, end, type.name())
-                        : statisticsRepository.getChartDataByDays(testUserId, testStart, end, type.name());
+                        ? statisticsRepository.getChartDataByWeeks(testUserId, testStart, end, type.name(), UTC)
+                        : statisticsRepository.getChartDataByDays(testUserId, testStart, end, type.name(), UTC);
                 org.assertj.core.api.Assertions.assertThat(charts.get(type.name()))
                         .usingRecursiveComparison().isEqualTo(expected);
             }
-            var empty = statisticsRepository.getChartDataByMovementType(UUID.randomUUID(), testStart, end, weeks);
+            var empty = statisticsRepository.getChartDataByMovementType(UUID.randomUUID(), testStart, end, weeks, UTC);
             org.assertj.core.api.Assertions.assertThat(empty.values()).allMatch(List::isEmpty);
         }
+    }
+
+    /**
+     * Issue #679: a ride starting at 04:19 IST (22:49 UTC the previous day) must be bucketed on the
+     * user's local day, not split across two UTC dates. Checked for a region id and for the equivalent
+     * fixed offset, whose sign PostgreSQL reads inverted.
+     */
+    @Test
+    @Transactional
+    void dayBucketsUseUserTimezone() {
+        createTrip(testUser, "2026-11-06T22:49:00Z", 120_000L, 3600L, "CAR"); // Sat 04:19 IST
+        createTrip(testUser, "2026-11-07T02:00:00Z", 545_000L, 30000L, "CAR"); // Sat 07:30 IST
+        entityManager.flush();
+        Instant localDayStart = Instant.parse("2026-11-06T18:30:00Z"); // 2026-11-07 00:00 IST
+        Instant localDayEnd = Instant.parse("2026-11-07T18:29:59Z");   // 2026-11-07 23:59:59 IST
+
+        for (ZoneId zone : List.of(KOLKATA, ZoneOffset.ofHoursMinutes(5, 30))) {
+            var charts = statisticsRepository.getChartDataByMovementType(testUserId, localDayStart, localDayEnd, false, zone);
+            List<ChartDataPoint> car = charts.get("CAR");
+            assertEquals(1, car.size(), zone + ": single local day must produce a single bar");
+            assertEquals("SAT", car.get(0).getLabel());
+            assertEquals("2026-11-07", car.get(0).getSortKey());
+            assertEquals(665.0, car.get(0).getDistanceKm(), 0.001);
+            org.assertj.core.api.Assertions.assertThat(car).usingRecursiveComparison()
+                    .isEqualTo(statisticsRepository.getChartDataByDays(testUserId, localDayStart, localDayEnd, "CAR", zone));
+
+            TripAggregationResult agg = statisticsRepository.getTripAggregations(testUserId, localDayStart, localDayEnd, zone);
+            assertEquals(665_000.0, agg.getTotalDistanceMeters(), 0.001);
+            assertEquals(665_000.0, agg.getDailyAverageDistanceMeters(), 0.001, zone + ": daily average over one day");
+
+            MostActiveDayDto mostActive = statisticsRepository.getMostActiveDay(testUserId, localDayStart, localDayEnd, zone);
+            assertEquals("11/07", mostActive.getDate());
+            assertEquals(665.0, mostActive.getDistanceTraveled(), 0.001);
+        }
+    }
+
+    /** A Sunday-night-UTC trip that is Monday in the user's zone belongs to the new local week. */
+    @Test
+    @Transactional
+    void weekBucketsUseUserTimezone() {
+        createTrip(testUser, "2026-11-08T20:00:00Z", 10_000L, 600L, "WALK"); // Mon 2026-11-09 01:30 IST
+        entityManager.flush();
+        Instant start = Instant.parse("2026-11-01T18:30:00Z");
+        Instant end = Instant.parse("2026-11-15T18:29:59Z");
+
+        List<ChartDataPoint> walk = statisticsRepository
+                .getChartDataByMovementType(testUserId, start, end, true, KOLKATA).get("WALK");
+        assertEquals(1, walk.size());
+        assertEquals("2026-11-09", walk.get(0).getSortKey());
+        assertEquals("11/09", walk.get(0).getLabel());
+        org.assertj.core.api.Assertions.assertThat(walk).usingRecursiveComparison()
+                .isEqualTo(statisticsRepository.getChartDataByWeeks(testUserId, start, end, "WALK", KOLKATA));
     }
 
     // Helper methods to create test data

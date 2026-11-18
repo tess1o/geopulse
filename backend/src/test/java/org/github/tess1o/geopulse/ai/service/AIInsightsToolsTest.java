@@ -71,7 +71,8 @@ class AIInsightsToolsTest {
 
     @Test
     void getStatistics_usesWholeDaysInUserTimezone() {
-        when(statisticsService.getStatistics(Mockito.eq(USER_ID), Mockito.any(), Mockito.any(), Mockito.any()))
+        when(statisticsService.getStatistics(Mockito.eq(USER_ID), Mockito.any(), Mockito.any(), Mockito.any(),
+                Mockito.any()))
                 .thenReturn(new UserStatistics());
 
         tools.getStatistics("2026-01-01", "2026-01-31");
@@ -79,7 +80,8 @@ class AIInsightsToolsTest {
         verify(statisticsService).getStatistics(USER_ID,
                 Instant.parse("2025-12-31T22:00:00Z"),
                 Instant.parse("2026-01-31T21:59:59.999Z"),
-                ChartGroupMode.WEEKS);
+                ChartGroupMode.WEEKS,
+                java.time.ZoneId.of("Europe/Kyiv"));
     }
 
     @Test

@@ -14,7 +14,7 @@ export default {
     "undo": "Letzten Punkt entfernen",
     "finish": "Form abschließen",
     "rectangleInstruction": "Ziehen, um ein Rechteck zu zeichnen.",
-    "polygonInstruction": "Klicken oder tippen, um Eckpunkte hinzuzufügen. Eckpunkte zur Feinabstimmung ziehen. Zum Schließen den ersten oder letzten Punkt oder Form abschließen wählen. Escape bricht ab.",
+    "polygonInstruction": "Klicken oder tippen, um Eckpunkte hinzuzufügen. Karte ziehen, um sie zu verschieben. Eckpunkte zur Feinabstimmung ziehen. Zum Schließen den ersten oder letzten Punkt oder Form abschließen wählen. Escape bricht ab.",
     "errors": {
         "vertices": "Zwischen 3 und 500 Eckpunkte verwenden.",
         "coordinates": "Gültige Längen- und Breitengrade verwenden.",

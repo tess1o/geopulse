@@ -71,7 +71,7 @@ public class DigestServiceImpl implements DigestService {
         Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
         // Get current period statistics - use WEEKS for better chart readability
-        UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
+        UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS, zoneId);
         MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, start, end);
 
         // Get previous month for comparison
@@ -79,7 +79,7 @@ public class DigestServiceImpl implements DigestService {
         Instant prevStart = previousMonth.atDay(1).atStartOfDay(zoneId).toInstant();
         Instant prevEnd = previousMonth.atEndOfMonth().plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
         UserStatistics previousStats = statisticsService.getStatistics(userId, prevStart, prevEnd,
-                ChartGroupMode.WEEKS);
+                ChartGroupMode.WEEKS, zoneId);
 
         // Build digest using specialized services
         return TimeDigest.builder()
@@ -107,14 +107,14 @@ public class DigestServiceImpl implements DigestService {
         Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
         // Get current year statistics for overall metrics
-        UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
+        UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS, zoneId);
         MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, start, end);
 
         // Get previous year for comparison
         Instant prevStart = firstDay.minusYears(1).atStartOfDay(zoneId).toInstant();
         Instant prevEnd = lastDay.minusYears(1).plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
         UserStatistics previousStats = statisticsService.getStatistics(userId, prevStart, prevEnd,
-                ChartGroupMode.WEEKS);
+                ChartGroupMode.WEEKS, zoneId);
 
         // Generate monthly chart data for yearly view (12 bars)
         ActivityChartData monthlyChart = chartBuilder.buildMonthlyChartForYear(userId, year, zoneId);

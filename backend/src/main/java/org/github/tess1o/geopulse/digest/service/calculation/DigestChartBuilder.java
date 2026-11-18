@@ -66,7 +66,7 @@ public class DigestChartBuilder {
             Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
             // Get statistics for this month
-            UserStatistics monthStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
+            UserStatistics monthStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS, zoneId);
 
             // Store label
             monthLabels[month - 1] = monthNames[month - 1];
