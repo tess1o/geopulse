@@ -1,6 +1,10 @@
 export default {
+  warnings: {"CARVES_EVENT": "Dies ersetzt die Aktivität in diesem Zeitraum.", "REPLACES_CORRECTION": "Diese Aktivität ersetzt eine frühere Korrektur.", "CARVES_CORRECTION": "Dies füllt einen Teil einer früheren Korrektur; der Rest bleibt erhalten.", "PARTIAL_OVERLAP": "Dies überschreitet die Grenze einer früheren Korrektur. Passe den Zeitraum an oder ersetze die Korrektur.", "FUTURE_ACTIVITY": "Eine Aktivität muss in der Vergangenheit enden.", "ONGOING_GAP": "Die gesamte laufende Datenlücke kann nicht umgewandelt werden. Wähle einen abgeschlossenen Teil."},
     "rebuildInterval": "Dieses Intervall neu aufbauen…",
     "rebuildIntervalHint": "Beschreibe, was in diesem Zeitraum passiert ist. Nicht abgedeckte Zeit bleibt am ursprünglichen Ort.",
+    "editRoute": "Fahrtroute bearbeiten",
+    "editRouteHint": "Ziehe die Endpunkte oder füge Routenpunkte hinzu. Die Fahrt behält ihre Zeiten und bleibt ein Ereignis; die Route wird eine manuelle Schätzung.",
+    "editRouteReviewHint": "Die Route deckt die gesamte Fahrt ab. Die aufgezeichneten Zeiten bleiben unverändert.",
     "add": "Fehlende Aktivität ergänzen…",
     "fillGap": "Fehlenden Zeitraum ergänzen…",
     "help": "Beschreibe, was in einem leeren Zeitraum passiert ist. Aufgezeichnete GPS-Daten bleiben unverändert.",
@@ -29,6 +33,7 @@ export default {
     "review": "Änderungen prüfen",
     "unknown": "Weiterhin unbekannt",
     "reviewHint": "Nur diese Aktivitäten werden hinzugefügt. Unbekannte Zeiträume bleiben offen.",
+    "replaceCorrection": "Diese Korrektur ersetzen",
     "save": "Änderungen speichern",
     "invalid": "Wähle eine Aktivität und gültige Start- und Endzeiten.",
     "choosePlace": "Wähle, wo du dich aufgehalten hast.",

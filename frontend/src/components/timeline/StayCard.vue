@@ -283,32 +283,7 @@ const stayPlaceDetailsRoute = computed(() => getStayPlaceDetailsRoute(props.stay
 
 const canViewPlaceDetails = computed(() => Boolean(stayPlaceDetailsRoute.value))
 
-// A stay can hold corrections from several sources at once: the split that cut it out of a trip, and each data gap
-// turned into a stay at the same place. Each correction gets its own reset action.
-const resetActions = computed(() => {
-  const actions = []
-  if (props.stayItem.tripSplitOverrideId) {
-    actions.push({
-      key: `split-${props.stayItem.tripSplitOverrideId}`,
-      kind: 'tripSplit',
-      overrideId: props.stayItem.tripSplitOverrideId
-    })
-  }
-  const gapOverrideIds = props.stayItem.dataGapOverrideIds || []
-  gapOverrideIds.forEach((overrideId, index) => {
-    actions.push({
-      key: `gap-${overrideId}`,
-      kind: 'dataGap',
-      overrideId,
-      index: index + 1,
-      count: gapOverrideIds.length
-    })
-  })
-  return actions
-})
-
-const isManualStay = computed(() => resetActions.value.length > 0
-  || props.stayItem.explanation?.start?.code === 'MANUAL_RECONSTRUCTION')
+const isManualStay = computed(() => props.stayItem.explanation?.start?.code === 'MANUAL_RECONSTRUCTION')
 
 const canManageMatchingNotes = computed(() => {
   return props.allowNoteCreation && matchingNotes.value.some((note) => (
@@ -428,25 +403,11 @@ const formattedTimestamp = computed(() => {
   font-size: 0.85rem;
 }
 
-.location-edit-icon-btn:disabled,
-.location-reset-icon-btn:disabled {
+.location-edit-icon-btn:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
 
-.location-reset-icon-btn {
-  margin-left: 8px;
-  border: none;
-  background: transparent;
-  color: var(--gp-warning);
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-}
-
-.location-reset-icon-btn i {
-  font-size: 0.85rem;
-}
 
 .manual-gap-indicator {
   margin-left: 6px;

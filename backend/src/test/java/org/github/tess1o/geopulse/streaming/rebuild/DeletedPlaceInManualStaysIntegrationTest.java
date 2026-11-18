@@ -8,16 +8,16 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +44,7 @@ class DeletedPlaceInManualStaysIntegrationTest {
     FavoritesRepository favoritesRepository;
 
     @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
+    ActivityCorrectionService corrections;
 
     @Inject
     TimelineDataGapRepository dataGapRepository;
@@ -70,11 +70,15 @@ class DeletedPlaceInManualStaysIntegrationTest {
                         .filter(candidate -> candidate.getEndTime().equals(at("16:00")))
                         .findFirst()
                         .orElseThrow());
-        DataGapStayOverrideRequest atTheGym = new DataGapStayOverrideRequest();
-        atTheGym.setLocationStrategy("SELECTED_LOCATION");
+        var atTheGym = new ActivityCorrectionService.Activity();
+        atTheGym.setSegmentType("STAY");
+        atTheGym.setStartTime(gap.getStartTime());
+        atTheGym.setEndTime(gap.getEndTime());
         atTheGym.setFavoriteId(gym);
-        QuarkusTransaction.requiringNew().run(() ->
-                dataGapStayOverrideService.convertGapToStay(userId, gap.getId(), atTheGym));
+        atTheGym.setLatitude(day.bakery[0]);
+        atTheGym.setLongitude(day.bakery[1]);
+        corrections.save(userId, new ActivityCorrectionService.Request(null, List.of(atTheGym), null, null));
+        harness.fullRebuild(userId);
         String gapStay = "STAY " + gap.getStartTime() + " ";
         assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).startsWith(gapStay)
                 .contains("'Gym'"));

@@ -89,11 +89,4 @@ describe('timeline prop bindings', () => {
       expect(boundPropExpression(container, tagName, 'read-only'), tagName).toBe('effectiveReadOnly')
     }
   })
-
-  it('forwards the correction a card asked to reset, not just the stay', () => {
-    const container = sourceOf('./TimelineContainer.vue')
-
-    expect(container).toContain("emit('reset-data-gap-override', stayItem, overrideId)")
-    expect(container).toContain("emit('reset-trip-split-override', stayItem, overrideId)")
-  })
 })

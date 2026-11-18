@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 import {
     applyStayFavoriteUpdateToTimelineItems,
     applyStayGeocodingUpdateToTimelineItems,
@@ -279,61 +280,6 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
-        async updateTripMovementType(tripId, movementType) {
-            try {
-                const updatedTrip = await apiService.put(`/trips/${tripId}/timeline/movement-type`, {
-                    movementType
-                })
-                if (updatedTrip) {
-                    this.applyTripMovementUpdate(updatedTrip)
-                }
-                return updatedTrip
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to update movement type')
-                throw this.error
-            }
-        },
-
-        async resetTripMovementType(tripId) {
-            try {
-                const updatedTrip = await apiService.delete(`/trips/${tripId}/timeline/movement-type`)
-                if (updatedTrip) {
-                    this.applyTripMovementUpdate(updatedTrip)
-                }
-                return updatedTrip
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to reset movement type')
-                throw this.error
-            }
-        },
-
-        async getDataGapStayConversionPreview(gapId) {
-            try {
-                return await apiService.get(`/timeline/data-gaps/${gapId}/stay-conversion-preview`)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to preview data gap conversion')
-                throw this.error
-            }
-        },
-
-        async convertDataGapToStay(gapId, payload = {}) {
-            try {
-                return await apiService.put(`/timeline/data-gaps/${gapId}/stay-conversion`, payload)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to convert data gap')
-                throw this.error
-            }
-        },
-
-        async resetDataGapStayOverride(overrideId) {
-            try {
-                return await apiService.delete(`/timeline/data-gap-overrides/${overrideId}/stay-conversion`)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to reset data gap override')
-                throw this.error
-            }
-        },
-
         async fetchTripPath(startTime, endTime, options = {}) {
             try {
                 const params = { from: startTime, to: endTime }
@@ -345,82 +291,70 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
-        async previewTripStaySplit(tripId, payload) {
+        /** The one correction API: an activity batch or a single correction, previewed and saved as one group. */
+        async previewCorrections(payload) {
             try {
-                return await apiService.post(`/trips/${tripId}/timeline/stay-split/preview`, payload)
+                return await apiService.post('/timeline/corrections/preview', payload)
             } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to preview trip split')
+                this.error = normalizeApiError(error, 'Failed to preview timeline corrections')
                 throw this.error
             }
         },
 
-        async splitTripWithStay(tripId, payload) {
+        async saveCorrections(payload) {
             try {
-                return await apiService.put(`/trips/${tripId}/timeline/stay-split`, payload)
+                return await apiService.post('/timeline/corrections', payload, { redirectOnServerError: false })
             } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to split trip')
+                this.error = normalizeApiError(error, 'Failed to save timeline corrections')
                 throw this.error
             }
         },
 
-        async resetTripStaySplitOverride(overrideId) {
+        async fetchCorrections(params = {}) {
             try {
-                return await apiService.delete(`/timeline/stay-split-overrides/${overrideId}`)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to reset trip split')
-                throw this.error
-            }
-        },
-
-        async previewActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections/preview', payload) },
-        async saveActivityCorrection(payload) { return apiService.post('/timeline/activity-corrections', payload) },
-        async revertActivityCorrection(groupId, cascade = false) {
-            return apiService.post(`/timeline/activity-corrections/${groupId}/revert${cascade ? '?cascade=true' : ''}`)
-        },
-        async restoreActivityCorrection(groupId) { return apiService.post(`/timeline/activity-corrections/${groupId}/restore`) },
-        async fetchTimelineEdits() {
-            try {
-                return await apiService.get('/timeline/edits')
+                return await apiService.get('/timeline/corrections', params)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load timeline corrections')
                 throw this.error
             }
         },
 
-        async previewTimelineEdit(edit) {
+        async undoCorrection(groupId, cascade = false) {
             try {
-                return await apiService.post('/timeline/edits/preview', edit)
+                return await apiService.post(`/timeline/corrections/${groupId}/undo${cascade ? '?cascade=true' : ''}`, {}, { redirectOnServerError: false })
             } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to preview timeline correction')
+                this.error = normalizeApiError(error, 'Failed to undo timeline correction')
                 throw this.error
             }
         },
 
-        async createTimelineEdit(edit) {
+        async restoreCorrection(groupId) {
             try {
-                return await apiService.post('/timeline/edits', edit)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to save timeline correction')
-                throw this.error
-            }
-        },
-
-        async revertTimelineEdit(editId, cascade = false) {
-            try {
-                return await apiService.post(`/timeline/edits/${editId}/revert${cascade ? '?cascade=true' : ''}`)
-            } catch (error) {
-                this.error = normalizeApiError(error, 'Failed to revert timeline correction')
-                throw this.error
-            }
-        },
-
-        async restoreTimelineEdit(editId) {
-            try {
-                return await apiService.post(`/timeline/edits/${editId}/restore`)
+                return await apiService.post(`/timeline/corrections/${groupId}/restore`, {}, { redirectOnServerError: false })
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to restore timeline correction')
                 throw this.error
             }
+        },
+
+        async updateTripMovementType(trip, movementType) {
+            const anchorStart = trip.timestamp || trip.startTime
+            const anchorEnd = trip.endTime || new Date(Date.parse(anchorStart) + trip.tripDuration * 1000).toISOString()
+            const request = { op: 'SET_TRIP_TYPE', anchorStart, anchorEnd, payload: { movementType } }
+            const preview = await this.previewCorrections(request)
+            const result = await this.saveCorrections({ ...request, previewToken: preview.token })
+            return { ...result, tripId: trip.id, movementType, movementTypeSource: 'MANUAL' }
+        },
+
+        async resetTripMovementType(trip) {
+            const corrections = await this.fetchCorrections()
+            // A correction can touch several stored events; any of them may be this trip.
+            const correction = corrections.filter(edit => edit.op === 'SET_TRIP_TYPE' && edit.status === 'IN_EFFECT'
+                && (edit.effects?.length ? edit.effects : [edit.target])
+                    .some(target => target?.type === 'TRIP' && Number(target.id) === Number(trip.id))).at(-1)
+            if (!correction) throw new Error(t('tripDialogs.movementTypeQuickEdit.toasts.noCorrectionToReset'))
+            const result = await this.undoCorrection(correction.groupId)
+            return { ...result, tripId: trip.id, operation: 'undo' }
         },
 
         async fetchTimelineCount(startTime, endTime) {

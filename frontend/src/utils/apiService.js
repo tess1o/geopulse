@@ -238,7 +238,7 @@ const apiService = {
                 // Use secure request with CSRF protection for authenticated endpoints
                 return await this._performSecureRequest('post', endpoint, data, options);
             }
-        });
+        }, options);
     },
 
     /**

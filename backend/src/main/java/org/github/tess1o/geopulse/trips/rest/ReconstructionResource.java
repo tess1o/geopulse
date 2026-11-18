@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.trips.rest;
 
 import org.github.tess1o.geopulse.auth.model.ApiTokenScope;
 import org.github.tess1o.geopulse.auth.security.RequiresApiTokenScope;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -14,11 +15,11 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
 import org.github.tess1o.geopulse.shared.api.ApiPaths;
-import org.github.tess1o.geopulse.trips.service.TripReconstructionOverlapException;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -27,7 +28,6 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RECONSTRUCTION;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA;
 
 @Path(ApiPaths.TRIP_PLANNING + "/reconstructions")
 @ApplicationScoped
@@ -50,17 +50,14 @@ public class ReconstructionResource {
     @Path("/preview")
     @RequiresApiTokenScope(ApiTokenScope.READ)
     @Operation(summary = "Preview a trip reconstruction",
-            description = "Checks a reconstruction request and returns how many GPS points it would create, and for "
-                    + "which time range. A reconstruction describes missing parts of a trip as a list of stays and "
-                    + "movements (with optional waypoints) so GeoPulse can generate GPS points for them. Nothing is "
-                    + "saved.")
+            description = "Runs the correction fold for the stays and movements a reconstruction describes and "
+                    + "returns the resulting events, warnings and a preview token. Nothing is saved and no GPS points "
+                    + "are created.")
     public TripReconstructionPreviewDto preview(@Valid TripReconstructionRequestDto request) {
         try {
             return tripReconstructionService.preview(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
             throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
-        } catch (TripReconstructionOverlapException e) {
-            throw new GeoPulseException(TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA, e.getMessage(), e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -69,16 +66,16 @@ public class ReconstructionResource {
     @POST
     @Path("/commit")
     @Operation(summary = "Save a trip reconstruction",
-            description = "Generates GPS points from the reconstruction segments and stores them for the trip owner. "
-                    + "Points that already exist are skipped. Then starts a timeline regeneration from the earliest "
-                    + "new point and returns its job ID.")
+            description = "Saves the reconstruction segments as one correction group scoped to the planned trip's "
+                    + "dates and starts a timeline regeneration. No GPS points are created or changed.")
     public TripReconstructionCommitResponseDto commit(@Valid TripReconstructionRequestDto request) {
         try {
             return tripReconstructionService.commit(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
             throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
-        } catch (TripReconstructionOverlapException e) {
-            throw new GeoPulseException(TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA, e.getMessage(), e);
+        } catch (TimelineGenerationLockException e) {
+            throw new GeoPulseException(ApiErrorCode.TIMELINE_REGENERATION_IN_PROGRESS,
+                    "Timeline update in progress. Try again when it finishes.", e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }

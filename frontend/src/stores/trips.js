@@ -345,26 +345,6 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
-    async previewReconstruction(payload) {
-      this.error = null
-      try {
-        return await apiService.post('/trip-planning/reconstructions/preview', payload)
-      } catch (error) {
-        this.error = normalizeApiError(error, 'Failed to preview reconstruction')
-        throw this.error
-      }
-    },
-
-    async commitReconstruction(payload) {
-      this.error = null
-      try {
-        return await apiService.post('/trip-planning/reconstructions/commit', payload)
-      } catch (error) {
-        this.error = normalizeApiError(error, 'Failed to commit reconstruction')
-        throw this.error
-      }
-    },
-
     async fetchWorkspaceTimeline(tripId, startTime = null, endTime = null) {
       this.error = null
       try {

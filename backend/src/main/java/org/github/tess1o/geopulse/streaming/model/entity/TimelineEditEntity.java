@@ -25,13 +25,14 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
+import org.github.tess1o.geopulse.streaming.edits.payload.BeforeValues;
+import org.github.tess1o.geopulse.streaming.edits.payload.CorrectionPayload;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
 
 @Entity
 @Table(name = "timeline_edits")
@@ -46,7 +47,7 @@ public class TimelineEditEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "group_id")
+    @Column(name = "group_id", nullable = false)
     private java.util.UUID groupId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -73,13 +74,16 @@ public class TimelineEditEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(nullable = false, columnDefinition = "jsonb")
+    private CorrectionPayload payload;
+
+    @Column(name = "payload_version", nullable = false)
     @Builder.Default
-    private LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+    private int payloadVersion = 1;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "before_values", columnDefinition = "jsonb")
-    private LinkedHashMap<String, Object> beforeValues;
+    private BeforeValues beforeValues;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "place_favorite_id")
@@ -106,9 +110,11 @@ public class TimelineEditEntity {
     @ToString.Exclude
     private TimelineEditEntity supersededBy;
 
-    @OneToOne(mappedBy = "edit", fetch = FetchType.LAZY)
+    @jakarta.persistence.OneToMany(mappedBy = "correction", fetch = FetchType.LAZY)
+    @jakarta.persistence.OrderBy("id")
     @ToString.Exclude
-    private TimelineEditApplicationEntity application;
+    @Builder.Default
+    private java.util.List<TimelineCorrectionEffectEntity> effects = new java.util.ArrayList<>();
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

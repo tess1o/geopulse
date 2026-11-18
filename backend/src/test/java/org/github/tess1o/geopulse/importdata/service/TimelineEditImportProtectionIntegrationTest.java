@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -40,9 +43,10 @@ class TimelineEditImportProtectionIntegrationTest {
     void rejectsOccupiedDestinationBeforeImportingAnyOtherFiles() throws Exception {
         UUID user = users.createUser("occupied-edits").userId();
         QuarkusTransaction.requiringNew().run(() -> em.persist(TimelineEditEntity.builder()
-                .user(em.getReference(UserEntity.class, user)).seq(1).kind(TimelineEditKind.SET_VISIT_NAME)
+                .user(em.getReference(UserEntity.class, user)).groupId(java.util.UUID.randomUUID())
+                .seq(1).kind(TimelineEditKind.SET_VISIT_NAME)
                 .anchorStart(START).anchorEnd(START.plusSeconds(3600)).affectedFrom(START).affectedTo(START.plusSeconds(3600))
-                .payload(new LinkedHashMap<>(Map.of("visitName", "Keep me"))).status(TimelineEditStatus.ACTIVE).build()));
+                .payload(payload(TimelineEditKind.SET_VISIT_NAME, new LinkedHashMap<>(Map.of("visitName", "Keep me")))).status(TimelineEditStatus.ACTIVE).build()));
         byte[] archive;
         try (var bytes = new ByteArrayOutputStream(); var zip = new ZipOutputStream(bytes)) {
             zip.putNextEntry(new ZipEntry(ExportImportConstants.FileNames.FAVORITES));
@@ -54,8 +58,8 @@ class TimelineEditImportProtectionIntegrationTest {
         var job = job(user, archive);
         assertThatThrownBy(() -> strategy.processImportData(job)).hasMessageContaining("no timeline edits");
         assertThat(edits.list(user)).singleElement().satisfies(edit -> {
-            assertThat(edit.seq()).isEqualTo(1); assertThat(edit.payload()).containsEntry("visitName", "Keep me");
-            assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
+            assertThat(edit.seq()).isEqualTo(1); assertThat(map(edit.payload())).containsEntry("visitName", "Keep me");
+            assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
         });
     }
 
@@ -66,8 +70,13 @@ class TimelineEditImportProtectionIntegrationTest {
         String favoriteKey = prefix.isEmpty() ? "favoriteId" : prefix + "FavoriteId";
         String geocoding = prefix.isEmpty() ? "geocodingId" : prefix + "GeocodingId";
         var data = data();
-        data.getEdits().getFirst().setPayload(new LinkedHashMap<>(Map.of(favoriteKey, 91L, geocoding, 92L,
-                "locationName", "Snapshot", "latitude", 50.0, "longitude", 30.0)));
+        TimelineEditKind kind = prefix.isEmpty() ? TimelineEditKind.SET_PLACE : prefix.equals("right") ? TimelineEditKind.SPLIT_STAY : TimelineEditKind.FORCE_TRIP;
+        data.getEdits().getFirst().setKind(kind);
+        var supplied = new LinkedHashMap<>(validPayload(kind));
+        supplied.put(favoriteKey,91L); supplied.put(geocoding,92L);
+        String nameKey = prefix.isEmpty() ? "locationName" : prefix + "LocationName";
+        supplied.put(nameKey,"Snapshot");
+        data.getEdits().getFirst().setPayload(supplied);
         var maps = new ImportReferenceMaps();
         // Payload-only references need remapping even when no top-level association exists.
         long mappedFavorite = QuarkusTransaction.requiringNew().call(() -> {
@@ -80,9 +89,8 @@ class TimelineEditImportProtectionIntegrationTest {
         maps.favoriteIds.put(91L, mappedFavorite);
         importer.importTimelineEditsData(json.writeValueAsBytes(data), job(user, new byte[0]), maps);
         assertThat(edits.list(user)).singleElement().satisfies(edit -> {
-            assertThat(((Number) edit.payload().get(favoriteKey)).longValue()).isEqualTo(mappedFavorite);
-            assertThat(edit.payload()).doesNotContainKey(geocoding).containsEntry("locationName", "Snapshot")
-                    .containsEntry("latitude", 50.0).containsEntry("longitude", 30.0);
+            assertThat(((Number) map(edit.payload()).get(favoriteKey)).longValue()).isEqualTo(mappedFavorite);
+            assertThat(map(edit.payload())).doesNotContainKey(geocoding).containsEntry(nameKey, "Snapshot");
         });
     }
 
@@ -94,14 +102,14 @@ class TimelineEditImportProtectionIntegrationTest {
         for (var kind : TimelineEditKind.values()) for (var status : TimelineEditStatus.values()) {
             rows.add(TimelineEditsDataDto.EditDto.builder().id(++seq).seq(seq).kind(kind).status(status)
                     .anchorStart(START).anchorEnd(START.plusSeconds(3600)).affectedFrom(START).affectedTo(START.plusSeconds(3600))
-                    .payload(Map.of("visitName", "Snapshot")).supersededById(status == TimelineEditStatus.SUPERSEDED ? 1L : null).build());
+                    .payload(validPayload(kind)).supersededById(status == TimelineEditStatus.SUPERSEDED ? 1L : null).build());
         }
         importer.importTimelineEditsData(json.writeValueAsBytes(TimelineEditsDataDto.builder().edits(rows).build()), job(user, new byte[0]), new ImportReferenceMaps());
         var imported = edits.list(user);
         assertThat(imported).hasSize(rows.size());
         for (int i = 0; i < rows.size(); i++) {
-            assertThat(imported.get(i).kind()).isEqualTo(rows.get(i).getKind());
-            assertThat(imported.get(i).status()).isEqualTo(rows.get(i).getStatus());
+            assertThat(imported.get(i).op()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp.of(rows.get(i).getKind()));
+            assertThat(imported.get(i).status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.of(rows.get(i).getStatus()));
             assertThat(imported.get(i).seq()).isEqualTo(i + 1);
         }
         QuarkusTransaction.requiringNew().run(() -> {
@@ -146,9 +154,41 @@ class TimelineEditImportProtectionIntegrationTest {
             assertThat(stay.getLocationName()).isEqualTo("Home"); assertThat(stay.getVisitName()).isEqualTo("Snapshot label");
         });
         assertThat(edits.list(user)).singleElement().satisfies(edit -> {
-            assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
-            assertThat(edit.payload()).containsEntry("visitName", "Snapshot label");
+            assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
+            assertThat(map(edit.payload())).containsEntry("visitName", "Snapshot label");
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"movement", "instant", "label", "coordinates", "version", "route"})
+    void rejectsInvalidPayloadsWithoutPersistingCorrections(String invalid) throws Exception {
+        UUID user = users.createUser("invalid-correction-import").userId();
+        var archive = data(); var row = archive.getEdits().getFirst();
+        switch (invalid) {
+            case "movement" -> { row.setKind(TimelineEditKind.SET_MOVEMENT_TYPE); row.setPayload(Map.of("movementType","DRIVING")); }
+            case "instant" -> { row.setKind(TimelineEditKind.SET_TIMES); row.setPayload(Map.of("start","invalid","end",START.plusSeconds(60).toString())); }
+            case "label" -> row.setPayload(Map.of("visitName","x".repeat(501)));
+            case "coordinates" -> { row.setKind(TimelineEditKind.FORCE_STAY); row.setPayload(Map.of("latitude",91.0,"longitude",30.0)); }
+            case "version" -> row.setPayloadVersion(2);
+            case "route" -> { row.setKind(TimelineEditKind.SET_ROUTE); row.setPayload(Map.of("waypoints",List.of(Map.of("latitude",50.0,"longitude",30.0)))); }
+        }
+        byte[] bytes = json.writeValueAsBytes(archive);
+        assertThatThrownBy(() -> importer.importTimelineEditsData(bytes,job(user,bytes),new ImportReferenceMaps())).isInstanceOf(RuntimeException.class);
+        assertThat(edits.list(user)).isEmpty();
+    }
+
+    private static Map<String,Object> validPayload(TimelineEditKind kind) {
+        return switch (kind) {
+            case SET_MOVEMENT_TYPE -> Map.of("movementType","WALK");
+            case SET_VISIT_NAME -> Map.of("visitName","Snapshot");
+            case FORCE_STAY, SET_PLACE -> Map.of("latitude",50.0,"longitude",30.0,"locationName","Snapshot");
+            case FORCE_TRIP -> Map.of("startLatitude",50.0,"startLongitude",30.0,"endLatitude",50.1,"endLongitude",30.1,"movementType","WALK");
+            case SET_TIMES -> Map.of("start",START.toString(),"end",START.plusSeconds(1800).toString());
+            case SPLIT_STAY -> Map.of("splitAt",START.plusSeconds(1800).toString(),"rightLatitude",50.0,"rightLongitude",30.0,"rightLocationName","Snapshot");
+            case MERGE -> Map.of("direction","NEXT");
+            case REMOVE_EVENT -> Map.of("resolution","GAP");
+            case SET_ROUTE -> Map.of("waypoints",List.of(Map.of("latitude",50.0,"longitude",30.0),Map.of("latitude",50.1,"longitude",30.1)));
+        };
     }
 
     private TimelineEditsDataDto data() {

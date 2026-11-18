@@ -8,11 +8,13 @@ import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -38,7 +40,10 @@ class GapConversionNoteIntegrationTest {
     TimelineReplayHarness harness;
 
     @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
+    TimelineEditService editService;
+
+    @Inject
+    TimelineStayRepository stayRepository;
 
     @Inject
     TimelineDataGapRepository dataGapRepository;
@@ -76,19 +81,26 @@ class GapConversionNoteIntegrationTest {
         Long noteId = createStayNoteAwaitingItsStay(userId, gap.getStartTime().plusSeconds(600),
                 meeting[0], meeting[1]);
 
-        DataGapStayOverrideRequest atTheMeeting = new DataGapStayOverrideRequest();
-        atTheMeeting.setLocationStrategy("SELECTED_LOCATION");
-        atTheMeeting.setLatitude(meeting[0]);
-        atTheMeeting.setLongitude(meeting[1]);
-        atTheMeeting.setLocationName("Meeting");
-        DataGapStayOverrideResponseDTO conversion = QuarkusTransaction.requiringNew().call(() ->
-                dataGapStayOverrideService.convertGapToStay(userId, gap.getId(), atTheMeeting).orElseThrow());
+        var fill = new TimelineEditRequest();
+        fill.setKind(TimelineEditKind.FORCE_STAY);
+        fill.setAnchorStart(gap.getStartTime());
+        fill.setAnchorEnd(gap.getEndTime());
+        fill.setAffectedFrom(gap.getStartTime());
+        fill.setAffectedTo(gap.getEndTime());
+        fill.setPlaceName("Meeting");
+        fill.setLatitude(meeting[0]);
+        fill.setLongitude(meeting[1]);
+        QuarkusTransaction.requiringNew().run(() -> editService.create(userId, fill));
+        harness.fullRebuild(userId);
+
+        TimelineStayEntity stay = QuarkusTransaction.requiringNew().call(() -> stayRepository
+                .find("user.id = ?1 and timestamp = ?2", userId, gap.getStartTime()).firstResult());
 
         TimelineNoteEntity note = QuarkusTransaction.requiringNew().call(() ->
                 entityManager.find(TimelineNoteEntity.class, noteId));
         assertThat(note.getAnchorType()).isEqualTo(NoteAnchorType.STAY);
         assertThat(note.getStay()).as("the note's stay").isNotNull();
-        assertThat(note.getStay().getId()).as("the stay made from the gap").isEqualTo(conversion.stayId());
+        assertThat(note.getStay().getId()).as("the stay made from the gap").isEqualTo(stay.getId());
     }
 
     /** A stay anchor whose stay is not there (any more), as an imported or rewritten timeline can leave it. */

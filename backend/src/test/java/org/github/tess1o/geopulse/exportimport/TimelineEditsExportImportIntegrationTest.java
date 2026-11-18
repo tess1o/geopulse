@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.exportimport;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -52,6 +55,7 @@ class TimelineEditsExportImportIntegrationTest {
     @Inject ExportDataGenerator exporter;
     @Inject ImportDataService importer;
     @Inject EntityManager entityManager;
+    @Inject org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService activities;
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
@@ -66,7 +70,7 @@ class TimelineEditsExportImportIntegrationTest {
         request.setKind(TimelineEditKind.SET_VISIT_NAME);
         request.setAnchorStart(START);
         request.setAnchorEnd(END);
-        request.setPayload(new LinkedHashMap<>(java.util.Map.of("visitName", "Exported visit")));
+        set(request, new LinkedHashMap<>(java.util.Map.of("visitName", "Exported visit")));
         edits.create(source, request);
         if (!withBeforeValues) QuarkusTransaction.requiringNew().run(() -> entityManager.createQuery(
                 "update TimelineEditEntity set beforeValues = null where user.id = :userId")
@@ -94,14 +98,63 @@ class TimelineEditsExportImportIntegrationTest {
 
         assertThat(edits.list(target)).singleElement().satisfies(edit -> {
             assertThat(edit.seq()).isEqualTo(1);
-            assertThat(edit.kind()).isEqualTo(TimelineEditKind.SET_VISIT_NAME);
-            assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
-            assertThat(edit.payload()).containsEntry("visitName", "Exported visit");
+            assertThat(edit.op()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp.SET_LABEL);
+            assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
+            assertThat(map(edit.payload())).containsEntry("visitName", "Exported visit");
             if (withBeforeValues) {
-                assertThat(edit.beforeValues()).containsEntry("locationName", "Home").containsEntry("start", START.toString());
+                assertThat(map(edit.beforeValues())).containsEntry("locationName", "Home").containsEntry("start", START.toString());
             } else {
                 assertThat(edit.beforeValues()).isNull();
             }
         });
+    }
+
+    /**
+     * An import appends corrections with new identities in the target account: correction ids and group ids are
+     * both new, while corrections saved together stay one group.
+     */
+    @org.junit.jupiter.api.Test
+    void importedCorrectionsGetNewGroupIdsAndKeepTheirGrouping() throws Exception {
+        UUID source = users.createUser("group-export-source").userId();
+        var batch = activities.save(source, new org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Request(
+                null, List.of(stay(START, START.plusSeconds(1800), "First"), stay(START.plusSeconds(1800), END, "Second")),
+                null, null));
+        var single = activities.save(source, new org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Request(
+                null, List.of(stay(END.plusSeconds(600), END.plusSeconds(1800), "Third")), null, null));
+
+        ExportDateRange range = new ExportDateRange();
+        range.setStartDate(START.minusSeconds(60));
+        range.setEndDate(END.plusSeconds(3600));
+        ExportJob exportJob = new ExportJob(source, List.of(ExportImportConstants.DataTypes.TIMELINE_EDITS),
+                range, ExportFormat.GEOPULSE);
+        byte[] archive = QuarkusTransaction.requiringNew().call(() -> {
+            exporter.generateGeoPulseNativeExport(exportJob);
+            return Files.readAllBytes(Path.of(exportJob.getTempFilePath()));
+        });
+        UUID target = users.createUser("group-export-target").userId();
+        ImportOptions options = new ImportOptions();
+        options.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
+        options.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE_EDITS));
+        importer.processImportData(new ImportJob(target, options, "timeline-edits.zip", archive));
+
+        var imported = edits.list(target);
+        assertThat(imported).hasSize(3);
+        var sourceGroups = java.util.Set.of(batch.groupId(), single.groupId());
+        assertThat(imported).allSatisfy(edit -> assertThat(sourceGroups).doesNotContain(edit.groupId()));
+        var importedGroups = imported.stream().collect(java.util.stream.Collectors.groupingBy(
+                edit -> edit.groupId(), java.util.stream.Collectors.counting()));
+        assertThat(importedGroups.values()).containsExactlyInAnyOrder(2L, 1L);
+    }
+
+    private static org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Activity stay(
+            Instant start, Instant end, String name) {
+        var activity = new org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Activity();
+        activity.setSegmentType("STAY");
+        activity.setStartTime(start);
+        activity.setEndTime(end);
+        activity.setLatitude(50.4501);
+        activity.setLongitude(30.5234);
+        activity.setLocationName(name);
+        return activity;
     }
 }

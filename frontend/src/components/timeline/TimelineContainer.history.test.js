@@ -10,10 +10,10 @@ vi.mock('../dialogs/TripStaySplitDialog.vue', () => ({ default: { template: '<di
 vi.mock('../dialogs/TripMapMatchingDetailsDialog.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: addToast }) }))
 const range = ['2026-10-25T00:00:00Z', '2026-10-26T00:00:00Z']
-const edit = (id, extra = {}) => ({ id, status: 'ACTIVE', anchorStart: '2026-10-25T15:23:00Z', anchorEnd: '2026-10-25T15:25:00Z', ...extra })
+const edit = (id, extra = {}) => ({ id, status: 'IN_EFFECT', anchorStart: '2026-10-25T15:23:00Z', anchorEnd: '2026-10-25T15:25:00Z', ...extra })
 function setup(edits = [], props = {}) {
   const pinia = createPinia()
-  const fetch = vi.spyOn(useTimelineStore(pinia), 'fetchTimelineEdits').mockResolvedValue(edits)
+  const fetch = vi.spyOn(useTimelineStore(pinia), 'fetchCorrections').mockResolvedValue(edits)
   const wrapper = shallowMount(TimelineContainer, {
     props: { dateRange: range, showTimelineLabels: false, loadNotes: false, loadImmichPhotos: false, ...props },
     global: { plugins: [pinia], stubs: { Button: { template: '<button><slot /></button>' } } }
@@ -25,7 +25,7 @@ const drawer = wrapper => wrapper.findComponent({ name: 'TimelineEditHistoryDraw
 beforeEach(() => addToast.mockClear())
 describe('selected timeframe history', () => {
   it('uses affected intervals or anchors and shares the count and drawer list', async () => {
-    const matching = [edit(1), edit(2, { status: 'REVERTED' }), edit(3, { applied: false, target: null }), edit(4, { status: 'SUPERSEDED' }),
+    const matching = [edit(1), edit(2, { status: 'UNDONE' }), edit(3, { applied: false, target: null }), edit(4, { status: 'REPLACED' }),
       edit(5, { anchorStart: '2026-10-24T23:00:00Z', affectedFrom: '2026-10-24T23:00:00Z', affectedTo: '2026-10-25T01:00:00Z' })]
     const { wrapper } = setup([...matching,
       edit(6, { affectedFrom: '2026-10-27T00:00:00Z', affectedTo: '2026-10-28T00:00:00Z' }),
@@ -38,7 +38,7 @@ describe('selected timeframe history', () => {
     await button(wrapper).trigger('click')
     expect(drawer(wrapper).props('visible')).toBe(true)
   })
-  it.each(['REVERTED', 'SUPERSEDED', 'ACTIVE'])('keeps %s history reachable without visible cards', async status => {
+  it.each(['UNDONE', 'REPLACED', 'IN_EFFECT'])('keeps %s history reachable without visible cards', async status => {
     const { wrapper } = setup([edit(1, { status, applied: false })])
     await flushPromises()
     expect(button(wrapper).text()).toBe('1')

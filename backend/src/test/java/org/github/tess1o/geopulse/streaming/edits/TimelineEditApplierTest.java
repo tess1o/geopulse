@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.command;
+
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
@@ -42,11 +44,12 @@ class TimelineEditApplierTest {
 
         var dismiss = edit(2, TimelineEditKind.REMOVE_EVENT, 0, 0, Map.of("resolution", "DISMISS"));
         var removed = applier.apply(source, List.of(classify, dismiss));
-        assertThat(removed.appliedEditIds()).containsExactly(1L, 2L);
+        assertThat(removed.appliedEditIds()).containsExactly(2L);
+        assertThat(removed.unappliedEditIds()).containsExactly(1L);
         assertThat(removed.events()).hasSize(2).allMatch(Stay.class::isInstance);
         assertThat(removed.events().getFirst().getEndTime()).isEqualTo(ZERO);
         assertThat(removed.events().getLast().getStartTime()).isEqualTo(ZERO);
-        assertThat(removed.applications().get(2L)).isSameAs(removed.events().getFirst());
+        assertThat(removed.effects().get(2L)).containsExactly(removed.events().getFirst());
         assertThat(applier.apply(source, List.of(classify)).events()).hasSize(3);
 
         var retime = edit(3, TimelineEditKind.SET_TIMES, 0, 0,
@@ -60,14 +63,18 @@ class TimelineEditApplierTest {
     }
 
     @Test
-    void pointAnchorDoesNotMatchPositiveTripsDifferentTimesOrDistantEndpoints() {
+    void pointAnchorMatchesOnlyTripsThatContainTheInstant() {
         var command = edit(1, TimelineEditKind.SET_MOVEMENT_TYPE, 0, 0, Map.of(
                 "movementType", "WALK", "sourceStartLatitude", 1.0, "sourceStartLongitude", 1.0,
                 "sourceEndLatitude", 2.0, "sourceEndLongitude", 2.0));
         var distant = trip(0, 0, TripType.UNKNOWN);
         distant.setEndPoint(GPSPoint.builder().timestamp(ZERO).latitude(3).longitude(3).build());
-        for (var candidate : List.of(trip(0, 1, TripType.UNKNOWN), trip(1, 0, TripType.UNKNOWN),
-                distant, stay(0, 60, "Shop"))) {
+
+        for (var candidate : List.of(trip(0, 1, TripType.UNKNOWN), distant)) {
+            var result = applier.apply(List.of(candidate), List.of(command));
+            assertThat(result.appliedEditIds()).containsExactly(1L);
+        }
+        for (var candidate : List.of(trip(1, 0, TripType.UNKNOWN), stay(0, 60, "Shop"))) {
             var result = applier.apply(List.of(candidate), List.of(command));
             assertThat(result.appliedEditIds()).isEmpty();
             assertThat(result.unappliedEditIds()).containsExactly(1L);
@@ -334,7 +341,7 @@ class TimelineEditApplierTest {
     }
 
     @Test
-    void rejectsTemporallySimilarTripWithUnrelatedEndpoints() {
+    void locationDistanceDoesNotRejectATimeMatchingTrip() {
         TimelineEditResult result = applier.apply(List.of(trip(0, 60, TripType.CAR)), List.of(
                 edit(9, TimelineEditKind.SET_MOVEMENT_TYPE, 0, 60, Map.of(
                         "movementType", "TRAIN",
@@ -343,14 +350,14 @@ class TimelineEditApplierTest {
                         "sourceEndLatitude", 41.0,
                         "sourceEndLongitude", 41.0))));
 
-        assertThat(result.appliedEditIds()).isEmpty();
-        assertThat(result.unappliedEditIds()).containsExactly(9L);
-        assertThat(((Trip) result.events().getFirst()).getTripType()).isEqualTo(TripType.CAR);
+        assertThat(result.appliedEditIds()).containsExactly(9L);
+        assertThat(result.unappliedEditIds()).isEmpty();
+        assertThat(((Trip) result.events().getFirst()).getTripType()).isEqualTo(TripType.TRAIN);
     }
 
     private static TimelineEditCommand edit(long id, TimelineEditKind kind, long fromMinute, long toMinute,
                                             Map<String, Object> payload) {
-        return new TimelineEditCommand(id, id, kind, at(fromMinute), at(toMinute), payload);
+        return command(id, id, kind, at(fromMinute), at(toMinute), payload);
     }
 
     private static Stay stay(long fromMinute, long durationMinutes, String name) {

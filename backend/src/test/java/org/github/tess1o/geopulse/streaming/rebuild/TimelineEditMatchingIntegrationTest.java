@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -49,7 +51,8 @@ class TimelineEditMatchingIntegrationTest {
         var outbound = originalTrips.getFirst(); var inbound = originalTrips.getLast();
         var office = stayRows(user).stream().filter(row -> row.getTimestamp().equals(at("08:46"))).findFirst().orElseThrow();
         Instant officeEnd = office.getTimestamp().plusSeconds(office.getStayDuration());
-        boolean tripTarget = kind == TimelineEditKind.SET_MOVEMENT_TYPE || kind == TimelineEditKind.MERGE;
+        boolean tripTarget = kind == TimelineEditKind.SET_MOVEMENT_TYPE || kind == TimelineEditKind.MERGE
+                || kind == TimelineEditKind.SET_ROUTE;
         Instant anchorStart = tripTarget ? outbound.getTimestamp() : office.getTimestamp();
         Instant anchorEnd = tripTarget ? outbound.getTimestamp().plusSeconds(outbound.getTripDuration()) : officeEnd;
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -58,6 +61,10 @@ class TimelineEditMatchingIntegrationTest {
             case SET_PLACE, FORCE_STAY -> payload.putAll(Map.of("locationName", "Corrected place", "latitude", day.bakery[0], "longitude", day.bakery[1]));
             case SET_VISIT_NAME -> payload.put("visitName", "Corrected visit");
             case SET_TIMES -> payload.putAll(Map.of("start", office.getTimestamp().plusSeconds(300).toString(), "end", officeEnd.minusSeconds(300).toString()));
+            case SET_ROUTE -> payload.put("waypoints", List.of(
+                    Map.of("latitude", outbound.getStartPoint().getY(), "longitude", outbound.getStartPoint().getX()),
+                    Map.of("latitude", day.bakery[0], "longitude", day.bakery[1]),
+                    Map.of("latitude", outbound.getEndPoint().getY(), "longitude", outbound.getEndPoint().getX())));
             case SPLIT_STAY -> payload.putAll(Map.of("splitAt", at("10:00").toString(), "rightLocationName", "Second place", "rightLatitude", day.bakery[0], "rightLongitude", day.bakery[1]));
             case MERGE -> payload.put("direction", "NEXT");
             case REMOVE_EVENT -> payload.put("resolution", "GAP");
@@ -70,7 +77,7 @@ class TimelineEditMatchingIntegrationTest {
         shiftRecording(user, minutes);
         harness.fullRebuild(user);
         var applied = current(user, saved.id());
-        assertThat(applied.status()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(applied.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT);
         assertThat(applied.applied()).isTrue(); assertThat(applied.target()).isNotNull();
         assertThat(applied.target().id()).isNotEqualTo(oldTarget);
         assertThat(applied.anchorStart()).isEqualTo(anchorStart); assertThat(applied.anchorEnd()).isEqualTo(anchorEnd);
@@ -96,6 +103,11 @@ class TimelineEditMatchingIntegrationTest {
                 var row = stayRows(user).stream().filter(stay -> stay.getId().equals(applied.target().id())).findFirst().orElseThrow();
                 assertThat(row.getTimestamp()).isEqualTo(office.getTimestamp().plusSeconds(300));
                 assertThat(row.getTimestamp().plusSeconds(row.getStayDuration())).isEqualTo(officeEnd.minusSeconds(300));
+            }
+            case SET_ROUTE -> {
+                var row = tripRows(user).stream().filter(trip -> trip.getId().equals(applied.target().id())).findFirst().orElseThrow();
+                assertThat(row.getManualRoute()).hasSize(3);
+                assertThat(row.getTimestamp()).isEqualTo(expectedStart);
             }
             case SPLIT_STAY -> {
                 var row = stayRows(user).stream().filter(stay -> stay.getId().equals(applied.target().id())).findFirst().orElseThrow();
@@ -136,7 +148,7 @@ class TimelineEditMatchingIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"DOMINANT_SUFFIX", "EVEN_SPLIT", "MERGED"})
-    void movementMatchingFollowsActualStayDurationPreferenceChanges(String scenario) {
+    void movementMatchingFollowsTheTripWithTheLargestSharedTime(String scenario) {
         UUID user = harness.createUser("preference-movement");
         boolean originallySplit = scenario.equals("MERGED");
         setMinimumStay(user, originallySplit ? 5 : 15);
@@ -158,18 +170,16 @@ class TimelineEditMatchingIntegrationTest {
         setMinimumStay(user, originallySplit ? 15 : 5); harness.fullRebuild(user);
         var regenerated = tripRows(user);
         assertThat(regenerated).hasSize(originallySplit ? 1 : 2);
-        boolean matches = scenario.equals("DOMINANT_SUFFIX");
-        assertThat(current(user, edit.id()).applied()).isEqualTo(matches);
-        if (matches) {
-            var suffix = regenerated.getLast();
-            assertThat(Duration.between(source.getTimestamp(), suffix.getTimestamp()).toMinutes()).isGreaterThanOrEqualTo(10);
-            assertThat(suffix.getMovementType()).isEqualTo("TRAIN");
-            assertThat(suffix.getId()).isEqualTo(current(user, edit.id()).target().id());
-            assertThat(regenerated.getFirst().getMovementTypeSource().name()).isEqualTo("AUTO");
-        } else {
-            assertThat(current(user, edit.id()).target()).isNull();
-            assertThat(regenerated).allSatisfy(row -> assertThat(row.getMovementTypeSource().name()).isEqualTo("AUTO"));
-        }
+        // The correction follows the trip sharing the most time with its anchor, even when no leg holds a majority.
+        var target = current(user, edit.id());
+        assertThat(target.applied()).isTrue();
+        assertThat(target.target()).isNotNull();
+        var matched = regenerated.stream().filter(row -> row.getId().equals(target.target().id()))
+                .findFirst().orElseThrow();
+        assertThat(matched.getMovementType()).isEqualTo("TRAIN");
+        assertThat(matched.getMovementTypeSource().name()).isEqualTo("MANUAL");
+        assertThat(regenerated).filteredOn(row -> !row.getId().equals(matched.getId()))
+                .allSatisfy(row -> assertThat(row.getMovementTypeSource().name()).isEqualTo("AUTO"));
         setMinimumStay(user, originallySplit ? 5 : 15); harness.fullRebuild(user);
         assertThat(current(user, edit.id()).applied()).isTrue();
         assertThat(tripRows(user).getFirst().getMovementType()).isEqualTo("TRAIN");
@@ -188,7 +198,7 @@ class TimelineEditMatchingIntegrationTest {
         harness.fullRebuild(user); assertThat(current(user, saved.id()).applied()).isTrue();
         setMinimumStay(user, 15); harness.fullRebuild(user);
         var stale = current(user, saved.id());
-        assertThat(stale.status()).isEqualTo(TimelineEditStatus.ACTIVE); assertThat(stale.applied()).isFalse(); assertThat(stale.target()).isNull();
+        assertThat(stale.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT); assertThat(stale.applied()).isFalse(); assertThat(stale.target()).isNull();
         assertThat(stayRows(user)).noneSatisfy(row -> assertThat(row.getTimestamp()).isEqualTo(bakery.getTimestamp()));
         setMinimumStay(user, 3); harness.fullRebuild(user);
         assertThat(current(user, saved.id()).applied()).isTrue();
@@ -206,7 +216,7 @@ class TimelineEditMatchingIntegrationTest {
         var label = edits.create(user, request(TimelineEditKind.SET_VISIT_NAME, office.getTimestamp(), end, Map.of("visitName", "Keep working")));
         harness.fullRebuild(user); assertThat(current(user, split.id()).applied()).isTrue();
         shiftRecording(user, 10); harness.fullRebuild(user);
-        assertThat(current(user, split.id()).applied()).isFalse(); assertThat(current(user, split.id()).status()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(current(user, split.id()).applied()).isFalse(); assertThat(current(user, split.id()).status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT);
         assertThat(current(user, label.id()).applied()).isTrue();
         assertThat(stayRows(user).getLast().getVisitName()).isEqualTo("Keep working");
         shiftRecording(user, -10); harness.fullRebuild(user);
@@ -224,7 +234,7 @@ class TimelineEditMatchingIntegrationTest {
                 .setParameter(1, user).setParameter(2, office.getTimestamp()).executeUpdate());
         harness.fullRebuild(user);
         var stale = current(user, saved.id());
-        assertThat(stale.status()).isEqualTo(TimelineEditStatus.ACTIVE); assertThat(stale.applied()).isFalse(); assertThat(stale.target()).isNull();
+        assertThat(stale.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT); assertThat(stale.applied()).isFalse(); assertThat(stale.target()).isNull();
         harness.ingest(user, day.track.messages().stream().filter(message -> message.getTst() >= office.getTimestamp().getEpochSecond()).toList());
         harness.fullRebuild(user);
         assertThat(current(user, saved.id()).applied()).isTrue(); assertThat(stayRows(user).getLast().getVisitName()).isEqualTo("Remember me");
@@ -240,15 +250,15 @@ class TimelineEditMatchingIntegrationTest {
         QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("delete from gps_points where user_id = ?1").setParameter(1, user).executeUpdate());
         harness.fullRebuild(user);
         assertThat(current(user, saved.id()).applied()).isFalse(); assertThat(current(user, saved.id()).target()).isNull();
-        var history = io.restassured.RestAssured.given().header("Authorization", "Bearer " + actor.accessToken()).get("/api/v1/timeline/edits");
+        var history = io.restassured.RestAssured.given().header("Authorization", "Bearer " + actor.accessToken()).get("/api/v1/timeline/corrections");
         assertThat(history.statusCode()).isEqualTo(200);
         assertThat(history.jsonPath().getBoolean("[0].applied")).isFalse();
         assertThat(history.jsonPath().getMap("[0].target")).isNull();
-        assertThat(history.jsonPath().getString("[0].status")).isEqualTo("ACTIVE");
+        assertThat(history.jsonPath().getString("[0].status")).isEqualTo("IN_EFFECT");
         edits.revert(user, saved.id()).orElseThrow(); harness.fullRebuild(user);
-        assertThat(current(user, saved.id()).status()).isEqualTo(TimelineEditStatus.REVERTED);
+        assertThat(current(user, saved.id()).status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.UNDONE);
         edits.restore(user, saved.id()).orElseThrow(); harness.fullRebuild(user);
-        assertThat(current(user, saved.id()).status()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(current(user, saved.id()).status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
         assertThat(current(user, saved.id()).applied()).isFalse();
         harness.ingest(user, day.track.messages()); harness.fullRebuild(user);
         assertThat(current(user, saved.id()).applied()).isTrue();
@@ -257,7 +267,7 @@ class TimelineEditMatchingIntegrationTest {
 
     @ParameterizedTest
     @EnumSource(value = TimelineEditKind.class, names = {"SET_MOVEMENT_TYPE", "SET_TIMES", "MERGE", "REMOVE_EVENT"})
-    void tripMovedFarAwayBecomesUnappliedWithoutRepaintingTheReplacement(TimelineEditKind kind) {
+    void tripLocationChangeDoesNotDetachATimeBasedEdit(TimelineEditKind kind) {
         UUID user = day.ingest(harness, "stale-endpoints");
         if (kind == TimelineEditKind.MERGE) {
             harness.ingest(user, new Track().drive(day.office, day.home, at("12:01"), at("12:45"))
@@ -274,12 +284,17 @@ class TimelineEditMatchingIntegrationTest {
         };
         var saved = edits.create(user, request(kind, trip.getTimestamp(), trip.getTimestamp().plusSeconds(trip.getTripDuration()), payload));
         harness.fullRebuild(user);
+        // Time is the identity: moving the recording elsewhere does not detach a correction from its time range.
         QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("update gps_points set coordinates = ST_Translate(coordinates, 1, 0) where user_id = ?1").setParameter(1, user).executeUpdate());
         harness.fullRebuild(user);
-        assertThat(current(user, saved.id()).applied()).isFalse();
-        assertThat(tripRows(user)).allSatisfy(row -> assertThat(row.getMovementTypeSource().name()).isEqualTo("AUTO"));
+        assertThat(current(user, saved.id()).applied()).isTrue();
+        if (kind == TimelineEditKind.SET_MOVEMENT_TYPE) {
+            assertThat(tripRows(user)).anySatisfy(row ->
+                    assertThat(row.getMovementTypeSource().name()).isEqualTo("MANUAL"));
+        }
         QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("update gps_points set coordinates = ST_Translate(coordinates, -1, 0) where user_id = ?1").setParameter(1, user).executeUpdate());
-        harness.fullRebuild(user); assertThat(current(user, saved.id()).applied()).isTrue();
+        harness.fullRebuild(user);
+        assertThat(current(user, saved.id()).applied()).isTrue();
     }
 
     @ParameterizedTest
@@ -329,18 +344,18 @@ class TimelineEditMatchingIntegrationTest {
             em.remove(em.find(entity, target.id()));
             em.remove(em.find(TimelineStayEntity.class, otherTarget.id()));
         });
-        edits.clearMissingApplications(user);
+        edits.clearMissingEffects(user);
         assertThat(current(user, stale.id()).applied()).isFalse(); assertThat(current(user, stale.id()).target()).isNull();
-        assertThat(current(user, stale.id()).status()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(current(user, stale.id()).status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT);
         assertThat(current(user, keep.id()).target().id()).isEqualTo(keptId);
         assertThat(current(other, otherEdit.id()).applied()).isTrue();
-        edits.clearMissingApplications(other);
+        edits.clearMissingEffects(other);
         assertThat(current(other, otherEdit.id()).applied()).isFalse();
     }
 
     @ParameterizedTest
     @EnumSource(value = TimelineEditKind.class, names = {"FORCE_STAY", "SPLIT_STAY"})
-    void noGpsPassPreservesAnExistingManualStayUntilUndone(TimelineEditKind kind) {
+    void noGpsPassProducesOnlyWhatsDerivableFromCorrections(TimelineEditKind kind) {
         UUID user = day.ingest(harness, "manual-without-gps"); var office = stayRows(user).getLast();
         var payload = kind == TimelineEditKind.FORCE_STAY
                 ? Map.<String, Object>of("locationName", "Manual stop", "latitude", day.bakery[0], "longitude", day.bakery[1])
@@ -351,16 +366,23 @@ class TimelineEditMatchingIntegrationTest {
         var manual = stayRows(user).stream().filter(row -> row.getId().equals(target.id())).findFirst().orElseThrow();
         QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery("delete from gps_points where user_id = ?1").setParameter(1, user).executeUpdate());
         harness.fullRebuild(user);
-        assertThat(current(user, saved.id()).applied()).isTrue();
-        assertThat(stayRows(user)).singleElement().satisfies(row -> {
-            assertThat(row.getId()).isEqualTo(manual.getId()); assertThat(row.getTimestamp()).isEqualTo(manual.getTimestamp());
-            assertThat(row.getStayDuration()).isEqualTo(manual.getStayDuration());
-        });
+        // A fill defines its event on its own; a split needs the event it cut, so it is dormant without GPS.
+        boolean derivableWithoutDetection = kind == TimelineEditKind.FORCE_STAY;
+        assertThat(current(user, saved.id()).applied()).isEqualTo(derivableWithoutDetection);
+        if (derivableWithoutDetection) {
+            assertThat(stayRows(user)).singleElement().satisfies(row -> {
+                assertThat(row.getTimestamp()).isEqualTo(manual.getTimestamp());
+                assertThat(row.getStayDuration()).isEqualTo(manual.getStayDuration());
+            });
+        } else {
+            assertThat(stayRows(user)).isEmpty();
+        }
         edits.revert(user, saved.id()).orElseThrow(); harness.fullRebuild(user);
         assertThat(stayRows(user)).isEmpty(); assertThat(current(user, saved.id()).applied()).isFalse();
         edits.restore(user, saved.id()).orElseThrow(); harness.fullRebuild(user);
-        assertThat(current(user, saved.id()).status()).isEqualTo(TimelineEditStatus.ACTIVE);
-        assertThat(current(user, saved.id()).applied()).isFalse();
+        assertThat(current(user, saved.id()).status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
+        assertThat(current(user, saved.id()).applied()).isEqualTo(derivableWithoutDetection);
+        assertThat(stayRows(user)).hasSize(derivableWithoutDetection ? 1 : 0);
         harness.ingest(user, day.track.messages()); harness.fullRebuild(user);
         assertThat(current(user, saved.id()).applied()).isTrue();
     }
@@ -390,7 +412,7 @@ class TimelineEditMatchingIntegrationTest {
     }
     private static TimelineEditRequest request(TimelineEditKind kind, Instant start, Instant end, Map<String, Object> payload) {
         var request = new TimelineEditRequest(); request.setKind(kind); request.setAnchorStart(start); request.setAnchorEnd(end);
-        request.setAffectedFrom(at("06:00")); request.setAffectedTo(at("18:00")); request.setPayload(new LinkedHashMap<>(payload)); return request;
+        request.setAffectedFrom(at("06:00")); request.setAffectedTo(at("18:00")); set(request, new LinkedHashMap<>(payload)); return request;
     }
     private static Map<String, Object> movementPayload(TimelineTripEntity trip) {
         return Map.of("movementType", "TRAIN", "sourceStartLatitude", trip.getStartPoint().getY(), "sourceStartLongitude", trip.getStartPoint().getX(),

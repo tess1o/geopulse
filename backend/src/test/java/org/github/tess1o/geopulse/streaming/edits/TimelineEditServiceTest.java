@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
@@ -91,25 +93,56 @@ class TimelineEditServiceTest {
     }
 
     @Test
-    void onlyActiveMissingActivitiesExtendGenerationWithoutGps() {
+    void activeFillsExtendGenerationWithoutGps() {
         var ordinary = edit(TimelineEditKind.FORCE_STAY, FROM, FROM.plusSeconds(300));
         ordinary.setStatus(TimelineEditStatus.ACTIVE);
         ordinary.setAffectedTo(FROM.plusSeconds(300));
-        var missing = edit(TimelineEditKind.FORCE_STAY, FROM, FROM.plusSeconds(60));
-        missing.setStatus(TimelineEditStatus.ACTIVE);
-        missing.setAffectedTo(FROM.plusSeconds(60));
-        missing.getPayload().put("activityCorrection", true);
-        when(repository.findByUser(user)).thenReturn(List.of(ordinary, missing));
+        var later = edit(TimelineEditKind.FORCE_TRIP, FROM, FROM.plusSeconds(60));
+        later.setStatus(TimelineEditStatus.ACTIVE);
+        later.setAffectedTo(FROM.plusSeconds(60));
+        when(repository.findByUser(user)).thenReturn(List.of(ordinary, later));
 
-        assertThat(service.activeEnd(user)).isEqualTo(FROM.plusSeconds(60));
-        missing.setStatus(TimelineEditStatus.REVERTED);
+        assertThat(service.activeEnd(user)).isEqualTo(FROM.plusSeconds(300));
+
+        var detail = edit(TimelineEditKind.SET_VISIT_NAME, FROM, FROM.plusSeconds(60));
+        detail.setStatus(TimelineEditStatus.ACTIVE);
+        detail.setAffectedTo(FROM.plusSeconds(600));
+        when(repository.findByUser(user)).thenReturn(List.of(detail));
         assertThat(service.activeEnd(user)).isNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TimelineEditKind.class, names = {"FORCE_STAY", "FORCE_TRIP"})
+    void futurePlanActivitiesRequireOwnershipAndStayInsideTheirPlan(TimelineEditKind kind) {
+        service.tripAccess = mock(org.github.tess1o.geopulse.trips.service.TripAccessService.class);
+        service.stayRepository = mock(org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository.class);
+        service.tripRepository = mock(org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository.class);
+        service.gapRepository = mock(org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository.class);
+        service.gpsPoints = mock(org.github.tess1o.geopulse.gps.repository.GpsPointRepository.class);
+        Instant future = Instant.now().plusSeconds(86400);
+        var plan = new org.github.tess1o.geopulse.trips.model.entity.TripEntity();
+        plan.setStartTime(future); plan.setEndTime(future.plusSeconds(3600));
+        when(service.tripAccess.requireOwnerAccess(user, 7L)).thenReturn(new org.github.tess1o.geopulse.trips.service.TripAccessContext(plan,true,null));
+        var request = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
+        request.setKind(kind); request.setAnchorStart(future); request.setAnchorEnd(plan.getEndTime());
+        var values = new LinkedHashMap<String,Object>(Map.of("tripId",7L,"latitude",49.8,"longitude",24.1,
+                "startLatitude",49.8,"startLongitude",24.1,"endLatitude",49.9,"endLongitude",24.2));
+        request.setPayload(payload(kind, values));
+        org.assertj.core.api.Assertions.assertThatCode(() -> service.resolvePayload(user, request)).doesNotThrowAnyException();
+        assertThat(service.fillWarnings(user,List.of(request),null)).noneMatch(w -> w.code().equals("FUTURE_ACTIVITY"));
+        request.setAnchorEnd(plan.getEndTime().plusSeconds(1));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.resolvePayload(user, request)).hasMessageContaining("planned trip dates");
+        values.remove("tripId"); request.setPayload(payload(kind,values));
+        assertThat(service.fillWarnings(user,List.of(request),null)).anyMatch(w -> w.code().equals("FUTURE_ACTIVITY"));
+        values.put("tripId",99L); request.setPayload(payload(kind,values));
+        when(service.tripAccess.requireOwnerAccess(user,99L)).thenThrow(new jakarta.ws.rs.NotFoundException());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.resolvePayload(user,request)).isInstanceOf(jakarta.ws.rs.NotFoundException.class);
     }
 
     private TimelineEditEntity edit(TimelineEditKind kind, Instant start, Instant end) {
         return TimelineEditEntity.builder().id(1L).seq(1).kind(kind).anchorStart(start).anchorEnd(end)
-                .payload(new LinkedHashMap<>(Map.of("locationName", "Cafe", "latitude", 50.0, "longitude", 30.0,
+                .payload(payload(kind, new LinkedHashMap<>(Map.of("locationName", "Cafe", "latitude", 50.0, "longitude", 30.0,
                         "movementType", "WALK", "startLatitude", 50.0, "startLongitude", 30.0,
-                        "endLatitude", 50.1, "endLongitude", 30.1, "visitName", "Corrected"))).build();
+                        "endLatitude", 50.1, "endLongitude", 30.1, "visitName", "Corrected")))).build();
     }
 }

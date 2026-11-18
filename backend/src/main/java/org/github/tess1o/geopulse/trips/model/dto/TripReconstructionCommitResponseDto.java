@@ -3,12 +3,12 @@ package org.github.tess1o.geopulse.trips.model.dto;
 import lombok.Builder;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Builder
 public record TripReconstructionCommitResponseDto(
-        long generatedPoints,
-        long insertedPoints,
-        long duplicatePoints,
+        UUID groupId,
+        long corrections,
         Instant regenerationStartTime,
         String jobId,
         String regenerationWarning

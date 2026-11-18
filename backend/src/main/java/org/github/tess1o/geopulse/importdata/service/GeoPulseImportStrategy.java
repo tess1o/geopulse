@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.ExportMetadataDto;
+import org.github.tess1o.geopulse.export.dto.TimelineEditsDataDto;
+import org.github.tess1o.geopulse.export.dto.TimelineOverridesDataDto;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
@@ -110,7 +112,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_LABELS);
                         break;
                     case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
-                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
+                        // Older exports carry corrections in the legacy overrides file; they import as timeline edits.
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_EDITS);
                         break;
                     case ExportImportConstants.FileNames.TIMELINE_EDITS:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_EDITS);
@@ -163,7 +166,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Collect all file contents for proper dependency ordering
         Map<String, byte[]> fileContents = extractZipContents(job);
 
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+        // A file that carries no corrections does not conflict with the target's existing ones.
+        byte[] editsFile = fileContents.get(ExportImportConstants.FileNames.TIMELINE_EDITS);
+        byte[] legacyFile = fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES);
+        boolean importsEdits = editsFile != null && hasNonEmptyTimelineEdits(editsFile);
+        // Legacy corrections are appended as new corrections; importing them twice would duplicate every one.
+        if (importsEdits || (legacyFile != null && hasLegacyOverrides(legacyFile))) {
             timelineDetailsImporter.requireEmptyTimelineEdits(job.getUserId());
         }
 
@@ -341,16 +349,44 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             timelineDetailsImporter.importTimelineLabelsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_LABELS), job, referenceMaps);
         }
 
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES)) {
+        // The edits file is authoritative when it actually carries corrections. Older exports have only the legacy
+        // overrides file; an empty edits file must not hide their corrections.
+        boolean hasTimelineEdits = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)
+                && hasNonEmptyTimelineEdits(fileContents.get(ExportImportConstants.FileNames.TIMELINE_EDITS));
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES) && !hasTimelineEdits) {
             timelineDetailsImporter.importTimelineOverridesData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES), job, referenceMaps);
         }
 
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS)) {
+        if (hasTimelineEdits) {
             timelineDetailsImporter.importTimelineEditsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_EDITS), job, referenceMaps);
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
             timelineDetailsImporter.importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job, referenceMaps);
+        }
+    }
+
+    private static boolean hasLegacyOverrides(byte[] content) {
+        try {
+            var data = IMPORT_JSON.readValue(content, TimelineOverridesDataDto.class);
+            return !isEmpty(data.getTripMovementOverrides()) || !isEmpty(data.getDataGapStayOverrides())
+                    || !isEmpty(data.getTripStaySplitOverrides()) || !isEmpty(data.getStayNameOverrides());
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static boolean isEmpty(java.util.Collection<?> values) {
+        return values == null || values.isEmpty();
+    }
+
+    private static boolean hasNonEmptyTimelineEdits(byte[] content) {
+        try {
+            var data = IMPORT_JSON.readValue(content, TimelineEditsDataDto.class);
+            return data.getEdits() != null && !data.getEdits().isEmpty();
+        } catch (IOException e) {
+            // Let the edits importer report the malformed file; do not hide legacy corrections meanwhile.
+            return false;
         }
     }
 
@@ -394,7 +430,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             case ExportImportConstants.FileNames.TIMELINE_LABELS:
                 return ExportImportConstants.DataTypes.TIMELINE_LABELS;
             case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
-                return ExportImportConstants.DataTypes.TIMELINE_OVERRIDES;
+                // Selected together with the edits file: both are the user's timeline corrections.
+                return ExportImportConstants.DataTypes.TIMELINE_EDITS;
             case ExportImportConstants.FileNames.TIMELINE_EDITS:
                 return ExportImportConstants.DataTypes.TIMELINE_EDITS;
             case ExportImportConstants.FileNames.TRIP_WORKSPACE:

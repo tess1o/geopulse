@@ -12,9 +12,10 @@ class TimelineEditNativeConfigTest {
     @Test
     void registersEveryEditTransportTypeIncludingNestedPreviewEvents() {
         assertThat(StreamingNativeConfig.class.getAnnotation(RegisterForReflection.class).targets())
-                .contains(TimelineOverrideIds.class, TimelineEditRequest.class, TimelineEditDTO.class, TimelineEditTargetDTO.class,
-                        TimelineEditMutationResponse.class, TimelineEditPreviewDTO.class,
-                        TimelineEditPreviewDTO.Event.class, TimelineEditKind.class, TimelineEditStatus.class);
+                .contains(TimelineCorrectionRequest.class, TimelineEditRequest.class, TimelineEditDTO.class,
+                        TimelineEditTargetDTO.class, TimelineEditPreviewDTO.class,
+                        TimelineEditPreviewDTO.Event.class, TimelineCorrectionOp.class, TimelineCorrectionStatus.class,
+                        TimelineEditKind.class, TimelineEditStatus.class);
     }
     @Test
     void registersGpsPathProjection() {

@@ -1,22 +1,26 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
-import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
-import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,20 +35,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SerializedDatabaseTest
 class ImportedTimelineEditsIntegrationTest {
 
-    @Inject
-    TimelineReplayHarness harness;
-
-    @Inject
-    ManualEditsSupport edits;
-
-    @Inject
-    TripMovementTypeOverrideService movementTypeOverrideService;
-
-    @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
-
-    @Inject
-    TimelineDataGapRepository dataGapRepository;
+    @Inject TimelineReplayHarness harness;
+    @Inject ManualEditsSupport edits;
+    @Inject TimelineEditService timelineEdits;
+    @Inject ActivityCorrectionService corrections;
+    @Inject TimelineDataGapRepository dataGapRepository;
 
     private final CommuteWithStops day = new CommuteWithStops();
 
@@ -60,21 +55,25 @@ class ImportedTimelineEditsIntegrationTest {
         harness.ingest(original, day.track.stay(day.office, at("16:00"), at("17:00"), 10).messages());
         harness.fullRebuild(original);
 
-        movementTypeOverrideService.setManualMovementType(original,
-                edits.tripCovering(original, at("08:16"), at("08:20")).getId(), TripType.TRAIN);
+        setMovementType(original, edits.tripCovering(original, at("08:16"), at("08:20")), "TRAIN");
+        harness.fullRebuild(original);
         edits.split(original, at("08:16"), at("08:20"), day.bakery, "Bakery");
+
         TimelineDataGapEntity gap = QuarkusTransaction.requiringNew().call(() ->
                 dataGapRepository.findByUserId(original).stream()
                         .filter(candidate -> candidate.getEndTime().equals(at("16:00")))
                         .findFirst()
                         .orElseThrow());
-        DataGapStayOverrideRequest atTheGym = new DataGapStayOverrideRequest();
-        atTheGym.setLocationStrategy("SELECTED_LOCATION");
-        atTheGym.setLatitude(day.pharmacy[0] + 0.004);
-        atTheGym.setLongitude(day.pharmacy[1]);
-        atTheGym.setLocationName("Gym");
-        QuarkusTransaction.requiringNew().run(() ->
-                dataGapStayOverrideService.convertGapToStay(original, gap.getId(), atTheGym));
+        var gym = new ActivityCorrectionService.Activity();
+        gym.setSegmentType("STAY");
+        gym.setStartTime(gap.getStartTime());
+        gym.setEndTime(gap.getEndTime());
+        gym.setLatitude(day.pharmacy[0] + 0.004);
+        gym.setLongitude(day.pharmacy[1]);
+        gym.setLocationName("Gym");
+        corrections.save(original, new ActivityCorrectionService.Request(null, List.of(gym), null, null));
+        harness.fullRebuild(original);
+
         List<String> exported = harness.snapshot(original).contentAcrossUsers();
         assertThat(exported)
                 .anySatisfy(item -> assertThat(item).contains("'Bakery'"))
@@ -82,12 +81,10 @@ class ImportedTimelineEditsIntegrationTest {
                 .anySatisfy(item -> assertThat(item).contains(" TRAIN "));
 
         byte[] export = edits.exportOf(original, at("00:00"), at("23:59"));
-        var exportedSplit = harness.readExportJson(export, "timeline-overrides.json")
-                .path("tripStaySplitOverrides").get(0);
-        assertThat(exportedSplit.path("sourceTripMovementType").asText())
-                .as("the manual type the split inherited").isEqualTo("TRAIN");
-        assertThat(exportedSplit.path("stayLocationNameCustom").asBoolean())
-                .as("the split stay's name was typed for it").isTrue();
+        var exportedEdits = harness.readExportJson(export, "timeline-edits.json").path("edits");
+        List<String> kinds = new ArrayList<>();
+        exportedEdits.forEach(edit -> kinds.add(edit.path("kind").asText()));
+        assertThat(kinds).contains("SET_MOVEMENT_TYPE", "FORCE_STAY");
 
         UUID imported = harness.createUser("edits-import");
         edits.importInto(imported, export);
@@ -95,6 +92,22 @@ class ImportedTimelineEditsIntegrationTest {
         assertThat(harness.snapshot(imported).contentAcrossUsers())
                 .as("imported timeline")
                 .containsExactlyElementsOf(exported);
+    }
+
+    private void setMovementType(UUID userId, TimelineTripEntity trip, String movementType) {
+        var request = new TimelineEditRequest();
+        request.setKind(TimelineEditKind.SET_MOVEMENT_TYPE);
+        request.setAnchorStart(trip.getTimestamp());
+        request.setAnchorEnd(trip.getTimestamp().plusSeconds(trip.getTripDuration()));
+        request.setAffectedFrom(trip.getTimestamp());
+        request.setAffectedTo(trip.getTimestamp().plusSeconds(trip.getTripDuration()));
+        put(request, "sourceType", "TRIP");
+        put(request, "sourceStartLatitude", trip.getStartPoint().getY());
+        put(request, "sourceStartLongitude", trip.getStartPoint().getX());
+        put(request, "sourceEndLatitude", trip.getEndPoint().getY());
+        put(request, "sourceEndLongitude", trip.getEndPoint().getX());
+        put(request, "movementType", movementType);
+        timelineEdits.create(userId, request);
     }
 
     private static Instant at(String time) {

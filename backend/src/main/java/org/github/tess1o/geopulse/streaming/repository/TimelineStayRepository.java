@@ -55,21 +55,24 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     }
 
     /**
-     * The latest stay starting before the timestamp that timeline generation produces itself: stays created by a
-     * timeline edit are skipped, since generation recreates them from their source interval.
+     * The latest stay before the timestamp that no active correction touches. Restarting at a corrected stay would
+     * keep the source interval the correction was made on out of the regenerated part, so the fold could not apply
+     * it again. Correction anchors, not projection rows, decide this.
      */
-    public Optional<TimelineStayEntity> findLatestGeneratedStayBefore(UUID userId, Instant beforeTimestamp) {
+    public Optional<TimelineStayEntity> findLatestDetectionStayBefore(UUID userId, Instant beforeTimestamp) {
         return getEntityManager().createQuery("""
                         SELECT s FROM TimelineStayEntity s
                         WHERE s.user.id = :userId AND s.timestamp < :before
-                          AND NOT EXISTS (SELECT 1 FROM TimelineEditApplicationEntity a
-                                          WHERE a.targetType = 'STAY' AND a.targetId = s.id)
-                          AND NOT EXISTS (SELECT 1 FROM TimelineDataGapStayOverrideEntity o WHERE o.stay = s)
-                          AND NOT EXISTS (SELECT 1 FROM TimelineTripStaySplitOverrideEntity o WHERE o.stay = s)
+                          AND NOT EXISTS (SELECT 1 FROM TimelineEditEntity e
+                                          WHERE e.user.id = :userId AND e.status = :status
+                                            AND e.anchorStart < FUNCTION('TIMESTAMPADD', SECOND,
+                                                                          s.stayDuration, s.timestamp)
+                                            AND e.anchorEnd >= s.timestamp)
                         ORDER BY s.timestamp DESC
                         """, TimelineStayEntity.class)
                 .setParameter("userId", userId)
                 .setParameter("before", beforeTimestamp)
+                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
                 .setMaxResults(1)
                 .getResultStream()
                 .findFirst();
@@ -552,20 +555,6 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .setParameter("placeId", placeId)
                 .setParameter("timezone", timezone)
                 .getSingleResult();
-    }
-
-    /**
-     * Update cached location name for all stays associated with a favorite location.
-     * This maintains data consistency when a favorite is renamed.
-     *
-     * @param favoriteId ID of the favorite location
-     * @param userId     user ID
-     * @param newName    new location name
-     * @return number of stays updated
-     */
-    public int updateLocationNameByFavoriteId(Long favoriteId, UUID userId, String newName) {
-        return update("locationName = ?1 where favoriteLocation.id = ?2 and user.id = ?3",
-                newName, favoriteId, userId);
     }
 
     /**

@@ -1,6 +1,10 @@
 export default {
+  warnings: {"CARVES_EVENT": "This replaces the activity in this period.", "REPLACES_CORRECTION": "This activity replaces an earlier correction.", "CARVES_CORRECTION": "This fills part of an earlier correction; its remaining time is kept.", "PARTIAL_OVERLAP": "This crosses an earlier correction’s boundary. Adjust the range or replace that correction.", "FUTURE_ACTIVITY": "An activity must end in the past.", "ONGOING_GAP": "The whole ongoing gap cannot be converted. Choose a completed part."},
     "rebuildInterval": "Rebuild this interval…",
     "rebuildIntervalHint": "Describe what happened inside this time range. Time you leave uncovered stays at the original place.",
+    "editRoute": "Edit trip route",
+    "editRouteHint": "Drag the endpoints or add route points. The trip keeps its times and stays one event; the route becomes a manual estimate.",
+    "editRouteReviewHint": "The route covers the whole trip. The recorded times stay unchanged.",
     "add": "Add missing activity…",
     "fillGap": "Fill missing time…",
     "help": "Describe what happened during an empty period. Recorded GPS data stays unchanged.",
@@ -29,6 +33,7 @@ export default {
     "review": "Review changes",
     "unknown": "Still unknown",
     "reviewHint": "Only these activities will be added. Unknown intervals remain unfilled.",
+    "replaceCorrection": "Replace that correction",
     "save": "Save changes",
     "invalid": "Choose an activity and valid start and end times.",
     "choosePlace": "Choose where you stayed.",

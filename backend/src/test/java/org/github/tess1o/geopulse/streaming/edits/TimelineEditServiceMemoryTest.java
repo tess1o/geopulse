@@ -28,7 +28,7 @@ class TimelineEditServiceMemoryTest {
         source.clear();
         assertThat(result.events()).containsExactly(stay);
         assertThat(result.events().getFirst()).isSameAs(stay);
-        assertThat(result.applications()).isEmpty();
+        assertThat(result.effects()).isEmpty();
         assertThat(result.unappliedEditIds()).isEmpty();
         verifyNoInteractions(service.applier);
     }

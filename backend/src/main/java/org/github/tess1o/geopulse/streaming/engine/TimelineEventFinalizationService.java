@@ -19,6 +19,7 @@ import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -172,6 +173,89 @@ public class TimelineEventFinalizationService {
             stay.setLatitude(locationResult.getAnchorLatitude());
             stay.setLongitude(locationResult.getAnchorLongitude());
         }
+    }
+
+    /**
+     * Aligns trip start/end pins with the place of the closest adjacent favorite stay, matching the pins the map
+     * showed when this was computed at read time. Persisting the result keeps every read path (owner, viewer, AI,
+     * export) on the same endpoints.
+     */
+    public void snapTripEndpointsToAdjacentFavoriteStays(List<TimelineEvent> events) {
+        List<Stay> stays = events.stream().filter(Stay.class::isInstance).map(Stay.class::cast).toList();
+        List<Trip> trips = events.stream().filter(Trip.class::isInstance).map(Trip.class::cast).toList();
+        if (stays.isEmpty() || trips.isEmpty()) {
+            return;
+        }
+        for (Trip trip : trips) {
+            if (trip.getManualRoute() != null) continue;
+            Instant tripStart = trip.getStartTime();
+            Instant tripEnd = trip.getEndTime();
+
+            Stay origin = closestStay(stays, tripStart, true);
+            if (origin != null && origin.getFavoriteId() != null
+                    && !hasAnotherTripBetween(origin.getEndTime(), tripStart, trips, trip)) {
+                trip.setStartPoint(withCoordinates(trip.getStartPoint(), origin.getLatitude(),
+                        origin.getLongitude()));
+            }
+
+            Stay destination = closestStay(stays, tripEnd, false);
+            if (destination != null && destination.getFavoriteId() != null
+                    && !hasAnotherTripBetween(tripEnd, destination.getStartTime(), trips, trip)) {
+                trip.setEndPoint(withCoordinates(trip.getEndPoint(), destination.getLatitude(),
+                        destination.getLongitude()));
+            }
+        }
+    }
+
+    private static Stay closestStay(List<Stay> stays, Instant reference, boolean before) {
+        Stay closest = null;
+        long minGapSeconds = Long.MAX_VALUE;
+        for (Stay stay : stays) {
+            if (stay.getStartTime() == null) {
+                continue;
+            }
+            Instant edge = before ? stay.getEndTime() : stay.getStartTime();
+            if (before ? edge.isAfter(reference) : edge.isBefore(reference)) {
+                continue;
+            }
+            long gap = Math.abs(Duration.between(edge, reference).toSeconds());
+            if (gap < minGapSeconds) {
+                minGapSeconds = gap;
+                closest = stay;
+            }
+        }
+        return closest;
+    }
+
+    private static boolean hasAnotherTripBetween(Instant from, Instant to, List<Trip> trips, Trip current) {
+        if (from == null || to == null || !to.isAfter(from)) {
+            return false;
+        }
+        for (Trip other : trips) {
+            if (other.equals(current) || other.getStartTime() == null) {
+                continue;
+            }
+            if (other.getStartTime().isBefore(to) && other.getEndTime().isAfter(from)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static GPSPoint withCoordinates(GPSPoint original, double latitude, double longitude) {
+        if (original == null) {
+            return GPSPoint.builder().latitude(latitude).longitude(longitude).build();
+        }
+        return GPSPoint.builder()
+                .id(original.getId())
+                .timestamp(original.getTimestamp())
+                .latitude(latitude)
+                .longitude(longitude)
+                .speed(original.getSpeed())
+                .accuracy(original.getAccuracy())
+                .altitude(original.getAltitude())
+                .onWater(original.getOnWater())
+                .build();
     }
 
     /**

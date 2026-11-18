@@ -6,10 +6,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor.Outcome;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
@@ -36,7 +35,7 @@ class ManualStaysRealtimeIntegrationTest {
     TimelineReplayHarness harness;
 
     @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
+    ActivityCorrectionService corrections;
 
     @Inject
     TimelineDataGapRepository dataGapRepository;
@@ -71,13 +70,15 @@ class ManualStaysRealtimeIntegrationTest {
                         .orElseThrow());
         // The user marks the gap as a meeting somewhere else: a stay generation never produces, starting where
         // generation never starts one, and not merged with the stays around it.
-        DataGapStayOverrideRequest meetingStay = new DataGapStayOverrideRequest();
-        meetingStay.setLocationStrategy("SELECTED_LOCATION");
+        var meetingStay = new ActivityCorrectionService.Activity();
+        meetingStay.setSegmentType("STAY");
+        meetingStay.setStartTime(gap.getStartTime());
+        meetingStay.setEndTime(gap.getEndTime());
         meetingStay.setLatitude(meeting[0]);
         meetingStay.setLongitude(meeting[1]);
         meetingStay.setLocationName("Meeting");
-        QuarkusTransaction.requiringNew().run(() ->
-                dataGapStayOverrideService.convertGapToStay(userId, gap.getId(), meetingStay));
+        corrections.save(userId, new ActivityCorrectionService.Request(null, List.of(meetingStay), null, null));
+        harness.fullRebuild(userId);
         assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Meeting'"));
         assertThat(harness.snapshot(userId).gaps()).noneMatch(item -> item.startsWith("GAP " + at("09:51")));
 

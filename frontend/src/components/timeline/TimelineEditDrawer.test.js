@@ -18,7 +18,7 @@ const placePickerStub = {
 const datePickerStub = { name: 'DatePicker', props: ['modelValue', 'minDate', 'maxDate'], emits: ['update:modelValue'], template: '<span class="date-picker" />' }
 const mountDrawer = (item, props = {}) => {
   const pinia = createPinia()
-  vi.spyOn(useTimelineStore(pinia), 'fetchTimelineEdits').mockResolvedValue([])
+  vi.spyOn(useTimelineStore(pinia), 'fetchCorrections').mockResolvedValue([])
   return mount(TimelineEditDrawer, {
     props: { visible: true, item, ...props },
     global: {
@@ -42,18 +42,18 @@ describe('TimelineEditDrawer action overview', () => {
     const nextItem = { type: 'stay', timestamp: item.timestamp, stayDuration: 3600, locationName: 'Shop' }
     const wrapper = mountDrawer(item, { previousItem, nextItem })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 1 } })
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 1 }] })
     expect(wrapper.text()).toContain('Unrecorded transition')
-    expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(['SET_MOVEMENT_TYPE', 'SET_TIMES'])
-    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(['REMOVE_EVENT'])
+    expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(['SET_TRIP_TYPE', 'RESIZE'])
+    expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(['CLEAR'])
 
     await clickButton(wrapper, 'Movement type')
     wrapper.vm.form.movementType = 'WALK'
     await wrapper.vm.$nextTick()
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'SET_MOVEMENT_TYPE', anchorStart: item.timestamp, anchorEnd: '2026-10-08T10:00:00.000Z',
+    expect(store.saveCorrections).toHaveBeenCalledWith(expect.objectContaining({
+      op: 'SET_TRIP_TYPE', anchorStart: item.timestamp, anchorEnd: '2026-10-08T10:00:00.000Z',
       payload: expect.objectContaining({ movementType: 'WALK', sourceType: 'TRIP', sourceStartLatitude: 50, sourceStartLongitude: 30 })
     }))
     await flushPromises()
@@ -64,8 +64,8 @@ describe('TimelineEditDrawer action overview', () => {
     await clickButton(wrapper, 'Review changes')
     await flushPromises()
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).toHaveBeenLastCalledWith(expect.objectContaining({
-      kind: 'REMOVE_EVENT', payload: expect.objectContaining({ resolution: 'DISMISS' }),
+    expect(store.saveCorrections).toHaveBeenLastCalledWith(expect.objectContaining({
+      op: 'CLEAR', payload: expect.objectContaining({ resolution: 'DISMISS' }),
       affectedFrom: previousItem.timestamp, affectedTo: '2026-10-08T11:00:00.000Z'
     }))
     wrapper.unmount()
@@ -112,13 +112,13 @@ describe('TimelineEditDrawer action overview', () => {
       stayDuration: 3600, tripDuration: 3600, movementType: 'CAR', locationName: 'Home', geocodingId: 4 }
     const wrapper = mountDrawer(item)
     await flushPromises()
-    wrapper.vm.savedEdits = [{ id: 9, groupId: 'group', kind: type === 'stay' ? 'FORCE_STAY' : 'FORCE_TRIP', status: 'ACTIVE' }]
+    wrapper.vm.savedEdits = [{ id: 9, groupId: 'group', op: type === 'stay' ? 'PLACE_STAY' : 'PLACE_TRIP', status: 'IN_EFFECT' }]
     await wrapper.vm.$nextTick()
     expect(wrapper.vm.detailActions.map(entry => entry.id)).toEqual(type === 'stay'
-      ? ['SET_PLACE', 'SET_VISIT_NAME', 'SET_TIMES'] : ['SET_MOVEMENT_TYPE', 'SET_TIMES'])
+      ? ['SET_PLACE', 'SET_LABEL', 'RESIZE'] : ['SET_TRIP_TYPE', 'RESIZE'])
     expect(wrapper.vm.structuralActions.map(entry => entry.id)).toEqual(type === 'stay'
-      ? ['RENAME_PLACE', 'SPLIT_STAY', 'REBUILD_INTERVAL', 'REMOVE_EVENT']
-      : ['SPLIT_TRIP', 'REBUILD_INTERVAL', 'REMOVE_EVENT'])
+      ? ['RENAME_PLACE', 'PLACE_STAY', 'REBUILD_INTERVAL', 'CLEAR']
+      : ['EDIT_ROUTE', 'SPLIT_TRIP', 'REBUILD_INTERVAL', 'CLEAR'])
     expect(wrapper.text()).not.toContain('undo the correction group')
     wrapper.unmount()
   })
@@ -194,28 +194,29 @@ describe('TimelineEditDrawer action overview', () => {
     const item = { type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', latitude: 1, longitude: 2 }
     const wrapper = mountDrawer(item)
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [{ type: 'STAY', start: item.timestamp, end: '2026-10-08T10:30:00Z', label: 'Dinner', locationName: 'Home' }] })
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 7 }, timelineJobId: 'job' })
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [{ type: 'STAY', start: item.timestamp, end: '2026-10-08T10:30:00Z', label: 'Dinner', locationName: 'Home' }] })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 7 }], timelineJobId: 'job' })
 
     await clickButton(wrapper, 'Split stay')
     expect(wrapper.text()).toContain('Where were you after this time?')
     await clickButton(wrapper, 'Pick place')
     await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit).toHaveBeenCalledOnce()
-    expect(store.previewTimelineEdit.mock.calls[0][0].payload).toEqual({
-      splitAt: expect.any(String), rightFavoriteId: 3
+    expect(store.previewCorrections).toHaveBeenCalledOnce()
+    expect(store.previewCorrections.mock.calls[0][0]).toMatchObject({
+      op: 'PLACE_STAY', anchorStart: '2026-10-08T10:30:00.000Z', anchorEnd: '2026-10-08T11:00:00.000Z',
+      payload: expect.objectContaining({ favoriteId: 3 })
     })
     expect(wrapper.text()).toContain('Visit · Home')
     expect(wrapper.find('.edit-preview').text()).toContain('Dinner')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).toHaveBeenCalledOnce()
-    expect(wrapper.emitted('submitted')?.[0]?.[0].edit.id).toBe(7)
+    expect(store.saveCorrections).toHaveBeenCalledOnce()
+    expect(wrapper.emitted('submitted')?.[0]?.[0].edits[0].id).toBe(7)
   })
 
   it('keeps the focused flow open when submission fails', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'createTimelineEdit').mockRejectedValue(new Error('nope'))
+    vi.spyOn(store, 'saveCorrections').mockRejectedValue(new Error('nope'))
     await clickButton(wrapper, 'Visit label')
     await wrapper.find('input').setValue('Test')
     await wrapper.find('form').trigger('submit')
@@ -227,28 +228,28 @@ describe('TimelineEditDrawer action overview', () => {
   it('does not split a stay until the second location is chosen', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit')
-    vi.spyOn(store, 'createTimelineEdit')
+    vi.spyOn(store, 'previewCorrections')
+    vi.spyOn(store, 'saveCorrections')
 
     await clickButton(wrapper, 'Split stay')
     await wrapper.find('form').trigger('submit')
 
-    expect(store.previewTimelineEdit).not.toHaveBeenCalled()
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
+    expect(store.previewCorrections).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
   })
 
   it('changes the location by reference, without a stale name or coordinates', async () => {
     const item = { type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', favoriteId: 1, latitude: 1, longitude: 2 }
     const wrapper = mountDrawer(item)
     const store = useTimelineStore()
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 8 } })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 8 }] })
 
     await clickButton(wrapper, 'Location')
     expect(wrapper.findComponent({ name: 'TimelinePlacePicker' }).props('current')).toMatchObject({ favoriteId: 1, locationName: 'Home' })
     await clickButton(wrapper, 'Pick place')
     await wrapper.find('form').trigger('submit')
 
-    expect(store.createTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'SET_PLACE', payload: { favoriteId: 3 } }))
+    expect(store.saveCorrections).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_PLACE', payload: { favoriteId: 3 } }))
   })
 
 
@@ -259,7 +260,7 @@ describe('TimelineEditDrawer action overview', () => {
     const nextTrip = { type: 'trip', timestamp: '2026-10-08T10:26:00Z', tripDuration: 1140, movementType: 'CAR' }
     const wrapper = mountDrawer(trip, { nextItem: stop, mergeNextItem: nextTrip })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [
       { type: 'TRIP', start: trip.timestamp, end: '2026-10-08T10:45:00Z', label: 'CAR' }
     ] })
 
@@ -271,8 +272,8 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.text()).toContain('Merge with the next trip')
     expect(wrapper.text()).toContain('Removes the 6 minutes stop at Gas station between them.')
     expect(wrapper.find('[role="radio"]').attributes('aria-checked')).toBe('true')
-    expect(store.previewTimelineEdit).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'MERGE', payload: { direction: 'NEXT' }
+    expect(store.previewCorrections).toHaveBeenCalledWith(expect.objectContaining({
+      op: 'MERGE', payload: { direction: 'NEXT' }
     }))
     expect(wrapper.text()).toContain('Trip · Car')
   })
@@ -280,7 +281,7 @@ describe('TimelineEditDrawer action overview', () => {
   it('edits times with the date picker and keeps them exact through the timezone conversion', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [] })
 
     await clickButton(wrapper, 'Split stay')
     const picker = wrapper.findComponent({ name: 'DatePicker' })
@@ -288,13 +289,13 @@ describe('TimelineEditDrawer action overview', () => {
     expect(picker.props('modelValue')).toBeInstanceOf(Date)
     await clickButton(wrapper, 'Pick place')
     await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit.mock.calls[0][0].payload.splitAt).toBe('2026-10-08T10:30:00.000Z')
+    expect(store.previewCorrections.mock.calls[0][0].anchorStart).toBe('2026-10-08T10:30:00.000Z')
 
     await wrapper.findAll('button').find(button => button.text().includes('Back')).trigger('click')
     await clickButton(wrapper, 'Time')
     await wrapper.findAllComponents({ name: 'DatePicker' })[0].vm.$emit('update:modelValue', new Date(2026, 9, 8, 10, 5))
     await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit.mock.calls[1][0].payload).toEqual({
+    expect(store.previewCorrections.mock.calls[1][0].payload).toEqual({
       start: '2026-10-08T10:05:00.000Z', end: '2026-10-08T11:00:00.000Z'
     })
   })
@@ -302,8 +303,8 @@ describe('TimelineEditDrawer action overview', () => {
   it('lets the split time pass through times outside the visit while it is edited, and blocks applying one', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
-    vi.spyOn(store, 'createTimelineEdit')
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'saveCorrections')
 
     await clickButton(wrapper, 'Split stay')
     await clickButton(wrapper, 'Pick place')
@@ -316,13 +317,13 @@ describe('TimelineEditDrawer action overview', () => {
     expect(wrapper.find('.edit-field-error').exists()).toBe(true)
     expect(wrapper.find('.edit-field-error').text()).toContain('while the visit lasts')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
 
     // Then the minutes: 10:05, inside the visit again.
     await picker.vm.$emit('update:modelValue', new Date(picker.props('modelValue').getTime() + 35 * 60_000))
     expect(wrapper.find('.edit-field-error').exists()).toBe(false)
     await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit.mock.calls.at(-1)[0].payload.splitAt).toBe('2026-10-08T10:05:00.000Z')
+    expect(store.previewCorrections.mock.calls.at(-1)[0].anchorStart).toBe('2026-10-08T10:05:00.000Z')
   })
 })
 
@@ -331,25 +332,25 @@ describe('review safeguards', () => {
   it('never saves a structural edit before its result has been reviewed', async () => {
     const wrapper = mountDrawer(stay)
     const store = useTimelineStore()
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 1 } })
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 1 }] })
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [] })
     await clickButton(wrapper, 'Split stay')
     await clickButton(wrapper, 'Pick place')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
-    expect(store.previewTimelineEdit).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
+    expect(store.previewCorrections).not.toHaveBeenCalled()
     await clickButton(wrapper, 'Review changes')
     await flushPromises()
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).toHaveBeenCalledOnce()
+    expect(store.saveCorrections).toHaveBeenCalledOnce()
   })
   it('ignores a stale preview and requires a new review after time changes', async () => {
     const wrapper = mountDrawer(stay)
     const store = useTimelineStore()
     let resolvePreview
-    vi.spyOn(store, 'previewTimelineEdit').mockImplementation(() => new Promise(resolve => { resolvePreview = resolve }))
-    vi.spyOn(store, 'createTimelineEdit')
+    vi.spyOn(store, 'previewCorrections').mockImplementation(() => new Promise(resolve => { resolvePreview = resolve }))
+    vi.spyOn(store, 'saveCorrections')
     await clickButton(wrapper, 'Time')
     const picker = wrapper.findAllComponents({ name: 'DatePicker' })[0]
     await picker.vm.$emit('update:modelValue', new Date(2026, 9, 8, 10, 5))
@@ -359,16 +360,16 @@ describe('review safeguards', () => {
     await flushPromises()
     expect(wrapper.text()).not.toContain('Stale result')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
   })
   it('requires an explicit removal choice', async () => {
     const wrapper = mountDrawer(stay, { previousItem: { ...stay, timestamp: '2026-10-08T09:00:00Z' } })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit')
+    vi.spyOn(store, 'previewCorrections')
     await clickButton(wrapper, 'Remove')
     expect(wrapper.text()).toContain('Choose what should fill the removed time')
     await clickButton(wrapper, 'Review changes')
-    expect(store.previewTimelineEdit).not.toHaveBeenCalled()
+    expect(store.previewCorrections).not.toHaveBeenCalled()
   })
 
   it('keeps a changed form when discarding is declined', async () => {
@@ -382,21 +383,21 @@ describe('review safeguards', () => {
   })
 })
 
-it('removes an existing label through its active correction without submitting an empty label', async () => {
+it('clears a label with a new correction so the original activity remains intact', async () => {
   const item = { id: 5, type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', visitName: 'Test' }
   const wrapper = mountDrawer(item)
   const store = useTimelineStore()
-  vi.spyOn(store, 'fetchTimelineEdits').mockResolvedValue([{ id: 9, seq: 1, kind: 'SET_VISIT_NAME', status: 'ACTIVE', applied: true, target: { type: 'STAY', id: 5 }, anchorStart: item.timestamp, anchorEnd: '2026-10-08T11:00:00Z', payload: { visitName: 'Test' } }])
-  vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: { id: 9 }, timelineJobId: 'job' })
-  vi.spyOn(store, 'createTimelineEdit')
+  vi.spyOn(store, 'fetchCorrections').mockResolvedValue([{ id: 9, groupId: 'group', seq: 1, op: 'SET_LABEL', status: 'IN_EFFECT', applied: true, target: { type: 'STAY', id: 5 }, anchorStart: item.timestamp, anchorEnd: '2026-10-08T11:00:00Z', payload: { visitName: 'Test' } }])
+  vi.spyOn(store, 'undoCorrection').mockResolvedValue({ groupId: 'group', edits: [{ id: 9 }], timelineJobId: 'job' })
+  vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'clear-label', edits: [{ id: 10 }] })
   await wrapper.findComponent({ name: 'TimelineChangesList' }).vm.load()
   await flushPromises()
   await clickButton(wrapper, 'Visit label')
   await clickButton(wrapper, 'Remove label')
   await flushPromises()
-  expect(store.revertTimelineEdit).toHaveBeenCalledWith(9, false)
-  expect(store.createTimelineEdit).not.toHaveBeenCalled()
-  expect(wrapper.emitted('submitted')[0][0].operation).toBe('undo')
+  expect(store.undoCorrection).not.toHaveBeenCalled()
+  expect(store.saveCorrections).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_LABEL', payload: { visitName: '' } }))
+  expect(wrapper.emitted('submitted')[0][0].operation).toBe('create')
 })
 
 
@@ -404,7 +405,7 @@ it('shows distinct split locations even when both visits carry the same label', 
   const item = { id: 5, type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', visitName: 'Dinner with Alex' }
   const wrapper = mountDrawer(item)
   const store = useTimelineStore()
-  vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [
+  vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [
     { type: 'STAY', start: item.timestamp, end: '2026-10-08T10:30:00Z', label: 'Dinner with Alex', locationName: 'Home' },
     { type: 'STAY', start: '2026-10-08T10:30:00Z', end: '2026-10-08T11:00:00Z', label: 'Dinner with Alex', locationName: 'Gym' }
   ] })
@@ -424,8 +425,8 @@ describe('timeline time requests', () => {
   it.each(['2026-03-29 03:30', '2026-10-25 03:30'])('blocks review and save for uncertain typed time %s', async value => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-25T00:30:00Z', stayDuration: 7200, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit')
-    vi.spyOn(store, 'createTimelineEdit')
+    vi.spyOn(store, 'previewCorrections')
+    vi.spyOn(store, 'saveCorrections')
     await clickButton(wrapper, 'Time')
     wrapper.vm.onTimeInput('start', { target: { value } })
     await flushPromises()
@@ -433,32 +434,32 @@ describe('timeline time requests', () => {
     expect(wrapper.find('[role="status"]').text()).not.toBe('')
     await wrapper.vm.loadPreview()
     await wrapper.vm.apply()
-    expect(store.previewTimelineEdit).not.toHaveBeenCalled()
-    expect(store.createTimelineEdit).not.toHaveBeenCalled()
+    expect(store.previewCorrections).not.toHaveBeenCalled()
+    expect(store.saveCorrections).not.toHaveBeenCalled()
   })
   it('keeps the original repeated-hour instant and milliseconds when only the end changes', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-25T00:30:00.123Z', stayDuration: 7200, locationName: 'Home' })
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [] })
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 9 }, timelineJobId: 'job' })
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [] })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 9 }], timelineJobId: 'job' })
     await clickButton(wrapper, 'Time')
     wrapper.findAllComponents({ name: 'DatePicker' })[1].vm.$emit('update:modelValue', new Date(2026, 9, 25, 5, 0))
     await flushPromises()
     await clickButton(wrapper, 'Review changes')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit.mock.calls[0][0].payload).toEqual({ start: '2026-10-25T00:30:00.123Z', end: '2026-10-25T03:00:00.000Z' })
+    expect(store.saveCorrections.mock.calls[0][0].payload).toEqual({ start: '2026-10-25T00:30:00.123Z', end: '2026-10-25T03:00:00.000Z' })
   })
   it('blocks duplicate saves while the accepted request is pending', async () => {
     const wrapper = mountDrawer({ type: 'stay', timestamp: '2026-10-25T00:30:00Z', stayDuration: 7200, locationName: 'Home' })
     const store = useTimelineStore()
     let resolveSave
-    vi.spyOn(store, 'createTimelineEdit').mockImplementation(() => new Promise(resolve => { resolveSave = resolve }))
+    vi.spyOn(store, 'saveCorrections').mockImplementation(() => new Promise(resolve => { resolveSave = resolve }))
     await clickButton(wrapper, 'Visit label')
     await wrapper.find('input').setValue('Only once')
     await wrapper.find('form').trigger('submit')
     await wrapper.find('form').trigger('submit')
-    expect(store.createTimelineEdit).toHaveBeenCalledOnce()
-    resolveSave({ edit: { id: 10 }, timelineJobId: 'job' })
+    expect(store.saveCorrections).toHaveBeenCalledOnce()
+    resolveSave({ groupId: 'group', edits: [{ id: 10 }], timelineJobId: 'job' })
     await flushPromises()
     expect(wrapper.emitted('submitted')).toHaveLength(1)
   })
@@ -473,4 +474,40 @@ it('returns keyboard focus to the connected opener after the drawer closes', asy
   wrapper.findComponent({ name: 'Drawer' }).vm.$emit('after-hide')
   expect(document.activeElement).toBe(opener)
   wrapper.unmount(); opener.remove()
+})
+
+it('refreshes a stale preview, preserves the draft, and requires another save', async () => {
+  const item = { id: 5, type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', visitName: 'Old' }
+  const wrapper = mountDrawer(item)
+  const store = useTimelineStore()
+  vi.spyOn(store, 'previewCorrections').mockResolvedValue({ token: 'fresh-token', events: [] })
+  vi.spyOn(store, 'saveCorrections').mockRejectedValueOnce({ code: 'TIMELINE_PREVIEW_STALE' }).mockResolvedValue({ groupId: 'saved', edits: [] })
+  await clickButton(wrapper, 'Visit label')
+  await wrapper.find('input').setValue('Draft label')
+  await wrapper.find('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.find('input').element.value).toBe('Draft label')
+  expect(store.previewCorrections).toHaveBeenCalledTimes(1)
+  expect(store.saveCorrections).toHaveBeenCalledTimes(1)
+  expect(wrapper.emitted('submitted')).toBeUndefined()
+  expect(wrapper.text()).toContain('Review the refreshed preview')
+  await wrapper.find('form').trigger('submit')
+  await flushPromises()
+  expect(store.saveCorrections.mock.calls[1][0].previewToken).toBe('fresh-token')
+  expect(wrapper.emitted('submitted')).toHaveLength(1)
+})
+
+it('allows submitting an empty label through native form validation', async () => {
+  const wrapper = mountDrawer({ id: 5, type: 'stay', timestamp: '2026-10-08T10:00:00Z', stayDuration: 3600, locationName: 'Home', visitName: 'Old label' })
+  await clickButton(wrapper, 'Visit label')
+  const input = wrapper.find('input')
+  await input.setValue('')
+  expect(input.element.required).toBe(false)
+  expect(input.element.checkValidity()).toBe(true)
+  const store = useTimelineStore()
+  vi.spyOn(store, 'saveCorrections').mockResolvedValue({ edits: [{ id: 10 }], groupId: 'cleared' })
+  await wrapper.find('form').trigger('submit')
+  await flushPromises()
+  expect(store.saveCorrections).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_LABEL', payload: { visitName: '' } }))
+  wrapper.unmount()
 })

@@ -175,20 +175,20 @@ class StreamingTimelineContractTest {
     }
 
     @Test
-    void dataGapAndSplitOverrideEndpointsReportMissingRecords() {
+    void removedDataGapAndSplitOverrideEndpointsReturnNotFound() {
         assertProblemEnvelope(authenticated(ownerToken)
                         .when().delete(TIMELINE + "/stay-split-overrides/999999"),
-                404, "TRIP_SPLIT_OVERRIDE_NOT_FOUND");
+                404, "NOT_FOUND");
         assertProblemEnvelope(authenticated(ownerToken)
                         .when().get(TIMELINE + "/data-gaps/999999/stay-conversion-preview"),
-                404, "DATA_GAP_NOT_FOUND");
+                404, "NOT_FOUND");
         assertProblemEnvelope(authenticated(ownerToken).contentType(ContentType.JSON)
                         .body("{}")
                         .when().put(TIMELINE + "/data-gaps/999999/stay-conversion"),
-                404, "DATA_GAP_NOT_FOUND");
+                404, "NOT_FOUND");
         assertProblemEnvelope(authenticated(ownerToken)
                         .when().delete(TIMELINE + "/data-gap-overrides/999999/stay-conversion"),
-                404, "DATA_GAP_OVERRIDE_NOT_FOUND");
+                404, "NOT_FOUND");
     }
 
     private void seedTimeline() {

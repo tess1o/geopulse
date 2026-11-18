@@ -147,7 +147,6 @@ export default {
             favoriteLocations: 'Anonymized favorite locations with shifted coordinates',
             favoriteAreas: 'Anonymized favorite areas with shifted boundaries',
             reverseGeocoding: 'Anonymized places your stays were matched to, with shifted coordinates',
-            timelineOverrides: 'Your manual timeline corrections in the exported range',
             timeline: 'Your current timeline with anonymized place names (if selected)'
         },
         privacyNote: 'All coordinates are shifted by the same offset. Place names are anonymized (e.g., "Home" becomes "Location 1", addresses become "Place 1"). This preserves timeline structure while protecting privacy. The export may include a few hours around the selected dates, so stays that started earlier keep their full length. The coordinate shift values are NOT included in the export for privacy protection.',

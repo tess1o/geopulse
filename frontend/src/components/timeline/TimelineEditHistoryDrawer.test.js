@@ -15,12 +15,12 @@ describe('TimelineEditHistoryDrawer', () => {
   it('lists active and reverted edits and dispatches their reversible actions', async () => {
     const pinia = createPinia()
     const store = useTimelineStore(pinia)
-    vi.spyOn(store, 'fetchTimelineEdits').mockResolvedValue([
-      { id: 1, kind: 'SET_VISIT_NAME', status: 'ACTIVE', applied: true, anchorStart: '2026-10-08T10:00:00Z', anchorEnd: '2026-10-08T11:00:00Z' },
-      { id: 2, kind: 'SET_PLACE', status: 'REVERTED', applied: false, anchorStart: '2026-10-08T12:00:00Z', anchorEnd: '2026-10-08T13:00:00Z' }
+    vi.spyOn(store, 'fetchCorrections').mockResolvedValue([
+      { id: 1, groupId: 'group-1', op: 'SET_LABEL', status: 'IN_EFFECT', applied: true, anchorStart: '2026-10-08T10:00:00Z', anchorEnd: '2026-10-08T11:00:00Z' },
+      { id: 2, groupId: 'group-2', op: 'SET_PLACE', status: 'UNDONE', applied: false, anchorStart: '2026-10-08T12:00:00Z', anchorEnd: '2026-10-08T13:00:00Z' }
     ])
-    vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: { id: 1 }, timelineJobId: 'revert-job' })
-    vi.spyOn(store, 'restoreTimelineEdit').mockResolvedValue({ edit: { id: 2 }, timelineJobId: 'restore-job' })
+    vi.spyOn(store, 'undoCorrection').mockResolvedValue({ groupId: 'group-1', edits: [{ id: 1 }], timelineJobId: 'revert-job' })
+    vi.spyOn(store, 'restoreCorrection').mockResolvedValue({ groupId: 'group-2', edits: [{ id: 2 }], timelineJobId: 'restore-job' })
     const wrapper = mount(TimelineEditHistoryDrawer, {
       props: { visible: false },
       global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } }
@@ -28,28 +28,28 @@ describe('TimelineEditHistoryDrawer', () => {
 
     await wrapper.setProps({ visible: true })
     await flushPromises()
-    expect(wrapper.text()).toContain('Visit label')
-    expect(wrapper.text()).toContain('Location')
+    expect(wrapper.text()).toContain('visit label')
+    expect(wrapper.text()).toContain('place')
 
     await wrapper.findAll('button').find(button => button.text() === 'Undo').trigger('click')
     await flushPromises()
-    expect(store.revertTimelineEdit).toHaveBeenCalledWith(1, false)
+    expect(store.undoCorrection).toHaveBeenCalledWith('group-1', false)
     expect(wrapper.emitted('changed')?.[0]?.[0].timelineJobId).toBe('revert-job')
 
     await wrapper.emitted('changed')[0][0].onUpdated()
     await flushPromises()
     await wrapper.findAll('button').find(button => button.text() === 'Redo').trigger('click')
     await flushPromises()
-    expect(store.restoreTimelineEdit).toHaveBeenCalledWith(2)
+    expect(store.restoreCorrection).toHaveBeenCalledWith('group-2')
   })
 
   it('uses supplied timeframe history and refreshes it after undo without loading global history', async () => {
     const pinia = createPinia()
     const store = useTimelineStore(pinia)
-    const fetch = vi.spyOn(store, 'fetchTimelineEdits')
-    vi.spyOn(store, 'revertTimelineEdit').mockResolvedValue({ edit: { id: 1 }, timelineJobId: 'job' })
-    const edit = { id: 1, kind: 'SET_MOVEMENT_TYPE', status: 'ACTIVE', applied: false, anchorStart: '2026-10-25T10:00:00Z', anchorEnd: '2026-10-25T11:00:00Z' }
-    const reload = vi.fn(async () => { await wrapper.setProps({ edits: [{ ...edit, status: 'REVERTED' }] }) })
+    const fetch = vi.spyOn(store, 'fetchCorrections')
+    vi.spyOn(store, 'undoCorrection').mockResolvedValue({ groupId: 'group-1', edits: [{ id: 1 }], timelineJobId: 'job' })
+    const edit = { id: 1, groupId: 'group-1', op: 'SET_TRIP_TYPE', status: 'IN_EFFECT', applied: false, anchorStart: '2026-10-25T10:00:00Z', anchorEnd: '2026-10-25T11:00:00Z' }
+    const reload = vi.fn(async () => { await wrapper.setProps({ edits: [{ ...edit, status: 'UNDONE' }] }) })
     const wrapper = mount(TimelineEditHistoryDrawer, {
       props: { visible: true, edits: [edit], reload },
       global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } }
@@ -68,10 +68,9 @@ describe('TimelineEditHistoryDrawer', () => {
 
   it('shows one history entry and one undo for an activity group', async () => {
     const pinia = createPinia(), store = useTimelineStore(pinia)
-    const members = [1, 2].map(id => ({ id, groupId: 'group', kind: 'FORCE_STAY', status: 'ACTIVE', applied: true,
+    const members = [1, 2].map(id => ({ id, groupId: 'group', op: 'PLACE_STAY', status: 'IN_EFFECT', applied: true,
       anchorStart: `2026-10-08T${id + 10}:00:00Z`, anchorEnd: `2026-10-08T${id + 11}:00:00Z` }))
-    const revert = vi.spyOn(store, 'revertActivityCorrection').mockResolvedValue({ edits: members })
-    const single = vi.spyOn(store, 'revertTimelineEdit')
+    const revert = vi.spyOn(store, 'undoCorrection').mockResolvedValue({ groupId: 'group', edits: members })
     const wrapper = mount(TimelineEditHistoryDrawer, { props: { visible: true, edits: members },
       global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } } })
     await flushPromises()
@@ -80,13 +79,12 @@ describe('TimelineEditHistoryDrawer', () => {
     await wrapper.findAll('button').find(button => button.text() === 'Undo').trigger('click')
     await flushPromises()
     expect(revert).toHaveBeenCalledWith('group', false)
-    expect(single).not.toHaveBeenCalled()
   })
 
   it('keeps the drawer open and shows a load failure' , async () => {
     const pinia = createPinia()
     const store = useTimelineStore(pinia)
-    vi.spyOn(store, 'fetchTimelineEdits').mockRejectedValue(new Error('history unavailable'))
+    vi.spyOn(store, 'fetchCorrections').mockRejectedValue(new Error('history unavailable'))
     const wrapper = mount(TimelineEditHistoryDrawer, {
       props: { visible: false },
       global: { plugins: [pinia], stubs: { Drawer: drawerStub, Button: buttonStub } }

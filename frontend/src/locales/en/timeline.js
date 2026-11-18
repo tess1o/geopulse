@@ -6,6 +6,7 @@
  */
 export default {
     edit: {
+        previewChanged: "The timeline changed. Review the refreshed preview before saving.",
         dismissTransitionHint: 'Removes this transition without changing either stay. You can undo this in Timeline changes.',
         reviewChanges: 'Review changes',
         reviewFirst: 'Step 1 of 2 · Make your changes, then continue to review.',
@@ -116,9 +117,9 @@ export default {
         loadingHistory: 'Loading timeline changes…',
         noHistory: 'No timeline changes yet.',
         historyFailed: 'Could not load timeline changes.',
-        unapplied: 'Not currently applied; it will be tried again after regeneration.',
         revert: 'Undo',
         restore: 'Redo',
+        replace: 'Replace',
         undo: 'Undo',
         undoDependents: {
             header: 'Undo later changes too?',
@@ -134,11 +135,13 @@ export default {
             location: 'Location', visitLabel: 'Visit label', renameLocation: 'Rename location everywhere', times: 'Time',
             movement: 'Movement type', splitStay: 'Split stay', splitTrip: 'Add a stop',
             merge: 'Merge', remove: 'Remove', gapToStay: 'Convert to stay', gapToTrip: 'Convert to trip',
-            rebuildInterval: 'Rebuild this interval'
+            rebuildInterval: 'Rebuild this interval',
+            editRoute: 'Edit trip route',
         },
         actionHint: {
             dismissTransition: 'Remove this marker without changing either stay',
             rebuildInterval: 'Describe what happened here; the rest of the time stays as it is',
+            editRoute: 'Drag the route or add points; the trip keeps its times',
             location: 'Where this visit happened',
             visitLabel: 'A title for this visit only, such as "Dinner with Alex"',
             renameLocation: 'Changes the name of this location for all its visits',
@@ -153,12 +156,25 @@ export default {
             gapToTrip: 'You were travelling during the gap'
         },
         resolution: { merge: 'Merging compatible neighbours', previous: 'Extending the previous event', next: 'Extending the next event', gap: 'Leaving a data gap', dismiss: 'Removing the unrecorded transition' },
-        kind: {
-            SET_MOVEMENT_TYPE: 'Movement type', SET_PLACE: 'Location', SET_VISIT_NAME: 'Visit label',
-            FORCE_STAY: 'Forced stay', FORCE_TRIP: 'Forced trip', SET_TIMES: 'Time', SPLIT_STAY: 'Split stay',
-            MERGE: 'Merge', REMOVE_EVENT: 'Removed event'
+        state: { inEffect: 'In effect', undone: 'Undone', replaced: 'Replaced' },
+        summary: {
+            placeStay: 'Filled {period} with a stay at {place}',
+            placeTrip: 'Filled {period} with a {type} trip',
+            placeTripPlaces: 'Filled {period} with a {type} trip from {from} to {to}',
+            clear: 'Removed the {event} {period}; {resolution}',
+            resize: 'Changed the time to {period}',
+            changed: 'Changed the timeline {period}',
+            setPlace: 'Changed the place to {place}',
+            setTripType: 'Changed the trip type to {type}',
+            setLabel: 'Set the visit label to \u201c{label}\u201d',
+            clearLabel: 'Cleared the visit label',
+            setRoute: 'Changed the route of the trip {period}',
+            merge: 'Merged the events {period} into one'
         },
-        status: { ACTIVE: 'Active', SUPERSEDED: 'Replaced', REVERTED: 'Reverted' }
+        eventName: { stay: 'visit', trip: 'trip', gap: 'data gap' },
+        now: 'Now',
+        replacedBy: 'Replaced by a later change.',
+        dormant: 'Not applying: its event was removed by a later correction.'
     },
     locationEdit: {
         editFavoriteHeader: 'Edit Favorite Location',
@@ -630,23 +646,9 @@ export default {
             viewingTag: 'Viewing {name}',
             tagPeriod: "Showing the full period for '{name}'"
         },
-        resetDataGapOverride: {
-            confirmHeader: 'Reset Data Gap',
-            confirmMessage: 'Are you sure you want to reset this data gap back to automatic detection?',
-            successSummary: 'Data Gap Reset',
-            successDetail: 'The data gap has been reset to automatic detection.',
-            failedDetail: 'Failed to reset the data gap override.'
-        },
         resetFailedSummary: 'Reset Failed',
         correctionQueuedSummary: 'Timeline update queued',
         correctionQueuedDetail: 'The correction is saved. The timeline will update when the running regeneration finishes.',
-        resetTripSplitOverride: {
-            confirmHeader: 'Undo Trip Split',
-            confirmMessage: 'Are you sure you want to undo this manual trip split?',
-            successSummary: 'Trip Split Undone',
-            successDetail: 'The manual trip split has been undone.',
-            failedDetail: 'Failed to undo the trip split.'
-        },
         reconstruction: {
             updatedSummary: 'Timeline Updated',
             updatedDetail: 'Your timeline has been updated with the reconstructed data.',

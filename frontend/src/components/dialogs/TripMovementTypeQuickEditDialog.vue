@@ -142,11 +142,13 @@ const save = async () => {
 
   saving.value = true
   try {
-    const updated = await timelineStore.updateTripMovementType(props.trip.id, selectedMovementType.value)
+    const updated = await timelineStore.updateTripMovementType(props.trip, selectedMovementType.value)
     if (!updated) return
 
-    props.trip.movementType = updated.movementType
-    props.trip.movementTypeSource = updated.movementTypeSource
+    if (updated.movementType) {
+      props.trip.movementType = updated.movementType
+      props.trip.movementTypeSource = updated.movementTypeSource
+    }
     emit('movement-updated', updated)
 
     toast.add({
@@ -176,11 +178,13 @@ const reset = async () => {
 
   saving.value = true
   try {
-    const updated = await timelineStore.resetTripMovementType(props.trip.id)
+    const updated = await timelineStore.resetTripMovementType(props.trip)
     if (!updated) return
 
-    props.trip.movementType = updated.movementType
-    props.trip.movementTypeSource = updated.movementTypeSource
+    if (updated.movementType) {
+      props.trip.movementType = updated.movementType
+      props.trip.movementTypeSource = updated.movementTypeSource
+    }
     emit('movement-updated', updated)
 
     toast.add({

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.exportimport;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+
 import org.github.tess1o.geopulse.export.model.ExportFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -50,7 +53,6 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
-import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -70,6 +72,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -83,6 +86,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -108,6 +112,8 @@ class ExportImportIntegrationTest {
     ExportDataGenerator exportDataGenerator;
     @Inject
     ImportDataService importDataService;
+    @Inject
+    org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService timelineGeneration;
     @Inject
     UserRepository userRepository;
     @Inject
@@ -161,8 +167,6 @@ class ExportImportIntegrationTest {
     private GpsPointEntity testGpsPoint;
     private GpsSourceConfigEntity testGpsSource;
     private TimelineLabelEntity testTimelineLabel;
-    private TimelineTripMovementOverrideEntity testTripOverride;
-    private TimelineDataGapStayOverrideEntity testGapOverride;
     private TripEntity testTrip;
     private TripPlanItemEntity testPlanItem;
     private TripCollaboratorEntity testTripCollaborator;
@@ -210,7 +214,7 @@ class ExportImportIntegrationTest {
         byte[] exported = exportAllNativeData();
         deleteAndVerifyUserDomainData();
         importAllNativeData(exported);
-        importAllNativeData(exported);
+        importAllNativeData(withoutTimelineCorrections(exported));
         QuarkusTransaction.requiringNew().run(() -> {
             var areas = favoritesRepository.findByUserId(testUser.getId()).stream()
                     .filter(f -> f.getType() == FavoriteLocationType.AREA).toList();
@@ -242,8 +246,16 @@ class ExportImportIntegrationTest {
         OriginalData originalData = captureOriginalData();
         byte[] exportedData = exportAllNativeData();
 
+        // Corrections import only into an account that has none; the rest of the account exists already.
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createQuery(
+                        "DELETE FROM TimelineEditEntity edit WHERE edit.user.id = :userId")
+                .setParameter("userId", testUser.getId()).executeUpdate());
         importAllNativeData(exportedData);
-        mutateExistingImportTargets();
+        mutateExistingImportTargets(originalData);
+        // Corrections import only into an empty correction set; everything else updates in place.
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createQuery(
+                        "DELETE FROM TimelineEditEntity edit WHERE edit.user.id = :userId")
+                .setParameter("userId", testUser.getId()).executeUpdate());
         importAllNativeData(exportedData);
 
         assertNativeSectionCounts(testUser.getId(), 1);
@@ -485,43 +497,37 @@ class ExportImportIntegrationTest {
                 .build();
         timelineLabelRepository.persist(testTimelineLabel);
 
-        testTripOverride = TimelineTripMovementOverrideEntity.builder()
+        entityManager.persist(TimelineEditEntity.builder()
                 .user(testUser)
-                .trip(testTimelineTrip)
-                .movementType("TRAIN")
-                .sourceTripTimestamp(testTimelineTrip.getTimestamp())
-                .sourceTripDurationSeconds(testTimelineTrip.getTripDuration())
-                .sourceDistanceMeters(testTimelineTrip.getDistanceMeters())
-                .sourceStartLatitude(37.7749)
-                .sourceStartLongitude(-122.4194)
-                .sourceEndLatitude(37.7849)
-                .sourceEndLongitude(-122.4094)
-                .createdAt(BASE_TIME.minus(1, ChronoUnit.HOURS))
-                .updatedAt(BASE_TIME.minus(30, ChronoUnit.MINUTES))
-                .build();
-        entityManager.persist(testTripOverride);
+                .groupId(java.util.UUID.randomUUID())
+                .seq(1)
+                .kind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_MOVEMENT_TYPE)
+                .anchorStart(testTimelineTrip.getTimestamp())
+                .anchorEnd(testTimelineTrip.getTimestamp().plusSeconds(testTimelineTrip.getTripDuration()))
+                .affectedFrom(testTimelineTrip.getTimestamp())
+                .affectedTo(testTimelineTrip.getTimestamp().plusSeconds(testTimelineTrip.getTripDuration()))
+                .payload(payload(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_MOVEMENT_TYPE, new java.util.LinkedHashMap<>(java.util.Map.of("movementType", "TRAIN"))))
+                .status(org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .build());
 
-        testGapOverride = TimelineDataGapStayOverrideEntity.builder()
+        entityManager.persist(TimelineEditEntity.builder()
                 .user(testUser)
-                .dataGap(testDataGap)
-                .stay(testStay)
-                .locationStrategy(DataGapStayOverrideLocationStrategy.SELECTED_LOCATION)
-                .selectedFavoriteId(testFavorite.getId())
-                .selectedGeocodingId(testGeocodingLocation.getId())
-                .selectedLatitude(37.7749)
-                .selectedLongitude(-122.4194)
-                .selectedLocationName("Home Location")
-                .sourceGapStartTime(testDataGap.getStartTime())
-                .sourceGapEndTime(testDataGap.getEndTime())
-                .sourceGapDurationSeconds(testDataGap.getDurationSeconds())
-                .sourceBeforeLatitude(37.7740)
-                .sourceBeforeLongitude(-122.4200)
-                .sourceAfterLatitude(37.7750)
-                .sourceAfterLongitude(-122.4180)
-                .createdAt(BASE_TIME.minus(1, ChronoUnit.HOURS))
-                .updatedAt(BASE_TIME.minus(30, ChronoUnit.MINUTES))
-                .build();
-        entityManager.persist(testGapOverride);
+                .groupId(java.util.UUID.randomUUID())
+                .seq(2)
+                .kind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_STAY)
+                .anchorStart(testDataGap.getStartTime())
+                .anchorEnd(testDataGap.getEndTime())
+                .affectedFrom(testDataGap.getStartTime())
+                .affectedTo(testDataGap.getEndTime())
+                .payload(payload(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_STAY, new java.util.LinkedHashMap<>(java.util.Map.of(
+                        "locationName", "Home Location", "latitude", 37.7749, "longitude", -122.4194))))
+                .placeFavorite(testFavorite)
+                .placeGeocoding(testGeocodingLocation)
+                .placeLatitude(37.7749)
+                .placeLongitude(-122.4194)
+                .placeName("Home Location")
+                .status(org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .build());
 
         testTrip = TripEntity.builder()
                 .user(testUser)
@@ -729,8 +735,8 @@ class ExportImportIntegrationTest {
                     testTimelineLabel.getName(),
                     testTimelineLabel.getStartTime(),
                     testTimelineLabel.getColor(),
-                    testTripOverride.getMovementType(),
-                    testGapOverride.getSelectedLocationName(),
+                    "TRAIN",
+                    "Home Location",
                     testTrip.getName(),
                     testTrip.getNotes(),
                     testPlanItem.getTitle(),
@@ -778,6 +784,7 @@ class ExportImportIntegrationTest {
         importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
         ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);
         importDataService.processImportData(importJob);
+        timelineGeneration.regenerateFullTimeline(testUser.getId());
     }
 
     private void assertDetectedDataTypes(byte[] exportedData) throws Exception {
@@ -805,7 +812,7 @@ class ExportImportIntegrationTest {
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.LOCATION_SOURCES));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.REVERSE_GEOCODING));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.TIMELINE_LABELS));
-        assertTrue(entries.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES));
+        assertTrue(entries.containsKey(ExportImportConstants.FileNames.TIMELINE_EDITS));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.TRIP_WORKSPACE));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES));
         assertTrue(entries.containsKey(ExportImportConstants.FileNames.GEOFENCING));
@@ -853,11 +860,10 @@ class ExportImportIntegrationTest {
         assertEquals(1, timelineLabels.getTimelineLabels().size());
         assertEquals("Winter Travel", timelineLabels.getTimelineLabels().get(0).getName());
 
-        TimelineOverridesDataDto overrides = read(entries, ExportImportConstants.FileNames.TIMELINE_OVERRIDES, TimelineOverridesDataDto.class);
-        assertEquals(1, overrides.getTripMovementOverrides().size());
-        assertEquals("TRAIN", overrides.getTripMovementOverrides().get(0).getMovementType());
-        assertEquals(1, overrides.getDataGapStayOverrides().size());
-        assertEquals("Home Location", overrides.getDataGapStayOverrides().get(0).getSelectedLocationName());
+        TimelineEditsDataDto edits = read(entries, ExportImportConstants.FileNames.TIMELINE_EDITS, TimelineEditsDataDto.class);
+        assertEquals(2, edits.getEdits().size());
+        assertTrue(edits.getEdits().stream().anyMatch(edit -> "TRAIN".equals(map(edit.getPayload()).get("movementType"))));
+        assertTrue(edits.getEdits().stream().anyMatch(edit -> "Home Location".equals(map(edit.getPayload()).get("locationName"))));
 
         TripWorkspaceDataDto tripWorkspace = read(entries, ExportImportConstants.FileNames.TRIP_WORKSPACE, TripWorkspaceDataDto.class);
         assertEquals(1, tripWorkspace.getTrips().size());
@@ -922,6 +928,25 @@ class ExportImportIntegrationTest {
         return entries;
     }
 
+    /** A copy of a GeoPulse export without the correction files, for repeated imports into a non-empty account. */
+    private byte[] withoutTimelineCorrections(byte[] data) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(data));
+             ZipOutputStream copy = new ZipOutputStream(output)) {
+            ZipEntry entry;
+            while ((entry = input.getNextEntry()) != null) {
+                if (ExportImportConstants.FileNames.TIMELINE_EDITS.equals(entry.getName())
+                        || ExportImportConstants.FileNames.TIMELINE_OVERRIDES.equals(entry.getName())) {
+                    continue;
+                }
+                copy.putNextEntry(new ZipEntry(entry.getName()));
+                copy.write(input.readAllBytes());
+                copy.closeEntry();
+            }
+        }
+        return output.toByteArray();
+    }
+
     private void deleteAndVerifyUserDomainData() {
         QuarkusTransaction.requiringNew().run(() -> {
             deleteUserDomainData(testUser.getId());
@@ -936,6 +961,9 @@ class ExportImportIntegrationTest {
     }
 
     private void deleteUserDomainData(UUID userId) {
+        entityManager.createQuery("DELETE FROM TimelineEditEntity edit WHERE edit.user.id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
         entityManager.createQuery("""
                 DELETE FROM GeofenceRuleSubjectEntity subject
                 WHERE subject.rule.id IN (
@@ -961,12 +989,6 @@ class ExportImportIntegrationTest {
                 .setParameter("userId", userId)
                 .executeUpdate();
         entityManager.createQuery("DELETE FROM WeatherSampleEntity sample WHERE sample.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-        entityManager.createQuery("DELETE FROM TimelineTripMovementOverrideEntity override WHERE override.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-        entityManager.createQuery("DELETE FROM TimelineDataGapStayOverrideEntity override WHERE override.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
         entityManager.createQuery("DELETE FROM TimelineTripPathMatchEntity pathMatch WHERE pathMatch.user.id = :userId")
@@ -998,11 +1020,12 @@ class ExportImportIntegrationTest {
                 .executeUpdate();
     }
 
-    private void mutateExistingImportTargets() {
+    private void mutateExistingImportTargets(OriginalData originalData) {
         QuarkusTransaction.requiringNew().run(() -> {
             timelineLabelRepository.findByUserId(testUser.getId()).get(0).setColor("#000000");
-            findTripOverride().setMovementType("DRIVING");
-            findGapOverride().setSelectedLocationName("Changed Location");
+            findTripOverride().setPayload(new org.github.tess1o.geopulse.streaming.edits.payload.SetTripTypePayload(org.github.tess1o.geopulse.streaming.model.shared.TripType.CAR));
+            var gapEdit = findGapOverride(originalData.gapOverrideLocationName());
+            gapEdit.setPayload(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload)gapEdit.getPayload()).toBuilder().locationName("Changed Location").build());
             notificationTemplateRepository.findByUser(testUser.getId()).stream()
                     .filter(template -> "Arrived".equals(template.getName()))
                     .findFirst()
@@ -1069,8 +1092,8 @@ class ExportImportIntegrationTest {
             assertEquals(originalData.timelineLabelStartTime(), timelineLabel.getStartTime());
             assertEquals(originalData.timelineLabelColor(), timelineLabel.getColor());
 
-            assertEquals(originalData.tripOverrideMovementType(), findTripOverride().getMovementType());
-            assertEquals(originalData.gapOverrideLocationName(), findGapOverride().getSelectedLocationName());
+            assertEquals(originalData.tripOverrideMovementType(), map(findTripOverride().getPayload()).get("movementType"));
+            assertEquals(originalData.gapOverrideLocationName(), map(findGapOverride(originalData.gapOverrideLocationName()).getPayload()).get("locationName"));
 
             TripEntity trip = tripRepository.findByUserId(testUser.getId()).get(0);
             assertEquals(originalData.tripName(), trip.getName());
@@ -1109,7 +1132,9 @@ class ExportImportIntegrationTest {
                     BASE_TIME.plus(1, ChronoUnit.DAYS)).get(0);
             assertEquals(originalData.noteTitle(), note.getTitle());
             assertEquals(originalData.noteContent(), note.getContentMarkdown());
-            assertEquals(NoteAnchorType.TRIP, note.getAnchorType());
+            // The imported trip has no GPS points behind it, so the rebuild leaves a gap at its time and the note
+            // keeps its content as a timestamp note.
+            assertEquals(NoteAnchorType.TIMESTAMP, note.getAnchorType());
             assertNotNull(note.getLocation());
 
             WeatherSampleEntity weather = weatherSampleRepository.findByUserAndRange(
@@ -1135,22 +1160,32 @@ class ExportImportIntegrationTest {
         });
     }
 
-    private TimelineTripMovementOverrideEntity findTripOverride() {
+    private TimelineEditEntity findTripOverride() {
         return entityManager.createQuery("""
-                        SELECT override FROM TimelineTripMovementOverrideEntity override
-                        WHERE override.user.id = :userId
-                        """, TimelineTripMovementOverrideEntity.class)
+                        SELECT edit FROM TimelineEditEntity edit
+                        WHERE edit.user.id = :userId AND edit.kind = :kind AND edit.status = :status
+                        ORDER BY edit.seq DESC
+                        """, TimelineEditEntity.class)
                 .setParameter("userId", testUser.getId())
+                .setParameter("kind", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_MOVEMENT_TYPE)
+                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .setMaxResults(1)
                 .getSingleResult();
     }
 
-    private TimelineDataGapStayOverrideEntity findGapOverride() {
+    private TimelineEditEntity findGapOverride(String originalGapName) {
         return entityManager.createQuery("""
-                        SELECT override FROM TimelineDataGapStayOverrideEntity override
-                        WHERE override.user.id = :userId
-                        """, TimelineDataGapStayOverrideEntity.class)
+                        SELECT edit FROM TimelineEditEntity edit
+                        WHERE edit.user.id = :userId AND edit.kind = :kind AND edit.status = :status
+                        ORDER BY edit.seq DESC
+                        """, TimelineEditEntity.class)
                 .setParameter("userId", testUser.getId())
-                .getSingleResult();
+                .setParameter("kind", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_STAY)
+                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .getResultList().stream()
+                .filter(edit -> originalGapName.equals(map(edit.getPayload()).get("locationName")))
+                .findFirst()
+                .orElseThrow();
     }
 
     private TimelineTripPathMatchEntity findPathMatch() {
@@ -1165,12 +1200,9 @@ class ExportImportIntegrationTest {
 
     private void assertNativeSectionCounts(UUID userId, long expected) {
         assertEquals(expected, timelineLabelRepository.count("user.id = ?1", userId), "timeline labels");
-        assertEquals(expected, entityManager.createQuery(
-                "SELECT COUNT(override) FROM TimelineTripMovementOverrideEntity override WHERE override.user.id = :userId",
-                Long.class).setParameter("userId", userId).getSingleResult(), "trip overrides");
-        assertEquals(expected, entityManager.createQuery(
-                "SELECT COUNT(override) FROM TimelineDataGapStayOverrideEntity override WHERE override.user.id = :userId",
-                Long.class).setParameter("userId", userId).getSingleResult(), "gap overrides");
+        assertEquals(expected == 0 ? 0 : 2, entityManager.createQuery(
+                "SELECT COUNT(edit) FROM TimelineEditEntity edit WHERE edit.user.id = :userId",
+                Long.class).setParameter("userId", userId).getSingleResult(), "corrections");
         assertEquals(expected, tripRepository.count("user.id = ?1", userId), "trips");
         assertEquals(expected, entityManager.createQuery(
                 "SELECT COUNT(item) FROM TripPlanItemEntity item WHERE item.trip.user.id = :userId",
@@ -1205,7 +1237,7 @@ class ExportImportIntegrationTest {
                 ExportImportConstants.DataTypes.FAVORITES,
                 ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
                 ExportImportConstants.DataTypes.TIMELINE_LABELS,
-                ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
+                ExportImportConstants.DataTypes.TIMELINE_EDITS,
                 ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                 ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,
                 ExportImportConstants.DataTypes.GEOFENCING,
@@ -1223,7 +1255,7 @@ class ExportImportIntegrationTest {
                 ExportImportConstants.DataTypes.FAVORITES,
                 ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
                 ExportImportConstants.DataTypes.TIMELINE_LABELS,
-                ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
+                ExportImportConstants.DataTypes.TIMELINE_EDITS,
                 ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                 ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,
                 ExportImportConstants.DataTypes.GEOFENCING,

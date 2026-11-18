@@ -1,10 +1,10 @@
 <template>
-  <Dialog :visible="visible" modal class="missing-activity-editor" :header="t(rebuildRange ? 'missingActivity.rebuildInterval' : chosenGap ? 'missingActivity.fillGap' : 'missingActivity.add')"
+  <Dialog :visible="visible" modal class="missing-activity-editor" :header="t(routeTarget ? 'missingActivity.editRoute' : rebuildRange ? 'missingActivity.rebuildInterval' : chosenGap ? 'missingActivity.fillGap' : 'missingActivity.add')"
     :closable="!saving" :close-on-escape="!saving" @update:visible="value => !value && emit('close')">
     <p v-if="contextStartTime || trip?.startTime" class="editor-help">{{ t('missingActivity.dateContext', { date: timezone.formatDateDisplay(contextStartTime || trip.startTime) }) }}</p>
-    <p class="editor-help">{{ t(rebuildRange ? 'missingActivity.rebuildIntervalHint' : 'missingActivity.help') }}</p>
+    <p class="editor-help">{{ t(routeTarget ? 'missingActivity.editRouteHint' : rebuildRange ? 'missingActivity.rebuildIntervalHint' : 'missingActivity.help') }}</p>
     <p class="mobile-editor-help">{{ t('missingActivity.mobileHelp') }}</p>
-    <label v-if="!rebuildRange && gapOptions.length > 1" class="gap-choice">{{ t('missingActivity.chooseGap') }}
+    <label v-if="!routeTarget && !rebuildRange && gapOptions.length > 1" class="gap-choice">{{ t('missingActivity.chooseGap') }}
       <Select :model-value="chosenGap" :options="gapOptions" option-label="label" option-value="gap"
         :placeholder="t('missingActivity.chooseGap')" :aria-label="t('missingActivity.chooseGap')" @update:model-value="chooseGap" />
     </label>
@@ -17,7 +17,7 @@
             <Button v-if="activities.length > 1" icon="pi pi-trash" text size="small" :aria-label="t('missingActivity.remove')"
               @click.stop="removeActivity(index)" />
           </header>
-          <div class="activity-times">
+          <div v-if="!routeTarget" class="activity-times">
             <label>{{ t('missingActivity.from') }}
               <ActivityDateTimeField v-model="activity.start" :label="t('missingActivity.from')" :context-date="contextDate" />
             </label>
@@ -25,7 +25,7 @@
               <ActivityDateTimeField v-model="activity.end" :label="t('missingActivity.to')" :context-date="contextDate" />
             </label>
           </div>
-          <Button v-if="!rebuildRange" :label="t('missingActivity.useGps')" icon="pi pi-clock" text size="small"
+          <Button v-if="!routeTarget && !rebuildRange" :label="t('missingActivity.useGps')" icon="pi pi-clock" text size="small"
             :aria-pressed="selectingTimes && activeId === activity.id" @click="toggleGps(activity)" />
           <div v-if="selectingTimes && activeId === activity.id" class="gps-time-choices">
             <p>{{ t('missingActivity.gpsHelp') }}</p>
@@ -39,7 +39,7 @@
             <Button :label="t('missingActivity.applyTimes')" size="small" :disabled="!gpsRange" @click="applyGpsTimes" />
             <Button :label="t('common.cancel')" text size="small" @click="selectingTimes = false" />
           </div>
-          <label>{{ t('missingActivity.whatHappened') }}
+          <label v-if="!routeTarget">{{ t('missingActivity.whatHappened') }}
             <Select v-model="activity.segmentType" :options="activityTypes" option-label="label" option-value="value"
               :placeholder="t('missingActivity.chooseActivity')" :aria-label="t('missingActivity.whatHappened')" />
           </label>
@@ -51,7 +51,7 @@
             <label v-else>{{ t('missingActivity.visitName') }}<InputText v-model="activity.visitName" maxlength="500" /></label>
           </template>
           <template v-else-if="activity.segmentType === 'TRIP'">
-            <label>{{ t('missingActivity.transport') }}
+            <label v-if="!routeTarget">{{ t('missingActivity.transport') }}
               <Select v-model="activity.movementType" :options="movementOptions" option-label="label" option-value="value" />
             </label>
             <h4 class="endpoint-heading"><b class="marker-start">A</b> {{ t('missingActivity.origin') }}</h4>
@@ -80,7 +80,7 @@
             </ol>
           </template>
         </article>
-        <Button :label="t('missingActivity.addAnother')" icon="pi pi-plus" outlined size="small" @click="addActivity" />
+        <Button v-if="!routeTarget" :label="t('missingActivity.addAnother')" icon="pi pi-plus" outlined size="small" @click="addActivity" />
       </div>
       <div ref="mapSection" class="activity-editor-map" :class="{ 'map-not-needed': !active?.segmentType && !selectingTimes }">
         <p class="map-instruction" role="status">{{ t(selectingTimes ? 'missingActivity.gpsHelp' : mapTarget === 'stay' ? 'timeline.edit.place.mapHint' : mapTarget === 'start' ? 'missingActivity.clickStart' : mapTarget === 'end' ? 'missingActivity.clickEnd' : mapTarget === 'via' ? 'missingActivity.clickRoutePoints' : Number.isInteger(mapTarget) ? 'missingActivity.clickMovePoint' : active?.segmentType === 'TRIP' ? 'missingActivity.routeHelp' : active?.segmentType === 'STAY' ? 'missingActivity.pickStay' : 'missingActivity.mapHelp') }}</p>
@@ -92,7 +92,7 @@
           <MapContainer class="activity-editor-map-canvas" :map-id="mapId" :center="initialViewport?.center || fallbackCenter" :zoom="initialViewport?.zoom ?? 13"
             :show-controls="false" :map-options="{ attributionControl: { compact: true } }" height="100%" width="100%" @map-ready="mapReady" @map-click="mapClick">
             <template #overlays="{ map, isReady }">
-              <RawGpsPointsLayer v-if="visible && map && isReady" :map="map" :points="recordedPoints" :inspector-container="gpsInspector" :select-point="selectingTimes ? selectGpsPoint : null" />
+              <RawGpsPointsLayer v-if="visible && map && isReady" :map="map" :points="recordedPoints" :inspector-container="gpsInspector" :select-point="selectingTimes ? selectGpsPoint : mapTarget !== null ? placeRecordedPoint : null" />
               <TripReconstructionMapOverlay v-if="map && isReady" :map="map" :context-points="displayMarkers" :context-trip-lines="mapLines" :editable-context="!selectingTimes && !saving" @context-point-dragged="dragPoint" :id-prefix="mapId" />
             </template>
           </MapContainer>
@@ -110,13 +110,22 @@
         <strong>{{ event.type === 'DATA_GAP' ? t('missingActivity.unknown') : event.locationName || event.label }}</strong>
         <span>{{ timezone.formatDateTimeDisplay(event.start, { withSeconds: true }) }} — {{ timezone.formatDateTimeDisplay(event.end, { withSeconds: true }) }}</span>
       </li></ol>
-      <small>{{ t('missingActivity.reviewHint') }}</small>
+      <small>{{ t(routeTarget ? 'missingActivity.editRouteReviewHint' : 'missingActivity.reviewHint') }}</small>
+    </section>
+    <section v-if="warnings.length" class="activity-warnings" aria-live="polite">
+      <p v-for="(warning, index) in warnings" :key="`${warning.code}-${index}`"
+        :class="['activity-warning', `activity-warning--${(warning.severity || 'info').toLowerCase()}`]">
+        {{ t(`missingActivity.warnings.${warning.code}`, warning.message) }}
+        <Button v-if="warning.groupId && (warning.code === 'REPLACES_CORRECTION' || warning.code === 'PARTIAL_OVERLAP')"
+          :label="t('missingActivity.replaceCorrection')" text size="small"
+          @click="replaceCorrection(warning)" />
+      </p>
     </section>
     <p v-if="error" class="activity-error" role="alert">{{ error }}</p>
     <template #footer>
       <Button :label="t('common.cancel')" text :disabled="saving" @click="emit('close')" />
       <Button v-if="!review" :label="t('missingActivity.review')" :loading="previewing" :disabled="readOnly || saving || selectingTimes" @click="preview" />
-      <Button v-else :label="t('missingActivity.save')" :loading="saving" :disabled="readOnly || selectingTimes" @click="save" />
+      <Button v-else :label="t('missingActivity.save')" :loading="saving" :disabled="readOnly || selectingTimes || hasInvalidWarning" @click="save" />
     </template>
   </Dialog>
 </template>
@@ -136,13 +145,14 @@ import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
 import { movementTypeOptions } from '@/constants/movementTypes'
 import { selectedReconstructionRange, missingActivityBoundaryPlaces, pointsInViewport } from '@/utils/timelineReconstructionContext'
+import { normalizeTripPathPoints } from '@/utils/tripStaySplitSelection'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { timelineUtcToPicker, timelinePickerToUtc } from '@/utils/timelineEditTime'
 import '@/maps/shared/styles/tripReconstructionMarkers.css'
 import { fitMapToBounds, setMapView } from '@/maps/tripReconstruction/shared/tripReconstructionViewport'
 
 const props = defineProps({ visible: Boolean, tripId: { type: Number, default: null }, trip: Object,
-  contextStartTime: String, contextEndTime: String, suggestedRange: Object, initialViewport: Object, rebuildRange: Object,
+  contextStartTime: String, contextEndTime: String, suggestedRange: Object, initialViewport: Object, rebuildRange: Object, routeTarget: Object,
   availableGaps: { type: Array, default: () => [] }, timelineData: { type: Array, default: () => [] },
   recordedPoints: { type: Array, default: () => [] }, locationSuggestion: Object,
   fallbackCenter: { type: Array, default: () => [37.7749, -122.4194] }, readOnly: Boolean })
@@ -154,6 +164,7 @@ const chosenGap = ref(null), editorMap = shallowRef(null), mapTarget = ref(null)
 const gpsInspector = ref(null)
 const mapSection = ref(null), formSection = ref(null), mapReturnTarget = shallowRef(null)
 const activities = ref([]), activeId = ref(null), review = ref(null), error = ref('')
+const warnings = ref([]), previewToken = ref(null), replacesGroupId = ref(null)
 const saving = ref(false), previewing = ref(false), selectingTimes = ref(false), firstPoint = ref(null), secondPoint = ref(null)
 const mapId = `missing-activity-${Math.random().toString(36).slice(2)}`
 let nextId = 0, version = 0
@@ -162,6 +173,9 @@ const activityTypes = computed(() => [{ label: t('missingActivity.stayed'), valu
 const movementOptions = computed(() => movementTypeOptions.map(option => ({ value: option.value, label: t(option.labelKey) })))
 const pointOptions = computed(() => props.recordedPoints.map(point => ({ point, label: timezone.formatDateTimeDisplay(point.timestamp, { withSeconds: true }) })))
 const gpsRange = computed(() => selectedReconstructionRange(firstPoint.value, secondPoint.value))
+// An invalid draft or an unconfirmed replacement cannot be saved: the user picks Replace or adjusts the range.
+const hasInvalidWarning = computed(() => warnings.value.some(warning => warning.severity === 'INVALID'
+  || warning.code === 'REPLACES_CORRECTION'))
 const contextDate = computed(() => chosenGap.value?.startTime || props.contextStartTime || props.trip?.startTime)
 const gapOptions = computed(() => props.availableGaps.map(gap => ({ gap,
   label: `${timezone.formatDateTimeDisplay(gap.startTime)} — ${timezone.formatDateTimeDisplay(gap.endTime)}` })))
@@ -233,10 +247,38 @@ function removeActivity(index) { activities.value.splice(index, 1); activeId.val
 watch(() => props.visible, visible => {
   if (!visible) return
   version++; activities.value = []; addActivity(); review.value = null; error.value = ''; selectingTimes.value = false
+  warnings.value = []; previewToken.value = null; replacesGroupId.value = null
+  if (props.routeTarget) {
+    chooseGap({ startTime: props.routeTarget.startTime, endTime: props.routeTarget.endTime })
+    const activity = active.value
+    activity.segmentType = 'TRIP'
+    activity.movementType = props.routeTarget.movementType || 'UNKNOWN'
+    activity.startPlace = routePlace(props.routeTarget, 'start')
+    activity.endPlace = routePlace(props.routeTarget, 'end')
+    activity.via = (props.routeTarget.manualRoute || []).slice(1, -1).map(point => ({ ...point }))
+    if (!props.routeTarget.manualRoute) {
+      const targetId = props.routeTarget.id
+      store.fetchTripPath(props.routeTarget.startTime, props.routeTarget.endTime)
+        .then(path => {
+          const points = path?.points || []
+          if (!props.visible || props.routeTarget?.id !== targetId || points.length <= 2) return
+          const normalized = normalizeTripPathPoints(points)
+          const inner = (normalized.length ? normalized : points).slice(1, -1)
+          const step = Math.max(1, Math.ceil(inner.length / 200))
+          activity.via = inner.filter((_, index) => index % step === 0)
+            .map(point => ({ latitude: point.latitude, longitude: point.longitude }))
+        })
+        .catch(() => {})
+    }
+    return
+  }
   if (props.rebuildRange) {
     chooseGap({ startTime: props.rebuildRange.startTime, endTime: props.rebuildRange.endTime })
-    active.value.segmentType = 'TRIP'
-    if (props.rebuildRange.type === 'trip' && props.rebuildRange.movementType) {
+    active.value.segmentType = props.rebuildRange.type === 'stay' ? 'STAY' : 'TRIP'
+    if (props.rebuildRange.type === 'stay') {
+      active.value.place = { latitude: props.rebuildRange.latitude, longitude: props.rebuildRange.longitude,
+        locationName: props.rebuildRange.label || '', source: 'custom' }
+    } else if (props.rebuildRange.movementType) {
       active.value.movementType = props.rebuildRange.movementType
     }
     return
@@ -249,7 +291,7 @@ watch(activeId, () => { mapTarget.value = null; selectingTimes.value = false; fi
 watch(() => active.value?.segmentType, () => { mapTarget.value = null })
 watch(() => activities.value.map(({ segmentType, start, end, originalStart, originalEnd, place, visitName, movementType, startPlace, endPlace, via }) =>
   ({ segmentType, start, end, originalStart, originalEnd, place, visitName, movementType, startPlace, endPlace, via })),
-  () => { version++; review.value = null }, { deep: true, flush: 'sync' })
+  () => { version++; review.value = null; previewToken.value = null; warnings.value = []; replacesGroupId.value = null }, { deep: true, flush: 'sync' })
 function mapReady(map) {
   editorMap.value = map
   map.getContainer?.().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show summary')?.click()
@@ -315,6 +357,9 @@ function moveRoutePoint(activity, index, direction) {
   mapTarget.value = null
 }
 function toggleGps(activity) { mapTarget.value = null; activeId.value = activity.id; selectingTimes.value = !selectingTimes.value; firstPoint.value = null; secondPoint.value = null }
+function placeRecordedPoint(point) {
+  mapClick({ lat: point.latitude, lng: point.longitude })
+}
 function selectGpsPoint(point) { if (!selectingTimes.value) return; if (!firstPoint.value || secondPoint.value) { firstPoint.value = point; secondPoint.value = null } else secondPoint.value = point }
 function applyGpsTimes() {
   if (!gpsRange.value || !active.value) return
@@ -323,7 +368,9 @@ function applyGpsTimes() {
   active.value.startInvalid = false; active.value.endInvalid = false; selectingTimes.value = false
 }
 function payload() {
-  return { tripId: props.tripId, ...(props.rebuildRange ? { replaceExisting: true } : {}), contextStart: chosenGap.value?.startTime, contextEnd: chosenGap.value?.endTime,
+  return { tripId: props.tripId,
+    previewToken: previewToken.value, replacesGroupId: replacesGroupId.value,
+    contextStart: chosenGap.value?.startTime, contextEnd: chosenGap.value?.endTime,
     activities: activities.value.map(activity => {
       const startTime = timelinePickerToUtc(activity.start, timezone, activity.originalStart)
       const endTime = timelinePickerToUtc(activity.end, timezone, activity.originalEnd)
@@ -337,17 +384,68 @@ function payload() {
         movementType: activity.movementType, startPlace: activity.startPlace, endPlace: activity.endPlace, waypoints: activity.via }
     }) }
 }
+function routePlace(item, prefix) {
+  const latitude = prefix === 'start' ? (item.startLatitude ?? item.latitude) : item.endLatitude
+  const longitude = prefix === 'start' ? (item.startLongitude ?? item.longitude) : item.endLongitude
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  const locationName = prefix === 'start'
+    ? (item.startLocationName ?? item.locationName ?? '')
+    : (item.endLocationName ?? '')
+  return { latitude, longitude, locationName, source: 'custom' }
+}
+function routePayload() {
+  const activity = active.value
+  if (!activity?.startPlace || !activity?.endPlace) throw new Error(t('missingActivity.chooseEndpoints'))
+  const point = place => ({ latitude: place.latitude, longitude: place.longitude })
+  return { op: 'SET_ROUTE',
+    anchorStart: new Date(props.routeTarget.startTime).toISOString(),
+    anchorEnd: new Date(props.routeTarget.endTime).toISOString(),
+    affectedFrom: new Date(props.routeTarget.startTime).toISOString(),
+    affectedTo: new Date(props.routeTarget.endTime).toISOString(),
+    payload: { waypoints: [point(activity.startPlace), ...activity.via.map(point), point(activity.endPlace)] },
+    previewToken: previewToken.value }
+}
 async function preview() {
   error.value = ''; const currentVersion = version; previewing.value = true
-  try { const result = await store.previewActivityCorrection(payload()); if (currentVersion === version) review.value = result }
+  try {
+    if (props.routeTarget) {
+      const result = await store.previewCorrections(routePayload())
+      if (currentVersion === version) {
+        review.value = { events: result.events || [], token: result.token }
+        previewToken.value = result.token || null
+        warnings.value = []
+      }
+      return
+    }
+    const result = await store.previewCorrections(payload())
+    if (currentVersion === version) {
+      review.value = result
+      previewToken.value = result.token || null
+      warnings.value = result.warnings || []
+    }
+  }
   catch (problem) { error.value = formatApiErrorDetail(problem, t('missingActivity.failed')) }
   finally { previewing.value = false }
 }
+function replaceCorrection(warning) {
+  replacesGroupId.value = warning.groupId
+  review.value = null
+  preview()
+}
 async function save() {
-  if (!review.value || props.readOnly || saving.value) return
+  if (!review.value || props.readOnly || saving.value || hasInvalidWarning.value) return
   error.value = ''; saving.value = true
-  try { const result = await store.saveActivityCorrection(payload()); emit('committed', result) }
-  catch (problem) { error.value = formatApiErrorDetail(problem, t('missingActivity.failed')) }
+  try {
+    const result = await store.saveCorrections(props.routeTarget ? routePayload() : payload())
+    emit('committed', result)
+  }
+  catch (problem) {
+    if (problem?.code === 'TIMELINE_PREVIEW_STALE') {
+      review.value = null; previewToken.value = null
+      await preview()
+      error.value = t('timeline.edit.previewChanged')
+    } else error.value = formatApiErrorDetail(problem, t('missingActivity.failed'))
+  }
   finally { saving.value = false }
 }
 </script>
@@ -400,6 +498,11 @@ h4 { margin: .25rem 0 0; font-size: .875rem; }
 .activity-review { margin-top: 1rem; padding: 1rem; background: var(--gp-surface-ground); border-radius: var(--gp-radius-medium); }
 .activity-review li { display: grid; gap: .25rem; margin: .75rem 0; }
 .activity-review span { color: var(--gp-text-secondary); font-size: .85rem; }
+.activity-warnings { margin-top: .75rem; display: grid; gap: .5rem; }
+.activity-warning { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: 0; padding: .6rem .75rem; border-radius: var(--gp-radius-small); font-size: .85rem; line-height: 1.4; }
+.activity-warning--invalid { background: var(--gp-danger-soft); color: var(--gp-danger-text); }
+.activity-warning--confirm { background: var(--gp-warning-soft); color: var(--gp-warning-text); }
+.activity-warning--info { background: var(--gp-surface-ground); color: var(--gp-text-secondary); }
 .activity-error { color: var(--gp-danger); }
 .route-points { padding-left: 1.5rem; }
 @media (max-width: 768px) {

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -7,10 +9,9 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestActor;
@@ -45,7 +46,7 @@ class SharedTimelineCorrectionsIntegrationTest {
     TestUserFactory testUserFactory;
 
     @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
+    ActivityCorrectionService corrections;
 
     @Inject
     TimelineDataGapRepository dataGapRepository;
@@ -72,17 +73,24 @@ class SharedTimelineCorrectionsIntegrationTest {
                         .filter(candidate -> candidate.getEndTime().equals(at("16:00")))
                         .findFirst()
                         .orElseThrow());
-        DataGapStayOverrideRequest atTheOffice = new DataGapStayOverrideRequest();
-        atTheOffice.setLocationStrategy("LATEST_POINT");
-        QuarkusTransaction.requiringNew().run(() ->
-                dataGapStayOverrideService.convertGapToStay(userId, gap.getId(), atTheOffice));
+        var atTheOffice = new ActivityCorrectionService.Activity();
+        atTheOffice.setSegmentType("STAY");
+        atTheOffice.setStartTime(gap.getStartTime());
+        atTheOffice.setEndTime(gap.getEndTime());
+        atTheOffice.setLatitude(day.office[0]);
+        atTheOffice.setLongitude(day.office[1]);
+        atTheOffice.setLocationName("Gym");
+        corrections.save(userId, new ActivityCorrectionService.Request(null, List.of(atTheOffice), null, null));
+        harness.fullRebuild(userId);
 
-        assertThat(authenticated(owner).when().get("/api/v1/timeline?from=" + at("00:00") + "&to=" + at("23:59"))
-                .jsonPath().getList("stays.findAll { it.locationName == 'Bakery' }.tripSplitOverrideId"))
-                .as("the owner's own timeline").doesNotContainNull().hasSize(1);
-        assertThat(authenticated(owner).when().get("/api/v1/timeline?from=" + at("00:00") + "&to=" + at("23:59"))
-                .jsonPath().getList("stays.findAll { it.dataGapOverrideIds != null }.dataGapOverrideIds"))
-                .as("the owner's gap conversion").isNotEmpty();
+        List<Map<String, Object>> ownerStays = authenticated(owner)
+                .when().get("/api/v1/timeline?from=" + at("00:00") + "&to=" + at("23:59"))
+                .jsonPath().getList("stays");
+        assertThat(ownerStays).as("the owner's own timeline")
+                .anySatisfy(stay -> assertThat(stay.get("locationName")).isEqualTo("Bakery"))
+                .anySatisfy(stay -> assertThat(stay.get("locationName")).isEqualTo("Gym"));
+        assertThat(ownerStays.stream().filter(stay -> "Bakery".equals(stay.get("locationName")))
+                .findFirst().orElseThrow().get("activeEditCount")).isNotEqualTo(0);
 
         Response link = authenticated(owner)
                 .body(Map.of(
@@ -107,11 +115,11 @@ class SharedTimelineCorrectionsIntegrationTest {
 
         assertThat(shared.statusCode()).isEqualTo(200);
         List<Map<String, Object>> stays = shared.jsonPath().getList("stays");
-        assertThat(stays).anySatisfy(stay -> assertThat(stay.get("locationName")).isEqualTo("Bakery"));
-        assertThat(stays).as("stays seen through the share link").allSatisfy(stay -> {
-            assertThat(stay.get("tripSplitOverrideId")).isNull();
-            assertThat(stay.get("dataGapOverrideIds")).isNull();
-        });
+        assertThat(stays).anySatisfy(stay -> assertThat(stay.get("locationName")).isEqualTo("Bakery"))
+                .anySatisfy(stay -> assertThat(stay.get("locationName")).isEqualTo("Gym"));
+        assertThat(stays).as("stays seen through the share link")
+                .allSatisfy(stay -> assertThat(((Number) stay.getOrDefault("activeEditCount", 0)).intValue())
+                        .isZero());
     }
 
     @Test
@@ -121,13 +129,13 @@ class SharedTimelineCorrectionsIntegrationTest {
         var split = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
         split.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SPLIT_STAY);
         split.setAnchorStart(at("08:46")); split.setAnchorEnd(at("12:00"));
-        split.setPayload(new java.util.LinkedHashMap<>(Map.of("splitAt", at("10:00").toString(),
+        set(split, new java.util.LinkedHashMap<>(Map.of("splitAt", at("10:00").toString(),
                 "rightLocationName", "Shared destination", "rightLatitude", 50.0, "rightLongitude", 30.0)));
         unifiedEdits.create(user, split); harness.fullRebuild(user);
         var label = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
         label.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_VISIT_NAME);
         label.setAnchorStart(at("10:00")); label.setAnchorEnd(at("12:00"));
-        label.setPayload(new java.util.LinkedHashMap<>(Map.of("visitName", "Shared visit label")));
+        set(label, new java.util.LinkedHashMap<>(Map.of("visitName", "Shared visit label")));
         var saved = unifiedEdits.create(user, label); harness.fullRebuild(user);
         assertThat(aggregator.getTimelineFromDb(user, at("00:00"), at("23:59")).getStays())
                 .anySatisfy(stay -> assertThat(stay.getActiveEditCount()).isPositive());
@@ -137,8 +145,6 @@ class SharedTimelineCorrectionsIntegrationTest {
             assertThat(stay.getVisitName()).isEqualTo("Shared visit label");
         }).allSatisfy(stay -> {
             assertThat(stay.getActiveEditCount()).isZero();
-            assertThat(stay.getTripSplitOverrideId()).isNull();
-            assertThat(stay.getDataGapOverrideIds()).isNull();
         });
         var link = authenticated(owner).body(Map.of("name", "Unified share", "share_type", "TIMELINE",
                 "expires_at", Instant.now().plusSeconds(7200).toString(), "start_date", at("00:00").toString(),
@@ -155,8 +161,8 @@ class SharedTimelineCorrectionsIntegrationTest {
         assertThat(shared.asString()).contains("Shared destination", "Shared visit label")
                 .doesNotContain("beforeValues", "supersededBy", "editApplications");
         var other = testUserFactory.createAuthenticatedUser("unified-shared-viewer");
-        assertThat(authenticated(other).get("/api/v1/timeline/edits").jsonPath().getList("$")).isEmpty();
-        assertThat(authenticated(other).post("/api/v1/timeline/edits/" + saved.id() + "/revert").statusCode()).isEqualTo(404);
+        assertThat(authenticated(other).get("/api/v1/timeline/corrections").jsonPath().getList("$")).isEmpty();
+        assertThat(authenticated(other).post("/api/v1/timeline/corrections/" + saved.groupId() + "/undo").statusCode()).isEqualTo(404);
         assertThat(unifiedEdits.list(user)).allSatisfy(edit -> assertThat(edit.applied()).isTrue());
     }
 

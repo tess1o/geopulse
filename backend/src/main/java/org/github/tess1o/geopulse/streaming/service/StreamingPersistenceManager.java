@@ -70,6 +70,45 @@ public class StreamingPersistenceManager {
     @Inject ObjectMapper objectMapper;
     @Inject TimelineMemoryDiagnostics memoryDiagnostics;
 
+    public void invalidateFavoriteStays(UUID userId, Long favoriteId) {
+        entityManager.createQuery("delete from TimelineStayEntity s where s.user.id = :user and s.favoriteLocation.id = :favorite")
+                .setParameter("user", userId).setParameter("favorite", favoriteId).executeUpdate();
+    }
+
+    /** Refresh only cached place metadata; correction structure remains owned by generation. */
+    public int updateGeocodingPlaceName(UUID userId, Long geocodingId, String name) {
+        return entityManager.createNativeQuery("""
+                UPDATE timeline_stays stay SET location_name = :name
+                WHERE user_id = :user AND geocoding_id = :place
+                  AND NOT EXISTS (SELECT 1 FROM timeline_edits e WHERE e.user_id = stay.user_id
+                    AND e.status = 'ACTIVE' AND e.payload ->> 'locationNameCustom' = 'true'
+                    AND e.anchor_start <= stay.timestamp AND e.anchor_end >= stay.timestamp + stay.stay_duration * interval '1 second'
+                    AND e.payload ->> 'locationName' = stay.location_name)
+                """).setParameter("user", userId).setParameter("place", geocodingId).setParameter("name", name).executeUpdate();
+    }
+
+    public int updateFavoritePlaceName(UUID userId, Long favoriteId, String name) {
+        return entityManager.createNativeQuery("""
+                UPDATE timeline_stays stay SET location_name = :name
+                WHERE user_id = :user AND favorite_id = :place
+                  AND NOT EXISTS (SELECT 1 FROM timeline_edits e WHERE e.user_id = stay.user_id
+                    AND e.status = 'ACTIVE' AND e.payload ->> 'locationNameCustom' = 'true'
+                    AND e.anchor_start <= stay.timestamp AND e.anchor_end >= stay.timestamp + stay.stay_duration * interval '1 second'
+                    AND e.payload ->> 'locationName' = stay.location_name)
+                """).setParameter("user", userId).setParameter("place", favoriteId).setParameter("name", name).executeUpdate();
+    }
+
+    public int switchGeocodingPlaceReference(UUID userId, Long oldId, Long newId, String name) {
+        return entityManager.createNativeQuery("""
+                UPDATE timeline_stays stay SET geocoding_id = :newId,
+                  location_name = CASE WHEN EXISTS (SELECT 1 FROM timeline_edits e WHERE e.user_id = stay.user_id
+                    AND e.status = 'ACTIVE' AND e.payload ->> 'locationNameCustom' = 'true'
+                    AND e.anchor_start <= stay.timestamp AND e.anchor_end >= stay.timestamp + stay.stay_duration * interval '1 second'
+                    AND e.payload ->> 'locationName' = stay.location_name) THEN stay.location_name ELSE :name END
+                WHERE user_id = :user AND geocoding_id = :oldId
+                """).setParameter("user", userId).setParameter("oldId", oldId).setParameter("newId", newId).setParameter("name", name).executeUpdate();
+    }
+
     public void persistRawTimeline(UUID userId, RawTimeline timeline, UUID jobId) {
         // Make pending ORM changes visible; never clear the caller's managed edits, notes or user lock state.
         entityManager.flush();

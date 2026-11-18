@@ -11,14 +11,13 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
-import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
-import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -34,7 +33,7 @@ import java.util.UUID;
 public class ManualEditsSupport {
 
     @Inject
-    TripStaySplitOverrideService splitService;
+    ActivityCorrectionService corrections;
 
     @Inject
     TimelineTripRepository tripRepository;
@@ -43,10 +42,10 @@ public class ManualEditsSupport {
     TimelineJobProgressService jobProgressService;
 
     @Inject
-    StreamingTimelineGenerationService timelineGenerationService;
+    AsyncTimelineGenerationService asyncTimelineGenerationService;
 
     @Inject
-    AsyncTimelineGenerationService asyncTimelineGenerationService;
+    StreamingTimelineGenerationService timelineGenerationService;
 
     @Inject
     ExportDataGenerator exportDataGenerator;
@@ -59,7 +58,6 @@ public class ManualEditsSupport {
             ExportImportConstants.DataTypes.RAW_GPS,
             ExportImportConstants.DataTypes.FAVORITES,
             ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
-            ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
             ExportImportConstants.DataTypes.TIMELINE_EDITS);
 
     /** The stored trip that runs through the whole window. */
@@ -73,26 +71,28 @@ public class ManualEditsSupport {
     }
 
     /**
-     * Turns the part of the trip from {@code from} to {@code to} into a stay at {@code place}, anchored at the middle
-     * of the window, as the split dialog does. Returns the override id.
+     * Turns the part of the trip from {@code from} to {@code to} into a stay at {@code place}, as the split dialog
+     * does. Returns the correction group id.
      */
-    public Long split(UUID userId, Instant from, Instant to, double[] place, String name) {
-        TimelineTripEntity trip = tripCovering(userId, from, to);
-        TripStaySplitRequest request = new TripStaySplitRequest();
-        request.setStayStartTime(from);
-        request.setStayEndTime(to);
-        request.setAnchorTimestamp(from.plus(Duration.between(from, to).dividedBy(2)));
-        request.setLatitude(place[0]);
-        request.setLongitude(place[1]);
-        request.setLocationName(name);
-        return splitService.splitTrip(userId, trip.getId(), request).orElseThrow().overrideId();
+    public UUID split(UUID userId, Instant from, Instant to, double[] place, String name) {
+        var stay = new ActivityCorrectionService.Activity();
+        stay.setSegmentType("STAY");
+        stay.setStartTime(from);
+        stay.setEndTime(to);
+        stay.setLatitude(place[0]);
+        stay.setLongitude(place[1]);
+        stay.setLocationName(name);
+        var saved = corrections.save(userId, new ActivityCorrectionService.Request(null, List.of(stay), null, null));
+        // The old split API rewrote the stored timeline immediately; keep that contract for scenario tests.
+        timelineGenerationService.regenerateFullTimeline(userId);
+        return saved.groupId();
     }
 
     /** Undoes a split as the undo endpoint does, and waits for the regeneration it starts. */
-    public void undoSplit(UUID userId, Long overrideId) {
-        Instant from = timelineGenerationService.resetTripStaySplitOverride(userId, overrideId).orElseThrow()
-                .regenerationStartTime();
-        UUID jobId = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(userId, from).jobId();
+    public void undoSplit(UUID userId, UUID groupId) {
+        var saved = corrections.changeStatus(userId, groupId, false);
+        UUID jobId = asyncTimelineGenerationService
+                .scheduleTimelineRegenerationFromTimestamp(userId, saved.affectedFrom()).jobId();
         awaitJob(jobId);
     }
 

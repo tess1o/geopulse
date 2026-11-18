@@ -120,41 +120,8 @@ export default {
             resetSummary: 'Movement Reset',
             resetDetail: 'Trip reset to {type}',
             resetFailedSummary: 'Reset Failed',
-            resetFailedFallback: 'Could not reset movement type'
-        }
-    },
-    dataGapToStay: {
-        header: 'Convert Data Gap to Stay',
-        gapTag: 'Data Gap',
-        unknownTimeRange: 'Unknown time range',
-        locationSourceLabel: 'Stay location source',
-        resolvingLocation: 'Resolving latest known point location...',
-        defaultLocationLabel: 'Default location:',
-        unknownLocation: 'Unknown location',
-        selectedLocationTypeLabel: 'Selected location type',
-        searchPlaceLabel: 'Search Favorite or Geocoding place',
-        searchPlaceholder: 'Type at least 2 characters...',
-        latitudePlaceholder: 'Latitude',
-        longitudePlaceholder: 'Longitude',
-        customNamePlaceholder: 'Optional custom location name',
-        convert: 'Convert to Stay',
-        strategyOptions: {
-            latestPoint: 'Latest known point (default)',
-            selectedLocation: 'Selected location'
-        },
-        selectedSourceOptions: {
-            place: 'Favorite or geocoding place',
-            custom: 'Custom coordinates'
-        },
-        errors: {
-            previewFailed: 'Failed to resolve latest point preview',
-            searchFailed: 'Failed to search places'
-        },
-        toasts: {
-            convertedSummary: 'Converted',
-            convertedDetail: 'Data gap was converted to stay.',
-            failedSummary: 'Conversion Failed',
-            failedFallback: 'Could not convert data gap'
+            resetFailedFallback: 'Could not reset movement type',
+            noCorrectionToReset: 'There is no trip-type correction to undo. Use correction history to change this activity.'
         }
     },
     gpsPointEdit: {

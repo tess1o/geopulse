@@ -28,16 +28,8 @@ import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
 import org.github.tess1o.geopulse.notes.repository.TimelineNoteRepository;
 import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripStaySplitOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayNameOverrideRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -100,18 +92,6 @@ public class ExportDataCollectorService {
 
     @Inject
     TimelineLabelRepository timelineLabelRepository;
-
-    @Inject
-    TimelineTripMovementOverrideRepository tripMovementOverrideRepository;
-
-    @Inject
-    TimelineDataGapStayOverrideRepository dataGapStayOverrideRepository;
-
-    @Inject
-    TimelineTripStaySplitOverrideRepository tripStaySplitOverrideRepository;
-
-    @Inject
-    TimelineStayNameOverrideRepository stayNameOverrideRepository;
 
     @Inject
     TimelineEditRepository timelineEditRepository;
@@ -307,22 +287,6 @@ public class ExportDataCollectorService {
                 .filter(tag -> !tag.getStartTime().isAfter(endDate))
                 .filter(tag -> tag.getEndTime() == null || !tag.getEndTime().isBefore(startDate))
                 .toList();
-    }
-
-    public List<TimelineTripMovementOverrideEntity> collectTripMovementOverrides(UUID userId) {
-        return tripMovementOverrideRepository.findByUserId(userId);
-    }
-
-    public List<TimelineDataGapStayOverrideEntity> collectDataGapStayOverrides(UUID userId) {
-        return dataGapStayOverrideRepository.findByUserId(userId);
-    }
-
-    public List<TimelineTripStaySplitOverrideEntity> collectTripStaySplitOverrides(UUID userId) {
-        return tripStaySplitOverrideRepository.findByUserId(userId);
-    }
-
-    public List<TimelineStayNameOverrideEntity> collectStayNameOverrides(UUID userId) {
-        return stayNameOverrideRepository.findByUserId(userId);
     }
 
     public List<TimelineEditEntity> collectTimelineEdits(UUID userId) {

@@ -42,7 +42,6 @@ export default {
         exportingFavorites: 'Exporting favorites...',
         exportingReverseGeocodingData: 'Exporting reverse geocoding data...',
         exportingTimelineLabels: 'Exporting timeline labels...',
-        exportingTimelineOverrides: 'Exporting timeline overrides...',
         exportingTripWorkspace: 'Exporting trip workspace...',
         exportingNotificationTemplates: 'Exporting notification templates...',
         exportingGeofencingRules: 'Exporting geofencing rules...',

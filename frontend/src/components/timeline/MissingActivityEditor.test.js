@@ -3,7 +3,6 @@ import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import Editor from './MissingActivityEditor.vue'
 import { useTimelineStore } from '@/stores/timeline'
-import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import { timelinePickerToUtc } from '@/utils/timelineEditTime'
 
@@ -37,8 +36,8 @@ describe('Unified missing activity editor', () => {
   })
   it('reviews a rebuild of an existing interval as a replace request', async () => {
     const store = useTimelineStore()
-    const preview = vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
-    const wrapper = await open({ rebuildRange: { startTime: times.startTime, endTime: times.endTime, type: 'stay' } })
+    const preview = vi.spyOn(store, 'previewCorrections').mockResolvedValue(previewResult)
+    const wrapper = await open({ rebuildRange: { startTime: times.startTime, endTime: times.endTime, type: 'trip' } })
     expect(wrapper.text()).toContain('Describe what happened inside this time range')
     expect(wrapper.text()).toContain('What happened?')
     expect(wrapper.findAll('button').some(button => button.text() === 'Add another activity')).toBe(true)
@@ -47,29 +46,50 @@ describe('Unified missing activity editor', () => {
     for (const endpoint of endpoints) await endpoint.trigger('click')
     await click(wrapper, 'Review changes')
     expect(preview).toHaveBeenCalledWith(expect.objectContaining({
-      replaceExisting: true,
       contextStart: times.startTime,
       contextEnd: times.endTime,
       activities: [expect.objectContaining({ segmentType: 'TRIP', startTime: times.startTime, endTime: times.endTime })]
     }))
   })
+  it('reviews a rebuild of a stay as a stay, not a trip', async () => {
+    const store = useTimelineStore()
+    const preview = vi.spyOn(store, 'previewCorrections').mockResolvedValue(previewResult)
+    const wrapper = await open({ rebuildRange: { startTime: times.startTime, endTime: times.endTime, type: 'stay',
+      latitude: 49.82, longitude: 24.01, label: 'Home' } })
+    await click(wrapper, 'Review changes')
+    expect(preview).toHaveBeenCalledWith(expect.objectContaining({ activities: [expect.objectContaining({
+      segmentType: 'STAY', latitude: 49.82, longitude: 24.01, locationName: 'Home' })] }))
+  })
+  it('reviews and saves a whole-trip route edit', async () => {
+    const store = useTimelineStore()
+    vi.spyOn(store, 'fetchTripPath').mockResolvedValue({ points: [] })
+    const preview = vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [], token: 'token', warnings: [] })
+    const save = vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 1 }], timelineJobId: 'job' })
+    const routeTarget = { startTime: times.startTime, endTime: '2026-09-15T15:00:00Z', movementType: 'CAR',
+      startLatitude: 49.82, startLongitude: 24.01, endLatitude: 49.83, endLongitude: 24.03 }
+    const wrapper = await open({ routeTarget })
+    expect(wrapper.text()).toContain('Drag the endpoints or add route points')
+    await click(wrapper, 'Review changes')
+    expect(preview).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_ROUTE', anchorStart: expect.stringContaining('2026-09-15T14:24'),
+      payload: expect.objectContaining({ waypoints: [{ latitude: 49.82, longitude: 24.01 }, { latitude: 49.83, longitude: 24.03 }] }) }))
+    await click(wrapper, 'Save changes')
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_ROUTE', previewToken: 'token' }))
+  })
   it('reviews and saves a correction without calling reconstruction or renaming a source', async () => {
-    const store = useTimelineStore(), trips = useTripsStore()
-    vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
-    vi.spyOn(store, 'saveActivityCorrection').mockResolvedValue({ groupId: 'group', timelineJobId: 'job' })
-    const legacy = vi.spyOn(trips, 'commitReconstruction')
+    const store = useTimelineStore()
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue(previewResult)
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', timelineJobId: 'job' })
     const wrapper = await open({ suggestedRange: times }); await stay(wrapper)
     await click(wrapper, 'Review changes')
     expect(wrapper.text()).toContain('Only these activities will be added')
     await click(wrapper, 'Save changes')
-    expect(store.saveActivityCorrection).toHaveBeenCalledWith(expect.objectContaining({ activities: [expect.objectContaining({ segmentType: 'STAY', startTime: times.startTime, endTime: times.endTime, locationName: 'Cafe' })] }))
-    expect(legacy).not.toHaveBeenCalled()
+    expect(store.saveCorrections).toHaveBeenCalledWith(expect.objectContaining({ activities: [expect.objectContaining({ segmentType: 'STAY', startTime: times.startTime, endTime: times.endTime, locationName: 'Cafe' })] }))
     expect(wrapper.emitted('committed')[0][0].groupId).toBe('group')
   })
   it('keeps the draft after an error and invalidates review when times change', async () => {
     const store = useTimelineStore()
-    vi.spyOn(store, 'previewActivityCorrection').mockResolvedValue(previewResult)
-    vi.spyOn(store, 'saveActivityCorrection').mockRejectedValue(new Error('Interval occupied'))
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue(previewResult)
+    vi.spyOn(store, 'saveCorrections').mockRejectedValue(new Error('Interval occupied'))
     const wrapper = await open({ suggestedRange: times }); await stay(wrapper); await click(wrapper, 'Review changes'); await click(wrapper, 'Save changes')
     expect(wrapper.find('.activity-error').exists()).toBe(true)
     expect(wrapper.findComponent(PlaceStub).props('modelValue')).toEqual(place)
@@ -186,7 +206,7 @@ describe('Unified missing activity editor', () => {
   it('opens only one trip chooser and preserves review while browsing previews', async () => {
     const wrapper = await open({ suggestedRange: times })
     await stay(wrapper)
-    vi.spyOn(useTimelineStore(), 'previewActivityCorrection').mockResolvedValue(previewResult)
+    vi.spyOn(useTimelineStore(), 'previewCorrections').mockResolvedValue(previewResult)
     await click(wrapper, 'Review changes')
     wrapper.findComponent(PlaceStub).vm.$emit('preview', { latitude: 51, longitude: 31 }); await flushPromises()
     expect(wrapper.find('.activity-review').exists()).toBe(true)
@@ -306,7 +326,7 @@ describe('Unified missing activity editor', () => {
     const startField = wrapper.findAllComponents(DateStub)[0]
     startField.vm.$emit('update:modelValue', new Date(startField.props('modelValue').getTime() + 77000))
     await flushPromises()
-    vi.spyOn(useTimelineStore(), 'previewActivityCorrection').mockResolvedValue(previewResult)
+    vi.spyOn(useTimelineStore(), 'previewCorrections').mockResolvedValue(previewResult)
     await click(wrapper, 'Review changes')
     expect(wrapper.find('.activity-review').exists()).toBe(true)
     await click(wrapper, 'Cancel')
@@ -331,4 +351,23 @@ describe('Unified missing activity editor', () => {
     wrapper.unmount()
   })
 
+})
+
+it('can use a recorded GPS point as a route vertex without changing the travel times', async () => {
+  const store = useTimelineStore()
+  vi.spyOn(store, 'fetchTripPath').mockResolvedValue({ points: [] })
+  const preview = vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [], token: 'review' })
+  const wrapper = await open({ routeTarget: { startTime: times.startTime, endTime: times.endTime,
+    movementType: 'WALK', startLatitude: 49.82, startLongitude: 24.01, endLatitude: 49.83, endLongitude: 24.03 } })
+  await click(wrapper, 'Add route points')
+  const layer = wrapper.findComponent({ name: 'RawGpsPointsLayer' })
+  expect(layer.props('selectPoint')).toBeTypeOf('function')
+  layer.props('selectPoint')({ latitude: 49.825, longitude: 24.025, timestamp: '2026-09-15T14:25:00Z' })
+  await flushPromises()
+  await click(wrapper, 'Done placing points')
+  await click(wrapper, 'Review changes')
+  expect(preview).toHaveBeenCalledWith(expect.objectContaining({ op: 'SET_ROUTE',
+    anchorStart: new Date(times.startTime).toISOString(), anchorEnd: new Date(times.endTime).toISOString(),
+    payload: { waypoints: [{ latitude: 49.82, longitude: 24.01 }, { latitude: 49.825, longitude: 24.025 }, { latitude: 49.83, longitude: 24.03 }] } }))
+  wrapper.unmount()
 })

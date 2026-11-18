@@ -1,5 +1,9 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -58,7 +62,7 @@ class ZeroDurationTimelineEditIntegrationTest {
         request.setKind(TimelineEditKind.SET_MOVEMENT_TYPE);
         request.setAnchorStart(AT);
         request.setAnchorEnd(AT);
-        request.setPayload(new LinkedHashMap<>(Map.of("movementType", "WALK")));
+        set(request, new LinkedHashMap<>(Map.of("movementType", "WALK")));
         var preview = edits.preview(user, request);
         assertThat(preview.events()).filteredOn(row -> row.type().equals("TRIP")).singleElement()
                 .satisfies(row -> assertThat(row.start()).isEqualTo(row.end()));
@@ -79,7 +83,7 @@ class ZeroDurationTimelineEditIntegrationTest {
         request.setAnchorEnd(AT);
         request.setAffectedFrom(AT.minusSeconds(3600));
         request.setAffectedTo(AT.plusSeconds(3600));
-        request.setPayload(new LinkedHashMap<>(switch (kind) {
+        set(request, new LinkedHashMap<>(switch (kind) {
             case SET_MOVEMENT_TYPE -> Map.of("movementType", "WALK");
             case REMOVE_EVENT -> Map.of("resolution", "DISMISS");
             case SET_TIMES -> Map.of("start", AT.minusSeconds(60).toString(), "end", AT.plusSeconds(60).toString());
@@ -87,7 +91,7 @@ class ZeroDurationTimelineEditIntegrationTest {
         }));
         var preview = edits.preview(user, request);
         var edit = edits.create(user, request);
-        assertThat(edit.beforeValues()).containsEntry("type", "TRIP").containsEntry("movementType", "UNKNOWN");
+        assertThat(map(edit.beforeValues())).containsEntry("type", "TRIP").containsEntry("movementType", "UNKNOWN");
         for (int pass = 0; pass < 2; pass++) {
             rebuild(user);
             var current = edits.loadCurrentEvents(user, request.getAffectedFrom(), request.getAffectedTo());
@@ -121,11 +125,11 @@ class ZeroDurationTimelineEditIntegrationTest {
                 .satisfies(row -> assertThat(row.applied()).isTrue());
 
         if (kind == TimelineEditKind.SET_MOVEMENT_TYPE) {
-            request.getPayload().put("movementType", "BICYCLE");
+            put(request, "movementType", "BICYCLE");
             var replacement = edits.create(user, request);
             rebuild(user);
             assertThat(edits.list(user)).filteredOn(row -> row.id().equals(edit.id())).singleElement()
-                    .satisfies(row -> assertThat(row.status()).isEqualTo(TimelineEditStatus.SUPERSEDED));
+                    .satisfies(row -> assertThat(row.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.REPLACED));
             assertThat(edits.list(user)).filteredOn(row -> row.id().equals(replacement.id())).singleElement()
                     .satisfies(row -> assertThat(row.applied()).isTrue());
         }
@@ -133,7 +137,7 @@ class ZeroDurationTimelineEditIntegrationTest {
         request.setKind(TimelineEditKind.FORCE_TRIP);
         assertThatThrownBy(() -> edits.preview(user, request)).hasMessageContaining("positive anchor interval");
         request.setKind(TimelineEditKind.REMOVE_EVENT);
-        request.getPayload().put("resolution", "GAP");
+        put(request, "resolution", "GAP");
         assertThatThrownBy(() -> edits.preview(user, request)).hasMessageContaining("without filling time");
     }
 
@@ -151,8 +155,8 @@ class ZeroDurationTimelineEditIntegrationTest {
             stays.delete("user.id", user);
             gaps.delete("user.id", user);
             persistence.persistRawTimeline(user, RawTimeline.fromEvents(user, result.events()), null);
-            edits.recordApplications(user, result);
-            edits.clearMissingApplications(user);
+            edits.recordEffects(user, result, AT.minusSeconds(3600));
+            edits.clearMissingEffects(user);
         });
     }
 }

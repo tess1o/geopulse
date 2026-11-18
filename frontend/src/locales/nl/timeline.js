@@ -6,6 +6,7 @@
  */
 export default {
     edit: {
+        previewChanged: "De tijdlijn is gewijzigd. Controleer het vernieuwde voorbeeld voordat je opslaat.",
         dismissTransitionHint: 'Verwijdert deze overgang zonder een van beide verblijfplaatsen te wijzigen. U kunt dit ongedaan maken in Tijdlijnwijzigingen.',
         reviewChanges: 'Wijzigingen bekijken',
         reviewFirst: 'Stap 1 van 2 · Maak uw wijzigingen, ga dan verder naar controle.',
@@ -113,8 +114,8 @@ export default {
         loadingHistory: 'Tijdlijnwijzigingen laden…',
         noHistory: 'Nog geen tijdlijnwijzigingen.',
         historyFailed: 'Kon tijdlijnwijzigingen niet laden.',
-        unapplied: 'Niet momenteel toegepast; wordt opnieuw geprobeerd na regeneratie.',
         revert: 'Ongedaan',
+        replace: 'Vervangen',
         restore: 'Herstellen',
         undo: 'Ongedaan',
         undoDependents: {
@@ -131,11 +132,13 @@ export default {
             location: 'Locatie', visitLabel: 'Bezoeklabel', renameLocation: 'Overal locatie hernoemen', times: 'Tijd',
             movement: 'Bewegingstype', splitStay: 'Verblijf splitsen', splitTrip: 'Stop toevoegen',
             merge: 'Samenvoegen', remove: 'Verwijderen', gapToStay: 'Converteren naar verblijfplaats', gapToTrip: 'Converteren naar reis',
-            rebuildInterval: 'Dit interval opnieuw opbouwen'
+            rebuildInterval: 'Dit interval opnieuw opbouwen',
+            editRoute: 'Reisroute bewerken',
         },
         actionHint: {
             dismissTransition: 'Deze markering verwijderen zonder een van beide verblijfplaatsen te wijzigen',
             rebuildInterval: 'Beschrijf wat hier gebeurde; de overige tijd blijft ongewijzigd',
+            editRoute: 'Sleep de route of voeg punten toe; de reis behoudt zijn tijden',
             location: 'Waar dit bezoek plaatsvond',
             visitLabel: 'Een titel voor dit bezoek alleen, bijvoorbeeld "Diner met Alex"',
             renameLocation: 'Wijzigt de naam van deze locatie voor al haar bezoeklocaties',
@@ -150,12 +153,25 @@ export default {
             gapToTrip: 'U reisde gedurende de leemte'
         },
         resolution: { merge: 'Compatibele buren samenvoegen', previous: 'Het vorige evenement verlengen', next: 'Het volgende evenement verlengen', gap: 'Een datagap achterlaten', dismiss: 'De niet-geregistreerde overgang verwijderen' },
-        kind: {
-            SET_MOVEMENT_TYPE: 'Bewegingstype', SET_PLACE: 'Locatie', SET_VISIT_NAME: 'Bezoeklabel',
-            FORCE_STAY: 'Gedwongen verblijfplaats', FORCE_TRIP: 'Gedwongen reis', SET_TIMES: 'Tijd', SPLIT_STAY: 'Verblijf splitsen',
-            MERGE: 'Samenvoegen', REMOVE_EVENT: 'Verwijderde gebeurtenis'
+        state: { inEffect: 'Actief', undone: 'Ongedaan', replaced: 'Vervangen' },
+        summary: {
+            placeStay: '{period} gevuld met een verblijf in {place}',
+            placeTrip: '{period} gevuld met een {type}-reis',
+            placeTripPlaces: '{period} gevuld met een {type}-reis van {from} naar {to}',
+            clear: '{event} {period} verwijderd; {resolution}',
+            resize: 'Tijd gewijzigd naar {period}',
+            changed: 'Tijdlijn {period} gewijzigd',
+            setPlace: 'Locatie gewijzigd naar {place}',
+            setTripType: 'Reistype gewijzigd naar {type}',
+            setLabel: 'Bezoeklabel ingesteld op \u201c{label}\u201d',
+            clearLabel: 'Bezoeklabel gewist',
+            setRoute: 'Route van de reis {period} gewijzigd',
+            merge: 'Gebeurtenissen {period} samengevoegd'
         },
-        status: { ACTIVE: 'Actief', SUPERSEDED: 'Vervangen', REVERTED: 'Teruggedraaid' }
+        eventName: { stay: 'verblijf', trip: 'reis', gap: 'datagat' },
+        now: 'Nu',
+        replacedBy: 'Vervangen door een latere wijziging.',
+        dormant: 'Wordt niet toegepast: de gebeurtenis is door een latere correctie verwijderd.'
     },
     locationEdit: {
         editFavoriteHeader: 'Favoriete locatie bewerken',
@@ -627,23 +643,9 @@ export default {
             viewingTag: '{name} bekijken',
             tagPeriod: "De volledige periode voor '{name}' tonen"
         },
-        resetDataGapOverride: {
-            confirmHeader: 'Datagap resetten',
-            confirmMessage: 'Weet u zeker dat u deze datagap wilt resetten naar automatische detectie?',
-            successSummary: 'Datagap Reset',
-            successDetail: 'De datagap is gereset naar automatische detectie.',
-            failedDetail: 'Datagapoverschrijving resetten is mislukt.'
-        },
         resetFailedSummary: 'Reset mislukt',
         correctionQueuedSummary: 'Tijdlijnupdate in wachtrij',
         correctionQueuedDetail: 'De correctie is opgeslagen. De tijdlijn wordt bijgewerkt wanneer de lopende regeneratie is voltooid.',
-        resetTripSplitOverride: {
-            confirmHeader: 'Reisopdeling ongedaan maken',
-            confirmMessage: 'Weet u zeker dat u deze handmatige reisopdeling wilt ongedaan maken?',
-            successSummary: 'Reisopdeling Ongedaan Gemaakt',
-            successDetail: 'De handmatige reisopdeling is ongedaan gemaakt.',
-            failedDetail: 'Reisopdeling ongedaan maken is mislukt.'
-        },
         reconstruction: {
             updatedSummary: 'Tijdlijn bijgewerkt',
             updatedDetail: 'Uw tijdlijn is bijgewerkt met de gereconstrueerde gegevens.',

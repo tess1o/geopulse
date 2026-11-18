@@ -1,6 +1,10 @@
 export default {
+  warnings: {"CARVES_EVENT": "Dit vervangt de activiteit in deze periode.", "REPLACES_CORRECTION": "Deze activiteit vervangt een eerdere correctie.", "CARVES_CORRECTION": "Dit vult een deel van een eerdere correctie; de rest blijft behouden.", "PARTIAL_OVERLAP": "Dit overschrijdt de grens van een eerdere correctie. Pas de periode aan of vervang die correctie.", "FUTURE_ACTIVITY": "Een activiteit moet in het verleden eindigen.", "ONGOING_GAP": "De volledige lopende onderbreking kan niet worden omgezet. Kies een afgerond deel."},
     "rebuildInterval": "Dit interval opnieuw opbouwen…",
     "rebuildIntervalHint": "Beschrijf wat er in dit tijdsbereik gebeurde. Tijd die u openlaat blijft op de oorspronkelijke plaats.",
+    "editRoute": "Reisroute bewerken",
+    "editRouteHint": "Sleep de eindpunten of voeg routepunten toe. De reis behoudt zijn tijden en blijft één gebeurtenis; de route wordt een handmatige schatting.",
+    "editRouteReviewHint": "De route omvat de hele reis. De opgenomen tijden blijven ongewijzigd.",
     "add": "Ontbrekende activiteit toevoegen…",
     "fillGap": "Ontbrekende tijd invullen…",
     "help": "Beschrijf wat er gebeurde tijdens een lege periode. Opgenomen GPS-gegevens blijven ongewijzigd.",
@@ -29,6 +33,7 @@ export default {
     "review": "Wijzigingen bekijken",
     "unknown": "Nog steeds onbekend",
     "reviewHint": "Alleen deze activiteiten worden toegevoegd. Onbekende intervallen blijven ongevuld.",
+    "replaceCorrection": "Die correctie vervangen",
     "save": "Wijzigingen opslaan",
     "invalid": "Kies een activiteit en geldige start- en eindtijdstippen.",
     "choosePlace": "Kies waar u verbleef.",

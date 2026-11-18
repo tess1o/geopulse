@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import org.github.tess1o.geopulse.streaming.edits.payload.CorrectionPayload;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineEventType;
+
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 public record TimelineEditCommand(
         Long id,
@@ -10,11 +12,12 @@ public record TimelineEditCommand(
         TimelineEditKind kind,
         Instant anchorStart,
         Instant anchorEnd,
-        Map<String, Object> payload,
+        CorrectionPayload payload,
+        TimelineEventType sourceType,
         List<Long> prerequisiteSequences
 ) {
     public TimelineEditCommand(Long id, long seq, TimelineEditKind kind, Instant anchorStart, Instant anchorEnd,
-                               Map<String, Object> payload) {
-        this(id, seq, kind, anchorStart, anchorEnd, payload, List.of());
+                               CorrectionPayload payload) {
+        this(id, seq, kind, anchorStart, anchorEnd, payload, null, List.of());
     }
 }

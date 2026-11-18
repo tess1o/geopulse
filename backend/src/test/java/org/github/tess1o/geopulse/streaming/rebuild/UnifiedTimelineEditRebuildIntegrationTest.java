@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -13,10 +15,8 @@ import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayNameOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
-import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayNameOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineCorrectionEffectRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -46,8 +46,7 @@ class UnifiedTimelineEditRebuildIntegrationTest {
     @Inject StreamingTimelineGenerationService generationService;
     @Inject TimelineStayRepository stays;
     @Inject TimelineTripRepository trips;
-    @Inject TimelineEditApplicationRepository applications;
-    @Inject TimelineStayNameOverrideRepository legacyNames;
+    @Inject TimelineCorrectionEffectRepository effects;
     @Inject EntityManager entityManager;
 
     private final CommuteWithStops day = new CommuteWithStops();
@@ -68,19 +67,10 @@ class UnifiedTimelineEditRebuildIntegrationTest {
             var trip = trips.find("user.id", userId).firstResult();
             assertThat(trip.getMovementType()).isEqualTo("WALK");
             assertThat(trip.getMovementTypeSource()).isEqualTo(MovementTypeSource.MANUAL);
-            trip.setMovementTypeSource(MovementTypeSource.AUTO);
         });
-        String repair;
-        try (var input = getClass().getResourceAsStream("/db/migration/V36.83.0__Restore_manual_movement_source.sql")) {
-            repair = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-        }
-        QuarkusTransaction.requiringNew().run(() -> {
-            entityManager.createNativeQuery(repair).executeUpdate();
-            entityManager.clear();
-            assertThat(trips.find("user.id", userId).firstResult().getMovementTypeSource()).isEqualTo(MovementTypeSource.MANUAL);
-            entityManager.createQuery("update TimelineEditEntity set status = :status where user.id = :userId")
-                    .setParameter("status", TimelineEditStatus.REVERTED).setParameter("userId", userId).executeUpdate();
-        });
+        QuarkusTransaction.requiringNew().run(() ->
+                entityManager.createQuery("update TimelineEditEntity set status = :status where user.id = :userId")
+                        .setParameter("status", TimelineEditStatus.REVERTED).setParameter("userId", userId).executeUpdate());
         harness.fullRebuild(userId);
         QuarkusTransaction.requiringNew().run(() -> {
             var trip = trips.find("user.id", userId).firstResult();
@@ -105,7 +95,7 @@ class UnifiedTimelineEditRebuildIntegrationTest {
                 .findFirst().orElseThrow());
         assertThat(edited.getLocationName()).isEqualTo("Work");
         assertThat(edited.getVisitName()).isEqualTo("Planning day");
-        assertThat(QuarkusTransaction.requiringNew().call(() -> applications.count("edit.user.id", userId)))
+        assertThat(QuarkusTransaction.requiringNew().call(() -> effects.count("correction.user.id", userId)))
                 .isEqualTo(2);
     }
 
@@ -131,21 +121,6 @@ class UnifiedTimelineEditRebuildIntegrationTest {
     }
 
     @Test
-    void migratedLegacyRowsRemainForEquivalenceButAreNotReplayed() {
-        UUID userId = harness.createUser("unified-migrated-legacy");
-        QuarkusTransaction.requiringNew().run(() -> entityManager.persist(TimelineStayNameOverrideEntity.builder()
-                .user(entityManager.getReference(UserEntity.class, userId))
-                .stayStartTime(at("08:00"))
-                .stayEndTime(at("09:00"))
-                .locationName("Migrated")
-                .migratedToTimelineEdits(true)
-                .build()));
-
-        assertThat(QuarkusTransaction.requiringNew().call(() -> legacyNames.findByUserId(userId))).isEmpty();
-        assertThat(QuarkusTransaction.requiringNew().call(() -> legacyNames.count("user.id", userId))).isEqualTo(1);
-    }
-
-    @Test
     void placeRenameUsesTheLiveReferenceWhileVisitNameRemainsIndependent() {
         UUID userId = day.ingest(harness, "unified-place-rename");
         Long favoriteId = QuarkusTransaction.requiringNew().call(() -> {
@@ -159,10 +134,11 @@ class UnifiedTimelineEditRebuildIntegrationTest {
             entityManager.flush();
             entityManager.persist(TimelineEditEntity.builder()
                     .user(entityManager.getReference(UserEntity.class, userId))
+                    .groupId(java.util.UUID.randomUUID())
                     .seq(1).kind(TimelineEditKind.SET_PLACE)
                     .anchorStart(at("08:46")).anchorEnd(at("12:00"))
                     .affectedFrom(at("08:46")).affectedTo(at("12:00"))
-                    .payload(new LinkedHashMap<>(Map.of("locationName", "Old office")))
+                    .payload(payload(TimelineEditKind.SET_PLACE, new LinkedHashMap<>(Map.of("locationName", "Old office"))))
                     .placeFavorite(favorite).placeLatitude(day.office[0]).placeLongitude(day.office[1])
                     .placeName("Old office").status(TimelineEditStatus.ACTIVE).build());
             return favorite.getId();
@@ -216,13 +192,14 @@ class UnifiedTimelineEditRebuildIntegrationTest {
                              Map<String, Object> payload) {
         QuarkusTransaction.requiringNew().run(() -> entityManager.persist(TimelineEditEntity.builder()
                 .user(entityManager.getReference(UserEntity.class, userId))
+                .groupId(java.util.UUID.randomUUID())
                 .seq(seq)
                 .kind(kind)
                 .anchorStart(from)
                 .anchorEnd(to)
                 .affectedFrom(from)
                 .affectedTo(to)
-                .payload(new LinkedHashMap<>(payload))
+                .payload(payload(kind, new LinkedHashMap<>(payload)))
                 .status(TimelineEditStatus.ACTIVE)
                 .build()));
     }

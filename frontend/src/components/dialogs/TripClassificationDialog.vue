@@ -340,7 +340,7 @@ const saveManualMovementType = async () => {
   if (!props.trip?.id || !selectedMovementType.value) return
   savingMovementType.value = true
   try {
-    const updated = await timelineStore.updateTripMovementType(props.trip.id, selectedMovementType.value)
+    const updated = await timelineStore.updateTripMovementType(props.trip, selectedMovementType.value)
     if (updated) {
       details.value.currentClassification = updated.movementType
       details.value.movementTypeSource = updated.movementTypeSource
@@ -350,7 +350,7 @@ const saveManualMovementType = async () => {
         props.trip.movementTypeSource = updated.movementTypeSource
       }
       emit('movement-updated', updated)
-      await fetchClassificationDetails(props.trip.id)
+      internalVisible.value = false
       toast.add({
         severity: 'success',
         summary: t('classification.toasts.movementUpdatedSummary'),
@@ -376,18 +376,10 @@ const resetToAutomaticMovementType = async () => {
   if (!props.trip?.id) return
   savingMovementType.value = true
   try {
-    const updated = await timelineStore.resetTripMovementType(props.trip.id)
+    const updated = await timelineStore.resetTripMovementType(props.trip)
     if (updated) {
-      details.value.currentClassification = updated.movementType
-      details.value.movementTypeSource = updated.movementTypeSource
-      details.value.algorithmClassification = updated.algorithmClassification
-      selectedMovementType.value = updated.movementType
-      if (props.trip) {
-        props.trip.movementType = updated.movementType
-        props.trip.movementTypeSource = updated.movementTypeSource
-      }
       emit('movement-updated', updated)
-      await fetchClassificationDetails(props.trip.id)
+      internalVisible.value = false
       toast.add({
         severity: 'success',
         summary: t('classification.toasts.movementResetSummary'),
