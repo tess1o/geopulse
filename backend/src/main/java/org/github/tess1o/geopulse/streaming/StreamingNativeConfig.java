@@ -1,11 +1,13 @@
 package org.github.tess1o.geopulse.streaming;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.streaming.edits.payload.*;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
-import org.github.tess1o.geopulse.streaming.rest.ActivityCorrectionResource;
 import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
@@ -14,36 +16,47 @@ import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEventType;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
-import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
 
 @RegisterForReflection(targets = {
+       CorrectionPayload.class,
+       BeforeValues.class,
+       PlaceStayPayload.class,
+       PlaceTripPayload.class,
+       ClearPayload.class,
+       ClearPayload.RemovalResolution.class,
+       ResizePayload.class,
+       SetPlacePayload.class,
+       SetTripTypePayload.class,
+       SetLabelPayload.class,
+       SetRoutePayload.class,
+       MergePayload.class,
+       MergePayload.MergeDirection.class,
+       SplitStayPayload.class,
         ActivityCorrectionService.Activity.class,
         ActivityCorrectionService.Place.class,
         ActivityCorrectionService.Preview.class,
         ActivityCorrectionService.Request.class,
-        ActivityCorrectionResource.Response.class,
+        ActivityCorrectionService.Warning.class,
+        org.github.tess1o.geopulse.streaming.rest.TimelineCorrectionResource.Response.class,
         TimelineExplanation.class,
         TimelineReason.class,
-        TimelineOverrideIds.class,
         TimelineEditKind.class,
         TimelineEditStatus.class,
+        TimelineCorrectionOp.class,
+        TimelineCorrectionStatus.class,
+        TimelineCorrectionRequest.class,
         TimelineEditEntity.class,
-        TimelineEditApplicationEntity.class,
+        TimelineCorrectionEffectEntity.class,
         TimelineEditRequest.class,
         TimelineEditDTO.class,
         TimelineEditTargetDTO.class,
-        TimelineEditMutationResponse.class,
         TimelineEditPreviewDTO.class,
         TimelineEditPreviewDTO.Event.class,
         TimelineStayEntity.class,
         TimelineTripEntity.class,
-        TimelineTripMovementOverrideEntity.class,
-        TimelineTripStaySplitOverrideEntity.class,
-        TimelineStayNameOverrideEntity.class,
-        TimelineDataGapStayOverrideEntity.class,
         TimelineRegenerationCampaignEntity.class,
         TimelineRegenerationCampaignUserEntity.class,
         TimelineRegenerationCampaignSource.class,
@@ -54,7 +67,6 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         ProcessorMode.class,
         TimelineEventType.class,
         TripType.class,
-        DataGapStayOverrideLocationStrategy.class,
         MovementTypeSource.class,
         TimelineDataGapDTO.class,
         TimelineExplanationDTO.class,
@@ -70,14 +82,6 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         TimelineCountResponse.class,
         TimelineStayLocationDTO.class,
         TimelineTripDTO.class,
-        TripMovementTypeUpdateRequest.class,
-        TripMovementTypeUpdateResponseDTO.class,
-        TripStaySplitRequest.class,
-        TripStaySplitResponse.class,
-        DataGapStayOverrideRequest.class,
-        DataGapStayOverrideResponseDTO.class,
-        DataGapStayConversionPreviewDTO.class,
-        TimelineOverrideSummaryDTO.class,
         TimelineDataGapDTO.class,
         CreateTimelineRegenerationCampaignRequest.class,
         TimelineRegenerationCampaignPreviewRequest.class,

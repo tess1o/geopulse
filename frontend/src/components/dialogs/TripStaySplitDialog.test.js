@@ -56,12 +56,12 @@ describe('TripStaySplitDialog', () => {
       ['19:55:42', nearOrigin ? 50.0056 : 50]
     ].map(([time, latitude]) => ({ timestamp: `2026-11-05T${time}Z`, latitude, longitude: 30 }))
     store.fetchTripPath.mockResolvedValue({ points: path })
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [
       { type: 'TRIP', start: path[0].timestamp, end: path[1].timestamp },
       { type: 'STAY', start: path[1].timestamp, end: path[2].timestamp },
       { type: 'TRIP', start: path[2].timestamp, end: path[3].timestamp }
     ] })
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 12 } })
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 12 }] })
     const wrapper = mountDialog()
     await wrapper.setProps({ visible: true, trip: { id: 4, timestamp: path[0].timestamp, tripDuration: 364 } })
     await flushPromises()
@@ -77,26 +77,25 @@ describe('TripStaySplitDialog', () => {
     await wrapper.find('.pick').trigger('click')
     await vi.advanceTimersByTimeAsync(300)
     await flushPromises()
-    const request = store.previewTimelineEdit.mock.calls.at(-1)[0]
-    expect(request.anchorStart).toBe(new Date(path[1].timestamp).toISOString())
-    expect(request.anchorEnd).toBe(new Date(path[2].timestamp).toISOString())
+    const request = store.previewCorrections.mock.calls.at(-1)[0]
+    expect(request.activities[0].startTime).toBe(new Date(path[1].timestamp).toISOString())
+    expect(request.activities[0].endTime).toBe(new Date(path[2].timestamp).toISOString())
     const save = wrapper.findAll('.action').find(button => button.text() === 'Save Split')
     expect(save.attributes('disabled')).toBeUndefined()
     await save.trigger('click')
     await flushPromises()
-    expect(store.createTimelineEdit).toHaveBeenCalledWith(request)
-    expect(wrapper.emitted('split')[0][0].edit.id).toBe(12)
+    expect(store.saveCorrections).toHaveBeenCalledWith(request)
+    expect(wrapper.emitted('split')[0][0].edits[0].id).toBe(12)
     wrapper.unmount()
   })
 
   it('saves the stop as one unified timeline edit with the chosen place by reference', async () => {
-    vi.spyOn(store, 'previewTimelineEdit').mockResolvedValue({ events: [
+    vi.spyOn(store, 'previewCorrections').mockResolvedValue({ events: [
       { type: 'TRIP', start: points[0].timestamp, end: points[3].timestamp, label: 'CAR' },
       { type: 'STAY', start: points[3].timestamp, end: points[3].timestamp, label: 'Gas station' },
       { type: 'TRIP', start: points[3].timestamp, end: points[6].timestamp, label: 'CAR' }
     ] })
-    vi.spyOn(store, 'createTimelineEdit').mockResolvedValue({ edit: { id: 12 }, timelineJobId: 'job' })
-    const legacySplit = vi.spyOn(store, 'splitTripWithStay')
+    vi.spyOn(store, 'saveCorrections').mockResolvedValue({ groupId: 'group', edits: [{ id: 12 }], timelineJobId: 'job' })
     const wrapper = mountDialog()
     await wrapper.setProps({ visible: true, trip })
     await flushPromises()
@@ -109,18 +108,17 @@ describe('TripStaySplitDialog', () => {
     await wrapper.find('.pick').trigger('click')
     await vi.advanceTimersByTimeAsync(300)
     await flushPromises()
-    expect(store.previewTimelineEdit).toHaveBeenCalled()
-    const request = store.previewTimelineEdit.mock.calls.at(-1)[0]
-    expect(request).toMatchObject({
-      kind: 'FORCE_STAY', affectedFrom: trip.timestamp, payload: { favoriteId: 3 }
+    expect(store.previewCorrections).toHaveBeenCalled()
+    const request = store.previewCorrections.mock.calls.at(-1)[0]
+    expect(request.activities[0]).toMatchObject({
+      segmentType: 'STAY', favoriteId: 3
     })
-    expect(Date.parse(request.anchorStart)).toBeGreaterThan(START)
-    expect(Date.parse(request.anchorEnd)).toBeGreaterThan(Date.parse(request.anchorStart))
+    expect(Date.parse(request.activities[0].startTime)).toBeGreaterThan(START)
+    expect(Date.parse(request.activities[0].endTime)).toBeGreaterThan(Date.parse(request.activities[0].startTime))
 
     await wrapper.findAll('.action').find(button => button.text() === 'Save Split').trigger('click')
     await flushPromises()
-    expect(store.createTimelineEdit).toHaveBeenCalledWith(request)
-    expect(legacySplit).not.toHaveBeenCalled()
-    expect(wrapper.emitted('split')[0][0].edit.id).toBe(12)
+    expect(store.saveCorrections).toHaveBeenCalledWith(request)
+    expect(wrapper.emitted('split')[0][0].edits[0].id).toBe(12)
   })
 })

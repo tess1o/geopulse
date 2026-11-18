@@ -10,6 +10,11 @@ const isolatedSpecs = [
   '**/data-export-import.spec.js',
   '**/timeline.spec.js',
   '**/timeline-edits.spec.js',
+  '**/timeline-edit-operations.spec.js',
+  '**/timeline-edit-history.spec.js',
+  '**/timeline-edit-recovery.spec.js',
+  '**/timeline-edit-access-time.spec.js',
+  '**/timeline-edit-portability.spec.js',
   '**/timeline-notes.spec.js',
   '**/location-time-display.spec.js',
   '**/user-registration.spec.js',
@@ -132,14 +137,12 @@ export default defineConfig({
 
     {
       name: 'chromium-timeline-vector',
-      testMatch: ['**/timeline-edits.spec.js'],
-      grep: /trip stop:|missing activity: (trip|group)/,
+      testMatch: ['**/timeline-edit-vector.spec.js'],
       use: { ...devices['Desktop Chrome'], mapMode: 'VECTOR' },
     },
     {
       name: 'chromium-timeline-mobile',
-      testMatch: ['**/timeline-edits.spec.js'],
-      grep: /mobile:|missing activity: group/,
+      testMatch: ['**/timeline-edit-mobile.spec.js'],
       use: { ...devices['Pixel 7'], mapMode: 'RASTER' },
     },
 

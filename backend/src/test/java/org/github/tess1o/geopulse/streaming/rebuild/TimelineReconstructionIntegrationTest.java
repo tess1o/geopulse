@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -7,20 +10,20 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayNameOverrideRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestActor;
 import org.github.tess1o.geopulse.testsupport.TestUserFactory;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
+import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionSegmentDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto;
@@ -37,9 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Reconstructing a stretch without data adds points for the stays and trips the user describes. What the user says
- * about them must come out on the timeline as said, a rebuild included: the name given to a stay, the way a trip was
- * travelled. And it fills a stretch without data only: mixed into recorded points, the made-up ones would distort them.
+ * A reconstruction describes a planned trip's missing time as corrections. It never creates GPS points: each stay and
+ * movement becomes a plan-scoped {@code PLACE_STAY} or {@code PLACE_TRIP} correction that survives regeneration and
+ * can be undone like every other correction.
  */
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -57,12 +60,6 @@ class TimelineReconstructionIntegrationTest {
 
     @Inject
     TripReconstructionService reconstructionService;
-
-    @Inject
-    TimelineStayNameOverrideRepository stayNameOverrideRepository;
-
-    @Inject
-    TimelineTripMovementOverrideRepository movementOverrideRepository;
 
     @Inject StreamingTimelineGenerationService generation;
     @Inject TimelineEditService timelineEdits;
@@ -82,7 +79,8 @@ class TimelineReconstructionIntegrationTest {
         UUID userId = officeDayWithAnAfternoonWithoutData(harness.createUser("reconstruct-named"));
 
         TripReconstructionCommitResponseDto result = reconstructionService.commit(userId, visitToGrandma());
-        edits.awaitJob(UUID.fromString(result.jobId()));
+        awaitJob(result);
+        assertNoReconstructionPoints(userId);
 
         assertReconstructedAsDescribed(userId, "after the reconstruction");
         harness.fullRebuild(userId);
@@ -90,27 +88,28 @@ class TimelineReconstructionIntegrationTest {
     }
 
     @Test
-    void committingTheSameReconstructionAgainUpdatesTheCorrectionsOnce() {
+    void committingTheSameReconstructionAgainReplacesTheEarlierGroup() {
         UUID userId = officeDayWithAnAfternoonWithoutData(harness.createUser("reconstruct-recommit"));
         TripReconstructionCommitResponseDto first = reconstructionService.commit(userId, visitToGrandma());
-        edits.awaitJob(UUID.fromString(first.jobId()));
+        awaitJob(first);
 
         TripReconstructionCommitResponseDto second = reconstructionService.commit(userId,
                 visitToGrandma("Grandma's place", "WALK", "CAR"));
+        awaitJob(second);
 
-        assertThat(second.insertedPoints()).as("all reconstruction points were already stored").isZero();
-        assertThat(second.jobId()).as("the changed corrections still regenerate the timeline").isNotNull();
-        edits.awaitJob(UUID.fromString(second.jobId()));
-
-        assertThat(QuarkusTransaction.requiringNew().call(() ->
-                stayNameOverrideRepository.count("user.id = ?1", userId))).isZero();
-        assertThat(timelineEdits.list(userId).stream()
-                .filter(edit -> edit.kind() == TimelineEditKind.FORCE_STAY && edit.status() == TimelineEditStatus.ACTIVE))
-                .as("one active exact stay correction").hasSize(1);
-        assertThat(QuarkusTransaction.requiringNew().call(() ->
-                movementOverrideRepository.findByUserId(userId)))
-                .as("one movement correction per reconstructed trip")
-                .hasSize(2);
+        var corrections = timelineEdits.list(userId);
+        var active = corrections.stream()
+                .filter(edit -> edit.status() == TimelineCorrectionStatus.IN_EFFECT).toList();
+        assertThat(active).as("one correction per described segment").hasSize(3);
+        assertThat(active).allSatisfy(edit -> assertThat(map(edit.payload())).containsEntry("reconstruction", true));
+        assertThat(active.stream().map(edit -> edit.groupId()).distinct())
+                .as("the reconstruction is one group").hasSize(1);
+        assertThat(corrections.stream().filter(edit -> edit.status() == TimelineCorrectionStatus.REPLACED))
+                .as("the earlier reconstruction is kept in history as replaced").hasSize(3);
+        assertThat(active).filteredOn(edit -> edit.op() == TimelineCorrectionOp.PLACE_TRIP)
+                .extracting(edit -> map(edit.payload()).get("movementType"))
+                .containsExactlyInAnyOrder("WALK", "CAR");
+        assertNoReconstructionPoints(userId);
 
         TimelineReplayHarness.TimelineSnapshot timeline = harness.snapshot(userId);
         assertThat(timeline.stays()).as("stays after the second commit")
@@ -123,13 +122,17 @@ class TimelineReconstructionIntegrationTest {
     @Test
     void reconstructedStayNameAndMovementTypesAreExportedAndImported() {
         UUID original = officeDayWithAnAfternoonWithoutData(harness.createUser("reconstruct-export"));
-        edits.awaitJob(UUID.fromString(reconstructionService.commit(original, visitToGrandma()).jobId()));
+        awaitJob(reconstructionService.commit(original, visitToGrandma()));
 
         byte[] export = edits.exportOf(original, at("00:00"), at("23:59"));
         var savedEdits = harness.readExportJson(export, "timeline-edits.json").path("edits");
         assertThat(savedEdits).anySatisfy(edit -> {
             assertThat(edit.path("kind").asText()).isEqualTo("FORCE_STAY");
             assertThat(edit.path("payload").path("locationName").asText()).isEqualTo("Grandma's");
+        });
+        assertThat(savedEdits).anySatisfy(edit -> {
+            assertThat(edit.path("kind").asText()).isEqualTo("FORCE_TRIP");
+            assertThat(edit.path("payload").path("movementType").asText()).isEqualTo("PUBLIC_TRANSPORT");
         });
 
         UUID imported = harness.createUser("reconstruct-import");
@@ -139,10 +142,12 @@ class TimelineReconstructionIntegrationTest {
     }
 
     @Test
-    void reconstructionOverRecordedPointsIsRefused() {
+    void reconstructionOverRecordedPointsIsACorrectionNotNewGpsData() {
         TestActor actor = testUserFactory.createAuthenticatedUser("reconstruct-overlap");
         UUID userId = officeDayWithAnAfternoonWithoutData(actor.userId());
-        // A stay at grandma's while the phone was recording at the office.
+        var before = harness.pointIds(userId, at("10:00"), at("11:00"));
+        assertThat(before).as("the office recording").hasSize(6);
+        // A stay at grandma's while the phone was recording at the office: a correction carves the recorded time.
         TripReconstructionRequestDto overRecordedPoints = new TripReconstructionRequestDto(null, List.of(
                 stay(at("10:00"), at("11:00"), grandma, "Grandma's")));
 
@@ -151,11 +156,13 @@ class TimelineReconstructionIntegrationTest {
                     .header("Authorization", "Bearer " + actor.accessToken())
                     .body(overRecordedPoints)
                     .when().post("/api/v1/trip-planning/reconstructions/" + step);
-            assertThat(response.statusCode()).as("%s over recorded points", step).isEqualTo(409);
+            assertThat(response.statusCode()).as("%s over recorded points", step).isEqualTo(200);
         }
+        awaitJobsFor(userId);
         assertThat(harness.pointIds(userId, at("10:00"), at("11:00")))
-                .as("only the recorded points")
-                .hasSize(6);
+                .as("recorded GPS points are untouched").containsExactlyInAnyOrderElementsOf(before);
+        assertThat(harness.snapshot(userId).stays())
+                .anySatisfy(stay -> assertThat(stay).contains("'Grandma's'"));
     }
 
     @Test
@@ -166,14 +173,14 @@ class TimelineReconstructionIntegrationTest {
                         + "|| '{\"staypointMinDurationMinutes\":7}'::jsonb where id = ?1")
                 .setParameter(1, userId).executeUpdate());
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, null)));
-        edits.awaitJob(UUID.fromString(reconstructionService.commit(userId, request).jobId()));
+        awaitJob(reconstructionService.commit(userId, request));
         assertExactShortStay(userId);
         harness.fullRebuild(userId);
         assertExactShortStay(userId);
         var correction = timelineEdits.list(userId).getFirst();
         timelineEdits.revert(userId, correction.id());
         harness.fullRebuild(userId);
-        assertThat(timelineEdits.list(userId).getFirst().status()).isEqualTo(TimelineEditStatus.REVERTED);
+        assertThat(timelineEdits.list(userId).getFirst().status()).isEqualTo(TimelineCorrectionStatus.UNDONE);
         timelineEdits.restore(userId, correction.id());
         harness.fullRebuild(userId);
         assertExactShortStay(userId);
@@ -184,9 +191,10 @@ class TimelineReconstructionIntegrationTest {
         UUID userId = harness.createUser("reconstruct-boundaries");
         harness.ingest(userId, day.track.stay(grandma, at("14:24"), at("14:27"), 3).messages());
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Visit")));
-        assertThat(reconstructionService.preview(userId, request).estimatedPoints()).isPositive();
+        TripReconstructionPreviewDto preview = reconstructionService.preview(userId, request);
+        assertThat(preview.token()).as("preview can be saved as reviewed").isNotBlank();
         var originalIds = harness.pointIds(userId, at("14:24"), at("14:28"));
-        edits.awaitJob(UUID.fromString(reconstructionService.commit(userId, request).jobId()));
+        awaitJob(reconstructionService.commit(userId, request));
         assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).containsAll(originalIds);
         assertExactShortStay(userId);
     }
@@ -198,7 +206,7 @@ class TimelineReconstructionIntegrationTest {
         harness.ingest(userId, day.track.stay(grandma, at("14:27"), at("15:00"), 3).messages());
         harness.fullRebuild(userId);
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Short visit")));
-        edits.awaitJob(UUID.fromString(reconstructionService.commit(userId, request).jobId()));
+        awaitJob(reconstructionService.commit(userId, request));
         assertExactShortStay(userId);
         harness.ingest(userId, day.track.stay(grandma, at("15:03"), at("15:30"), 3).messages());
         generation.generateTimelineFromTimestamp(userId, at("15:03"));
@@ -208,7 +216,7 @@ class TimelineReconstructionIntegrationTest {
     }
 
     @Test
-    void reconstructionChainsOverAnExistingManualCorrection() {
+    void reconstructionOverAManualCorrectionRequiresExplicitReplacement() {
         UUID userId = harness.createUser("reconstruct-chain");
         var forced = new TimelineEditRequest();
         forced.setKind(TimelineEditKind.FORCE_STAY);
@@ -219,45 +227,63 @@ class TimelineReconstructionIntegrationTest {
         var earlier = timelineEdits.create(userId, forced);
 
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Visit")));
-        TripReconstructionCommitResponseDto result = reconstructionService.commit(userId, request);
-        if (result.jobId() != null) edits.awaitJob(UUID.fromString(result.jobId()));
-        harness.fullRebuild(userId);
-
-        assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).isNotEmpty();
-        assertExactShortStay(userId);
-        var reconstruction = timelineEdits.list(userId).stream()
-                .filter(edit -> edit.kind() == TimelineEditKind.FORCE_STAY && edit.status() == TimelineEditStatus.ACTIVE)
-                .filter(edit -> Boolean.TRUE.equals(edit.payload().get("reconstruction")))
-                .findFirst().orElseThrow();
-        assertThat(reconstruction.beforeValues()).isNotNull();
-        assertThat(reconstruction.beforeValues().get("prerequisiteSequences")).isNotNull();
-        assertThat(timelineEdits.list(userId)).filteredOn(edit -> edit.id().equals(earlier.id())).singleElement()
-                .satisfies(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE));
-        assertThatThrownBy(() -> timelineEdits.revert(userId, earlier.id(), false))
+        assertThatThrownBy(() -> reconstructionService.commit(userId, request))
                 .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class)
-                .hasMessageContaining("Undo the later correction first");
+                .hasMessageContaining("replace");
+
+        TripReconstructionPreviewDto preview = reconstructionService.preview(userId, request);
+        UUID groupToReplace = preview.warnings().stream()
+                .filter(warning -> "REPLACES_CORRECTION".equals(warning.code()))
+                .map(org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Warning::groupId)
+                .findFirst().orElseThrow();
+        assertThat(groupToReplace).isEqualTo(earlier.groupId());
+        request.setReplacesGroupId(groupToReplace);
+
+        awaitJob(reconstructionService.commit(userId, request));
+        harness.fullRebuild(userId);
+        assertExactShortStay(userId);
+        var corrections = timelineEdits.list(userId);
+        assertThat(corrections).filteredOn(edit -> edit.id().equals(earlier.id())).singleElement()
+                .satisfies(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.REPLACED));
+        assertThat(corrections).filteredOn(edit -> edit.op() == TimelineCorrectionOp.PLACE_STAY
+                        && edit.status() == TimelineCorrectionStatus.IN_EFFECT)
+                .as("one active exact stay correction").hasSize(1);
+        assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).isEmpty();
     }
 
     @Test
-    void structuralConflictRollsBackGeneratedPoints() {
+    void recommitReplacesItsOwnReconstructionWithoutCreatingPoints() {
         UUID userId = harness.createUser("reconstruct-conflict");
         var forced = new TimelineEditRequest();
         forced.setKind(TimelineEditKind.FORCE_STAY);
         forced.setAnchorStart(at("14:24")); forced.setAnchorEnd(at("14:27"));
         forced.setAffectedFrom(at("14:24")); forced.setAffectedTo(at("14:27"));
         forced.setLatitude(grandma[0]); forced.setLongitude(grandma[1]);
-        forced.getPayload().put("reconstruction", true);
-        var grouped = timelineEdits.create(userId, forced);
-        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery(
-                        "UPDATE timeline_edits SET group_id = gen_random_uuid() WHERE id = ?1")
-                .setParameter(1, grouped.id()).executeUpdate());
+        put(forced, "reconstruction", true);
+        var earlier = timelineEdits.create(userId, forced);
 
         var request = new TripReconstructionRequestDto(null, List.of(stay(at("14:24"), at("14:27"), grandma, "Visit")));
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> reconstructionService.commit(userId, request))
-                .isInstanceOf(org.github.tess1o.geopulse.shared.api.GeoPulseException.class)
-                .hasMessageContaining("cannot be partially replaced");
+        awaitJob(reconstructionService.commit(userId, request));
+
         assertThat(harness.pointIds(userId, at("14:24"), at("14:28"))).isEmpty();
-        assertThat(timelineEdits.list(userId)).hasSize(1);
+        var corrections = timelineEdits.list(userId);
+        assertThat(corrections).filteredOn(edit -> edit.id().equals(earlier.id())).singleElement()
+                .satisfies(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.REPLACED));
+        assertThat(corrections).filteredOn(edit -> edit.status() == TimelineCorrectionStatus.IN_EFFECT).hasSize(1);
+    }
+
+    private void awaitJob(TripReconstructionCommitResponseDto result) {
+        assertThat(result.jobId()).as("the commit starts a regeneration").isNotNull();
+        edits.awaitJob(UUID.fromString(result.jobId()));
+    }
+
+    private void awaitJobsFor(UUID userId) {
+        edits.awaitTimelineJobs(userId);
+    }
+
+    private void assertNoReconstructionPoints(UUID userId) {
+        assertThat(harness.pointIds(userId, at("12:00"), at("16:00")))
+                .as("a reconstruction never writes GPS points").isEmpty();
     }
 
     private void assertExactShortStay(UUID userId) {

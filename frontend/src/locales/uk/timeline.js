@@ -5,6 +5,7 @@
  */
 export default {
     edit: {
+        previewChanged: "Хронологія змінилася. Перегляньте оновлений попередній перегляд перед збереженням.",
         dismissTransitionHint: 'Видаляє цей перехід, не змінюючи жодної зупинки. Це можна скасувати в історії змін хронології.',
         reviewChanges: 'Перевірити зміни',
         reviewFirst: 'Крок 1 із 2 · Внесіть зміни, потім перейдіть до перевірки.',
@@ -12,7 +13,6 @@ export default {
 
         uncertainTime: 'Під час переведення годинника цей час пропускається або повторюється. Виберіть однозначний час.',
         validTimesRequired: 'Введіть повні та коректні дату й час.',
-        savedValue: 'Збережено',
         placeRequired: 'Оберіть місце перед переглядом.',
         placeNameRequired: 'Дайте цьому місцю назву перед збереженням.',
         unchanged: 'Змініть значення для збереження.',
@@ -115,8 +115,8 @@ export default {
         loadingHistory: 'Завантаження виправлень хронології…',
         noHistory: 'Виправлень хронології ще немає.',
         historyFailed: 'Не вдалося завантажити виправлення хронології.',
-        unapplied: 'Зараз не застосовано; буде повторено після перебудови.',
         revert: 'Скасувати',
+        replace: 'Замінити',
         restore: 'Повторити',
         undo: 'Скасувати',
         undoDependents: {
@@ -133,11 +133,13 @@ export default {
             location: 'Місце', visitLabel: 'Підпис відвідування', renameLocation: 'Перейменувати місце всюди', times: 'Час',
             movement: 'Тип пересування', splitStay: 'Розділити зупинку', splitTrip: 'Додати зупинку',
             merge: 'Об’єднати', remove: 'Видалити', gapToStay: 'Перетворити на зупинку', gapToTrip: 'Перетворити на поїздку',
-            rebuildInterval: 'Перебудувати цей інтервал'
+            rebuildInterval: 'Перебудувати цей інтервал',
+            editRoute: 'Редагувати маршрут поїздки',
         },
         actionHint: {
             dismissTransition: 'Видалити цю позначку, не змінюючи жодної зупинки',
             rebuildInterval: 'Опишіть, що тут сталося; решта часу залишиться без змін',
+            editRoute: 'Перетягніть маршрут або додайте точки; поїздка збереже свій час',
             location: 'Де відбулося це відвідування',
             visitLabel: 'Нотатка лише для цього відвідування, наприклад «Вечеря з Олексою»',
             renameLocation: 'Змінює назву цього місця для всіх його відвідувань',
@@ -152,12 +154,25 @@ export default {
             gapToTrip: 'Під час прогалини ви пересувалися'
         },
         resolution: { merge: 'Об’єднанням сумісних сусідів', previous: 'Подовженням попередньої події', next: 'Подовженням наступної події', gap: 'Залишивши прогалину', dismiss: 'Видалення незаписаного переходу' },
-        kind: {
-            SET_MOVEMENT_TYPE: 'Тип пересування', SET_PLACE: 'Місце', SET_VISIT_NAME: 'Підпис відвідування',
-            FORCE_STAY: 'Примусова зупинка', FORCE_TRIP: 'Примусова поїздка', SET_TIMES: 'Час', SPLIT_STAY: 'Поділ зупинки',
-            MERGE: 'Об’єднання', REMOVE_EVENT: 'Видалена подія'
+        state: { inEffect: 'Діє', undone: 'Скасовано', replaced: 'Замінено' },
+        summary: {
+            placeStay: 'Заповнено {period} зупинкою в {place}',
+            placeTrip: 'Заповнено {period} поїздкою ({type})',
+            placeTripPlaces: 'Заповнено {period} поїздкою ({type}) з {from} до {to}',
+            clear: 'Видалено {event} {period}; {resolution}',
+            resize: 'Час змінено на {period}',
+            changed: 'Змінено хронологію {period}',
+            setPlace: 'Місце змінено на {place}',
+            setTripType: 'Тип пересування змінено на {type}',
+            setLabel: 'Підпис відвідування встановлено: \u201c{label}\u201d',
+            clearLabel: 'Підпис відвідування очищено',
+            setRoute: 'Маршрут поїздки {period} змінено',
+            merge: 'Події {period} об’єднано в одну'
         },
-        status: { ACTIVE: 'Активне', SUPERSEDED: 'Замінене', REVERTED: 'Скасоване' }
+        eventName: { stay: 'зупинку', trip: 'поїздку', gap: 'прогалину' },
+        now: 'Зараз',
+        replacedBy: 'Замінено пізнішою зміною.',
+        dormant: 'Не застосовується: подію видалено пізнішою корекцією.'
     },
     locationEdit: {
         editFavoriteHeader: 'Редагувати обране місце',
@@ -628,23 +643,9 @@ export default {
             viewingTag: 'Перегляд {name}',
             tagPeriod: 'Показано повний період для «{name}»'
         },
-        resetDataGapOverride: {
-            confirmHeader: 'Скинути прогалину в даних',
-            confirmMessage: 'Ви впевнені, що хочете повернути цю прогалину в даних до автоматичного визначення?',
-            successSummary: 'Прогалину скинуто',
-            successDetail: 'Прогалину в даних повернуто до автоматичного визначення.',
-            failedDetail: 'Не вдалося скинути перевизначення прогалини в даних.'
-        },
         resetFailedSummary: 'Не вдалося скинути',
         correctionQueuedSummary: 'Оновлення хронології в черзі',
         correctionQueuedDetail: 'Виправлення збережено. Хронологія оновиться, коли завершиться поточна регенерація.',
-        resetTripSplitOverride: {
-            confirmHeader: 'Скасувати поділ поїздки',
-            confirmMessage: 'Ви впевнені, що хочете скасувати цей ручний поділ поїздки?',
-            successSummary: 'Поділ поїздки скасовано',
-            successDetail: 'Ручний поділ поїздки скасовано.',
-            failedDetail: 'Не вдалося скасувати поділ поїздки.'
-        },
         reconstruction: {
             updatedSummary: 'Хронологію оновлено',
             updatedDetail: 'Вашу хронологію оновлено відновленими даними.',

@@ -17,7 +17,8 @@
         </div>
       </div>
 
-      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)" @loaded="savedEdits = $event" /></div>
+      <div v-show="!action" ref="changesSection" tabindex="-1"><TimelineChangesList ref="changesList" :visible="visible" :item="item" @changed="emit('submitted', $event)"
+        @replace="emit('replace', $event)" /></div>
       <template v-if="!action">
         <section class="edit-action-section">
           <h3>{{ t('timeline.edit.details') }}</h3>
@@ -35,7 +36,7 @@
           <h3>{{ t('timeline.edit.moreChanges') }}</h3>
           <p v-if="item.type === 'stay' && !renameAction" role="note">{{ t('timeline.edit.renameUnlinked') }}</p>
           <button v-for="entry in structuralActions" :key="entry.id" class="edit-action-row"
-            :class="{ 'is-danger': entry.id === 'REMOVE_EVENT' }" @click="selectAction(entry)">
+            :class="{ 'is-danger': entry.id === 'CLEAR' }" @click="selectAction(entry)">
             <span class="edit-action-icon"><i :class="entry.icon" /></span>
             <span class="edit-action-text">
               <span>{{ entry.label }}</span>
@@ -55,10 +56,10 @@
         </div>
 
         <p v-if="action.structural" class="edit-step" role="status">{{ t(preview ? 'timeline.edit.reviewReady' : 'timeline.edit.reviewFirst') }}</p>
-        <template v-if="action.id === 'SET_VISIT_NAME'">
-          <Button v-if="activeLabelEdit" type="button" :label="t('timeline.edit.removeLabel')" icon="pi pi-undo" text @click="removeLabel" />
+        <template v-if="action.id === 'SET_LABEL'">
+          <Button v-if="item?.visitName" type="button" :label="t('timeline.edit.removeLabel')" icon="pi pi-undo" text @click="removeLabel" />
           <label>{{ t('timeline.edit.visitLabel') }}
-            <InputText v-model="form.visitName" maxlength="500" required :placeholder="t('timeline.edit.visitLabelPlaceholder')" />
+            <InputText v-model="form.visitName" maxlength="500" :placeholder="t('timeline.edit.visitLabelPlaceholder')" />
           </label>
           <small>{{ t('timeline.edit.visitLabelHint', { location: item.locationName }) }}</small>
         </template>
@@ -68,12 +69,12 @@
             :reference="currentPlace" map-id="timeline-edit-place-map" />
         </template>
 
-        <template v-else-if="action.id === 'SET_MOVEMENT_TYPE'">
+        <template v-else-if="action.id === 'SET_TRIP_TYPE'">
           <label>{{ t('timeline.edit.movementType') }}
             <Select :aria-label="t('timeline.edit.movementType')" v-model="form.movementType" :options="movementTypes" option-label="label" option-value="value" />
           </label>
         </template>
-        <template v-else-if="action.id === 'SET_TIMES'">
+        <template v-else-if="action.id === 'RESIZE'">
           <label>{{ t('timeline.edit.start') }}
             <DatePicker v-model="form.start" @input="onTimeInput('start', $event)" @update:model-value="form.startInvalid = false" show-time fluid :date-format="timezone.getPrimeVueDatePickerFormat()"
               :hour-format="timezone.getTimeFormat() === '12h' ? '12' : '24'" />
@@ -84,7 +85,7 @@
           </label>
           <small>{{ t('timeline.edit.sharedBoundaryHint') }}</small>
         </template>
-        <template v-else-if="action.id === 'SPLIT_STAY'">
+        <template v-else-if="action.id === 'PLACE_STAY'">
           <label>{{ t('timeline.edit.splitAt') }}
             <DatePicker v-model="form.splitAt" @input="onTimeInput('splitAt', $event)" @update:model-value="form.splitAtInvalid = false" show-time fluid :date-format="timezone.getPrimeVueDatePickerFormat()"
               :hour-format="timezone.getTimeFormat() === '12h' ? '12' : '24'" :invalid="splitAtOutside" />
@@ -112,7 +113,7 @@
             </button>
           </div>
         </template>
-        <template v-else-if="action.id === 'REMOVE_EVENT'">
+        <template v-else-if="action.id === 'CLEAR'">
           <p v-if="zeroDurationTrip">{{ t('timeline.edit.dismissTransitionHint') }}</p>
           <label v-else>{{ t('timeline.edit.removeResolution') }}
             <Select v-model="form.resolution" :options="resolutions" option-label="label" option-value="value" />
@@ -179,23 +180,22 @@ const props = defineProps({
   mergePreviousItem: { type: Object, default: null },
   mergeNextItem: { type: Object, default: null }
 })
-const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay', 'rebuild-interval'])
+const emit = defineEmits(['close', 'submitted', 'rename-place', 'split-trip-with-stay', 'rebuild-interval', 'edit-route', 'replace'])
 const { t, te } = useI18n()
 const store = useTimelineStore()
 const timezone = useTimezone()
 const action = ref(null)
 const preview = ref(null)
+const previewToken = ref(null)
 const previewing = ref(false)
 const previewSection = ref(null)
 const saving = ref(false)
 const error = ref('')
 const form = reactive({})
 const formId = useId()
-const savedEdits = ref([])
 const changesList = ref(null)
 const changesSection = ref(null)
 const conflictId = ref(null)
-const activeLabelEdit = computed(() => savedEdits.value.find(edit => edit.kind === 'SET_VISIT_NAME' && edit.status === 'ACTIVE' && edit.target?.type === 'STAY' && Number(edit.target.id) === Number(props.item?.id)))
 let previewVersion = 0
 let initialForm = ''
 function onTimeInput(field, event) {
@@ -204,19 +204,19 @@ function onTimeInput(field, event) {
   if (parsed) form[field] = parsed
 }
 const dirty = computed(() => action.value && JSON.stringify(form) !== initialForm)
-const proposedValue = computed(() => action.value?.id === 'SET_VISIT_NAME' ? form.visitName : movementLabel(form.movementType))
+const proposedValue = computed(() => action.value?.id === 'SET_LABEL' ? form.visitName : movementLabel(form.movementType))
 function movementLabel(value) { return te(`movementTypes.${value}`) ? t(`movementTypes.${value}`) : value }
 function currentValue(id) {
-  if (id === 'SET_VISIT_NAME') return props.item?.visitName || t('timeline.edit.noLabel')
+  if (id === 'SET_LABEL') return props.item?.visitName || t('timeline.edit.noLabel')
   if (id === 'SET_PLACE') return props.item?.locationName
-  if (id === 'SET_TIMES') return formatPeriod(interval.value.start, interval.value.end)
-  if (id === 'SET_MOVEMENT_TYPE') return movementLabel(props.item?.movementType)
+  if (id === 'RESIZE') return formatPeriod(interval.value.start, interval.value.end)
+  if (id === 'SET_TRIP_TYPE') return movementLabel(props.item?.movementType)
   return ''
 }
 const beforeEvents = computed(() => [...new Set([props.previousItem, props.item, props.nextItem, ...(action.value?.id === 'MERGE' ? [form.direction === 'PREVIOUS' ? props.mergePreviousItem : props.mergeNextItem] : [])].filter(Boolean))].sort((a, b) => Date.parse(eventStart(a)) - Date.parse(eventStart(b))))
 function confirmDiscard() { return !dirty.value || window.confirm(t('timeline.edit.discardChanges')) }
 function back() { if (!saving.value && confirmDiscard()) { reset(); action.value = null } }
-function removeLabel() { if (activeLabelEdit.value) changesList.value?.change(activeLabelEdit.value, false) }
+async function removeLabel() { form.visitName = ''; await apply() }
 async function viewConflict() {
   if (!confirmDiscard()) return
   action.value = null
@@ -249,30 +249,31 @@ const entry = (id, key, icon, structural = false, hintKey = key) => ({
 const detailActions = computed(() => {
   if (props.item?.type === 'stay') return [
     entry('SET_PLACE', 'location', 'pi pi-map-marker'),
-    entry('SET_VISIT_NAME', 'visitLabel', 'pi pi-tag'),
-    entry('SET_TIMES', 'times', 'pi pi-clock', true)
+    entry('SET_LABEL', 'visitLabel', 'pi pi-tag'),
+    entry('RESIZE', 'times', 'pi pi-clock', true)
   ]
   if (props.item?.type === 'trip') return [
-    entry('SET_MOVEMENT_TYPE', 'movement', 'pi pi-car'),
-    entry('SET_TIMES', 'times', 'pi pi-clock', true)
+    entry('SET_TRIP_TYPE', 'movement', 'pi pi-car'),
+    entry('RESIZE', 'times', 'pi pi-clock', true)
   ]
   return []
 })
 const renameAction = computed(() => props.item?.type === 'stay' && (props.item.favoriteId || props.item.geocodingId)
   ? entry('RENAME_PLACE', 'renameLocation', 'pi pi-pencil') : null)
 const structuralActions = computed(() => {
-  if (zeroDurationTrip.value) return [entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true, 'dismissTransition')]
+  if (zeroDurationTrip.value) return [entry('CLEAR', 'remove', 'pi pi-trash', true, 'dismissTransition')]
   const merge = directions.value.length
     ? [entry('MERGE', 'merge', 'pi pi-link', true, props.item?.type === 'trip' ? 'mergeTrip' : 'mergeStay')]
     : []
-  if (props.item?.type === 'stay') return [...(renameAction.value ? [renameAction.value] : []), entry('SPLIT_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REBUILD_INTERVAL', 'rebuildInterval', 'pi pi-sync', true), entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+  if (props.item?.type === 'stay') return [...(renameAction.value ? [renameAction.value] : []), entry('PLACE_STAY', 'splitStay', 'pi pi-arrows-h', true), ...merge, entry('REBUILD_INTERVAL', 'rebuildInterval', 'pi pi-sync', true), entry('CLEAR', 'remove', 'pi pi-trash', true)]
   if (props.item?.type === 'trip') {
     // A manual route is copied as-is when an event is carved, so rebuilding a reconstructed trip would leave the
     // remainder with the whole route. Such trips can be removed or merged, not rebuilt.
     const manualRoute = props.item.manualRoute
-    return [...(manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge,
+    return [entry('EDIT_ROUTE', 'editRoute', 'pi pi-map'),
+      ...(manualRoute ? [] : [entry('SPLIT_TRIP', 'splitTrip', 'pi pi-map-marker', true)]), ...merge,
       ...(manualRoute ? [] : [entry('REBUILD_INTERVAL', 'rebuildInterval', 'pi pi-sync', true)]),
-      entry('REMOVE_EVENT', 'remove', 'pi pi-trash', true)]
+      entry('CLEAR', 'remove', 'pi pi-trash', true)]
   }
   return []
 })
@@ -292,7 +293,7 @@ const resolutions = computed(() => [
 ].filter(Boolean))
 const currentPlace = computed(() => props.item?.type === 'stay' ? stayPlace(props.item) : null)
 // A gap most often continues the visit before it or leads into the one after it.
-const placeActions = ['SET_PLACE', 'SPLIT_STAY']
+const placeActions = ['SET_PLACE', 'PLACE_STAY']
 // The split time is checked rather than limited in the picker: a limited picker refuses each intermediate step, so
 // changing 17:22 to 16:59 is impossible when the hour goes first and 16:22 falls before the visit.
 const splitAtOutside = computed(() => {
@@ -309,31 +310,31 @@ const splitAtBounds = computed(() => {
 })
 const validInput = computed(() => {
   if (!action.value || saving.value) return false
-  if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid)) return false
-  if (action.value.id === 'SPLIT_STAY' && form.splitAtInvalid) return false
-  if (action.value.id === 'SET_VISIT_NAME' && (!form.visitName?.trim() || form.visitName.trim() === (props.item?.visitName || ''))) return false
-  if (action.value.id === 'SET_MOVEMENT_TYPE' && form.movementType === props.item?.movementType) return false
-  if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return false
+  if (action.value.id === 'RESIZE' && (form.startInvalid || form.endInvalid)) return false
+  if (action.value.id === 'PLACE_STAY' && form.splitAtInvalid) return false
+  if (action.value.id === 'SET_LABEL' && form.visitName.trim() === (props.item?.visitName || '')) return false
+  if (action.value.id === 'SET_TRIP_TYPE' && form.movementType === props.item?.movementType) return false
+  if (action.value.id === 'CLEAR' && !form.resolution) return false
   if (placeActions.includes(action.value.id) && !form.place) return false
   if (action.value.id === 'SET_PLACE' && form.place?.source === 'custom' && !form.place.locationName?.trim()) return false
   if (action.value.id === 'SET_PLACE' && samePlace(form.place, currentPlace.value)) return false
-  if (action.value.id === 'SPLIT_STAY' && (!fromPickerDate(form.splitAt) || splitAtOutside.value)) return false
-  if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)) || (Date.parse(fromPickerDate(form.start)) === Date.parse(interval.value.start) && Date.parse(fromPickerDate(form.end)) === Date.parse(interval.value.end)))) return false
+  if (action.value.id === 'PLACE_STAY' && (!fromPickerDate(form.splitAt) || splitAtOutside.value)) return false
+  if (action.value.id === 'RESIZE' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)) || (Date.parse(fromPickerDate(form.start)) === Date.parse(interval.value.start) && Date.parse(fromPickerDate(form.end)) === Date.parse(interval.value.end)))) return false
   return true
 })
 
 const canApply = computed(() => validInput.value && !previewing.value && (!action.value?.structural || preview.value !== null))
 const validationMessage = computed(() => {
   if (!action.value || saving.value) return ''
-  if (action.value.id === 'SET_TIMES' && !form.startInvalid && !form.endInvalid && form.start && form.end
+  if (action.value.id === 'RESIZE' && !form.startInvalid && !form.endInvalid && form.start && form.end
     && (!fromPickerDate(form.start) || !fromPickerDate(form.end))) return t('timeline.edit.uncertainTime')
-  if (action.value.id === 'SPLIT_STAY' && !form.splitAtInvalid && form.splitAt && !fromPickerDate(form.splitAt)) return t('timeline.edit.uncertainTime')
-  if ((action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end))) || (action.value.id === 'SPLIT_STAY' && (form.splitAtInvalid || !fromPickerDate(form.splitAt)))) return t('timeline.edit.validTimesRequired')
+  if (action.value.id === 'PLACE_STAY' && !form.splitAtInvalid && form.splitAt && !fromPickerDate(form.splitAt)) return t('timeline.edit.uncertainTime')
+  if ((action.value.id === 'RESIZE' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end))) || (action.value.id === 'PLACE_STAY' && (form.splitAtInvalid || !fromPickerDate(form.splitAt)))) return t('timeline.edit.validTimesRequired')
   if (placeActions.includes(action.value.id) && !form.place) return t('timeline.edit.placeRequired')
   if (action.value.id === 'SET_PLACE' && form.place?.source === 'custom' && !form.place.locationName?.trim()) return t('timeline.edit.placeNameRequired')
-  if (action.value.id === 'SET_VISIT_NAME' && !form.visitName?.trim()) return t('timeline.edit.labelRequired')
-  if (action.value.id === 'SET_TIMES' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)))) return t('timeline.edit.invalidTimes')
-  if (action.value.id === 'REMOVE_EVENT' && !form.resolution) return t('timeline.edit.chooseResolution')
+
+  if (action.value.id === 'RESIZE' && (form.startInvalid || form.endInvalid || !fromPickerDate(form.start) || !fromPickerDate(form.end) || Date.parse(fromPickerDate(form.start)) >= Date.parse(fromPickerDate(form.end)))) return t('timeline.edit.invalidTimes')
+  if (action.value.id === 'CLEAR' && !form.resolution) return t('timeline.edit.chooseResolution')
   if (!validInput.value) return t('timeline.edit.unchanged')
   return ''
 })
@@ -341,13 +342,13 @@ watch(() => [props.visible, props.item], async () => {
   reset()
   if (props.visible && props.focusChanges) { await nextTick(); changesSection.value?.focus(); changesSection.value?.scrollIntoView?.({ block: 'start' }) }
 }, { immediate: true })
-watch(form, () => { previewVersion++; preview.value = null; previewing.value = false }, { deep: true, flush: 'sync' })
-watch(() => action.value?.id, () => { previewVersion++; preview.value = null; previewing.value = false })
+watch(form, () => { previewVersion++; preview.value = null; previewToken.value = null; previewing.value = false }, { deep: true, flush: 'sync' })
+watch(() => action.value?.id, () => { previewVersion++; preview.value = null; previewToken.value = null; previewing.value = false })
 
 function reset() {
-  savedEdits.value = []
   action.value = null
   preview.value = null
+  previewToken.value = null
   error.value = ''
   conflictId.value = null
   Object.assign(form, {
@@ -368,6 +369,10 @@ function selectAction(selected) {
     emit('split-trip-with-stay', props.item)
     return
   }
+  if (selected.id === 'EDIT_ROUTE') {
+    emit('edit-route', props.item)
+    return
+  }
   if (selected.id === 'REBUILD_INTERVAL') {
     // The activity editor rebuilds the whole event interval, so it owns the map and the time range itself.
     emit('rebuild-interval', props.item)
@@ -377,41 +382,46 @@ function selectAction(selected) {
   form.place = selected.id === 'SET_PLACE' ? currentPlace.value : null
   action.value = selected
   if (selected.id === 'MERGE') form.direction = directions.value[0]?.value
-  if (selected.id === 'REMOVE_EVENT') form.resolution = zeroDurationTrip.value ? 'DISMISS' : null
+  if (selected.id === 'CLEAR') form.resolution = zeroDurationTrip.value ? 'DISMISS' : null
   initialForm = JSON.stringify(form)
   preview.value = null
   error.value = ''
 }
 
 function request() {
-  const anchorStart = interval.value.start
-  const anchorEnd = interval.value.end
+  let anchorStart = interval.value.start
+  let anchorEnd = interval.value.end
   const payload = {}
-  if (action.value.id === 'SET_VISIT_NAME') payload.visitName = form.visitName.trim()
+  if (action.value.id === 'SET_LABEL') payload.visitName = form.visitName.trim()
   if (action.value.id === 'SET_PLACE') Object.assign(payload, placePayload(form.place))
-  if (action.value.id === 'SET_MOVEMENT_TYPE') payload.movementType = form.movementType
-  if (action.value.id === 'SET_MOVEMENT_TYPE' || zeroDurationTrip.value) {
+  if (action.value.id === 'SET_TRIP_TYPE') payload.movementType = form.movementType
+  if (action.value.id === 'SET_TRIP_TYPE' || zeroDurationTrip.value) {
     payload.sourceType = 'TRIP'
     payload.sourceStartLatitude = props.item.startLatitude ?? props.item.latitude
     payload.sourceStartLongitude = props.item.startLongitude ?? props.item.longitude
     payload.sourceEndLatitude = props.item.endLatitude
     payload.sourceEndLongitude = props.item.endLongitude
   }
-  if (action.value.id === 'SET_TIMES') { payload.start = fromPickerDate(form.start); payload.end = fromPickerDate(form.end) }
-  if (action.value.id === 'SPLIT_STAY') {
-    payload.splitAt = fromPickerDate(form.splitAt)
-    Object.assign(payload, placePayload(form.place, 'right'))
+  if (action.value.id === 'RESIZE') { payload.start = fromPickerDate(form.start); payload.end = fromPickerDate(form.end) }
+  if (action.value.id === 'PLACE_STAY') {
+    // Splitting a visit is a fill over its second half: the chosen place replaces the rest of the visit.
+    anchorStart = fromPickerDate(form.splitAt)
+    Object.assign(payload, placePayload(form.place))
+    payload.explanation = 'MANUAL_SPLIT'
+    payload.carveExplanation = 'MANUAL_SPLIT'
   }
   if (action.value.id === 'MERGE') payload.direction = form.direction
-  if (action.value.id === 'REMOVE_EVENT') payload.resolution = form.resolution
+  if (action.value.id === 'CLEAR') payload.resolution = form.resolution
   const mergePrevious = action.value.id === 'MERGE' && form.direction === 'PREVIOUS' ? props.mergePreviousItem : null
   const mergeNext = action.value.id === 'MERGE' && form.direction === 'NEXT' ? props.mergeNextItem : null
-  const affectedStarts = [anchorStart, props.previousItem && (props.previousItem.timestamp || props.previousItem.startTime),
+  const affectedStarts = [action.value.id === 'PLACE_STAY' ? interval.value.start : anchorStart,
+    props.previousItem && (props.previousItem.timestamp || props.previousItem.startTime),
     mergePrevious && (mergePrevious.timestamp || mergePrevious.startTime)].filter(Boolean)
   const affectedEnds = [anchorEnd, props.nextItem && eventEnd(props.nextItem), mergeNext && eventEnd(mergeNext)].filter(Boolean)
   return {
-    kind: action.value.id, anchorStart, anchorEnd,
-    affectedFrom: affectedStarts.sort()[0], affectedTo: affectedEnds.sort().at(-1), payload
+    op: action.value.id, anchorStart, anchorEnd,
+    affectedFrom: affectedStarts.sort()[0], affectedTo: affectedEnds.sort().at(-1), payload,
+    previewToken: previewToken.value
   }
 }
 
@@ -421,9 +431,10 @@ async function loadPreview() {
   const input = request()
   previewing.value = true; error.value = ''; conflictId.value = null
   try {
-    const result = await store.previewTimelineEdit(input)
+    const result = await store.previewCorrections(input)
     if (version === previewVersion) {
       preview.value = result
+      previewToken.value = result.token || null
       await nextTick()
       if (version === previewVersion) { previewSection.value?.focus(); previewSection.value?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }) }
     }
@@ -439,10 +450,16 @@ async function apply() {
   const input = request()
   saving.value = true; error.value = ''
   try {
-    const result = await store.createTimelineEdit(input)
+    const result = await store.saveCorrections(input)
     initialForm = JSON.stringify(form)
     emit('submitted', { ...result, operation: 'create' })
-  } catch (problem) { showError(problem, 'saveFailed') }
+  } catch (problem) {
+    if (problem?.code === 'TIMELINE_PREVIEW_STALE') {
+      preview.value = null; previewToken.value = null; saving.value = false
+      await loadPreview()
+      error.value = t('timeline.edit.previewChanged')
+    } else showError(problem, 'saveFailed')
+  }
   finally { saving.value = false }
 }
 let opener = null

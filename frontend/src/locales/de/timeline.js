@@ -1,12 +1,12 @@
 export default {
     "edit": {
+        previewChanged: "Die Zeitleiste hat sich geändert. Prüfe die aktualisierte Vorschau vor dem Speichern.",
         "dismissTransitionHint": "Entfernt diesen Übergang, ohne einen der Aufenthalte zu ändern. Dies lässt sich im Änderungsverlauf rückgängig machen.",
         "reviewChanges": "Änderungen prüfen",
         "reviewFirst": "Schritt 1 von 2 · Nimm deine Änderungen vor und gehe dann zur Prüfung weiter.",
         "reviewReady": "Schritt 2 von 2 · Prüfe das Ergebnis unten und speichere dann deine Änderungen.",
         "uncertainTime": "Diese Uhrzeit wird bei der Zeitumstellung übersprungen oder wiederholt. Wähle eine eindeutige Uhrzeit.",
         "validTimesRequired": "Gib ein vollständiges, gültiges Datum mit Uhrzeit ein.",
-        "savedValue": "Gespeichert",
         "placeRequired": "Wähle vor der Prüfung einen Standort.",
         "placeNameRequired": "Gib diesem Ort vor dem Speichern einen Namen.",
         "unchanged": "Ändere einen Wert, um speichern zu können.",
@@ -117,8 +117,9 @@ export default {
         "loadingHistory": "Zeitleistenänderungen werden geladen…",
         "noHistory": "Noch keine Zeitleistenänderungen.",
         "historyFailed": "Zeitleistenänderungen konnten nicht geladen werden.",
-        "unapplied": "Derzeit nicht angewendet; wird nach der Neuberechnung erneut versucht.",
         "revert": "Rückgängig",
+        "replace": "Ersetzen",
+        "replace": "Ersetzen",
         "restore": "Wiederherstellen",
         "undo": "Rückgängig",
         "undoDependents": {
@@ -145,6 +146,7 @@ export default {
             "splitTrip": "Stopp hinzufügen",
             "merge": "Zusammenführen",
             "rebuildInterval": "Dieses Intervall neu aufbauen",
+            "editRoute": "Fahrtroute bearbeiten",
             "remove": "Entfernen",
             "gapToStay": "In Aufenthalt umwandeln",
             "gapToTrip": "In Strecke umwandeln"
@@ -152,6 +154,7 @@ export default {
         "actionHint": {
             "dismissTransition": "Diese Markierung entfernen, ohne einen der Aufenthalte zu ändern",
             "rebuildInterval": "Beschreibe, was hier passiert ist; die übrige Zeit bleibt unverändert",
+            "editRoute": "Route ziehen oder Punkte hinzufügen; die Fahrt behält ihre Zeiten",
             "location": "Wo dieser Besuch stattgefunden hat",
             "visitLabel": "Ein Titel nur für diesen Besuch, etwa „Abendessen mit Alex“",
             "renameLocation": "Ändert den Namen dieses Standorts für alle Besuche",
@@ -172,22 +175,25 @@ export default {
             "gap": "Datenlücke belassen",
             "dismiss": "Nicht aufgezeichneten Übergang entfernen"
         },
-        "kind": {
-            "SET_MOVEMENT_TYPE": "Fortbewegungsart",
-            "SET_PLACE": "Standort",
-            "SET_VISIT_NAME": "Besuchsbezeichnung",
-            "FORCE_STAY": "Erzwungener Aufenthalt",
-            "FORCE_TRIP": "Erzwungene Strecke",
-            "SET_TIMES": "Zeit",
-            "SPLIT_STAY": "Aufenthalt teilen",
-            "MERGE": "Zusammenführen",
-            "REMOVE_EVENT": "Entferntes Ereignis"
+        "state": { "inEffect": "In Kraft", "undone": "Rückgängig", "replaced": "Ersetzt" },
+        "summary": {
+            "placeStay": "{period} mit einem Aufenthalt in {place} gefüllt",
+            "placeTrip": "{period} mit einer {type}-Strecke gefüllt",
+            "placeTripPlaces": "{period} mit einer {type}-Strecke von {from} nach {to} gefüllt",
+            "clear": "{event} {period} entfernt; {resolution}",
+            "resize": "Zeit auf {period} geändert",
+            "changed": "Zeitleiste {period} geändert",
+            "setPlace": "Ort auf {place} geändert",
+            "setTripType": "Bewegungstyp auf {type} geändert",
+            "setLabel": "Besuchslabel auf „{label}“ gesetzt",
+            "clearLabel": "Besuchslabel entfernt",
+            "setRoute": "Route der Fahrt {period} geändert",
+            "merge": "Ereignisse {period} zu einem zusammengeführt"
         },
-        "status": {
-            "ACTIVE": "Aktiv",
-            "SUPERSEDED": "Ersetzt",
-            "REVERTED": "Rückgängig gemacht"
-        }
+        "eventName": { "stay": "Aufenthalt", "trip": "Strecke", "gap": "Datenlücke" },
+        "now": "Jetzt",
+        "replacedBy": "Durch eine spätere Änderung ersetzt.",
+        "dormant": "Wird nicht angewendet: Das Ereignis wurde durch eine spätere Korrektur entfernt."
     },
     "locationEdit": {
         "editFavoriteHeader": "Favorit bearbeiten",
@@ -658,23 +664,9 @@ export default {
             "viewingTag": "{name} wird angezeigt",
             "tagPeriod": "Der gesamte Zeitraum von „{name}“ wird angezeigt"
         },
-        "resetDataGapOverride": {
-            "confirmHeader": "Datenlücke zurücksetzen",
-            "confirmMessage": "Möchtest du diese Datenlücke wirklich auf automatische Erkennung zurücksetzen?",
-            "successSummary": "Datenlücke zurückgesetzt",
-            "successDetail": "Die Datenlücke wird wieder automatisch erkannt.",
-            "failedDetail": "Die Änderung an der Datenlücke konnte nicht zurückgesetzt werden."
-        },
         "resetFailedSummary": "Zurücksetzen fehlgeschlagen",
         "correctionQueuedSummary": "Zeitleistenaktualisierung eingereiht",
         "correctionQueuedDetail": "Die Korrektur ist gespeichert. Die Zeitleiste wird aktualisiert, sobald die laufende Neuberechnung abgeschlossen ist.",
-        "resetTripSplitOverride": {
-            "confirmHeader": "Teilung der Strecke rückgängig machen",
-            "confirmMessage": "Möchtest du diese manuelle Teilung der Strecke wirklich rückgängig machen?",
-            "successSummary": "Teilung rückgängig gemacht",
-            "successDetail": "Die manuelle Teilung der Strecke wurde rückgängig gemacht.",
-            "failedDetail": "Die Teilung der Strecke konnte nicht rückgängig gemacht werden."
-        },
         "reconstruction": {
             "updatedSummary": "Zeitleiste aktualisiert",
             "updatedDetail": "Deine Zeitleiste wurde mit den rekonstruierten Daten aktualisiert.",

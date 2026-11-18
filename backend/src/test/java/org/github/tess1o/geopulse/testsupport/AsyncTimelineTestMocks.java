@@ -22,6 +22,9 @@ public final class AsyncTimelineTestMocks {
         when(service.scheduleTimelineRegenerationFromTimestamp(any(UUID.class), any(Instant.class)))
                 .thenAnswer(ignored -> new AsyncTimelineGenerationService.TimelineSchedulingResult(
                         UUID.randomUUID(), true, false));
+        when(service.scheduleCorrectionRebuild(any(UUID.class)))
+                .thenAnswer(ignored -> new AsyncTimelineGenerationService.TimelineSchedulingResult(
+                        UUID.randomUUID(), true, false));
         QuarkusMock.installMockForType(service, AsyncTimelineGenerationService.class);
     }
 }

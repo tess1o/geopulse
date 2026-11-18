@@ -8,7 +8,7 @@ import java.util.UUID;
  * 08:27–08:31, both too short to be stays), and the office from 08:46. The drive is one trip; tests split the stops
  * out by hand.
  */
-final class CommuteWithStops {
+public final class CommuteWithStops {
 
     static final String DAY = "2026-09-15";
 
@@ -24,7 +24,7 @@ final class CommuteWithStops {
     }
 
     /** The whole day stored for the user, and a full rebuild done. */
-    UUID ingest(TimelineReplayHarness harness, UUID userId) {
+    public UUID ingest(TimelineReplayHarness harness, UUID userId) {
         harness.ingest(userId, track
                 .stay(home, at("06:00"), at("08:00"), 5)
                 .drive(home, bakery, at("08:01"), at("08:15"))

@@ -38,6 +38,7 @@ import java.util.UUID;
 @Slf4j
 public class PlaceDetailsService {
     private static final int VISIT_PATTERNS_MINIMUM_VISITS = 10;
+    @Inject StreamingPersistenceManager materializer;
 
     @Inject
     TimelineStayRepository timelineStayRepository;
@@ -212,7 +213,7 @@ public class PlaceDetailsService {
         favoritesRepository.persist(favorite);
 
         // Update all timeline stays that reference this favorite to maintain data consistency
-        int updatedStays = timelineStayRepository.updateLocationNameByFavoriteId(id, userId, newName);
+        int updatedStays = materializer.updateFavoritePlaceName(userId, id, newName);
 
         log.info("Updated favorite name: id={}, userId={}, newName={}, updatedStays={}",
                 id, userId, newName, updatedStays);

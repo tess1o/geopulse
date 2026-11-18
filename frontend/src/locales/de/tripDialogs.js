@@ -113,41 +113,8 @@ export default {
             "resetSummary": "Fortbewegung zurückgesetzt",
             "resetDetail": "Strecke auf {type} zurückgesetzt",
             "resetFailedSummary": "Zurücksetzen fehlgeschlagen",
-            "resetFailedFallback": "Fortbewegungsart konnte nicht zurückgesetzt werden"
-        }
-    },
-    "dataGapToStay": {
-        "header": "Datenlücke in Aufenthalt umwandeln",
-        "gapTag": "Datenlücke",
-        "unknownTimeRange": "Unbekannter Zeitraum",
-        "locationSourceLabel": "Quelle für den Ort des Aufenthalts",
-        "resolvingLocation": "Ort des letzten bekannten Punkts wird ermittelt …",
-        "defaultLocationLabel": "Standardort:",
-        "unknownLocation": "Unbekannter Ort",
-        "selectedLocationTypeLabel": "Art des gewählten Orts",
-        "searchPlaceLabel": "Favorit oder geocodierten Ort suchen",
-        "searchPlaceholder": "Mindestens 2 Zeichen eingeben …",
-        "latitudePlaceholder": "Breitengrad",
-        "longitudePlaceholder": "Längengrad",
-        "customNamePlaceholder": "Optionaler eigener Ortsname",
-        "convert": "In Aufenthalt umwandeln",
-        "strategyOptions": {
-            "latestPoint": "Letzter bekannter Punkt (Standard)",
-            "selectedLocation": "Gewählter Ort"
-        },
-        "selectedSourceOptions": {
-            "place": "Favorit oder geocodierter Ort",
-            "custom": "Eigene Koordinaten"
-        },
-        "errors": {
-            "previewFailed": "Vorschau des letzten Punkts konnte nicht ermittelt werden",
-            "searchFailed": "Ortssuche fehlgeschlagen"
-        },
-        "toasts": {
-            "convertedSummary": "Umgewandelt",
-            "convertedDetail": "Die Datenlücke wurde in einen Aufenthalt umgewandelt.",
-            "failedSummary": "Umwandeln fehlgeschlagen",
-            "failedFallback": "Datenlücke konnte nicht umgewandelt werden"
+            "resetFailedFallback": "Fortbewegungsart konnte nicht zurückgesetzt werden",
+            "noCorrectionToReset": "Es gibt keine Korrektur der Fortbewegungsart zum Rückgängigmachen. Ändere diese Aktivität über den Korrekturverlauf."
         }
     },
     "gpsPointEdit": {

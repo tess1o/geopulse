@@ -37,7 +37,7 @@ import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assert
 @SerializedDatabaseTest
 class TimelineEditResourceIntegrationTest {
 
-    private static final String EDITS = "/api/v1/timeline/edits";
+    private static final String EDITS = "/api/v1/timeline/corrections";
     private static final Instant START = Instant.parse("2026-10-20T10:00:00Z");
     private static final Instant END = Instant.parse("2026-10-20T12:00:00Z");
 
@@ -70,10 +70,10 @@ class TimelineEditResourceIntegrationTest {
     @Test
     void invalidRequestShapesNeverWrite() {
         var valid = new java.util.LinkedHashMap<String, Object>(Map.of(
-                "kind", "SET_VISIT_NAME", "anchorStart", START.toString(), "anchorEnd", END.toString(),
+                "op", "SET_LABEL", "anchorStart", START.toString(), "anchorEnd", END.toString(),
                 "payload", Map.of("visitName", "Valid")));
         var invalid = new java.util.ArrayList<java.util.Map<String, Object>>();
-        for (String field : new String[]{"kind", "anchorStart", "anchorEnd"}) {
+        for (String field : new String[]{"op", "anchorStart", "anchorEnd"}) {
             var missing = new java.util.LinkedHashMap<>(valid);
             missing.remove(field);
             invalid.add(missing);
@@ -94,21 +94,24 @@ class TimelineEditResourceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "right", "start", "end"})
+    @ValueSource(strings = {"", "start", "end"})
     void conflictingPlaceReferencesNeverWrite(String prefix) {
-        String kind = prefix.equals("right") ? "SPLIT_STAY" : prefix.isEmpty() ? "SET_PLACE" : "FORCE_TRIP";
+        String op = prefix.isEmpty() ? "SET_PLACE" : "PLACE_TRIP";
         var payload = new java.util.LinkedHashMap<String, Object>();
         payload.put(prefix.isEmpty() ? "favoriteId" : prefix + "FavoriteId", 1L);
         payload.put(prefix.isEmpty() ? "geocodingId" : prefix + "GeocodingId", 2L);
-        payload.put("splitAt", START.plusSeconds(3600).toString());
         payload.put("movementType", "WALK");
-        assertInvalidWithoutWrites(Map.of("kind", kind, "anchorStart", START.toString(),
+        if (op.equals("PLACE_TRIP")) {
+            payload.put("startLatitude", 50.0); payload.put("startLongitude", 30.0);
+            payload.put("endLatitude", 51.0); payload.put("endLongitude", 31.0);
+        }
+        assertInvalidWithoutWrites(Map.of("op", op, "anchorStart", START.toString(),
                 "anchorEnd", END.toString(), "payload", payload), "cannot reference both");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"FORCE_STAY", "FORCE_TRIP"})
-    void ongoingGapConversionsAreRejectedButCompletedGapsRemainConvertible(String kind) {
+    @ValueSource(strings = {"PLACE_STAY", "PLACE_TRIP"})
+    void ongoingGapConversionsAreRejectedButCompletedGapsRemainConvertible(String op) {
         QuarkusTransaction.requiringNew().run(() -> {
             UserEntity user = UserEntity.findById(owner.userId());
             gaps.persist(org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity.builder()
@@ -124,9 +127,10 @@ class TimelineEditResourceIntegrationTest {
         var payload = Map.of("locationName", "Cafe", "latitude", 50.0, "longitude", 30.0,
                 "movementType", "WALK", "startLatitude", 50.0, "startLongitude", 30.0,
                 "endLatitude", 50.1, "endLongitude", 30.1);
-        // Even an interior slice must be rejected; the caller supplies no ongoing flag.
-        assertInvalidWithoutWrites(Map.of("kind", kind, "anchorStart", END.plusSeconds(60).toString(),
-                "anchorEnd", END.plusSeconds(1800).toString(), "payload", payload), "Cannot convert an ongoing data gap");
+        // Converting the whole ongoing gap is rejected; past slices remain editable.
+        var ongoing = Map.of("op", op, "anchorStart", END.toString(), "anchorEnd", END.plusSeconds(3600).toString(), "payload", payload);
+        assertThat(authenticated(owner).body(ongoing).post(EDITS + "/preview").jsonPath().getList("warnings.code")).contains("ONGOING_GAP");
+        assertProblemEnvelope(authenticated(owner).body(ongoing).post(EDITS), 409, "TIMELINE_EDIT_CONFLICT");
         QuarkusTransaction.requiringNew().run(() -> {
             var point = new org.github.tess1o.geopulse.gps.model.GpsPointEntity();
             point.setUser(UserEntity.findById(owner.userId()));
@@ -136,7 +140,7 @@ class TimelineEditResourceIntegrationTest {
             point.setCreatedAt(END.plusSeconds(3600));
             entityManager.persist(point);
         });
-        var request = Map.of("kind", kind, "anchorStart", END.toString(),
+        var request = Map.of("op", op, "anchorStart", END.toString(),
                 "anchorEnd", END.plusSeconds(3600).toString(), "payload", payload);
         assertThat(authenticated(owner).body(request).post(EDITS + "/preview").statusCode()).isEqualTo(200);
         assertThat(authenticated(owner).body(request).post(EDITS).statusCode()).isEqualTo(200);
@@ -153,9 +157,9 @@ class TimelineEditResourceIntegrationTest {
     }
 
     @Test
-    void previewsCreatesRevertsAndRestoresOneEditWithDurableRebuildRequests() {
+    void previewsCreatesUndoesAndRestoresOneCorrectionWithDurableRebuildRequests() {
         Map<String, Object> request = Map.of(
-                "kind", "SET_VISIT_NAME",
+                "op", "SET_LABEL",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "payload", Map.of("visitName", "Quiet morning"));
@@ -167,38 +171,42 @@ class TimelineEditResourceIntegrationTest {
 
         Response created = authenticated(owner).body(request).post(EDITS);
         assertThat(created.statusCode()).isEqualTo(200);
-        assertThat(created.jsonPath().getString("edit.beforeValues.locationName")).isEqualTo("Home");
-        assertThat(created.jsonPath().getString("edit.beforeValues.start")).isEqualTo(START.toString());
-        assertThat(created.jsonPath().getMap("edit.beforeValues")).containsKey("visitName");
-        long id = created.jsonPath().getLong("edit.id");
+        assertThat(created.jsonPath().getString("edits[0].beforeValues.locationName")).isEqualTo("Home");
+        assertThat(created.jsonPath().getString("edits[0].beforeValues.start")).isEqualTo(START.toString());
+        assertThat(created.jsonPath().getMap("edits[0].beforeValues")).containsKey("visitName");
+        long id = created.jsonPath().getLong("edits[0].id");
+        String groupId = created.jsonPath().getString("groupId");
+        assertThat(groupId).isNotBlank();
         assertThat(created.jsonPath().getString("timelineJobId")).isNotBlank();
         assertThat(rebuildRequests.find(owner.userId())).isPresent();
 
         Response listed = authenticated(owner).get(EDITS);
         assertThat(listed.statusCode()).isEqualTo(200);
         assertThat(listed.jsonPath().getLong("[0].id")).isEqualTo(id);
-        assertThat(listed.jsonPath().getString("[0].status")).isEqualTo("ACTIVE");
+        assertThat(listed.jsonPath().getString("[0].op")).isEqualTo("SET_LABEL");
+        assertThat(listed.jsonPath().getString("[0].status")).isEqualTo("IN_EFFECT");
 
-        Response reverted = authenticated(owner).post(EDITS + "/" + id + "/revert");
-        assertThat(reverted.statusCode()).isEqualTo(200);
-        assertThat(reverted.jsonPath().getString("edit.status")).isEqualTo("REVERTED");
+        Response undone = authenticated(owner).post(EDITS + "/" + groupId + "/undo");
+        assertThat(undone.statusCode()).isEqualTo(200);
+        assertThat(undone.jsonPath().getString("edits[0].status")).isEqualTo("UNDONE");
 
-        Response restored = authenticated(owner).post(EDITS + "/" + id + "/restore");
+        Response restored = authenticated(owner).post(EDITS + "/" + groupId + "/restore");
         assertThat(restored.statusCode()).isEqualTo(200);
-        assertThat(restored.jsonPath().getString("edit.status")).isEqualTo("ACTIVE");
+        assertThat(restored.jsonPath().getString("edits[0].status")).isEqualTo("IN_EFFECT");
     }
 
     @Test
     void editsAreOwnerOnlyAtEveryEndpoint() {
         Map<String, Object> request = Map.of(
-                "kind", "SET_VISIT_NAME",
+                "op", "SET_LABEL",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "payload", Map.of("visitName", "Private"));
-        long id = authenticated(owner).body(request).post(EDITS).jsonPath().getLong("edit.id");
+        Response created = authenticated(owner).body(request).post(EDITS);
+        String groupId = created.jsonPath().getString("groupId");
 
         assertThat(authenticated(other).get(EDITS).jsonPath().getList("$")).isEmpty();
-        assertProblemEnvelope(authenticated(other).post(EDITS + "/" + id + "/revert"),
+        assertProblemEnvelope(authenticated(other).post(EDITS + "/" + groupId + "/undo"),
                 404, "TIMELINE_EDIT_NOT_FOUND");
         assertProblemEnvelope(given().contentType(ContentType.JSON).body(request).post(EDITS + "/preview"),
                 401, "AUTHENTICATION_REQUIRED");
@@ -206,19 +214,19 @@ class TimelineEditResourceIntegrationTest {
 
     @Test
     void sameFieldEditSupersedesItsPredecessor() {
-        long unrelated = authenticated(owner).body(Map.of("kind", "SET_PLACE", "anchorStart", START.toString(),
+        long unrelated = authenticated(owner).body(Map.of("op", "SET_PLACE", "anchorStart", START.toString(),
                 "anchorEnd", END.toString(), "payload", Map.of("latitude", 51.0, "longitude", 31.0, "locationName", "Independent")))
-                .post(EDITS).jsonPath().getLong("edit.id");
-        long firstId = createVisitName("First").jsonPath().getLong("edit.id");
-        long secondId = createVisitName("Second").jsonPath().getLong("edit.id");
+                .post(EDITS).jsonPath().getLong("edits[0].id");
+        long firstId = createVisitName("First").jsonPath().getLong("edits[0].id");
+        long secondId = createVisitName("Second").jsonPath().getLong("edits[0].id");
 
         Response listed = authenticated(owner).get(EDITS);
         assertThat(listed.statusCode()).isEqualTo(200);
-        assertThat(listed.jsonPath().getString("find { it.id == " + unrelated + " }.status")).isEqualTo("ACTIVE");
+        assertThat(listed.jsonPath().getString("find { it.id == " + unrelated + " }.status")).isEqualTo("IN_EFFECT");
         assertThat(listed.jsonPath().getString("find { it.id == " + firstId + " }.status"))
-                .isEqualTo("SUPERSEDED");
+                .isEqualTo("REPLACED");
         assertThat(listed.jsonPath().getString("find { it.id == " + secondId + " }.status"))
-                .isEqualTo("ACTIVE");
+                .isEqualTo("IN_EFFECT");
     }
 
     @Test
@@ -235,7 +243,7 @@ class TimelineEditResourceIntegrationTest {
         createVisitName("First");
 
         Response second = authenticated(owner).body(Map.of(
-                "kind", "SET_VISIT_NAME",
+                "op", "SET_LABEL",
                 "anchorStart", END.toString(),
                 "anchorEnd", secondEnd.toString(),
                 "affectedFrom", START.toString(),
@@ -244,58 +252,59 @@ class TimelineEditResourceIntegrationTest {
 
         assertThat(second.statusCode()).isEqualTo(200);
         assertThat(authenticated(owner).get(EDITS).jsonPath().getList("status", String.class))
-                .containsExactly("ACTIVE", "ACTIVE");
+                .containsExactly("IN_EFFECT", "IN_EFFECT");
     }
 
     @Test
-    void overlappingStructuralEditsChainInsteadOfConflicting() {
+    void aFillOverAResizedEventRemainsIndependent() {
         Map<String, Object> times = Map.of(
-                "kind", "SET_TIMES",
+                "op", "RESIZE",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "payload", Map.of("start", START.toString(), "end", START.plusSeconds(5400).toString()));
-        long firstId = authenticated(owner).body(times).post(EDITS).jsonPath().getLong("edit.id");
-        long firstSeq = authenticated(owner).get(EDITS).jsonPath().getLong("find { it.id == " + firstId + " }.seq");
+        Response first = authenticated(owner).body(times).post(EDITS);
+        long firstId = first.jsonPath().getLong("edits[0].id");
+        String firstGroup = first.jsonPath().getString("groupId");
 
         Map<String, Object> insertedStay = Map.of(
-                "kind", "FORCE_STAY",
+                "op", "PLACE_STAY",
                 "anchorStart", START.plusSeconds(600).toString(),
                 "anchorEnd", START.plusSeconds(1200).toString(),
                 "payload", Map.of("latitude", 50.45, "longitude", 30.52, "locationName", "Lunch stop"));
         assertThat(authenticated(owner).body(insertedStay).post(EDITS + "/preview").statusCode()).isEqualTo(200);
         Response chained = authenticated(owner).body(insertedStay).post(EDITS);
         assertThat(chained.statusCode()).isEqualTo(200);
-        long secondId = chained.jsonPath().getLong("edit.id");
+        long secondId = chained.jsonPath().getLong("edits[0].id");
+        String secondGroup = chained.jsonPath().getString("groupId");
 
         var edits = authenticated(owner).get(EDITS).jsonPath();
-        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("ACTIVE");
-        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("ACTIVE");
-        assertThat(edits.getList("find { it.id == " + secondId + " }.beforeValues.prerequisiteSequences",
-                Long.class)).containsExactly(firstSeq);
+        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("IN_EFFECT");
+        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("IN_EFFECT");
+        assertThat(edits.getMap("find { it.id == " + secondId + " }.beforeValues")).isNull();
 
-        assertProblemEnvelope(authenticated(owner).post(EDITS + "/" + firstId + "/revert"),
-                409, "TIMELINE_EDIT_CONFLICT");
-        assertThat(authenticated(owner).post(EDITS + "/" + firstId + "/revert?cascade=true").statusCode())
+        assertThat(authenticated(owner).post(EDITS + "/" + firstGroup + "/undo").statusCode())
                 .isEqualTo(200);
         edits = authenticated(owner).get(EDITS).jsonPath();
-        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("REVERTED");
-        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("REVERTED");
+        assertThat(edits.getString("find { it.id == " + firstId + " }.status")).isEqualTo("UNDONE");
+        assertThat(edits.getString("find { it.id == " + secondId + " }.status")).isEqualTo("IN_EFFECT");
+        assertThat(authenticated(owner).post(EDITS + "/" + secondGroup + "/undo").statusCode()).isEqualTo(200);
     }
 
     @Test
     void restoringAnOlderSameFieldEditRejectsANewerActiveEdit() {
-        long firstId = createVisitName("First").jsonPath().getLong("edit.id");
-        assertThat(authenticated(owner).post(EDITS + "/" + firstId + "/revert").statusCode()).isEqualTo(200);
+        Response first = createVisitName("First");
+        String firstGroup = first.jsonPath().getString("groupId");
+        assertThat(authenticated(owner).post(EDITS + "/" + firstGroup + "/undo").statusCode()).isEqualTo(200);
         createVisitName("Second");
 
-        assertProblemEnvelope(authenticated(owner).post(EDITS + "/" + firstId + "/restore"),
+        assertProblemEnvelope(authenticated(owner).post(EDITS + "/" + firstGroup + "/restore"),
                 409, "TIMELINE_EDIT_CONFLICT");
     }
 
     @Test
     void invalidPayloadIsAClientError() {
         Map<String, Object> request = Map.of(
-                "kind", "SET_VISIT_NAME",
+                "op", "SET_LABEL",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "payload", Map.of());
@@ -318,7 +327,7 @@ class TimelineEditResourceIntegrationTest {
             return favorite.getId();
         });
         Map<String, Object> request = Map.of(
-                "kind", "SET_PLACE",
+                "op", "SET_PLACE",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "favoriteId", favoriteId);
@@ -327,8 +336,8 @@ class TimelineEditResourceIntegrationTest {
         assertThat(preview.statusCode()).isEqualTo(200);
         assertThat(preview.jsonPath().getString("events[0].label")).isEqualTo("Cabin");
         Response created = authenticated(owner).body(request).post(EDITS);
-        assertThat(created.jsonPath().getDouble("edit.payload.latitude")).isEqualTo(51.2);
-        assertThat(created.jsonPath().getDouble("edit.payload.longitude")).isEqualTo(31.2);
+        assertThat(created.jsonPath().getDouble("edits[0].payload.latitude")).isEqualTo(51.2);
+        assertThat(created.jsonPath().getDouble("edits[0].payload.longitude")).isEqualTo(31.2);
 
         assertProblemEnvelope(authenticated(other).body(request).post(EDITS + "/preview"),
                 400, "INVALID_TIMELINE_REQUEST");
@@ -336,7 +345,7 @@ class TimelineEditResourceIntegrationTest {
 
     @Test
     void tripEndpointsAreRequiredAndOwnerPlaceReferencesAreResolved() {
-        Map<String, Object> missing = Map.of("kind", "FORCE_TRIP", "anchorStart", START.toString(),
+        Map<String, Object> missing = Map.of("op", "PLACE_TRIP", "anchorStart", START.toString(),
                 "anchorEnd", END.toString(), "payload", Map.of("movementType", "WALK"));
         assertProblemEnvelope(authenticated(owner).body(missing).post(EDITS + "/preview"),
                 400, "INVALID_TIMELINE_REQUEST");
@@ -349,51 +358,13 @@ class TimelineEditResourceIntegrationTest {
             entityManager.flush();
             return favorite.getId();
         });
-        Map<String, Object> request = Map.of("kind", "FORCE_TRIP", "anchorStart", START.toString(),
+        Map<String, Object> request = Map.of("op", "PLACE_TRIP", "anchorStart", START.toString(),
                 "anchorEnd", END.toString(), "payload", Map.of("movementType", "WALK",
                         "startFavoriteId", favoriteId, "endLatitude", 51.3, "endLongitude", 31.3));
         Response created = authenticated(owner).body(request).post(EDITS);
         assertThat(created.statusCode()).isEqualTo(200);
-        assertThat(created.jsonPath().getDouble("edit.payload.startLatitude")).isEqualTo(51.2);
-        assertThat(created.jsonPath().getDouble("edit.payload.startLongitude")).isEqualTo(31.2);
-        assertProblemEnvelope(authenticated(other).body(request).post(EDITS + "/preview"),
-                400, "INVALID_TIMELINE_REQUEST");
-    }
-
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void splitStaySecondPlaceReferenceIsResolvedServerSide(boolean withVisitLabel) {
-        if (withVisitLabel) QuarkusTransaction.requiringNew().run(() -> entityManager.createQuery(
-                "update TimelineStayEntity set visitName = :label where user.id = :userId")
-                .setParameter("label", "Dinner with Alex").setParameter("userId", owner.userId()).executeUpdate());
-        long favoriteId = QuarkusTransaction.requiringNew().call(() -> {
-            FavoritesEntity favorite = FavoritesEntity.builder()
-                    .user(entityManager.getReference(UserEntity.class, owner.userId()))
-                    .geometry(GeoUtils.createPoint(31.2, 51.2))
-                    .name("Gym")
-                    .type(FavoriteLocationType.POINT)
-                    .build();
-            entityManager.persist(favorite);
-            entityManager.flush();
-            return favorite.getId();
-        });
-        Map<String, Object> request = Map.of(
-                "kind", "SPLIT_STAY",
-                "anchorStart", START.toString(),
-                "anchorEnd", END.toString(),
-                "payload", Map.of("splitAt", "2026-10-20T11:00:00Z", "rightFavoriteId", favoriteId));
-
-        Response preview = authenticated(owner).body(request).post(EDITS + "/preview");
-        assertThat(preview.statusCode()).isEqualTo(200);
-        assertThat(preview.jsonPath().getString("events[0].label")).isEqualTo(withVisitLabel ? "Dinner with Alex" : "Home");
-        assertThat(preview.jsonPath().getString("events[1].label")).isEqualTo(withVisitLabel ? "Dinner with Alex" : "Gym");
-        assertThat(preview.jsonPath().getString("events[0].locationName")).isEqualTo("Home");
-        assertThat(preview.jsonPath().getString("events[1].locationName")).isEqualTo("Gym");
-        Response created = authenticated(owner).body(request).post(EDITS);
-        assertThat(created.jsonPath().getString("edit.payload.rightLocationName")).isEqualTo("Gym");
-        assertThat(created.jsonPath().getDouble("edit.payload.rightLatitude")).isEqualTo(51.2);
-        assertThat(created.jsonPath().getDouble("edit.payload.rightLongitude")).isEqualTo(31.2);
-
+        assertThat(created.jsonPath().getDouble("edits[0].payload.startLatitude")).isEqualTo(51.2);
+        assertThat(created.jsonPath().getDouble("edits[0].payload.startLongitude")).isEqualTo(31.2);
         assertProblemEnvelope(authenticated(other).body(request).post(EDITS + "/preview"),
                 400, "INVALID_TIMELINE_REQUEST");
     }
@@ -401,7 +372,7 @@ class TimelineEditResourceIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {"/preview", ""})
     void staleTargetIsAClientErrorAndDoesNotWrite(String endpoint) {
-        var request = Map.of("kind", "SET_VISIT_NAME", "anchorStart", END.toString(),
+        var request = Map.of("op", "SET_LABEL", "anchorStart", END.toString(),
                 "anchorEnd", END.plusSeconds(3600).toString(), "payload", Map.of("visitName", "Stale"));
         assertProblemEnvelope(authenticated(owner).body(request).post(EDITS + endpoint),
                 400, "INVALID_TIMELINE_REQUEST");
@@ -410,21 +381,19 @@ class TimelineEditResourceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"favoriteId", "rightFavoriteId", "startFavoriteId", "endFavoriteId",
-            "geocodingId", "rightGeocodingId", "startGeocodingId", "endGeocodingId"})
+    @ValueSource(strings = {"favoriteId", "startFavoriteId", "endFavoriteId",
+            "geocodingId", "startGeocodingId", "endGeocodingId"})
     void validPlaceReferencesRejectOnlyTheForeignOwnerWithoutWrites(String key) {
         long ownId = createPlace(owner, key);
         long foreignId = createPlace(other, key);
         var payload = new java.util.LinkedHashMap<String, Object>();
-        String kind = key.startsWith("right") ? "SPLIT_STAY"
-                : key.startsWith("start") || key.startsWith("end") ? "FORCE_TRIP" : "SET_PLACE";
-        if (kind.equals("SPLIT_STAY")) payload.put("splitAt", START.plusSeconds(3600).toString());
-        if (kind.equals("FORCE_TRIP")) {
+        String op = key.startsWith("start") || key.startsWith("end") ? "PLACE_TRIP" : "SET_PLACE";
+        if (op.equals("PLACE_TRIP")) {
             payload.putAll(Map.of("movementType", "WALK", "startLatitude", 50.0, "startLongitude", 30.0,
                     "endLatitude", 51.0, "endLongitude", 31.0));
         }
         payload.put(key, ownId);
-        var request = Map.of("kind", kind, "anchorStart", START.toString(), "anchorEnd", END.toString(), "payload", payload);
+        var request = Map.of("op", op, "anchorStart", START.toString(), "anchorEnd", END.toString(), "payload", payload);
         String before = storedState(owner);
         assertThat(authenticated(owner).body(request).post(EDITS + "/preview").statusCode()).isEqualTo(200);
         assertThat(storedState(owner)).isEqualTo(before);
@@ -457,8 +426,8 @@ class TimelineEditResourceIntegrationTest {
         return QuarkusTransaction.requiringNew().call(() -> entityManager.createNativeQuery("""
                 select jsonb_build_object(
                   'edits', (select jsonb_agg(to_jsonb(e) order by id) from timeline_edits e where user_id=:owner),
-                  'applications', (select jsonb_agg(to_jsonb(a) order by a.edit_id) from timeline_edit_applications a
-                      join timeline_edits e on e.id=a.edit_id where e.user_id=:owner),
+                  'applications', (select jsonb_agg(to_jsonb(a) order by a.correction_id) from timeline_correction_effects a
+                      join timeline_edits e on e.id=a.correction_id where e.user_id=:owner),
                   'stays', (select jsonb_agg(to_jsonb(s) order by id) from timeline_stays s where user_id=:owner),
                   'trips', (select jsonb_agg(to_jsonb(t) order by id) from timeline_trips t where user_id=:owner),
                   'gaps', (select jsonb_agg(to_jsonb(g) order by id) from timeline_data_gaps g where user_id=:owner))::text
@@ -468,9 +437,10 @@ class TimelineEditResourceIntegrationTest {
 
     @Test
     void anotherUserCannotRestoreOrEditTheOwnersTimeline() {
-        long id = createVisitName("Private").jsonPath().getLong("edit.id");
-        assertProblemEnvelope(authenticated(other).post(EDITS + "/" + id + "/restore"), 404, "TIMELINE_EDIT_NOT_FOUND");
-        var request = Map.of("kind", "SET_VISIT_NAME", "anchorStart", START.toString(), "anchorEnd", END.toString(), "payload", Map.of("visitName", "Intruder"));
+        Response created = createVisitName("Private");
+        String groupId = created.jsonPath().getString("groupId");
+        assertProblemEnvelope(authenticated(other).post(EDITS + "/" + groupId + "/restore"), 404, "TIMELINE_EDIT_NOT_FOUND");
+        var request = Map.of("op", "SET_LABEL", "anchorStart", START.toString(), "anchorEnd", END.toString(), "payload", Map.of("visitName", "Intruder"));
         for (String endpoint : new String[]{"/preview", ""}) assertProblemEnvelope(
                 authenticated(other).body(request).post(EDITS + endpoint), 400, "INVALID_TIMELINE_REQUEST");
         assertThat(authenticated(owner).get(EDITS).jsonPath().getString("[0].payload.visitName")).isEqualTo("Private");
@@ -480,16 +450,15 @@ class TimelineEditResourceIntegrationTest {
     @Test
     void invalidStructuralPayloadsNeverWrite() {
         var cases = java.util.List.of(
-                Map.of("kind", "SPLIT_STAY", "payload", Map.of("splitAt", START.toString())),
-                Map.of("kind", "SPLIT_STAY", "payload", Map.of("splitAt", END.toString())),
-                Map.of("kind", "SET_TIMES", "payload", Map.of("start", END.toString(), "end", START.toString())),
-                Map.of("kind", "REMOVE_EVENT", "payload", Map.of("resolution", "EXTEND_PREVIOUS")),
-                Map.of("kind", "REMOVE_EVENT", "payload", Map.of("resolution", "EXTEND_NEXT")),
-                Map.of("kind", "SET_MOVEMENT_TYPE", "payload", Map.of("movementType", "INVALID")),
-                Map.of("kind", "SET_PLACE", "payload", Map.of()),
-                Map.of("kind", "FORCE_STAY", "payload", Map.of("latitude", 91, "longitude", 30)),
-                Map.of("kind", "SET_PLACE", "payload", Map.of("latitude", 50)),
-                Map.of("kind", "SPLIT_STAY", "payload", Map.of("splitAt", START.plusSeconds(3600).toString(), "rightLatitude", 50, "rightLongitude", 181)));
+                Map.of("op", "RESIZE", "payload", Map.of("start", END.toString(), "end", START.toString())),
+                Map.of("op", "CLEAR", "payload", Map.of("resolution", "EXTEND_PREVIOUS")),
+                Map.of("op", "CLEAR", "payload", Map.of("resolution", "EXTEND_NEXT")),
+                Map.of("op", "SET_TRIP_TYPE", "payload", Map.of("movementType", "INVALID")),
+                Map.of("op", "RESIZE", "payload", Map.of("start", "not-a-timestamp", "end", END.toString())),
+                Map.of("op", "SET_LABEL", "payload", java.util.List.of("not-an-object")),
+                Map.of("op", "SET_PLACE", "payload", Map.of()),
+                Map.of("op", "PLACE_STAY", "payload", Map.of("latitude", 91, "longitude", 30)),
+                Map.of("op", "SET_PLACE", "payload", Map.of("latitude", 50)));
         for (var invalid : cases) {
             var request = new java.util.LinkedHashMap<String, Object>(invalid);
             request.put("anchorStart", START.toString()); request.put("anchorEnd", END.toString());
@@ -501,11 +470,13 @@ class TimelineEditResourceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"create", "revert", "restore"})
+    @ValueSource(strings = {"create", "undo", "restore"})
     void unifiedMutationsRespectTheOwnerLockWithoutPartialWrites(String operation) throws Exception {
-        long id = createVisitName("Original").jsonPath().getLong("edit.id");
+        Response created = createVisitName("Original");
+        long id = created.jsonPath().getLong("edits[0].id");
+        String groupId = created.jsonPath().getString("groupId");
         if (operation.equals("restore")) {
-            assertThat(authenticated(owner).post(EDITS + "/" + id + "/revert").statusCode()).isEqualTo(200);
+            assertThat(authenticated(owner).post(EDITS + "/" + groupId + "/undo").statusCode()).isEqualTo(200);
         }
         String before = storedState(owner);
         QuarkusTransaction.requiringNew().run(() -> stays.persist(TimelineStayEntity.builder()
@@ -525,20 +496,21 @@ class TimelineEditResourceIntegrationTest {
         try {
             assertThat(locked.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
             Response rejected = operation.equals("create") ? createVisitName("Rejected")
-                    : authenticated(owner).post(EDITS + "/" + id + "/" + operation);
+                    : authenticated(owner).post(EDITS + "/" + groupId + "/" + operation);
             assertProblemEnvelope(rejected, 409, "TIMELINE_REGENERATION_IN_PROGRESS");
             assertThat(storedState(owner)).isEqualTo(before);
-            assertThat(authenticated(other).body(Map.of("kind", "SET_VISIT_NAME", "anchorStart", START.toString(),
+            assertThat(authenticated(other).body(Map.of("op", "SET_LABEL", "anchorStart", START.toString(),
                     "anchorEnd", END.toString(), "payload", Map.of("visitName", "Independent"))).post(EDITS).statusCode()).isEqualTo(200);
         } finally {
             release.countDown(); holder.join();
         }
         assertThat(storedState(owner)).isEqualTo(before);
+        assertThat(id).isPositive();
     }
 
     private Response createVisitName(String name) {
         return authenticated(owner).body(Map.of(
-                "kind", "SET_VISIT_NAME",
+                "op", "SET_LABEL",
                 "anchorStart", START.toString(),
                 "anchorEnd", END.toString(),
                 "payload", Map.of("visitName", name))).post(EDITS);

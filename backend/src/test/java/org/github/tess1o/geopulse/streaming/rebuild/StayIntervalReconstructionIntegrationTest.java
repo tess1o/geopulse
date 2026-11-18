@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -70,13 +72,14 @@ class StayIntervalReconstructionIntegrationTest {
         deleteApplication(forcedEdit.id());
 
         var request = new ActivityCorrectionService.Request(null, List.of(travel("14:30", "14:34")),
-                at("14:24"), at("14:44"), true);
+                at("14:24"), at("14:44"));
         var preview = corrections.preview(user, request);
         assertThat(preview.events()).extracting(TimelineEditPreviewDTO.Event::type)
                 .containsExactly("STAY", "TRIP", "STAY");
 
         var rebuilt = corrections.save(user, request);
-        harness.fullRebuild(user);
+        assertThat(rebuilt.affectedFrom()).isEqualTo(at("14:24"));
+        harness.regenerateFrom(user, rebuilt.affectedFrom());
 
         var interval = staysBetween(user, at("14:24"), at("14:44"));
         assertThat(interval).extracting(stay -> stay.getTimestamp() + "/" + stay.getStayDuration())
@@ -89,6 +92,7 @@ class StayIntervalReconstructionIntegrationTest {
         assertThat(inserted.getTimestamp()).isEqualTo(at("14:30"));
         assertThat(inserted.getTripDuration()).isEqualTo(240L);
         assertThat(inserted.getManualRoute()).hasSize(3);
+        var corrected = harness.snapshot(user).contentAcrossUsers();
 
         corrections.changeStatus(user, rebuilt.groupId(), false);
         harness.fullRebuild(user);
@@ -101,6 +105,7 @@ class StayIntervalReconstructionIntegrationTest {
         harness.fullRebuild(user);
         assertThat(staysBetween(user, at("14:24"), at("14:44"))).hasSize(2);
         assertThat(onlyTrip(user).getTimestamp()).isEqualTo(at("14:30"));
+        assertThat(harness.snapshot(user).contentAcrossUsers()).containsExactlyElementsOf(corrected);
     }
 
     @Test
@@ -110,7 +115,7 @@ class StayIntervalReconstructionIntegrationTest {
         var homeEnd = homeStay.getTimestamp().plusSeconds(homeStay.getStayDuration());
         var request = new ActivityCorrectionService.Request(null, List.of(
                 stay("06:30", "06:45", 49.8420, 24.0310, "Home stop"),
-                travel("07:00", "07:10")), homeStay.getTimestamp(), homeEnd, true);
+                travel("07:00", "07:10")), homeStay.getTimestamp(), homeEnd);
 
         var rebuilt = corrections.save(user, request);
         harness.fullRebuild(user);
@@ -143,7 +148,7 @@ class StayIntervalReconstructionIntegrationTest {
 
         corrections.save(user, new ActivityCorrectionService.Request(null, List.of(
                 stay("08:10", "08:20", 49.8385, 24.0530, "Bakery"),
-                travel("08:20", "08:30")), trip.getTimestamp(), end, true));
+                travel("08:20", "08:30")), trip.getTimestamp(), end));
         harness.fullRebuild(user);
 
         List<TimelineStayEntity> insertedStay = QuarkusTransaction.requiringNew().call(() -> stays
@@ -159,26 +164,26 @@ class StayIntervalReconstructionIntegrationTest {
     }
 
     @Test
-    void activitiesOutsideTheIntervalAndOverlapsAreRejectedWithoutWrites() {
+    void activitiesOutsideTheContextAreAllowedButOverlapsAreRejectedWithoutWrites() {
         var user = harness.createUser("rebuild-invalid");
         corrections.save(user, new ActivityCorrectionService.Request(null,
                 List.of(stay("14:24", "15:24", 49.82, 24.01, "Knowle Lane")), at("14:00"), at("16:00")));
         harness.fullRebuild(user);
-        var before = edits.list(user).size();
 
+        // Context only bounds the preview; a fill may extend outside it and carve whatever is there.
         var outside = new ActivityCorrectionService.Request(null, List.of(travel("15:30", "15:40")),
-                at("14:24"), at("14:44"), true);
-        assertThatThrownBy(() -> corrections.save(user, outside))
-                .isInstanceOf(GeoPulseException.class)
-                .hasMessageContaining("inside");
+                at("14:24"), at("14:44"));
+        var saved = corrections.save(user, outside);
+        assertThat(saved.edits()).hasSize(1);
 
+        var after = edits.list(user).size();
         var overlap = new ActivityCorrectionService.Request(null, List.of(
-                stay("14:30", "14:40", 49.82, 24.01, "One"),
-                stay("14:35", "14:44", 49.82, 24.01, "Two")), at("14:24"), at("14:44"), true);
+                stay("15:30", "15:40", 49.82, 24.01, "One"),
+                stay("15:35", "15:44", 49.82, 24.01, "Two")), at("14:24"), at("14:44"));
         assertThatThrownBy(() -> corrections.save(user, overlap))
                 .isInstanceOf(GeoPulseException.class);
 
-        assertThat(edits.list(user)).hasSize(before);
+        assertThat(edits.list(user)).hasSize(after);
     }
 
     @Test
@@ -191,34 +196,36 @@ class StayIntervalReconstructionIntegrationTest {
         harness.fullRebuild(user);
         assertThat(harness.pendingRebuild(user)).isEmpty();
 
-        corrections.save(user, new ActivityCorrectionService.Request(null, List.of(travel("14:30", "14:34")),
-                at("14:24"), at("14:44"), true));
+        var rebuilt = corrections.save(user, new ActivityCorrectionService.Request(null, List.of(travel("14:30", "14:34")),
+                at("14:24"), at("14:44")));
 
+        assertThat(rebuilt.affectedFrom()).isEqualTo(at("14:24"));
+        assertThat(rebuilt.edits()).singleElement().satisfies(edit -> assertThat(edit.beforeValues()).isNull());
         assertThat(harness.pendingRebuild(user).orElseThrow().rebuildFrom()).isEqualTo(at("14:24"));
     }
 
     @Test
-    void undoingTheOriginalGroupWaitsForTheRebuiltInterval() {
+    void undoingTheOriginalGroupPreservesTheIndependentNestedTrip() {
         var user = harness.createUser("rebuild-dependent");
         var original = corrections.save(user, new ActivityCorrectionService.Request(null,
                 List.of(stay("14:24", "15:24", 49.82, 24.01, "Knowle Lane")), at("14:00"), at("16:00")));
         harness.fullRebuild(user);
         var rebuilt = corrections.save(user, new ActivityCorrectionService.Request(null,
-                List.of(travel("14:30", "14:34")), at("14:24"), at("15:24"), true));
+                List.of(travel("14:30", "14:34")), at("14:24"), at("15:24")));
         harness.fullRebuild(user);
 
-        assertThatThrownBy(() -> corrections.changeStatus(user, original.groupId(), false))
-                .isInstanceOf(GeoPulseException.class)
-                .hasMessageContaining("Undo the later correction first");
-
-        corrections.changeStatus(user, original.groupId(), false, true);
+        corrections.changeStatus(user, original.groupId(), false);
         harness.fullRebuild(user);
         assertThat(QuarkusTransaction.requiringNew().call(() -> stays.count("user.id", user))).isZero();
-        assertThat(edits.list(user)).allSatisfy(edit -> {
-            assertThat(edit.status()).isEqualTo(TimelineEditStatus.REVERTED);
-            assertThat(edit.groupId() == null || edit.groupId().equals(original.groupId())
-                    || edit.groupId().equals(rebuilt.groupId())).isTrue();
-        });
+        assertThat(onlyTrip(user).getTimestamp()).isEqualTo(at("14:30"));
+        assertThat(edits.list(user)).filteredOn(edit -> original.groupId().equals(edit.groupId()))
+                .singleElement().satisfies(edit -> assertThat(edit.status())
+                        .isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.UNDONE));
+        assertThat(edits.list(user)).filteredOn(edit -> rebuilt.groupId().equals(edit.groupId()))
+                .singleElement().satisfies(edit -> {
+                    assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
+                    assertThat(edit.applied()).isTrue();
+                });
     }
 
     @ParameterizedTest(name = "Undo multi-activity rebuild, cascade={0}")
@@ -232,14 +239,14 @@ class StayIntervalReconstructionIntegrationTest {
 
         var request = new ActivityCorrectionService.Request(null, List.of(
                 stay("14:30", "14:35", 49.83, 24.03, "Inserted stop"),
-                travel("14:40", "14:44")), at("14:24"), at("15:24"), true);
+                travel("14:40", "14:44")), at("14:24"), at("15:24"));
         corrections.preview(user, request);
         var rebuilt = corrections.save(user, request);
         harness.fullRebuild(user);
 
         assertThat(edits.list(user)).filteredOn(edit -> rebuilt.groupId().equals(edit.groupId()))
                 .hasSize(2).allSatisfy(edit -> {
-                    assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
+                    assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
                     assertThat(edit.applied()).isTrue();
                 });
         assertThat(staysBetween(user, at("14:24"), at("15:24"))).hasSize(4);
@@ -251,9 +258,9 @@ class StayIntervalReconstructionIntegrationTest {
         harness.fullRebuild(user);
 
         assertThat(edits.list(user)).filteredOn(edit -> rebuilt.groupId().equals(edit.groupId()))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.REVERTED));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.UNDONE));
         assertThat(edits.list(user)).filteredOn(edit -> original.groupId().equals(edit.groupId()))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT));
         assertThat(staysBetween(user, at("14:24"), at("15:24"))).singleElement().satisfies(stay -> {
             assertThat(stay.getTimestamp()).isEqualTo(at("14:24"));
             assertThat(stay.getStayDuration()).isEqualTo(3600L);
@@ -266,7 +273,7 @@ class StayIntervalReconstructionIntegrationTest {
 
         assertThat(edits.list(user)).filteredOn(edit -> rebuilt.groupId().equals(edit.groupId()))
                 .hasSize(2).allSatisfy(edit -> {
-                    assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
+                    assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT);
                     assertThat(edit.applied()).isTrue();
                 });
         assertThat(staysBetween(user, at("14:24"), at("15:24"))).hasSize(4);
@@ -281,14 +288,14 @@ class StayIntervalReconstructionIntegrationTest {
         request.setAnchorEnd(anchorEnd);
         request.setAffectedFrom(affectedFrom);
         request.setAffectedTo(affectedTo);
-        request.getPayload().put("start", start.toString());
-        request.getPayload().put("end", end.toString());
+        put(request, "start", start.toString());
+        put(request, "end", end.toString());
         edits.create(user, request);
     }
 
     private void deleteApplication(Long editId) {
         QuarkusTransaction.requiringNew().run(() -> em
-                .createNativeQuery("DELETE FROM timeline_edit_applications WHERE edit_id = ?1")
+                .createNativeQuery("DELETE FROM timeline_correction_effects WHERE correction_id = ?1")
                 .setParameter(1, editId).executeUpdate());
     }
 

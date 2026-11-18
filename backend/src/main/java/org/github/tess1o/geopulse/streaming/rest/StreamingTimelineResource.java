@@ -6,50 +6,32 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.shared.openapi.ApiTags;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.JobResponse;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
-import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayConversionPreviewDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.LocationLookupResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEventExplanationDetailsDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineOverrideSummaryDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditMutationResponse;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditPreviewDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.geocoding.service.LocationTimezoneService;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
-import org.github.tess1o.geopulse.streaming.service.TimelineOverrideListService;
-import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineEventExplanationService;
 import org.jboss.resteasy.reactive.RestResponse;
 
@@ -65,19 +47,14 @@ import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.github.tess1o.geopulse.shared.openapi.ApiExtensions;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_OVERRIDE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_LOCATION_LOOKUP;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_JOB_ID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_REQUEST;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOVEMENT_OVERRIDE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.STAY_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ALREADY_ACTIVE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_IN_PROGRESS;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_EDIT_NOT_FOUND;
 
 @Path("/timeline")
 @Produces(MediaType.APPLICATION_JSON)
@@ -93,15 +70,10 @@ public class StreamingTimelineResource {
     @Inject TimelineJobProgressService jobProgressService;
     @Inject AsyncTimelineGenerationService asyncTimelineGenerationService;
     @Inject org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
-    @Inject DataGapStayOverrideService dataGapStayOverrideService;
-    @Inject StreamingTimelineGenerationService timelineGenerationService;
     @Inject MultiUserTimelineService multiUserTimelineService;
     @Inject TimelineLocationLookupService timelineLocationLookupService;
     @Inject LocationTimezoneService locationTimezoneService;
     @Inject TimelineEventExplanationService timelineEventExplanationService;
-    @Inject TimelineOverrideListService timelineOverrideListService;
-    @Inject TripMovementTypeOverrideService tripMovementTypeOverrideService;
-    @Inject TimelineEditService timelineEditService;
 
     @GET
     @Operation(summary = "Get the timeline",
@@ -188,137 +160,6 @@ public class StreamingTimelineResource {
     }
 
     @GET
-    @Path("/edits")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Operation(summary = "List timeline edits",
-            description = "Lists every one-off edit of the signed-in user's timeline in application order.")
-    public List<TimelineEditDTO> listEdits() {
-        return timelineEditService.list(currentUserService.getCurrentUserId());
-    }
-
-    @POST
-    @Path("/edits/preview")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Operation(summary = "Preview a timeline edit",
-            description = "Applies one proposed edit in memory and returns the affected event sequence without saving it.")
-    public TimelineEditPreviewDTO previewEdit(TimelineEditRequest request) {
-        try {
-            return timelineEditService.preview(currentUserService.getCurrentUserId(), request);
-        } catch (IllegalArgumentException e) {
-            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid timeline edit", e);
-        }
-    }
-
-    @POST
-    @Path("/edits")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Operation(summary = "Create a timeline edit",
-            description = "Stores one reversible edit and durably requests timeline regeneration.")
-    public TimelineEditMutationResponse createEdit(TimelineEditRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
-        try {
-            var edit = timelineEditService.create(userId, request);
-            var scheduling = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
-                    userId, edit.affectedFrom());
-            return new TimelineEditMutationResponse(edit,
-                    scheduling.jobId(), scheduling.queued());
-        } catch (TimelineGenerationLockException e) {
-            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
-                    "The timeline is being regenerated; try again when it has finished", e);
-        } catch (IllegalArgumentException e) {
-            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid timeline edit", e);
-        }
-    }
-
-    @POST
-    @Path("/edits/{editId}/revert")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Operation(summary = "Revert a timeline edit",
-            description = "Deactivates one edit and durably requests timeline regeneration. With cascade=true, also "
-                    + "reverts the later active edits that depend on it.")
-    public TimelineEditMutationResponse revertEdit(@PathParam("editId") Long editId,
-            @QueryParam("cascade") @DefaultValue("false") boolean cascade) {
-        return changeEditStatus(editId, false, cascade);
-    }
-
-    @POST
-    @Path("/edits/{editId}/restore")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Operation(summary = "Restore a reverted timeline edit",
-            description = "Reactivates a reverted edit when it does not conflict with a newer active edit.")
-    public TimelineEditMutationResponse restoreEdit(@PathParam("editId") Long editId) {
-        return changeEditStatus(editId, true, false);
-    }
-
-    private TimelineEditMutationResponse changeEditStatus(Long editId, boolean restore, boolean cascade) {
-        UUID userId = currentUserService.getCurrentUserId();
-        try {
-            if (timelineEditService.grouped(userId, editId))
-                throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Use the activity correction group to undo or restore this change");
-            var edit = (restore ? timelineEditService.restore(userId, editId)
-                    : timelineEditService.revert(userId, editId, cascade))
-                    .orElseThrow(() -> new GeoPulseException(TIMELINE_EDIT_NOT_FOUND,
-                            "Timeline edit not found or access denied", Map.of("editId", editId)));
-            var scheduling = asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
-                    userId, edit.affectedFrom());
-            return new TimelineEditMutationResponse(edit,
-                    scheduling.jobId(), scheduling.queued());
-        } catch (TimelineGenerationLockException e) {
-            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
-                    "The timeline is being regenerated; try again when it has finished", e);
-        }
-    }
-
-    @GET
-    @Path("/overrides")
-    @Operation(summary = "List timeline corrections",
-            description = "All manual corrections of the signed-in user's timeline (movement types set by hand, trip "
-                    + "splits, data gaps turned into stays), oldest first, each with whether the timeline shows it "
-                    + "now. A correction is not applied when the event it corrected no longer comes out of the GPS "
-                    + "data, for instance after its points were deleted; it applies again should the event return.")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    public List<TimelineOverrideSummaryDTO> listOverrides() {
-        return timelineOverrideListService.listOverrides(currentUserService.getCurrentUserId());
-    }
-
-    @DELETE
-    @Path("/movement-overrides/{overrideId}")
-    @Operation(summary = "Remove a movement type correction",
-            description = "Removes a movement type set by hand. The trip it applies to, if any, gets its detected "
-                    + "movement type back. To reset a trip shown on the timeline, `DELETE "
-                    + "/api/v1/trips/{tripId}/timeline/movement-type` does the same by trip.")
-    @APIResponse(responseCode = "204", description = "Correction removed")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    public void removeMovementOverride(
-            @Parameter(description = "ID of the movement type correction, as listed by `GET "
-                    + "/api/v1/timeline/overrides`.")
-            @PathParam("overrideId") Long overrideId) {
-        if (!tripMovementTypeOverrideService.removeOverride(currentUserService.getCurrentUserId(), overrideId)) {
-            throw new GeoPulseException(MOVEMENT_OVERRIDE_NOT_FOUND, "Movement type correction not found",
-                    Map.of("overrideId", overrideId));
-        }
-    }
-
-    @DELETE
-    @Path("/stay-split-overrides/{overrideId}")
-    @Operation(summary = "Undo a trip split",
-            description = "Removes a manual split that turned part of a trip into a stay. The affected timeline is "
-                    + "regenerated in the background; `timelineJobId` is the job to follow (null when it could not "
-                    + "start now, for instance while another regeneration runs; it then runs after it).")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    public TripStaySplitResponse resetTripStaySplitOverride(
-            @Parameter(description = "ID of the stay-split override.")
-            @PathParam("overrideId") Long overrideId) {
-        UUID userId = currentUserService.getCurrentUserId();
-        TripStaySplitResponse response = timelineGenerationService.resetTripStaySplitOverride(userId, overrideId)
-                .orElseThrow(() -> new GeoPulseException(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
-                        "Trip split override not found or access denied", Map.of("overrideId", overrideId)));
-        var scheduling = asyncTimelineGenerationService
-                .scheduleTimelineRegenerationFromTimestamp(userId, response.regenerationStartTime());
-        return response.withTimelineJob(scheduling.jobId(), scheduling.queued());
-    }
-
-    @GET
     @Path("/stays/{stayId}/explanation")
     @Operation(summary = "Explain a stay",
             description = "Why the timeline engine created this stay as it is: its recorded reasons, its GPS points "
@@ -361,68 +202,6 @@ public class StreamingTimelineResource {
         return timelineEventExplanationService.explainDataGap(gapId, currentUserService.getCurrentUserId())
                 .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
                         Map.of("gapId", gapId)));
-    }
-
-    @GET
-    @Path("/data-gaps/{gapId}/stay-conversion-preview")
-    @Operation(summary = "Preview converting a data gap to a stay",
-            description = "Shows the stay that would replace a data gap if it were converted: the location (the last "
-                    + "known point before the gap) and the time range.")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    @Extension(name = ApiExtensions.INTERNAL, value = "true", parseValue = true)
-    public DataGapStayConversionPreviewDTO getDataGapStayConversionPreview(
-            @Parameter(description = "Data gap ID, as returned by the timeline.")
-            @PathParam("gapId") Long gapId) {
-        try {
-            return dataGapStayOverrideService
-                    .previewLatestPointConversion(currentUserService.getCurrentUserId(), gapId)
-                    .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
-                            Map.of("gapId", gapId)));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid data gap conversion request", e);
-        }
-    }
-
-    @PUT
-    @Path("/data-gaps/{gapId}/stay-conversion")
-    @Operation(summary = "Convert a data gap to a stay",
-            description = "Replaces a data gap with a stay, for example when the phone stopped sending data while "
-                    + "you stayed in one place. The conversion is saved as an override and kept when the timeline "
-                    + "is regenerated.")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    public DataGapStayOverrideResponseDTO convertDataGapToStay(
-            @Parameter(description = "Data gap ID, as returned by the timeline.")
-            @PathParam("gapId") Long gapId, DataGapStayOverrideRequest request) {
-        try {
-            return dataGapStayOverrideService
-                    .convertGapToStay(currentUserService.getCurrentUserId(), gapId, request)
-                    .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
-                            Map.of("gapId", gapId)));
-        } catch (TimelineGenerationLockException e) {
-            throw new GeoPulseException(TIMELINE_REGENERATION_IN_PROGRESS,
-                    "The timeline is being regenerated; try again when it has finished", e);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid data gap conversion request", e);
-        }
-    }
-
-    @DELETE
-    @Path("/data-gap-overrides/{overrideId}/stay-conversion")
-    @Operation(summary = "Undo a data gap conversion",
-            description = "Removes a data-gap-to-stay override so the period is shown as a data gap again. The "
-                    + "affected timeline is regenerated in the background; `timelineJobId` is the job to follow "
-                    + "(null when it could not start now; it then runs later).")
-    @Tag(name = ApiTags.TIMELINE_CORRECTIONS)
-    public DataGapStayOverrideResponseDTO resetDataGapStayOverride(
-            @Parameter(description = "ID of the data gap override.")
-            @PathParam("overrideId") Long overrideId) {
-        UUID userId = currentUserService.getCurrentUserId();
-        DataGapStayOverrideResponseDTO response = timelineGenerationService.resetDataGapStayOverride(userId, overrideId)
-                .orElseThrow(() -> new GeoPulseException(DATA_GAP_OVERRIDE_NOT_FOUND,
-                        "Data gap override not found or access denied", Map.of("overrideId", overrideId)));
-        var scheduling = asyncTimelineGenerationService
-                .scheduleTimelineRegenerationFromTimestamp(userId, response.regenerationStartTime());
-        return response.withTimelineJob(scheduling.jobId(), scheduling.queued());
     }
 
     @GET

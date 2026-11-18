@@ -192,35 +192,6 @@ public class TimelineReplayHarness {
         }
     }
 
-    /**
-     * Rewrites an export's split overrides in the order older exports used ({@code stayStartTime}), which can put a
-     * child split before its parent when the child covers an earlier part of a split leg.
-     */
-    public byte[] exportWithLegacySplitOrder(byte[] export) {
-        try {
-            return withEntry(export, "timeline-overrides.json", content -> {
-                try {
-                    JsonNode root = objectMapper.readTree(content);
-                    JsonNode splits = root.get("tripStaySplitOverrides");
-                    if (splits == null || !splits.isArray()) {
-                        return content;
-                    }
-                    List<JsonNode> ordered = new ArrayList<>();
-                    splits.forEach(ordered::add);
-                    ordered.sort(Comparator.comparing(split -> split.path("stayStartTime").asText()));
-                    ArrayNode sorted = objectMapper.createArrayNode();
-                    ordered.forEach(sorted::add);
-                    ((ObjectNode) root).set("tripStaySplitOverrides", sorted);
-                    return objectMapper.writeValueAsBytes(root);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            });
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
     /** A new user with default timeline settings. */
     public UUID createUser(String prefix) {
         return testUserFactory.createUser(prefix).userId();
@@ -405,6 +376,11 @@ public class TimelineReplayHarness {
     /** A clean rebuild of the whole timeline from the stored points: the reference result. */
     public void fullRebuild(UUID userId) {
         timelineGenerationService.regenerateFullTimeline(userId);
+    }
+
+    /** One regeneration from {@code from}, as the timeline edit endpoints schedule it. */
+    public void regenerateFrom(UUID userId, Instant from) {
+        timelineGenerationService.generateTimelineFromTimestamp(userId, from);
     }
 
     public TimelineSnapshot snapshot(UUID userId) {

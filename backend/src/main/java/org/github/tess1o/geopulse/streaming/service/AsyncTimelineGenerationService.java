@@ -124,6 +124,31 @@ public class AsyncTimelineGenerationService {
         });
     }
 
+    /**
+     * Rebuilds what saved, undone or restored corrections left pending (see
+     * {@link StreamingTimelineGenerationService#regeneratePending}). When the user's timeline is busy the request
+     * stays recorded and the real-time job picks it up.
+     */
+    public TimelineSchedulingResult scheduleCorrectionRebuild(UUID userId) {
+        if (jobProgressService.getUserActiveJob(userId).isPresent() || timelineProcessing(userId)) {
+            return new TimelineSchedulingResult(null, true, true);
+        }
+        try {
+            UUID jobId = createAndRunAsyncJob(userId, id -> {
+                executeCorrectionRebuildWithTransaction(userId, id);
+                finalizeJobAfterTimelineGeneration(id);
+            });
+            return new TimelineSchedulingResult(jobId, true, false);
+        } catch (IllegalStateException e) {
+            return new TimelineSchedulingResult(null, true, true);
+        }
+    }
+
+    @Transactional
+    protected void executeCorrectionRebuildWithTransaction(UUID userId, UUID jobId) {
+        timelineGenerationService.regeneratePending(userId, jobId, "correction");
+    }
+
     public TimelineSchedulingResult scheduleTimelineRegenerationFromTimestamp(UUID userId, Instant earliestAffectedTimestamp) {
         if (earliestAffectedTimestamp == null) {
             return new TimelineSchedulingResult(null, false, false);

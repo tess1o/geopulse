@@ -40,7 +40,6 @@ export default {
         exportingFavorites: 'Експортування обраного...',
         exportingReverseGeocodingData: 'Експортування даних зворотного геокодування...',
         exportingTimelineLabels: 'Експортування міток хронології...',
-        exportingTimelineOverrides: 'Експортування перевизначень хронології...',
         exportingTripWorkspace: 'Експортування робочого простору поїздок...',
         exportingNotificationTemplates: 'Експортування шаблонів сповіщень...',
         exportingGeofencingRules: 'Експортування правил геозон...',

@@ -42,7 +42,6 @@ export default {
         exportingFavorites: 'Favorieten exporteren...',
         exportingReverseGeocodingData: 'Omgekeerde geocoderingsdata exporteren...',
         exportingTimelineLabels: 'Tijdlijnlabels exporteren...',
-        exportingTimelineOverrides: 'Tijdlijnoverschrijvingen exporteren...',
         exportingTripWorkspace: 'Reiswerkruimte exporteren...',
         exportingNotificationTemplates: 'Meldingsjablonen exporteren...',
         exportingGeofencingRules: 'Geofencingregels exporteren...',

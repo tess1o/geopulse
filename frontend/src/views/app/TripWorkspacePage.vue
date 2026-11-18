@@ -181,8 +181,6 @@
                       @rename-stay="handleWorkspaceRenameStay"
                       @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
                       @timeline-edit-submitted="handleWorkspaceTimelineEditSubmitted"
-                      @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
-                      @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
                     />
 
                     <ImmichLatestPhotosSection
@@ -1066,20 +1064,18 @@ const handleWorkspaceTimelineEditSubmitted = async (result) => {
         severity: 'success',
         summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
         detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
-        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeWorkspaceTimelineEdit(result.edit?.id, operation === 'undo', result.groupId || result.edit?.groupId) }
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeWorkspaceTimelineEdit(result.groupId || result.edit?.groupId, operation === 'undo') }
       })
     }
   })
   if (result.timelineJobQueued) finishProgress()
 }
-const changeWorkspaceTimelineEdit = async (editId, restore = false, groupId = null) => {
-  if (!editId || editActionBusy.value) return
+const changeWorkspaceTimelineEdit = async (groupId, restore = false) => {
+  if (!groupId || editActionBusy.value) return
   editActionBusy.value = true
   toast.removeGroup('timeline-edit')
   try {
-    const result = groupId
-      ? await (restore ? timelineStore.restoreActivityCorrection(groupId) : timelineStore.revertActivityCorrection(groupId))
-      : await (restore ? timelineStore.restoreTimelineEdit(editId) : timelineStore.revertTimelineEdit(editId))
+    const result = restore ? await timelineStore.restoreCorrection(groupId) : await timelineStore.undoCorrection(groupId)
     const finish = () => { editActionBusy.value = false }
     await handleWorkspaceTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
     if (!result.timelineJobId || result.timelineJobQueued) finish()
@@ -1087,80 +1083,6 @@ const changeWorkspaceTimelineEdit = async (editId, restore = false, groupId = nu
     editActionBusy.value = false
     toast.add({ severity: 'error', summary: t('common.error'), detail: formatApiErrorDetail(error, t('timeline.edit.undoFailed')), life: 5000 })
   }
-}
-
-const handleWorkspaceResetDataGapOverride = (stayItem, overrideId) => {
-  if (!overrideId) {
-    return
-  }
-
-  confirm.require({
-    header: t('trips.workspacePage.toasts.resetStayOverrideHeader'),
-    message: t('trips.workspacePage.toasts.resetStayOverrideMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    accept: async () => {
-      try {
-        const result = await timelineStore.resetDataGapStayOverride(overrideId)
-        await trackCorrectionRegeneration(result, {
-          failureSummary: t('trips.workspacePage.toasts.resetFailedSummary'),
-          failedDetail: t('trips.workspacePage.toasts.resetOverrideFailedFallback'),
-          onCompleted: async () => {
-            await handleWorkspaceTimelineRefreshRequested()
-            toast.add({
-              severity: 'success',
-              summary: t('trips.workspacePage.toasts.overrideResetSummary'),
-              detail: t('trips.workspacePage.toasts.overrideResetDetail'),
-              life: 3000
-            })
-          }
-        })
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
-          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetOverrideFailedFallback')),
-          life: 5000
-        })
-      }
-    }
-  })
-}
-
-const handleWorkspaceResetTripSplitOverride = (stayItem, overrideId) => {
-  if (!overrideId) {
-    return
-  }
-
-  confirm.require({
-    header: t('trips.workspacePage.toasts.undoTripSplitHeader'),
-    message: t('trips.workspacePage.toasts.undoTripSplitMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    accept: async () => {
-      try {
-        const result = await timelineStore.resetTripStaySplitOverride(overrideId)
-        await trackCorrectionRegeneration(result, {
-          failureSummary: t('trips.workspacePage.toasts.resetFailedSummary'),
-          failedDetail: t('trips.workspacePage.toasts.resetSplitFailedFallback'),
-          onCompleted: async () => {
-            await handleWorkspaceTimelineRefreshRequested()
-            toast.add({
-              severity: 'success',
-              summary: t('trips.workspacePage.toasts.splitResetSummary'),
-              detail: t('trips.workspacePage.toasts.splitResetDetail'),
-              life: 3000
-            })
-          }
-        })
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
-          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetSplitFailedFallback')),
-          life: 5000
-        })
-      }
-    }
-  })
 }
 
 const resolveInitialRange = () => {

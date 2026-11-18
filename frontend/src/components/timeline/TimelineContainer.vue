@@ -313,6 +313,8 @@
       @split-trip-with-stay="handleSplitTripFromEditor"
       @submitted="handleEditSubmitted"
       @rebuild-interval="openIntervalRebuild"
+      @edit-route="openRouteEdit"
+      @replace="openHistoryReplace"
     />
     <TimelineEditHistoryDrawer
       :visible="editHistoryVisible"
@@ -321,12 +323,18 @@
       :reload="loadEditHistory"
       @close="closeEditHistory"
       @changed="handleEditSubmitted"
+      @replace="openHistoryReplace"
     />
     <MissingActivityEditor v-if="rebuildTarget" visible :rebuild-range="rebuildTarget"
       :context-start-time="rebuildTarget.startTime" :context-end-time="rebuildTarget.endTime"
       :fallback-center="rebuildCenter" :initial-viewport="rebuildViewport"
       :timeline-data="timelineData" :read-only="effectiveReadOnly"
       @close="rebuildTarget = null" @committed="finishIntervalRebuild" />
+    <MissingActivityEditor v-if="routeTarget" visible :route-target="routeTarget"
+      :context-start-time="routeTarget.startTime" :context-end-time="routeTarget.endTime"
+      :fallback-center="routeCenter" :initial-viewport="routeViewport"
+      :timeline-data="timelineData" :read-only="effectiveReadOnly"
+      @close="routeTarget = null" @committed="finishRouteEdit" />
   </div>
 </template>
 
@@ -483,8 +491,6 @@ const emit = defineEmits([
   'photo-show-on-map',
   'rename-stay',
   'timeline-refresh-requested',
-  'reset-data-gap-override',
-  'reset-trip-split-override',
   'navigate-date',
   'day-focus-change',
   'timeline-edit-submitted'
@@ -746,8 +752,51 @@ const openIntervalRebuild = (item) => {
     label: item.locationName || item.visitName
   }
 }
+const openHistoryReplace = (entry) => {
+  if (effectiveReadOnly.value || !entry) return
+  closeEditor()
+  closeEditHistory()
+  rebuildTarget.value = {
+    id: entry.id,
+    type: entry.op === 'PLACE_STAY' ? 'stay' : 'trip',
+    startTime: entry.anchorStart,
+    endTime: entry.anchorEnd,
+    latitude: entry.payload?.latitude,
+    longitude: entry.payload?.longitude,
+    movementType: entry.payload?.movementType,
+    label: entry.payload?.locationName
+  }
+}
 const finishIntervalRebuild = (result) => {
   rebuildTarget.value = null
+  handleEditSubmitted({ ...result, operation: 'create' })
+}
+const routeTarget = ref(null)
+const routeCenter = computed(() => {
+  const { startLatitude, startLongitude } = routeTarget.value || {}
+  return Number.isFinite(startLatitude) && Number.isFinite(startLongitude) ? [startLatitude, startLongitude] : undefined
+})
+const routeViewport = computed(() => routeCenter.value ? { center: routeCenter.value, zoom: 14 } : undefined)
+const openRouteEdit = (item) => {
+  if (effectiveReadOnly.value) return
+  closeEditor()
+  closeEditHistory()
+  routeTarget.value = {
+    id: item.id, type: 'trip',
+    startTime: item.timestamp || item.startTime, endTime: itemEnd(item),
+    startLatitude: item.startLatitude ?? item.latitude,
+    startLongitude: item.startLongitude ?? item.longitude,
+    endLatitude: item.endLatitude,
+    endLongitude: item.endLongitude,
+    startLocationName: item.startLocationName,
+    endLocationName: item.endLocationName,
+    locationName: item.locationName,
+    movementType: item.movementType,
+    manualRoute: item.manualRoute
+  }
+}
+const finishRouteEdit = (result) => {
+  routeTarget.value = null
   handleEditSubmitted({ ...result, operation: 'create' })
 }
 
@@ -836,22 +885,6 @@ const handleRenameStay = (stayItem) => {
     return
   }
   emit('rename-stay', stayItem)
-}
-
-const handleResetDataGapOverride = (stayItem, overrideId) => {
-  if (effectiveReadOnly.value) {
-    showReadOnlyToast()
-    return
-  }
-  emit('reset-data-gap-override', stayItem, overrideId)
-}
-
-const handleResetTripSplitOverride = (stayItem, overrideId) => {
-  if (effectiveReadOnly.value) {
-    showReadOnlyToast()
-    return
-  }
-  emit('reset-trip-split-override', stayItem, overrideId)
 }
 
 const handleExportTripAsGpx = async (tripItem) => {
@@ -967,6 +1000,8 @@ const handleTripSplitSaved = (result) => {
 
 const handleMovementTypeUpdated = (updated) => {
   if (!updated?.tripId) return
+  emit('timeline-edit-submitted', updated)
+  if (!updated.movementType) return
   if (selectedTripForClassification.value?.id === updated.tripId) {
     selectedTripForClassification.value.movementType = updated.movementType
     selectedTripForClassification.value.movementTypeSource = updated.movementTypeSource
@@ -987,7 +1022,7 @@ async function loadEditHistory() {
   const end = Date.parse(range[1])
   if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) return
   try {
-    const edits = await timelineStore.fetchTimelineEdits()
+    const edits = await timelineStore.fetchCorrections()
     if (version !== historyLoadVersion) return
     historyEdits.value = edits.filter(edit =>
       Date.parse(edit.affectedFrom || edit.anchorStart) < end &&

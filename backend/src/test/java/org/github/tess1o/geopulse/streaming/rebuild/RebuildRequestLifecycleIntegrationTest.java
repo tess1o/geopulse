@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusMock;
@@ -14,7 +16,7 @@ import org.github.tess1o.geopulse.streaming.model.TimelineRebuildRequest;
 import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor.Outcome;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
-import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
+import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -230,20 +232,20 @@ class RebuildRequestLifecycleIntegrationTest {
         var split = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
         split.setKind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SPLIT_STAY);
         split.setAnchorStart(at("06:00")); split.setAnchorEnd(at("08:00"));
-        split.setPayload(new java.util.LinkedHashMap<>(java.util.Map.of("splitAt", at("07:00").toString(),
+        set(split, new java.util.LinkedHashMap<>(java.util.Map.of("splitAt", at("07:00").toString(),
                 "rightLocationName", "Parked correction", "rightLatitude", 50.0, "rightLongitude", 30.0)));
         var edit = edits.create(userId, split);
         harness.fullRebuild(userId);
         assertThat(edits.list(userId).getFirst().applied()).isTrue();
         AtomicBoolean failing = new AtomicBoolean(true);
-        TripStaySplitOverrideService splits = mock(TripStaySplitOverrideService.class);
+        org.github.tess1o.geopulse.notes.service.TimelineNoteService splits = mock(org.github.tess1o.geopulse.notes.service.TimelineNoteService.class);
         doAnswer(invocation -> {
             if (failing.get()) {
                 throw new IllegalStateException("simulated generation failure");
             }
             return 0;
-        }).when(splits).reapplyManualOverrides(any(UUID.class));
-        QuarkusMock.installMockForType(splits, TripStaySplitOverrideService.class);
+        }).when(splits).reattachAnchoredNotes(any(UUID.class));
+        QuarkusMock.installMockForType(splits, org.github.tess1o.geopulse.notes.service.TimelineNoteService.class);
 
         harness.ingest(userId, commute.driveAndOffice());
         for (int attempt = 1; attempt <= TimelineRebuildRequest.MAX_FAILED_ATTEMPTS; attempt++) {

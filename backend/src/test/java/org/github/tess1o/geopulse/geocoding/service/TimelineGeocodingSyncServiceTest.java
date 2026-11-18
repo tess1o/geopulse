@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -420,10 +422,11 @@ class TimelineGeocodingSyncServiceTest {
         for (UUID user : List.of(USER_A_ID, USER_B_ID)) {
             entityManager.persist(TimelineEditEntity.builder()
                     .user(entityManager.getReference(UserEntity.class, user))
+                    .groupId(java.util.UUID.randomUUID())
                     .seq(1).kind(TimelineEditKind.FORCE_STAY).status(TimelineEditStatus.ACTIVE)
                     .anchorStart(start).anchorEnd(end).affectedFrom(start).affectedTo(end)
                     .placeGeocoding(original).placeName("Street").placeLatitude(TEST_LAT).placeLongitude(TEST_LON)
-                    .payload(new LinkedHashMap<>(Map.of("locationName", "Street", "activityCorrection", true))).build());
+                    .payload(payload(TimelineEditKind.FORCE_STAY, new LinkedHashMap<>(Map.of("locationName", "Street", "activityCorrection", true)))).build());
         }
         entityManager.flush();
 

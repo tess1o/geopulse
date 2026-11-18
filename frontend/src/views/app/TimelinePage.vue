@@ -96,9 +96,7 @@
               @tag-clicked="handleTagClicked"
               @rename-stay="handleRenameStay"
               @timeline-refresh-requested="handleTimelineRefreshRequested"
-              @reset-data-gap-override="handleResetDataGapOverride"
               @reconstruct-gap="openTimelineReconstructionDialog"
-              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handleTimelinePhotoShowOnMap"
               @navigate-date="handleNavigateDate"
               @timeline-edit-submitted="handleTimelineEditSubmitted"
@@ -699,20 +697,18 @@ const handleTimelineEditSubmitted = async (result) => {
         severity: 'success',
         summary: t(`timeline.edit.${operation === 'undo' ? 'undone' : operation === 'redo' ? 'redone' : 'saved'}`),
         detail: t('timeline.edit.resultHint'), life: 7000, group: 'timeline-edit',
-        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeTimelineEdit(result.edit?.id, operation === 'undo', result.groupId || result.edit?.groupId) }
+        data: { actionLabel: t(`timeline.edit.${operation === 'undo' ? 'restore' : 'undo'}`), undo: () => changeTimelineEdit(result.groupId || result.edit?.groupId, operation === 'undo') }
       })
     }
   })
   if (result.timelineJobQueued) finishProgress()
 }
-const changeTimelineEdit = async (editId, restore = false, groupId = null) => {
-  if (!editId || editActionBusy.value) return
+const changeTimelineEdit = async (groupId, restore = false) => {
+  if (!groupId || editActionBusy.value) return
   editActionBusy.value = true
   toast.removeGroup('timeline-edit')
   try {
-    const result = groupId
-      ? await (restore ? timelineStore.restoreActivityCorrection(groupId) : timelineStore.revertActivityCorrection(groupId))
-      : await (restore ? timelineStore.restoreTimelineEdit(editId) : timelineStore.revertTimelineEdit(editId))
+    const result = restore ? await timelineStore.restoreCorrection(groupId) : await timelineStore.undoCorrection(groupId)
     const finish = () => { editActionBusy.value = false }
     await handleTimelineEditSubmitted({ ...result, operation: restore ? 'redo' : 'undo', onUpdated: finish, onUpdateFailed: finish })
     if (!result.timelineJobId || result.timelineJobQueued) finish()
@@ -720,78 +716,6 @@ const changeTimelineEdit = async (editId, restore = false, groupId = null) => {
     editActionBusy.value = false
     toast.add({ severity: 'error', summary: t('common.error'), detail: formatApiErrorDetail(error, t('timeline.edit.undoFailed')), life: 5000 })
   }
-}
-
-const handleResetDataGapOverride = (stayItem, overrideId) => {
-  if (!overrideId) {
-    return
-  }
-
-  confirm.require({
-    header: t('timeline.page.resetDataGapOverride.confirmHeader'),
-    message: t('timeline.page.resetDataGapOverride.confirmMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    accept: async () => {
-      try {
-        const result = await timelineStore.resetDataGapStayOverride(overrideId)
-        await trackCorrectionRegeneration(result, {
-          failedDetail: t('timeline.page.resetDataGapOverride.failedDetail'),
-          onCompleted: async () => {
-            await reloadCurrentRange()
-            toast.add({
-              severity: 'success',
-              summary: t('timeline.page.resetDataGapOverride.successSummary'),
-              detail: t('timeline.page.resetDataGapOverride.successDetail'),
-              life: 3000
-            })
-          }
-        })
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: t('timeline.page.resetFailedSummary'),
-          detail: formatApiErrorDetail(error, t('timeline.page.resetDataGapOverride.failedDetail')),
-          life: 5000
-        })
-      }
-    }
-  })
-}
-
-const handleResetTripSplitOverride = (stayItem, overrideId) => {
-  if (!overrideId) {
-    return
-  }
-
-  confirm.require({
-    header: t('timeline.page.resetTripSplitOverride.confirmHeader'),
-    message: t('timeline.page.resetTripSplitOverride.confirmMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    accept: async () => {
-      try {
-        const result = await timelineStore.resetTripStaySplitOverride(overrideId)
-        await trackCorrectionRegeneration(result, {
-          failedDetail: t('timeline.page.resetTripSplitOverride.failedDetail'),
-          onCompleted: async () => {
-            await reloadCurrentRange()
-            toast.add({
-              severity: 'success',
-              summary: t('timeline.page.resetTripSplitOverride.successSummary'),
-              detail: t('timeline.page.resetTripSplitOverride.successDetail'),
-              life: 3000
-            })
-          }
-        })
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: t('timeline.page.resetFailedSummary'),
-          detail: formatApiErrorDetail(error, t('timeline.page.resetTripSplitOverride.failedDetail')),
-          life: 5000
-        })
-      }
-    }
-  })
 }
 
 const openMatchingTripWorkspace = () => {

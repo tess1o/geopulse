@@ -146,7 +146,6 @@ export default {
             favoriteLocations: 'Geanonimiseerde favoriete locaties met verschoven coördinaten',
             favoriteAreas: 'Geanonimiseerde favoriete gebieden met verschuiven grenzen',
             reverseGeocoding: 'Geanonimiseerde plaatsen waarop uw verblijfplaatsen werden afgestemd, met verschoven coördinaten',
-            timelineOverrides: 'Uw handmatige tijdlijncorrecties in het geëxporteerde bereik',
             timeline: 'Uw huidige tijdlijn met geanonimiseerde plaatsnamen (indien geselecteerd)'
         },
         privacyNote: 'Alle coördinaten worden met dezelfde offset verschuven. Plaatsnamen worden geanonimiseerd (bijv. "Thuis" wordt "Locatie 1", adressen worden "Plaats 1"). Dit behoudt de tijdlijnstructuur terwijl uw privacy wordt beschermd. De export kan enkele uren rond de geselecteerde datums bevatten, zodat verblijfplaatsen die eerder begonnen hun volledige lengte behouden. De coördinatverschuivingen worden NIET in de export opgenomen om privacyredenen.',

@@ -16,6 +16,7 @@ import java.util.UUID;
 public class TimelineGeocodingSyncService {
 
     private final EntityManager entityManager;
+    @Inject org.github.tess1o.geopulse.streaming.service.StreamingPersistenceManager materializer;
 
     @Inject
     public TimelineGeocodingSyncService(EntityManager entityManager) {
@@ -32,16 +33,7 @@ public class TimelineGeocodingSyncService {
      * @return Number of timeline stays updated
      */
     public int updateLocationNameForUser(UUID userId, Long geocodingId, String locationName) {
-        int updatedCount = entityManager.createQuery(
-                        "UPDATE TimelineStayEntity t " +
-                                "SET t.locationName = :locationName " +
-                                "WHERE t.geocodingLocation.id = :geocodingId " +
-                                "  AND t.user.id = :userId"
-                )
-                .setParameter("geocodingId", geocodingId)
-                .setParameter("userId", userId)
-                .setParameter("locationName", locationName)
-                .executeUpdate();
+        int updatedCount = materializer.updateGeocodingPlaceName(userId, geocodingId, locationName);
 
         log.debug("Updated {} timeline stays for user {} with new location name '{}'",
                 updatedCount, userId, locationName);
@@ -65,48 +57,12 @@ public class TimelineGeocodingSyncService {
             Long newGeocodingId,
             String locationName) {
 
-        // Need to use native query because JPA doesn't support updating FK directly
-        String updateSql = """
-                UPDATE timeline_stays
-                SET geocoding_id = :newGeocodingId,
-                    location_name = :locationName
-                WHERE geocoding_id = :oldGeocodingId
-                  AND user_id = :userId
-                """;
-
-        int updatedCount = entityManager.createNativeQuery(updateSql)
-                .setParameter("oldGeocodingId", oldGeocodingId)
-                .setParameter("newGeocodingId", newGeocodingId)
-                .setParameter("userId", userId)
-                .setParameter("locationName", locationName)
-                .executeUpdate();
+        int updatedCount = materializer.switchGeocodingPlaceReference(userId, oldGeocodingId, newGeocodingId, locationName);
 
         log.info("Switched {} timeline stays for user {} from geocoding {} to {}",
                 updatedCount, userId, oldGeocodingId, newGeocodingId);
 
-        // Stays made by hand (part of a trip or a data gap turned into a stay) are recreated from their override
-        // after every regeneration, so the override follows the place to the user's copy too.
-        entityManager.createNativeQuery("""
-                        UPDATE timeline_trip_stay_split_overrides
-                        SET geocoding_id = :newGeocodingId
-                        WHERE geocoding_id = :oldGeocodingId
-                          AND user_id = :userId
-                        """)
-                .setParameter("oldGeocodingId", oldGeocodingId)
-                .setParameter("newGeocodingId", newGeocodingId)
-                .setParameter("userId", userId)
-                .executeUpdate();
-        entityManager.createNativeQuery("""
-                        UPDATE timeline_data_gap_stay_overrides
-                        SET selected_geocoding_id = :newGeocodingId
-                        WHERE selected_geocoding_id = :oldGeocodingId
-                          AND user_id = :userId
-                        """)
-                .setParameter("oldGeocodingId", oldGeocodingId)
-                .setParameter("newGeocodingId", newGeocodingId)
-                .setParameter("userId", userId)
-                .executeUpdate();
-
+        // Corrections that reference the old geocoding row follow the place to the user's copy too.
         entityManager.createNativeQuery("""
                         UPDATE timeline_edits
                         SET place_geocoding_id = :newGeocodingId,

@@ -7,6 +7,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import {
   createFeatureCollection,
   ensureClusterSource,
+  ensureGeoJsonSource,
   ensureLayer,
   getMapLibreSource,
   hasMapLibreLayer,
@@ -21,6 +22,7 @@ import {
   createRawGpsInspectionClusters,
   groupRawGpsPoints,
   formatRawGpsDateTime,
+  layoutRawGpsInspection,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH,
   RAW_GPS_POPUP_OFFSET
@@ -73,6 +75,8 @@ state.clusterCountLayerId = `${state.token}-cluster-count`
 state.pointLayerId = `${state.token}-points`
 state.stackLayerId = `${state.token}-stacks`
 state.stackCountLayerId = `${state.token}-stack-count`
+state.legSourceId = `${state.token}-legs-source`
+state.legLayerId = `${state.token}-legs`
 
 const buildCollection = () => {
   const features = groupRawGpsPoints(props.points)
@@ -121,6 +125,11 @@ const clearInspection = () => {
   state.inspectionZoomHandler = null
   state.inspectionMarkers.forEach(marker => marker.remove())
   state.inspectionMarkers = []
+  const legMap = state.boundMap || props.map
+  if (isMapLibreMap(legMap)) {
+    removeLayers(legMap, [state.legLayerId])
+    removeSources(legMap, [state.legSourceId])
+  }
   if (state.inspectedGroup) {
     state.inspectedGroup = null
     getMapLibreSource(state.boundMap || props.map, state.sourceId)?.setData(buildCollection())
@@ -151,11 +160,27 @@ const openGroupPopup = (group, pointIndex = 0) => {
   const inspectionClusters = createRawGpsInspectionClusters()
   const renderSamples = () => {
     state.inspectionMarkers.forEach(marker => marker.remove())
-    state.inspectionMarkers = inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()).map(entity => {
+    const { markers: entities, legs, hubs } = layoutRawGpsInspection(
+      inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()), group.points, {
+        project: ({ latitude, longitude }) => props.map.project([longitude, latitude]),
+        unproject: ({ x, y }) => { const position = props.map.unproject([x, y]); return { latitude: position.lat, longitude: position.lng } },
+        canZoomIn: props.map.getZoom() < props.map.getMaxZoom()
+      })
+    ensureGeoJsonSource(props.map, state.legSourceId, createFeatureCollection(legs.map(leg => ({
+      type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: leg.map(([latitude, longitude]) => [longitude, latitude]) }
+    }))))
+    ensureLayer(props.map, { id: state.legLayerId, type: 'line', source: state.legSourceId,
+      paint: { 'line-color': '#0f766e', 'line-width': 1.5, 'line-opacity': 0.8 } })
+    const hubMarkers = hubs.map(hub => {
+      const element = document.createElement('div')
+      element.className = 'raw-gps-inspection-hub'
+      return new maplibregl.Marker({ element }).setLngLat([hub.longitude, hub.latitude]).addTo(props.map)
+    })
+    state.inspectionMarkers = [...hubMarkers, ...entities.map(entity => {
       const element = document.createElement('button')
       element.type = 'button'
-      element.className = `raw-gps-inspection-marker ${entity.isCluster ? 'raw-gps-inspection-cluster' : 'raw-gps-inspection-dot'}`
-      element.textContent = entity.isCluster ? String(entity.indices.length) : ''
+      element.className = `raw-gps-inspection-marker ${entity.isCluster ? 'raw-gps-inspection-cluster' : 'raw-gps-inspection-sample'}`
+      element.textContent = entity.isCluster ? String(entity.indices.length) : String(entity.indices[0] + 1)
       element.title = entity.isCluster ? String(entity.indices.length) : formatRawGpsDateTime(timezone, group.points[entity.indices[0]].timestamp)
       element.setAttribute('aria-label', element.title)
       element.classList.toggle('is-selected', entity.indices.includes(selectedIndex))
@@ -169,7 +194,7 @@ const openGroupPopup = (group, pointIndex = 0) => {
       })
       element.addEventListener('dblclick', event => event.stopPropagation())
       return new maplibregl.Marker({ element }).setLngLat([entity.longitude, entity.latitude]).addTo(props.map)
-    })
+    })]
   }
   const highlightPoint = (_, index) => { selectedIndex = index; renderSamples() }
   let popup = null
@@ -255,6 +280,16 @@ const registerEvents = () => {
     props.map.getCanvas().style.cursor = ''
   }
 
+  // Inspected points are DOM markers that stop their clicks, so only canvas clicks reach here.
+  const handleMapClick = (event) => {
+    if (!state.inspectedGroup && !state.popupMount) return
+    const layers = [state.clusterLayerId, state.pointLayerId, state.stackLayerId].filter(layerId => hasMapLibreLayer(props.map, layerId))
+    let features = []
+    try { features = props.map.queryRenderedFeatures?.(event?.point, { layers }) || [] } catch { features = [] }
+    if (!features.length) clearInspection()
+  }
+
+  props.map.on('click', handleMapClick)
   props.map.on('click', state.clusterLayerId, handleClusterClick)
   props.map.on('click', state.pointLayerId, handlePointClick)
   props.map.on('click', state.stackLayerId, handlePointClick)
@@ -266,6 +301,7 @@ const registerEvents = () => {
   props.map.on('mouseleave', state.stackLayerId, handleLeave)
 
   state.listeners = [
+    { event: 'click', layerId: null, handler: handleMapClick },
     { event: 'click', layerId: state.clusterLayerId, handler: handleClusterClick },
     { event: 'click', layerId: state.pointLayerId, handler: handlePointClick },
     { event: 'click', layerId: state.stackLayerId, handler: handlePointClick },
@@ -285,9 +321,8 @@ const unregisterEvents = () => {
   }
 
   state.listeners.forEach(({ event, layerId, handler }) => {
-    if (hasMapLibreLayer(props.map, layerId)) {
-      props.map.off(event, layerId, handler)
-    }
+    if (layerId === null) props.map.off(event, handler)
+    else if (hasMapLibreLayer(props.map, layerId)) props.map.off(event, layerId, handler)
   })
 
   state.listeners = []

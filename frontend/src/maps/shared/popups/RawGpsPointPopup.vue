@@ -51,7 +51,7 @@
         :data-point-index="pointIndex"
         @click.stop.prevent="selectPoint(pointIndex)"
       >
-        <span class="raw-gps-stack-time">{{ formatRawGpsDateTime(timezone, point.timestamp, pointLocationTimezone) }}</span>
+        <span class="raw-gps-stack-time"><span class="raw-gps-stack-number" aria-hidden="true">{{ pointIndex + 1 }}</span>{{ formatRawGpsDateTime(timezone, point.timestamp, pointLocationTimezone) }}</span>
         <span class="raw-gps-stack-telemetry">
           <span class="raw-gps-stack-telemetry-item">
             <span class="raw-gps-stack-telemetry-label">{{ t('maps.popups.common.speed') }}</span>

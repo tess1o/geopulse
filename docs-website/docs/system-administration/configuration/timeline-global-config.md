@@ -330,26 +330,12 @@ using intelligent heuristics.
 2. Long distance → Trip inference (if enabled)
 3. Neither applies → Normal data gap
 
-### Manual Data Gap -> Stay Override Matching (Environment-Only)
-
-These settings control how manual Data Gap -> Stay overrides are matched and reapplied after timeline rebuild/import.
-They are currently configurable only via environment variables.
-
-| Property                                                                          | Default | Description                                                                                      |
-|-----------------------------------------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_TIMESTAMP_DELTA_SECONDS`  | `2700`  | Maximum allowed timestamp drift (seconds) between source gap and regenerated candidate gap      |
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_BOUNDARY_DISTANCE_METERS` | `350.0` | Maximum boundary-point distance (meters) for candidate gap matching                             |
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MIN_DURATION_RATIO`           | `0.6`   | Minimum allowed ratio `candidateDuration / sourceDuration`                                      |
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_DURATION_RATIO`           | `1.8`   | Maximum allowed ratio `candidateDuration / sourceDuration`                                      |
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_ADJACENT_TOLERANCE_SECONDS`            | `120`   | Time adjacency tolerance (seconds) used when merging converted gaps with previous/next stays    |
-| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_LOCATION_MATCH_MAX_DISTANCE_METERS`    | `80.0`  | Spatial fallback threshold (meters) for same-location checks when stable IDs are not available  |
-
 :::info User Preference Override
 Base gap inference toggles and limits (`...GAP_STAY_INFERENCE_ENABLED`, `...GAP_STAY_INFERENCE_MAX_GAP_HOURS`,
 `...GAP_TRIP_INFERENCE_*`) can be overridden per-user through Timeline Preferences.
 Environment variables set defaults for new users.
 
-Advanced sparse/local/stationary-boundary heuristics and manual Data Gap -> Stay override matching settings above are environment-only.
+Advanced sparse/local/stationary-boundary heuristics above are environment-only.
 :::
 
 ## Kubernetes / Helm Configuration

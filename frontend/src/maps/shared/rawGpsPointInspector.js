@@ -198,6 +198,68 @@ export const createRawGpsInspectionClusters = () => {
   }
 }
 
+// Inner clusters up to this size fan out; larger ones keep splitting as the map zooms in.
+export const RAW_GPS_FAN_LIMIT = 30
+const FAN_CIRCLE_MAX = 8
+const FAN_CIRCLE_SEPARATION = 30
+const FAN_SPIRAL_START = 16
+const FAN_SPIRAL_SEPARATION = 30
+const FAN_SPIRAL_GROWTH = 6 * Math.PI * 2
+
+/**
+ * Screen-pixel offsets that spread `count` markers around a shared centre: a circle for
+ * a few markers, a spiral beyond that, so each one stays clickable however close they were recorded.
+ */
+export const fanOutPixelOffsets = (count) => {
+  if (count < 2) return count === 1 ? [{ x: 0, y: 0 }] : []
+  if (count <= FAN_CIRCLE_MAX) {
+    const radius = (FAN_CIRCLE_SEPARATION * (2 + count)) / (2 * Math.PI)
+    const step = (2 * Math.PI) / count
+    return Array.from({ length: count }, (_, index) => {
+      const angle = -Math.PI / 2 + index * step
+      return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) }
+    })
+  }
+  const offsets = []
+  let length = FAN_SPIRAL_START
+  let angle = 0
+  for (let index = 0; index < count; index += 1) {
+    angle += FAN_SPIRAL_SEPARATION / length + index * 0.0005
+    offsets.push({ x: length * Math.cos(angle), y: length * Math.sin(angle) })
+    length += FAN_SPIRAL_GROWTH / angle
+  }
+  return offsets
+}
+
+/**
+ * Turns the inspection clusters of an opened group into what the map draws. Clusters of up to
+ * RAW_GPS_FAN_LIMIT points, and every cluster once the map cannot zoom in further, are fanned out
+ * around their centre, one marker per point, each with a leg back to where it was recorded.
+ * `project` and `unproject` convert {latitude, longitude} to screen pixels {x, y} and back.
+ */
+export const layoutRawGpsInspection = (entities, points, { project, unproject, canZoomIn = true, fanLimit = RAW_GPS_FAN_LIMIT } = {}) => {
+  const markers = []
+  const legs = []
+  const hubs = []
+  ;(Array.isArray(entities) ? entities : []).forEach((entity) => {
+    if (!entity.isCluster || (canZoomIn && entity.indices.length > fanLimit) || typeof project !== 'function' || typeof unproject !== 'function') {
+      markers.push({ ...entity, fanned: false })
+      return
+    }
+    const centre = project({ latitude: entity.latitude, longitude: entity.longitude })
+    const indices = [...entity.indices].sort((left, right) => left - right)
+    const offsets = fanOutPixelOffsets(indices.length)
+    hubs.push({ latitude: entity.latitude, longitude: entity.longitude })
+    indices.forEach((index, position) => {
+      const { latitude, longitude } = unproject({ x: centre.x + offsets[position].x, y: centre.y + offsets[position].y })
+      const recorded = points[index]
+      markers.push({ indices: [index], latitude, longitude, isCluster: false, fanned: true })
+      legs.push([[recorded.latitude, recorded.longitude], [latitude, longitude]])
+    })
+  })
+  return { markers, legs, hubs }
+}
+
 export const formatRawGpsDateTime = (timezone, value) => {
   if (!value) return 'Unknown time'
   try {

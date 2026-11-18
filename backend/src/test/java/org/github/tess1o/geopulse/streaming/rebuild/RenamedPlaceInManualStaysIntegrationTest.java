@@ -11,18 +11,18 @@ import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
-import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
+import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +52,7 @@ class RenamedPlaceInManualStaysIntegrationTest {
     ReverseGeocodingManagementService geocodingManagementService;
 
     @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
+    ActivityCorrectionService corrections;
 
     @Inject
     TimelineDataGapRepository dataGapRepository;
@@ -130,11 +130,13 @@ class RenamedPlaceInManualStaysIntegrationTest {
                         .filter(candidate -> candidate.getEndTime().equals(at("16:00")))
                         .findFirst()
                         .orElseThrow());
-        DataGapStayOverrideRequest atTheClient = new DataGapStayOverrideRequest();
-        atTheClient.setLocationStrategy("SELECTED_LOCATION");
+        var atTheClient = new ActivityCorrectionService.Activity();
+        atTheClient.setSegmentType("STAY");
+        atTheClient.setStartTime(gap.getStartTime());
+        atTheClient.setEndTime(gap.getEndTime());
         atTheClient.setGeocodingId(pharmacyPlace);
-        QuarkusTransaction.requiringNew().run(() ->
-                dataGapStayOverrideService.convertGapToStay(userId, gap.getId(), atTheClient));
+        corrections.save(userId, new ActivityCorrectionService.Request(null, List.of(atTheClient), null, null));
+        harness.fullRebuild(userId);
         Instant gapStayStart = gap.getStartTime();
 
         geocodingManagementService.updateGeocodingResult(userId, pharmacyPlace,

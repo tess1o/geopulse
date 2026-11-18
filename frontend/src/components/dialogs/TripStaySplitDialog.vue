@@ -484,7 +484,7 @@ const schedulePreview = () => {
 
 const loadPreview = async (token) => {
   try {
-    const result = await timelineStore.previewTimelineEdit(buildRequest())
+    const result = await timelineStore.previewCorrections(buildRequest())
     if (token !== previewRequestToken) return
     preview.value = result
   } catch (error) {
@@ -499,7 +499,7 @@ const saveSplit = async () => {
   if (!canSubmit.value) return
   saving.value = true
   try {
-    const result = await timelineStore.createTimelineEdit(buildRequest())
+    const result = await timelineStore.saveCorrections(buildRequest())
     emit('split', result)
     emit('close')
   } catch (error) {
@@ -514,17 +514,19 @@ const saveSplit = async () => {
   }
 }
 
-// The split is one unified FORCE_STAY edit over the chosen part of the trip, so it is listed, undone and replayed
-// like every other timeline correction.
+// The split is a stay correction over the chosen part of the trip, so it is listed, undone and replayed like every
+// other timeline correction. The editor marks it as a manual split when it carves the trip.
 const buildRequest = () => {
   const range = selectedRange()
   return {
-    kind: 'FORCE_STAY',
-    anchorStart: range.start,
-    anchorEnd: range.end,
-    affectedFrom: tripStart.value,
-    affectedTo: tripEnd.value,
-    payload: placePayload(place.value)
+    contextStart: tripStart.value,
+    contextEnd: tripEnd.value,
+    activities: [{
+      segmentType: 'STAY',
+      startTime: range.start,
+      endTime: range.end,
+      ...placePayload(place.value)
+    }]
   }
 }
 

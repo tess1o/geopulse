@@ -34,16 +34,62 @@ public class TimelineRebuildRequestRepository {
             return;
         }
         entityManager.createNativeQuery("""
-                INSERT INTO timeline_rebuild_requests (user_id, rebuild_from, revision, created_at, updated_at)
-                VALUES (?1, ?2, 1, now(), now())
+                INSERT INTO timeline_rebuild_requests (user_id, rebuild_from, open_from, revision, created_at, updated_at)
+                VALUES (?1, ?2, ?2, 1, now(), now())
                 ON CONFLICT (user_id) DO UPDATE
                 SET rebuild_from = LEAST(timeline_rebuild_requests.rebuild_from, EXCLUDED.rebuild_from),
+                    open_from = LEAST(timeline_rebuild_requests.open_from, EXCLUDED.open_from),
                     revision = timeline_rebuild_requests.revision + 1,
                     updated_at = now()
                 """)
                 .setParameter(1, userId)
                 .setParameter(2, from)
                 .executeUpdate();
+    }
+
+    /**
+     * Records that corrections changed the period [{@code from}, {@code to}]. No GPS point changed, so only that
+     * period needs rebuilding; it merges with pending windows into one covering period. Joins the caller's
+     * transaction.
+     */
+    @Transactional
+    public void requestWindow(UUID userId, Instant from, Instant to) {
+        if (userId == null || from == null || to == null) {
+            return;
+        }
+        entityManager.createNativeQuery("""
+                INSERT INTO timeline_rebuild_requests (user_id, rebuild_from, window_to, revision, created_at, updated_at)
+                VALUES (?1, ?2, ?3, 1, now(), now())
+                ON CONFLICT (user_id) DO UPDATE
+                SET rebuild_from = LEAST(timeline_rebuild_requests.rebuild_from, EXCLUDED.rebuild_from),
+                    window_to = GREATEST(timeline_rebuild_requests.window_to, EXCLUDED.window_to),
+                    revision = timeline_rebuild_requests.revision + 1,
+                    updated_at = now()
+                """)
+                .setParameter(1, userId)
+                .setParameter(2, from)
+                .setParameter(3, to)
+                .executeUpdate();
+    }
+
+    /**
+     * Clears the correction window of the request a window rebuild read when it started, keeping a pending
+     * open-ended part for the next pass. Returns false, and keeps everything, when the request changed since.
+     */
+    @Transactional
+    public boolean completeWindow(TimelineRebuildRequest request) {
+        if (request.openFrom() == null) {
+            return complete(request);
+        }
+        return entityManager.createNativeQuery("""
+                UPDATE timeline_rebuild_requests
+                SET rebuild_from = open_from, window_to = NULL, revision = revision + 1,
+                    failed_attempts = 0, last_failed_at = NULL, last_error = NULL, updated_at = now()
+                WHERE user_id = ?1 AND revision = ?2
+                """)
+                .setParameter(1, request.userId())
+                .setParameter(2, request.revision())
+                .executeUpdate() > 0;
     }
 
     /**
@@ -58,7 +104,7 @@ public class TimelineRebuildRequestRepository {
     public Optional<TimelineRebuildRequest> find(UUID userId) {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = entityManager.createNativeQuery("""
-                SELECT rebuild_from, revision, failed_attempts, last_failed_at
+                SELECT rebuild_from, revision, failed_attempts, last_failed_at, open_from, window_to
                 FROM timeline_rebuild_requests
                 WHERE user_id = ?1
                 """)
@@ -73,7 +119,9 @@ public class TimelineRebuildRequestRepository {
                 toInstant(row[0]),
                 ((Number) row[1]).longValue(),
                 ((Number) row[2]).intValue(),
-                toInstant(row[3])));
+                toInstant(row[3]),
+                toInstant(row[4]),
+                toInstant(row[5])));
     }
 
     /**

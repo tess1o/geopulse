@@ -11,12 +11,10 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineCorrectionEffectRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayAIQueryRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineEditApplicationRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,13 +41,7 @@ public class StreamingTimelineAggregator {
     TimelineDataGapRepository timelineDataGapRepository;
 
     @Inject
-    TimelineDataGapStayOverrideRepository dataGapStayOverrideRepository;
-
-    @Inject
-    TimelineTripStaySplitOverrideRepository tripStaySplitOverrideRepository;
-
-    @Inject
-    TimelineEditApplicationRepository timelineEditApplicationRepository;
+    TimelineCorrectionEffectRepository correctionEffectRepository;
 
     @Inject
     TimelineReadRepository timelineReadRepository;
@@ -214,8 +206,6 @@ public class StreamingTimelineAggregator {
 
         timeline.getStays().addAll(timelineReadRepository.findStays(userId, startTime, endTime));
         if (includeCorrections) {
-            attachDataGapOverrideMetadata(userId, timeline.getStays());
-            attachTripSplitOverrideMetadata(userId, timeline.getStays());
             attachEditCounts("STAY", timeline.getStays().stream().map(TimelineStayLocationDTO::getId).toList(),
                     counts -> timeline.getStays().forEach(stay -> stay.setActiveEditCount(
                             counts.getOrDefault(stay.getId(), 0))));
@@ -228,9 +218,8 @@ public class StreamingTimelineAggregator {
                             counts.getOrDefault(trip.getId(), 0))));
         }
 
-        // Align trip start/end pins with nearby favorite stays when available.
-        // This keeps trip pins consistent with anchored stay pins on map.
-        snapTripEndpointsToAdjacentFavoriteStays(timeline.getTrips(), timeline.getStays());
+        // Trip endpoints are already persisted at the favourite stays they connect, so every read path sees the
+        // same pins; no read-time mutation is needed.
 
         // Get data gaps with boundary expansion
         Instant latestGpsTimestamp = dataGapService.latestKnownTime(userId, gpsPointRepository.findLatestTimestamp(userId));
@@ -249,190 +238,8 @@ public class StreamingTimelineAggregator {
 
     private void attachEditCounts(String targetType, List<Long> ids, Consumer<Map<Long, Integer>> consumer) {
         List<Long> presentIds = ids.stream().filter(Objects::nonNull).toList();
-        Map<Long, Integer> counts = timelineEditApplicationRepository.countForTargets(targetType, presentIds);
+        Map<Long, Integer> counts = correctionEffectRepository.countForTargets(targetType, presentIds);
         consumer.accept(counts);
-    }
-
-    private void attachDataGapOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {
-        if (stays == null || stays.isEmpty()) {
-            return;
-        }
-
-        List<Long> stayIds = stays.stream()
-                .map(TimelineStayLocationDTO::getId)
-                .filter(Objects::nonNull)
-                .toList();
-        if (stayIds.isEmpty()) {
-            return;
-        }
-
-        Map<Long, List<Long>> overridesByStayId = new HashMap<>();
-        dataGapStayOverrideRepository.findIdsByUserIdAndStayIds(userId, stayIds).forEach(override -> {
-            if (override.stayId() == null || override.id() == null) {
-                return;
-            }
-            overridesByStayId.computeIfAbsent(override.stayId(), ignored -> new ArrayList<>())
-                    .add(override.id());
-        });
-
-        if (overridesByStayId.isEmpty()) {
-            return;
-        }
-
-        stays.forEach(stay -> {
-            if (stay.getId() == null) {
-                return;
-            }
-            List<Long> overrideIds = overridesByStayId.get(stay.getId());
-            if (overrideIds != null) {
-                overrideIds.sort(Comparator.naturalOrder());
-                stay.setDataGapOverrideIds(overrideIds);
-            }
-        });
-    }
-
-    private void attachTripSplitOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {
-        if (stays == null || stays.isEmpty()) {
-            return;
-        }
-
-        List<Long> stayIds = stays.stream()
-                .map(TimelineStayLocationDTO::getId)
-                .filter(Objects::nonNull)
-                .toList();
-        if (stayIds.isEmpty()) {
-            return;
-        }
-
-        Map<Long, Long> firstOverrideByStayId = new HashMap<>();
-        tripStaySplitOverrideRepository.findIdsByUserIdAndStayIds(userId, stayIds).forEach(override -> {
-            if (override.stayId() == null || override.id() == null) {
-                return;
-            }
-            firstOverrideByStayId.putIfAbsent(override.stayId(), override.id());
-        });
-
-        if (firstOverrideByStayId.isEmpty()) {
-            return;
-        }
-
-        stays.forEach(stay -> {
-            if (stay.getId() == null) {
-                return;
-            }
-            stay.setTripSplitOverrideId(firstOverrideByStayId.get(stay.getId()));
-        });
-    }
-
-    void snapTripEndpointsToAdjacentFavoriteStays(
-            List<TimelineTripDTO> trips,
-            List<TimelineStayLocationDTO> stays
-    ) {
-        if (trips == null || trips.isEmpty() || stays == null || stays.isEmpty()) {
-            return;
-        }
-
-        for (TimelineTripDTO trip : trips) {
-            if (trip == null || trip.getTimestamp() == null) {
-                continue;
-            }
-
-            Instant tripStart = trip.getTimestamp();
-            Instant tripEnd = tripStart.plusSeconds(Math.max(0L, trip.getTripDuration()));
-
-            TimelineStayLocationDTO origin = findClosestOriginStay(stays, tripStart);
-            if (origin != null && origin.getFavoriteId() != null
-                    && !hasAnotherTripBetween(
-                    origin.getTimestamp().plusSeconds(Math.max(0L, origin.getStayDuration())),
-                    tripStart,
-                    trips,
-                    trip)) {
-                trip.setLatitude(origin.getLatitude());
-                trip.setLongitude(origin.getLongitude());
-            }
-
-            TimelineStayLocationDTO destination = findClosestDestinationStay(stays, tripEnd);
-            if (destination != null && destination.getFavoriteId() != null
-                    && !hasAnotherTripBetween(
-                    tripEnd,
-                    destination.getTimestamp(),
-                    trips,
-                    trip)) {
-                trip.setEndLatitude(destination.getLatitude());
-                trip.setEndLongitude(destination.getLongitude());
-            }
-        }
-    }
-
-    private boolean hasAnotherTripBetween(Instant intervalStart,
-                                          Instant intervalEnd,
-                                          List<TimelineTripDTO> trips,
-                                          TimelineTripDTO currentTrip) {
-        if (intervalStart == null || intervalEnd == null || trips == null || !intervalEnd.isAfter(intervalStart)) {
-            return false;
-        }
-
-        for (TimelineTripDTO otherTrip : trips) {
-            if (otherTrip == null || otherTrip == currentTrip || otherTrip.getTimestamp() == null) { // NOPMD - skip this very trip, by identity
-                continue;
-            }
-
-            Instant otherStart = otherTrip.getTimestamp();
-            Instant otherEnd = otherStart.plusSeconds(Math.max(0L, otherTrip.getTripDuration()));
-            if (otherStart.isBefore(intervalEnd) && otherEnd.isAfter(intervalStart)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private TimelineStayLocationDTO findClosestOriginStay(List<TimelineStayLocationDTO> stays, Instant tripStart) {
-        TimelineStayLocationDTO origin = null;
-        long minGapSeconds = Long.MAX_VALUE;
-
-        for (TimelineStayLocationDTO stay : stays) {
-            if (stay == null || stay.getTimestamp() == null) {
-                continue;
-            }
-
-            Instant stayEnd = stay.getTimestamp().plusSeconds(Math.max(0L, stay.getStayDuration()));
-            if (stayEnd.isAfter(tripStart)) {
-                continue;
-            }
-
-            long gap = Duration.between(stayEnd, tripStart).toSeconds();
-            if (gap < minGapSeconds) {
-                minGapSeconds = gap;
-                origin = stay;
-            }
-        }
-
-        return origin;
-    }
-
-    private TimelineStayLocationDTO findClosestDestinationStay(List<TimelineStayLocationDTO> stays, Instant tripEnd) {
-        TimelineStayLocationDTO destination = null;
-        long minGapSeconds = Long.MAX_VALUE;
-
-        for (TimelineStayLocationDTO stay : stays) {
-            if (stay == null || stay.getTimestamp() == null) {
-                continue;
-            }
-
-            Instant stayStart = stay.getTimestamp();
-            if (stayStart.isBefore(tripEnd)) {
-                continue;
-            }
-
-            long gap = Duration.between(tripEnd, stayStart).toSeconds();
-            if (gap < minGapSeconds) {
-                minGapSeconds = gap;
-                destination = stay;
-            }
-        }
-
-        return destination;
     }
 
     /**

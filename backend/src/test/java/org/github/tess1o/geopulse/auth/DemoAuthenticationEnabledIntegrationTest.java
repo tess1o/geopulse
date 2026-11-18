@@ -256,16 +256,18 @@ class DemoAuthenticationEnabledIntegrationTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = {"", "/preview", "/1/revert", "/1/restore"})
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"", "/preview",
+            "/00000000-0000-0000-0000-000000000001/undo",
+            "/00000000-0000-0000-0000-000000000001/restore"})
     void demoUserCannotMutateUnifiedTimelineEdits(String suffix) {
         given().contentType(ContentType.JSON).header("Authorization", "Bearer " + demoAccessToken)
                 .body("""
-                        {"kind":"SET_VISIT_NAME", "anchorStart":"2026-09-15T06:00:00Z",
+                        {"op":"SET_LABEL", "anchorStart":"2026-09-15T06:00:00Z",
                          "anchorEnd":"2026-09-15T08:00:00Z", "payload":{"visitName":"Forbidden"}}
                         """)
-                .post("/api/v1/timeline/edits" + suffix).then().statusCode(403)
+                .post("/api/v1/timeline/corrections" + suffix).then().statusCode(403)
                 .header("X-GeoPulse-Demo-Blocked", "true");
-        given().header("Authorization", "Bearer " + demoAccessToken).get("/api/v1/timeline/edits")
+        given().header("Authorization", "Bearer " + demoAccessToken).get("/api/v1/timeline/corrections")
                 .then().statusCode(200).body("size()", equalTo(0));
     }
 

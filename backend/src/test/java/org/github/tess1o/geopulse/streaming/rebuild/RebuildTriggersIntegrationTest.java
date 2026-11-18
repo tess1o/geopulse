@@ -16,7 +16,7 @@ import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor.Outcome;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
-import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
+import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,14 +156,14 @@ class RebuildTriggersIntegrationTest {
         harness.process(userId);
 
         AtomicBoolean failing = new AtomicBoolean(true);
-        TripStaySplitOverrideService splits = mock(TripStaySplitOverrideService.class);
+        org.github.tess1o.geopulse.notes.service.TimelineNoteService splits = mock(org.github.tess1o.geopulse.notes.service.TimelineNoteService.class);
         doAnswer(invocation -> {
             if (failing.get()) {
                 throw new IllegalStateException("simulated import generation failure");
             }
             return 0;
-        }).when(splits).reapplyManualOverrides(any(UUID.class));
-        QuarkusMock.installMockForType(splits, TripStaySplitOverrideService.class);
+        }).when(splits).reattachAnchoredNotes(any(UUID.class));
+        QuarkusMock.installMockForType(splits, org.github.tess1o.geopulse.notes.service.TimelineNoteService.class);
 
         ImportJob job = new ImportJob(userId, new ImportOptions(), "history.json", new byte[0]);
         assertThatThrownBy(() -> timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, at("06:00")))

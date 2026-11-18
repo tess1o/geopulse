@@ -33,6 +33,8 @@ public class TimelineEditsDataDto {
         private Instant anchorEnd;
         private Instant affectedFrom;
         private Instant affectedTo;
+        @Builder.Default
+        private int payloadVersion = 1;
         private Map<String, Object> payload;
         private Map<String, Object> beforeValues;
         private Long favoriteId;

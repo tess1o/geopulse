@@ -25,6 +25,36 @@ public final class ManualRouteGeometry {
         }
     }
 
+    public static List<TripReconstructionWaypointDto> slice(List<TripReconstructionWaypointDto> route, double from, double to) {
+        double total = distance(route);
+        double lower = Math.max(0, Math.min(1, from)) * total;
+        double upper = Math.max(0, Math.min(1, to)) * total;
+        var result = new java.util.ArrayList<TripReconstructionWaypointDto>();
+        result.add(pointAt(route, lower));
+        double travelled = 0;
+        for (int i = 1; i < route.size(); i++) {
+            travelled += GeoUtils.haversine(route.get(i-1).getLatitude(), route.get(i-1).getLongitude(), route.get(i).getLatitude(), route.get(i).getLongitude());
+            if (travelled > lower && travelled < upper) result.add(route.get(i));
+        }
+        result.add(pointAt(route, upper));
+        return result;
+    }
+
+    private static TripReconstructionWaypointDto pointAt(List<TripReconstructionWaypointDto> route, double distance) {
+        for (int i = 1; i < route.size(); i++) {
+            var a = route.get(i-1); var b = route.get(i);
+            double length = GeoUtils.haversine(a.getLatitude(), a.getLongitude(), b.getLatitude(), b.getLongitude());
+            if (distance <= length && length > 0) {
+                double fraction = distance / length;
+                return new TripReconstructionWaypointDto(a.getLatitude() + fraction * (b.getLatitude() - a.getLatitude()),
+                        Math.IEEEremainder(a.getLongitude() + fraction * Math.IEEEremainder(b.getLongitude() - a.getLongitude(), 360), 360));
+            }
+            distance -= length;
+        }
+        var last = route.getLast();
+        return new TripReconstructionWaypointDto(last.getLatitude(), last.getLongitude());
+    }
+
     public static double distance(List<TripReconstructionWaypointDto> route) {
         double distance = 0;
         for (int i = 1; i < route.size(); i++) {

@@ -136,10 +136,6 @@ public class GeoPulseExportService {
                         addTimelineLabelsData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
-                    case ExportImportConstants.DataTypes.TIMELINE_OVERRIDES:
-                        addTimelineOverridesData(zos, job, currentProgress);
-                        currentProgress += progressPerType;
-                        break;
                     case ExportImportConstants.DataTypes.TIMELINE_EDITS:
                         addTimelineEditsData(zos, job, currentProgress);
                         currentProgress += progressPerType;
@@ -419,23 +415,6 @@ public class GeoPulseExportService {
                 exportDataMapper.toTimelineLabelsDataDto(tags, job)
         );
         log.debug("Exported {} timeline labels", tags.size());
-    }
-
-    private void addTimelineOverridesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "exportingTimelineOverrides", "Exporting timeline overrides...");
-        var tripOverrides = dataCollectorService.collectTripMovementOverrides(job.getUserId());
-        var gapOverrides = dataCollectorService.collectDataGapStayOverrides(job.getUserId());
-        var staySplitOverrides = dataCollectorService.collectTripStaySplitOverrides(job.getUserId());
-        var stayNameOverrides = dataCollectorService.collectStayNameOverrides(job.getUserId());
-        streamingZipExportService.addSimpleJsonFileToZip(
-                zos,
-                ExportImportConstants.FileNames.TIMELINE_OVERRIDES,
-                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides, staySplitOverrides,
-                        stayNameOverrides)
-        );
-        log.debug("Exported {} trip movement overrides, {} data-gap stay overrides, {} trip stay-split overrides and "
-                        + "{} stay names", tripOverrides.size(), gapOverrides.size(), staySplitOverrides.size(),
-                stayNameOverrides.size());
     }
 
     private void addTimelineEditsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {

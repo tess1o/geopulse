@@ -141,7 +141,6 @@ export default {
             "favoriteLocations": "Anonymisierte Favoriten mit verschobenen Koordinaten",
             "favoriteAreas": "Anonymisierte Favoritenbereiche mit verschobenen Grenzen",
             "reverseGeocoding": "Anonymisierte Orte, denen deine Aufenthalte zugeordnet wurden, mit verschobenen Koordinaten",
-            "timelineOverrides": "Deine manuellen Korrekturen an der Zeitleiste im exportierten Zeitraum",
             "timeline": "Deine aktuelle Zeitleiste mit anonymisierten Ortsnamen (falls ausgewählt)"
         },
         "privacyNote": "Alle Koordinaten werden um denselben Wert verschoben. Ortsnamen werden anonymisiert (z. B. wird aus „Zuhause“ „Ort 1“, aus Adressen „Platz 1“). So bleibt die Struktur der Zeitleiste erhalten, deine Privatsphäre aber geschützt. Der Export kann ein paar Stunden vor und nach dem gewählten Zeitraum enthalten, damit früher begonnene Aufenthalte vollständig bleiben. Die Werte der Verschiebung sind zum Schutz deiner Privatsphäre NICHT im Export enthalten.",

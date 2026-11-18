@@ -7,13 +7,14 @@ public enum TimelineEditKind {
     FORCE_STAY,
     FORCE_TRIP,
     SET_TIMES,
+    SET_ROUTE,
     SPLIT_STAY,
     MERGE,
     REMOVE_EVENT;
 
     public boolean structural() {
         return switch (this) {
-            case SET_MOVEMENT_TYPE, SET_PLACE, SET_VISIT_NAME -> false;
+            case SET_MOVEMENT_TYPE, SET_PLACE, SET_VISIT_NAME, SET_ROUTE -> false;
             case FORCE_STAY, FORCE_TRIP, SET_TIMES, SPLIT_STAY, MERGE, REMOVE_EVENT -> true;
         };
     }

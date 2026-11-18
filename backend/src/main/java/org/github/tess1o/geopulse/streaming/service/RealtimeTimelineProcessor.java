@@ -109,8 +109,8 @@ public class RealtimeTimelineProcessor {
             return Outcome.REBUILT_LATEST_ONLY;
         }
 
-        generationService.generateTimelineFromTimestamp(userId, request.rebuildFrom(), null, "realtime", true,
-                RESTART_POINT);
+        // A request that only carries corrections is rebuilt for their window when that is the same as a full pass.
+        generationService.regeneratePending(userId, null, "realtime");
         return Outcome.REBUILT;
     }
 }

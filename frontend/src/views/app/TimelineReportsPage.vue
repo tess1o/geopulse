@@ -89,6 +89,7 @@
             :export-disabled="demoReadOnly"
             @export="exportTrips"
             @row-select="handleRowSelect"
+            @timeline-edit-submitted="handleTimelineCorrection"
           />
         </div>
 
@@ -127,6 +128,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -236,6 +238,9 @@ const handleTabChange = async (event) => {
 }
 
 // Data Loading
+const { trackCorrectionRegeneration } = useTimelineRegeneration()
+const handleTimelineCorrection = result => trackCorrectionRegeneration(result, { onCompleted: fetchTimelineData })
+
 const fetchTimelineData = async () => {
   if (!startDate.value || !endDate.value) return
   

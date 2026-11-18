@@ -235,10 +235,6 @@
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>timeline_overrides.json</strong> - {{ t('data.debugExport.items.timelineOverrides') }}
-                </li>
-                <li>
-                  <i class="pi pi-check-circle"></i>
                   <strong>timeline.json</strong> - {{ t('data.debugExport.items.timeline') }}
                 </li>
               </ul>

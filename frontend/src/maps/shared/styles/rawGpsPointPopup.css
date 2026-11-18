@@ -120,15 +120,6 @@
   font-size: 0.9rem;
 }
 
-.raw-gps-inspection-dot {
-  width: 12px;
-  height: 12px;
-  padding: 0;
-  border: 2px solid #eff6ff;
-  border-radius: 50%;
-  background: #2563eb;
-}
-
 .raw-gps-inspection-cluster {
   width: 28px;
   height: 28px;
@@ -141,7 +132,49 @@
   font-weight: 700;
 }
 
-.raw-gps-inspection-marker { cursor: pointer; box-sizing: border-box; border-radius: 50%; }
+/* One point of an opened group, fanned out when points overlap; its number matches the list row. */
+.raw-gps-inspection-sample {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 2px solid #eff6ff;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font: 700 10px/1 system-ui, sans-serif;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+}
+
+.raw-gps-inspection-hub {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid #ccfbf1;
+  border-radius: 50%;
+  background: #0f766e;
+  pointer-events: none;
+}
+
+.raw-gps-stack-number {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4rem;
+  height: 1.2rem;
+  margin-right: 0.45rem;
+  padding: 0 0.3rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.raw-gps-inspection-marker { cursor: pointer; box-sizing: border-box; border-radius: 999px; }
 .raw-gps-inspection-marker.is-selected { outline: 3px solid #f59e0b; outline-offset: 2px; }
 .raw-gps-inspection-marker:focus-visible { outline: 3px solid #111827; outline-offset: 3px; }
 

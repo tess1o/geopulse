@@ -119,41 +119,8 @@ export default {
             resetSummary: 'Тип пересування скинуто',
             resetDetail: 'Для поїздки скинуто тип на {type}',
             resetFailedSummary: 'Помилка скидання',
-            resetFailedFallback: 'Не вдалося скинути тип пересування'
-        }
-    },
-    dataGapToStay: {
-        header: 'Перетворити розрив даних на зупинку',
-        gapTag: 'Розрив даних',
-        unknownTimeRange: 'Невідомий часовий діапазон',
-        locationSourceLabel: 'Джерело місця зупинки',
-        resolvingLocation: 'Визначення останньої відомої точки...',
-        defaultLocationLabel: 'Місце за замовчуванням:',
-        unknownLocation: 'Невідоме місце',
-        selectedLocationTypeLabel: 'Тип обраного місця',
-        searchPlaceLabel: 'Пошук обраного або геокодованого місця',
-        searchPlaceholder: 'Введіть щонайменше 2 символи...',
-        latitudePlaceholder: 'Широта',
-        longitudePlaceholder: 'Довгота',
-        customNamePlaceholder: 'Необов’язкова власна назва місця',
-        convert: 'Перетворити на зупинку',
-        strategyOptions: {
-            latestPoint: 'Остання відома точка (за замовчуванням)',
-            selectedLocation: 'Обране місце'
-        },
-        selectedSourceOptions: {
-            place: 'Обране або геокодоване місце',
-            custom: 'Власні координати'
-        },
-        errors: {
-            previewFailed: 'Не вдалося визначити останню відому точку',
-            searchFailed: 'Не вдалося виконати пошук місць'
-        },
-        toasts: {
-            convertedSummary: 'Перетворено',
-            convertedDetail: 'Розрив даних перетворено на зупинку.',
-            failedSummary: 'Помилка перетворення',
-            failedFallback: 'Не вдалося перетворити розрив даних'
+            resetFailedFallback: 'Не вдалося скинути тип пересування',
+            noCorrectionToReset: 'Немає виправлення типу поїздки, яке можна скасувати. Змініть цю активність через історію виправлень.'
         }
     },
     gpsPointEdit: {

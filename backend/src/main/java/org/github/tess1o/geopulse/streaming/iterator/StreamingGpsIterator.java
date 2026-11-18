@@ -27,6 +27,7 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
     private final Instant fromTimestamp;
     private final int bufferSize;
     private final String environmentDatasetVersion;
+    private final Instant toTimestamp;
 
     private List<GPSPoint> currentBuffer;
     private int positionInBuffer;
@@ -49,6 +50,17 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
             Instant fromTimestamp,
             int bufferSize,
             String environmentDatasetVersion) {
+        this(repository, userId, fromTimestamp, null, bufferSize, environmentDatasetVersion);
+    }
+
+    public StreamingGpsIterator(
+            GpsPointRepository repository,
+            UUID userId,
+            Instant fromTimestamp,
+            Instant toTimestamp,
+            int bufferSize,
+            String environmentDatasetVersion) {
+        this.toTimestamp = toTimestamp;
         this.repository = repository;
         this.userId = userId;
         this.fromTimestamp = fromTimestamp;
@@ -101,6 +113,7 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
         currentBuffer = repository.findEssentialDataChunk(
                 userId,
                 fromTimestamp,
+                toTimestamp,
                 cursorTimestamp,
                 cursorId,
                 bufferSize,

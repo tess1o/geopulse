@@ -30,6 +30,8 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
     private final Instant fromTimestamp;
     private final int bufferSize;
     private final String environmentDatasetVersion;
+    /** Exclusive end of the points read, or null to read to the last point. */
+    private final Instant toTimestamp;
 
     // Keep reference to track progress
     private StreamingGpsIterator currentIterator;
@@ -60,9 +62,21 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
             Instant fromTimestamp,
             int bufferSize,
             String environmentDatasetVersion) {
+        this(repository, userId, fromTimestamp, null, bufferSize, environmentDatasetVersion);
+    }
+
+    /** Reads the points from {@code fromTimestamp} up to, not including, {@code toTimestamp} (null: to the last). */
+    public StreamingGpsIterable(
+            GpsPointRepository repository,
+            UUID userId,
+            Instant fromTimestamp,
+            Instant toTimestamp,
+            int bufferSize,
+            String environmentDatasetVersion) {
         this.repository = repository;
         this.userId = userId;
         this.fromTimestamp = fromTimestamp;
+        this.toTimestamp = toTimestamp;
         this.bufferSize = bufferSize;
         this.environmentDatasetVersion = environmentDatasetVersion;
     }
@@ -70,7 +84,7 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
     @Override
     public Iterator<GPSPoint> iterator() {
         currentIterator = new StreamingGpsIterator(
-                repository, userId, fromTimestamp, bufferSize, environmentDatasetVersion);
+                repository, userId, fromTimestamp, toTimestamp, bufferSize, environmentDatasetVersion);
         return currentIterator;
     }
 

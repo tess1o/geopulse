@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -9,7 +11,7 @@ import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -70,7 +72,7 @@ class TimelineEditChainIntegrationTest {
 
         assertThatCode(() -> harness.fullRebuild(user)).doesNotThrowAnyException();
         assertThat(edits.list(user)).filteredOn(edit -> edit.id().equals(first.id()) || edit.id().equals(second.id()))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT));
 
         assertThat(stayAt(user, at("06:00")).getStayDuration()).isEqualTo(Duration.ofMinutes(90).toSeconds());
         var retimed = onlyTrip(user);
@@ -91,10 +93,10 @@ class TimelineEditChainIntegrationTest {
         split.setAnchorEnd(at("07:30"));
         split.setAffectedFrom(at("06:00"));
         split.setAffectedTo(at("07:30"));
-        split.getPayload().put("splitAt", at("07:00").toString());
-        split.getPayload().put("rightLatitude", 49.8420);
-        split.getPayload().put("rightLongitude", 24.0310);
-        split.getPayload().put("rightLocationName", "Home, second half");
+        put(split, "splitAt", at("07:00").toString());
+        put(split, "rightLatitude", 49.8420);
+        put(split, "rightLongitude", 24.0310);
+        put(split, "rightLocationName", "Home, second half");
 
         assertThatCode(() -> edits.create(user, split)).doesNotThrowAnyException();
         harness.fullRebuild(user);
@@ -122,7 +124,7 @@ class TimelineEditChainIntegrationTest {
         remove.setAnchorEnd(trip.getTimestamp().plusSeconds(trip.getTripDuration()));
         remove.setAffectedFrom(at("06:00"));
         remove.setAffectedTo(trip.getTimestamp().plusSeconds(trip.getTripDuration()));
-        remove.getPayload().put("resolution", "GAP");
+        put(remove, "resolution", "GAP");
 
         assertThatCode(() -> edits.create(user, remove)).doesNotThrowAnyException();
         harness.fullRebuild(user);
@@ -155,7 +157,7 @@ class TimelineEditChainIntegrationTest {
         harness.fullRebuild(user);
         assertThat(QuarkusTransaction.requiringNew().call(() -> stays.count("user.id", user))).isZero();
         assertThat(edits.list(user)).filteredOn(edit -> edit.id().equals(shortened.id()))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.REVERTED));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.UNDONE));
     }
 
     @Test
@@ -178,11 +180,11 @@ class TimelineEditChainIntegrationTest {
         edits.revert(user, first.id(), true);
         assertThat(edits.list(user))
                 .filteredOn(edit -> edit.id().equals(first.id()) || edit.id().equals(second.id()))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.REVERTED));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.UNDONE));
 
         harness.fullRebuild(user);
         assertThat(stayAt(user, at("06:00")).getStayDuration()).isEqualTo(originalDuration);
-        assertThat(edits.list(user)).filteredOn(edit -> edit.status() == TimelineEditStatus.ACTIVE).isEmpty();
+        assertThat(edits.list(user)).filteredOn(edit -> edit.status() == org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT).isEmpty();
     }
 
     @Test
@@ -212,8 +214,8 @@ class TimelineEditChainIntegrationTest {
         request.setAnchorEnd(anchorEnd);
         request.setAffectedFrom(affectedFrom);
         request.setAffectedTo(affectedTo);
-        request.getPayload().put("start", start.toString());
-        request.getPayload().put("end", end.toString());
+        put(request, "start", start.toString());
+        put(request, "end", end.toString());
         return edits.create(user, request);
     }
 

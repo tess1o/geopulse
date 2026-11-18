@@ -12,7 +12,7 @@ vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: addToast }) }))
 const range = ['2026-10-25T00:00:00Z', '2026-10-26T00:00:00Z']
 function setup(props = {}) {
   const pinia = createPinia()
-  vi.spyOn(useTimelineStore(pinia), 'fetchTimelineEdits').mockResolvedValue([])
+  vi.spyOn(useTimelineStore(pinia), 'fetchCorrections').mockResolvedValue([])
   const wrapper = shallowMount(TimelineContainer, {
     props: { dateRange: range, showTimelineLabels: false, loadNotes: false, loadImmichPhotos: false, ...props },
     global: { plugins: [pinia], stubs: { Timeline: { name: 'Timeline', props: ['value'], template: '<div />' }, RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, Button: { template: '<button><slot /></button>' } } }

@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -10,15 +11,27 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
+import org.github.tess1o.geopulse.streaming.edits.payload.BeforeValues;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
+import org.github.tess1o.geopulse.streaming.edits.payload.CorrectionPayload;
+import org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload;
+import org.github.tess1o.geopulse.streaming.edits.payload.PlaceTripPayload;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineEditEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository;
 import org.github.tess1o.geopulse.streaming.service.TimelineUserLock;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionSegmentDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto;
 import org.github.tess1o.geopulse.trips.service.TripAccessService;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 
@@ -38,16 +51,36 @@ public class ActivityCorrectionService {
         private Place endPlace;
         @Size(max = 500)
         private String visitName;
+        /** Marks a plan-scoped reconstruction correction, which a later recommit replaces as a group. */
+        private boolean reconstruction;
     }
 
+    /**
+     * A batch of manual activities. {@code contextStart/contextEnd} only bound the preview and choose its default
+     * endpoints; activities may be outside them because every fill carves its own interval. {@code previewToken} is
+     * required by UI saves to reject a stale review; API clients may omit it.
+     */
     public record Request(Long tripId, @NotEmpty @Size(max = 100) List<@Valid Activity> activities,
-                          Instant contextStart, Instant contextEnd, Boolean replaceExisting) {
+                          Instant contextStart, Instant contextEnd, String previewToken, UUID replacesGroupId) {
         public Request(Long tripId, List<Activity> activities, Instant contextStart, Instant contextEnd) {
-            this(tripId, activities, contextStart, contextEnd, null);
+            this(tripId, activities, contextStart, contextEnd, null, null);
         }
     }
 
-    public record Preview(List<TimelineEditPreviewDTO.Event> events, Instant startTime, Instant endTime) {
+    /**
+     * A preview warning. {@code INFO} and {@code CONFIRM} describe what the fold will do; {@code INVALID} blocks save
+     * until the user changes the request or supplies {@code replacesGroupId}.
+     */
+    public record Warning(String code, String severity, String message, String targetType,
+                          Instant targetStart, Instant targetEnd, UUID groupId, Long correctionId,
+                          List<String> actions) {
+    }
+
+    public record Preview(List<TimelineEditPreviewDTO.Event> events, Instant startTime, Instant endTime,
+                          List<Warning> warnings, String token) {
+        public Preview(List<TimelineEditPreviewDTO.Event> events, Instant startTime, Instant endTime) {
+            this(events, startTime, endTime, List.of(), null);
+        }
     }
 
     public record Saved(UUID groupId, List<TimelineEditDTO> edits, Instant affectedFrom) {
@@ -55,26 +88,34 @@ public class ActivityCorrectionService {
 
     @Inject
     TimelineEditService edits;
+
     @Inject
     TimelineUserLock lock;
+
     @Inject
-    org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository stays;
-    @Inject
-    org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository tripRepository;
-    @Inject
-    org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository editRepository;
+    TimelineEditRepository editRepository;
+
     @Inject
     EntityManager em;
+
     @Inject
     TripAccessService trips;
+
+    @Inject
+    ObjectMapper objectMapper;
+
+    @Inject
+    LocationPointResolver locationPointResolver;
 
     @Transactional
     public Preview preview(UUID userId, Request request) {
         var commands = prepare(userId, request);
+        if (request.replacesGroupId() != null) edits.validateReplacement(userId, request.replacesGroupId());
         Instant start = request.contextStart() != null ? request.contextStart() : commands.getFirst().getAnchorStart();
         Instant end = request.contextEnd() != null ? request.contextEnd() : commands.getLast().getAnchorEnd();
+        String previewToken = token(userId, request, commands);
         var events = new ArrayList<TimelineEditPreviewDTO.Event>();
-        for (var event : edits.previewCommands(userId, commands, start, end).events()) {
+        for (var event : edits.previewCommands(userId, commands, start, end, request.replacesGroupId()).events()) {
             if (!overlaps(event, start, end)) continue;
             events.add(TimelineEditService.previewEvent(event));
         }
@@ -89,20 +130,58 @@ public class ActivityCorrectionService {
         }
         if (end.isAfter(cursor))
             complete.add(new TimelineEditPreviewDTO.Event("DATA_GAP", cursor, end, "Unknown", null));
-        return new Preview(complete, start, end);
+        if (!previewToken.equals(token(userId, request, commands))) throw new GeoPulseException(TIMELINE_PREVIEW_STALE, "The timeline changed while it was reviewed. Review the changes again.");
+        return new Preview(complete, start, end, warnings(userId, request, commands), previewToken);
     }
 
     @Transactional
     public Saved save(UUID userId, Request request) {
         if (!lock.tryLock(userId)) throw new TimelineGenerationLockException(userId);
         var commands = prepare(userId, request);
+        if (request.previewToken() != null && !request.previewToken().equals(token(userId, request, commands))) {
+            throw new GeoPulseException(TIMELINE_PREVIEW_STALE,
+                    "The timeline changed since it was reviewed. Review the changes again.");
+        }
+        var warnings = warnings(userId, request, commands);
+        var invalid = warnings.stream().filter(warning -> "INVALID".equals(warning.severity())).findFirst();
+        if (invalid.isPresent()) {
+            var warning = invalid.get();
+            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, warning.message(),
+                    parameters(warning.groupId(), warning.correctionId(), warning.actions()));
+        }
+        var replaceGroups = warnings.stream()
+                .filter(warning -> "REPLACES_CORRECTION".equals(warning.code()))
+                .map(Warning::groupId).filter(Objects::nonNull).distinct().toList();
+        if (replaceGroups.size() > 1) {
+            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT,
+                    "This change replaces more than one correction. Split it into separate changes.",
+                    Map.of("conflictingGroupIds", replaceGroups));
+        }
+        if (!replaceGroups.isEmpty() && !replaceGroups.getFirst().equals(request.replacesGroupId())) {
+            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT,
+                    "This activity replaces an earlier correction. Confirm the replacement first.",
+                    Map.of("replacesGroupId", replaceGroups.getFirst(),
+                            "actions", List.of("REPLACE_CORRECTION", "ADJUST_RANGE")));
+        }
+        Instant previewFrom = request.contextStart() != null ? request.contextStart() : commands.getFirst().getAnchorStart();
+        Instant previewTo = request.contextEnd() != null ? request.contextEnd() : commands.getLast().getAnchorEnd();
+        edits.previewCommands(userId, commands, previewFrom, previewTo, request.replacesGroupId());
+        List<TimelineEditEntity> replacedGroup = List.of();
+        if (request.replacesGroupId() != null) {
+            replacedGroup = edits.supersedeGroup(userId, request.replacesGroupId());
+        }
         UUID groupId = UUID.randomUUID();
         var result = new ArrayList<TimelineEditDTO>();
         for (var command : commands) {
+            // The complete batch was folded above; re-detecting after each insert would scan the recording N times.
+            command.setPending(true);
             var dto = edits.create(userId, command);
             var entity = em.find(TimelineEditEntity.class, dto.id());
             entity.setGroupId(groupId);
             result.add(TimelineEditService.toDto(entity));
+        }
+        if (!replacedGroup.isEmpty() && !result.isEmpty()) {
+            edits.linkReplacement(replacedGroup, result.getFirst().id());
         }
         Instant affectedFrom = result.stream().map(TimelineEditDTO::affectedFrom)
                 .min(Instant::compareTo).orElseThrow();
@@ -126,11 +205,6 @@ public class ActivityCorrectionService {
                 if (edit.getStatus() != TimelineEditStatus.REVERTED) {
                     throw invalid("Only a completely reverted correction can be restored");
                 }
-                // A group that rebuilt an existing interval behaves like any chained correction on restore; only the
-                // original missing-activity groups need the interval to have stayed empty.
-                if (!Boolean.TRUE.equals(edit.getPayload().get("replaceExisting"))) {
-                    requireEmpty(userId, edit.getAnchorStart(), edit.getAnchorEnd());
-                }
             }
         }
         var result = new ArrayList<TimelineEditDTO>();
@@ -140,7 +214,26 @@ public class ActivityCorrectionService {
             }
             result.add((restore ? edits.restore(userId, edit.getId()) : edits.revert(userId, edit.getId(), cascade)).orElseThrow());
         }
-        return new Saved(groupId, result, group.stream().map(TimelineEditEntity::getAffectedFrom).min(Instant::compareTo).orElseThrow());
+        if (!restore) {
+            edits.reactivateReplacedBy(userId, result.stream().map(TimelineEditDTO::id).toList());
+        } else {
+            // Undoing the group cascaded through the detail corrections made on its events; restoring the group
+            // restores that chain as well.
+            var sequences = new HashSet<Long>();
+            group.stream().map(TimelineEditEntity::getBeforeValues).filter(Objects::nonNull)
+                    .map(BeforeValues::cascadeUndoneSequences)
+                    .filter(Objects::nonNull).forEach(sequences::addAll);
+            var dependents = editRepository.findByUser(userId).stream()
+                    .filter(edit -> edit.getStatus() == TimelineEditStatus.REVERTED)
+                    .filter(edit -> sequences.contains(edit.getSeq()))
+                    .sorted(Comparator.comparingLong(TimelineEditEntity::getSeq))
+                    .toList();
+            for (var dependent : dependents) {
+                result.add(edits.restore(userId, dependent.getId()).orElseThrow());
+            }
+        }
+        return new Saved(groupId, result, result.stream().map(TimelineEditDTO::affectedFrom)
+                .min(Instant::compareTo).orElseThrow());
     }
 
     private List<TimelineEditRequest> prepare(UUID userId, Request request) {
@@ -149,15 +242,12 @@ public class ActivityCorrectionService {
         }
         var segments = new ArrayList<>(request.activities());
         for (var segment : segments) {
+            // A plan-scoped batch describes a planned trip and may lie in the future; recorded-time corrections may not.
             if (segment == null || segment.getStartTime() == null || segment.getEndTime() == null
-                    || !segment.getEndTime().isAfter(segment.getStartTime()) || segment.getEndTime().isAfter(Instant.now())) {
+                    || !segment.getEndTime().isAfter(segment.getStartTime())
+                    || (request.tripId() == null && segment.getEndTime().isAfter(Instant.now()))) {
                 throw invalid("Each activity needs a positive interval ending in the past");
             }
-        }
-        boolean replaceExisting = Boolean.TRUE.equals(request.replaceExisting());
-        if (replaceExisting && (request.contextStart() == null || request.contextEnd() == null
-                || !request.contextEnd().isAfter(request.contextStart()))) {
-            throw invalid("Choose the interval to rebuild");
         }
         segments.sort(Comparator.comparing(TripReconstructionSegmentDto::getStartTime));
         if (request.tripId() != null) {
@@ -176,17 +266,8 @@ public class ActivityCorrectionService {
                 throw invalid("Activities cannot overlap");
             }
             previousEnd = segment.getEndTime();
-            if (replaceExisting) {
-                // The activities are carved out of the current event, so the surrounding time is kept, not rejected.
-                if (segment.getStartTime().isBefore(request.contextStart())
-                        || segment.getEndTime().isAfter(request.contextEnd())) {
-                    throw invalid("Each activity must stay inside the selected interval");
-                }
-            } else {
-                requireEmpty(userId, segment.getStartTime(), segment.getEndTime());
-            }
             var command = prepareCommand(userId, segment);
-            if (replaceExisting) command.getPayload().put("replaceExisting", true);
+            command.setPayload(withScope(command.getPayload(), request.tripId(), segment.isReconstruction()));
             result.add(command);
         }
         return result;
@@ -199,33 +280,76 @@ public class ActivityCorrectionService {
         command.setAffectedFrom(segment.getStartTime());
         command.setAffectedTo(segment.getEndTime());
         if ("STAY".equals(segment.getSegmentType())) {
-            command.setKind(TimelineEditKind.FORCE_STAY);
-            command.setLatitude(segment.getLatitude());
-            command.setLongitude(segment.getLongitude());
-            command.setFavoriteId(segment.getFavoriteId());
-            command.setGeocodingId(segment.getGeocodingId());
-            command.setPlaceName(segment.getLocationName());
-            if (segment.getVisitName() != null && !segment.getVisitName().isBlank())
-                command.getPayload().put("visitName", segment.getVisitName().trim());
+            prepareStay(userId, segment, command);
         } else if ("TRIP".equals(segment.getSegmentType())) {
             prepareTrip(userId, segment, command);
         } else throw invalid("Choose stayed at a place or travelled");
-        command.getPayload().put("activityCorrection", true);
         return command;
+    }
+
+    private void prepareStay(UUID userId, Activity segment, TimelineEditRequest command) {
+        command.setKind(TimelineEditKind.FORCE_STAY);
+        Long favoriteId = segment.getFavoriteId();
+        Long geocodingId = segment.getGeocodingId();
+        String locationName = segment.getLocationName();
+        // A stay given only by coordinates takes the place known at those coordinates, as a GPS stay does.
+        if (favoriteId == null && geocodingId == null
+                && segment.getLatitude() != null && segment.getLongitude() != null) {
+            var resolved = locationPointResolver.resolveLocationWithReferences(userId,
+                    GeoUtils.createPoint(
+                            segment.getLongitude(), segment.getLatitude()));
+            favoriteId = resolved.getFavoriteId();
+            geocodingId = resolved.getGeocodingId();
+            if (locationName == null || locationName.isBlank()) {
+                locationName = resolved.getLocationName();
+            }
+        }
+        PlaceStayPayload.PlaceStayPayloadBuilder payload = PlaceStayPayload.builder()
+                .favoriteId(favoriteId).geocodingId(geocodingId)
+                .latitude(segment.getLatitude()).longitude(segment.getLongitude())
+                .locationName(locationName)
+                .activityCorrection(true);
+        if (segment.getLocationName() != null && !segment.getLocationName().isBlank()
+                && segment.getFavoriteId() == null && segment.getGeocodingId() == null) {
+            payload.locationNameCustom(true);
+        } else if (locationName == null || locationName.isBlank()) {
+            // No known place at these coordinates: let the post-edit geocoding pass name the stay.
+            payload.resolveLocationName(true);
+        }
+        String visitName = segment.getVisitName() == null ? null : segment.getVisitName().trim();
+        if (visitName != null && !visitName.isBlank()) {
+            payload.visitName(visitName);
+        }
+        // A stay carved out of an existing trip is a split: its effect reaches the whole trip, and the legs it
+        // leaves behind keep the manual-split explanation.
+        edits.loadCurrentEvents(userId, segment.getStartTime(), segment.getEndTime()).stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .filter(trip -> !trip.getStartTime().isAfter(segment.getStartTime())
+                        && trip.getEndTime().isAfter(segment.getEndTime()))
+                .findFirst()
+                .ifPresent(trip -> {
+                    command.setAffectedFrom(trip.getStartTime());
+                    command.setAffectedTo(trip.getEndTime());
+                    payload.explanation("MANUAL_SPLIT").carveExplanation("MANUAL_SPLIT");
+                });
+        command.setPayload(payload.build());
     }
 
     private void prepareTrip(UUID userId, Activity segment, TimelineEditRequest command) {
         command.setKind(TimelineEditKind.FORCE_TRIP);
-        addPlace(command, "start", segment.getStartPlace());
-        addPlace(command, "end", segment.getEndPlace());
+        PlaceTripPayload.PlaceTripPayloadBuilder raw = PlaceTripPayload.builder()
+                .movementType(TripType.valueOf(segment.getMovementType() == null
+                        ? "UNKNOWN" : segment.getMovementType()));
+        addPlace(raw, "start", segment.getStartPlace());
+        addPlace(raw, "end", segment.getEndPlace());
+        command.setPayload(raw.build());
         // Resolve endpoints before the correction flag requires completed manual geometry.
-        var resolved = edits.resolvedPayload(userId, command);
+        PlaceTripPayload resolved = (PlaceTripPayload) edits.resolvePayload(userId, command);
         var points = new ArrayList<TripReconstructionWaypointDto>();
-        points.add(new TripReconstructionWaypointDto(
-                ((Number) resolved.get("startLatitude")).doubleValue(), ((Number) resolved.get("startLongitude")).doubleValue()));
+        points.add(new TripReconstructionWaypointDto(resolved.startLatitude(), resolved.startLongitude()));
         if (segment.getWaypoints() != null) points.addAll(segment.getWaypoints());
-        points.add(new TripReconstructionWaypointDto(
-                ((Number) resolved.get("endLatitude")).doubleValue(), ((Number) resolved.get("endLongitude")).doubleValue()));
+        points.add(new TripReconstructionWaypointDto(resolved.endLatitude(), resolved.endLongitude()));
         try {
             ManualRouteGeometry.validate(points);
         } catch (IllegalArgumentException e) {
@@ -234,35 +358,100 @@ public class ActivityCorrectionService {
         double distance = ManualRouteGeometry.distance(points);
         var start = points.getFirst();
         var end = points.getLast();
-        command.getPayload().put("startLatitude", start.getLatitude());
-        command.getPayload().put("startLongitude", start.getLongitude());
-        command.getPayload().put("endLatitude", end.getLatitude());
-        command.getPayload().put("endLongitude", end.getLongitude());
-        command.getPayload().put("waypoints", points);
-        command.getPayload().put("distanceMeters", Math.round(distance));
-        command.getPayload().put("movementType", TripType.valueOf(segment.getMovementType() == null ? "UNKNOWN" : segment.getMovementType()).name());
+        command.setPayload(resolved.toBuilder()
+                .startLatitude(start.getLatitude()).startLongitude(start.getLongitude())
+                .endLatitude(end.getLatitude()).endLongitude(end.getLongitude())
+                .waypoints(points)
+                .distanceMeters(Math.round(distance))
+                .activityCorrection(true)
+                .build());
     }
 
-    private void addPlace(TimelineEditRequest request, String prefix, Place place) {
+    private void addPlace(PlaceTripPayload.PlaceTripPayloadBuilder payload, String prefix, Place place) {
         if (place == null) throw invalid("Choose both trip endpoints");
-        var payload = request.getPayload();
-        if (place.favoriteId() != null) payload.put(prefix + "FavoriteId", place.favoriteId());
-        if (place.geocodingId() != null) payload.put(prefix + "GeocodingId", place.geocodingId());
-        if (place.latitude() != null) payload.put(prefix + "Latitude", place.latitude());
-        if (place.longitude() != null) payload.put(prefix + "Longitude", place.longitude());
-        if (place.locationName() != null) payload.put(prefix + "LocationName", place.locationName());
+        if (prefix.equals("start")) {
+            if (place.favoriteId() != null) payload.startFavoriteId(place.favoriteId());
+            if (place.geocodingId() != null) payload.startGeocodingId(place.geocodingId());
+            if (place.latitude() != null) payload.startLatitude(place.latitude());
+            if (place.longitude() != null) payload.startLongitude(place.longitude());
+            if (place.locationName() != null) payload.startLocationName(place.locationName());
+        } else {
+            if (place.favoriteId() != null) payload.endFavoriteId(place.favoriteId());
+            if (place.geocodingId() != null) payload.endGeocodingId(place.geocodingId());
+            if (place.latitude() != null) payload.endLatitude(place.latitude());
+            if (place.longitude() != null) payload.endLongitude(place.longitude());
+            if (place.locationName() != null) payload.endLocationName(place.locationName());
+        }
     }
 
-    private void requireEmpty(UUID userId, Instant start, Instant end) {
-        if (!stays.findOverlapping(userId, start, end).isEmpty()
-                || !tripRepository.findOverlapping(userId, start, end).isEmpty())
-            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "This interval already contains a stay or trip. Edit that event instead.");
-        if (editRepository.findActiveOverlapping(userId, start, end).stream().anyMatch(edit -> edit.getKind().structural()))
-            throw new GeoPulseException(TIMELINE_EDIT_CONFLICT, "This interval already has a manual correction. Open its history instead.");
+    /** Marks a plan-scoped reconstruction correction, which a later recommit replaces as a group. */
+    private static CorrectionPayload withScope(CorrectionPayload payload, Long tripId, boolean reconstruction) {
+        if (payload instanceof PlaceStayPayload stay) {
+            return stay.toBuilder()
+                    .tripId(tripId == null ? stay.tripId() : tripId)
+                    .reconstruction(reconstruction || Boolean.TRUE.equals(stay.reconstruction()))
+                    .build();
+        }
+        if (payload instanceof PlaceTripPayload trip) {
+            return trip.toBuilder()
+                    .tripId(tripId == null ? trip.tripId() : tripId)
+                    .reconstruction(reconstruction || Boolean.TRUE.equals(trip.reconstruction()))
+                    .build();
+        }
+        return payload;
     }
 
-    private static boolean overlaps(org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent event,
-                                    Instant from, Instant to) {
+    /**
+     * Describes what a fill will carve and enforces the hybrid overlap rule:
+     * <ul>
+     *     <li>nested inside an earlier fill: allowed, the earlier fill remains for the rest;</li>
+     *     <li>contains an earlier fill: allowed after an explicit replacement;</li>
+     *     <li>crosses an earlier fill's edge: invalid, with Adjust range / Replace correction actions.</li>
+     * </ul>
+     * Fills over automatic events are informational. Removals never block a fill; time removed earlier can be filled
+     * again.
+     */
+    private List<Warning> warnings(UUID userId, Request request, List<TimelineEditRequest> commands) {
+        return edits.fillWarnings(userId, commands, request.replacesGroupId());
+    }
+
+    private static Map<String, Object> parameters(UUID groupId, Long correctionId, List<String> actions) {
+        var parameters = new LinkedHashMap<String, Object>();
+        if (groupId != null) parameters.put("conflictingGroupId", groupId);
+        if (correctionId != null) parameters.put("conflictingEditId", correctionId);
+        if (actions != null && !actions.isEmpty()) parameters.put("actions", actions);
+        return parameters;
+    }
+
+    private String token(UUID userId, Request request, List<TimelineEditRequest> commands) {
+        try {
+            var canonical = new LinkedHashMap<String, Object>();
+            canonical.put("userId", userId.toString());
+            Instant from = request.contextStart() != null ? request.contextStart() : commands.getFirst().getAnchorStart();
+            Instant to = request.contextEnd() != null ? request.contextEnd() : commands.getLast().getAnchorEnd();
+            for (var command : commands) {
+                if (command.getAnchorStart().isBefore(from)) from = command.getAnchorStart();
+                if (command.getAnchorEnd().isAfter(to)) to = command.getAnchorEnd();
+            }
+            canonical.put("state", edits.previewState(userId, from, to));
+            canonical.put("tripId", request.tripId());
+            canonical.put("replacesGroupId", request.replacesGroupId());
+            canonical.put("activities", commands.stream().map(command -> Map.of(
+                    "kind", command.getKind().name(),
+                    "start", command.getAnchorStart().toString(),
+                    "end", command.getAnchorEnd().toString(),
+                    "payload", command.getPayload())).toList());
+            var bytes = MessageDigest.getInstance("SHA-256")
+                    .digest(objectMapper.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not compute the preview token", e);
+        }
+    }
+
+    private static boolean overlaps(TimelineEvent event, Instant from, Instant to) {
         if (event.getDuration().isZero()) {
             return !event.getStartTime().isBefore(from) && event.getStartTime().isBefore(to);
         }

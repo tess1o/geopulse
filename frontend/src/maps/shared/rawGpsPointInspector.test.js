@@ -8,7 +8,10 @@ vi.mock('@/utils/calculationsHelpers', () => ({
 import {
   createRawGpsPopupMount,
   createRawGpsInspectionClusters,
+  fanOutPixelOffsets,
   groupRawGpsPoints,
+  layoutRawGpsInspection,
+  RAW_GPS_FAN_LIMIT,
   STATIONARY_GROUP_METERS
 } from './rawGpsPointInspector'
 
@@ -211,7 +214,7 @@ describe('raw GPS point selection for reconstruction', () => {
     await waitForRenderNotification()
     popup.element.querySelectorAll('.raw-gps-stack-row')[1].click()
     await waitForRenderNotification()
-    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent.includes('Select this time')).click()
+    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent.includes('Use this GPS point')).click()
     expect(onSelectPoint).toHaveBeenCalledWith(expect.objectContaining({ id: 2, timestamp: points[1].timestamp }))
     popup.unmount()
   })
@@ -311,12 +314,44 @@ describe('raw GPS sample inspection', () => {
     const select = vi.fn()
     popup.setSelectPoint(select)
     await nextTick()
-    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent === 'Select this time').click()
+    Array.from(popup.element.querySelectorAll('button')).find(button => button.textContent === 'Use this GPS point').click()
     expect(select).toHaveBeenCalledWith(group.points[1])
     popup.setSelectPoint(null)
     await nextTick()
-    expect(popup.element.textContent).not.toContain('Select this time')
+    expect(popup.element.textContent).not.toContain('Use this GPS point')
     expect(popup.element.querySelector('[data-point-index="1"]').classList.contains('is-selected')).toBe(true)
     popup.unmount()
+  })
+})
+
+describe('fanning out an opened group', () => {
+  const project = ({ latitude, longitude }) => ({ x: longitude * 1e5, y: -latitude * 1e5 })
+  const unproject = ({ x, y }) => ({ latitude: -y / 1e5, longitude: x / 1e5 })
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y)
+
+  it('spreads markers far enough apart to click, in a circle for a few and a spiral for more', () => {
+    for (const count of [2, 8, 9, RAW_GPS_FAN_LIMIT]) {
+      const offsets = fanOutPixelOffsets(count)
+      expect(offsets).toHaveLength(count)
+      const closest = Math.min(...offsets.flatMap((a, i) => offsets.slice(i + 1).map(b => distance(a, b))))
+      expect(closest).toBeGreaterThanOrEqual(22)
+    }
+  })
+
+  it('fans out coincident points, one marker each, with legs to where they were recorded', () => {
+    const points = [pointOffsetByMeters(1, 0, 0), pointOffsetByMeters(2, 0, 0)]
+    const entities = [{ indices: [1, 0], latitude: points[0].latitude, longitude: points[0].longitude, isCluster: true }]
+    const { markers, legs, hubs } = layoutRawGpsInspection(entities, points, { project, unproject })
+    expect(markers.map(marker => [marker.indices, marker.isCluster, marker.fanned])).toEqual([[[0], false, true], [[1], false, true]])
+    expect(markers[0].latitude).not.toBe(markers[1].latitude)
+    expect(legs.map(leg => leg[0])).toEqual(points.map(point => [point.latitude, point.longitude]))
+    expect(hubs).toEqual([{ latitude: points[0].latitude, longitude: points[0].longitude }])
+  })
+
+  it('keeps an oversized cluster until the map cannot zoom in any further', () => {
+    const points = Array.from({ length: RAW_GPS_FAN_LIMIT + 1 }, (_, index) => pointOffsetByMeters(index, 0, 0))
+    const entities = [{ indices: points.map((_, index) => index), latitude: points[0].latitude, longitude: points[0].longitude, isCluster: true }]
+    expect(layoutRawGpsInspection(entities, points, { project, unproject }).markers).toEqual([{ ...entities[0], fanned: false }])
+    expect(layoutRawGpsInspection(entities, points, { project, unproject, canZoomIn: false }).markers).toHaveLength(points.length)
   })
 })

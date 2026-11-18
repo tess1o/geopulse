@@ -404,7 +404,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['export', 'show-on-map', 'row-select'])
+const emit = defineEmits(['export', 'show-on-map', 'row-select', 'timeline-edit-submitted'])
 
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
@@ -558,6 +558,8 @@ const closeQuickEditDialog = () => {
 
 const handleMovementTypeUpdated = (updated) => {
   if (!updated?.tripId) return
+  emit('timeline-edit-submitted', updated)
+  if (!updated.movementType) return
 
   const targetTrip = props.trips.find((trip) => trip.id === updated.tripId)
   if (targetTrip) {

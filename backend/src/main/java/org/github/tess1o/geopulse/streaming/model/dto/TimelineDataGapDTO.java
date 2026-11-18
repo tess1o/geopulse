@@ -19,7 +19,7 @@ import java.time.Instant;
 public class TimelineDataGapDTO {
 
     /**
-     * Database ID for targeting this gap in manual override actions.
+     * Database ID for targeting this gap in corrections.
      */
     private Long id;
     

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.put;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -7,7 +9,7 @@ import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService;
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -64,12 +66,18 @@ class ActivityCorrectionIntegrationTest {
         assertThat(edits.list(user)).isEmpty();
     }
 
-    @Test void existingEventsRejectPreviewAndSaveWithoutPartialWrites() {
+    @Test void aFillOverAnExistingEventCarvesItAndInvalidBatchesWriteNothing() {
         var day = new CommuteWithStops(); var user = day.ingest(harness, "activity-occupied");
         var request = request(stay("05:00", "05:03"), stay("10:00", "10:03"));
-        assertThatThrownBy(() -> service.preview(user, request)).isInstanceOf(GeoPulseException.class).hasMessageContaining("already contains");
-        assertThatThrownBy(() -> service.save(user, request)).isInstanceOf(GeoPulseException.class);
-        assertThat(edits.list(user)).isEmpty();
+        var preview = service.preview(user, request);
+        assertThat(preview.events()).isNotEmpty();
+        var saved = service.save(user, request);
+        assertThat(saved.edits()).hasSize(2);
+        var before = edits.list(user).size();
+
+        assertThatThrownBy(() -> service.save(user, request(stay("14:24", "14:27"), stay("14:25", "14:28"))))
+                .isInstanceOf(GeoPulseException.class);
+        assertThat(edits.list(user)).hasSize(before);
     }
 
     @Test void overlappingActivitiesAndCorrectionsAreRejected() {
@@ -86,7 +94,7 @@ class ActivityCorrectionIntegrationTest {
         var owner = harness.createUser("activity-owner"); var other = harness.createUser("activity-other");
         var saved = service.save(owner, request(stay("14:24", "14:27")));
         assertThatThrownBy(() -> service.changeStatus(other, saved.groupId(), false)).isInstanceOf(GeoPulseException.class);
-        assertThat(edits.list(owner).getFirst().status()).isEqualTo(TimelineEditStatus.ACTIVE);
+        assertThat(edits.list(owner).getFirst().status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT);
     }
 
     @Test void nativeBackupPreservesGroupAndManualGeometry() {
@@ -123,70 +131,51 @@ class ActivityCorrectionIntegrationTest {
         var user = harness.createUser("activity-restore-conflict");
         var saved = service.save(user, request(stay("14:24", "14:27"), travel("14:30", "15:00")));
         harness.fullRebuild(user); service.changeStatus(user, saved.groupId(), false); harness.fullRebuild(user);
-        service.save(user, request(stay("14:40", "14:43")));
+        service.save(user, request(stay("14:40", "15:15")));
         assertThatThrownBy(() -> service.changeStatus(user, saved.groupId(), true)).isInstanceOf(GeoPulseException.class);
         assertThat(edits.list(user).stream().filter(edit -> saved.groupId().equals(edit.groupId())))
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.REVERTED));
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.UNDONE));
     }
 
-    @Test void httpEndpointsEnforceGroupOwnershipAndSingleEditUndoGuard() {
+    @Test void httpEndpointsEnforceGroupOwnership() {
         var actor = users.createAuthenticatedUser("activity-http");
         var body = request(stay("14:24", "14:27"));
         io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
                 .header("Authorization", "Bearer " + actor.accessToken()).body(body)
-                .post("/api/v1/timeline/activity-corrections/preview").then().statusCode(200);
+                .post("/api/v1/timeline/corrections/preview").then().statusCode(200);
         var response = io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
                 .header("Authorization", "Bearer " + actor.accessToken()).body(body)
-                .post("/api/v1/timeline/activity-corrections");
+                .post("/api/v1/timeline/corrections");
         assertThat(response.statusCode()).isEqualTo(200);
         var job = response.jsonPath().getString("timelineJobId");
         if (job != null) transfer.awaitJob(UUID.fromString(job));
         var groupId = response.jsonPath().getString("groupId");
-        var editId = edits.list(actor.userId()).getFirst().id();
-        io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON).header("Authorization", "Bearer " + actor.accessToken())
-                .post("/api/v1/timeline/edits/" + editId + "/revert").then().statusCode(400);
         var other = users.createAuthenticatedUser("activity-http-other");
         io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON).header("Authorization", "Bearer " + other.accessToken())
-                .post("/api/v1/timeline/activity-corrections/" + groupId + "/revert").then().statusCode(404);
+                .post("/api/v1/timeline/corrections/" + groupId + "/undo").then().statusCode(404);
+        io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON).header("Authorization", "Bearer " + actor.accessToken())
+                .post("/api/v1/timeline/corrections/" + groupId + "/undo").then().statusCode(200);
         assertThat(harness.pointIds(actor.userId(), at("00:00"), at("23:59"))).isEmpty();
     }
 
-    @Test void aGroupCannotBePartiallySuperseded() {
-        var actor = users.createAuthenticatedUser("activity-structure");
-        var user = actor.userId();
+    @Test void anExplicitReplacementReplacesTheWholeGroup() {
+        var user = harness.createUser("activity-structure");
         var saved = service.save(user, request(stay("14:24", "14:27"), travel("14:30", "15:00")));
         harness.fullRebuild(user);
-        for (var kind : List.of("SET_TIMES", "SPLIT_STAY", "REMOVE_EVENT", "MERGE", "FORCE_STAY", "FORCE_TRIP")) {
-            var command = editRequest(kind, "14:24", "14:27");
-            command.getPayload().put("start", at("14:23").toString());
-            command.getPayload().put("end", at("14:28").toString());
-            command.getPayload().put("splitAt", at("14:25").toString());
-            command.getPayload().put("resolution", "GAP");
-            command.getPayload().put("direction", "NEXT");
-            command.setSupersede(true);
-            for (var endpoint : List.of("/api/v1/timeline/edits/preview", "/api/v1/timeline/edits")) {
-                io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
-                        .header("Authorization", "Bearer " + actor.accessToken()).body(command)
-                        .post(endpoint).then().statusCode(409)
-                        .body("detail", org.hamcrest.Matchers.containsString("cannot be partially replaced"));
-            }
-        }
-        var misleadingRange = editRequest("FORCE_STAY", "14:24", "14:27");
-        misleadingRange.setAffectedFrom(at("16:00")); misleadingRange.setAffectedTo(at("17:00"));
-        misleadingRange.setSupersede(true);
-        assertThatThrownBy(() -> edits.preview(user, misleadingRange))
-                .isInstanceOf(GeoPulseException.class).hasMessageContaining("cannot be partially replaced");
-        assertThat(edits.list(user)).hasSize(2).allSatisfy(edit -> {
-            assertThat(edit.status()).isEqualTo(TimelineEditStatus.ACTIVE);
-            assertThat(edit.groupId()).isEqualTo(saved.groupId());
-        });
-        assertSaved(user);
-        service.changeStatus(user, saved.groupId(), false); harness.fullRebuild(user);
-        QuarkusTransaction.requiringNew().run(() -> {
-            assertThat(stays.count("user.id", user)).isZero();
-            assertThat(trips.count("user.id", user)).isZero();
-        });
-        service.changeStatus(user, saved.groupId(), true); harness.fullRebuild(user);
+
+        var replacement = new ActivityCorrectionService.Request(null, List.of(stay("14:24", "14:27")),
+                null, null, null, saved.groupId());
+        var replacing = service.save(user, replacement);
+        assertThat(edits.list(user)).filteredOn(edit -> saved.groupId().equals(edit.groupId()))
+                .as("a replacement replaces every member of the group")
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.REPLACED));
+        assertThat(edits.list(user)).filteredOn(edit -> replacing.groupId().equals(edit.groupId()))
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT));
+
+        service.changeStatus(user, replacing.groupId(), false); harness.fullRebuild(user);
+        assertThat(edits.list(user)).filteredOn(edit -> saved.groupId().equals(edit.groupId()))
+                .as("undoing the replacement restores the replaced group")
+                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineCorrectionStatus.IN_EFFECT));
         assertSaved(user);
     }
 
@@ -198,9 +187,9 @@ class ActivityCorrectionIntegrationTest {
         place.setLatitude(49.84); place.setLongitude(24.04); place.setPlaceName("Corrected place");
         edits.create(user, place);
         var label = editRequest("SET_VISIT_NAME", "14:24", "14:27");
-        label.getPayload().put("visitName", "Lunch"); edits.create(user, label);
+        put(label, "visitName", "Lunch"); edits.create(user, label);
         var movement = editRequest("SET_MOVEMENT_TYPE", "14:30", "15:00");
-        movement.getPayload().put("movementType", "BICYCLE"); edits.create(user, movement);
+        put(movement, "movementType", "BICYCLE"); edits.create(user, movement);
         harness.fullRebuild(user);
         QuarkusTransaction.requiringNew().run(() -> {
             var stay = stays.find("user.id", user).singleResult();
@@ -210,25 +199,12 @@ class ActivityCorrectionIntegrationTest {
             assertThat(trip.getMovementType()).isEqualTo("BICYCLE");
             assertThat(trip.getManualRoute()).hasSize(3);
         });
-        service.changeStatus(user, saved.groupId(), false); harness.fullRebuild(user);
+        service.changeStatus(user, saved.groupId(), false, true); harness.fullRebuild(user);
         service.changeStatus(user, saved.groupId(), true); harness.fullRebuild(user);
         QuarkusTransaction.requiringNew().run(() -> {
             assertThat(stays.find("user.id", user).singleResult().getVisitName()).isEqualTo("Lunch");
             assertThat(trips.find("user.id", user).singleResult().getMovementType()).isEqualTo("BICYCLE");
         });
-    }
-
-    @Test void ungroupedCorrectionsCanStillBeSuperseded() {
-        var user = new CommuteWithStops().ingest(harness, "activity-ungrouped");
-        var command = editRequest("FORCE_STAY", "10:00", "10:03");
-        command.setLatitude(49.82); command.setLongitude(24.01); command.setPlaceName("Original");
-        var original = edits.create(user, command); harness.fullRebuild(user);
-        command.setSupersede(true); command.setPlaceName("Replacement");
-        edits.create(user, command); harness.fullRebuild(user);
-        assertThat(edits.list(user)).filteredOn(edit -> edit.id().equals(original.id())).hasSize(1)
-                .allSatisfy(edit -> assertThat(edit.status()).isEqualTo(TimelineEditStatus.SUPERSEDED));
-        QuarkusTransaction.requiringNew().run(() ->
-                assertThat(stays.find("user.id = ?1 and timestamp = ?2", user, at("10:00")).singleResult().getLocationName()).isEqualTo("Replacement"));
     }
 
     private org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest editRequest(String kind, String from, String to) {

@@ -67,22 +67,43 @@ public class StreamingDataGapService {
         return true;
     }
 
+    /** The later of the last recorded point and the end of the stored timeline. */
+    public Instant latestKnownTime(UUID userId, Instant gpsTime) {
+        Instant latest = materializedEnd(userId);
+        return latest != null && (gpsTime == null || latest.isAfter(gpsTime)) ? latest : gpsTime;
+    }
+
     /**
-     * Check if there should be an ongoing data gap from the last GPS point to now.
-     * Create or extend the gap if needed based on timeline configuration.
+     * End of the last stored stay or trip. The stored timeline is the fold result, so this already includes every
+     * correction that reaches past the last recorded point (a fill, a resized final stay); an ongoing gap starting
+     * here never overlaps corrected time and needs no regeneration.
+     */
+    private Instant materializedEnd(UUID userId) {
+        Instant stayEnd = lastEnd("select s.timestamp, s.stayDuration from TimelineStayEntity s "
+                + "where s.user.id = :userId order by s.timestamp desc", userId);
+        Instant tripEnd = lastEnd("select t.timestamp, t.tripDuration from TimelineTripEntity t "
+                + "where t.user.id = :userId order by t.timestamp desc", userId);
+        if (stayEnd == null) return tripEnd;
+        return tripEnd == null || stayEnd.isAfter(tripEnd) ? stayEnd : tripEnd;
+    }
+
+    private Instant lastEnd(String query, UUID userId) {
+        return entityManager.createQuery(query, Object[].class)
+                .setParameter("userId", userId)
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst()
+                .map(row -> ((Instant) row[0]).plusSeconds(((Number) row[1]).longValue()))
+                .orElse(null);
+    }
+
+    /**
+     * Creates or extends the ongoing data gap from the end of the known timeline to now, based on the timeline
+     * configuration. Idle real-time passes call this instead of regenerating.
      *
      * @param userId user identifier
      * @param config timeline configuration containing gap thresholds
      */
-    public Instant latestKnownTime(UUID userId, Instant gpsTime) {
-        Instant latest = entityManager.createQuery("select max(e.anchorEnd) from TimelineEditEntity e where e.user.id = :userId and e.status = :status and (e.kind = :stay or e.kind = :trip)", Instant.class)
-                .setParameter("userId", userId)
-                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
-                .setParameter("stay", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_STAY)
-                .setParameter("trip", org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.FORCE_TRIP).getSingleResult();
-        return latest != null && (gpsTime == null || latest.isAfter(gpsTime)) ? latest : gpsTime;
-    }
-
     @Transactional
     public void checkAndCreateOngoingDataGap(UUID userId, TimelineConfig config) {
         // Get the latest GPS point for this user

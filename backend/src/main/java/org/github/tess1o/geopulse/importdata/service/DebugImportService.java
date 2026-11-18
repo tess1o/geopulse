@@ -12,9 +12,11 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.export.dto.TimelineDataDto;
+import org.github.tess1o.geopulse.export.dto.TimelineEditsDataDto;
 import org.github.tess1o.geopulse.favorites.mapper.FavoriteLocationMapper;
 import org.github.tess1o.geopulse.favorites.model.AddAreaToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.AreaGeometry;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -31,6 +33,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
+import org.github.tess1o.geopulse.user.mapper.TimelinePreferencesMapper;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -54,7 +57,9 @@ public class DebugImportService {
 
     private static final String LEGACY_VELOCITY_MS_EXPORT_VERSION = "1.0";
     private static final String GPS_DATA_FILE = "gps_data.json";
-    /** Points persisted between flushes; keeps the persistence context small for large exports. */
+    /**
+     * Points persisted between flushes; keeps the persistence context small for large exports.
+     */
     private static final int GPS_BATCH_SIZE = 500;
 
     @Inject
@@ -100,7 +105,7 @@ public class DebugImportService {
     EntityManager entityManager;
 
     @Inject
-    org.github.tess1o.geopulse.user.mapper.TimelinePreferencesMapper timelinePreferencesMapper;
+    TimelinePreferencesMapper timelinePreferencesMapper;
 
     @ConfigProperty(name = "quarkus.application.version", defaultValue = "unknown")
     String applicationVersion;
@@ -170,11 +175,13 @@ public class DebugImportService {
         String waterDatasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
         GpsImportResult gps = importGpsPoints(job, data, !request.isClearExistingData(), waterDatasetVersion);
 
-        // 6. Import manual overrides; regeneration re-applies them
-        if (data.timelineOverrides != null) {
+        // 6. Import manual corrections. The edits file is authoritative when it carries corrections; the legacy
+        // overrides file is converted only for exports that predate it.
+        boolean hasTimelineEdits = data.timelineEdits != null && hasNonEmptyTimelineEdits(data.timelineEdits);
+        if (data.timelineOverrides != null && !hasTimelineEdits) {
             timelineDetailsImporter.importTimelineOverridesData(data.timelineOverrides, job, referenceMaps);
         }
-        if (data.timelineEdits != null) {
+        if (hasTimelineEdits) {
             timelineDetailsImporter.importTimelineEditsData(data.timelineEdits, job, referenceMaps);
         }
 
@@ -482,8 +489,7 @@ public class DebugImportService {
                 AddAreaToFavoritesDto areaToFavoritesDto = new AddAreaToFavoritesDto();
                 areaToFavoritesDto.setName(name);
                 if (area.hasNonNull("geometry")) {
-                    areaToFavoritesDto.setGeometry(objectMapper.treeToValue(area.get("geometry"),
-                            org.github.tess1o.geopulse.favorites.model.AreaGeometry.class));
+                    areaToFavoritesDto.setGeometry(objectMapper.treeToValue(area.get("geometry"), AreaGeometry.class));
                 } else {
                     areaToFavoritesDto.setNorthEastLat(area.get("northEastLat").asDouble());
                     areaToFavoritesDto.setNorthEastLon(area.get("northEastLon").asDouble());
@@ -590,10 +596,12 @@ public class DebugImportService {
                 waterNode.path("dataset_available").asBoolean(false), waterDatasetVersion != null, gps.waterFlags);
 
         List<Map<String, Object>> gpsSources = metadata.has("gps_sources")
-                ? objectMapper.convertValue(metadata.get("gps_sources"), new TypeReference<>() {})
+                ? objectMapper.convertValue(metadata.get("gps_sources"), new TypeReference<>() {
+        })
                 : List.of();
         Map<String, Object> timelineStatus = metadata.has("timeline_status")
-                ? objectMapper.convertValue(metadata.get("timeline_status"), new TypeReference<>() {})
+                ? objectMapper.convertValue(metadata.get("timeline_status"), new TypeReference<>() {
+        })
                 : null;
 
         JsonNode issueNode = metadata.path("issue");
@@ -744,6 +752,15 @@ public class DebugImportService {
 
         long imported() {
             return imported;
+        }
+    }
+
+    private boolean hasNonEmptyTimelineEdits(byte[] content) {
+        try {
+            var edits = objectMapper.readValue(content, TimelineEditsDataDto.class);
+            return edits.getEdits() != null && !edits.getEdits().isEmpty();
+        } catch (IOException e) {
+            return false;
         }
     }
 }

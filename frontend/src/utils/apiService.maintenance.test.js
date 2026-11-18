@@ -102,6 +102,21 @@ describe('api transport during restore activation', () => {
     expect(redirect).toHaveBeenCalledOnce()
   })
 
+  it.each([
+    { message: 'Network Error', request: {} },
+    { message: 'Bad Gateway', response: { status: 502, data: {} } }
+  ])('keeps correction POST failures local when requested: $message', async error => {
+    const { default: apiService } = await import('./apiService')
+    const redirect = vi.spyOn(apiService, 'redirectToErrorPage').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    axiosMock.post.mockRejectedValue(error)
+
+    await expect(apiService.post('/timeline/corrections', {}, { redirectOnServerError: false })).rejects.toBe(error)
+    expect(redirect).not.toHaveBeenCalled()
+    await expect(apiService.post('/timeline/corrections', {})).rejects.toBe(error)
+    expect(redirect).toHaveBeenCalledOnce()
+  })
+
   it('still handles expired sessions for optional lookups', async () => {
     const { default: apiService } = await import('./apiService')
     vi.spyOn(apiService, 'hasCachedUserProfile').mockReturnValue(true)

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -84,11 +87,12 @@ class TimelineSafetyNetIntegrationTest {
                         TimelineStayEntity.class)
                 .setParameter("userId", userId).setMaxResults(1).getSingleResult());
         QuarkusTransaction.requiringNew().run(() -> entityManager.persist(TimelineEditEntity.builder()
-                .user(entityManager.getReference(UserEntity.class, userId)).seq(1)
+                .user(entityManager.getReference(UserEntity.class, userId))
+                .groupId(java.util.UUID.randomUUID()).seq(1)
                 .kind(TimelineEditKind.SET_VISIT_NAME)
                 .anchorStart(stay.getTimestamp()).anchorEnd(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
                 .affectedFrom(stay.getTimestamp()).affectedTo(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
-                .payload(new LinkedHashMap<>(Map.of("visitName", "Safety checked")))
+                .payload(payload(TimelineEditKind.SET_VISIT_NAME, new LinkedHashMap<>(Map.of("visitName", "Safety checked"))))
                 .status(TimelineEditStatus.ACTIVE).build()));
         harness.fullRebuild(userId);
 
@@ -109,7 +113,7 @@ class TimelineSafetyNetIntegrationTest {
         var request = new org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest();
         request.setKind(TimelineEditKind.SPLIT_STAY); request.setAnchorStart(stay.getTimestamp());
         request.setAnchorEnd(stay.getTimestamp().plusSeconds(stay.getStayDuration()));
-        request.setPayload(new LinkedHashMap<>(Map.of("splitAt", stay.getTimestamp().plusSeconds(3600).toString(),
+        set(request, new LinkedHashMap<>(Map.of("splitAt", stay.getTimestamp().plusSeconds(3600).toString(),
                 "rightLocationName", "Safety stop", "rightLatitude", 50.0, "rightLongitude", 30.0)));
         var edit = edits.create(user, request); harness.fullRebuild(user);
         assertThat(harness.pendingRebuild(user)).isEmpty();

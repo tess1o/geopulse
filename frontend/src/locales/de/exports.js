@@ -39,7 +39,6 @@ export default {
         exportingFavorites: 'Favoriten werden exportiert …',
         exportingReverseGeocodingData: 'Daten der Rückwärts-Geocodierung werden exportiert …',
         exportingTimelineLabels: 'Zeitleisten-Labels werden exportiert …',
-        exportingTimelineOverrides: 'Zeitleisten-Korrekturen werden exportiert …',
         exportingTripWorkspace: 'Reisepläne werden exportiert …',
         exportingNotificationTemplates: 'Benachrichtigungsvorlagen werden exportiert …',
         exportingGeofencingRules: 'Geofence-Regeln werden exportiert …',

@@ -121,41 +121,8 @@ export default {
             resetSummary: 'Beweging gereset',
             resetDetail: 'Reis gereset naar {type}',
             resetFailedSummary: 'Resetten mislukt',
-            resetFailedFallback: 'Kon bewegingstype niet resetten'
-        }
-    },
-    dataGapToStay: {
-        header: 'Datagap omzetten naar verblijf',
-        gapTag: 'Datagap',
-        unknownTimeRange: 'Onbekend tijdsbereik',
-        locationSourceLabel: 'Verblijfslocatiebron',
-        resolvingLocation: 'Laatst bekende puntlocatie ophalen...',
-        defaultLocationLabel: 'Standaardlocatie:',
-        unknownLocation: 'Onbekende locatie',
-        selectedLocationTypeLabel: 'Geselecteerd locatietype',
-        searchPlaceLabel: 'Zoek favoriete of geocodeerplaats',
-        searchPlaceholder: 'Typ minimaal 2 tekens...',
-        latitudePlaceholder: 'Breedtegraad',
-        longitudePlaceholder: 'Lengtegraad',
-        customNamePlaceholder: 'Optionele aangepaste locatienaam',
-        convert: 'Omzetten naar verblijf',
-        strategyOptions: {
-            latestPoint: 'Laatst bekende punt (standaard)',
-            selectedLocation: 'Geselecteerde locatie'
-        },
-        selectedSourceOptions: {
-            place: 'Favoriete of geocodeerplaats',
-            custom: 'Aangepaste coördinaten'
-        },
-        errors: {
-            previewFailed: 'Kon voorbeeld van laatst bekend punt niet ophalen',
-            searchFailed: 'Kon plaatsen niet zoeken'
-        },
-        toasts: {
-            convertedSummary: 'Omgezet',
-            convertedDetail: 'Datagap is omgezet naar verblijf.',
-            failedSummary: 'Omzetten mislukt',
-            failedFallback: 'Kon datagap niet omzetten'
+            resetFailedFallback: 'Kon bewegingstype niet resetten',
+            noCorrectionToReset: 'Er is geen correctie van het reistype om ongedaan te maken. Gebruik de correctiegeschiedenis om deze activiteit te wijzigen.'
         }
     },
     gpsPointEdit: {

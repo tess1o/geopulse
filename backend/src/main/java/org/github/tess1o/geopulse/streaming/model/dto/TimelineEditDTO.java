@@ -1,27 +1,33 @@
 package org.github.tess1o.geopulse.streaming.model.dto;
 
 import lombok.Builder;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditKind;
-import org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp;
+import org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus;
+import org.github.tess1o.geopulse.streaming.edits.payload.BeforeValues;
+import org.github.tess1o.geopulse.streaming.edits.payload.CorrectionPayload;
 
 import java.time.Instant;
-import java.util.Map;
+import java.util.List;
+import java.util.UUID;
 
 @Builder
 public record TimelineEditDTO(
         Long id,
-        java.util.UUID groupId,
+        UUID groupId,
         long seq,
-        TimelineEditKind kind,
+        TimelineCorrectionOp op,
         Instant anchorStart,
         Instant anchorEnd,
         Instant affectedFrom,
         Instant affectedTo,
-        Map<String, Object> payload,
-        Map<String, Object> beforeValues,
-        TimelineEditStatus status,
+        int payloadVersion,
+        CorrectionPayload payload,
+        BeforeValues beforeValues,
+        TimelineCorrectionStatus status,
         boolean applied,
         TimelineEditTargetDTO target,
+        List<TimelineEditTargetDTO> effects,
+        UUID replacedByGroupId,
         Instant createdAt,
         Instant updatedAt
 ) {

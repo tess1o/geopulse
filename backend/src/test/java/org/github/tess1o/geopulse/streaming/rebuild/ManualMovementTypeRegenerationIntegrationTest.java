@@ -1,14 +1,14 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.testsupport.GeocodingTestMocks;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
@@ -40,7 +40,7 @@ class ManualMovementTypeRegenerationIntegrationTest {
     TimelineTripRepository tripRepository;
 
     @Inject
-    TimelineTripMovementOverrideRepository overrideRepository;
+    org.github.tess1o.geopulse.streaming.edits.TimelineEditService timelineEdits;
 
     @BeforeEach
     void setUp() {
@@ -61,7 +61,10 @@ class ManualMovementTypeRegenerationIntegrationTest {
             assertThat(trip.getMovementType()).as("trip at %s in %s", during, described).isEqualTo("BOAT");
             assertThat(trip.getMovementTypeSource()).as("trip at %s", during).isEqualTo(MovementTypeSource.MANUAL);
         }
-        assertThat(overrides(userId)).hasSize(3).allSatisfy(override -> assertThat(override.getTrip()).isNotNull());
+        assertThat(overrides(userId)).hasSize(3).allSatisfy(override -> {
+            assertThat(override.applied()).isTrue();
+            assertThat(map(override.payload()).get("movementType")).isEqualTo("BOAT");
+        });
     }
 
     private TimelineTripEntity tripAt(UUID userId, Instant time) {
@@ -72,7 +75,10 @@ class ManualMovementTypeRegenerationIntegrationTest {
                 .orElse(null));
     }
 
-    private List<TimelineTripMovementOverrideEntity> overrides(UUID userId) {
-        return QuarkusTransaction.requiringNew().call(() -> overrideRepository.findByUserId(userId));
+    private List<org.github.tess1o.geopulse.streaming.model.dto.TimelineEditDTO> overrides(UUID userId) {
+        return timelineEdits.list(userId).stream()
+                .filter(edit -> edit.op() == org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionOp.SET_TRIP_TYPE
+                        && edit.status() == org.github.tess1o.geopulse.streaming.edits.TimelineCorrectionStatus.IN_EFFECT)
+                .toList();
     }
 }

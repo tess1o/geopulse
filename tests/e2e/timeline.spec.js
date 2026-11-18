@@ -426,16 +426,23 @@ test.describe('Timeline Page', () => {
       await card.locator('.timeline-edit-count').click();
       const timeChange = drawer.locator('.timeline-changes article').filter({ hasText: 'Time' });
       await expect(timeChange).toContainText('Before');
-      await expect(timeChange).toContainText('Saved');
+      await expect(timeChange).toContainText(/Now\s*08\/10\/2025 09:01/);
       await timeChange.getByRole('button', { name: 'Undo', exact: true }).click();
       await expect(card.locator('.timeline-edit-count')).toHaveText('1 change', { timeout: 60000 });
       await expect(card.locator('.visit-label')).toHaveText('Test');
       await drawer.locator('.edit-action-row').filter({ hasText: 'Visit label' }).click();
       await drawer.getByRole('button', { name: 'Remove label', exact: true }).click();
+      // Removing the label saves a new "cleared" change that replaces the "Test" one, and closes the drawer.
       await expect(card.locator('.visit-label')).toHaveCount(0, { timeout: 60000 });
+      await expect(card.locator('.timeline-edit-count')).toHaveText('1 change');
+      await card.locator('.timeline-edit-count').click();
       await drawer.locator('summary').click();
-      await drawer.locator('article').filter({ hasText: 'Visit label' }).getByRole('button', { name: 'Redo', exact: true }).click();
+      await expect(drawer.locator('details article').filter({ hasText: 'Test' })).toContainText('Replaced');
+      // Undoing the clear brings the replaced label back.
+      await drawer.locator('.timeline-changes > article').filter({ hasText: 'Cleared the visit label' })
+        .getByRole('button', { name: 'Undo', exact: true }).click();
       await expect(card.locator('.visit-label')).toHaveText('Test', { timeout: 60000 });
+      await expect(card.locator('.timeline-edit-count')).toHaveText('1 change');
       await page.reload();
       await timelinePage.waitForPageLoad();
       await expect(card.locator('.visit-label')).toHaveText('Test');

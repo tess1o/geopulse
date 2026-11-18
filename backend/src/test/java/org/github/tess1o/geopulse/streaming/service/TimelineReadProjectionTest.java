@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.streaming.edits.payload.SetLabelPayload;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
 import org.github.tess1o.geopulse.streaming.repository.*;
@@ -158,40 +159,26 @@ class TimelineReadProjectionTest {
 
     @Test
     @Transactional
-    void correctionMetadataUsesCountsAndIdsAndExcludesMigratedOverrides() {
+    void correctionMetadataUsesEffectCounts() {
         var user = user();
         var stay = TimelineStayEntity.builder().user(user).timestamp(START).stayDuration(1200)
                 .location(point()).locationName("Home").build();
         em.persist(stay);
         for (int i = 0; i < 2; i++) {
-            var edit = TimelineEditEntity.builder().user(user).seq(i + 1)
+            var edit = TimelineEditEntity.builder().user(user).groupId(java.util.UUID.randomUUID()).seq(i + 1)
                     .kind(org.github.tess1o.geopulse.streaming.edits.TimelineEditKind.SET_VISIT_NAME)
+                    .payload(new SetLabelPayload("Label " + i))
                     .anchorStart(START).anchorEnd(END).affectedFrom(START).affectedTo(END).build();
             em.persist(edit);
-            em.persist(TimelineEditApplicationEntity.builder().edit(edit).targetType("STAY")
+            em.persist(TimelineCorrectionEffectEntity.builder().correction(edit).targetType("STAY")
                     .targetId(stay.getId()).build());
         }
-        var active = TimelineDataGapStayOverrideEntity.builder().user(user).stay(stay)
-                .locationStrategy(org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy.LATEST_POINT)
-                .sourceGapStartTime(START).sourceGapEndTime(END).sourceGapDurationSeconds(86400).build();
-        em.persist(active);
-        em.persist(TimelineDataGapStayOverrideEntity.builder().user(user).stay(stay)
-                .locationStrategy(org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy.LATEST_POINT)
-                .sourceGapStartTime(START.plusSeconds(1)).sourceGapEndTime(END).sourceGapDurationSeconds(86399).migratedToTimelineEdits(true).build());
-        var split = TimelineTripStaySplitOverrideEntity.builder().user(user).stay(stay)
-                .stayStartTime(START).stayEndTime(END).anchorTimestamp(START)
-                .stayLocationName("Home").sourceTripTimestamp(START).sourceTripDurationSeconds(86400).build();
-        em.persist(split);
         em.flush();
         UUID userId = user.getId();
-        Long activeId = active.getId();
-        Long splitId = split.getId();
         em.clear();
         var timeline = aggregator.getTimelineFromDb(userId, START, END);
         assertThat(timeline.getStays()).hasSize(1);
         assertThat(timeline.getStays().getFirst().getActiveEditCount()).isEqualTo(2);
-        assertThat(timeline.getStays().getFirst().getDataGapOverrideIds()).containsExactly(activeId);
-        assertThat(timeline.getStays().getFirst().getTripSplitOverrideId()).isEqualTo(splitId);
         assertThat(em.unwrap(Session.class).getStatistics().getEntityCount()).isZero();
     }
 

@@ -1,11 +1,11 @@
 package org.github.tess1o.geopulse.streaming.edits;
 
+import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
+
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditPreviewDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineEditRequest;
 import org.github.tess1o.geopulse.streaming.repository.TimelineEditRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionWaypointDto;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -33,10 +33,9 @@ class ActivityCorrectionServiceTest {
 
     ActivityCorrectionServiceTest() {
         service.edits = edits;
-        service.stays = mock(TimelineStayRepository.class);
-        service.tripRepository = mock(TimelineTripRepository.class);
         service.editRepository = mock(TimelineEditRepository.class);
-        when(edits.previewCommands(eq(user), anyList(), any(), any()))
+        service.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        when(edits.previewCommands(eq(user), anyList(), any(), any(), isNull()))
                 .thenReturn(new TimelineEditResult(List.of(), Map.of(), List.of()));
     }
 
@@ -60,11 +59,11 @@ class ActivityCorrectionServiceTest {
         assertThat(command.getKind()).isEqualTo(TimelineEditKind.FORCE_STAY);
         assertThat(command.getAffectedFrom()).isEqualTo(START);
         assertThat(command.getAffectedTo()).isEqualTo(START.plusSeconds(60));
-        assertThat(command.getLatitude()).isEqualTo(49.0);
-        assertThat(command.getLongitude()).isEqualTo(24.0);
-        assertThat(command.getFavoriteId()).isEqualTo(42L);
-        assertThat(command.getPlaceName()).isEqualTo("Home");
-        assertThat(command.getPayload()).containsEntry("visitName", "Lunch").containsEntry("activityCorrection", true);
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload)command.getPayload()).latitude()).isEqualTo(49.0);
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload)command.getPayload()).longitude()).isEqualTo(24.0);
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload)command.getPayload()).favoriteId()).isEqualTo(42L);
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceStayPayload)command.getPayload()).locationName()).isEqualTo("Home");
+        assertThat(map(command.getPayload())).containsEntry("visitName", "Lunch").containsEntry("activityCorrection", true);
     }
 
     @Test
@@ -77,13 +76,13 @@ class ActivityCorrectionServiceTest {
         service.preview(user, request(trip));
         var command = commands(1).getFirst();
         assertThat(command.getKind()).isEqualTo(TimelineEditKind.FORCE_TRIP);
-        assertThat(command.getPayload()).containsEntry("startFavoriteId", 42L)
+        assertThat(map(command.getPayload())).containsEntry("startFavoriteId", 42L)
                 .containsEntry("startLatitude", 49.0).containsEntry("endLongitude", 25.0)
                 .containsEntry("movementType", "WALK").containsEntry("activityCorrection", true);
         var route = List.of(new TripReconstructionWaypointDto(49.0, 24.0), middle,
                 new TripReconstructionWaypointDto(50.0, 25.0));
-        assertThat(command.getPayload().get("waypoints")).isEqualTo(route);
-        assertThat(command.getPayload().get("distanceMeters")).isEqualTo(Math.round(ManualRouteGeometry.distance(route)));
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceTripPayload)command.getPayload()).waypoints()).isEqualTo(route);
+        assertThat(map(command.getPayload()).get("distanceMeters")).isEqualTo(Math.round(ManualRouteGeometry.distance(route)));
         assertThat(trip.getWaypoints()).containsExactly(middle);
     }
 
@@ -91,8 +90,7 @@ class ActivityCorrectionServiceTest {
     void acceptsRoutesWithoutIntermediatePointsAndDefaultsMovementType() {
         resolveEndpoints();
         service.preview(user, request(trip()));
-        assertThat(commands(1).getFirst().getPayload()).containsEntry("movementType", "UNKNOWN")
-                .containsEntry("waypoints", List.of(new TripReconstructionWaypointDto(49.0, 24.0),
+        assertThat(((org.github.tess1o.geopulse.streaming.edits.payload.PlaceTripPayload)commands(1).getFirst().getPayload()).waypoints()).isEqualTo(List.of(new TripReconstructionWaypointDto(49.0, 24.0),
                         new TripReconstructionWaypointDto(50.0, 25.0)));
     }
 
@@ -103,7 +101,7 @@ class ActivityCorrectionServiceTest {
         trip.setWaypoints(List.of(new TripReconstructionWaypointDto(Double.NaN, 24.0)));
         assertThatThrownBy(() -> service.preview(user, request(trip)))
                 .isInstanceOf(GeoPulseException.class).hasCauseInstanceOf(IllegalArgumentException.class);
-        verify(edits, never()).previewCommands(any(), any(), any(), any());
+        verify(edits, never()).previewCommands(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -117,7 +115,7 @@ class ActivityCorrectionServiceTest {
         var future = activity("STAY", 0, 60);
         future.setEndTime(Instant.now().plusSeconds(3600));
         assertThatThrownBy(() -> service.preview(user, request(future))).isInstanceOf(GeoPulseException.class);
-        verify(edits, never()).previewCommands(any(), any(), any(), any());
+        verify(edits, never()).previewCommands(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -129,18 +127,17 @@ class ActivityCorrectionServiceTest {
     }
 
     private void resolveEndpoints() {
-        when(edits.resolvedPayload(eq(user), any())).thenAnswer(invocation -> {
+        when(edits.resolvePayload(eq(user), any())).thenAnswer(invocation -> {
             TimelineEditRequest command = invocation.getArgument(1);
-            assertThat(command.getPayload()).doesNotContainKey("activityCorrection");
-            return new LinkedHashMap<>(Map.of("startLatitude", 49.0, "startLongitude", 24.0,
-                    "endLatitude", 50.0, "endLongitude", 25.0));
+            assertThat(map(command.getPayload())).doesNotContainKey("activityCorrection");
+            return ((org.github.tess1o.geopulse.streaming.edits.payload.PlaceTripPayload)command.getPayload()).toBuilder().startFavoriteId(42L).startLatitude(49.0).startLongitude(24.0).endLatitude(50.0).endLongitude(25.0).build();
         });
     }
 
     private List<TimelineEditRequest> commands(int count) {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<TimelineEditRequest>> captor = ArgumentCaptor.forClass(List.class);
-        verify(edits).previewCommands(eq(user), captor.capture(), any(), any());
+        verify(edits).previewCommands(eq(user), captor.capture(), any(), any(), isNull());
         var captured = captor.getValue();
         assertThat(captured).hasSize(count);
         return captured;
