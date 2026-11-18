@@ -20,7 +20,7 @@ export default {
     "undo": "Laatste punt ongedaan maken",
     "finish": "Vorm afronden",
     "rectangleInstruction": "Sleep om een rechthoek te tekenen.",
-    "polygonInstruction": "Klik of tik om hoeken toe te voegen. Sleep hoeken voor precisie. Selecteer de eerste of laatste hoek, of Vorm afronden, om te sluiten. Escape annuleert.",
+    "polygonInstruction": "Klik of tik om hoeken toe te voegen. Sleep de kaart om deze te verplaatsen. Sleep hoeken voor precisie. Selecteer de eerste of laatste hoek, of Vorm afronden, om te sluiten. Escape annuleert.",
     "errors": {
         "vertices": "Gebruik tussen de 3 en 500 hoeken.",
         "coordinates": "Gebruik geldige lengte- en breedtegraadcoördinaten.",

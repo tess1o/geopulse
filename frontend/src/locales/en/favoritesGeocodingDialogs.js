@@ -20,7 +20,7 @@ export default {
     "undo": "Undo last point",
     "finish": "Finish shape",
     "rectangleInstruction": "Drag to draw a rectangle.",
-    "polygonInstruction": "Click or tap to add corners. Drag corners for precision. Select the first or last corner, or Finish shape, to close. Escape cancels.",
+    "polygonInstruction": "Click or tap to add corners. Drag the map to move it. Drag corners for precision. Select the first or last corner, or Finish shape, to close. Escape cancels.",
     "errors": {
         "vertices": "Use between 3 and 500 corners.",
         "coordinates": "Use valid longitude and latitude coordinates.",

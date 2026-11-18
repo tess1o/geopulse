@@ -34,7 +34,7 @@ const create=(mode='RASTER')=>{
   delete map.dragging
   map.unproject=([x,y])=>({lng:30+x/1000,lat:50+y/1000})
   map.project=([lng,lat])=>({x:(lng-30)*1000,y:(lat-50)*1000})
-  map.sources={};map.layers={};map.on=vi.fn();map.off=vi.fn()
+  map.sources={};map.layers={};map.on=vi.fn();map.off=vi.fn();map.panBy=vi.fn()
  }
  let wheelEnabled=true
  map[mode==='RASTER'?'scrollWheelZoom':'scrollZoom']={
@@ -47,11 +47,17 @@ const create=(mode='RASTER')=>{
  return created
 }
 const vertexIcons=()=>L.divIcon.mock.calls.filter(([options])=>options.className==='gp-area-vertex-wrapper').map(([options])=>options.html)
-const click=(x,y)=>container.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:x,clientY:y}))
-const pointer=(type,x,y,target=container)=>{
- const event=new MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0})
- Object.defineProperties(event,{pointerId:{value:1},pointerType:{value:'mouse'}})
+const pointer=(type,x,y,target=container,{button=0,pointerId=1,pointerType='mouse',isPrimary=true}={})=>{
+ const event=new MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button})
+ Object.defineProperties(event,{pointerId:{value:pointerId},pointerType:{value:pointerType},isPrimary:{value:isPrimary}})
  target.dispatchEvent(event)
+ return event
+}
+const click=(x,y)=>{pointer('pointerdown',x,y);pointer('pointerup',x,y,document)}
+const press=(fromX,fromY,toX,toY,options={})=>{
+ pointer('pointerdown',fromX,fromY,container,options)
+ pointer('pointermove',toX,toY,document,options)
+ pointer('pointerup',toX,toY,document,options)
 }
 const dragEdge=(x,y,toX,toY)=>{
  pointer('pointerdown',x,y)
@@ -67,7 +73,8 @@ describe('polygon drawing lifecycle',()=>{
     runtime.stopDrawing()
     runtime.startDrawing(shape)
     expect(wheel.isEnabled()).toBe(true)
-    expect(mode==='RASTER'?map.dragging.enabled():map.dragPan.isEnabled()).toBe(false)
+    // Rectangles are drawn by dragging; polygon corners are clicked, so the map keeps panning.
+    expect(mode==='RASTER'?map.dragging.enabled():map.dragPan.isEnabled()).toBe(shape==='polygon')
     runtime.stopDrawing()
     expect(wheel.isEnabled()).toBe(true)
   }
@@ -227,5 +234,59 @@ describe('polygon drawing lifecycle',()=>{
   runtime.drawingState.value.vertices[1][0]=30.5
   runtime.stopDrawing()
   expect(geometry.coordinates[0][1][0]).toBe(31)
+ })
+ it.each(['RASTER','VECTOR'])('pans the map instead of adding a corner when the pointer is dragged in %s mode',(mode)=>{
+  create(mode)
+  press(0,0,40,30)
+  expect(runtime.drawingState.value.vertices).toHaveLength(0)
+  expect(mode==='RASTER'?map.dragging.enabled():map.dragPan.isEnabled()).toBe(true)
+  press(100,100,104,103)
+  expect(runtime.drawingState.value.vertices).toEqual([[30.104,50.103]])
+  pointer('pointerdown',200,200);pointer('pointermove',240,200,document);pointer('pointermove',200,200,document);pointer('pointerup',200,200,document)
+  expect(runtime.drawingState.value.vertices).toHaveLength(1)
+ })
+ it('allows more finger jitter than mouse movement before a tap becomes a pan',()=>{
+  create()
+  press(0,0,8,0,{pointerType:'touch'})
+  expect(runtime.drawingState.value.vertices).toHaveLength(1)
+  press(100,0,108,0)
+  expect(runtime.drawingState.value.vertices).toHaveLength(1)
+ })
+ it('does not add a corner when a second finger starts a pinch',()=>{
+  create()
+  pointer('pointerdown',0,0,container,{pointerType:'touch'})
+  pointer('pointerdown',100,100,container,{pointerType:'touch',pointerId:2,isPrimary:false})
+  pointer('pointerup',0,0,document,{pointerType:'touch'})
+  expect(runtime.drawingState.value.vertices).toHaveLength(0)
+ })
+ it.each(['RASTER','VECTOR'])('never adds a corner with the middle button in %s mode',(mode)=>{
+  create(mode)
+  pointer('pointerdown',50,50,container,{button:1})
+  const down=new MouseEvent('mousedown',{bubbles:true,cancelable:true,clientX:50,clientY:50,button:1})
+  container.dispatchEvent(down)
+  pointer('pointerup',50,50,document,{button:1})
+  document.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,button:1}))
+  expect(runtime.drawingState.value.vertices).toHaveLength(0)
+  expect(down.defaultPrevented).toBe(true)
+ })
+ it('pans the vector map with a middle-button drag',()=>{
+  create('VECTOR')
+  container.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,clientX:50,clientY:50,button:1,buttons:4}))
+  document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:80,clientY:40,buttons:4}))
+  expect(map.panBy).toHaveBeenLastCalledWith([-30,10],{duration:0})
+  document.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,button:1}))
+  document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:120,clientY:40,buttons:4}))
+  expect(map.panBy).toHaveBeenCalledOnce()
+  runtime.stopDrawing();map.dragPan.disable();runtime.startDrawing('polygon')
+  container.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,clientX:50,clientY:50,button:1,buttons:4}))
+  document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:80,clientY:40,buttons:4}))
+  expect(map.panBy).toHaveBeenCalledOnce()
+ })
+ it('closes the shape when a click is released near the first corner',()=>{
+  const created=create()
+  click(0,0);click(100,0);click(100,100)
+  click(10,5)
+  expect(created).toHaveBeenCalledOnce()
+  expect(created.mock.calls[0][0].geometry.coordinates[0]).toHaveLength(4)
  })
 })

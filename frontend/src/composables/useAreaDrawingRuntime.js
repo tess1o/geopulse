@@ -99,9 +99,15 @@ export function useAreaDrawingRuntime(options = {}) {
     }
   }
 
+  // Polygon corners are placed by clicks, so the map keeps its own pan and pinch gestures;
+  // only rectangle drawing needs a drag to belong to the shape.
+  const keepsMapGestures = () => drawingState.value.shape === 'polygon'
+
   const disableRasterInteractions = () => {
-    map.dragging?.disable?.()
-    map.touchZoom?.disable?.()
+    if (!keepsMapGestures()) {
+      map.dragging?.disable?.()
+      map.touchZoom?.disable?.()
+    }
     map.doubleClickZoom?.disable?.()
     map.boxZoom?.disable?.()
     map.keyboard?.disable?.()
@@ -119,8 +125,10 @@ export function useAreaDrawingRuntime(options = {}) {
   }
 
   const disableVectorInteractions = () => {
-    map.dragPan?.disable?.()
-    map.touchZoomRotate?.disable?.()
+    if (!keepsMapGestures()) {
+      map.dragPan?.disable?.()
+      map.touchZoomRotate?.disable?.()
+    }
     map.doubleClickZoom?.disable?.()
     map.boxZoom?.disable?.()
     map.keyboard?.disable?.()
@@ -257,7 +265,9 @@ export function useAreaDrawingRuntime(options = {}) {
     const container = map.getContainer()
     container.style.cursor = 'crosshair'
     container.addEventListener('pointerdown', handleEdgeDown, true)
+    container.addEventListener('pointerdown', handleCornerDown)
     container.addEventListener('pointermove', handleEdgeHover)
+    container.addEventListener('mousedown', handleMiddleDown)
     container.addEventListener('mousedown', drawingHandlers.onStart, { passive: false })
     container.addEventListener('touchstart', drawingHandlers.onStart, { passive: false })
     container.addEventListener('mouseleave', clearPointerPreview)
@@ -285,13 +295,17 @@ export function useAreaDrawingRuntime(options = {}) {
     vertexMarkers.forEach(marker => marker.remove())
     vertexMarkers = []
     endEdgeDrag()
+    clearPendingCorner()
+    endMiddlePan()
     draggingVertex = false
     drawingState.value.isDrawing = false
     drawingState.value.startPoint = null
 
     const container = map.getContainer()
     container.removeEventListener('pointerdown', handleEdgeDown, true)
+    container.removeEventListener('pointerdown', handleCornerDown)
     container.removeEventListener('pointermove', handleEdgeHover)
+    container.removeEventListener('mousedown', handleMiddleDown)
     container.removeEventListener('mousedown', drawingHandlers.onStart)
     container.removeEventListener('touchstart', drawingHandlers.onStart)
     container.removeEventListener('mouseleave', clearPointerPreview)
@@ -492,6 +506,85 @@ export function useAreaDrawingRuntime(options = {}) {
     document.addEventListener('pointercancel', handleEdgeCancel, true)
   }
 
+  // A press adds a corner only when it is released near where it started; a longer movement is a map pan.
+  const CLICK_TOLERANCE_PX = {mouse: 5, touch: 10, pen: 10}
+  let pendingCorner = null
+  let middlePan = null
+
+  const clearPendingCorner = () => {
+    document.removeEventListener('pointermove', handleCornerMove, true)
+    document.removeEventListener('pointerup', handleCornerUp, true)
+    document.removeEventListener('pointercancel', clearPendingCorner, true)
+    pendingCorner = null
+  }
+
+  const movedBeyondTolerance = (event) => !pendingCorner
+    || Math.hypot(event.clientX - pendingCorner.clientX, event.clientY - pendingCorner.clientY) > pendingCorner.tolerance
+
+  const handleCornerDown = (event) => {
+    const state = drawingState.value
+    if (!state.isDrawing || state.isAdjusting || state.shape !== 'polygon') return
+    // A second finger starts a pinch, so the first one no longer places a corner.
+    if (event.isPrimary === false) { clearPendingCorner(); return }
+    if (event.button !== 0 || pendingCorner
+      || event.target?.closest?.('button, .gp-area-vertex-wrapper, .leaflet-control, .maplibregl-ctrl')) return
+    pendingCorner = {pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY,
+      tolerance: CLICK_TOLERANCE_PX[event.pointerType] ?? CLICK_TOLERANCE_PX.mouse}
+    document.addEventListener('pointermove', handleCornerMove, true)
+    document.addEventListener('pointerup', handleCornerUp, true)
+    document.addEventListener('pointercancel', clearPendingCorner, true)
+  }
+
+  const handleCornerMove = (event) => {
+    if (pendingCorner && event.pointerId === pendingCorner.pointerId && movedBeyondTolerance(event)) clearPendingCorner()
+  }
+
+  const handleCornerUp = (event) => {
+    if (!pendingCorner || event.pointerId !== pendingCorner.pointerId) return
+    const isClick = !movedBeyondTolerance(event)
+    clearPendingCorner()
+    if (isClick && drawingState.value.isDrawing && !drawingState.value.isAdjusting) addCorner(event)
+  }
+
+  const addCorner = (event) => {
+    const latLng = getLatLngFromEvent(event)
+    if (!latLng) return
+    const vertices = drawingState.value.vertices
+    if (vertices.length >= 3) {
+      const first = project(vertices[0])
+      const position = getContainerPointFromEvent(event)
+      if (Math.hypot(first.x - position.x, first.y - position.y) <= 12) { finishPolygon(); return }
+    }
+    if (vertices.length >= 500) { drawingState.value.error = 'vertices'; return }
+    vertices.push([latLng.lng, latLng.lat])
+    drawingState.value.error = null
+    renderPolygonPreview()
+  }
+
+  const endMiddlePan = () => {
+    document.removeEventListener('mousemove', handleMiddleMove, true)
+    document.removeEventListener('mouseup', endMiddlePan, true)
+    middlePan = null
+  }
+
+  const handleMiddleMove = (event) => {
+    if (!middlePan) return
+    if ((event.buttons & 4) === 0) { endMiddlePan(); return }
+    const dx = event.clientX - middlePan.clientX, dy = event.clientY - middlePan.clientY
+    middlePan = {clientX: event.clientX, clientY: event.clientY}
+    if (dx || dy) map.panBy([-dx, -dy], {duration: 0})
+  }
+
+  // The middle button only moves the map. Leaflet pans with it natively; MapLibre's drag pan is left-button only.
+  const handleMiddleDown = (event) => {
+    if (event.button !== 1 || !drawingState.value.isDrawing || drawingState.value.shape !== 'polygon') return
+    event.preventDefault() // suppresses the browser's middle-click autoscroll
+    if (mode.value !== MAP_RENDER_MODES.VECTOR || middlePan || !map.dragPan?.isEnabled?.()) return
+    middlePan = {clientX: event.clientX, clientY: event.clientY}
+    document.addEventListener('mousemove', handleMiddleMove, true)
+    document.addEventListener('mouseup', endMiddlePan, true)
+  }
+
   const startEditing = (geometry) => {
     startDrawing('polygon')
     drawingState.value.isAdjusting = true
@@ -562,7 +655,8 @@ export function useAreaDrawingRuntime(options = {}) {
   }
 
   const handleDrawStart = (event) => {
-    if (!drawingState.value.isDrawing || drawingState.value.isAdjusting) {
+    // Polygon corners come from pointer clicks (handleCornerDown/Up) so the map can still pan.
+    if (!drawingState.value.isDrawing || drawingState.value.isAdjusting || drawingState.value.shape === 'polygon') {
       return
     }
 
@@ -572,22 +666,6 @@ export function useAreaDrawingRuntime(options = {}) {
 
     const latLng = getLatLngFromEvent(event)
     if (!latLng) {
-      return
-    }
-
-    if (drawingState.value.shape === 'polygon') {
-      const vertices = drawingState.value.vertices
-      if (vertices.length >= 3) {
-        const first = vertices[0]
-        const a = mode.value === MAP_RENDER_MODES.RASTER
-          ? map.latLngToContainerPoint([first[1], first[0]]) : map.project(first)
-        const b = getContainerPointFromEvent(event)
-        if (Math.hypot(a.x - b.x, a.y - b.y) <= 12) { finishPolygon(); return }
-      }
-      if (vertices.length >= 500) { drawingState.value.error = 'vertices'; return }
-      vertices.push([latLng.lng, latLng.lat])
-      drawingState.value.error = null
-      renderPolygonPreview()
       return
     }
 
