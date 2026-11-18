@@ -76,7 +76,7 @@ public class AIInsightsTools {
         ZoneId zone = zone(user.getTimezone());
         // Charts are dropped from the result; the group mode only matters for them.
         return AIStatisticsDTO.from(statisticsService.getStatistics(
-                user.getId(), startOfDay(start, zone), endOfDay(end, zone), ChartGroupMode.WEEKS));
+                user.getId(), startOfDay(start, zone), endOfDay(end, zone), ChartGroupMode.WEEKS, zone));
     }
 
     public JourneyInsights getJourneyInsights() {

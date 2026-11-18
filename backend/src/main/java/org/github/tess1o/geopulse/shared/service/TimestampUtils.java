@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.shared.service;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
@@ -43,5 +45,19 @@ public final class TimestampUtils {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolve a user's stored timezone, falling back to UTC when it is missing or not a valid zone id.
+     */
+    public static ZoneId resolveZone(String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            return ZoneOffset.UTC;
+        }
+        try {
+            return ZoneId.of(timezone);
+        } catch (DateTimeException e) {
+            return ZoneOffset.UTC;
+        }
     }
 }

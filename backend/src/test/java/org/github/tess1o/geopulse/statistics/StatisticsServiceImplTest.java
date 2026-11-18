@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.*;
 class StatisticsServiceImplTest {
     @Mock
     private StatisticsRepository statisticsRepository;
+    /** Non-UTC on purpose: strict stubs fail if the service does not pass the zone through. */
+    private static final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
     private StatisticsServiceImpl statisticsService;
     private UUID testUserId;
     private Instant testStart;
@@ -40,18 +43,18 @@ class StatisticsServiceImplTest {
     void getStatistics_WithValidData_ReturnsCompleteStatistics() {
         // Given
         TripAggregationResult tripAgg = new TripAggregationResult(15000.0, 7200L, 7500.0, 2L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(2L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5))
                 .thenReturn(List.of(createTopPlace("Home", 3, 1800, 40.7128, -74.0060)));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd))
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE))
                 .thenReturn(createMostActiveDay("01/02", "Monday", 20.0, 3600.0, 3L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of(new ChartDataPoint("MON", 10.0, "MON"))));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
         assertNotNull(result);
         assertEquals(15000.0, result.getTotalDistanceMeters());
@@ -66,21 +69,21 @@ class StatisticsServiceImplTest {
         assertNotNull(result.getDistanceChartsByTripType());
         assertFalse(result.getDistanceChartsByTripType().isEmpty());
         // Verify repository was called
-        verify(statisticsRepository).getTripAggregations(testUserId, testStart, testEnd);
+        verify(statisticsRepository).getTripAggregations(testUserId, testStart, testEnd, ZONE);
         verify(statisticsRepository).getUniqueLocationsCount(testUserId, testStart, testEnd);
         verify(statisticsRepository).getTopPlaces(testUserId, testStart, testEnd, 5);
-        verify(statisticsRepository).getMostActiveDay(testUserId, testStart, testEnd);
+        verify(statisticsRepository).getMostActiveDay(testUserId, testStart, testEnd, ZONE);
         verify(statisticsRepository).getRoutesStatistics(testUserId, testStart, testEnd);
-        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false));
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false), eq(ZONE));
     }
     @Test
     void getStatistics_WithEmptyData_ReturnsZeroStatistics() {
         // Given - empty results from database
         TripAggregationResult emptyTrips = new TripAggregationResult(0.0, 0L, 0.0, 0L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(emptyTrips);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(emptyTrips);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(0L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5)).thenReturn(List.of());
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(RoutesStatistics.builder()
                         .avgTripDurationSeconds(0.0)
@@ -89,10 +92,10 @@ class StatisticsServiceImplTest {
                         .longestTripDistanceMeters(0.0)
                         .mostCommonRoute(new MostCommonRoute("", 0))
                         .build());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of()));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
         assertNotNull(result);
         assertEquals(0.0, result.getTotalDistanceMeters());
@@ -114,17 +117,17 @@ class StatisticsServiceImplTest {
     void getStatistics_WithZeroMovingTime_PreventsDivisionByZero() {
         // Given - distance but no time (edge case)
         TripAggregationResult tripAgg = new TripAggregationResult(10000.0, 0L, 10000.0, 1L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(1L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5))
                 .thenReturn(List.of(createTopPlace("Home", 1, 600, 40.7128, -74.0060)));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of()));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
         assertEquals(0.0, result.getAverageSpeed()); // Should not throw exception
         assertDoesNotThrow(() -> result.getAverageSpeed());
@@ -134,23 +137,23 @@ class StatisticsServiceImplTest {
         // Given - date range > 10 days
         Instant longRangeEnd = testStart.plusSeconds(15 * 24 * 3600); // 15 days
         TripAggregationResult tripAgg = new TripAggregationResult(15000.0, 7200L, 1000.0, 15L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, longRangeEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, longRangeEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, longRangeEnd)).thenReturn(3L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, longRangeEnd, 5))
                 .thenReturn(List.of(createTopPlace("Home", 10, 5000, 40.7128, -74.0060)));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, longRangeEnd))
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, longRangeEnd, ZONE))
                 .thenReturn(createMostActiveDay("01/05", "Friday", 25.0, 4500.0, 4L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, longRangeEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true), any()))
                 .thenReturn(chartRows(List.of(
                         new ChartDataPoint("01/01", 10.0, "01/01"),
                         new ChartDataPoint("01/08", 5.0, "01/08")
                 )));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS, ZONE);
         // Then
-        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true));
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true), any());
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
@@ -159,23 +162,23 @@ class StatisticsServiceImplTest {
     void getStatistics_UsesDailyGrouping_ForShortDateRanges() {
         // Given - date range < 10 days
         TripAggregationResult tripAgg = new TripAggregationResult(15000.0, 7200L, 2500.0, 6L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(2L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5))
                 .thenReturn(List.of(createTopPlace("Work", 5, 2500, 40.7580, -73.9855)));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd))
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE))
                 .thenReturn(createMostActiveDay("01/03", "Wednesday", 30.0, 5400.0, 5L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of(
                         new ChartDataPoint("MON", 5.0, "MON"),
                         new ChartDataPoint("TUE", 10.0, "TUE")
                 )));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
-        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false));
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(false), any());
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
@@ -184,27 +187,27 @@ class StatisticsServiceImplTest {
     void getStatistics_RespectsChartGroupModeOverride() {
         // Given - short range but WEEKS mode explicitly requested
         TripAggregationResult tripAgg = new TripAggregationResult(15000.0, 7200L, 2500.0, 6L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(2L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5))
                 .thenReturn(List.of(createTopPlace("Gym", 4, 300, 40.7505, -73.9934)));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd))
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE))
                 .thenReturn(createMostActiveDay("01/04", "Thursday", 18.0, 3200.0, 3L));
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(true), any()))
                 .thenReturn(chartRows(List.of(new ChartDataPoint("01/01", 15.0, "01/01"))));
         // When
-        statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
+        statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS, ZONE);
         // Then
-        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true));
-        verify(statisticsRepository, times(0)).getChartDataByMovementType(any(), any(), any(), eq(false));
+        verify(statisticsRepository, times(1)).getChartDataByMovementType(any(), any(), any(), eq(true), any());
+        verify(statisticsRepository, times(0)).getChartDataByMovementType(any(), any(), any(), eq(false), any());
     }
     @Test
     void getStatistics_HandlesTopPlacesWithCoordinates() {
         // Given
         TripAggregationResult tripAgg = new TripAggregationResult(15000.0, 7200L, 7500.0, 2L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(5L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5))
                 .thenReturn(List.of(
@@ -212,13 +215,13 @@ class StatisticsServiceImplTest {
                         createTopPlace("Work", 8, 4000, 40.7580, -73.9855),
                         createTopPlace("Gym", 3, 300, 40.7505, -73.9934)
                 ));
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of()));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
         List<TopPlace> places = result.getPlaces();
         assertEquals(3, places.size());
@@ -234,16 +237,16 @@ class StatisticsServiceImplTest {
     void getStatistics_CalculatesAverageSpeedCorrectly() {
         // Given - 36 km in 2 hours = 18 km/h
         TripAggregationResult tripAgg = new TripAggregationResult(36000.0, 7200L, 18000.0, 2L);
-        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd)).thenReturn(tripAgg);
+        when(statisticsRepository.getTripAggregations(testUserId, testStart, testEnd, ZONE)).thenReturn(tripAgg);
         when(statisticsRepository.getUniqueLocationsCount(testUserId, testStart, testEnd)).thenReturn(2L);
         when(statisticsRepository.getTopPlaces(testUserId, testStart, testEnd, 5)).thenReturn(List.of());
-        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd)).thenReturn(null);
+        when(statisticsRepository.getMostActiveDay(testUserId, testStart, testEnd, ZONE)).thenReturn(null);
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
-        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false)))
+        when(statisticsRepository.getChartDataByMovementType(any(UUID.class), any(), any(), eq(false), any()))
                 .thenReturn(chartRows(List.of()));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
+        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS, ZONE);
         // Then
         assertEquals(18.0, result.getAverageSpeed(), 0.01); // 36km / 2h = 18 km/h
     }

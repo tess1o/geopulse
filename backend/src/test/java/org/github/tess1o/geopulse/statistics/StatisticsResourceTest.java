@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.*;
 import org.github.tess1o.geopulse.statistics.resource.StatisticsResource;
 import org.github.tess1o.geopulse.statistics.service.StatisticsService;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,20 +37,25 @@ class StatisticsResourceTest {
     private CurrentUserService currentUserService;
     @InjectMocks
     private StatisticsResource statisticsResource;
+    private static final ZoneId UTC = ZoneId.of("UTC");
     private UUID testUserId;
+    private UserEntity user;
     private UserStatistics sampleStatistics;
     @BeforeEach
     void setUp() {
         testUserId = UUID.randomUUID();
         sampleStatistics = createSampleStatistics();
-        lenient().when(currentUserService.getCurrentUserId()).thenReturn(testUserId);
+        user = new UserEntity();
+        user.setId(testUserId);
+        user.setTimezone("UTC");
+        lenient().when(currentUserService.getCurrentUser()).thenReturn(user);
     }
     @Test
     void getRangeStatistics_WithValidParameters_ReturnsSuccessResponse() {
         // Given
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-07T23:59:59Z";
-        when(statisticsService.getStatistics(eq(testUserId), any(Instant.class), any(Instant.class), eq(ChartGroupMode.DAYS)))
+        when(statisticsService.getStatistics(eq(testUserId), any(Instant.class), any(Instant.class), eq(ChartGroupMode.DAYS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
@@ -58,14 +66,15 @@ class StatisticsResourceTest {
                 eq(testUserId),
                 eq(Instant.parse(startTime)),
                 eq(Instant.parse(endTime)),
-                eq(ChartGroupMode.DAYS)
+                eq(ChartGroupMode.DAYS),
+                eq(UTC)
         );
     }
     @Test
     void getRangeStatistics_WithNullStartTime_UsesEpoch() {
         // Given
         String endTime = "2024-01-07T23:59:59Z";
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(null, endTime);
@@ -76,14 +85,15 @@ class StatisticsResourceTest {
                 eq(testUserId),
                 eq(Instant.EPOCH),
                 eq(Instant.parse(endTime)),
-                eq(ChartGroupMode.WEEKS) // Should be WEEKS for long range
+                eq(ChartGroupMode.WEEKS), // Should be WEEKS for long range
+                eq(UTC)
         );
     }
     @Test
     void getRangeStatistics_WithNullEndTime_UsesCurrentTime() {
         // Given
         String startTime = "2024-01-01T00:00:00Z";
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, null);
@@ -94,7 +104,8 @@ class StatisticsResourceTest {
                 eq(testUserId),
                 eq(Instant.parse(startTime)),
                 any(Instant.class), // Should be close to Instant.now()
-                eq(ChartGroupMode.WEEKS) // Should be WEEKS for long range
+                eq(ChartGroupMode.WEEKS), // Should be WEEKS for long range
+                eq(UTC)
         );
     }
     @Test
@@ -102,26 +113,26 @@ class StatisticsResourceTest {
         // Given - 5 day range (< 10 days)
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-06T00:00:00Z";
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
         assertEquals(sampleStatistics, response);
-        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS));
+        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS), any());
     }
     @Test
     void getRangeStatistics_WithLongRange_UsesWeeksGrouping() {
         // Given - 15 day range (> 10 days)
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-16T00:00:00Z";
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
         assertEquals(sampleStatistics, response);
-        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS));
+        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS), any());
     }
     @Test
     void getRangeStatistics_WithInvalidDateFormat_ThrowsException() {
@@ -133,12 +144,12 @@ class StatisticsResourceTest {
             statisticsResource.getRangeStatistics(invalidStartTime, endTime);
         });
         // Verify service was never called
-        verify(statisticsService, never()).getStatistics(any(), any(), any(), any());
+        verify(statisticsService, never()).getStatistics(any(), any(), any(), any(), any());
     }
     @Test
     void getWeeklyStatistics_ReturnsCorrectResponse() {
         // Given
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getWeeklyStatistics();
@@ -149,13 +160,14 @@ class StatisticsResourceTest {
                 eq(testUserId),
                 any(Instant.class), // Start time should be 7 days ago
                 any(Instant.class), // End time should be end of today
-                eq(ChartGroupMode.DAYS)
+                eq(ChartGroupMode.DAYS),
+                eq(UTC)
         );
     }
     @Test
     void getWeeklyStatistics_CalculatesCorrectDateRange() {
         // Given
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
         Instant beforeCall = Instant.now();
@@ -184,13 +196,14 @@ class StatisticsResourceTest {
                             .minusSeconds(1);
                     return end.equals(expectedEndOfDay) || end.equals(latestEndOfDay);
                 }),
-                eq(ChartGroupMode.DAYS)
+                eq(ChartGroupMode.DAYS),
+                eq(UTC)
         );
     }
     @Test
     void getMonthlyStatistics_ReturnsCorrectResponse() {
         // Given
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getMonthlyStatistics();
@@ -201,13 +214,14 @@ class StatisticsResourceTest {
                 eq(testUserId),
                 any(Instant.class), // Start time should be 30 days ago
                 any(Instant.class), // End time should be end of today
-                eq(ChartGroupMode.WEEKS)
+                eq(ChartGroupMode.WEEKS),
+                eq(UTC)
         );
     }
     @Test
     void getMonthlyStatistics_CalculatesCorrectDateRange() {
         // Given
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
         Instant beforeCall = Instant.now();
@@ -236,7 +250,8 @@ class StatisticsResourceTest {
                             .minusSeconds(1);
                     return end.equals(expectedEndOfDay) || end.equals(latestEndOfDay);
                 }),
-                eq(ChartGroupMode.WEEKS)
+                eq(ChartGroupMode.WEEKS),
+                eq(UTC)
         );
     }
     @Test
@@ -245,7 +260,7 @@ class StatisticsResourceTest {
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-07T23:59:59Z";
         RuntimeException serviceException = new RuntimeException("Service error");
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenThrow(serviceException);
         // When & Then
         RuntimeException thrown = assertThrows(RuntimeException.class, () -> {
@@ -259,51 +274,78 @@ class StatisticsResourceTest {
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-07T23:59:59Z";
         SecurityException authException = new SecurityException("User not authenticated");
-        when(currentUserService.getCurrentUserId()).thenThrow(authException);
+        when(currentUserService.getCurrentUser()).thenThrow(authException);
         // When & Then
         SecurityException thrown = assertThrows(SecurityException.class, () -> {
             statisticsResource.getRangeStatistics(startTime, endTime);
         });
         assertEquals("User not authenticated", thrown.getMessage());
-        verify(statisticsService, never()).getStatistics(any(), any(), any(), any());
+        verify(statisticsService, never()).getStatistics(any(), any(), any(), any(), any());
     }
     @Test
     void allEndpoints_CallCurrentUserService() {
         // Given
-        when(statisticsService.getStatistics(any(), any(), any(), any()))
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any()))
                 .thenReturn(sampleStatistics);
         // When
         statisticsResource.getRangeStatistics("2024-01-01T00:00:00Z", "2024-01-07T23:59:59Z");
         statisticsResource.getWeeklyStatistics();
         statisticsResource.getMonthlyStatistics();
         // Then
-        verify(currentUserService, times(3)).getCurrentUserId();
+        verify(currentUserService, times(3)).getCurrentUser();
     }
     @Test
     void getRangeStatistics_WithExactly10DayRange_UsesWeeksGrouping() {
         // Given - exactly 10 day range (boundary condition)
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-11T00:00:00Z";
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
         assertEquals(sampleStatistics, response);
-        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS));
+        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.WEEKS), any());
     }
     @Test
     void getRangeStatistics_WithJustUnder10DayRange_UsesDaysGrouping() {
         // Given - 9 day, 23 hour, 59 minute range (just under 10 days)
         String startTime = "2024-01-01T00:00:00Z";
         String endTime = "2024-01-10T23:59:59Z";
-        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS)))
+        when(statisticsService.getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS), any()))
                 .thenReturn(sampleStatistics);
         // When
         UserStatistics response = statisticsResource.getRangeStatistics(startTime, endTime);
         // Then
         assertEquals(sampleStatistics, response);
-        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS));
+        verify(statisticsService).getStatistics(any(), any(), any(), eq(ChartGroupMode.DAYS), any());
+    }
+    @Test
+    void getWeeklyStatistics_UsesLocalDaysOfUserTimezone() {
+        ZoneId kolkata = ZoneId.of("Asia/Kolkata");
+        user.setTimezone(kolkata.getId());
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any())).thenReturn(sampleStatistics);
+        LocalDate today = LocalDate.now(kolkata);
+
+        statisticsResource.getWeeklyStatistics();
+
+        verify(statisticsService).getStatistics(
+                testUserId,
+                today.minusDays(7).atStartOfDay(kolkata).toInstant(),
+                today.plusDays(1).atStartOfDay(kolkata).toInstant().minusSeconds(1),
+                ChartGroupMode.DAYS,
+                kolkata);
+    }
+    @Test
+    void getRangeStatistics_PassesUserTimezone_FallsBackToUtcWhenInvalid() {
+        when(statisticsService.getStatistics(any(), any(), any(), any(), any())).thenReturn(sampleStatistics);
+        user.setTimezone("Asia/Kolkata");
+        statisticsResource.getRangeStatistics("2026-11-06T18:30:00Z", "2026-11-07T18:29:59Z");
+        verify(statisticsService).getStatistics(any(), any(), any(), any(), eq(ZoneId.of("Asia/Kolkata")));
+
+        user.setTimezone("Not/AZone");
+        statisticsResource.getRangeStatistics("2026-11-06T18:30:00Z", "2026-11-07T18:29:59Z");
+        verify(statisticsService).getStatistics(any(), any(), any(), any(), eq(java.time.ZoneOffset.UTC));
     }
     @Test
     void testUnusedMethod_isNowOutsideRange() {

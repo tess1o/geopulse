@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.CurrentActivityState;
 import org.github.tess1o.geopulse.streaming.model.dto.CurrentStatusDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
@@ -17,12 +18,10 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
-import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -91,7 +90,7 @@ public class CurrentActivityService {
 
     @Transactional
     public CurrentStatusDTO getStatus(UUID userId, String timezone, Instant now) {
-        ZoneId zone = resolveZone(timezone);
+        ZoneId zone = TimestampUtils.resolveZone(timezone);
         Snapshot snapshot = resolve(userId, now);
         GpsPointEntity point = snapshot.lastPoint();
 
@@ -139,16 +138,5 @@ public class CurrentActivityService {
 
     private static long secondsBetween(Instant from, Instant to) {
         return from == null ? 0 : Math.max(0, Duration.between(from, to).getSeconds());
-    }
-
-    private static ZoneId resolveZone(String timezone) {
-        if (timezone == null || timezone.isBlank()) {
-            return ZoneOffset.UTC;
-        }
-        try {
-            return ZoneId.of(timezone);
-        } catch (DateTimeException e) {
-            return ZoneOffset.UTC;
-        }
     }
 }

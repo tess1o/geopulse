@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.ai.service;
 
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
@@ -57,14 +56,7 @@ final class AIToolArguments {
     }
 
     static ZoneId zone(String timezone) {
-        if (timezone == null || timezone.isBlank()) {
-            return ZoneOffset.UTC;
-        }
-        try {
-            return ZoneId.of(timezone);
-        } catch (DateTimeException e) {
-            return ZoneOffset.UTC;
-        }
+        return TimestampUtils.resolveZone(timezone);
     }
 
     static String requireText(String value, String name) {

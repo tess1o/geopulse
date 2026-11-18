@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.statistics.model.*;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,28 +34,42 @@ public class StatisticsRepository {
     }
 
     /**
-     * Get trip aggregations: total distance, total duration, and daily average
-     * distance.
+     * Zone name for PostgreSQL {@code AT TIME ZONE}. Region ids pass through. Fixed offsets are written as POSIX
+     * specs, where the sign is inverted relative to ISO-8601 ({@code +05:30} east becomes {@code UTC-05:30}).
      */
-    public TripAggregationResult getTripAggregations(UUID userId, Instant startTime, Instant endTime) {
+    static String postgresZone(ZoneId zone) {
+        if (!(zone instanceof ZoneOffset offset)) {
+            return zone.getId();
+        }
+        if (offset.getTotalSeconds() == 0) {
+            return "UTC";
+        }
+        return "UTC" + ZoneOffset.ofTotalSeconds(-offset.getTotalSeconds()).getId();
+    }
+
+    /**
+     * Get trip aggregations: total distance, total duration, and daily average
+     * distance. Days are the user's local calendar days in {@code zone}.
+     */
+    public TripAggregationResult getTripAggregations(UUID userId, Instant startTime, Instant endTime, ZoneId zone) {
         String sql = """
                 WITH daily_distances AS (
-                    SELECT DATE(timestamp) as day,
+                    SELECT DATE(timestamp AT TIME ZONE :tz) as day,
                            SUM(distance_meters) as day_distance
                     FROM timeline_trips
-                    WHERE user_id = ?
-                      AND timestamp >= ?
-                      AND timestamp <= ?
-                    GROUP BY DATE(timestamp)
+                    WHERE user_id = :userId
+                      AND timestamp >= :start
+                      AND timestamp <= :end
+                    GROUP BY 1
                 ),
                 trip_totals AS (
                     SELECT
                         COALESCE(SUM(distance_meters), 0.0) as total_distance,
                         COALESCE(SUM(trip_duration), 0) as total_duration
                     FROM timeline_trips
-                    WHERE user_id = ?
-                      AND timestamp >= ?
-                      AND timestamp <= ?
+                    WHERE user_id = :userId
+                      AND timestamp >= :start
+                      AND timestamp <= :end
                 )
                 SELECT
                     tt.total_distance,
@@ -67,12 +83,10 @@ public class StatisticsRepository {
 
         try {
             Object[] result = (Object[]) entityManager.createNativeQuery(sql)
-                    .setParameter(1, userId)
-                    .setParameter(2, startTime)
-                    .setParameter(3, endTime)
-                    .setParameter(4, userId)
-                    .setParameter(5, startTime)
-                    .setParameter(6, endTime)
+                    .setParameter("userId", userId)
+                    .setParameter("start", startTime)
+                    .setParameter("end", endTime)
+                    .setParameter("tz", postgresZone(zone))
                     .getSingleResult();
 
             return new TripAggregationResult(
@@ -282,22 +296,23 @@ public class StatisticsRepository {
 
     /**
      * Get most active day information.
-     * Returns the day with the highest total distance traveled.
+     * Returns the user's local day (in {@code zone}) with the highest total distance traveled.
      */
-    public MostActiveDayDto getMostActiveDay(UUID userId, Instant startTime, Instant endTime) {
+    public MostActiveDayDto getMostActiveDay(UUID userId, Instant startTime, Instant endTime, ZoneId zone) {
         String sql = """
                 WITH daily_stats AS (
                     SELECT
-                        DATE(t.timestamp) as day,
+                        DATE(t.timestamp AT TIME ZONE :tz) as day,
                         SUM(t.distance_meters) / 1000.0 as distance_km,
                         SUM(t.trip_duration) as total_trip_duration,
                         COUNT(DISTINCT s.location_name) as locations_visited
                     FROM timeline_trips t
-                    LEFT JOIN timeline_stays s ON s.user_id = t.user_id AND DATE(s.timestamp) = DATE(t.timestamp)
-                    WHERE t.user_id = ?
-                      AND t.timestamp >= ?
-                      AND t.timestamp <= ?
-                    GROUP BY DATE(t.timestamp)
+                    LEFT JOIN timeline_stays s ON s.user_id = t.user_id
+                         AND DATE(s.timestamp AT TIME ZONE :tz) = DATE(t.timestamp AT TIME ZONE :tz)
+                    WHERE t.user_id = :userId
+                      AND t.timestamp >= :start
+                      AND t.timestamp <= :end
+                    GROUP BY 1
                     ORDER BY distance_km DESC
                     LIMIT 1
                 )
@@ -312,9 +327,10 @@ public class StatisticsRepository {
 
         try {
             Object[] result = (Object[]) entityManager.createNativeQuery(sql)
-                    .setParameter(1, userId)
-                    .setParameter(2, startTime)
-                    .setParameter(3, endTime)
+                    .setParameter("userId", userId)
+                    .setParameter("start", startTime)
+                    .setParameter("end", endTime)
+                    .setParameter("tz", postgresZone(zone))
                     .getSingleResult();
 
             return MostActiveDayDto.builder()
@@ -331,15 +347,17 @@ public class StatisticsRepository {
     }
 
     /**
-     * Get chart data grouped by days.
+     * Get chart data per movement type, grouped by the user's local days or weeks in {@code zone}.
      */
     public Map<String, List<ChartDataPoint>> getChartDataByMovementType(
-            UUID userId, Instant start, Instant end, boolean weeks) {
+            UUID userId, Instant start, Instant end, boolean weeks, ZoneId zone) {
         var types = Arrays.stream(TripType.values())
                 .filter(type -> type != TripType.UNKNOWN).toList();
         String values = types.stream().map(type -> "('" + type.name() + "')")
                 .collect(Collectors.joining(","));
-        String bucket = weeks ? "date(date_trunc('week', timestamp::date))" : "date(timestamp)";
+        String bucket = weeks
+                ? "date(date_trunc('week', (timestamp at time zone :tz)::date))"
+                : "date(timestamp at time zone :tz)";
         String label = weeks ? "to_char(b.bucket, 'MM/DD')" : "upper(to_char(b.bucket, 'Dy'))";
         // Aggregate once before expanding null/blank movement types into each chart, matching the legacy charts.
         String sql = """
@@ -355,7 +373,8 @@ public class StatisticsRepository {
                 """.formatted(bucket, label, values);
         @SuppressWarnings("unchecked")
         List<Object[]> rows = entityManager.createNativeQuery(sql).setParameter("userId", userId)
-                .setParameter("start", start).setParameter("end", end).getResultList();
+                .setParameter("start", start).setParameter("end", end).setParameter("tz", postgresZone(zone))
+                .getResultList();
         Map<String, List<ChartDataPoint>> charts = new HashMap<>();
         types.forEach(type -> charts.put(type.name(), new ArrayList<>()));
         for (Object[] row : rows) {
@@ -365,28 +384,29 @@ public class StatisticsRepository {
     }
 
     public List<ChartDataPoint> getChartDataByDays(UUID userId, Instant startTime, Instant endTime,
-            String movementType) {
+            String movementType, ZoneId zone) {
         String sql = """
                 SELECT
-                    DATE(timestamp) as day_date,
-                    UPPER(TO_CHAR(DATE(timestamp), 'Dy')) as day_label,
+                    DATE(timestamp AT TIME ZONE :tz) as day_date,
+                    UPPER(TO_CHAR(DATE(timestamp AT TIME ZONE :tz), 'Dy')) as day_label,
                     SUM(distance_meters) / 1000.0 as distance_km
                 FROM timeline_trips
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                  AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
-                GROUP BY DATE(timestamp), day_label
-                ORDER BY DATE(timestamp)
+                WHERE user_id = :userId
+                  AND timestamp >= :start
+                  AND timestamp <= :end
+                  AND (CAST(:movementType AS VARCHAR) IS NULL OR movement_type = :movementType
+                       OR movement_type IS NULL OR movement_type = '')
+                GROUP BY 1, 2
+                ORDER BY 1
                 """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .setParameter(4, movementType)
-                .setParameter(5, movementType)
+                .setParameter("userId", userId)
+                .setParameter("start", startTime)
+                .setParameter("end", endTime)
+                .setParameter("movementType", movementType)
+                .setParameter("tz", postgresZone(zone))
                 .getResultList();
 
         return results.stream()
@@ -398,31 +418,32 @@ public class StatisticsRepository {
     }
 
     /**
-     * Get chart data grouped by weeks (start of week = Monday).
+     * Get chart data grouped by the user's local weeks in {@code zone} (start of week = Monday).
      */
     public List<ChartDataPoint> getChartDataByWeeks(UUID userId, Instant startTime, Instant endTime,
-            String movementType) {
+            String movementType, ZoneId zone) {
         String sql = """
                 SELECT
-                    DATE(DATE_TRUNC('week', timestamp::date)) as week_start_date,
-                    TO_CHAR(DATE_TRUNC('week', timestamp::date), 'MM/DD') as week_label,
+                    DATE(DATE_TRUNC('week', (timestamp AT TIME ZONE :tz)::date)) as week_start_date,
+                    TO_CHAR(DATE_TRUNC('week', (timestamp AT TIME ZONE :tz)::date), 'MM/DD') as week_label,
                     SUM(distance_meters) / 1000.0 as distance_km
                 FROM timeline_trips
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                  AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
-                GROUP BY DATE_TRUNC('week', timestamp::date)
-                ORDER BY DATE_TRUNC('week', timestamp::date)
+                WHERE user_id = :userId
+                  AND timestamp >= :start
+                  AND timestamp <= :end
+                  AND (CAST(:movementType AS VARCHAR) IS NULL OR movement_type = :movementType
+                       OR movement_type IS NULL OR movement_type = '')
+                GROUP BY 1, 2
+                ORDER BY 1
                 """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .setParameter(4, movementType)
-                .setParameter(5, movementType)
+                .setParameter("userId", userId)
+                .setParameter("start", startTime)
+                .setParameter("end", endTime)
+                .setParameter("movementType", movementType)
+                .setParameter("tz", postgresZone(zone))
                 .getResultList();
 
         return results.stream()

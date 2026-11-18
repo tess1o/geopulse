@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -34,12 +35,13 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
-    public UserStatistics getStatistics(UUID userId, Instant from, Instant to, ChartGroupMode chartGroupMode) {
-        log.debug("Generating statistics for user {} from {} to {} with grouping {}",
-                userId, from, to, chartGroupMode);
+    public UserStatistics getStatistics(UUID userId, Instant from, Instant to, ChartGroupMode chartGroupMode,
+                                        ZoneId zone) {
+        log.debug("Generating statistics for user {} from {} to {} with grouping {} in {}",
+                userId, from, to, chartGroupMode, zone);
 
         // Get trip aggregations
-        TripAggregationResult tripAggregations = statisticsRepository.getTripAggregations(userId, from, to);
+        TripAggregationResult tripAggregations = statisticsRepository.getTripAggregations(userId, from, to, zone);
 
         // Calculate average speed
         double averageSpeed = calculateAverageSpeed(
@@ -50,7 +52,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         // Get chart data based on grouping mode
         boolean useWeeks = Duration.between(from, to).toDays() >= 10 || chartGroupMode == ChartGroupMode.WEEKS;
 
-        Map<String, List<ChartDataPoint>> chartData = statisticsRepository.getChartDataByMovementType(userId, from, to, useWeeks);
+        Map<String, List<ChartDataPoint>> chartData = statisticsRepository.getChartDataByMovementType(userId, from, to, useWeeks, zone);
 
         // Get chart data for all trip types (excluding UNKNOWN)
         Map<String, BarChartData> chartsByTripType = Arrays.stream(TripType.values())
@@ -70,7 +72,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .uniqueLocationsCount(statisticsRepository.getUniqueLocationsCount(userId, from, to))
                 .routes(statisticsRepository.getRoutesStatistics(userId, from, to))
                 .places(statisticsRepository.getTopPlaces(userId, from, to, 5))
-                .mostActiveDay(statisticsRepository.getMostActiveDay(userId, from, to))
+                .mostActiveDay(statisticsRepository.getMostActiveDay(userId, from, to, zone))
                 .averageSpeed(averageSpeed)
                 .distanceChartsByTripType(chartsByTripType)
                 .build();
