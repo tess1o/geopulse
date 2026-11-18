@@ -7,7 +7,6 @@ export default {
         "reviewReady": "Schritt 2 von 2 · Prüfe das Ergebnis unten und speichere dann deine Änderungen.",
         "uncertainTime": "Diese Uhrzeit wird bei der Zeitumstellung übersprungen oder wiederholt. Wähle eine eindeutige Uhrzeit.",
         "validTimesRequired": "Gib ein vollständiges, gültiges Datum mit Uhrzeit ein.",
-        "savedValue": "Gespeichert",
         "placeRequired": "Wähle vor der Prüfung einen Standort.",
         "placeNameRequired": "Gib diesem Ort vor dem Speichern einen Namen.",
         "unchanged": "Ändere einen Wert, um speichern zu können.",

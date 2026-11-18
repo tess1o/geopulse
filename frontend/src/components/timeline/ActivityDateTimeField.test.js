@@ -21,4 +21,15 @@ describe('Activity date and time input', () => {
     const value = wrapper.emitted('update:modelValue').at(-1)[0]
     expect([value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes()]).toEqual([2026, 9, 16, 14, 27])
   })
+  it('empties the time when the value is cleared from outside, but not while the user is typing', async () => {
+    const wrapper = mount(Field, { props: { modelValue: new Date(2026, 9, 16, 14, 27, 5), label: 'To' }, global: { stubs: { DatePicker: picker } } })
+    const time = () => wrapper.findAllComponents(picker)[1].props('modelValue')
+    await wrapper.setProps({ modelValue: null })
+    expect(time()).toBeNull()
+    expect(wrapper.findAllComponents(picker)[0].props('modelValue').getDate()).toBe(16)
+    await wrapper.setProps({ modelValue: new Date(2026, 9, 16, 14, 27, 5) })
+    wrapper.findAllComponents(picker)[0].vm.$emit('update:modelValue', null)
+    await wrapper.setProps({ modelValue: wrapper.emitted('update:modelValue').at(-1)[0] })
+    expect(time().getMinutes()).toBe(27)
+  })
 })

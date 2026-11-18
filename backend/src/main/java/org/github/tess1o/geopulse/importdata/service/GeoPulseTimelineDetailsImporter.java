@@ -298,9 +298,6 @@ public class GeoPulseTimelineDetailsImporter {
         TimelineEditsDataDto data = IMPORT_JSON.readValue(content, TimelineEditsDataDto.class);
         UserEntity user = requireImportingUser(userRepository, job);
         Map<Long, TimelineEditEntity> importedByOldId = new HashMap<>();
-        // Corrections get new identities in the target account, like their ids; members of one exported group stay
-        // one group.
-        Map<java.util.UUID, java.util.UUID> importedGroups = new HashMap<>();
 
         for (TimelineEditsDataDto.EditDto dto : emptyIfNull(data.getEdits())) {
             if (dto.getKind() == null || dto.getAnchorStart() == null || dto.getAnchorEnd() == null
@@ -319,8 +316,8 @@ public class GeoPulseTimelineDetailsImporter {
             edit.setAffectedFrom(dto.getAffectedFrom());
             edit.setAffectedTo(dto.getAffectedTo());
             edit.setBeforeValues(dto.getBeforeValues() == null ? null : IMPORT_JSON.convertValue(dto.getBeforeValues(), BeforeValues.class));
-            edit.setGroupId(dto.getGroupId() == null ? java.util.UUID.randomUUID()
-                    : importedGroups.computeIfAbsent(dto.getGroupId(), ignored -> java.util.UUID.randomUUID()));
+            // Correction ids are new in the target account; group ids are kept, like any other backed-up value.
+            edit.setGroupId(dto.getGroupId() == null ? java.util.UUID.randomUUID() : dto.getGroupId());
             Map<String, Object> payload = dto.getPayload() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(dto.getPayload());
             for (String prefix : List.of("", "right", "start", "end")) {
                 remapPayloadReference(payload, prefix.isEmpty() ? "favoriteId" : prefix + "FavoriteId", referenceMaps.favoriteIds);

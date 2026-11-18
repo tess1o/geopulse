@@ -33,9 +33,39 @@ public class TimelineEditRepository implements PanacheRepository<TimelineEditEnt
         return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
     }
 
+    /** Active corrections in the range, with their place references loaded: a fold reads them for every correction. */
     public List<TimelineEditEntity> findActiveOverlapping(UUID userId, Instant from, Instant to) {
-        return find("user.id = ?1 and status = ?2 and affectedFrom < ?4 and affectedTo > ?3 order by seq",
-                userId, TimelineEditStatus.ACTIVE, from, to).list();
+        return getEntityManager().createQuery("""
+                        select e from TimelineEditEntity e
+                        left join fetch e.placeFavorite
+                        left join fetch e.placeGeocoding
+                        where e.user.id = :userId and e.status = :status
+                          and e.affectedFrom < :to and e.affectedTo > :from
+                        order by e.seq
+                        """, TimelineEditEntity.class)
+                .setParameter("userId", userId).setParameter("status", TimelineEditStatus.ACTIVE)
+                .setParameter("from", from).setParameter("to", to)
+                .getResultList();
+    }
+
+    /** The latest affected end of the user's active corrections of these kinds, or null. */
+    public Instant maxActiveAffectedTo(UUID userId, List<org.github.tess1o.geopulse.streaming.edits.TimelineEditKind> kinds) {
+        return getEntityManager().createQuery("""
+                        select max(e.affectedTo) from TimelineEditEntity e
+                        where e.user.id = :userId and e.status = :status and e.kind in :kinds
+                        """, Instant.class)
+                .setParameter("userId", userId).setParameter("status", TimelineEditStatus.ACTIVE)
+                .setParameter("kinds", kinds)
+                .getSingleResult();
+    }
+
+    /** Of these corrections, the ids whose affected range starts at or after {@code from}. */
+    public List<Long> findIdsAffectedFrom(java.util.Collection<Long> ids, Instant from) {
+        if (ids.isEmpty()) return List.of();
+        return getEntityManager().createQuery(
+                        "select e.id from TimelineEditEntity e where e.id in :ids and e.affectedFrom >= :from", Long.class)
+                .setParameter("ids", ids).setParameter("from", from)
+                .getResultList();
     }
 
     /** Active corrections whose own anchor (not their wider affected range) overlaps the interval. */

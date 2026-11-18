@@ -72,6 +72,7 @@ class StreamingGpsIteratorTest {
         @Override
         public List<GPSPoint> findEssentialDataChunk(UUID userId,
                                                      Instant fromTimestamp,
+                                                     Instant toTimestamp,
                                                      Instant cursorTimestamp,
                                                      Long cursorId,
                                                      int limit,
@@ -80,6 +81,7 @@ class StreamingGpsIteratorTest {
 
             return rows.stream()
                     .filter(row -> !row.point().getTimestamp().isBefore(fromTimestamp))
+                    .filter(row -> toTimestamp == null || row.point().getTimestamp().isBefore(toTimestamp))
                     .filter(row -> isAfterCursor(row, cursorTimestamp, cursorId))
                     .limit(limit)
                     .map(Row::point)

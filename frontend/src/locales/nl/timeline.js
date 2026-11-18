@@ -13,7 +13,6 @@ export default {
         reviewReady: 'Stap 2 van 2 · Controleer het resultaat hieronder, sla dan uw wijzigingen op.',
         uncertainTime: 'Deze tijd wordt overgeslagen of herhaald bij klokwijzigingen. Kies een eenduidige tijd.',
         validTimesRequired: 'Voer een volledige, geldige datum en tijd in.',
-        savedValue: 'Opgeslagen',
         placeRequired: 'Kies een locatie voordat u beoordeelt.',
         placeNameRequired: 'Geef deze plaats een naam voordat u opslaat.',
         unchanged: 'Wijzig een waarde om op te slaan.',

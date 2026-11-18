@@ -83,8 +83,12 @@ public class TimelineEditApplier {
             if (applied == null) {
                 unapplied.add(command.id());
             } else {
+                // Most earlier effects are still the same instances; only events this command replaced need the
+                // value-based lookup. Checking every effect by value against every event made the fold quadratic.
+                Set<TimelineEvent> current = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                current.addAll(events);
                 effects.replaceAll((id, prior) -> prior.stream().flatMap(event -> {
-                    if (events.contains(event)) return java.util.stream.Stream.of(event);
+                    if (current.contains(event) || events.contains(event)) return java.util.stream.Stream.of(event);
                     if (command.kind() == TimelineEditKind.MERGE) return java.util.stream.Stream.of(applied);
                     if (command.kind() == TimelineEditKind.FORCE_STAY || command.kind() == TimelineEditKind.FORCE_TRIP) {
                         return events.stream().filter(fragment -> !fragment.equals(applied) && fragment.getClass() == event.getClass()
@@ -132,13 +136,14 @@ public class TimelineEditApplier {
     private static List<TimelineEvent> withCarvedPieces(List<TimelineEvent> events, Set<TimelineEvent> existing,
                                                         TimelineEvent inserted,
                                                         Map<Long, List<TimelineEvent>> effects) {
+        // Identity-based: events have value equality, but a piece is "the same" only if it is the same instance.
         Set<TimelineEvent> claimed = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        claimed.add(inserted);
         effects.values().forEach(claimed::addAll);
         var produced = new ArrayList<TimelineEvent>();
         produced.add(inserted);
         for (TimelineEvent event : events) {
-            if (event != inserted && !existing.contains(event) && !claimed.contains(event)
-                    && !(event instanceof DataGap)) {
+            if (!existing.contains(event) && !claimed.contains(event) && !(event instanceof DataGap)) {
                 produced.add(event);
             }
         }

@@ -143,8 +143,7 @@ public class TimelineCorrectionResource {
     }
 
     private Response schedule(ActivityCorrectionService.Saved saved) {
-        var result = generation.scheduleTimelineRegenerationFromTimestamp(
-                currentUser.getCurrentUserId(), saved.affectedFrom());
+        var result = generation.scheduleCorrectionRebuild(currentUser.getCurrentUserId());
         return new Response(saved.groupId(), saved.edits(), result.jobId(), result.queued());
     }
 

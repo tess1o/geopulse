@@ -20,14 +20,19 @@ const props = defineProps({ modelValue: Date, contextDate: String, label: String
 const emit = defineEmits(['update:modelValue'])
 const timezone = useTimezone(), { t } = useI18n()
 const date = ref(null), time = ref(null)
+let published
 watch(() => props.modelValue, value => {
   if (value instanceof Date && Number.isFinite(value.getTime())) { date.value = value; time.value = value }
+  // Cleared from outside (e.g. a GPS boundary that crossed the other one): empty the time, keep the date.
+  else if (value == null && published !== null) time.value = null
+  published = undefined
 }, { immediate: true })
 watch(() => props.contextDate, value => {
   if (!props.modelValue) date.value = timelineUtcToPicker(value || new Date().toISOString(), timezone)
 }, { immediate: true })
 function publish() {
-  if (!date.value || !time.value) { emit('update:modelValue', null); return }
+  if (!date.value || !time.value) { published = null; emit('update:modelValue', null); return }
+  published = undefined
   emit('update:modelValue', new Date(date.value.getFullYear(), date.value.getMonth(), date.value.getDate(),
     time.value.getHours(), time.value.getMinutes(), time.value.getSeconds(), time.value.getMilliseconds()))
 }

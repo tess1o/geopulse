@@ -96,3 +96,23 @@ export const convertedStay = staySpec('18:00', '21:00');
 export const emptySeed = { recipe: () => {} };
 export const dstSeed = day => ({ timezone: 'Europe/Berlin', date: day,
   recipe: ({ stay }) => stay(places.Home, `${day}T00:00:17Z`, `${day}T05:00:17Z`) });
+
+// Seven recorded commute days around H.DAY (the third), for corrections that must rebuild only their own period.
+export const weekDays = ['2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19'];
+export const weekSeed = {
+  date: weekDays[0], endDate: weekDays.at(-1),
+  recipe: ({ stay, drive, places }) => {
+    for (const day of weekDays) {
+      const t = time => `${day}T${time}:00.000Z`;
+      stay(places.Home, t('06:00'), t('08:00'));
+      drive(places.Home, places.Bakery, t('08:01'), t('08:15'));
+      stay(places.Bakery, t('08:16'), t('08:20'));
+      drive(places.Bakery, places.Pharmacy, t('08:21'), t('08:26'));
+      stay(places.Pharmacy, t('08:27'), t('08:31'));
+      drive(places.Pharmacy, places.Office, t('08:32'), t('08:45'));
+      stay(places.Office, t('08:46'), t('12:00'));
+      drive(places.Office, places.Home, t('12:01'), t('12:45'));
+      stay(places.Home, t('12:46'), t('18:00'));
+    }
+  },
+};

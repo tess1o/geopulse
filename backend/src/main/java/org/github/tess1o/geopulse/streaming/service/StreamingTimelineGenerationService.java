@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineCorrectionEffectR
 import org.github.tess1o.geopulse.streaming.edits.TimelineEditService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationException;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
+import org.github.tess1o.geopulse.streaming.iterator.CountingIterable;
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
@@ -58,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 public class StreamingTimelineGenerationService {
 
     public static final Instant DEFAULT_START_DATE = Instant.parse("1970-01-01T00:00:00Z");
+    /** GPS points read to review corrections inside a request. */
+    public static final String CORRECTION_REVIEW_GPS_POINTS = "geopulse.timeline.correction.review.gps_points";
 
     /** Where a partial regeneration restarts, relative to the earliest affected time. */
     public enum RestartPoint {
@@ -640,17 +643,232 @@ public class StreamingTimelineGenerationService {
      * timeline rows. A review only needs the reviewed stretch, so the user's whole history is not detected again.
      */
     public DetectedWindow detectForCorrections(UUID userId, Instant from) {
+        return detectForCorrections(userId, from, null);
+    }
+
+    /**
+     * As {@link #detectForCorrections(UUID, Instant)}, reading points only up to {@code until} when it is given.
+     * Detection, trip post-processing and the same-place merge only look back, so every event that ends before the
+     * last stay read is what a pass over the whole recording would produce; the caller keeps that stay and the one
+     * before it out of what it relies on.
+     */
+    public DetectedWindow detectForCorrections(UUID userId, Instant from, Instant until) {
         var config = configurationProvider.getConfigurationForUser(userId);
         Restart restart = findRestart(userId, from, RestartPoint.BEFORE_PREVIOUS_STAY)
                 .orElse(new Restart(DEFAULT_START_DATE, null));
-        String version = prepareBoatEvidence(userId, config, null);
-        var points = new StreamingGpsIterable(gpsPointRepository, userId, restart.pointsFrom(), 10_000, version);
+        Detection detection = detect(userId, restart, until, config, null);
+        if (workloadMetrics != null && detection.points() > 0) {
+            // A review runs inside a request: how much of the recording it reads is what makes it fast or slow.
+            workloadMetrics.increment(CORRECTION_REVIEW_GPS_POINTS, detection.points());
+        }
+        List<TimelineEvent> events = detection.events();
+        // The ongoing gap follows the last recorded point; a bounded read stops before it.
+        return new DetectedWindow(restart.from(), until == null ? appendOngoingDataGap(userId, config, events) : events);
+    }
+
+    private record Detection(List<TimelineEvent> events, long points) {
+    }
+
+    /** Detection, trip post-processing and the merge pass from {@code restart}, reading points up to {@code until}. */
+    private Detection detect(UUID userId, Restart restart, Instant until, TimelineConfig config, UUID jobId) {
+        String version = prepareBoatEvidence(userId, config, jobId);
+        var points = new CountingIterable<>(new StreamingGpsIterable(gpsPointRepository, userId,
+                restart.pointsFrom(), until, 10_000, version));
         List<TimelineEvent> events = keepRestartStayStartReason(keepRestartStayStart(userId,
                 tripPostProcessor.postProcessTrips(userId,
                         processor.processPoints(points, config, userId, null, restart.replay()), config, version),
                 restart), restart);
         if (config.getIsMergeEnabled() && !events.isEmpty()) events = timelineMerger.mergeSameNamedLocations(config, events);
-        return new DetectedWindow(restart.from(), appendOngoingDataGap(userId, config, events));
+        return new Detection(events, points.count());
+    }
+
+    /**
+     * Brings the timeline up to date with the user's pending rebuild request. Corrections change no GPS point, so a
+     * request that only carries a correction window is rebuilt for that window alone when that is provably the same
+     * as a full pass; everything else, and every window where it cannot be shown, gets the regular pass from the
+     * request on.
+     */
+    @Transactional
+    public void regeneratePending(UUID userId, UUID jobId, String trigger) {
+        Optional<TimelineRebuildRequest> pending = rebuildRequestRepository.find(userId);
+        if (pending.isEmpty()) {
+            return;
+        }
+        if (pending.get().hasCorrectionWindow() && regenerateCorrectionWindow(userId, pending.get(), jobId, trigger)) {
+            return;
+        }
+        generateTimelineFromTimestamp(userId, pending.get().rebuildFrom(), jobId, trigger, true,
+                RestartPoint.BEFORE_PREVIOUS_STAY);
+    }
+
+    /** Outcome tag of a correction window rebuild: rebuilt alone, or why the regular pass was needed. */
+    public static final String CORRECTION_WINDOW_RUNS = "geopulse.timeline.correction.window.runs";
+    /** GPS points read by correction window rebuilds. */
+    public static final String CORRECTION_WINDOW_GPS_POINTS = "geopulse.timeline.correction.window.gps_points";
+
+    /**
+     * Rebuilds only the period a correction affected, splicing it into the stored timeline. Returns false, having
+     * changed nothing, when the regular pass is needed instead:
+     * <ul>
+     *     <li>no detection stay before the period to restart at, or fewer than two stored detection stays after it
+     *     (the end of the recording or of the stored timeline);</li>
+     *     <li>an open-ended change (new or deleted points) is pending at or before the end of what would be read;</li>
+     *     <li>the stay right after the period does not come out of the rebuild exactly as stored, so the stored rest
+     *     would not continue it.</li>
+     * </ul>
+     * The restart is two stays back with the trip into the restart stay replayed, as the real-time job restarts.
+     * Detection, trip post-processing and the merge pass only look back, so reading up to the end of the second stay
+     * after the period gives every event up to the first one exactly as a full pass; that first stay is the check.
+     */
+    @Transactional
+    public boolean regenerateCorrectionWindow(UUID userId, TimelineRebuildRequest request, UUID jobId, String trigger) {
+        long metricsStart = metricsStart();
+        Optional<Restart> found = findRestart(userId, request.rebuildFrom(), RestartPoint.BEFORE_PREVIOUS_STAY);
+        if (found.isEmpty()) {
+            return windowFallback("no_restart_stay");
+        }
+        Restart restart = found.get();
+        // Corrections reaching into the period reach as far as their own affected range.
+        Instant periodEnd = request.windowTo();
+        for (boolean widened = true; widened; ) {
+            widened = false;
+            for (var edit : timelineEditService.activeOverlapping(userId, restart.from(), periodEnd)) {
+                if (edit.getAffectedTo().isAfter(periodEnd)) {
+                    periodEnd = edit.getAffectedTo();
+                    widened = true;
+                }
+            }
+        }
+        List<TimelineStayEntity> after = timelineStayRepository.findDetectionStaysFrom(userId, periodEnd, 2);
+        if (after.size() < 2) {
+            return windowFallback("end_of_timeline");
+        }
+        TimelineStayEntity edge = after.getFirst();
+        TimelineStayEntity buffer = after.getLast();
+        Instant until = buffer.getTimestamp().plusSeconds(buffer.getStayDuration());
+        if (request.openFrom() != null) {
+            Instant openRestart = findRestart(userId, request.openFrom(), RestartPoint.BEFORE_PREVIOUS_STAY)
+                    .map(Restart::from).orElse(DEFAULT_START_DATE);
+            if (openRestart.isBefore(until)) {
+                return windowFallback("gps_changed_in_window");
+            }
+        }
+
+        if (!acquireLock(userId)) {
+            throw new TimelineGenerationLockException(userId);
+        }
+        try {
+            return rebuildWindow(userId, request, jobId, trigger, metricsStart, restart, edge, buffer, until);
+        } catch (RuntimeException e) {
+            recordPendingRebuildFailure(userId, e);
+            failJob(jobId, "Timeline generation failed: " + e.getMessage());
+            throw new TimelineGenerationException("Timeline generation failed", e);
+        } finally {
+            releaseLock(userId);
+        }
+    }
+
+    private boolean rebuildWindow(UUID userId, TimelineRebuildRequest request, UUID jobId, String trigger,
+                                  long metricsStart, Restart restart, TimelineStayEntity edge,
+                                  TimelineStayEntity buffer, Instant until) {
+        {
+            updateProgress(jobId, "correctionWindow", "Rebuilding the corrected period", 4, 50, null);
+            TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+            Detection detection = detect(userId, restart, until, config, jobId);
+            TimelineEditResult editResult = timelineEditService.apply(userId, detection.events(), restart.from(), until);
+            List<TimelineEvent> events = new ArrayList<>(editResult.events());
+            finalization.populateStayLocations(events, userId, jobId);
+            finalization.snapTripEndpointsToAdjacentFavoriteStays(events);
+
+            Instant edgeStart = edge.getTimestamp();
+            List<TimelineEvent> kept = events.stream().filter(event -> event.getStartTime().isBefore(edgeStart)).toList();
+            List<String> rebuiltEdge = events.stream()
+                    .filter(event -> !event.getStartTime().isBefore(edgeStart)
+                            && event.getStartTime().isBefore(buffer.getTimestamp()))
+                    .map(StreamingTimelineGenerationService::describe).sorted().toList();
+            List<String> storedEdge = storedEvents(userId, edgeStart, buffer.getTimestamp());
+            if (!rebuiltEdge.equals(storedEdge)) {
+                log.info("Correction window of user {} from {} did not converge at {}: rebuilt {} stored {}",
+                        userId, restart.from(), edgeStart, rebuiltEdge, storedEdge);
+                return windowFallback("did_not_converge");
+            }
+
+            Map<String, Object> range = Map.of("userId", userId, "from", restart.from(), "to", edgeStart);
+            timelineStayRepository.delete("user.id = :userId and timestamp >= :from and timestamp < :to", range);
+            timelineTripRepository.delete("user.id = :userId and timestamp >= :from and timestamp < :to", range);
+            timelineDataGapRepository.delete("user.id = :userId and startTime >= :from and startTime < :to", range);
+            RawTimeline rebuilt = RawTimeline.fromEvents(userId, kept);
+            if (!kept.isEmpty()) {
+                persistenceManager.persistRawTimeline(userId, rebuilt, jobId);
+            }
+            timelineEditService.recordEffects(userId, editResult, restart.from());
+            timelineNoteService.reattachAnchoredNotes(userId);
+            timelineEditService.clearMissingEffects(userId);
+            if (autoApplyVisitMatchingOnRegeneration) {
+                try {
+                    tripVisitAutoMatchService.evaluateAllTrips(userId, true);
+                } catch (Exception ex) {
+                    log.error("Failed to auto-match trip plan items for user {} after a correction window: {}",
+                            userId, ex.getMessage(), ex);
+                }
+            }
+            fireTimelineDataChanged(userId, restart.from(), edgeStart, jobId, hasGeneratedTrips(rebuilt));
+            if (!rebuildRequestRepository.completeWindow(request)) {
+                log.debug("Rebuild request for user {} changed during a correction window; keeping it", userId);
+            }
+            countWindow("window");
+            if (workloadMetrics != null && detection.points() > 0) {
+                workloadMetrics.increment(CORRECTION_WINDOW_GPS_POINTS, detection.points());
+            }
+            recordTimelineDuration(metricsStart, trigger, "correction_window");
+            log.info("Rebuilt correction window of user {} from {} to {} ({} points, {} events)", userId,
+                    restart.from(), edgeStart, detection.points(), kept.size());
+            return true;
+        }
+    }
+
+    private boolean windowFallback(String reason) {
+        countWindow(reason);
+        return false;
+    }
+
+    private void countWindow(String result) {
+        if (workloadMetrics != null) {
+            workloadMetrics.increment(CORRECTION_WINDOW_RUNS, "result", result);
+        }
+    }
+
+    /** The stored events starting in [from, to), as {@link #describe(TimelineEvent)} writes them. */
+    private List<String> storedEvents(UUID userId, Instant from, Instant to) {
+        List<TimelineEvent> events = new ArrayList<>();
+        timelineStayRepository.find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3", userId, from, to)
+                .stream().forEach(stay -> events.add(Stay.builder().startTime(stay.getTimestamp())
+                        .duration(Duration.ofSeconds(stay.getStayDuration())).locationName(stay.getLocationName())
+                        .favoriteId(stay.getFavoriteLocation() == null ? null : stay.getFavoriteLocation().getId())
+                        .geocodingId(stay.getGeocodingLocation() == null ? null : stay.getGeocodingLocation().getId())
+                        .latitude(stay.getLocation().getY()).longitude(stay.getLocation().getX()).build()));
+        timelineTripRepository.find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3", userId, from, to)
+                .stream().forEach(trip -> events.add(Trip.builder().startTime(trip.getTimestamp())
+                        .duration(Duration.ofSeconds(trip.getTripDuration()))
+                        .tripType(org.github.tess1o.geopulse.streaming.model.shared.TripType.valueOf(trip.getMovementType()))
+                        .build()));
+        timelineDataGapRepository.find("user.id = ?1 and startTime >= ?2 and startTime < ?3", userId, from, to)
+                .stream().forEach(gap -> events.add(DataGap.fromTimeRange(gap.getStartTime(), gap.getEndTime())));
+        return events.stream().map(StreamingTimelineGenerationService::describe).sorted().toList();
+    }
+
+    /** What makes two events the same row: their time, and their place or movement. */
+    private static String describe(TimelineEvent event) {
+        String base = event.getType() + " " + event.getStartTime() + " " + event.getDuration().getSeconds() + "s";
+        if (event instanceof Stay stay) {
+            return base + String.format(java.util.Locale.ROOT, " (%.5f,%.5f) '%s' favorite=%s geocoding=%s",
+                    stay.getLatitude(), stay.getLongitude(), stay.getLocationName(), stay.getFavoriteId(),
+                    stay.getGeocodingId());
+        }
+        if (event instanceof Trip trip) {
+            return base + " " + trip.getTripType();
+        }
+        return base;
     }
 
     /**

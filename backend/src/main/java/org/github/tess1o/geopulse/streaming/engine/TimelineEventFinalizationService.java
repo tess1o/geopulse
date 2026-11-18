@@ -186,60 +186,156 @@ public class TimelineEventFinalizationService {
         if (stays.isEmpty() || trips.isEmpty()) {
             return;
         }
+        // This runs over the whole regenerated range: index stays and trips once instead of scanning them per trip.
+        StayEdges stayEnds = new StayEdges(stays, true);
+        StayEdges stayStarts = new StayEdges(stays, false);
+        TripCoverage coverage = new TripCoverage(trips);
         for (Trip trip : trips) {
             if (trip.getManualRoute() != null) continue;
             Instant tripStart = trip.getStartTime();
             Instant tripEnd = trip.getEndTime();
 
-            Stay origin = closestStay(stays, tripStart, true);
+            Stay origin = stayEnds.closest(tripStart);
             if (origin != null && origin.getFavoriteId() != null
-                    && !hasAnotherTripBetween(origin.getEndTime(), tripStart, trips, trip)) {
+                    && !coverage.hasAnotherTripBetween(origin.getEndTime(), tripStart, trip)) {
                 trip.setStartPoint(withCoordinates(trip.getStartPoint(), origin.getLatitude(),
                         origin.getLongitude()));
             }
 
-            Stay destination = closestStay(stays, tripEnd, false);
+            Stay destination = stayStarts.closest(tripEnd);
             if (destination != null && destination.getFavoriteId() != null
-                    && !hasAnotherTripBetween(tripEnd, destination.getStartTime(), trips, trip)) {
+                    && !coverage.hasAnotherTripBetween(tripEnd, destination.getStartTime(), trip)) {
                 trip.setEndPoint(withCoordinates(trip.getEndPoint(), destination.getLatitude(),
                         destination.getLongitude()));
             }
         }
     }
 
-    private static Stay closestStay(List<Stay> stays, Instant reference, boolean before) {
-        Stay closest = null;
-        long minGapSeconds = Long.MAX_VALUE;
-        for (Stay stay : stays) {
-            if (stay.getStartTime() == null) {
-                continue;
+    /**
+     * Stays ordered by one edge: their end, to find the stay closest before an instant, or their start, to find the
+     * stay closest after it. Closeness is measured in whole seconds, and among equally close stays the one listed
+     * first wins.
+     */
+    private static final class StayEdges {
+        private final boolean before;
+        private final Instant[] edges;
+        private final int[] order;
+        private final List<Stay> stays;
+
+        StayEdges(List<Stay> stays, boolean before) {
+            this.before = before;
+            this.stays = stays;
+            List<Integer> indexes = new ArrayList<>();
+            for (int i = 0; i < stays.size(); i++) {
+                if (stays.get(i).getStartTime() != null) indexes.add(i);
             }
-            Instant edge = before ? stay.getEndTime() : stay.getStartTime();
-            if (before ? edge.isAfter(reference) : edge.isBefore(reference)) {
-                continue;
-            }
-            long gap = Math.abs(Duration.between(edge, reference).toSeconds());
-            if (gap < minGapSeconds) {
-                minGapSeconds = gap;
-                closest = stay;
-            }
+            indexes.sort(Comparator.comparing((Integer i) -> edge(stays.get(i))).thenComparing(i -> i));
+            order = indexes.stream().mapToInt(Integer::intValue).toArray();
+            edges = new Instant[order.length];
+            for (int i = 0; i < order.length; i++) edges[i] = edge(stays.get(order[i]));
         }
-        return closest;
+
+        private Instant edge(Stay stay) {
+            return before ? stay.getEndTime() : stay.getStartTime();
+        }
+
+        Stay closest(Instant reference) {
+            int position;
+            int step;
+            if (before) {
+                position = firstAfter(reference) - 1;
+                step = -1;
+            } else {
+                position = firstAtOrAfter(reference);
+                step = 1;
+            }
+            if (position < 0 || position >= order.length) return null;
+            long nearest = gapSeconds(edges[position], reference);
+            int best = order[position];
+            // The gap only grows away from the reference; ties are the stays at the same whole-second distance.
+            for (int i = position + step; i >= 0 && i < order.length && gapSeconds(edges[i], reference) == nearest; i += step) {
+                best = Math.min(best, order[i]);
+            }
+            return stays.get(best);
+        }
+
+        private static long gapSeconds(Instant edge, Instant reference) {
+            return Math.abs(Duration.between(edge, reference).toSeconds());
+        }
+
+        private int firstAfter(Instant reference) {
+            int low = 0;
+            int high = edges.length;
+            while (low < high) {
+                int middle = (low + high) >>> 1;
+                if (edges[middle].isAfter(reference)) high = middle;
+                else low = middle + 1;
+            }
+            return low;
+        }
+
+        private int firstAtOrAfter(Instant reference) {
+            int low = 0;
+            int high = edges.length;
+            while (low < high) {
+                int middle = (low + high) >>> 1;
+                if (edges[middle].isBefore(reference)) low = middle + 1;
+                else high = middle;
+            }
+            return low;
+        }
     }
 
-    private static boolean hasAnotherTripBetween(Instant from, Instant to, List<Trip> trips, Trip current) {
-        if (from == null || to == null || !to.isAfter(from)) {
-            return false;
-        }
-        for (Trip other : trips) {
-            if (other.equals(current) || other.getStartTime() == null) {
-                continue;
+    /** Trips ordered by start, with the two latest ends among each prefix, to ask whether another trip overlaps. */
+    private static final class TripCoverage {
+        private final Instant[] starts;
+        private final Trip[] latest;
+        private final Instant[] latestEnd;
+        private final Instant[] secondEnd;
+
+        TripCoverage(List<Trip> trips) {
+            List<Trip> sorted = trips.stream().filter(trip -> trip.getStartTime() != null)
+                    .sorted(Comparator.comparing(Trip::getStartTime)).toList();
+            starts = new Instant[sorted.size()];
+            latest = new Trip[sorted.size()];
+            latestEnd = new Instant[sorted.size()];
+            secondEnd = new Instant[sorted.size()];
+            Trip top = null;
+            Instant topEnd = null;
+            Instant runnerUp = null;
+            for (int i = 0; i < sorted.size(); i++) {
+                Trip trip = sorted.get(i);
+                Instant end = trip.getEndTime();
+                if (topEnd == null || end.isAfter(topEnd)) {
+                    runnerUp = topEnd;
+                    top = trip;
+                    topEnd = end;
+                } else if (runnerUp == null || end.isAfter(runnerUp)) {
+                    runnerUp = end;
+                }
+                starts[i] = trip.getStartTime();
+                latest[i] = top;
+                latestEnd[i] = topEnd;
+                secondEnd[i] = runnerUp;
             }
-            if (other.getStartTime().isBefore(to) && other.getEndTime().isAfter(from)) {
-                return true;
-            }
         }
-        return false;
+
+        /** Whether a trip other than {@code current} overlaps the open interval between {@code from} and {@code to}. */
+        boolean hasAnotherTripBetween(Instant from, Instant to, Trip current) {
+            if (from == null || to == null || !to.isAfter(from)) {
+                return false;
+            }
+            int low = 0;
+            int high = starts.length;
+            while (low < high) {
+                int middle = (low + high) >>> 1;
+                if (starts[middle].isBefore(to)) low = middle + 1;
+                else high = middle;
+            }
+            if (low == 0) return false;
+            Instant end = latest[low - 1] == current ? secondEnd[low - 1] : latestEnd[low - 1];
+            return end != null && end.isAfter(from);
+        }
     }
 
     private static GPSPoint withCoordinates(GPSPoint original, double latitude, double longitude) {

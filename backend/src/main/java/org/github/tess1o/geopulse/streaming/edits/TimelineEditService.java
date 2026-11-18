@@ -208,9 +208,13 @@ public class TimelineEditService {
                 java.util.Arrays.asList(e.getId(), e.getSeq(), e.getStatus(), e.getPayload(), e.getBeforeValues(),
                         e.getSupersededBy() == null ? null : e.getSupersededBy().getId())).toList());
         state.put("config", configuration.getConfigurationForUser(userId));
+        // Only what changes the reviewed period counts: a pending rebuild that reaches into it (and then every new
+        // revision of it), and the points recorded in it. Points recorded after it, as a tracking phone keeps
+        // sending, leave the review valid.
         state.put("rebuild", rebuildRequestRepository.find(userId)
+                .filter(request -> pendingReaches(userId, request.rebuildFrom(), to))
                 .map(request -> List.of(request.rebuildFrom().toString(), request.revision())).orElse(null));
-        state.put("latestPoint", gpsPoints.findLatest(userId).map(point -> point.getTimestamp().toString()).orElse(null));
+        state.put("points", gpsPoints.fingerprint(userId, from, to));
         state.put("window", loadCurrentEvents(userId, from, to).stream().map(TimelineEditService::fingerprint).toList());
         return state;
     }
@@ -279,23 +283,28 @@ public class TimelineEditService {
         List<TimelineEvent> baseline = loadCurrentEvents(userId, from, to);
         long seq = 1;
         var existingEdits = editRepository.findByUser(userId);
-        boolean pending = rebuildRequestRepository.find(userId).isPresent();
+        // The stored timeline is the review base unless a pending rebuild still changes the reviewed period. A
+        // tracking phone keeps a rebuild pending for its newest points, which leaves an older period as stored.
+        boolean pending = rebuildRequestRepository.find(userId)
+                .filter(request -> pendingReaches(userId, request.rebuildFrom(), to)).isPresent();
         // A restored snapshot without a recording remains the review base until its first rebuild.
         boolean rebuildBase = replacesGroupId != null || (pending && (gpsPoints.findLatest(userId).isPresent()
                 || existingEdits.stream().anyMatch(e -> e.getStatus() == TimelineEditStatus.ACTIVE && insertsAtAnchor(e.getKind()))));
         if (rebuildBase) {
             if (replacesGroupId != null && editRepository.findGroup(userId, replacesGroupId).isEmpty())
                 throw new GeoPulseException(TIMELINE_EDIT_NOT_FOUND, "Correction not found or access denied");
-            // Detect again only from the restart point before the reviewed window, and fold the corrections a
-            // generation pass from there would fold (see apply): the result for the window is the same, without
-            // detecting the user's whole history inside a request.
-            var detected = generation.detectForCorrections(userId, from);
+            // Detect again only from the restart point before the reviewed window up to two stored stays after it,
+            // and fold the corrections a generation pass would fold there (see apply): the result for the window is
+            // the same, without reading the recording up to today inside a request.
+            Instant until = reviewEnd(userId, from, to);
+            var detected = generation.detectForCorrections(userId, from, until);
             baseline = detected.events();
             Instant restart = detected.from();
             for (var existing : existingEdits) {
                 if (existing.getStatus() == TimelineEditStatus.ACTIVE
                         && !java.util.Objects.equals(replacesGroupId, existing.getGroupId())
                         && existing.getAffectedTo().isAfter(restart)
+                        && (until == null || existing.getAffectedFrom().isBefore(until))
                         && (!insertsAtAnchor(existing.getKind()) || !existing.getAnchorStart().isBefore(restart))) {
                     commands.add(command(existing));
                 }
@@ -311,6 +320,31 @@ public class TimelineEditService {
             throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "The activities do not match the current timeline");
         }
         return result;
+    }
+
+    /** Whether a pending rebuild from {@code rebuildFrom} regenerates anything before {@code to}. */
+    private boolean pendingReaches(UUID userId, Instant rebuildFrom, Instant to) {
+        // The real-time job restarts two stays back; that is the earliest a pending rebuild changes the timeline.
+        Instant restart = generation.findRestartPoint(userId, rebuildFrom,
+                        org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService.RestartPoint.BEFORE_PREVIOUS_STAY)
+                .orElse(org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService.DEFAULT_START_DATE);
+        return restart.isBefore(to);
+    }
+
+    /**
+     * Where a review of [from, to) can stop reading the recording: the end of the second stored detection stay after
+     * the period and after every active correction reaching into it. Null when there are not two such stays, so the
+     * review reads to the last point (and sees the ongoing gap).
+     */
+    Instant reviewEnd(UUID userId, Instant from, Instant to) {
+        Instant end = to;
+        for (var edit : editRepository.findActiveOverlapping(userId, from, to)) {
+            if (edit.getAffectedTo().isAfter(end)) end = edit.getAffectedTo();
+        }
+        var after = stayRepository.findDetectionStaysFrom(userId, end, 2);
+        if (after.size() < 2) return null;
+        var last = after.getLast();
+        return last.getTimestamp().plusSeconds(last.getStayDuration());
     }
 
     @Transactional
@@ -390,7 +424,7 @@ public class TimelineEditService {
             conflict.setSupersededBy(entity);
             effectRepository.deleteForCorrection(conflict.getId());
         }
-        rebuildRequestRepository.request(userId, affectedFrom);
+        rebuildRequestRepository.requestWindow(userId, affectedFrom, affectedTo);
         return toDto(entity);
     }
 
@@ -445,14 +479,16 @@ public class TimelineEditService {
             var before = edit.getBeforeValues() == null ? BeforeValues.builder().build() : edit.getBeforeValues();
             edit.setBeforeValues(before.toBuilder().cascadeUndoneSequences(dependents.stream().map(TimelineEditEntity::getSeq).toList()).build());
             Instant from = edit.getAffectedFrom();
+            Instant to = edit.getAffectedTo();
             for (var dependent : dependents.reversed()) {
                 dependent.setStatus(TimelineEditStatus.REVERTED);
                 effectRepository.deleteForCorrection(dependent.getId());
                 if (dependent.getAffectedFrom().isBefore(from)) from = dependent.getAffectedFrom();
+                if (dependent.getAffectedTo().isAfter(to)) to = dependent.getAffectedTo();
             }
             edit.setStatus(TimelineEditStatus.REVERTED);
             effectRepository.deleteForCorrection(edit.getId());
-            rebuildRequestRepository.request(userId, from);
+            rebuildRequestRepository.requestWindow(userId, from, to);
         });
         return found.map(TimelineEditService::toDto);
     }
@@ -491,7 +527,7 @@ public class TimelineEditService {
             }
             edit.setStatus(TimelineEditStatus.ACTIVE);
             edit.setSupersededBy(null);
-            rebuildRequestRepository.request(userId, edit.getAffectedFrom());
+            rebuildRequestRepository.requestWindow(userId, edit.getAffectedFrom(), edit.getAffectedTo());
         });
         return found.map(TimelineEditService::toDto);
     }
@@ -523,7 +559,7 @@ public class TimelineEditService {
         for (var edit : group) {
             edit.setStatus(TimelineEditStatus.SUPERSEDED);
             effectRepository.deleteForCorrection(edit.getId());
-            rebuildRequestRepository.request(userId, edit.getAffectedFrom());
+            rebuildRequestRepository.requestWindow(userId, edit.getAffectedFrom(), edit.getAffectedTo());
         }
         return group;
     }
@@ -547,7 +583,7 @@ public class TimelineEditService {
                 userId, revertedEditIds).list()) {
             if (edit.getStatus() == TimelineEditStatus.SUPERSEDED) {
                 edit.setStatus(TimelineEditStatus.ACTIVE);
-                rebuildRequestRepository.request(userId, edit.getAffectedFrom());
+                rebuildRequestRepository.requestWindow(userId, edit.getAffectedFrom(), edit.getAffectedTo());
             }
         }
     }
@@ -605,9 +641,7 @@ public class TimelineEditService {
      * produces it.
      */
     public Instant activeEnd(UUID userId) {
-        return editRepository.findByUser(userId).stream()
-                .filter(edit -> edit.getStatus() == TimelineEditStatus.ACTIVE && insertsAtAnchor(edit.getKind()))
-                .map(TimelineEditEntity::getAffectedTo).max(Instant::compareTo).orElse(null);
+        return editRepository.maxActiveAffectedTo(userId, List.of(TimelineEditKind.FORCE_STAY, TimelineEditKind.FORCE_TRIP));
     }
 
     public TimelineEditResult apply(UUID userId, List<TimelineEvent> events, Instant from, Instant to) {
@@ -641,6 +675,11 @@ public class TimelineEditService {
             }
         }
         return applier.apply(covered, commands, trip -> recalculateTrip(userId, trip));
+    }
+
+    /** The active corrections whose affected range overlaps [from, to). */
+    public List<TimelineEditEntity> activeOverlapping(UUID userId, Instant from, Instant to) {
+        return editRepository.findActiveOverlapping(userId, from, to);
     }
 
     /** Kinds that always insert their event at the anchor instead of matching one of the regenerated events. */
@@ -720,20 +759,75 @@ public class TimelineEditService {
      */
     @Transactional
     public void recordEffects(UUID userId, TimelineEditResult result, Instant windowFrom) {
-        for (Long editId : result.appliedEditIds()) effectRepository.deleteForCorrection(editId);
-        for (Long editId : result.unappliedEditIds()) {
-            var edit = editRepository.findById(editId);
-            if (edit != null && !edit.getAffectedFrom().isBefore(windowFrom)) effectRepository.deleteForCorrection(editId);
-        }
+        // A regeneration may fold thousands of corrections: every step here is a fixed number of statements.
+        var cleared = new ArrayList<>(result.appliedEditIds());
+        cleared.addAll(editRepository.findIdsAffectedFrom(result.unappliedEditIds(), windowFrom));
         entityManager.flush();
-        result.effects().forEach((editId, events) -> events.forEach(event -> findPersistedTarget(userId, event).ifPresent(target -> {
-            TimelineCorrectionEffectEntity effect = TimelineCorrectionEffectEntity.builder()
-                    .correction(entityManager.getReference(TimelineEditEntity.class, editId))
-                    .targetType(target.type())
-                    .targetId(target.id())
-                    .build();
-            effectRepository.persist(effect);
-        })));
+        effectRepository.deleteForCorrections(cleared);
+        var targets = persistedTargets(userId, result.effects().values().stream().flatMap(List::stream).toList());
+        var rows = new ArrayList<TimelineCorrectionEffectRepository.EffectRow>();
+        result.effects().forEach((editId, events) -> events.forEach(event -> {
+            Target target = targets.get(event);
+            if (target != null) rows.add(new TimelineCorrectionEffectRepository.EffectRow(editId, target.type(), target.id()));
+        }));
+        effectRepository.insertAll(rows);
+    }
+
+    /**
+     * The persisted row of each event, matched exactly as {@link #findPersistedTarget} does, with one query per event
+     * type over the span of the given events instead of one query per event.
+     */
+    private Map<TimelineEvent, Target> persistedTargets(UUID userId, List<TimelineEvent> events) {
+        Map<TimelineEvent, Target> targets = new java.util.IdentityHashMap<>();
+        if (events.isEmpty()) return targets;
+        Instant first = events.stream().map(TimelineEvent::getStartTime).min(Instant::compareTo).orElseThrow();
+        Instant last = events.stream().map(TimelineEvent::getStartTime).max(Instant::compareTo).orElseThrow();
+        Map<List<Object>, Long> stays = new java.util.HashMap<>();
+        Map<List<Object>, Long> trips = new java.util.HashMap<>();
+        Map<List<Object>, Long> gaps = new java.util.HashMap<>();
+        if (events.stream().anyMatch(Stay.class::isInstance)) {
+            entityManager.createQuery("""
+                            select s.id, s.timestamp, s.stayDuration from TimelineStayEntity s
+                            where s.user.id = :userId and s.timestamp between :first and :last
+                            order by s.timestamp, s.id""", Object[].class)
+                    .setParameter("userId", userId).setParameter("first", first).setParameter("last", last)
+                    .getResultList()
+                    .forEach(row -> stays.putIfAbsent(List.of(row[1], row[2]), (Long) row[0]));
+        }
+        if (events.stream().anyMatch(Trip.class::isInstance)) {
+            entityManager.createQuery("""
+                            select t.id, t.timestamp, t.tripDuration from TimelineTripEntity t
+                            where t.user.id = :userId and t.timestamp between :first and :last
+                            order by t.timestamp, t.id""", Object[].class)
+                    .setParameter("userId", userId).setParameter("first", first).setParameter("last", last)
+                    .getResultList()
+                    .forEach(row -> trips.putIfAbsent(List.of(row[1], row[2]), (Long) row[0]));
+        }
+        if (events.stream().anyMatch(DataGap.class::isInstance)) {
+            entityManager.createQuery("""
+                            select g.id, g.startTime, g.endTime from TimelineDataGapEntity g
+                            where g.user.id = :userId and g.startTime between :first and :last
+                            order by g.startTime, g.id""", Object[].class)
+                    .setParameter("userId", userId).setParameter("first", first).setParameter("last", last)
+                    .getResultList()
+                    .forEach(row -> gaps.putIfAbsent(List.of(row[1], row[2]), (Long) row[0]));
+        }
+        for (TimelineEvent event : events) {
+            Long id;
+            String type;
+            if (event instanceof Stay) {
+                id = stays.get(List.of(event.getStartTime(), event.getDuration().getSeconds()));
+                type = "STAY";
+            } else if (event instanceof Trip) {
+                id = trips.get(List.of(event.getStartTime(), event.getDuration().getSeconds()));
+                type = "TRIP";
+            } else {
+                id = gaps.get(List.of(event.getStartTime(), event.getEndTime()));
+                type = "DATA_GAP";
+            }
+            if (id != null) targets.put(event, new Target(type, id));
+        }
+        return targets;
     }
 
     public static TimelineEditDTO toDto(TimelineEditEntity entity) {

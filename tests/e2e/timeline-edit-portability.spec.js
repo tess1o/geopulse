@@ -48,7 +48,9 @@ test('E2E-48 export real corrected archive then import into empty isolated accou
     await H.regenerate(target);
     expect(semantic(await H.rows(db, importedUser.id))).toEqual(expected);
     const importedHistory = await H.corrections(target); expect(groupShape(importedHistory)).toEqual(groupShape(history));
-    expect(importedHistory.every(e => !history.some(old => old.id === e.id || old.groupId === e.groupId))).toBe(true);
+    // Corrections get new ids in the target account; their group ids are kept, like any other backed-up value.
+    expect(importedHistory.every(e => !history.some(old => old.id === e.id))).toBe(true);
+    expect(new Set(importedHistory.map(e => e.groupId))).toEqual(new Set(history.map(e => e.groupId)));
     expect(await H.gpsFingerprint(db, c.user)).toEqual(c.gps); // the export left the source recording untouched
     // The import carries every recorded field; only the server receipt time is new.
     expect(await H.gpsFingerprint(db, importedUser.id, { portable: true }))

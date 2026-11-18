@@ -21,6 +21,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @Tag("unit")
 class TimelineEditServiceTest {
@@ -94,21 +96,12 @@ class TimelineEditServiceTest {
 
     @Test
     void activeFillsExtendGenerationWithoutGps() {
-        var ordinary = edit(TimelineEditKind.FORCE_STAY, FROM, FROM.plusSeconds(300));
-        ordinary.setStatus(TimelineEditStatus.ACTIVE);
-        ordinary.setAffectedTo(FROM.plusSeconds(300));
-        var later = edit(TimelineEditKind.FORCE_TRIP, FROM, FROM.plusSeconds(60));
-        later.setStatus(TimelineEditStatus.ACTIVE);
-        later.setAffectedTo(FROM.plusSeconds(60));
-        when(repository.findByUser(user)).thenReturn(List.of(ordinary, later));
+        // Only fills insert events past the recording; the latest end of the active ones is read in one query.
+        when(repository.maxActiveAffectedTo(user, List.of(TimelineEditKind.FORCE_STAY, TimelineEditKind.FORCE_TRIP)))
+                .thenReturn(FROM.plusSeconds(300));
 
         assertThat(service.activeEnd(user)).isEqualTo(FROM.plusSeconds(300));
-
-        var detail = edit(TimelineEditKind.SET_VISIT_NAME, FROM, FROM.plusSeconds(60));
-        detail.setStatus(TimelineEditStatus.ACTIVE);
-        detail.setAffectedTo(FROM.plusSeconds(600));
-        when(repository.findByUser(user)).thenReturn(List.of(detail));
-        assertThat(service.activeEnd(user)).isNull();
+        verify(repository, never()).findByUser(user);
     }
 
     @ParameterizedTest

@@ -62,8 +62,7 @@ public class TripReconstructionService {
         ActivityCorrectionService.Saved saved = corrections.save(prepared.ownerUserId(), prepared.request());
 
         AsyncTimelineGenerationService.TimelineSchedulingResult scheduling =
-                asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
-                        prepared.ownerUserId(), saved.affectedFrom());
+                asyncTimelineGenerationService.scheduleCorrectionRebuild(prepared.ownerUserId());
         return TripReconstructionCommitResponseDto.builder()
                 .groupId(saved.groupId())
                 .corrections(saved.edits().size())

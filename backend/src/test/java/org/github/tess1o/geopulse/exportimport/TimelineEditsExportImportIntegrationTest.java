@@ -110,11 +110,11 @@ class TimelineEditsExportImportIntegrationTest {
     }
 
     /**
-     * An import appends corrections with new identities in the target account: correction ids and group ids are
-     * both new, while corrections saved together stay one group.
+     * An import appends corrections with new ids in the target account and keeps their group ids, so corrections
+     * saved together stay one group and the history matches the backup.
      */
     @org.junit.jupiter.api.Test
-    void importedCorrectionsGetNewGroupIdsAndKeepTheirGrouping() throws Exception {
+    void importedCorrectionsGetNewIdsAndKeepTheirGroups() throws Exception {
         UUID source = users.createUser("group-export-source").userId();
         var batch = activities.save(source, new org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Request(
                 null, List.of(stay(START, START.plusSeconds(1800), "First"), stay(START.plusSeconds(1800), END, "Second")),
@@ -139,11 +139,13 @@ class TimelineEditsExportImportIntegrationTest {
 
         var imported = edits.list(target);
         assertThat(imported).hasSize(3);
-        var sourceGroups = java.util.Set.of(batch.groupId(), single.groupId());
-        assertThat(imported).allSatisfy(edit -> assertThat(sourceGroups).doesNotContain(edit.groupId()));
+        var sourceIds = edits.list(source).stream().map(edit -> edit.id()).toList();
+        assertThat(imported).allSatisfy(edit -> assertThat(sourceIds).doesNotContain(edit.id()));
         var importedGroups = imported.stream().collect(java.util.stream.Collectors.groupingBy(
                 edit -> edit.groupId(), java.util.stream.Collectors.counting()));
-        assertThat(importedGroups.values()).containsExactlyInAnyOrder(2L, 1L);
+        assertThat(importedGroups).containsOnlyKeys(batch.groupId(), single.groupId());
+        assertThat(importedGroups.get(batch.groupId())).isEqualTo(2L);
+        assertThat(importedGroups.get(single.groupId())).isEqualTo(1L);
     }
 
     private static org.github.tess1o.geopulse.streaming.edits.ActivityCorrectionService.Activity stay(

@@ -78,6 +78,28 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .findFirst();
     }
 
+    /**
+     * The first {@code limit} stays starting at or after the timestamp that no active correction touches: the stays
+     * a partial detection can stop after, because they are what detection alone produced.
+     */
+    public List<TimelineStayEntity> findDetectionStaysFrom(UUID userId, Instant from, int limit) {
+        return getEntityManager().createQuery("""
+                        SELECT s FROM TimelineStayEntity s
+                        WHERE s.user.id = :userId AND s.timestamp >= :from
+                          AND NOT EXISTS (SELECT 1 FROM TimelineEditEntity e
+                                          WHERE e.user.id = :userId AND e.status = :status
+                                            AND e.anchorStart < FUNCTION('TIMESTAMPADD', SECOND,
+                                                                          s.stayDuration, s.timestamp)
+                                            AND e.anchorEnd >= s.timestamp)
+                        ORDER BY s.timestamp
+                        """, TimelineStayEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("from", from)
+                .setParameter("status", org.github.tess1o.geopulse.streaming.edits.TimelineEditStatus.ACTIVE)
+                .setMaxResults(limit)
+                .getResultList();
+    }
+
     public Optional<TimelineStayEntity> findLatestByUserIdAtOrBeforeTimestamp(UUID userId, Instant timestamp) {
         return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
                 .firstResultOptional();

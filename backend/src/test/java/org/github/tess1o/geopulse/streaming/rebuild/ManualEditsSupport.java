@@ -91,8 +91,7 @@ public class ManualEditsSupport {
     /** Undoes a split as the undo endpoint does, and waits for the regeneration it starts. */
     public void undoSplit(UUID userId, UUID groupId) {
         var saved = corrections.changeStatus(userId, groupId, false);
-        UUID jobId = asyncTimelineGenerationService
-                .scheduleTimelineRegenerationFromTimestamp(userId, saved.affectedFrom()).jobId();
+        UUID jobId = asyncTimelineGenerationService.scheduleCorrectionRebuild(userId).jobId();
         awaitJob(jobId);
     }
 

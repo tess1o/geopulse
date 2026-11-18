@@ -271,6 +271,17 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .setParameter("userId", userId).getSingleResult();
     }
 
+    /** How many points the user recorded in [from, to) and the newest point id among them: changes with any write there. */
+    public List<Long> fingerprint(UUID userId, Instant from, Instant to) {
+        Object[] row = (Object[]) getEntityManager().createNativeQuery("""
+                        SELECT count(*), COALESCE(max(id), 0) FROM gps_points
+                        WHERE user_id = :userId AND timestamp >= :from AND timestamp < :to
+                        """)
+                .setParameter("userId", userId).setParameter("from", from).setParameter("to", to)
+                .getSingleResult();
+        return List.of(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+    }
+
     public Optional<GpsPointEntity> findLatest(UUID userId) {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId)
                 .firstResultOptional();
@@ -447,6 +458,14 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
                                                  Instant cursorTimestamp, Long cursorId, int limit,
                                                  String environmentDatasetVersion) {
+        return findEssentialDataChunk(userId, fromTimestamp, null, cursorTimestamp, cursorId, limit,
+                environmentDatasetVersion);
+    }
+
+    /** As above, reading only points before {@code toTimestamp} when it is given. */
+    public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp, Instant toTimestamp,
+                                                 Instant cursorTimestamp, Long cursorId, int limit,
+                                                 String environmentDatasetVersion) {
         String environmentSelect = environmentDatasetVersion == null
                 ? "NULL::boolean as on_water "
                 : "env.on_water as on_water ";
@@ -464,6 +483,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                                 "FROM gps_points gp " +
                                 environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
+                                (toTimestamp == null ? "" : "AND gp.timestamp < :toTimestamp ") +
                                 cursorPredicate +
                                 "ORDER BY gp.timestamp ASC, gp.id ASC " +
                                 "LIMIT :limit")
@@ -471,6 +491,9 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .setParameter("fromTimestamp", fromTimestamp)
                 .setParameter("limit", limit);
 
+        if (toTimestamp != null) {
+            query.setParameter("toTimestamp", toTimestamp);
+        }
         if (cursorTimestamp != null && cursorId != null) {
             query.setParameter("cursorTimestamp", cursorTimestamp);
             query.setParameter("cursorId", cursorId);

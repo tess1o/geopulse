@@ -14,7 +14,6 @@ export default {
 
         uncertainTime: 'This time is skipped or repeated when clocks change. Choose an unambiguous time.',
         validTimesRequired: 'Enter a complete, valid date and time.',
-        savedValue: 'Saved',
         placeRequired: 'Choose a location before reviewing.',
         placeNameRequired: 'Give this place a name before saving.',
         unchanged: 'Change a value to save.',

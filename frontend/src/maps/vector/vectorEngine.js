@@ -9,6 +9,7 @@ export { default as VectorCrossTypeCollisionLayer } from './layers/VectorCrossTy
 export { default as VectorCurrentLocationLayer } from './layers/VectorCurrentLocationLayer.vue'
 export { default as VectorFavoritesLayer } from './layers/VectorFavoritesLayer.vue'
 export { default as VectorFriendsLayer } from './layers/VectorFriendsLayer.vue'
+export { default as VectorGpsTimePickerLayer } from './layers/VectorGpsTimePickerLayer.vue'
 export { default as VectorHeatmapLayer } from './layers/VectorHeatmapLayer.vue'
 export { default as VectorImmichLayer } from './layers/VectorImmichLayer.vue'
 export { default as VectorLocationAnalyticsDotsLayer } from './layers/VectorLocationAnalyticsDotsLayer.vue'

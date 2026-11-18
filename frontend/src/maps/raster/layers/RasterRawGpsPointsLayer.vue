@@ -19,6 +19,7 @@ import {
   createRawGpsInspectionClusters,
   groupRawGpsPoints,
   formatRawGpsDateTime,
+  layoutRawGpsInspection,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH_PX
 } from '@/maps/shared/rawGpsPointInspector'
@@ -50,6 +51,7 @@ const markers = []
 const timezone = useTimezone()
 let popup = null, popupMount = null, expandedMarker = null, inspectionZoomHandler = null, inspectionMap = null
 const inspectionMarkers = []
+const inspectionLegs = []
 const inspectionClusters = createRawGpsInspectionClusters()
 
 const closePopup = () => {
@@ -66,8 +68,15 @@ const clearInspection = (restoreOverview = true) => {
   inspectionMap = null
   inspectionMarkers.forEach(marker => marker.remove())
   inspectionMarkers.length = 0
+  inspectionLegs.forEach(leg => leg.remove())
+  inspectionLegs.length = 0
   if (expandedMarker && restoreOverview) markerClusterGroup.value?.addLayer(expandedMarker)
   expandedMarker = null
+}
+
+// Point markers do not bubble clicks to the map, so a map click is a click on an empty place.
+const handleMapClick = () => {
+  if (inspectionMap || popupMount) clearInspection()
 }
 
 const openGroup = (group, pointIndex = 0) => {
@@ -78,9 +87,22 @@ const openGroup = (group, pointIndex = 0) => {
   const renderSamples = () => {
     inspectionMarkers.forEach(marker => marker.remove())
     inspectionMarkers.length = 0
-    inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()).forEach(entity => {
+    inspectionLegs.forEach(leg => leg.remove())
+    inspectionLegs.length = 0
+    const { markers: entities, legs, hubs } = layoutRawGpsInspection(
+      inspectionClusters.getRenderedEntities(group.points, props.map.getZoom()), group.points, {
+        project: ({ latitude, longitude }) => props.map.latLngToLayerPoint([latitude, longitude]),
+        unproject: ({ x, y }) => { const position = props.map.layerPointToLatLng([x, y]); return { latitude: position.lat, longitude: position.lng } },
+        canZoomIn: props.map.getZoom() < props.map.getMaxZoom()
+      })
+    legs.forEach(leg => inspectionLegs.push(L.polyline(leg, { color: '#0f766e', weight: 1.5, opacity: 0.8, interactive: false }).addTo(props.map)))
+    hubs.forEach(hub => inspectionMarkers.push(L.marker([hub.latitude, hub.longitude], {
+      icon: L.divIcon({ className: 'raw-gps-inspection-hub-icon', html: '<div class="raw-gps-inspection-hub"></div>', iconSize: [10, 10], iconAnchor: [5, 5] }),
+      interactive: false, keyboard: false, zIndexOffset: 4900
+    }).addTo(props.map)))
+    entities.forEach(entity => {
       const marker = L.marker([entity.latitude, entity.longitude], {
-        icon: createRawPointIcon(entity.indices.length),
+        icon: entity.isCluster ? createRawPointIcon(entity.indices.length) : createSampleIcon(entity.indices[0] + 1),
         title: entity.isCluster ? String(entity.indices.length) : formatRawGpsDateTime(timezone, group.points[entity.indices[0]].timestamp),
         bubblingMouseEvents: false,
         rawGpsSampleIndices: entity.indices,
@@ -125,6 +147,17 @@ const openGroup = (group, pointIndex = 0) => {
   inspectionMap = props.map
   props.map.on('zoomend', inspectionZoomHandler)
   renderSamples()
+}
+
+// One point of an opened group, numbered like its row in the list.
+const createSampleIcon = (number) => {
+  const size = Math.max(20, 12 + String(number).length * 6)
+  return L.divIcon({
+    className: 'raw-gps-sample-icon',
+    html: `<div class="raw-gps-inspection-sample">${number}</div>`,
+    iconSize: [size, 20],
+    iconAnchor: [size / 2, 10]
+  })
 }
 
 const createRawPointIcon = (count = 1) => {
@@ -234,10 +267,15 @@ watch(
   { deep: true }
 )
 
-watch(() => props.map, () => clearInspection(false))
+watch(() => props.map, (map, previousMap) => {
+  clearInspection(false)
+  previousMap?.off?.('click', handleMapClick)
+  map?.on?.('click', handleMapClick)
+}, { immediate: true })
 watch(() => props.selectPoint, callback => popupMount?.setSelectPoint(callback))
 
 onBeforeUnmount(() => {
+  props.map?.off?.('click', handleMapClick)
   clearMarkers()
   if (props.map && markerClusterGroup.value && props.map.hasLayer(markerClusterGroup.value)) {
     props.map.removeLayer(markerClusterGroup.value)

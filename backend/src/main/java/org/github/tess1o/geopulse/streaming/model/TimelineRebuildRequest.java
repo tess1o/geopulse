@@ -14,7 +14,23 @@ public record TimelineRebuildRequest(UUID userId,
                                      Instant rebuildFrom,
                                      long revision,
                                      int failedAttempts,
-                                     Instant lastFailedAt) {
+                                     Instant lastFailedAt,
+                                     Instant openFrom,
+                                     Instant windowTo) {
+
+    /** An open-ended request: everything from {@code rebuildFrom} on is out of date. */
+    public TimelineRebuildRequest(UUID userId, Instant rebuildFrom, long revision, int failedAttempts,
+                                  Instant lastFailedAt) {
+        this(userId, rebuildFrom, revision, failedAttempts, lastFailedAt, rebuildFrom, null);
+    }
+
+    /**
+     * True when corrections are waiting for the period [rebuildFrom, windowTo]. An open-ended change may wait too,
+     * from {@link #openFrom()} on.
+     */
+    public boolean hasCorrectionWindow() {
+        return windowTo != null;
+    }
 
     /** Failed generations after which the real-time job stops retrying the request on every pass. */
     public static final int MAX_FAILED_ATTEMPTS = 3;

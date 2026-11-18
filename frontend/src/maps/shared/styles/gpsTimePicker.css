@@ -1,0 +1,73 @@
+/* Number labels and From/To pins drawn over recorded GPS samples while choosing activity times. */
+.gps-picker-label-icon {
+  pointer-events: none;
+}
+
+.gps-picker-label {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid var(--gps-picker-color, #4f46e5);
+  color: #0f172a;
+  font: 700 10px/14px system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+
+.gps-picker-label.is-emphasised {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.gps-picker-pin-icon {
+  background: none;
+  border: 0;
+}
+
+.gps-picker-pin-anchor {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+.gps-picker-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #ffffff;
+  font: 700 11px/16px system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  cursor: pointer;
+}
+
+.gps-picker-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom: 0;
+  border-top-color: inherit;
+}
+
+.gps-picker-pin--from {
+  background: #15803d;
+  border-top-color: #15803d;
+}
+
+.gps-picker-pin--to {
+  background: #b91c1c;
+  border-top-color: #b91c1c;
+}
