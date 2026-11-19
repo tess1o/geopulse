@@ -107,6 +107,8 @@ components:
         visitName:
           maxLength: 500
           type: string
+        reconstruction:
+          type: boolean
     ActivityChartData:
       type: object
       properties:
@@ -567,12 +569,11 @@ components:
       - TIMELINE_REGENERATION_IN_PROGRESS
       - TIMELINE_EDIT_CONFLICT
       - TIMELINE_EDIT_NOT_FOUND
+      - TIMELINE_PREVIEW_STALE
       - TIMELINE_REGENERATION_CAMPAIGN_INVALID
       - TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND
       - TRIP_NOT_FOUND
       - TRIP_PLAN_ITEM_NOT_FOUND
-      - TRIP_RECONSTRUCTION_OVERLAPS_RECORDED_DATA
-      - TRIP_SPLIT_OVERRIDE_NOT_FOUND
       - UNSUPPORTED_COVERAGE_GRID
       - USER_REGISTRATION_CONFLICT
       - WEATHER_BACKFILL_INVALID
@@ -947,6 +948,55 @@ components:
           type: array
           items:
             type: string
+    BeforeValues:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/TimelineEventType"
+        start:
+          $ref: "#/components/schemas/Instant"
+        end:
+          $ref: "#/components/schemas/Instant"
+        visitName:
+          type: string
+        locationName:
+          type: string
+        favoriteId:
+          format: int64
+          type: integer
+        geocodingId:
+          format: int64
+          type: integer
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        movementType:
+          $ref: "#/components/schemas/TripType"
+        startLatitude:
+          format: double
+          type: number
+        startLongitude:
+          format: double
+          type: number
+        endLatitude:
+          format: double
+          type: number
+        endLongitude:
+          format: double
+          type: number
+        prerequisiteSequences:
+          type: array
+          items:
+            format: int64
+            type: integer
+        cascadeUndoneSequences:
+          type: array
+          items:
+            format: int64
+            type: integer
     BoatSetupStartResponseDTO:
       type: object
       properties:
@@ -1572,6 +1622,8 @@ components:
           minimum: -180.0
           type: number
           example: 30.5234
+    CorrectionPayload:
+      type: object
     CountResponse:
       type: object
       properties:
@@ -2408,87 +2460,6 @@ components:
         durationSeconds:
           format: int64
           type: integer
-    DataGapStayConversionPreviewDTO:
-      type: object
-      properties:
-        dataGapId:
-          format: int64
-          type: integer
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        durationSeconds:
-          format: int64
-          type: integer
-        anchorLatitude:
-          format: double
-          type: number
-        anchorLongitude:
-          format: double
-          type: number
-        locationName:
-          type: string
-        favoriteId:
-          format: int64
-          type: integer
-        geocodingId:
-          format: int64
-          type: integer
-    DataGapStayOverrideRequest:
-      type: object
-      properties:
-        locationStrategy:
-          type: string
-          example: SELECTED_LOCATION
-        favoriteId:
-          format: int64
-          type: integer
-          example: 12
-        geocodingId:
-          format: int64
-          type: integer
-          example: 301
-        latitude:
-          format: double
-          type: number
-          example: 50.4501
-        longitude:
-          format: double
-          type: number
-          example: 30.5234
-        locationName:
-          type: string
-          example: Home
-    DataGapStayOverrideResponseDTO:
-      type: object
-      properties:
-        overrideId:
-          format: int64
-          type: integer
-        dataGapId:
-          format: int64
-          type: integer
-        stayId:
-          format: int64
-          type: integer
-        locationStrategy:
-          type: string
-        locationName:
-          type: string
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        stayDurationSeconds:
-          format: int64
-          type: integer
-        regenerationStartTime:
-          $ref: "#/components/schemas/Instant"
-        timelineJobId:
-          $ref: "#/components/schemas/UUID"
-        timelineJobQueued:
-          type: boolean
     DatasetStatus:
       enum:
       - NOT_IMPORTED
@@ -6094,6 +6065,12 @@ components:
           $ref: "#/components/schemas/Instant"
         endTime:
           $ref: "#/components/schemas/Instant"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warning1"
+        token:
+          type: string
     Properties:
       type: object
       properties:
@@ -6310,26 +6287,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
-    Request:
-      required:
-      - activities
-      type: object
-      properties:
-        tripId:
-          format: int64
-          type: integer
-        activities:
-          maxItems: 100
-          minItems: 1
-          type: array
-          items:
-            $ref: "#/components/schemas/Activity"
-        contextStart:
-          $ref: "#/components/schemas/Instant"
-        contextEnd:
-          $ref: "#/components/schemas/Instant"
-        replaceExisting:
-          type: boolean
     ResetPasswordResponse:
       type: object
       properties:
@@ -7094,6 +7051,68 @@ components:
         boatMaxPlausibleSpeed:
           format: double
           type: number
+    TimelineCorrectionOp:
+      enum:
+      - PLACE_STAY
+      - PLACE_TRIP
+      - CLEAR
+      - RESIZE
+      - SET_PLACE
+      - SET_TRIP_TYPE
+      - SET_LABEL
+      - SET_ROUTE
+      - MERGE
+      type: string
+    TimelineCorrectionRequest:
+      type: object
+      properties:
+        op:
+          $ref: "#/components/schemas/TimelineCorrectionOp"
+        anchorStart:
+          $ref: "#/components/schemas/Instant"
+        anchorEnd:
+          $ref: "#/components/schemas/Instant"
+        affectedFrom:
+          $ref: "#/components/schemas/Instant"
+        affectedTo:
+          $ref: "#/components/schemas/Instant"
+        payload:
+          $ref: "#/components/schemas/CorrectionPayload"
+        favoriteId:
+          format: int64
+          type: integer
+        geocodingId:
+          format: int64
+          type: integer
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        placeName:
+          type: string
+        tripId:
+          format: int64
+          type: integer
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+        contextStart:
+          $ref: "#/components/schemas/Instant"
+        contextEnd:
+          $ref: "#/components/schemas/Instant"
+        previewToken:
+          type: string
+        replacesGroupId:
+          $ref: "#/components/schemas/UUID"
+    TimelineCorrectionStatus:
+      enum:
+      - IN_EFFECT
+      - UNDONE
+      - REPLACED
+      type: string
     TimelineCountResponse:
       type: object
       properties:
@@ -7234,8 +7253,8 @@ components:
         seq:
           format: int64
           type: integer
-        kind:
-          $ref: "#/components/schemas/TimelineEditKind"
+        op:
+          $ref: "#/components/schemas/TimelineCorrectionOp"
         anchorStart:
           $ref: "#/components/schemas/Instant"
         anchorEnd:
@@ -7244,88 +7263,29 @@ components:
           $ref: "#/components/schemas/Instant"
         affectedTo:
           $ref: "#/components/schemas/Instant"
+        payloadVersion:
+          format: int32
+          type: integer
         payload:
-          type: object
-          additionalProperties: {}
+          $ref: "#/components/schemas/CorrectionPayload"
         beforeValues:
-          type: object
-          additionalProperties: {}
+          $ref: "#/components/schemas/BeforeValues"
         status:
-          $ref: "#/components/schemas/TimelineEditStatus"
+          $ref: "#/components/schemas/TimelineCorrectionStatus"
         applied:
           type: boolean
         target:
           $ref: "#/components/schemas/TimelineEditTargetDTO"
+        effects:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimelineEditTargetDTO"
+        replacedByGroupId:
+          $ref: "#/components/schemas/UUID"
         createdAt:
           $ref: "#/components/schemas/Instant"
         updatedAt:
           $ref: "#/components/schemas/Instant"
-    TimelineEditKind:
-      enum:
-      - SET_MOVEMENT_TYPE
-      - SET_PLACE
-      - SET_VISIT_NAME
-      - FORCE_STAY
-      - FORCE_TRIP
-      - SET_TIMES
-      - SPLIT_STAY
-      - MERGE
-      - REMOVE_EVENT
-      type: string
-    TimelineEditMutationResponse:
-      type: object
-      properties:
-        edit:
-          $ref: "#/components/schemas/TimelineEditDTO"
-        timelineJobId:
-          $ref: "#/components/schemas/UUID"
-        timelineJobQueued:
-          type: boolean
-    TimelineEditPreviewDTO:
-      type: object
-      properties:
-        events:
-          type: array
-          items:
-            $ref: "#/components/schemas/Event1"
-    TimelineEditRequest:
-      type: object
-      properties:
-        kind:
-          $ref: "#/components/schemas/TimelineEditKind"
-        anchorStart:
-          $ref: "#/components/schemas/Instant"
-        anchorEnd:
-          $ref: "#/components/schemas/Instant"
-        affectedFrom:
-          $ref: "#/components/schemas/Instant"
-        affectedTo:
-          $ref: "#/components/schemas/Instant"
-        payload:
-          type: object
-          additionalProperties: {}
-        favoriteId:
-          format: int64
-          type: integer
-        geocodingId:
-          format: int64
-          type: integer
-        latitude:
-          format: double
-          type: number
-        longitude:
-          format: double
-          type: number
-        placeName:
-          type: string
-        supersede:
-          type: boolean
-    TimelineEditStatus:
-      enum:
-      - ACTIVE
-      - SUPERSEDED
-      - REVERTED
-      type: string
     TimelineEditTargetDTO:
       type: object
       properties:
@@ -7422,6 +7382,12 @@ components:
           format: int32
           description: How many stored points the event has.
           type: integer
+    TimelineEventType:
+      enum:
+      - STAY
+      - TRIP
+      - DATA_GAP
+      type: string
     TimelineExplanationCoordinates:
       type: object
       properties:
@@ -7661,24 +7627,6 @@ components:
           $ref: "#/components/schemas/Instant"
         updatedAt:
           $ref: "#/components/schemas/Instant"
-    TimelineOverrideSummaryDTO:
-      type: object
-      properties:
-        type:
-          type: string
-        id:
-          format: int64
-          type: integer
-        startTime:
-          $ref: "#/components/schemas/Instant"
-        endTime:
-          $ref: "#/components/schemas/Instant"
-        applied:
-          type: boolean
-        movementType:
-          type: string
-        locationName:
-          type: string
     TimelinePreferencesUpdateResponse:
       type: object
       properties:
@@ -7849,16 +7797,8 @@ components:
           type: string
         country:
           type: string
-        dataGapOverrideIds:
-          type: array
-          items:
-            format: int64
-            type: integer
         explanation:
           $ref: "#/components/schemas/TimelineExplanationDTO"
-        tripSplitOverrideId:
-          format: int64
-          type: integer
         stayDuration:
           format: int64
           type: integer
@@ -8215,24 +8155,6 @@ components:
           type: string
         date:
           $ref: "#/components/schemas/Instant"
-    TripMovementTypeUpdateRequest:
-      type: object
-      properties:
-        movementType:
-          type: string
-          example: BICYCLE
-    TripMovementTypeUpdateResponseDTO:
-      type: object
-      properties:
-        tripId:
-          format: int64
-          type: integer
-        movementType:
-          type: string
-        movementTypeSource:
-          type: string
-        algorithmClassification:
-          type: string
     TripPlanItemDto:
       type: object
       properties:
@@ -8310,13 +8232,9 @@ components:
     TripReconstructionCommitResponseDto:
       type: object
       properties:
-        generatedPoints:
-          format: int64
-          type: integer
-        insertedPoints:
-          format: int64
-          type: integer
-        duplicatePoints:
+        groupId:
+          $ref: "#/components/schemas/UUID"
+        corrections:
           format: int64
           type: integer
         regenerationStartTime:
@@ -8328,9 +8246,10 @@ components:
     TripReconstructionPreviewDto:
       type: object
       properties:
-        estimatedPoints:
-          format: int64
-          type: integer
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event1"
         startTime:
           $ref: "#/components/schemas/Instant"
         endTime:
@@ -8338,7 +8257,9 @@ components:
         warnings:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Warning1"
+        token:
+          type: string
     TripReconstructionRequestDto:
       required:
       - segments
@@ -8353,6 +8274,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TripReconstructionSegmentDto"
+        replacesGroupId:
+          description: "Correction group to replace, from a preview warning"
+          type: string
+          allOf:
+          - $ref: "#/components/schemas/UUID"
+        previewToken:
+          type: string
     TripReconstructionSegmentDto:
       required:
       - segmentType
@@ -8484,82 +8412,6 @@ components:
       - COMPLETED
       - CANCELLED
       type: string
-    TripStaySplitRequest:
-      required:
-      - stayStartTime
-      - stayEndTime
-      - anchorTimestamp
-      - latitude
-      - longitude
-      type: object
-      properties:
-        stayStartTime:
-          type: string
-          allOf:
-          - $ref: "#/components/schemas/Instant"
-          example: 2025-06-01T12:10:00Z
-        stayEndTime:
-          type: string
-          allOf:
-          - $ref: "#/components/schemas/Instant"
-          example: 2025-06-01T12:40:00Z
-        anchorTimestamp:
-          type: string
-          allOf:
-          - $ref: "#/components/schemas/Instant"
-          example: 2025-06-01T12:20:00Z
-        latitude:
-          format: double
-          maximum: 90.0
-          minimum: -90.0
-          type: number
-          example: 50.4501
-        longitude:
-          format: double
-          maximum: 180.0
-          minimum: -180.0
-          type: number
-          example: 30.5234
-        locationName:
-          maxLength: 500
-          type: string
-          example: Gas station
-    TripStaySplitResponse:
-      type: object
-      properties:
-        overrideId:
-          format: int64
-          type: integer
-        originalTripId:
-          format: int64
-          type: integer
-        firstTripId:
-          format: int64
-          type: integer
-        stayId:
-          format: int64
-          type: integer
-        secondTripId:
-          format: int64
-          type: integer
-        stayStartTime:
-          $ref: "#/components/schemas/Instant"
-        stayEndTime:
-          $ref: "#/components/schemas/Instant"
-        locationName:
-          type: string
-        regenerationStartTime:
-          $ref: "#/components/schemas/Instant"
-        firstTrip:
-          $ref: "#/components/schemas/TimelineTripDTO"
-        stay:
-          $ref: "#/components/schemas/TimelineStayLocationDTO"
-        secondTrip:
-          $ref: "#/components/schemas/TimelineTripDTO"
-        timelineJobId:
-          $ref: "#/components/schemas/UUID"
-        timelineJobQueued:
-          type: boolean
     TripSummaryDto:
       type: object
       properties:
@@ -9890,6 +9742,30 @@ components:
         params:
           type: object
           additionalProperties: {}
+    Warning1:
+      type: object
+      properties:
+        code:
+          type: string
+        severity:
+          type: string
+        message:
+          type: string
+        targetType:
+          type: string
+        targetStart:
+          $ref: "#/components/schemas/Instant"
+        targetEnd:
+          $ref: "#/components/schemas/Instant"
+        groupId:
+          $ref: "#/components/schemas/UUID"
+        correctionId:
+          format: int64
+          type: integer
+        actions:
+          type: array
+          items:
+            type: string
     Water:
       type: object
       properties:
@@ -21044,7 +20920,7 @@ paths:
     get:
       summary: Get statistics for a range
       description: |-
-        Returns movement statistics for a time range: total distance, time moving, daily average distance, average speed, unique places, most active day, top places, frequent routes, and distance charts by movement type. Charts are grouped by day for ranges shorter than 10 days and by week otherwise.
+        Returns movement statistics for a time range: total distance, time moving, daily average distance, average speed, unique places, most active day, top places, frequent routes, and distance charts by movement type. Charts are grouped by day for ranges shorter than 10 days and by week otherwise. Days and weeks follow the user's timezone.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: StatisticsResource_getRangeStatistics
@@ -21084,7 +20960,7 @@ paths:
     get:
       summary: Get statistics for the last 30 days
       description: |-
-        Returns the same statistics as the range endpoint for the last 30 days up to the end of today (UTC), with charts grouped by week.
+        Returns the same statistics as the range endpoint for the last 30 days up to the end of today in the user's timezone, with charts grouped by week.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: StatisticsResource_getMonthlyStatistics
@@ -21110,7 +20986,7 @@ paths:
     get:
       summary: Get statistics for the last 7 days
       description: |-
-        Returns the same statistics as the range endpoint for the last 7 days up to the end of today (UTC), with charts grouped by day.
+        Returns the same statistics as the range endpoint for the last 7 days up to the end of today in the user's timezone, with charts grouped by day.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: StatisticsResource_getWeeklyStatistics
@@ -21469,22 +21345,21 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/activity-corrections:
+  /api/v1/timeline/corrections:
     post:
-      summary: Save a reversible group of manual activities without generating GPS
-        points
+      summary: Save a correction batch
       description: |-
-        Saves manual stays and trips as one reversible correction group and schedules timeline regeneration. With replaceExisting=true the activities are carved out of the selected interval and the remaining time keeps the original event. Does not generate GPS points.
+        Saves one or more corrections as an atomic correction group, optionally replacing an earlier group, and schedules timeline regeneration. UI saves supply the preview token; API clients may omit it.
 
         **Access:** Any signed-in user, with a session or an API token.
-      operationId: ActivityCorrectionResource_save
+      operationId: TimelineCorrectionResource_save
       tags:
       - Timeline Corrections
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Request"
+              $ref: "#/components/schemas/TimelineCorrectionRequest"
         required: true
       responses:
         "200":
@@ -21504,22 +21379,57 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/activity-corrections/preview:
-    post:
-      summary: Review activities for an empty interval or a rebuild of an existing
-        one
+    get:
+      summary: List timeline corrections
       description: |-
-        Validates proposed manual stays and trips for empty intervals or for rebuilding an existing interval, and returns a timeline preview with surrounding events and remaining gaps. Does not save corrections or generate GPS points.
+        Every correction of the signed-in user, oldest first. Optionally restricted to corrections whose affected range intersects [from, to).
 
         **Access:** Any signed-in user, with a session or an API token.
-      operationId: ActivityCorrectionResource_preview
+      operationId: TimelineCorrectionResource_list
+      tags:
+      - Timeline Corrections
+      parameters:
+      - name: from
+        in: query
+        schema:
+          type: string
+      - name: to
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineEditDTO"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      security:
+      - bearerAuth: []
+      - apiKey: []
+  /api/v1/timeline/corrections/preview:
+    post:
+      summary: Review a correction batch
+      description: |-
+        Runs the exact fold used by save and returns the resulting events, warnings and a preview token. Warnings describe carved events and corrections; INVALID warnings block save.
+
+        **Access:** Any signed-in user, with a session or an API token.
+      operationId: TimelineCorrectionResource_preview
       tags:
       - Timeline Corrections
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Request"
+              $ref: "#/components/schemas/TimelineCorrectionRequest"
         required: true
       responses:
         "200":
@@ -21539,14 +21449,14 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/activity-corrections/{groupId}/restore:
+  /api/v1/timeline/corrections/{groupId}/restore:
     post:
-      summary: Restore a correction group when its intervals allow it
+      summary: Restore a correction group
       description: |-
-        Reactivates all edits in the signed-in user's correction group after checking that a rebuilt interval is free of newer corrections, or that an empty interval stayed empty, then schedules timeline regeneration. Rejects restoration if existing activities or manual corrections conflict.
+        Puts an undone group back into the fold and schedules regeneration.
 
         **Access:** Any signed-in user, with a session or an API token.
-      operationId: ActivityCorrectionResource_restore
+      operationId: TimelineCorrectionResource_restore
       tags:
       - Timeline Corrections
       parameters:
@@ -21571,14 +21481,14 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/activity-corrections/{groupId}/revert:
+  /api/v1/timeline/corrections/{groupId}/undo:
     post:
-      summary: Undo a complete activity correction group
+      summary: Undo a correction group
       description: |-
-        Deactivates all edits in the signed-in user's correction group and schedules timeline regeneration from the earliest affected interval. With cascade=true, also reverts the later active corrections that depend on it. Keeps the group available for restoration.
+        Removes the group from the fold and schedules regeneration. With cascade=true, also undoes the later corrections that depend on it.
 
         **Access:** Any signed-in user, with a session or an API token.
-      operationId: ActivityCorrectionResource_revert
+      operationId: TimelineCorrectionResource_undo
       tags:
       - Timeline Corrections
       parameters:
@@ -21648,40 +21558,6 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/data-gap-overrides/{overrideId}/stay-conversion:
-    delete:
-      summary: Undo a data gap conversion
-      description: |-
-        Removes a data-gap-to-stay override so the period is shown as a data gap again. The affected timeline is regenerated in the background; `timelineJobId` is the job to follow (null when it could not start now; it then runs later).
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_resetDataGapStayOverride
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: ID of the data gap override.
-        name: overrideId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DataGapStayOverrideResponseDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
   /api/v1/timeline/data-gaps/{gapId}/explanation:
     get:
       summary: Explain a data gap
@@ -21710,251 +21586,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TimelineEventExplanationDetailsDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/data-gaps/{gapId}/stay-conversion:
-    put:
-      summary: Convert a data gap to a stay
-      description: |-
-        Replaces a data gap with a stay, for example when the phone stopped sending data while you stayed in one place. The conversion is saved as an override and kept when the timeline is regenerated.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_convertDataGapToStay
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "Data gap ID, as returned by the timeline."
-        name: gapId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DataGapStayOverrideRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DataGapStayOverrideResponseDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/data-gaps/{gapId}/stay-conversion-preview:
-    get:
-      summary: Preview converting a data gap to a stay
-      description: |-
-        Shows the stay that would replace a data gap if it were converted: the location (the last known point before the gap) and the time range.
-
-        **Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      x-internal: true
-      operationId: StreamingTimelineResource_getDataGapStayConversionPreview
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "Data gap ID, as returned by the timeline."
-        name: gapId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DataGapStayConversionPreviewDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/edits:
-    get:
-      summary: List timeline edits
-      description: |-
-        Lists every one-off edit of the signed-in user's timeline in application order.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_listEdits
-      tags:
-      - Timeline Corrections
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TimelineEditDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-    post:
-      summary: Create a timeline edit
-      description: |-
-        Stores one reversible edit and durably requests timeline regeneration.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_createEdit
-      tags:
-      - Timeline Corrections
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TimelineEditRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TimelineEditMutationResponse"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/edits/preview:
-    post:
-      summary: Preview a timeline edit
-      description: |-
-        Applies one proposed edit in memory and returns the affected event sequence without saving it.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_previewEdit
-      tags:
-      - Timeline Corrections
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TimelineEditRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TimelineEditPreviewDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/edits/{editId}/restore:
-    post:
-      summary: Restore a reverted timeline edit
-      description: |-
-        Reactivates a reverted edit when it does not conflict with a newer active edit.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_restoreEdit
-      tags:
-      - Timeline Corrections
-      parameters:
-      - name: editId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TimelineEditMutationResponse"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/edits/{editId}/revert:
-    post:
-      summary: Revert a timeline edit
-      description: |-
-        Deactivates one edit and durably requests timeline regeneration. With cascade=true, also reverts the later active edits that depend on it.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_revertEdit
-      tags:
-      - Timeline Corrections
-      parameters:
-      - name: editId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - name: cascade
-        in: query
-        schema:
-          default: false
-          type: boolean
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TimelineEditMutationResponse"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -22128,36 +21759,6 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/movement-overrides/{overrideId}:
-    delete:
-      summary: Remove a movement type correction
-      description: |-
-        Removes a movement type set by hand. The trip it applies to, if any, gets its detected movement type back. To reset a trip shown on the timeline, `DELETE /api/v1/trips/{tripId}/timeline/movement-type` does the same by trip.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_removeMovementOverride
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "ID of the movement type correction, as listed by `GET /api/v1/timeline/overrides`."
-        name: overrideId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "204":
-          description: Correction removed
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
   /api/v1/timeline/multi-user:
     get:
       summary: Get timelines of several users
@@ -22204,34 +21805,6 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/timeline/overrides:
-    get:
-      summary: List timeline corrections
-      description: |-
-        All manual corrections of the signed-in user's timeline (movement types set by hand, trip splits, data gaps turned into stays), oldest first, each with whether the timeline shows it now. A correction is not applied when the event it corrected no longer comes out of the GPS data, for instance after its points were deleted; it applies again should the event return.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_listOverrides
-      tags:
-      - Timeline Corrections
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TimelineOverrideSummaryDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
   /api/v1/timeline/preferences:
     get:
       summary: Get effective timeline settings
@@ -22249,40 +21822,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TimelineConfig"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/timeline/stay-split-overrides/{overrideId}:
-    delete:
-      summary: Undo a trip split
-      description: |-
-        Removes a manual split that turned part of a trip into a stay. The affected timeline is regenerated in the background; `timelineJobId` is the job to follow (null when it could not start now, for instance while another regeneration runs; it then runs after it).
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: StreamingTimelineResource_resetTripStaySplitOverride
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: ID of the stay-split override.
-        name: overrideId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TripStaySplitResponse"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
@@ -22463,7 +22002,7 @@ paths:
     post:
       summary: Save a trip reconstruction
       description: |-
-        Generates GPS points from the reconstruction segments and stores them for the trip owner. Points that already exist are skipped. Then starts a timeline regeneration from the earliest new point and returns its job ID.
+        Saves the reconstruction segments as one correction group scoped to the planned trip's dates and starts a timeline regeneration. No GPS points are created or changed.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: ReconstructionResource_commit
@@ -22497,7 +22036,7 @@ paths:
     post:
       summary: Preview a trip reconstruction
       description: |-
-        Checks a reconstruction request and returns how many GPS points it would create, and for which time range. A reconstruction describes missing parts of a trip as a list of stays and movements (with optional waypoints) so GeoPulse can generate GPS points for them. Nothing is saved.
+        Runs the correction fold for the stays and movements a reconstruction describes and returns the resulting events, warnings and a preview token. Nothing is saved and no GPS points are created.
 
         **Access:** Any signed-in user, with a session or an API token.
       operationId: ReconstructionResource_preview
@@ -23446,172 +22985,6 @@ paths:
       security:
       - bearerAuth: []
       - apiKey: []
-  /api/v1/trips/{tripId}/timeline/movement-type:
-    put:
-      summary: Set a movement type
-      description: |-
-        Overrides the detected movement type of a timeline trip: `WALK`, `BICYCLE`, `RUNNING`, `CAR`, `MOTORCYCLE`, `PUBLIC_TRANSPORT`, `TRAIN`, `FLIGHT`, `BOAT`, or `UNKNOWN`. The override is kept when the timeline is regenerated.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: TripTimelineResource_updateTripMovementType
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "ID of a trip (movement) on the timeline, as returned by `GET\
-          \ /api/v1/timeline`. Not a planned trip ID."
-        name: tripId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TripMovementTypeUpdateRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TripMovementTypeUpdateResponseDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
-    delete:
-      summary: Reset a movement type
-      description: |-
-        Removes a manual movement type so the detected type is used again.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: TripTimelineResource_resetTripMovementType
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "ID of a trip (movement) on the timeline, as returned by `GET\
-          \ /api/v1/timeline`. Not a planned trip ID."
-        name: tripId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TripMovementTypeUpdateResponseDTO"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/trips/{tripId}/timeline/stay-split:
-    put:
-      summary: Split a trip with a stay
-      description: |-
-        Turns part of a timeline trip into a stay, splitting it into trip, stay, trip. The split is saved as an override and kept when the timeline is regenerated; undo it with `DELETE /api/v1/timeline/stay-split-overrides/{overrideId}`.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      operationId: TripTimelineResource_splitTripWithStay
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "ID of a trip (movement) on the timeline, as returned by `GET\
-          \ /api/v1/timeline`. Not a planned trip ID."
-        name: tripId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TripStaySplitRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TripStaySplitResponse"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
-  /api/v1/trips/{tripId}/timeline/stay-split/preview:
-    post:
-      summary: Preview splitting a trip with a stay
-      description: |-
-        Shows how a timeline trip would look if part of it were turned into a stay, for example a stop the detection missed. Nothing is saved.
-
-        **Internal:** Used by the GeoPulse web app. Not part of the documented API and can change without notice.
-
-        **Access:** Any signed-in user, with a session or an API token.
-      x-internal: true
-      operationId: TripTimelineResource_previewTripStaySplit
-      tags:
-      - Timeline Corrections
-      parameters:
-      - description: "ID of a trip (movement) on the timeline, as returned by `GET\
-          \ /api/v1/timeline`. Not a planned trip ID."
-        name: tripId
-        in: path
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TripStaySplitRequest"
-        required: true
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TripStaySplitResponse"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-        "400":
-          description: Bad Request
-      security:
-      - bearerAuth: []
-      - apiKey: []
   /api/v1/trips/{tripId}/visit-suggestions:
     get:
       summary: Get visit suggestions
@@ -23941,7 +23314,7 @@ paths:
       - apiKey: []
 info:
   title: GeoPulse API
-  version: 2.3.0
+  version: 2.4.0
   description: "REST API of GeoPulse, a self-hosted location timeline. Authentication,\
     \ examples, and guides: https://geopulse.cc/docs/api/intro"
   contact:
