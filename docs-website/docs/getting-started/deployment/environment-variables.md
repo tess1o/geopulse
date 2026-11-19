@@ -82,7 +82,7 @@ Notes:
 | `GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED` | `true` | Property: \`geopulse.auth.password-registration.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_REGISTRATION_ENABLED` | `true` | Property: \`geopulse.auth.registration.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_SECURE_COOKIES` | `false` | Property: \`geopulse.auth.secure-cookies\`. | \`true\` or \`false\`. | Backend restart |
-| `GEOPULSE_AUTH_SIGN_UP_ENABLED` | `true` | Deprecated property, replaced by geopulse.auth.password-registration.enabled Property: \`geoupuse.auth.sign-up-enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_AUTH_SIGN_UP_ENABLED` | `true` | Deprecated property, replaced by geopulse.auth.password-registration.enabled Property: \`geopulse.auth.sign-up-enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_COOKIE_DOMAIN` | `(empty)` | Property: \`geopulse.auth.cookie-domain\`. | Optional; empty value uses fallback behavior. | Backend restart |
 | `GEOPULSE_INVITATION_BASE_URL` | `(empty)` | User invitation configuration Base URL for generating invitation links (e.g., https://geopulse.example.com) If empty, frontend will use window.location.origin Property: \`geopulse.invitation.base-url\`. | Valid URL. | Backend restart |
 | `GEOPULSE_AUTH_SESSION_IDLE_TIMEOUT` | `7d` | A sign-in session ends after this long without use. Property: \`geopulse.auth.session.idle-timeout\`. | Duration, e.g. \`12h\`, \`7d\`. | Backend restart |
