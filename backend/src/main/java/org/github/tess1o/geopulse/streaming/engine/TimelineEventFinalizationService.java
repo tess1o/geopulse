@@ -333,7 +333,7 @@ public class TimelineEventFinalizationService {
                 else high = middle;
             }
             if (low == 0) return false;
-            Instant end = latest[low - 1] == current ? secondEnd[low - 1] : latestEnd[low - 1];
+            Instant end = latest[low - 1] == current ? secondEnd[low - 1] : latestEnd[low - 1]; // NOPMD - identity is intended: current is an element of this coverage's trips
             return end != null && end.isAfter(from);
         }
     }
