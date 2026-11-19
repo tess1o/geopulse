@@ -10,7 +10,7 @@
       "Statistics and charts now follow your profile timezone",
       "Fixed favorites replacement imports, including removed and resized areas. Replacement mode replaces all favorites when included",
       "Pan and pinch to zoom while drawing favorite polygons",
-      "Fixed Dawarich tracking without altitude and corrected GPS accuracy handling",
+      "Fixed Dawarich tracking without altitude and corrected GPS accuracy handling"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.4.0"
   },
