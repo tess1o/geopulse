@@ -114,29 +114,30 @@ public class GeonamesCityRepository {
             double longitude,
             Double maxDistanceMeters
     ) {
+        // Same lookup as GeonamesTimezoneRepository: KNN on idx_geonames_city_geom_gist ranks by planar degrees,
+        // so the closest few candidates are re-ranked by sphere distance.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = entityManager.createNativeQuery("""
                         SELECT
-                            gc.geonameid,
-                            gc.name AS city_name,
-                            COALESCE(gct.country_name, gc.country_code) AS country_name,
-                            gc.country_code,
-                            ST_DistanceSphere(
-                                ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326),
-                                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
-                            ) AS distance_m
-                        FROM geonames_city gc
-                        LEFT JOIN geonames_country gct ON gct.iso_alpha2 = gc.country_code
-                        WHERE gc.latitude IS NOT NULL
-                          AND gc.longitude IS NOT NULL
-                          AND (
-                              :maxDistanceMeters IS NULL
-                              OR ST_DistanceSphere(
-                                  ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326),
-                                  ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
-                              ) <= :maxDistanceMeters
-                          )
-                        ORDER BY distance_m ASC, COALESCE(gc.population, 0) DESC
+                            k.geonameid,
+                            k.name AS city_name,
+                            COALESCE(gct.country_name, k.country_code) AS country_name,
+                            k.country_code,
+                            k.distance_m
+                        FROM (
+                            SELECT gc.geonameid, gc.name, gc.country_code, gc.population,
+                                   ST_DistanceSphere(
+                                       ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326),
+                                       ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
+                                   ) AS distance_m
+                            FROM geonames_city gc
+                            ORDER BY ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326)
+                                     <-> ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
+                            LIMIT 8
+                        ) k
+                        LEFT JOIN geonames_country gct ON gct.iso_alpha2 = k.country_code
+                        WHERE CAST(:maxDistanceMeters AS float8) IS NULL OR k.distance_m <= :maxDistanceMeters
+                        ORDER BY k.distance_m ASC, COALESCE(k.population, 0) DESC
                         LIMIT 1
                         """)
                 .setParameter("lat", latitude)
