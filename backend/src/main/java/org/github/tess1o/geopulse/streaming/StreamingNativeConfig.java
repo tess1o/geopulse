@@ -92,6 +92,10 @@ import org.github.tess1o.geopulse.streaming.service.TimelineSafetyNetService;
         TimelineConfig.class,
         TimelineJobProgress.class,
         TimelineJobProgress.JobStatus.class,
+        org.github.tess1o.geopulse.streaming.model.TimelineJobStep.class,
+        org.github.tess1o.geopulse.streaming.model.TimelineJobMemory.class,
+        org.github.tess1o.geopulse.streaming.model.TimelineJobResources.class,
+        org.github.tess1o.geopulse.streaming.model.TimelineJobType.class,
         TimelineJobStatistics.class,
         // Key of the EnumMap the nightly safety net reports its results in.
         TimelineSafetyNetService.Outcome.class,

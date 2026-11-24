@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import org.github.tess1o.geopulse.streaming.model.TimelineJobType;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +51,7 @@ public class TimelineImportHelper {
         log.info("Triggering timeline generation after bulk import for user {}", job.getUserId());
 
         // Create timeline job for progress tracking
-        UUID timelineJobId = jobProgressService.createJob(job.getUserId());
+        UUID timelineJobId = jobProgressService.createJob(job.getUserId(), TimelineJobType.IMPORT);
         log.info("Created timeline job {} for import {}", timelineJobId, job.getJobId());
 
         // CRITICAL: Set timeline job ID on import job IMMEDIATELY before triggering generation

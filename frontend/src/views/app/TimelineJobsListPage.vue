@@ -114,6 +114,7 @@
                         :style="{ color: job.status === 'COMPLETED' ? 'var(--p-green-500)' : 'var(--p-red-500)' }"
                       ></i>
                       <span class="status-text">{{ job.status }}</span>
+                      <span class="job-type">{{ t(`timelineJobs.types.${job.type || 'OTHER'}`) }}</span>
                     </div>
                     <span class="job-date">{{ formatDate(job.startTime) }}</span>
                   </div>
@@ -397,6 +398,11 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
+}
+
+.job-type {
+  color: var(--gp-text-secondary);
+  font-weight: 500;
 }
 
 .job-status i {

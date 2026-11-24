@@ -4,6 +4,8 @@ export default {
         description: 'Fijn afstemmen hoe uw locatietijdlijn wordt gegenereerd vanuit GPS-gegevens',
         searchPlaceholder: 'Zoek in tijdlijninstellingen...',
         regenerateButton: 'Tijdlijn regenereren',
+        regeneratingButton: 'Bezig met hergenereren…',
+        regeneratingButtonProgress: 'Bezig met hergenereren… {progress}%',
         saveButton: 'Wijzigingen opslaan',
         moreButton: 'Meer',
         mobileSectionLabel: 'Instellingensectie',
@@ -33,7 +35,8 @@ export default {
             exportConfig: 'Configuratie exporteren',
             importConfig: 'Configuratie importeren',
             resetToDefaults: 'Reset naar standaard',
-            viewActiveJob: 'Actieve taak bekijken'
+            viewActiveJob: 'Actieve taak bekijken',
+            timelineJobs: 'Tijdlijntaken'
         },
         importDialog: {
             header: 'Tijdlijnconfiguratie importeren',

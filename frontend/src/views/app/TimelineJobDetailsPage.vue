@@ -13,6 +13,15 @@
             </div>
             <div class="gp-page-actions">
               <Button
+                v-if="jobProgress"
+                :label="t('timelineJobs.detailsPage.diagnostics.button')"
+                icon="pi pi-clipboard"
+                severity="secondary"
+                outlined
+                :loading="diagnosticsLoading"
+                @click="openDiagnostics"
+              />
+              <Button
                 :label="t('timelineJobs.detailsPage.backButton')"
                 icon="pi pi-arrow-left"
                 severity="secondary"
@@ -93,8 +102,28 @@
                   <span class="detail-value">{{ formatDuration(jobProgress.durationMs) }}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.currentStep') }}</span>
-                  <span class="detail-value">{{ t('timelineJobs.detailsPage.details.stepOf', { current: jobProgress.currentStepIndex, total: jobProgress.totalSteps }) }}</span>
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.type') }}</span>
+                  <span class="detail-value">{{ t(`timelineJobs.types.${jobProgress.type || 'OTHER'}`) }}</span>
+                </div>
+                <div class="detail-row" v-if="summary.gpsPoints != null">
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.gpsPoints') }}</span>
+                  <span class="detail-value">{{ formatCount(summary.gpsPoints) }}</span>
+                </div>
+                <div class="detail-row" v-if="summary.stays != null">
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.produced') }}</span>
+                  <span class="detail-value">{{ t('timelineJobs.detailsPage.details.producedValue', { stays: formatCount(summary.stays), trips: formatCount(summary.trips), gaps: formatCount(summary.dataGaps) }) }}</span>
+                </div>
+                <div class="detail-row" v-if="summary.correctionsApplied || summary.correctionsNotApplied">
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.corrections') }}</span>
+                  <span class="detail-value">{{ t('timelineJobs.detailsPage.details.correctionsValue', { applied: formatCount(summary.correctionsApplied), notApplied: formatCount(summary.correctionsNotApplied) }) }}</span>
+                </div>
+                <div class="detail-row" v-if="jobProgress.resources">
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.memoryLimit') }}</span>
+                  <span class="detail-value">{{ memoryLimitText }}</span>
+                </div>
+                <div class="detail-row" v-if="jobProgress.resources">
+                  <span class="detail-label">{{ t('timelineJobs.detailsPage.details.cpus') }}</span>
+                  <span class="detail-value">{{ jobProgress.resources.cpuCount }}</span>
                 </div>
               </div>
 
@@ -116,61 +145,71 @@
             <template #content>
               <div class="steps-list">
                 <div
-                  v-for="step in steps"
-                  :key="step.index"
-                  :class="['step-item', getStepClass(step.index)]"
+                  v-for="step in displaySteps"
+                  :key="step.key"
+                  :class="['step-item', step.stateClass, { 'step-slowest': step.slowest }]"
                 >
                   <div class="step-indicator">
-                    <i :class="getStepIcon(step.index)"></i>
+                    <i :class="step.icon"></i>
                   </div>
                   <div class="step-content">
-                    <h3 class="step-title">{{ step.title }}</h3>
-                    <p class="step-description">{{ step.description }}</p>
-                    <div v-if="isCurrentStep(step.index) && jobProgress.details" class="step-details">
-                      <!-- GPS Loading Details -->
-                      <div v-if="jobProgress.details.gpsPointsLoaded" class="detail-item">
+                    <div class="step-heading">
+                      <h3 class="step-title">{{ step.title }}</h3>
+                      <span v-if="step.durationMs != null" class="step-timing">
+                        <span class="step-duration">{{ formatDuration(step.durationMs) }}</span>
+                        <span v-if="step.share != null" class="step-share-label">{{ formatShare(step.share) }}</span>
+                      </span>
+                    </div>
+                    <div v-if="step.share != null" class="step-share" :title="formatShare(step.share)">
+                      <div class="step-share-bar" :style="{ width: `${Math.max(step.share, 0.5)}%` }"></div>
+                    </div>
+                    <div v-if="step.slowest || step.memoryPeak || step.failed || step.pending" class="step-badges">
+                      <Tag v-if="step.failed" :value="t('timelineJobs.detailsPage.stepBadges.failed')" severity="danger" />
+                      <Tag v-if="step.slowest" :value="t('timelineJobs.detailsPage.stepBadges.slowest')" severity="warn" />
+                      <Tag v-if="step.memoryPeak" :value="t('timelineJobs.detailsPage.stepBadges.memoryPeak')" severity="info" />
+                      <Tag v-if="step.pending" :value="t('timelineJobs.detailsPage.stepBadges.pending')" severity="secondary" />
+                    </div>
+                    <p v-if="memoryText(step.memory)" class="step-memory">
+                      <i class="pi pi-server"></i>
+                      {{ memoryText(step.memory) }}
+                    </p>
+                    <div v-if="hasShownCounters(step.counters)" class="step-details">
+                      <div v-if="step.counters.gpsPointsLoaded" class="detail-item">
                         <i class="pi pi-map-marker"></i>
-                        {{ t('timelineJobs.detailsPage.detail.gpsPoints', { loaded: jobProgress.details.gpsPointsLoaded.toLocaleString(), total: jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }) }}
+                        {{ t('timelineJobs.detailsPage.detail.gpsPoints', { loaded: formatCount(step.counters.gpsPointsLoaded), total: formatCount(step.counters.totalGpsPoints) }) }}
                       </div>
 
-                      <!-- GPS Processing Details (State Machine) -->
-                      <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-section">
+                      <div v-if="step.counters.processedPoints !== undefined" class="detail-section">
                         <div class="detail-item detail-header">
                           <i class="pi pi-cog"></i>
-                          <strong>{{ t('timelineJobs.detailsPage.detail.processingHeader', { processed: jobProgress.details.processedPoints?.toLocaleString() || 0, total: jobProgress.details.totalPoints?.toLocaleString() || '?' }) }}</strong>
+                          <strong>{{ t('timelineJobs.detailsPage.detail.processingHeader', { processed: formatCount(step.counters.processedPoints), total: formatCount(step.counters.totalPoints) }) }}</strong>
                         </div>
-
-                        <div v-if="jobProgress.details.pointsRemaining !== undefined && jobProgress.details.pointsRemaining > 0" class="detail-item detail-sub">
+                        <div v-if="step.counters.pointsRemaining > 0" class="detail-item detail-sub">
                           <i class="pi pi-clock"></i>
-                          {{ t('timelineJobs.detailsPage.detail.remaining', { count: jobProgress.details.pointsRemaining.toLocaleString() }) }}
+                          {{ t('timelineJobs.detailsPage.detail.remaining', { count: formatCount(step.counters.pointsRemaining) }) }}
                         </div>
                       </div>
 
-                      <!-- Geocoding Details -->
-                      <div v-if="jobProgress.details.totalLocations" class="detail-section">
+                      <div v-if="step.counters.totalLocations" class="detail-section">
                         <div class="detail-item detail-header">
                           <i class="pi pi-globe"></i>
-                          <strong>{{ t('timelineJobs.detailsPage.detail.geocodingHeader', { resolved: jobProgress.details.totalResolved || 0, total: jobProgress.details.totalLocations }) }}</strong>
+                          <strong>{{ t('timelineJobs.detailsPage.detail.geocodingHeader', { resolved: formatCount(step.counters.totalResolved || 0), total: formatCount(step.counters.totalLocations) }) }}</strong>
                         </div>
-
-                        <div v-if="jobProgress.details.favoritesResolved" class="detail-item detail-sub">
+                        <div v-if="step.counters.favoritesResolved" class="detail-item detail-sub">
                           <i class="pi pi-star"></i>
-                          {{ t('timelineJobs.detailsPage.detail.favoritesInstant', { count: jobProgress.details.favoritesResolved }) }}
+                          {{ t('timelineJobs.detailsPage.detail.favoritesInstant', { count: formatCount(step.counters.favoritesResolved) }) }}
                         </div>
-
-                        <div v-if="jobProgress.details.cachedResolved" class="detail-item detail-sub">
+                        <div v-if="step.counters.cachedResolved" class="detail-item detail-sub">
                           <i class="pi pi-database"></i>
-                          {{ t('timelineJobs.detailsPage.detail.cachedInDatabase', { count: jobProgress.details.cachedResolved }) }}
+                          {{ t('timelineJobs.detailsPage.detail.cachedInDatabase', { count: formatCount(step.counters.cachedResolved) }) }}
                         </div>
-
-                        <div v-if="jobProgress.details.externalCompleted" class="detail-item detail-sub">
+                        <div v-if="step.counters.externalCompleted" class="detail-item detail-sub">
                           <i class="pi pi-cloud"></i>
-                          {{ t('timelineJobs.detailsPage.detail.externalApiCalls', { count: jobProgress.details.externalCompleted }) }}
+                          {{ t('timelineJobs.detailsPage.detail.externalApiCalls', { count: formatCount(step.counters.externalCompleted) }) }}
                         </div>
-
-                        <div v-if="jobProgress.details.externalPending > 0" class="detail-item detail-sub detail-pending">
+                        <div v-if="step.counters.externalPending > 0 && step.stateClass === 'step-active'" class="detail-item detail-sub detail-pending">
                           <i class="pi pi-clock"></i>
-                          {{ t('timelineJobs.detailsPage.detail.pending', { count: jobProgress.details.externalPending }) }}
+                          {{ t('timelineJobs.detailsPage.detail.pending', { count: formatCount(step.counters.externalPending) }) }}
                         </div>
                       </div>
                     </div>
@@ -202,6 +241,25 @@
           </div>
         </div>
       </div>
+
+      <Dialog
+        v-model:visible="diagnosticsVisible"
+        modal
+        :header="t('timelineJobs.detailsPage.diagnostics.title')"
+        :style="{ width: 'min(900px, 95vw)' }"
+      >
+        <p class="diagnostics-description">{{ t('timelineJobs.detailsPage.diagnostics.description') }}</p>
+        <Message v-if="diagnosticsError" severity="error" :closable="false">{{ diagnosticsError }}</Message>
+        <pre v-else class="diagnostics-json" data-testid="job-diagnostics-json">{{ diagnosticsText }}</pre>
+        <template #footer>
+          <Button
+            :label="t('timelineJobs.detailsPage.diagnostics.copy')"
+            icon="pi pi-copy"
+            :disabled="!diagnosticsText"
+            @click="copyDiagnostics"
+          />
+        </template>
+      </Dialog>
     </PageContainer>
   </AppLayout>
 </template>
@@ -210,7 +268,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useToast } from 'primevue/usetoast'
 import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
+import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -221,8 +281,9 @@ import ProgressBar from 'primevue/progressbar'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
+import Dialog from 'primevue/dialog'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const timezone = useTimezone()
@@ -231,24 +292,130 @@ const jobId = computed(() => route.params.jobId)
 
 const { jobProgress, error, startPolling, fetchProgress } = useTimelineJobProgress()
 
-// Timeline processing steps
-const stepKeys = [
-  'acquiringLock',
-  'cleaningUp',
-  'preparingGpsProcessing',
-  'processingGeocoding',
-  'postProcessingTrips',
-  'mergingSimplifying',
-  'persistingTimeline',
-  'dataGapDetection',
-  'finalizing'
-]
+const toast = useToast()
+const timelineStore = useTimelineStore()
 
-const steps = computed(() => stepKeys.map((key, i) => ({
-  index: i + 1,
-  title: t(`timelineJobs.detailsPage.steps.${key}.title`),
-  description: t(`timelineJobs.detailsPage.steps.${key}.description`)
-})))
+const summary = computed(() => jobProgress.value?.summary || {})
+
+const peakBytes = (memory) => Math.max(memory?.containerBytes || 0, memory?.processBytes || 0, memory?.heapUsedBytes || 0)
+
+// The steps the job went through (from the job itself); while it runs, then the planned steps it has not reached
+const displaySteps = computed(() => {
+  const job = jobProgress.value
+  if (!job) return []
+  const active = job.status === 'QUEUED' || job.status === 'RUNNING'
+  const steps = job.steps || []
+  const total = Math.max(job.durationMs || 0, 1)
+  const ended = steps.filter((step) => step.endedAt)
+  const slowest = ended.length > 1 ? ended.reduce((a, b) => (b.durationMs > a.durationMs ? b : a)) : null
+  const measured = steps.filter((step) => peakBytes(step.memoryMax) > 0)
+  const peak = measured.length > 1 ? measured.reduce((a, b) => (peakBytes(b.memoryMax) > peakBytes(a.memoryMax) ? b : a)) : null
+
+  const shown = steps.map((step, index) => {
+    const running = !step.endedAt && active
+    const failed = !!step.failed
+    return {
+      key: `${index}-${step.phase}`,
+      title: formatMessageDescriptor(step.title),
+      durationMs: step.durationMs,
+      share: Math.min(100, (step.durationMs / total) * 100),
+      counters: step.counters || {},
+      memory: step.memoryMax,
+      slowest: step === slowest,
+      memoryPeak: step === peak,
+      failed,
+      pending: false,
+      stateClass: failed ? 'step-failed' : running ? 'step-active' : 'step-completed',
+      icon: failed ? 'pi pi-times-circle' : running ? 'pi pi-spin pi-spinner' : 'pi pi-check-circle'
+    }
+  })
+
+  if (active) {
+    const reached = new Set(steps.map((step) => step.phase))
+    const planned = job.plannedSteps || []
+    const lastPlanned = steps.reduce((last, step) => Math.max(last, planned.indexOf(step.phase)), -1)
+    planned.slice(lastPlanned + 1).filter((phase) => !reached.has(phase)).forEach((phase) => {
+      shown.push({
+        key: `planned-${phase}`,
+        title: t(`timelineJobs.steps.${phase}`),
+        durationMs: null,
+        share: null,
+        counters: {},
+        memory: null,
+        slowest: false,
+        memoryPeak: false,
+        failed: false,
+        pending: true,
+        stateClass: 'step-pending',
+        icon: 'pi pi-circle'
+      })
+    })
+  }
+  return shown
+})
+
+const memoryLimitText = computed(() => {
+  const resources = jobProgress.value?.resources
+  if (!resources) return ''
+  if (resources.containerLimitBytes > 0) return formatBytes(resources.containerLimitBytes)
+  return t('timelineJobs.detailsPage.details.noMemoryLimit', { heap: formatBytes(resources.heapMaxBytes) })
+})
+
+// Only the counters the step template shows; others (such as the point total of "ready to process") stay in diagnostics
+const hasShownCounters = (counters) => !!counters && (counters.gpsPointsLoaded || counters.processedPoints !== undefined
+  || counters.totalLocations)
+
+const formatShare = (share) => share < 1
+  ? t('timelineJobs.detailsPage.stepShareTiny')
+  : t('timelineJobs.detailsPage.stepShare', { percent: Math.round(share) })
+
+// Only the values this platform reports: process and container memory exist on Linux (in Docker), not elsewhere
+const memoryText = (memory) => {
+  if (!memory) return ''
+  const parts = [['heap', memory.heapUsedBytes], ['process', memory.processBytes], ['container', memory.containerBytes]]
+    .filter(([, bytes]) => bytes != null && bytes >= 0)
+    .map(([part, bytes]) => t(`timelineJobs.detailsPage.stepMemory.${part}`, { value: formatBytes(bytes) }))
+  return parts.length ? `${t('timelineJobs.detailsPage.stepMemory.label')} ${parts.join(', ')}` : ''
+}
+
+const formatCount = (value) => (value == null ? '?' : Number(value).toLocaleString())
+
+const formatBytes = (bytes) => {
+  if (bytes == null || bytes < 0) return '—'
+  const mib = bytes / (1024 * 1024)
+  if (mib >= 1024) return `${(mib / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 })} GiB`
+  return `${Math.round(mib).toLocaleString()} MiB`
+}
+
+// Copy diagnostics
+const diagnosticsVisible = ref(false)
+const diagnosticsLoading = ref(false)
+const diagnosticsText = ref('')
+const diagnosticsError = ref('')
+
+const openDiagnostics = async () => {
+  diagnosticsLoading.value = true
+  diagnosticsError.value = ''
+  diagnosticsText.value = ''
+  try {
+    const diagnostics = await timelineStore.getJobDiagnostics(jobId.value)
+    diagnosticsText.value = JSON.stringify(diagnostics, null, 2)
+  } catch {
+    diagnosticsError.value = t('timelineJobs.detailsPage.diagnostics.loadFailed')
+  } finally {
+    diagnosticsLoading.value = false
+    diagnosticsVisible.value = true
+  }
+}
+
+const copyDiagnostics = async () => {
+  try {
+    await navigator.clipboard.writeText(diagnosticsText.value)
+    toast.add({ severity: 'success', summary: t('timelineJobs.detailsPage.diagnostics.copied'), life: 3000 })
+  } catch {
+    toast.add({ severity: 'warn', summary: t('timelineJobs.detailsPage.diagnostics.copyFailed'), life: 5000 })
+  }
+}
 
 // Computed properties
 const statusText = computed(() => {
@@ -299,54 +466,15 @@ const statusSeverity = computed(() => {
   }
 })
 
-// Methods
-const getStepClass = (stepIndex) => {
-  if (!jobProgress.value) return ''
-
-  const currentStep = jobProgress.value.currentStepIndex
-  const status = jobProgress.value.status
-
-  // If job is completed, all steps including current one are completed
-  if (status === 'COMPLETED' && stepIndex <= currentStep) return 'step-completed'
-
-  if (stepIndex < currentStep) return 'step-completed'
-  if (stepIndex === currentStep) return 'step-active'
-  return 'step-pending'
-}
-
-const getStepIcon = (stepIndex) => {
-  if (!jobProgress.value) return 'pi pi-circle'
-
-  const currentStep = jobProgress.value.currentStepIndex
-  const status = jobProgress.value.status
-
-  // If job is completed, show check for current step too
-  if (status === 'COMPLETED' && stepIndex <= currentStep) return 'pi pi-check-circle'
-
-  if (stepIndex < currentStep) return 'pi pi-check-circle'
-  if (stepIndex === currentStep) {
-    if (status === 'FAILED') return 'pi pi-times-circle'
-    return 'pi pi-spin pi-spinner'
-  }
-  return 'pi pi-circle'
-}
-
-const isCurrentStep = (stepIndex) => {
-  if (!jobProgress.value) return false
-
-  // For completed jobs, don't show any step as "current"
-  if (jobProgress.value.status === 'COMPLETED') return false
-
-  return jobProgress.value.currentStepIndex === stepIndex
-}
-
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return t('timelineJobs.listPage.notAvailable')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
 }
 
 const formatDuration = (durationMs) => {
-  if (!durationMs) return t('timelineJobs.detailsPage.durationZero')
+  if (durationMs == null) return t('timelineJobs.detailsPage.durationZero')
+  if (durationMs < 100) return t('timelineJobs.detailsPage.durationUnderSeconds', { seconds: formatDecimal(0.1) })
+  if (durationMs < 10000) return t('timelineJobs.detailsPage.durationSeconds', { seconds: formatDecimal(durationMs / 1000) })
 
   const seconds = Math.floor(durationMs / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -360,6 +488,9 @@ const formatDuration = (durationMs) => {
     return t('timelineJobs.detailsPage.durationSeconds', { seconds })
   }
 }
+
+// One decimal, in the page's language (0.6 / 0,6)
+const formatDecimal = (value) => value.toLocaleString(locale.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
 const goToTimeline = () => {
   router.push('/app/timeline')
@@ -622,6 +753,91 @@ onMounted(() => {
 
 .detail-pending i {
   color: var(--p-orange-500);
+}
+
+.step-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.step-timing {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.step-share-label {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+}
+
+.step-duration {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.step-share {
+  height: 4px;
+  background: var(--gp-surface-ground);
+  border-radius: 2px;
+  margin: 0.25rem 0 0.5rem;
+  overflow: hidden;
+}
+
+.step-share-bar {
+  height: 100%;
+  background: var(--gp-primary);
+}
+
+.step-slowest .step-share-bar {
+  background: var(--p-orange-500);
+}
+
+.step-failed {
+  border-left-color: var(--p-red-500);
+}
+
+.step-failed .step-indicator {
+  color: var(--p-red-500);
+}
+
+.step-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.step-memory {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--gp-text-secondary);
+}
+
+.diagnostics-description {
+  margin: 0 0 0.75rem 0;
+  color: var(--gp-text-secondary);
+}
+
+.diagnostics-json {
+  max-height: 60vh;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem;
+  background: var(--gp-surface-ground);
+  border-radius: var(--gp-radius-medium);
+  font-family: var(--gp-font-mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .completion-message {

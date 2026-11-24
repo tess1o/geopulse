@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * A pending timeline rebuild: the user's timeline is out of date from {@code rebuildFrom} onwards.
  *
- * @param revision       changes on every write; a generation clears only the revision it read
+ * @param revision       changes on every write; a generation retires changes through the revision it read
  * @param failedAttempts consecutive failed generations of this request
  */
 public record TimelineRebuildRequest(UUID userId,

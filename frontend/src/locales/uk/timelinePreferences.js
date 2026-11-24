@@ -9,6 +9,8 @@ export default {
         description: 'Точно налаштуйте, як формується ваша хронологія місцезнаходжень із GPS-даних',
         searchPlaceholder: 'Пошук налаштувань хронології...',
         regenerateButton: 'Регенерувати хронологію',
+        regeneratingButton: 'Регенерація…',
+        regeneratingButtonProgress: 'Регенерація… {progress}%',
         saveButton: 'Зберегти зміни',
         moreButton: 'Ще',
         mobileSectionLabel: 'Розділ налаштувань',
@@ -38,7 +40,8 @@ export default {
             exportConfig: 'Експортувати конфігурацію',
             importConfig: 'Імпортувати конфігурацію',
             resetToDefaults: 'Скинути до значень за замовчуванням',
-            viewActiveJob: 'Переглянути активне завдання'
+            viewActiveJob: 'Переглянути активне завдання',
+            timelineJobs: 'Завдання хронології'
         },
         importDialog: {
             header: 'Імпорт конфігурації хронології',

@@ -1,20 +1,31 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
+import org.github.tess1o.geopulse.streaming.model.TimelineJobMemory;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.TimelineJobStep;
+import org.github.tess1o.geopulse.streaming.model.TimelineJobType;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineJobStatistics;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * Service for managing timeline generation job progress tracking.
- * Jobs are stored in-memory with a 1-hour retention period for completed jobs.
+ * Jobs are stored in memory and kept for {@link #JOB_RETENTION_PERIOD} after they finish.
+ * <p>
+ * Each job also keeps the steps it went through ({@link TimelineJobStep}): progress messages are grouped into steps
+ * by {@link #phaseOf}, so a step with many messages (geocoding reports every external call) is one step. While a job
+ * runs, a sampler records the highest memory of its current step about once a second.
  */
 @ApplicationScoped
 @Slf4j
@@ -29,6 +40,64 @@ public class TimelineJobProgressService {
      * {@code timelineJobs.js}'s {@code progressMessages} block.
      */
     private static final String STEP_KEY_PREFIX = "timelineJobs.progressMessages.";
+
+    /** Frontend catalog namespace of step titles; the fallbacks below are their English text. */
+    private static final String PHASE_KEY_PREFIX = "timelineJobs.steps.";
+
+    /** Progress message keys (without {@link #STEP_KEY_PREFIX}) by the step they belong to. */
+    private static final Map<String, String> PHASE_BY_MESSAGE = Map.ofEntries(
+            Map.entry("initializing", "queued"),
+            Map.entry("regenerationQueued", "queued"),
+            Map.entry("acquiringLock", "preparing"),
+            Map.entry("cleaningUp", "preparing"),
+            Map.entry("preparingGpsProcessing", "preparing"),
+            Map.entry("preparingBoatSetup", "preparing"),
+            Map.entry("boatEvidencePhase", "preparing"),
+            Map.entry("boatEvidenceReady", "preparing"),
+            Map.entry("readyToProcess", "preparing"),
+            Map.entry("processingStateMachine", "processingPoints"),
+            Map.entry("correctionWindow", "correctionWindow"),
+            Map.entry("startingLocationResolution", "geocoding"),
+            Map.entry("resolvedFromFavorites", "geocoding"),
+            Map.entry("resolvedFromCache", "geocoding"),
+            Map.entry("geocodingLocationProgress", "geocoding"),
+            Map.entry("geocodingComplete", "geocoding"),
+            Map.entry("allResolvedFromFavorites", "geocoding"),
+            Map.entry("postProcessingTrips", "postProcessingTrips"),
+            Map.entry("mergingTimeline", "merging"),
+            Map.entry("applyingCorrections", "corrections"),
+            Map.entry("persistingTimeline", "persisting"),
+            Map.entry("finalizing", "finalizing"),
+            Map.entry("autoMatchingVisits", "finalizing"),
+            Map.entry("recalculatingBadges", "badges"));
+
+    /** English titles of the steps. */
+    private static final Map<String, String> PHASE_TITLES = Map.ofEntries(
+            Map.entry("queued", "Waiting to start"),
+            Map.entry("preparing", "Preparing"),
+            Map.entry("processingPoints", "Processing GPS points"),
+            Map.entry("correctionWindow", "Rebuilding the corrected period"),
+            Map.entry("geocoding", "Naming stays"),
+            Map.entry("postProcessingTrips", "Post-processing trips"),
+            Map.entry("merging", "Merging stays"),
+            Map.entry("corrections", "Applying corrections"),
+            Map.entry("persisting", "Saving the timeline"),
+            Map.entry("finalizing", "Finalizing"),
+            Map.entry("badges", "Recalculating badges"));
+
+    /** The steps a regeneration goes through; merging only when enabled. */
+    private static final List<String> REGENERATION_STEPS = List.of("preparing", "processingPoints", "geocoding",
+            "postProcessingTrips", "merging", "corrections", "persisting", "finalizing");
+
+    /** Imports and campaigns also recalculate the user's badges before they finish. */
+    private static final List<String> REGENERATION_WITH_BADGES_STEPS = java.util.stream.Stream
+            .concat(REGENERATION_STEPS.stream(), java.util.stream.Stream.of("badges")).toList();
+
+    /** The last message of a job: it ends the current step rather than starting one. */
+    private static final String COMPLETED_MESSAGE = "completed";
+
+    /** Interval of the memory sampler while a job runs. */
+    private static final long SAMPLE_INTERVAL_MS = 1000;
 
     /**
      * Build a translatable step descriptor. {@code key} is a short suffix (e.g. {@code "acquiringLock"})
@@ -57,11 +126,25 @@ public class TimelineJobProgressService {
      * @return The job ID
      */
     public UUID createJob(UUID userId) {
+        return createJob(userId, TimelineJobType.OTHER);
+    }
+
+    /**
+     * Create a new timeline generation job for a user
+     *
+     * @param userId The user ID
+     * @param type   What started the job
+     * @return The job ID
+     */
+    public UUID createJob(UUID userId, TimelineJobType type) {
         UUID jobId = UUID.randomUUID();
 
         TimelineJobProgress job = TimelineJobProgress.builder()
                 .jobId(jobId)
                 .userId(userId)
+                .type(type)
+                .plannedSteps(plannedSteps(type))
+                .resources(ProcessMemory.resources())
                 .status(TimelineJobProgress.JobStatus.QUEUED)
                 .currentStep(step("initializing", "Initializing timeline generation", null))
                 .currentStepIndex(0)
@@ -98,9 +181,15 @@ public class TimelineJobProgressService {
             return;
         }
 
-        int boundedPercentage = Math.min(100, Math.max(0, percentage));
+        int boundedPercentage = Math.clamp(percentage, 0, 100);
 
+        trackStep(job, step, details);
+        boolean starting = job.getStatus() != TimelineJobProgress.JobStatus.RUNNING;
         job.setStatus(TimelineJobProgress.JobStatus.RUNNING);
+        if (starting) {
+            // After the status change, so a sampler that is about to stop sees this job (see stopSampler)
+            startSampler();
+        }
         job.setCurrentStep(step);
         job.setCurrentStepIndex(stepIndex);
         job.setProgressPercentage(Math.max(job.getProgressPercentage(), boundedPercentage));
@@ -124,6 +213,7 @@ public class TimelineJobProgressService {
             return;
         }
 
+        finishSteps(job, false);
         job.setStatus(TimelineJobProgress.JobStatus.COMPLETED);
         job.setCurrentStep(step("completed", "Timeline generation completed", null));
         job.setProgressPercentage(100);
@@ -148,6 +238,7 @@ public class TimelineJobProgressService {
             return;
         }
 
+        finishSteps(job, true);
         job.setStatus(TimelineJobProgress.JobStatus.FAILED);
         job.setErrorMessage(errorMessage);
         job.setEndTime(Instant.now());
@@ -156,6 +247,137 @@ public class TimelineJobProgressService {
         userActiveJobIndex.remove(job.getUserId());
 
         log.error("Job {} failed after {}ms: {}", jobId, job.getDurationMs(), errorMessage);
+    }
+
+    /**
+     * Records what a job worked on and produced, for its page and diagnostics (see
+     * {@link TimelineJobProgress#getSummary()}). Ignored for a null or unknown job.
+     */
+    public void recordSummary(UUID jobId, Map<String, Object> values) {
+        if (jobId == null) {
+            return;
+        }
+        TimelineJobProgress job = jobStore.get(jobId);
+        if (job == null) {
+            return;
+        }
+        values.forEach((key, value) -> {
+            if (key != null && value != null) {
+                job.getSummary().put(key, value);
+            }
+        });
+    }
+
+    /** The step a progress message belongs to: its own key when it is not one of the known messages. */
+    static String phaseOf(MessageDescriptor step) {
+        String key = step == null || step.key() == null ? "" : step.key();
+        String message = key.startsWith(STEP_KEY_PREFIX) ? key.substring(STEP_KEY_PREFIX.length()) : key;
+        return PHASE_BY_MESSAGE.getOrDefault(message, message);
+    }
+
+    static List<String> plannedSteps(TimelineJobType type) {
+        return switch (type) {
+            case FULL_REBUILD, PARTIAL_REBUILD -> REGENERATION_STEPS;
+            case IMPORT, CAMPAIGN -> REGENERATION_WITH_BADGES_STEPS;
+            // A correction rebuilds only the corrected period, or falls back to a regeneration
+            case CORRECTION -> List.of("correctionWindow");
+            case OTHER -> List.of();
+        };
+    }
+
+    /** Opens a new step when the message belongs to another step than the current one, and adds its counters. */
+    private void trackStep(TimelineJobProgress job, MessageDescriptor message, Map<String, Object> details) {
+        String phase = phaseOf(message);
+        List<TimelineJobStep> steps = job.getSteps();
+        TimelineJobStep current = steps.isEmpty() ? null : steps.getLast();
+        if (COMPLETED_MESSAGE.equals(phase)) {
+            if (current != null) {
+                current.end(Instant.now(), ProcessMemory.sample(), false);
+            }
+            return;
+        }
+        if (current == null || current.getEndedAt() != null || !current.getPhase().equals(phase)) {
+            Instant now = Instant.now();
+            TimelineJobMemory memory = ProcessMemory.sample();
+            if (current != null) {
+                current.end(now, memory, false);
+            }
+            String fallback = PHASE_TITLES.getOrDefault(phase, message == null ? phase : message.fallback());
+            current = new TimelineJobStep(phase, new MessageDescriptor(PHASE_KEY_PREFIX + phase, null, fallback), now,
+                    memory);
+            steps.add(current);
+        }
+        if (details != null) {
+            current.addCounters(details);
+        }
+    }
+
+    /** Ends the job's current step and records the kernel memory peaks at the end of the job. */
+    private void finishSteps(TimelineJobProgress job, boolean failed) {
+        List<TimelineJobStep> steps = job.getSteps();
+        if (!steps.isEmpty()) {
+            steps.getLast().end(Instant.now(), ProcessMemory.sample(), failed);
+        }
+        if (job.getResources() != null) {
+            job.setResources(job.getResources().withEndPeaks(ProcessMemory.processPeak(), ProcessMemory.containerPeak()));
+        }
+    }
+
+    private ScheduledExecutorService sampler;
+
+    /** Starts the memory sampler unless it runs; it stops itself when no job is running. */
+    private synchronized void startSampler() {
+        if (sampler != null) {
+            return;
+        }
+        sampler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "timeline-job-memory");
+            thread.setDaemon(true);
+            return thread;
+        });
+        sampler.scheduleWithFixedDelay(this::sampleRunningJobs, SAMPLE_INTERVAL_MS, SAMPLE_INTERVAL_MS,
+                TimeUnit.MILLISECONDS);
+    }
+
+    /** Adds one memory reading to the current step of every running job. */
+    void sampleRunningJobs() {
+        try {
+            List<TimelineJobProgress> running = jobStore.values().stream()
+                    .filter(job -> job.getStatus() == TimelineJobProgress.JobStatus.RUNNING)
+                    .toList();
+            if (running.isEmpty()) {
+                stopSampler();
+                return;
+            }
+            TimelineJobMemory memory = ProcessMemory.sample();
+            for (TimelineJobProgress job : running) {
+                List<TimelineJobStep> steps = job.getSteps();
+                if (!steps.isEmpty()) {
+                    steps.getLast().sample(memory);
+                }
+            }
+        } catch (RuntimeException e) {
+            // A failed reading must never stop the sampler or touch the job
+            log.debug("Could not sample memory for running timeline jobs", e);
+        }
+    }
+
+    /** Stops the sampler unless a job started running since it last looked. */
+    private synchronized void stopSampler() {
+        boolean running = jobStore.values().stream()
+                .anyMatch(job -> job.getStatus() == TimelineJobProgress.JobStatus.RUNNING);
+        if (sampler != null && !running) {
+            sampler.shutdown();
+            sampler = null;
+        }
+    }
+
+    @PreDestroy
+    synchronized void shutdown() {
+        if (sampler != null) {
+            sampler.shutdownNow();
+            sampler = null;
+        }
     }
 
     /**

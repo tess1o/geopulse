@@ -44,6 +44,15 @@ import java.util.function.Consumer;
 @ApplicationScoped
 public class TimelineEditApplier {
 
+    /** Off only in tests that check detail edits fold exactly as through the full per-edit passes. */
+    boolean detailEditShortcut = true;
+
+    /** Edits that only set fields of the one event they match, never its times or which events exist. */
+    private static boolean setsFieldsOfOneEvent(TimelineEditKind kind) {
+        return kind == TimelineEditKind.SET_MOVEMENT_TYPE || kind == TimelineEditKind.SET_PLACE
+                || kind == TimelineEditKind.SET_VISIT_NAME;
+    }
+
     public TimelineEditResult apply(List<TimelineEvent> source, List<TimelineEditCommand> commands) {
         return apply(source, commands, trip -> {
         });
@@ -58,35 +67,52 @@ public class TimelineEditApplier {
         List<Long> unapplied = new ArrayList<>();
 
         Map<Long, Long> appliedSequences = new HashMap<>();
-        commands.stream().sorted(Comparator.comparingLong(TimelineEditCommand::seq)).forEach(command -> {
+        // The instances in the fold, for the effects lookup below; rebuilt only after an edit that can replace some
+        Set<TimelineEvent> current = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        boolean currentStale = true;
+        for (TimelineEditCommand command : commands.stream().sorted(Comparator.comparingLong(TimelineEditCommand::seq)).toList()) {
             // Structural edits need their prerequisites applied first (a split before a split of its leg). A detail
             // edit only uses the dependency for undo order; its target is resolved against the current fold, so it
             // may still apply while the correction it was made on is dormant.
             if (command.kind().structural()
                     && !appliedSequences.keySet().containsAll(command.prerequisiteSequences())) {
                 unapplied.add(command.id());
-                return;
+                continue;
             }
-            Set<List<Instant>> tripRanges = events.stream().filter(Trip.class::isInstance)
-                    .map(event -> List.of(event.getStartTime(), event.getEndTime())).collect(Collectors.toSet());
-            Set<TimelineEvent> existing = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-            existing.addAll(events);
-            TimelineEvent applied = applyOne(events, command);
-            // Recalculate before the next edit can match the changed trip's endpoints.
-            for (TimelineEvent event : events) {
-                if (event instanceof Trip trip && !(command.kind() == TimelineEditKind.FORCE_TRIP && event.equals(applied))
-                        && !tripRanges.contains(List.of(trip.getStartTime(), trip.getEndTime()))) {
-                    recalculateTrip.accept(trip);
+            TimelineEvent applied;
+            Set<TimelineEvent> existing = null;
+            if (detailEditShortcut && setsFieldsOfOneEvent(command.kind())) {
+                // Nothing is added, removed, replaced, moved or resized: no trip needs recalculating, the order stands
+                // and the fold holds the same instances. A full regeneration folds hundreds of these (mostly movement
+                // types) over tens of thousands of events; the passes below made each of them cost the whole timeline.
+                applied = applyOne(events, command);
+            } else {
+                Set<List<Instant>> tripRanges = events.stream().filter(Trip.class::isInstance)
+                        .map(event -> List.of(event.getStartTime(), event.getEndTime())).collect(Collectors.toSet());
+                existing = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                existing.addAll(events);
+                applied = applyOne(events, command);
+                // Recalculate before the next edit can match the changed trip's endpoints.
+                for (TimelineEvent event : events) {
+                    if (event instanceof Trip trip && !(command.kind() == TimelineEditKind.FORCE_TRIP && event.equals(applied))
+                            && !tripRanges.contains(List.of(trip.getStartTime(), trip.getEndTime()))) {
+                        recalculateTrip.accept(trip);
+                    }
                 }
+                events.sort(Comparator.comparing(TimelineEvent::getStartTime).thenComparing(TimelineEvent::getEndTime));
+                currentStale = true;
             }
-            events.sort(Comparator.comparing(TimelineEvent::getStartTime).thenComparing(TimelineEvent::getEndTime));
             if (applied == null) {
                 unapplied.add(command.id());
             } else {
                 // Most earlier effects are still the same instances; only events this command replaced need the
                 // value-based lookup. Checking every effect by value against every event made the fold quadratic.
-                Set<TimelineEvent> current = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-                current.addAll(events);
+                if (currentStale) {
+                    current.clear();
+                    current.addAll(events);
+                    currentStale = false;
+                }
+                Set<TimelineEvent> existingBefore = existing;
                 effects.replaceAll((id, prior) -> prior.stream().flatMap(event -> {
                     if (current.contains(event) || events.contains(event)) return java.util.stream.Stream.of(event);
                     if (command.kind() == TimelineEditKind.MERGE) return java.util.stream.Stream.of(applied);
@@ -99,12 +125,12 @@ public class TimelineEditApplier {
                 }).distinct().toList());
                 effects.put(command.id(), switch (command.kind()) {
                     case SET_TIMES -> withNeighbours(events, applied);
-                    case FORCE_STAY, FORCE_TRIP -> withCarvedPieces(events, existing, applied, effects);
+                    case FORCE_STAY, FORCE_TRIP -> withCarvedPieces(events, existingBefore, applied, effects);
                     default -> List.of(applied);
                 });
                 appliedSequences.put(command.seq(), command.id());
             }
-        });
+        }
         effects.entrySet().removeIf(entry -> {
             if (!entry.getValue().isEmpty()) return false;
             unapplied.add(entry.getKey());
@@ -401,16 +427,16 @@ public class TimelineEditApplier {
 
     static TimelineEvent bestMatch(List<TimelineEvent> events, TimelineEditCommand edit,
                                            Class<? extends TimelineEvent> type) {
-        List<TimelineEvent> candidates = events.stream()
-                .filter(type::isInstance)
-                .filter(event -> edit.sourceType() == null || event.getType() == edit.sourceType())
-                .toList();
+        // Filtered while scanning rather than copied out: this runs once per edit over the whole fold.
+        java.util.function.Predicate<TimelineEvent> candidate = event -> type.isInstance(event)
+                && (edit.sourceType() == null || event.getType() == edit.sourceType());
         // Deterministic resolution: the event the user actually pointed at contains the anchor start. A point anchor
         // (zero-duration transition) matches the event that starts at that exact instant. If regeneration moved the
         // event past the anchor, the event sharing the most time with the anchor wins. No overlap means the edit has
         // no target and is reported as dormant; it is never silently attached to a different event.
         TimelineEvent containing = null;
-        for (TimelineEvent event : candidates) {
+        for (TimelineEvent event : events) {
+            if (!candidate.test(event)) continue;
             if (event.getDuration().isZero()) {
                 if (event.getStartTime().equals(edit.anchorStart())
                         && (containing == null || event.getStartTime().isBefore(containing.getStartTime()))) {
@@ -434,7 +460,8 @@ public class TimelineEditApplier {
         }
         TimelineEvent best = null;
         long bestShared = 0;
-        for (TimelineEvent event : candidates) {
+        for (TimelineEvent event : events) {
+            if (!candidate.test(event)) continue;
             long shared = overlapSeconds(edit.anchorStart(), edit.anchorEnd(), event.getStartTime(), event.getEndTime());
             if (shared > bestShared || (shared == bestShared && shared > 0 && best != null
                     && event.getStartTime().isBefore(best.getStartTime()))) {

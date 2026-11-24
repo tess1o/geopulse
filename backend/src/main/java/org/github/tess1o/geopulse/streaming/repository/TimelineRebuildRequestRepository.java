@@ -34,6 +34,7 @@ public class TimelineRebuildRequestRepository {
             return;
         }
         entityManager.createNativeQuery("""
+                WITH requested AS (
                 INSERT INTO timeline_rebuild_requests (user_id, rebuild_from, open_from, revision, created_at, updated_at)
                 VALUES (?1, ?2, ?2, 1, now(), now())
                 ON CONFLICT (user_id) DO UPDATE
@@ -41,6 +42,10 @@ public class TimelineRebuildRequestRepository {
                     open_from = LEAST(timeline_rebuild_requests.open_from, EXCLUDED.open_from),
                     revision = timeline_rebuild_requests.revision + 1,
                     updated_at = now()
+                RETURNING user_id, revision
+                )
+                INSERT INTO timeline_rebuild_changes (user_id, revision, open_from)
+                SELECT user_id, revision, ?2 FROM requested
                 """)
                 .setParameter(1, userId)
                 .setParameter(2, from)
@@ -58,6 +63,7 @@ public class TimelineRebuildRequestRepository {
             return;
         }
         entityManager.createNativeQuery("""
+                WITH requested AS (
                 INSERT INTO timeline_rebuild_requests (user_id, rebuild_from, window_to, revision, created_at, updated_at)
                 VALUES (?1, ?2, ?3, 1, now(), now())
                 ON CONFLICT (user_id) DO UPDATE
@@ -65,6 +71,10 @@ public class TimelineRebuildRequestRepository {
                     window_to = GREATEST(timeline_rebuild_requests.window_to, EXCLUDED.window_to),
                     revision = timeline_rebuild_requests.revision + 1,
                     updated_at = now()
+                RETURNING user_id, revision
+                )
+                INSERT INTO timeline_rebuild_changes (user_id, revision, window_from, window_to)
+                SELECT user_id, revision, ?2, ?3 FROM requested
                 """)
                 .setParameter(1, userId)
                 .setParameter(2, from)
@@ -73,23 +83,12 @@ public class TimelineRebuildRequestRepository {
     }
 
     /**
-     * Clears the correction window of the request a window rebuild read when it started, keeping a pending
-     * open-ended part for the next pass. Returns false, and keeps everything, when the request changed since.
+     * Clears correction changes through the revision a window rebuild read, keeping open-ended changes and any
+     * later corrections for the next pass.
      */
     @Transactional
     public boolean completeWindow(TimelineRebuildRequest request) {
-        if (request.openFrom() == null) {
-            return complete(request);
-        }
-        return entityManager.createNativeQuery("""
-                UPDATE timeline_rebuild_requests
-                SET rebuild_from = open_from, window_to = NULL, revision = revision + 1,
-                    failed_attempts = 0, last_failed_at = NULL, last_error = NULL, updated_at = now()
-                WHERE user_id = ?1 AND revision = ?2
-                """)
-                .setParameter(1, request.userId())
-                .setParameter(2, request.revision())
-                .executeUpdate() > 0;
+        return complete(request, true);
     }
 
     /**
@@ -125,18 +124,62 @@ public class TimelineRebuildRequestRepository {
     }
 
     /**
-     * Clears the request a generation read when it started. Returns false, and keeps the request, when it changed
-     * since: a point saved while the generation ran might not have been processed.
+     * Retires changes through the revision a generation read. Changes saved during generation remain pending at
+     * their own earliest timestamp, rather than repeatedly rebuilding the range that already completed.
      */
     @Transactional
     public boolean complete(TimelineRebuildRequest request) {
-        return entityManager.createNativeQuery("""
-                DELETE FROM timeline_rebuild_requests
-                WHERE user_id = ?1 AND revision = ?2
+        return complete(request, false);
+    }
+
+    private boolean complete(TimelineRebuildRequest request, boolean windowOnly) {
+        // Writers lock this summary before appending a change. Take the same lock only at completion, so the
+        // remaining ranges cannot change while they are summarized and GPS ingestion stays free during generation.
+        if (entityManager.createNativeQuery("""
+                SELECT user_id FROM timeline_rebuild_requests WHERE user_id = ?1 FOR UPDATE
+                """)
+                .setParameter(1, request.userId())
+                .getResultList().isEmpty()) {
+            return false;
+        }
+        if (windowOnly) {
+            entityManager.createNativeQuery("""
+                    UPDATE timeline_rebuild_changes SET window_from = NULL, window_to = NULL
+                    WHERE user_id = ?1 AND revision <= ?2
+                    """)
+                    .setParameter(1, request.userId())
+                    .setParameter(2, request.revision())
+                    .executeUpdate();
+        }
+        entityManager.createNativeQuery(windowOnly ? """
+                DELETE FROM timeline_rebuild_changes
+                WHERE user_id = ?1 AND revision <= ?2 AND open_from IS NULL
+                """ : """
+                DELETE FROM timeline_rebuild_changes WHERE user_id = ?1 AND revision <= ?2
                 """)
                 .setParameter(1, request.userId())
                 .setParameter(2, request.revision())
-                .executeUpdate() > 0;
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                UPDATE timeline_rebuild_requests r
+                SET rebuild_from = LEAST(p.open_from, p.window_from), open_from = p.open_from,
+                    window_to = p.window_to, revision = r.revision + 1,
+                    failed_attempts = 0, last_failed_at = NULL, last_error = NULL, updated_at = now()
+                FROM (SELECT MIN(open_from) AS open_from, MIN(window_from) AS window_from,
+                             MAX(window_to) AS window_to
+                      FROM timeline_rebuild_changes WHERE user_id = ?1) p
+                WHERE r.user_id = ?1 AND (p.open_from IS NOT NULL OR p.window_from IS NOT NULL)
+                """)
+                .setParameter(1, request.userId())
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                DELETE FROM timeline_rebuild_requests
+                WHERE user_id = ?1 AND NOT EXISTS (
+                    SELECT 1 FROM timeline_rebuild_changes WHERE user_id = ?1)
+                """)
+                .setParameter(1, request.userId())
+                .executeUpdate();
+        return true;
     }
 
     /**

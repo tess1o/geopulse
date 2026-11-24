@@ -260,6 +260,16 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        // Get a job's diagnostics: steps, timings, memory, version and settings, without personal data
+        async getJobDiagnostics(jobId) {
+            try {
+                return await apiService.get(`/timeline/jobs/${jobId}/diagnostics`)
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to load timeline job diagnostics')
+                throw this.error
+            }
+        },
+
         // Get active job for current user (if any)
         async getUserActiveJob() {
             try {
