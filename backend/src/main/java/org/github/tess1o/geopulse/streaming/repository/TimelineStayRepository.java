@@ -367,15 +367,25 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
 
     /**
      * Find the nearest recorded stays for the fallback state of a location
-     * lookup. The spatial KNN operator uses the existing location index; the
-     * returned distance is still calculated in meters for display.
+     * lookup. Geography KNN bounds an indexed radius search; the final order uses
+     * the same spheroid distance in meters as the displayed distance.
      *
      * Row shape:
      * [id, timestamp, duration, locationName, latitude, longitude,
      *  favoriteId, geocodingId, distanceMeters]
      */
     public List<Object[]> findNearestLocationLookupStays(UUID userId, Geometry targetPoint, int limit) {
+        // Any limit stays give an upper bound for the true nearest limit stays. Recheck that entire radius
+        // because geography KNN uses a sphere, while ST_Distance uses the WGS84 ellipsoid.
+        // Pad its rounded distance by a micrometer to keep boundary stays in ST_DWithin.
         String sql = """
+                WITH nearest_distances AS MATERIALIZED (
+                    SELECT ST_Distance(s.location::geography, (:targetPoint)::geography) AS distance_meters
+                    FROM timeline_stays s
+                    WHERE s.user_id = :userId
+                    ORDER BY s.location::geography <-> (:targetPoint)::geography
+                    LIMIT :limit
+                )
                 SELECT s.id,
                        s.timestamp,
                        s.stay_duration,
@@ -387,7 +397,12 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                        ST_Distance(s.location::geography, (:targetPoint)::geography) AS distance_meters
                 FROM timeline_stays s
                 WHERE s.user_id = :userId
-                ORDER BY s.location <-> (:targetPoint)::geometry
+                  AND ST_DWithin(
+                    s.location::geography,
+                    (:targetPoint)::geography,
+                    (SELECT MAX(distance_meters) + 0.000001 FROM nearest_distances)
+                  )
+                ORDER BY distance_meters
                 LIMIT :limit
                 """;
 
