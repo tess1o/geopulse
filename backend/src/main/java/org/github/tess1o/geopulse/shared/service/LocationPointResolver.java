@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
@@ -14,8 +15,12 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.locationtech.jts.geom.Point;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -109,227 +114,208 @@ public class LocationPointResolver {
     }
 
     /**
-     * Batch location resolution with rate limiting for external geocoding API and progress tracking.
-     * Processes multiple coordinates efficiently while respecting API limits.
+     * Batch location resolution with rate limiting for external geocoding API and progress tracking, in one chunk.
+     * For many coordinates, resolve them chunk by chunk ({@link #startBatch}, {@link #resolveChunk},
+     * {@link #finishBatch}) so the lookups and results of only one chunk are in memory at a time.
      *
      * @param userId      User ID for favorite location lookup
      * @param coordinates List of coordinates to resolve
      * @param jobId       Optional job ID for progress tracking
-     * @return Map of coordinate string (lon,lat) to LocationResolutionResult
+     * @return Map of {@link #coordinateKey} to LocationResolutionResult
      */
     public Map<String, LocationResolutionResult> resolveLocationsWithReferencesBatch(
             UUID userId, List<Point> coordinates, UUID jobId) {
-
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
         }
+        List<Point> uniqueCoordinates = new ArrayList<>(new LinkedHashSet<>(coordinates));
+        LocationBatch batch = startBatch(userId, jobId, uniqueCoordinates.size());
+        Map<String, LocationResolutionResult> results = resolveChunk(batch, uniqueCoordinates);
+        finishBatch(batch);
+        return results;
+    }
 
-        long startTime = System.currentTimeMillis();
+    /** The key of a coordinate in the maps {@link #resolveChunk} returns: "longitude,latitude". */
+    public static String coordinateKey(Point point) {
+        return point.getX() + "," + point.getY();
+    }
 
-        // Deduplicate coordinates while preserving order (LinkedHashSet)
-        // Multiple stays can have the same centroid coordinates
-        List<Point> uniqueCoordinates = new java.util.ArrayList<>(
-            new java.util.LinkedHashSet<>(coordinates)
-        );
+    /**
+     * Begins resolving {@code totalLocations} coordinates in chunks.
+     *
+     * @param jobId optional job ID for progress tracking; progress runs from 55% to 70% over all chunks
+     */
+    public LocationBatch startBatch(UUID userId, UUID jobId, int totalLocations) {
+        LocationBatch batch = new LocationBatch(userId, jobId, totalLocations);
+        updateGeocodingProgress(batch, "startingLocationResolution", "Starting location resolution", 0);
+        return batch;
+    }
 
-        int inputCount = coordinates.size();
-        int uniqueCount = uniqueCoordinates.size();
-
-        if (inputCount > uniqueCount) {
-            log.debug("Deduplicated {} coordinates to {} unique locations", inputCount, uniqueCount);
+    /**
+     * Resolves one chunk of a batch: favorites first, then the geocoding cache, then the external provider.
+     * Coordinates repeated within the chunk are resolved once.
+     *
+     * @return the chunk's results, keyed by {@link #coordinateKey}
+     */
+    public Map<String, LocationResolutionResult> resolveChunk(LocationBatch batch, List<Point> coordinates) {
+        if (coordinates.isEmpty()) {
+            return Map.of();
         }
+        long startTime = System.currentTimeMillis();
+        UUID userId = batch.userId;
+        List<Point> uniqueCoordinates = new ArrayList<>(new LinkedHashSet<>(coordinates));
+        log.debug("Resolving {} unique coordinates for user {}", uniqueCoordinates.size(), userId);
 
-        log.debug("Batch resolving {} unique coordinates for user {}", uniqueCount, userId);
-
-        int totalLocations = uniqueCount;
-        updateGeocodingProgress(jobId, "startingLocationResolution", "Starting location resolution", totalLocations, 0, 0, 0, 0, 0);
-
-        // Step 1: Batch check for favorite locations using true batch processing
+        // Step 1: Batch check for favorite locations
         Map<String, FavoriteLocationsDto> favoriteResults = favoriteLocationService.findByPointsBatch(userId, uniqueCoordinates);
 
-        Map<String, LocationResolutionResult> results = new java.util.HashMap<>();
-        List<Point> needGeocoding = new java.util.ArrayList<>();
+        Map<String, LocationResolutionResult> results = new HashMap<>();
+        List<Point> needGeocoding = new ArrayList<>();
 
         for (Point point : uniqueCoordinates) {
-            String coordKey = point.getX() + "," + point.getY();
+            String coordKey = coordinateKey(point);
             FavoriteLocationsDto favorite = favoriteResults.get(coordKey);
 
-            if (favorite != null && (!favorite.getPoints().isEmpty() || !favorite.getAreas().isEmpty())) {
-                // Found a favorite location. Areas take precedence over point
-                // favorites because a stay can be near a saved point while
-                // still belonging to a larger saved area.
-                if (!favorite.getAreas().isEmpty()) {
-                    var favoriteArea = favorite.getAreas().getFirst();
-                    results.put(coordKey, LocationResolutionResult.fromFavorite(
-                            favoriteArea.getName(), favoriteArea.getId()));
-                } else if (!favorite.getPoints().isEmpty()) {
-                    var favoritePoint = favorite.getPoints().getFirst();
-                    results.put(coordKey, LocationResolutionResult.fromFavorite(
-                            favoritePoint.getName(),
-                            favoritePoint.getId(),
-                            favoritePoint.getLatitude(),
-                            favoritePoint.getLongitude()));
-                } else {
-                    needGeocoding.add(point);
-                }
+            // Areas take precedence over point favorites because a stay can be near a saved point while still
+            // belonging to a larger saved area.
+            if (favorite != null && !favorite.getAreas().isEmpty()) {
+                var favoriteArea = favorite.getAreas().getFirst();
+                results.put(coordKey, LocationResolutionResult.fromFavorite(favoriteArea.getName(), favoriteArea.getId()));
+            } else if (favorite != null && !favorite.getPoints().isEmpty()) {
+                var favoritePoint = favorite.getPoints().getFirst();
+                results.put(coordKey, LocationResolutionResult.fromFavorite(
+                        favoritePoint.getName(),
+                        favoritePoint.getId(),
+                        favoritePoint.getLatitude(),
+                        favoritePoint.getLongitude()));
             } else {
                 needGeocoding.add(point);
             }
         }
+        batch.favoritesResolved += results.size();
 
         if (needGeocoding.isEmpty()) {
-            log.debug("All {} unique coordinates resolved from favorites", uniqueCount);
-            updateGeocodingProgress(jobId, "allResolvedFromFavorites", "All locations resolved from favorites",
-                totalLocations, results.size(), 0, 0, 0, totalLocations);
             return results;
         }
 
-        int favoritesResolved = results.size();
-        log.debug("Found {} favorites, {} coordinates need geocoding. This process took {} s", favoritesResolved, needGeocoding.size(), (System.currentTimeMillis() - startTime) / 1000.0d);
+        updateGeocodingProgress(batch, "resolvedFromFavorites", "Resolved " + batch.favoritesResolved + " locations from favorites",
+                needGeocoding.size());
 
-        updateGeocodingProgress(jobId, "resolvedFromFavorites", "Resolved " + favoritesResolved + " locations from favorites",
-            totalLocations, favoritesResolved, 0, needGeocoding.size(), 0, favoritesResolved);
+        // Step 2: Batch lookup cached places (id and display name) with user filtering
+        Map<String, ReverseGeocodingLocationRepository.CachedPlace> cachedResults =
+                batchService.getCachedPlacesBatch(userId, needGeocoding);
 
-        long step2StartTime = System.currentTimeMillis();
-
-        // Step 2: Batch lookup cached geocoding results with user filtering
-        CacheGeocodingBatchService.BatchLookupResult cacheLookup =
-                batchService.getCachedGeocodingResultsAndIdsBatch(userId, needGeocoding);
-        Map<String, FormattableGeocodingResult> cachedResults = cacheLookup.results();
-        Map<String, Long> cachedIds = cacheLookup.ids();
-
-        log.debug("Found {} cached geocoding results for user {} in {} s",
-                cachedResults.size(), userId, (System.currentTimeMillis() - step2StartTime) / 1000.0d);
-
-        List<Point> needExternalGeocoding = new java.util.ArrayList<>();
         // Normalization without rules returns the same id; skip its per-location transaction then.
-        boolean normalize = !needGeocoding.isEmpty() && geocodingManagementService.hasNormalizationRules(userId);
+        if (batch.normalize == null) {
+            batch.normalize = geocodingManagementService.hasNormalizationRules(userId);
+        }
+        boolean normalize = batch.normalize;
 
+        List<Point> needExternalGeocoding = new ArrayList<>();
         for (Point point : needGeocoding) {
-            String coordKey = point.getX() + "," + point.getY();
-
-            if (cachedResults.containsKey(coordKey)) {
-                FormattableGeocodingResult cached = cachedResults.get(coordKey);
-                Long cachedId = normalize
-                        ? normalizeGeocodingReference(userId, cachedIds.get(coordKey))
-                        : cachedIds.get(coordKey);
-                results.put(coordKey, LocationResolutionResult.fromGeocoding(
-                        cached.getFormattedDisplayName(), cachedId));
+            String coordKey = coordinateKey(point);
+            ReverseGeocodingLocationRepository.CachedPlace cached = cachedResults.get(coordKey);
+            if (cached != null) {
+                Long cachedId = normalize ? normalizeGeocodingReference(userId, cached.id()) : cached.id();
+                results.put(coordKey, LocationResolutionResult.fromGeocoding(cached.displayName(), cachedId));
             } else {
                 needExternalGeocoding.add(point);
             }
         }
+        int batchResolved = cachedResults.size();
 
         // Step 3: Fallback individual cache lookup for missing coordinates
         // This is a temporary fix while debugging the batch query issue
-        List<Point> stillNeedExternal = new java.util.ArrayList<>();
-        
+        List<Point> stillNeedExternal = new ArrayList<>();
         for (Point point : needExternalGeocoding) {
-            String coordKey = point.getX() + "," + point.getY();
-
             // Try individual cache lookup as fallback with user filtering
-            java.util.Optional<org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult> individualResult =
-                cacheGeocodingService.getCachedGeocodingResult(userId, point);
-            java.util.Optional<Long> individualId = cacheGeocodingService.getCachedGeocodingResultId(userId, point);
+            Optional<FormattableGeocodingResult> individualResult =
+                    cacheGeocodingService.getCachedGeocodingResult(userId, point);
+            Optional<Long> individualId = cacheGeocodingService.getCachedGeocodingResultId(userId, point);
 
             if (individualResult.isPresent()) {
                 log.debug("Batch missed but individual lookup found cached location for user {}", userId);
                 Long normalizedId = normalize
                         ? normalizeGeocodingReference(userId, individualId.orElse(null))
                         : individualId.orElse(null);
-                results.put(coordKey, LocationResolutionResult.fromGeocoding(
-                    individualResult.get().getFormattedDisplayName(), normalizedId));
+                results.put(coordinateKey(point), LocationResolutionResult.fromGeocoding(
+                        individualResult.get().getFormattedDisplayName(), normalizedId));
             } else {
                 stillNeedExternal.add(point);
             }
         }
-        
-        int cachedResolved = results.size() - favoritesResolved;
-        int batchCacheMisses = needExternalGeocoding.size() - stillNeedExternal.size();
-        log.debug("After individual fallback: {} coordinates still need external geocoding (batch missed {})",
-                 stillNeedExternal.size(), batchCacheMisses);
+        int individualResolved = needExternalGeocoding.size() - stillNeedExternal.size();
+        batch.batchCacheResolved += batchResolved;
+        batch.individualCacheResolved += individualResolved;
+        batch.cachedResolved += batchResolved + individualResolved;
 
-        updateGeocodingProgress(jobId, "resolvedFromCache",
-            "Resolved " + cachedResolved + " from cache (" + cachedResults.size() + " from batch, "
-                + batchCacheMisses + " from individual lookup)",
-            totalLocations, favoritesResolved, cachedResolved, stillNeedExternal.size(), 0, results.size(),
-            Map.of("batchResolved", cachedResults.size(), "individualResolved", batchCacheMisses));
+        updateGeocodingProgress(batch, "resolvedFromCache",
+                "Resolved " + batch.cachedResolved + " from cache (" + batch.batchCacheResolved + " from batch, "
+                        + batch.individualCacheResolved + " from individual lookup)",
+                stillNeedExternal.size(),
+                Map.of("batchResolved", batch.batchCacheResolved, "individualResolved", batch.individualCacheResolved));
 
-        // Step 4: Process truly external geocoding with rate limiting (1 req/sec max)
-        long step3StartTime = System.currentTimeMillis();
+        // Step 4: Process truly external geocoding with rate limiting
         if (!stillNeedExternal.isEmpty()) {
-            log.debug("Processing {} external geocoding requests with rate limiting for user {}", stillNeedExternal.size(), userId);
-            processExternalGeocodingWithRateLimit(stillNeedExternal, results, userId, jobId, totalLocations, favoritesResolved, cachedResolved);
+            processExternalGeocodingWithRateLimit(stillNeedExternal, results, batch);
         }
 
-        log.debug("External geocoding requests processed in {} s", (System.currentTimeMillis() - step3StartTime) / 1000.0d);
-
         // Step 5: Ensure all coordinates have results (fallback for any missing)
-        int fallbackCount = 0;
         for (Point point : uniqueCoordinates) {
-            String coordKey = point.getX() + "," + point.getY();
-            if (!results.containsKey(coordKey)) {
+            if (results.putIfAbsent(coordinateKey(point), LocationResolutionResult.fromGeocoding("Unknown Location", null)) == null) {
                 log.warn("No geocoding result found; using fallback");
-                results.put(coordKey, LocationResolutionResult.fromGeocoding("Unknown Location", null));
-                fallbackCount++;
+                batch.fallbacks++;
             }
         }
 
-        // Calculate final counts
-        int finalCachedResolved = results.size() - favoritesResolved - fallbackCount;
-        int externalCompleted = results.size() - favoritesResolved - finalCachedResolved - fallbackCount;
-
-        // Ensure counts are accurate (externalCompleted might be negative due to duplicates being filtered)
-        if (externalCompleted < 0) {
-            finalCachedResolved += externalCompleted;
-            externalCompleted = 0;
-        }
-
-        log.debug("Batch resolution completed: {} favorites, {} cached, {} external, {} fallbacks, took {} s",
-                favoritesResolved,
-                finalCachedResolved,
-                externalCompleted,
-                fallbackCount,
-                (System.currentTimeMillis() - startTime) / 1000.0d);
-
-        // Final progress update - all locations resolved
-        updateGeocodingProgress(jobId, "geocodingComplete",
-            "Geocoding complete: " + favoritesResolved + " favorites, " + finalCachedResolved + " cached, "
-                + externalCompleted + " external API calls",
-            totalLocations, favoritesResolved, finalCachedResolved, 0, externalCompleted, results.size());
-
+        log.debug("Chunk resolved in {} s; batch so far: {} favorites, {} cached, {} external, {} fallbacks",
+                (System.currentTimeMillis() - startTime) / 1000.0d,
+                batch.favoritesResolved, batch.cachedResolved, batch.externalCompleted, batch.fallbacks);
         return results;
     }
 
+    /** Reports the batch as complete. */
+    public void finishBatch(LocationBatch batch) {
+        if (batch.cachedResolved == 0 && batch.externalCompleted == 0 && batch.fallbacks == 0) {
+            updateGeocodingProgress(batch, "allResolvedFromFavorites", "All locations resolved from favorites", 0,
+                    batch.totalLocations);
+            return;
+        }
+        updateGeocodingProgress(batch, "geocodingComplete",
+                "Geocoding complete: " + batch.favoritesResolved + " favorites, " + batch.cachedResolved + " cached, "
+                        + batch.externalCompleted + " external API calls",
+                0, batch.totalLocations);
+    }
+
     /**
-     * Process external geocoding requests with rate limiting.
-     * Respects the 1 request per second limit for geocoding APIs.
+     * Process external geocoding requests with rate limiting: the provider delay is kept between all requests of a
+     * batch, including the last one of a chunk and the first one of the next.
      */
     private void processExternalGeocodingWithRateLimit(List<Point> coordinates,
                                                        Map<String, LocationResolutionResult> results,
-                                                       UUID userId, UUID jobId, int totalLocations,
-                                                       int favoritesResolved, int cachedResolved) {
-
+                                                       LocationBatch batch) {
+        UUID userId = batch.userId;
         long delayMs = Math.max(0, geocodingConfigurationService.getPrimaryProviderDelayMs());
+        int externalBefore = batch.externalCompleted;
+        int externalTotal = externalBefore + coordinates.size();
 
         for (int i = 0; i < coordinates.size(); i++) {
             Point point = coordinates.get(i);
-            String coordKey = point.getX() + "," + point.getY();
+            String coordKey = coordinateKey(point);
 
             try {
-                // Rate limiting: wait 1 second between requests (except for the first one)
-                if (i > 0) {
+                if (batch.externalRequests > 0) {
                     Thread.sleep(delayMs);
                 }
 
-                // Report progress for each external geocoding request
-                int remaining = coordinates.size() - i;
-                int currentExternalCompleted = results.size() - favoritesResolved - cachedResolved;
-                updateGeocodingProgress(jobId, "geocodingLocationProgress",
-                    "Geocoding location " + (i + 1) + "/" + coordinates.size(),
-                    totalLocations, favoritesResolved, cachedResolved, remaining, currentExternalCompleted, results.size(),
-                    Map.of("current", i + 1, "total", coordinates.size()));
+                // Report progress for each external geocoding request; the total grows as chunks find more
+                int current = externalBefore + i + 1;
+                updateGeocodingProgress(batch, "geocodingLocationProgress",
+                        "Geocoding location " + current + "/" + externalTotal,
+                        coordinates.size() - i,
+                        Map.of("current", current, "total", externalTotal));
 
+                batch.externalRequests++;
                 FormattableGeocodingResult geocodingResult;
                 try {
                     geocodingResult = geocodingService.getLocationName(point);
@@ -357,6 +343,7 @@ public class LocationPointResolver {
 
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                         geocodingResult.getFormattedDisplayName(), geocodingId));
+                batch.externalCompleted++;
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -365,8 +352,51 @@ public class LocationPointResolver {
                 // Log error but continue processing other coordinates
                 log.warn("Failed to process geocoding location", e);
                 results.put(coordKey, LocationResolutionResult.fromGeocoding("Unknown Location", null));
+                batch.fallbacks++;
             }
         }
+    }
+
+    /**
+     * One location resolution split into chunks: the progress counts and per-user lookups carried from one chunk to
+     * the next. Created by {@link #startBatch}.
+     */
+    public static final class LocationBatch {
+        private final UUID userId;
+        private final UUID jobId;
+        private final int totalLocations;
+        private Boolean normalize;
+        private int favoritesResolved;
+        private int cachedResolved;
+        private int batchCacheResolved;
+        private int individualCacheResolved;
+        private int externalCompleted;
+        private int externalRequests;
+        private int fallbacks;
+
+        private LocationBatch(UUID userId, UUID jobId, int totalLocations) {
+            this.userId = userId;
+            this.jobId = jobId;
+            this.totalLocations = totalLocations;
+        }
+
+        private int resolved() {
+            return favoritesResolved + cachedResolved + externalCompleted + fallbacks;
+        }
+    }
+
+    private void updateGeocodingProgress(LocationBatch batch, String stepKey, String fallback, int externalPending) {
+        updateGeocodingProgress(batch, stepKey, fallback, externalPending, batch.resolved(), Map.of());
+    }
+
+    private void updateGeocodingProgress(LocationBatch batch, String stepKey, String fallback, int externalPending,
+                                         Map<String, Object> stepExtras) {
+        updateGeocodingProgress(batch, stepKey, fallback, externalPending, batch.resolved(), stepExtras);
+    }
+
+    private void updateGeocodingProgress(LocationBatch batch, String stepKey, String fallback, int externalPending,
+                                         int totalResolved) {
+        updateGeocodingProgress(batch, stepKey, fallback, externalPending, totalResolved, Map.of());
     }
 
     /**
@@ -377,33 +407,25 @@ public class LocationPointResolver {
      * @param fallback English text shown when the active locale has no translation for {@code stepKey}
      *                 yet
      */
-    private void updateGeocodingProgress(UUID jobId, String stepKey, String fallback, int totalLocations,
-                                        int favoritesResolved, int cachedResolved,
-                                        int externalPending, int externalCompleted, int totalResolved) {
-        updateGeocodingProgress(jobId, stepKey, fallback, totalLocations, favoritesResolved, cachedResolved,
-                externalPending, externalCompleted, totalResolved, Map.of());
-    }
-
-    private void updateGeocodingProgress(UUID jobId, String stepKey, String fallback, int totalLocations,
-                                        int favoritesResolved, int cachedResolved,
-                                        int externalPending, int externalCompleted, int totalResolved,
-                                        Map<String, Object> stepExtras) {
-        if (jobId != null) {
+    private void updateGeocodingProgress(LocationBatch batch, String stepKey, String fallback, int externalPending,
+                                         int totalResolved, Map<String, Object> stepExtras) {
+        if (batch.jobId != null) {
             // Progress from 55% to 70% during geocoding, after GPS state-machine processing.
-            int progress = 55 + (int)((double)totalResolved / totalLocations * 15);
+            int progress = batch.totalLocations == 0 ? 70
+                    : 55 + (int) ((double) Math.min(totalResolved, batch.totalLocations) / batch.totalLocations * 15);
 
-            Map<String, Object> details = new java.util.HashMap<>();
-            details.put("totalLocations", totalLocations);
-            details.put("favoritesResolved", favoritesResolved);
-            details.put("cachedResolved", cachedResolved);
+            Map<String, Object> details = new HashMap<>();
+            details.put("totalLocations", batch.totalLocations);
+            details.put("favoritesResolved", batch.favoritesResolved);
+            details.put("cachedResolved", batch.cachedResolved);
             details.put("externalPending", externalPending);
-            details.put("externalCompleted", Math.max(0, externalCompleted));
+            details.put("externalCompleted", batch.externalCompleted);
             details.put("totalResolved", totalResolved);
 
-            Map<String, Object> stepParams = new java.util.HashMap<>(details);
+            Map<String, Object> stepParams = new HashMap<>(details);
             stepParams.putAll(stepExtras);
 
-            jobProgressService.updateProgress(jobId, TimelineJobProgressService.step(stepKey, fallback, stepParams), 4, progress, details);
+            jobProgressService.updateProgress(batch.jobId, TimelineJobProgressService.step(stepKey, fallback, stepParams), 4, progress, details);
         }
     }
 

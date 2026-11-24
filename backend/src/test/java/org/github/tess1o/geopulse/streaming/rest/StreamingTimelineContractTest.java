@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.streaming.model.TimelineJobType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -129,6 +132,51 @@ class StreamingTimelineContractTest {
                 .when().post(TIMELINE + "/jobs");
         assertThat(started.statusCode()).isEqualTo(200);
         assertThat(UUID.fromString(started.jsonPath().getString("jobId"))).isNotNull();
+    }
+
+    @Test
+    void aJobRecordsItsStepsAndServesDiagnosticsWithoutPersonalData() {
+        QuarkusTransaction.requiringNew().run(() -> TimelineTestFixtures.persist(gpsPointRepository,
+                fixtures.homeToOfficeDay(owner, HOME_LAT, HOME_LON, OFFICE_LAT, OFFICE_LON, DAY_START)));
+        UUID jobId = timelineJobProgressService.createJob(owner.getId(), TimelineJobType.FULL_REBUILD);
+        timelineGenerationService.regenerateFullTimeline(owner.getId(), jobId);
+
+        Response job = authenticated(ownerToken).when().get(TIMELINE + "/jobs/" + jobId);
+        assertThat(job.statusCode()).isEqualTo(200);
+        assertThat(job.jsonPath().getString("status")).isEqualTo("COMPLETED");
+        assertThat(job.jsonPath().getString("type")).isEqualTo("FULL_REBUILD");
+        List<String> phases = job.jsonPath().getList("steps.phase", String.class);
+        assertThat(phases).contains("preparing", "processingPoints", "geocoding", "corrections", "persisting", "badges");
+        assertThat(job.jsonPath().getList("steps.durationMs", Long.class)).allSatisfy(ms -> assertThat(ms).isNotNegative());
+        assertThat(job.jsonPath().getList("steps.endedAt")).doesNotContainNull();
+        assertThat(job.jsonPath().getList("steps.memoryEnd.heapUsedBytes", Long.class)).allSatisfy(b -> assertThat(b).isPositive());
+        assertThat(job.jsonPath().getList("steps.memoryMax.heapUsedBytes", Long.class)).allSatisfy(b -> assertThat(b).isPositive());
+        assertThat(job.jsonPath().getList("steps.title.key", String.class)).allSatisfy(key -> assertThat(key).startsWith("timelineJobs.steps."));
+        assertThat(job.jsonPath().getList("plannedSteps", String.class)).contains("processingPoints", "persisting");
+        Map<String, Object> summary = job.jsonPath().getMap("summary");
+        assertThat(summary).containsEntry("rebuiltFrom", "all").containsKeys("gpsPoints", "stays", "trips", "dataGaps",
+                "correctionsApplied", "correctionsNotApplied");
+        assertThat(job.jsonPath().getLong("summary.gpsPoints")).isPositive();
+        assertThat(job.jsonPath().getInt("summary.stays")).isGreaterThanOrEqualTo(2);
+        assertThat(job.jsonPath().getLong("resources.heapMaxBytes")).isPositive();
+
+        Response diagnostics = authenticated(ownerToken).when().get(TIMELINE + "/jobs/" + jobId + "/diagnostics");
+        assertThat(diagnostics.statusCode()).isEqualTo(200);
+        assertThat(diagnostics.jsonPath().getString("job.type")).isEqualTo("FULL_REBUILD");
+        assertThat(diagnostics.jsonPath().getList("steps.phase", String.class)).isEqualTo(phases);
+        assertThat(diagnostics.jsonPath().getString("application.version")).isNotBlank();
+        assertThat(diagnostics.jsonPath().getString("application.build")).isIn("jvm", "native");
+        assertThat(diagnostics.jsonPath().getString("database.postgresVersion")).isNotBlank();
+        assertThat(diagnostics.jsonPath().getString("database.sharedBuffers")).isNotBlank();
+        assertThat(diagnostics.jsonPath().getInt("settings.timeline.staypointRadiusMeters")).isPositive();
+        assertThat(diagnostics.jsonPath().getString("settings.geocoding.primaryProvider")).isNotBlank();
+        String body = diagnostics.asString();
+        assertThat(body).doesNotContain(owner.getEmail(), owner.getId().toString(),
+                String.valueOf(HOME_LAT), String.valueOf(HOME_LON), String.valueOf(OFFICE_LAT), "2024-08-15T");
+
+        // Someone else's job's diagnostics are not readable either
+        assertProblemEnvelope(authenticated(token(other)).when().get(TIMELINE + "/jobs/" + jobId + "/diagnostics"),
+                403, "TIMELINE_JOB_ACCESS_DENIED");
     }
 
     @Test

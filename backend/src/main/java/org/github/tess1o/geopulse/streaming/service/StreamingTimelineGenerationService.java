@@ -212,8 +212,8 @@ public class StreamingTimelineGenerationService {
      * <p>
      * With {@code includePendingRebuild}, the user's pending rebuild request (see
      * {@link TimelineRebuildRequestRepository}) is covered too: generation starts from whichever is earlier, and the
-     * request is cleared on success unless it changed while this generation ran. Only the real-time job passes
-     * false, to keep the latest stays updating while a request keeps failing.
+     * covered changes are cleared on success, keeping any changes saved while this generation ran. The real-time
+     * job passes false to keep the latest stays updating while a request keeps failing.
      */
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant requestedFrom, UUID jobId, String trigger,
@@ -273,6 +273,11 @@ public class StreamingTimelineGenerationService {
             stageStart = metricsStart();
             Long estimatedCount = gpsPointRepository.estimatePointCount(userId, restart.pointsFrom());
             recordTimelineStage(stageStart, trigger, "count_points", "success");
+            // Dates only: the length of the rebuilt history, not when the user was where
+            jobProgressService.recordSummary(jobId, Map.of(
+                    "rebuiltFrom", regenerationStartTime.equals(DEFAULT_START_DATE) ? "all"
+                            : regenerationStartTime.atZone(java.time.ZoneOffset.UTC).toLocalDate().toString(),
+                    "gpsPoints", estimatedCount == null ? 0L : estimatedCount));
 
             Instant correctionEnd = timelineEditService.activeEnd(userId);
             log.info("Estimated {} GPS points to process for user {} using streaming iterator", estimatedCount, userId);
@@ -348,11 +353,15 @@ public class StreamingTimelineGenerationService {
                     .map(point -> point.getTimestamp().plusNanos(1)).orElse(regenerationStartTime.plusNanos(1));
             if (lastPointEnd.isAfter(generatedEnd)) generatedEnd = lastPointEnd;
             if (correctionEnd != null && correctionEnd.isAfter(generatedEnd)) generatedEnd = correctionEnd;
+            updateProgress(jobId, "applyingCorrections", "Applying corrections", 6, 78, null);
             stageStart = metricsStart();
             TimelineEditResult editResult = events.isEmpty() && correctionEnd == null
                     ? new TimelineEditResult(List.of(), Map.of(), List.of())
                     : timelineEditService.apply(userId, events, regenerationStartTime, generatedEnd);
             events = editResult.events();
+            jobProgressService.recordSummary(jobId, Map.of(
+                    "correctionsApplied", editResult.appliedEditIds().size(),
+                    "correctionsNotApplied", editResult.unappliedEditIds().size()));
             // Correction-produced stays (including migrated gap stays) may still need a place name.
             finalization.populateStayLocations(events, userId, jobId);
             // Trip pins follow adjacent favorite stays. This used to happen when reading the timeline; it belongs to
@@ -375,6 +384,8 @@ public class StreamingTimelineGenerationService {
                         "events", rawTimeline.getTotalEventCount(), "stays", rawTimeline.getStays().size(),
                         "trips", rawTimeline.getTrips().size(), "gaps", rawTimeline.getDataGaps().size()));
                 persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
+                jobProgressService.recordSummary(jobId, Map.of("stays", rawTimeline.getStays().size(),
+                        "trips", rawTimeline.getTrips().size(), "dataGaps", rawTimeline.getDataGaps().size()));
                 recordTimelineStage(persistenceStartNanos, trigger, "persist", "success");
                 memoryDiagnostics.checkpoint(userId, jobId, "persist_end");
                 log.info("Timeline persistence completed for user {} in {} ms (stays={}, trips={}, gaps={}, events={})",
@@ -814,7 +825,7 @@ public class StreamingTimelineGenerationService {
             }
             fireTimelineDataChanged(userId, restart.from(), edgeStart, jobId, hasGeneratedTrips(rebuilt));
             if (!rebuildRequestRepository.completeWindow(request)) {
-                log.debug("Rebuild request for user {} changed during a correction window; keeping it", userId);
+                log.debug("Rebuild request for user {} was already cleared during a correction window", userId);
             }
             countWindow("window");
             if (workloadMetrics != null && detection.points() > 0) {
@@ -935,7 +946,7 @@ public class StreamingTimelineGenerationService {
      */
     private void finishPendingRebuild(UUID userId, TimelineRebuildRequest pendingRebuild, Instant regenerationStartTime) {
         if (pendingRebuild != null && !rebuildRequestRepository.complete(pendingRebuild)) {
-            log.debug("Rebuild request for user {} changed during generation; keeping it for the next run", userId);
+            log.debug("Rebuild request for user {} was already cleared during generation", userId);
         }
         requestGeocodingRetryIfNeeded(userId, regenerationStartTime);
     }

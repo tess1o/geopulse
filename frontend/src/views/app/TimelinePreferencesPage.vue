@@ -20,6 +20,16 @@
                 @navigate="handleSettingsSearchNavigate"
               />
               <Button
+                v-if="hasActiveJob"
+                :label="activeJobButtonLabel"
+                icon="pi pi-spin pi-spinner"
+                severity="secondary"
+                outlined
+                data-testid="running-job-button"
+                @click="goToActiveJob"
+              />
+              <Button
+                v-else
                 :label="t('timelinePreferences.page.regenerateButton')"
                 icon="pi pi-replay"
                 severity="danger"
@@ -507,6 +517,13 @@ const hasActiveJob = computed(() => {
   return Boolean(currentJobId.value || detectedActiveJobId.value)
 })
 
+// Progress of the running job as last checked; null when unknown (a job started here is followed by its dialog)
+const detectedActiveJobProgress = ref(null)
+
+const activeJobButtonLabel = computed(() => detectedActiveJobProgress.value == null
+  ? t('timelinePreferences.page.regeneratingButton')
+  : t('timelinePreferences.page.regeneratingButtonProgress', { progress: detectedActiveJobProgress.value }))
+
 const boatSetupStatus = computed(() => boatSetupStore.status)
 
 const boatSetupRunning = computed(() => {
@@ -547,16 +564,21 @@ const headerSecondaryActionsMenu = computed(() => {
     }
   ]
 
+  items.push({
+    separator: true
+  })
   if (hasActiveJob.value) {
-    items.push({
-      separator: true
-    })
     items.push({
       label: t('timelinePreferences.page.menu.viewActiveJob'),
       icon: 'pi pi-eye',
       command: () => goToActiveJob()
     })
   }
+  items.push({
+    label: t('timelinePreferences.page.menu.timelineJobs'),
+    icon: 'pi pi-history',
+    command: () => router.push('/app/timeline/jobs')
+  })
 
   return items
 })
@@ -844,6 +866,9 @@ const refreshActiveJob = async () => {
   try {
     const activeJobInfo = await checkActiveJob()
     detectedActiveJobId.value = activeJobInfo?.hasActiveJob ? activeJobInfo.jobId : null
+    detectedActiveJobProgress.value = activeJobInfo?.hasActiveJob && Number.isFinite(activeJobInfo.progress)
+      ? activeJobInfo.progress
+      : null
   } finally {
     checkingActiveJob.value = false
   }

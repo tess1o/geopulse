@@ -27,7 +27,29 @@ export default {
         resolvedFromFavorites: '{favoritesResolved} locaties opgelost vanuit favorieten',
         resolvedFromCache: '{cachedResolved} opgelost vanuit cache ({batchResolved} vanuit batch, {individualResolved} vanuit individuele opzoeking)',
         geocodingLocationProgress: 'Locatie geocoderen {current}/{total}',
-        geocodingComplete: 'Geocodering voltooid: {favoritesResolved} favorieten, {cachedResolved} gecachet, {externalCompleted} externe API-oproepen'
+        geocodingComplete: 'Geocodering voltooid: {favoritesResolved} favorieten, {cachedResolved} gecachet, {externalCompleted} externe API-oproepen',
+        applyingCorrections: 'Correcties toepassen'
+    },
+    steps: {
+        queued: 'Wachten op start',
+        preparing: 'Voorbereiden',
+        processingPoints: 'GPS-punten verwerken',
+        correctionWindow: 'Gecorrigeerde periode opnieuw opbouwen',
+        geocoding: 'Verblijven benoemen',
+        postProcessingTrips: 'Ritten nabewerken',
+        merging: 'Verblijven samenvoegen',
+        corrections: 'Correcties toepassen',
+        persisting: 'Tijdlijn opslaan',
+        finalizing: 'Afronden',
+        badges: 'Badges herberekenen'
+    },
+    types: {
+        FULL_REBUILD: 'Volledige hergeneratie',
+        PARTIAL_REBUILD: 'Gedeeltelijke hergeneratie',
+        CORRECTION: 'Correctie',
+        IMPORT: 'Import',
+        CAMPAIGN: 'Hergeneratiecampagne',
+        OTHER: 'Tijdlijntaak'
     },
     listPage: {
         title: 'Tijdlijngeneratietaken',
@@ -75,48 +97,32 @@ export default {
             started: 'Gestart:',
             completed: 'Voltooid:',
             duration: 'Duur:',
-            currentStep: 'Huidige stap:',
-            stepOf: '{current} van {total}'
+            type: 'Soort:',
+            gpsPoints: 'GPS-punten:',
+            produced: 'Gemaakt:',
+            producedValue: '{stays} verblijven, {trips} ritten, {gaps} datagaten',
+            corrections: 'Correcties:',
+            correctionsValue: '{applied} toegepast, {notApplied} niet toegepast',
+            memoryLimit: 'Geheugenlimiet:',
+            noMemoryLimit: 'Geen (heap tot {heap})',
+            cpus: 'CPU\'s:'
         },
         stepsTitle: 'Verwerkingsstappen',
-        steps: {
-            acquiringLock: {
-                title: 'Vergrendeling verkrijgen',
-                description: 'Exclusieve toegang tot tijdlijngegevens garanderen'
-            },
-            cleaningUp: {
-                title: 'Opruimen',
-                description: 'Oude tijdlijngebeurtenissen verwijderen'
-            },
-            preparingGpsProcessing: {
-                title: 'GPS-verwerking voorbereiden',
-                description: 'GPS-punten tellen en streaming iterator voorbereiden'
-            },
-            processingGeocoding: {
-                title: 'Verwerken & Geocoderen',
-                description: 'GPS-punten streamen en verwerken via state machine, vervolgens locatienamen oplossen'
-            },
-            postProcessingTrips: {
-                title: 'Reizen nabewerken',
-                description: 'Reisdetectie valideren en verfijnen'
-            },
-            mergingSimplifying: {
-                title: 'Samenvoegen & Vereenvoudigen',
-                description: 'Tijdlijnoptimalisaties toepassen'
-            },
-            persistingTimeline: {
-                title: 'Tijdlijn opslaan',
-                description: 'Tijdlijngebeurtenissen naar database opslaan'
-            },
-            dataGapDetection: {
-                title: 'Datagapdetectie',
-                description: 'Gaten in GPS-dekking identificeren'
-            },
-            finalizing: {
-                title: 'Afronden',
-                description: 'Mijlpalen berekenen en generatie voltooien'
-            }
+        stepBadges: {
+            slowest: 'Traagst',
+            memoryPeak: 'Geheugenpiek',
+            failed: 'Hier mislukt',
+            pending: 'Nog te doen'
         },
+        stepMemory: {
+            label: 'Hoogste geheugen:',
+            heap: 'heap {value}',
+            process: 'proces {value}',
+            container: 'container {value}'
+        },
+        stepShare: '{percent}% van de taak',
+        stepShareTiny: '<1% van de taak',
+        durationUnderSeconds: '<{seconds}s',
         detail: {
             gpsPoints: 'GPS-punten: {loaded} / {total}',
             processingHeader: 'GPS-punten verwerken: {processed} / {total}',
@@ -126,6 +132,15 @@ export default {
             cachedInDatabase: 'Gecachet in database: {count}',
             externalApiCalls: 'Externe API-oproepen: {count}',
             pending: 'In afwachting: {count}'
+        },
+        diagnostics: {
+            button: 'Diagnose kopiëren',
+            title: 'Taakdiagnose',
+            description: 'Stappen, tijden, geheugen, versie en instellingen van deze taak, voor een supportvraag of een issue. Bevat geen coördinaten, plaatsnamen, notities of tijden van gebeurtenissen.',
+            copy: 'Kopiëren',
+            copied: 'Diagnose naar het klembord gekopieerd',
+            copyFailed: 'Kopiëren lukte niet. Selecteer de tekst en kopieer die zelf.',
+            loadFailed: 'De diagnose kon niet worden geladen'
         },
         completion: {
             title: 'Tijdlijngeneratie voltooid!',

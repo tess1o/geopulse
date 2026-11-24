@@ -28,7 +28,29 @@ export default {
         resolvedFromFavorites: 'Визначено {favoritesResolved} місцезнаходжень з обраного',
         resolvedFromCache: 'Визначено {cachedResolved} з кешу ({batchResolved} пакетно, {individualResolved} окремим пошуком)',
         geocodingLocationProgress: 'Геокодування місця {current}/{total}',
-        geocodingComplete: 'Геокодування завершено: {favoritesResolved} з обраного, {cachedResolved} з кешу, {externalCompleted} зовнішніх запитів'
+        geocodingComplete: 'Геокодування завершено: {favoritesResolved} з обраного, {cachedResolved} з кешу, {externalCompleted} зовнішніх запитів',
+        applyingCorrections: 'Застосування виправлень'
+    },
+    steps: {
+        queued: 'Очікування запуску',
+        preparing: 'Підготовка',
+        processingPoints: 'Обробка GPS-точок',
+        correctionWindow: 'Перебудова виправленого періоду',
+        geocoding: 'Визначення назв перебувань',
+        postProcessingTrips: 'Доопрацювання поїздок',
+        merging: 'Об\'єднання перебувань',
+        corrections: 'Застосування виправлень',
+        persisting: 'Збереження хронології',
+        finalizing: 'Завершення',
+        badges: 'Перерахунок відзнак'
+    },
+    types: {
+        FULL_REBUILD: 'Повна регенерація',
+        PARTIAL_REBUILD: 'Часткова регенерація',
+        CORRECTION: 'Виправлення',
+        IMPORT: 'Імпорт',
+        CAMPAIGN: 'Кампанія регенерації',
+        OTHER: 'Завдання хронології'
     },
     listPage: {
         title: 'Завдання генерації хронології',
@@ -76,48 +98,32 @@ export default {
             started: 'Розпочато:',
             completed: 'Завершено:',
             duration: 'Тривалість:',
-            currentStep: 'Поточний крок:',
-            stepOf: '{current} з {total}'
+            type: 'Тип:',
+            gpsPoints: 'GPS-точки:',
+            produced: 'Створено:',
+            producedValue: 'перебувань: {stays}, поїздок: {trips}, пропусків даних: {gaps}',
+            corrections: 'Виправлення:',
+            correctionsValue: 'застосовано: {applied}, не застосовано: {notApplied}',
+            memoryLimit: 'Ліміт пам\'яті:',
+            noMemoryLimit: 'Немає (heap до {heap})',
+            cpus: 'CPU:'
         },
         stepsTitle: 'Кроки обробки',
-        steps: {
-            acquiringLock: {
-                title: 'Отримання блокування',
-                description: 'Забезпечення ексклюзивного доступу до даних хронології'
-            },
-            cleaningUp: {
-                title: 'Очищення',
-                description: 'Видалення старих подій хронології'
-            },
-            preparingGpsProcessing: {
-                title: 'Підготовка обробки GPS',
-                description: 'Підрахунок GPS-точок і підготовка потокового ітератора'
-            },
-            processingGeocoding: {
-                title: 'Обробка та геокодування',
-                description: 'Потокова обробка GPS-точок через скінченний автомат із подальшим визначенням назв місць'
-            },
-            postProcessingTrips: {
-                title: 'Постобробка поїздок',
-                description: 'Перевірка та уточнення визначення поїздок'
-            },
-            mergingSimplifying: {
-                title: "Об'єднання та спрощення",
-                description: 'Застосування оптимізацій хронології'
-            },
-            persistingTimeline: {
-                title: 'Збереження хронології',
-                description: 'Збереження подій хронології в базі даних'
-            },
-            dataGapDetection: {
-                title: 'Виявлення розривів даних',
-                description: 'Визначення розривів у покритті GPS'
-            },
-            finalizing: {
-                title: 'Завершення',
-                description: 'Обчислення етапів і завершення генерації'
-            }
+        stepBadges: {
+            slowest: 'Найповільніший',
+            memoryPeak: 'Пік пам\'яті',
+            failed: 'Збій тут',
+            pending: 'Очікує'
         },
+        stepMemory: {
+            label: 'Найбільше пам\'яті:',
+            heap: 'heap {value}',
+            process: 'процес {value}',
+            container: 'контейнер {value}'
+        },
+        stepShare: '{percent}% завдання',
+        stepShareTiny: '<1% завдання',
+        durationUnderSeconds: '<{seconds} с',
         detail: {
             gpsPoints: 'GPS-точки: {loaded} / {total}',
             processingHeader: 'Обробка GPS-точок: {processed} / {total}',
@@ -127,6 +133,15 @@ export default {
             cachedInDatabase: 'У кеші бази даних: {count}',
             externalApiCalls: 'Зовнішні виклики API: {count}',
             pending: 'Очікує: {count}'
+        },
+        diagnostics: {
+            button: 'Копіювати діагностику',
+            title: 'Діагностика завдання',
+            description: 'Кроки, час, пам\'ять, версія та налаштування цього завдання для запиту в підтримку або issue. Не містить координат, назв місць, нотаток чи часу подій.',
+            copy: 'Копіювати',
+            copied: 'Діагностику скопійовано в буфер обміну',
+            copyFailed: 'Не вдалося скопіювати. Виділіть текст і скопіюйте його вручну.',
+            loadFailed: 'Не вдалося завантажити діагностику'
         },
         completion: {
             title: 'Генерацію хронології завершено!',

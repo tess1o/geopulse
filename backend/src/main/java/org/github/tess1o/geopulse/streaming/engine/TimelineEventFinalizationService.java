@@ -49,6 +49,9 @@ public class TimelineEventFinalizationService {
     @Inject
     TripAltitudeStatisticsCalculator tripAltitudeStatisticsCalculator;
 
+    /** How many stays {@link #populateStayLocations} resolves together. */
+    int locationChunkSize = 10_000;
+
     /**
      * Finalize a stay event from user state without location resolution.
      * Location data will be populated later via batch processing.
@@ -109,7 +112,10 @@ public class TimelineEventFinalizationService {
 
     /**
      * Populate location data for all stay events using batch resolution with progress tracking.
-     * This method processes all stays at once to optimize database queries.
+     * <p>
+     * Stays are resolved {@link #locationChunkSize} at a time: each chunk is one favorites lookup and one geocoding
+     * cache lookup, and only one chunk's coordinates and results are in memory at once. A full rebuild resolves
+     * hundreds of thousands of stays, and holding all their lookups together cost about 150 MB.
      *
      * @param events list of timeline events (will modify Stay events in place)
      * @param userId user identifier for location resolution
@@ -117,11 +123,12 @@ public class TimelineEventFinalizationService {
      */
     public void populateStayLocations(List<TimelineEvent> events, UUID userId, UUID jobId) {
         // Extract all stays that need location resolution
-        List<Stay> staysToPopulate = events.stream()
-                .filter(event -> event instanceof Stay)
-                .map(event -> (Stay) event)
-                .filter(stay -> stay.getLocationName() == null) // Only process unpopulated stays
-                .collect(java.util.stream.Collectors.toList());
+        List<Stay> staysToPopulate = new ArrayList<>();
+        for (TimelineEvent event : events) {
+            if (event instanceof Stay stay && stay.getLocationName() == null) { // Only process unpopulated stays
+                staysToPopulate.add(stay);
+            }
+        }
 
         if (staysToPopulate.isEmpty()) {
             return;
@@ -130,29 +137,30 @@ public class TimelineEventFinalizationService {
         log.info("Populating location data for {} stays using batch resolution", staysToPopulate.size());
         long startTime = System.currentTimeMillis();
 
-        // Create Points for all stay centroids
-        List<Point> stayPoints = staysToPopulate.stream()
-                .map(stay -> GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()))
-                .collect(java.util.stream.Collectors.toList());
+        LocationPointResolver.LocationBatch batch =
+                locationPointResolver.startBatch(userId, jobId, staysToPopulate.size());
+        for (int from = 0; from < staysToPopulate.size(); from += locationChunkSize) {
+            List<Stay> chunk = staysToPopulate.subList(from, Math.min(from + locationChunkSize, staysToPopulate.size()));
+            List<Point> points = new ArrayList<>(chunk.size());
+            for (Stay stay : chunk) {
+                points.add(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
+            }
 
-        // Batch resolve all locations
-        Map<String, LocationResolutionResult> locationResults =
-                locationPointResolver.resolveLocationsWithReferencesBatch(userId, stayPoints, jobId);
+            Map<String, LocationResolutionResult> locationResults = locationPointResolver.resolveChunk(batch, points);
 
-        // Populate each stay with its resolved location data
-        for (Stay stay : staysToPopulate) {
-            Point point = GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude());
-            String coordKey = point.getX() + "," + point.getY();
-            LocationResolutionResult locationResult = locationResults.get(coordKey);
-
-            if (locationResult != null) {
-                // Update stay with location data (Stay objects should be mutable for this)
-                updateStayLocation(stay, locationResult);
-            } else {
-                log.warn("No location result found for stay; using fallback");
-                updateStayLocation(stay, LocationResolutionResult.fromGeocoding("Unknown Location", null));
+            // Populate each stay with its resolved location data
+            for (int i = 0; i < chunk.size(); i++) {
+                LocationResolutionResult locationResult =
+                        locationResults.get(LocationPointResolver.coordinateKey(points.get(i)));
+                if (locationResult != null) {
+                    updateStayLocation(chunk.get(i), locationResult);
+                } else {
+                    log.warn("No location result found for stay; using fallback");
+                    updateStayLocation(chunk.get(i), LocationResolutionResult.fromGeocoding("Unknown Location", null));
+                }
             }
         }
+        locationPointResolver.finishBatch(batch);
 
         long duration = System.currentTimeMillis() - startTime;
         log.info("Populated location data for {} stays in {} ms", staysToPopulate.size(), duration);

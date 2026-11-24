@@ -21,19 +21,24 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **337** distinct env vars.
+Backend runtime currently includes **342** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
 - Runtime env changes require backend restart to take effect.
 
-### Core and Database (11)
+### Core and Database (16)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_CORS_ENABLED` | `true` | Enables/disables backend CORS handling. Property: `quarkus.http.cors.enabled`. New `.env.example` sets this to `false` for same-origin nginx deployments. | `true` or `false`. | Backend restart |
 | `GEOPULSE_CORS_ORIGINS` | `(falls back to GEOPULSE_UI_URL)` | Comma-separated CORS origins when CORS is enabled. Property: `quarkus.http.cors.origins`. | One URL or comma-separated URLs. | Backend restart |
 | `GEOPULSE_DATABASE_TRANSACTION_TIMEOUT_MINUTES` | `60` | Default database transaction timeout. Import processing has its own timeout. Property: \`quarkus.transaction-manager.default-transaction-timeout\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_DB_POOL_MAX_SIZE` | `16` | Maximum pooled database connections (the backend keeps one more for the backup/restore lock). Each open connection holds roughly 50 MiB in PostgreSQL. Property: `quarkus.datasource.jdbc.max-size`. See [Memory and Performance Tuning](/docs/system-administration/configuration/memory-and-performance). | Positive integer; keep below PostgreSQL `max_connections`. | Backend restart |
+| `GEOPULSE_DB_POOL_MIN_SIZE` | `0` | Connections kept open while idle. Property: `quarkus.datasource.jdbc.min-size`. | Integer from \`0\` to the max size. | Backend restart |
+| `GEOPULSE_DB_POOL_IDLE_REMOVAL_INTERVAL` | `1M` | Idle connections are closed after this long (checked at the same interval). Property: `quarkus.datasource.jdbc.idle-removal-interval`. | Duration, for example \`30s\`, \`1M\`, \`5M\`. | Backend restart |
+| `GEOPULSE_DB_POOL_MAX_LIFETIME` | `30m` | Connections are replaced after this time. Property: `quarkus.datasource.jdbc.max-lifetime`. | Duration. | Backend restart |
+| `GEOPULSE_DB_POOL_ACQUISITION_TIMEOUT` | `60s` | How long a request waits for a free connection. Property: `quarkus.datasource.jdbc.acquisition-timeout`. | Duration. | Backend restart |
 | `GEOPULSE_AVATAR_MAX_SIZE_BYTES` | `1048576` | Maximum allowed size for uploaded custom avatars (in bytes). Property: `geopulse.avatar.max-size-bytes`. | Positive integer value (bytes). | Backend restart |
 | `GEOPULSE_POSTGRES_PASSWORD` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_POSTGRES_URL` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.jdbc.url\`. | Valid PostgreSQL JDBC URL (\`jdbc:postgresql://...\`). | Backend restart |
@@ -504,6 +509,9 @@ These vars are primarily for deployment wiring and image/runtime composition.
 | Variable | Typical Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_VERSION` | `1.22.0` | Version tag used for backend/frontend image selection in Compose manifests. | Must match published image tags. | Redeploy backend/postgres services |
+| `NATIVE_IMAGE_OPTS` | `-XX:MaximumHeapSizePercent=70 -XX:MaxNewSize=33554432 -XX:MaxHeapFree=8388608 -XX:+ExitOnOutOfMemoryError` | Replaces the native image's runtime options entirely. See [Memory and Performance Tuning](/docs/system-administration/configuration/memory-and-performance). | Space-separated native image options; include every default you still want. | Backend restart |
+| `NATIVE_IMAGE_OPTS_EXTRA` | `(empty)` | Appended after the native image's runtime options; a later option overrides an earlier one. | Space-separated native image options. | Backend restart |
+| `JAVA_OPTS` / `JAVA_OPTS_EXTRA` | `(image default)` / `(empty)` | The same pair for the JVM image: replace the JVM options, or append to them. | JVM options. | Backend restart |
 | `GEOPULSE_POSTGRES_HOST` | `geopulse-postgres` | Postgres hostname used to build JDBC URL and service wiring. | Resolvable host inside deployment network. | Redeploy backend/postgres services |
 | `GEOPULSE_POSTGRES_PORT` | `5432` | Postgres TCP port used for service wiring. | Integer in range \`1-65535\`. | Redeploy backend/postgres services |
 | `GEOPULSE_POSTGRES_DB` | `geopulse` | Postgres database name used by app and database container initialization. | Valid PostgreSQL database identifier. | Redeploy backend/postgres services |

@@ -5,6 +5,22 @@ export default {
     page: {
         title: 'Hilfe & Support',
         description: 'Hilfe bekommen, Dokumentation lesen und Probleme melden',
+        faq: {
+            title: 'Häufige Fragen',
+            description: 'Kurze Antworten auf die häufigsten Fragen. Jeder Link öffnet die Antwort in der Dokumentation.',
+            browseAll: 'Alle FAQ ansehen',
+            adminTitle: 'Für Administratoren',
+            questions: {
+                timelineNotGenerating: 'Warum wird meine Zeitleiste nicht erstellt?',
+                timelineGaps: 'Warum hat meine Zeitleiste Lücken?',
+                tripMisclassified: 'Warum wird meine Autofahrt als Fußweg erkannt (oder umgekehrt)?',
+                jobsFailing: 'Zeitleisten-Aufträge schlagen immer wieder fehl. Was kann ich tun?',
+                importGoogle: 'Kann ich meinen Google-Timeline-Verlauf importieren?',
+                backup: 'Wie sichere ich meine Daten?',
+                reduceMemory: 'Wie kann ich den Speicherverbrauch von GeoPulse senken?',
+                backendRestarts: 'Das Backend startet neu oder hat zu wenig Speicher. Was kann ich tun?'
+            }
+        },
         issues: {
             title: 'Probleme?',
             description: 'Wenn es Probleme mit der Erstellung der Zeitleiste, der Einstufung von Strecken oder anderen Funktionen gibt, kannst du anonymisierte Debug-Daten exportieren, die bei der Fehlersuche helfen.',

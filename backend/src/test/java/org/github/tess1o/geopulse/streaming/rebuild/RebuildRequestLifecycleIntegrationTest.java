@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.rebuild;
 
 import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.set;
 
+import io.agroal.api.AgroalDataSource;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusMock;
@@ -13,6 +14,7 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.streaming.model.TimelineRebuildRequest;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
 import org.github.tess1o.geopulse.streaming.service.RealtimeTimelineProcessor.Outcome;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -60,6 +63,12 @@ class RebuildRequestLifecycleIntegrationTest {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    TimelineRebuildRequestRepository rebuildRequests;
+
+    @Inject
+    AgroalDataSource dataSource;
 
     @Inject org.github.tess1o.geopulse.streaming.edits.TimelineEditService edits;
 
@@ -167,11 +176,187 @@ class RebuildRequestLifecycleIntegrationTest {
 
         // The generation may have read the points before the late one was committed, so its request stays.
         TimelineRebuildRequest kept = harness.pendingRebuild(userId).orElseThrow();
-        assertThat(kept.rebuildFrom()).isBeforeOrEqualTo(at("07:02"));
+        assertThat(kept.rebuildFrom()).isEqualTo(at("07:02"));
 
         GeocodingTestMocks.install();
         assertThat(harness.process(userId)).isEqualTo(Outcome.REBUILT);
+        assertThat(harness.pendingRebuild(userId)).isEmpty();
         harness.assertMatchesFullRebuild(userId, "point saved during a generation");
+    }
+
+    @Test
+    void fullCompletionPreservesLaterGpsCorrectionsAndFullRebuildRequests() {
+        UUID userId = harness.createUser("completion-ranges");
+        rebuildRequests.request(userId, Instant.EPOCH);
+        rebuildRequests.requestWindow(userId, at("06:00"), at("12:00"));
+        TimelineRebuildRequest running = harness.pendingRebuild(userId).orElseThrow();
+
+        rebuildRequests.request(userId, at("11:00"));
+        rebuildRequests.request(userId, at("05:00"));
+        rebuildRequests.requestWindow(userId, at("04:00"), at("06:00"));
+        rebuildRequests.requestWindow(userId, at("14:00"), at("15:00"));
+        assertThat(rebuildRequests.complete(running)).isTrue();
+
+        TimelineRebuildRequest remaining = harness.pendingRebuild(userId).orElseThrow();
+        assertThat(remaining.rebuildFrom()).isEqualTo(at("04:00"));
+        assertThat(remaining.openFrom()).isEqualTo(at("05:00"));
+        assertThat(remaining.windowTo()).isEqualTo(at("15:00"));
+
+        // A second Favourite/settings change really does need another full rebuild.
+        rebuildRequests.request(userId, Instant.EPOCH);
+        rebuildRequests.complete(remaining);
+        TimelineRebuildRequest full = harness.pendingRebuild(userId).orElseThrow();
+        assertThat(full.rebuildFrom()).isEqualTo(Instant.EPOCH);
+        assertThat(full.windowTo()).isNull();
+        rebuildRequests.complete(full);
+        assertThat(harness.pendingRebuild(userId)).isEmpty();
+    }
+
+    @Test
+    void windowCompletionRetiresOnlyCoveredCorrections() {
+        UUID userId = harness.createUser("window-completion-ranges");
+        rebuildRequests.requestWindow(userId, at("06:00"), at("08:00"));
+        rebuildRequests.request(userId, at("11:00"));
+        TimelineRebuildRequest running = harness.pendingRebuild(userId).orElseThrow();
+
+        rebuildRequests.request(userId, at("12:00"));
+        rebuildRequests.requestWindow(userId, at("09:00"), at("10:00"));
+        assertThat(rebuildRequests.completeWindow(running)).isTrue();
+
+        TimelineRebuildRequest remaining = harness.pendingRebuild(userId).orElseThrow();
+        assertThat(remaining.rebuildFrom()).isEqualTo(at("09:00"));
+        assertThat(remaining.openFrom()).isEqualTo(at("11:00"));
+        assertThat(remaining.windowTo()).isEqualTo(at("10:00"));
+
+        rebuildRequests.completeWindow(remaining);
+        TimelineRebuildRequest gps = harness.pendingRebuild(userId).orElseThrow();
+        assertThat(gps.rebuildFrom()).isEqualTo(at("11:00"));
+        assertThat(gps.windowTo()).isNull();
+        rebuildRequests.complete(gps);
+        assertThat(harness.pendingRebuild(userId)).isEmpty();
+    }
+
+    @Test
+    void completionIsRolledBackTogetherWithTheTimeline() {
+        UUID userId = harness.createUser("completion-rollback");
+        rebuildRequests.request(userId, Instant.EPOCH);
+        TimelineRebuildRequest running = harness.pendingRebuild(userId).orElseThrow();
+        rebuildRequests.request(userId, at("12:00"));
+        TimelineRebuildRequest before = harness.pendingRebuild(userId).orElseThrow();
+
+        assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> {
+            rebuildRequests.complete(running);
+            throw new IllegalStateException("Commit failed");
+        })).isInstanceOf(RuntimeException.class);
+        assertThat(harness.pendingRebuild(userId)).contains(before);
+
+        rebuildRequests.complete(running);
+        assertThat(harness.pendingRebuild(userId).orElseThrow().rebuildFrom()).isEqualTo(at("12:00"));
+    }
+
+    @Test
+    void migrationPreservesExistingOpenWindowAndMixedRequests() throws Exception {
+        String migration;
+        try (var resource = getClass().getResourceAsStream("/db/migration/V36.97.0__Track_pending_rebuild_changes.sql")) {
+            migration = new String(resource.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        try (var connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                // An isolated schema lets the actual migration run against pre-upgrade rows.
+                statement.execute("CREATE SCHEMA rebuild_changes_migration_test");
+                statement.execute("SET LOCAL search_path TO rebuild_changes_migration_test");
+                statement.execute("""
+                        CREATE TABLE timeline_rebuild_requests (
+                            user_id UUID PRIMARY KEY, revision BIGINT, rebuild_from TIMESTAMPTZ,
+                            open_from TIMESTAMPTZ, window_to TIMESTAMPTZ)
+                        """);
+                statement.execute("""
+                        INSERT INTO timeline_rebuild_requests VALUES
+                        ('00000000-0000-0000-0000-000000000001', 7, '1970-01-01Z', '1970-01-01Z', NULL),
+                        ('00000000-0000-0000-0000-000000000002', 8, '2026-09-07T06:00Z', NULL, '2026-09-07T08:00Z'),
+                        ('00000000-0000-0000-0000-000000000003', 9, '2026-09-07T04:00Z', '2026-09-07T05:00Z', '2026-09-07T06:00Z')
+                        """);
+                statement.execute(migration);
+                try (var rows = statement.executeQuery("""
+                        SELECT revision, open_from, window_from, window_to
+                        FROM timeline_rebuild_changes ORDER BY revision
+                        """)) {
+                    assertThat(rows.next()).isTrue();
+                    assertThat(rows.getLong(1)).isEqualTo(7);
+                    assertThat(rows.getTimestamp(2).toInstant()).isEqualTo(Instant.EPOCH);
+                    assertThat(rows.getTimestamp(3)).isNull();
+                    assertThat(rows.getTimestamp(4)).isNull();
+                    assertThat(rows.next()).isTrue();
+                    assertThat(rows.getLong(1)).isEqualTo(8);
+                    assertThat(rows.getTimestamp(2)).isNull();
+                    assertThat(rows.getTimestamp(3).toInstant()).isEqualTo(at("06:00"));
+                    assertThat(rows.getTimestamp(4).toInstant()).isEqualTo(at("08:00"));
+                    assertThat(rows.next()).isTrue();
+                    assertThat(rows.getLong(1)).isEqualTo(9);
+                    assertThat(rows.getTimestamp(2).toInstant()).isEqualTo(at("05:00"));
+                    assertThat(rows.getTimestamp(3).toInstant()).isEqualTo(at("04:00"));
+                    assertThat(rows.getTimestamp(4).toInstant()).isEqualTo(at("06:00"));
+                    assertThat(rows.next()).isFalse();
+                }
+                statement.executeUpdate("DELETE FROM timeline_rebuild_requests");
+                try (var rows = statement.executeQuery("SELECT count(*) FROM timeline_rebuild_changes")) {
+                    rows.next();
+                    assertThat(rows.getLong(1)).isZero();
+                }
+            } finally {
+                connection.rollback();
+            }
+        }
+    }
+
+    @Test
+    void continuousGpsIngestionDoesNotRepeatACompletedFullRebuild() throws Exception {
+        UUID userId = harness.createUser("full-rebuild-live-gps");
+        Commute commute = new Commute();
+        harness.ingest(userId, commute.all());
+        rebuildRequests.request(userId, Instant.EPOCH);
+
+        TimelineNoteService notes = mock(TimelineNoteService.class);
+        QuarkusMock.installMockForType(notes, TimelineNoteService.class);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            for (int pass = 1; pass <= 3; pass++) {
+                CountDownLatch insideGeneration = new CountDownLatch(1);
+                CountDownLatch release = new CountDownLatch(1);
+                doAnswer(invocation -> {
+                    insideGeneration.countDown();
+                    if (!release.await(30, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("Timed out waiting for GPS ingestion");
+                    }
+                    return 0;
+                }).when(notes).reattachAnchoredNotes(userId);
+
+                Future<Outcome> generation = executor.submit(() -> harness.process(userId));
+                Instant newPointTime = at("12:00").plusSeconds(pass * 60L);
+                try {
+                    assertThat(insideGeneration.await(30, TimeUnit.SECONDS)).isTrue();
+                    executor.submit(() -> harness.ingest(userId, List.of(Track.message(
+                            commute.office[0], commute.office[1], newPointTime, 5.0, 0.0))))
+                            .get(15, TimeUnit.SECONDS);
+                } finally {
+                    release.countDown();
+                }
+                assertThat(generation.get(30, TimeUnit.SECONDS)).isEqualTo(Outcome.REBUILT);
+
+                TimelineRebuildRequest remaining = harness.pendingRebuild(userId).orElseThrow();
+                assertThat(remaining.rebuildFrom()).as("pass %s retires the completed range", pass)
+                        .isEqualTo(newPointTime);
+                assertThat(remaining.openFrom()).isEqualTo(newPointTime);
+                assertThat(remaining.failedAttempts()).isZero();
+            }
+            assertThat(harness.process(userId)).isEqualTo(Outcome.REBUILT);
+            assertThat(harness.pendingRebuild(userId)).isEmpty();
+            assertThat(harness.process(userId)).isEqualTo(Outcome.GAP_ONLY);
+            harness.assertMatchesFullRebuild(userId, "full rebuild with continuous GPS ingestion");
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test

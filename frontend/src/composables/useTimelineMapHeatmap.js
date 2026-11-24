@@ -2,15 +2,13 @@ import { ref, watch } from 'vue'
 import { useDigestStore } from '@/stores/digest'
 import { useDateRangeStore } from '@/stores/dateRange'
 
-const HEATMAP_LAYERS = ['stays', 'trips']
-
 const getHeatmapRangeKey = (startTime, endTime, layer) => {
   return `range:${startTime}:${endTime}:${layer}`
 }
 
 /**
  * Heatmap overlay of the timeline map for the selected date range: which layer (stays or trips) is shown and its
- * points. Both layers are prefetched whenever the range changes, so switching layers is instant.
+ * points. Fetch only the selected layer when enabled; the digest store caches visited ranges.
  *
  * @param {Object} options
  * @param {import('vue').Ref<boolean>} options.available false where the heatmap can't be shown (e.g. public views)
@@ -23,9 +21,10 @@ export function useTimelineMapHeatmap({ available }) {
   const heatmapLayer = ref('stays')
   const heatmapPoints = ref([])
   let heatmapRequestId = 0
-  const heatmapPrefetches = new Map()
+  const heatmapRequests = new Map()
 
   const loadHeatmap = async () => {
+    const requestId = ++heatmapRequestId
     if (!heatmapEnabled.value || !available.value) {
       heatmapPoints.value = []
       return
@@ -42,40 +41,20 @@ export function useTimelineMapHeatmap({ available }) {
       return
     }
 
-    const requestId = ++heatmapRequestId
-    const inFlight = heatmapPrefetches.get(key)
-    const data = inFlight
-      ? await inFlight
-      : await digestStore.fetchHeatmapRangeData(
+    if (!heatmapRequests.has(key)) {
+      const promise = digestStore.fetchHeatmapRangeData(
         startTime,
         endTime,
         heatmapLayer.value,
         { silent: true }
       )
+        .finally(() => heatmapRequests.delete(key))
+      heatmapRequests.set(key, promise)
+    }
+    const data = await heatmapRequests.get(key)
     if (requestId !== heatmapRequestId) return
 
     heatmapPoints.value = Array.isArray(data) ? data : []
-  }
-
-  const prefetchHeatmapRange = () => {
-    if (!available.value) return
-    const range = dateRangeStore.getCurrentDateRange
-    if (!range || range.length !== 2) return
-    const [startTime, endTime] = range
-
-    HEATMAP_LAYERS.forEach((layer) => {
-      const key = getHeatmapRangeKey(startTime, endTime, layer)
-      if (digestStore.heatmapData?.[key] || heatmapPrefetches.has(key)) return
-
-      const promise = digestStore.fetchHeatmapRangeData(
-        startTime,
-        endTime,
-        layer,
-        { silent: true }
-      )
-        .finally(() => heatmapPrefetches.delete(key))
-      heatmapPrefetches.set(key, promise)
-    })
   }
 
   const toggleHeatmap = (enabled) => {
@@ -89,26 +68,9 @@ export function useTimelineMapHeatmap({ available }) {
     heatmapLayer.value = layer
   }
 
-  watch(heatmapEnabled, (enabled) => {
-    if (enabled) {
-      loadHeatmap()
-    }
-  })
-
-  watch(heatmapLayer, () => {
-    if (heatmapEnabled.value) {
-      loadHeatmap()
-    }
-  })
-
   watch(
-    () => dateRangeStore.getCurrentDateRange,
-    () => {
-      prefetchHeatmapRange()
-      if (heatmapEnabled.value) {
-        loadHeatmap()
-      }
-    },
+    [heatmapEnabled, heatmapLayer, () => dateRangeStore.getCurrentDateRange, available],
+    loadHeatmap,
     { immediate: true }
   )
 

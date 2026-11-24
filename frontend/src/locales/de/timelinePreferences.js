@@ -7,6 +7,8 @@ export default {
         description: 'Lege genau fest, wie deine Zeitleiste aus GPS-Daten erstellt wird',
         searchPlaceholder: 'Zeitleisten-Einstellungen durchsuchen …',
         regenerateButton: 'Zeitleiste neu berechnen',
+        regeneratingButton: 'Wird neu generiert…',
+        regeneratingButtonProgress: 'Wird neu generiert… {progress} %',
         saveButton: 'Änderungen speichern',
         moreButton: 'Mehr',
         mobileSectionLabel: 'Einstellungsbereich',
@@ -36,7 +38,8 @@ export default {
             exportConfig: 'Konfiguration exportieren',
             importConfig: 'Konfiguration importieren',
             resetToDefaults: 'Auf Standard zurücksetzen',
-            viewActiveJob: 'Laufenden Job ansehen'
+            viewActiveJob: 'Laufenden Job ansehen',
+            timelineJobs: 'Zeitleisten-Jobs'
         },
         importDialog: {
             header: 'Zeitleisten-Konfiguration importieren',

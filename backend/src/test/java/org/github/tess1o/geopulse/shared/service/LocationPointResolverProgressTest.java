@@ -47,8 +47,7 @@ class LocationPointResolverProgressTest {
         TimelineJobProgressService progressService = mock(TimelineJobProgressService.class);
 
         when(favoriteLocationService.findByPointsBatch(eq(userId), anyList())).thenReturn(Map.of());
-        when(batchService.getCachedGeocodingResultsAndIdsBatch(eq(userId), anyList()))
-                .thenReturn(new CacheGeocodingBatchService.BatchLookupResult(Map.of(), Map.of()));
+        when(batchService.getCachedPlacesBatch(eq(userId), anyList())).thenReturn(Map.of());
         when(cacheGeocodingService.getCachedGeocodingResult(eq(userId), any(Point.class)))
                 .thenReturn(Optional.empty());
         when(cacheGeocodingService.getCachedGeocodingResultId(eq(userId), any(Point.class)))
@@ -90,5 +89,57 @@ class LocationPointResolverProgressTest {
                 assertThat(percentage).isBetween(55, 70));
         assertThat(percentageCaptor.getAllValues()).first().isEqualTo(55);
         assertThat(percentageCaptor.getAllValues()).contains(70);
+    }
+
+    @Test
+    void chunksShareOneProgressAndKeepTheProviderDelayBetweenThem() {
+        UUID userId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        GeocodingService geocodingService = mock(GeocodingService.class);
+        FavoriteLocationService favoriteLocationService = mock(FavoriteLocationService.class);
+        CacheGeocodingService cacheGeocodingService = mock(CacheGeocodingService.class);
+        CacheGeocodingBatchService batchService = mock(CacheGeocodingBatchService.class);
+        ReverseGeocodingManagementService managementService = mock(ReverseGeocodingManagementService.class);
+        GeocodingConfigurationService configurationService = mock(GeocodingConfigurationService.class);
+        TimelineJobProgressService progressService = mock(TimelineJobProgressService.class);
+
+        when(favoriteLocationService.findByPointsBatch(eq(userId), anyList())).thenReturn(Map.of());
+        when(batchService.getCachedPlacesBatch(eq(userId), anyList())).thenReturn(Map.of());
+        when(cacheGeocodingService.getCachedGeocodingResult(eq(userId), any(Point.class))).thenReturn(Optional.empty());
+        when(cacheGeocodingService.getCachedGeocodingResultId(eq(userId), any(Point.class))).thenReturn(Optional.empty());
+        when(configurationService.getPrimaryProviderDelayMs()).thenReturn(300);
+        List<Long> requestTimes = new java.util.ArrayList<>();
+        when(geocodingService.getLocationName(any(Point.class))).thenAnswer(invocation -> {
+            requestTimes.add(System.nanoTime());
+            Point point = invocation.getArgument(0);
+            return SimpleFormattableResult.builder().requestCoordinates(point).resultCoordinates(point)
+                    .formattedDisplayName("Place " + point.getY()).providerName("test").build();
+        });
+
+        LocationPointResolver resolver = new LocationPointResolver(geocodingService, favoriteLocationService,
+                cacheGeocodingService, batchService, managementService, configurationService);
+        resolver.jobProgressService = progressService;
+
+        Point first = GeoUtils.createPoint(30.5234, 50.4501);
+        Point second = GeoUtils.createPoint(30.6234, 50.5501);
+        LocationPointResolver.LocationBatch batch = resolver.startBatch(userId, jobId, 2);
+        Map<String, LocationResolutionResult> firstChunk = resolver.resolveChunk(batch, List.of(first));
+        Map<String, LocationResolutionResult> secondChunk = resolver.resolveChunk(batch, List.of(second));
+        resolver.finishBatch(batch);
+
+        assertThat(firstChunk.get(LocationPointResolver.coordinateKey(first)).getLocationName()).isEqualTo("Place 50.4501");
+        assertThat(secondChunk.get(LocationPointResolver.coordinateKey(second)).getLocationName()).isEqualTo("Place 50.5501");
+        // The second chunk's request waits for the provider delay after the first chunk's
+        assertThat(requestTimes).hasSize(2);
+        assertThat((requestTimes.get(1) - requestTimes.get(0)) / 1_000_000).isGreaterThanOrEqualTo(300);
+
+        ArgumentCaptor<Integer> percentages = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<Map<String, Object>> details = ArgumentCaptor.forClass(Map.class);
+        verify(progressService, org.mockito.Mockito.atLeastOnce()).updateProgress(
+                eq(jobId), any(MessageDescriptor.class), eq(4), percentages.capture(), details.capture());
+        assertThat(percentages.getAllValues()).first().isEqualTo(55);
+        assertThat(percentages.getAllValues()).isSorted().last().isEqualTo(70);
+        assertThat(details.getAllValues()).allSatisfy(d -> assertThat(d).containsEntry("totalLocations", 2));
+        assertThat(details.getAllValues().getLast()).containsEntry("externalCompleted", 2).containsEntry("totalResolved", 2);
     }
 }

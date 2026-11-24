@@ -21,7 +21,9 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
     private final EntityManager em;
 
-    private static final int BATCH_SIZE = 10000;
+    private static final int BATCH_SIZE = 50_000;
+    /** Ids per {@code id in ?1} load; padded by Hibernate to at most 16,384 parameters. */
+    private static final int ENTITY_ID_CHUNK = 10_000;
 
     @Inject
     public FavoritesRepository(EntityManager em) {
@@ -147,6 +149,10 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
         Map<String, FavoritesEntity> finalResultMap = new HashMap<>();
         int totalPoints = points.size();
+        // One statement for tens of thousands of points has a planner cost far above jit_above_cost,
+        // and PostgreSQL's JIT compilation took about as long as the lookup itself (1.2 s for 40k
+        // stays). Only for this transaction; outside one, set_config(..., true) has no lasting effect.
+        em.createNativeQuery("SELECT set_config('jit', 'off', true)").getSingleResult();
 
         for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, totalPoints);
@@ -159,13 +165,14 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
     private Map<String, FavoritesEntity> findFavoritesForBatch(UUID userId, List<Point> batchPoints,
                                                                int maxDistanceFromPoint, int maxDistanceFromArea) {
-        // Build VALUES clause for input coordinates
-        StringBuilder valuesClause = new StringBuilder();
+        // Input coordinates travel as two float8 arrays instead of a VALUES list with two
+        // parameters per point.
+        double[] longitudes = new double[batchPoints.size()];
+        double[] latitudes = new double[batchPoints.size()];
         for (int j = 0; j < batchPoints.size(); j++) {
-            if (j > 0) valuesClause.append(", ");
-            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(j)
-                    .append(", :lat").append(j).append("), 4326), :lon").append(j)
-                    .append(", :lat").append(j).append(")");
+            Point point = batchPoints.get(j);
+            longitudes[j] = point.getX();
+            latitudes[j] = point.getY();
         }
 
         // Step 1: Get matching favorite IDs and their corresponding input coordinates.
@@ -177,9 +184,10 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         // favorite across the antimeridian from a stay is not matched.
         String matchingQuery = """
                 WITH input_coords AS (
-                    SELECT input_point, input_lon, input_lat,
+                    SELECT ST_SetSRID(ST_MakePoint(c.lon, c.lat), 4326) AS input_point,
+                           c.lon AS input_lon, c.lat AS input_lat,
                            GREATEST(CAST(:maxDistanceFromPoint AS float8), CAST(:maxDistanceFromArea AS float8)) * 1.1 AS reach
-                    FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
+                    FROM unnest(CAST(:longitudes AS float8[]), CAST(:latitudes AS float8[])) AS c(lon, lat)
                 )
                 SELECT f.id, ic.input_lon, ic.input_lat
                 FROM input_coords ic
@@ -209,19 +217,14 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                              ST_Distance(f.geometry::geography, ic.input_point::geography)
                     LIMIT 1
                 ) f
-                """.formatted(valuesClause.toString());
+                """;
 
         var matchingQueryExec = em.createNativeQuery(matchingQuery)
                 .setParameter("userId", userId)
                 .setParameter("maxDistanceFromPoint", maxDistanceFromPoint)
-                .setParameter("maxDistanceFromArea", maxDistanceFromArea);
-
-        // Set coordinate parameters
-        for (int j = 0; j < batchPoints.size(); j++) {
-            Point point = batchPoints.get(j);
-            matchingQueryExec.setParameter("lon" + j, point.getX());
-            matchingQueryExec.setParameter("lat" + j, point.getY());
-        }
+                .setParameter("maxDistanceFromArea", maxDistanceFromArea)
+                .setParameter("longitudes", longitudes)
+                .setParameter("latitudes", latitudes);
 
         @SuppressWarnings("unchecked")
         List<Object[]> matchingResults = matchingQueryExec.getResultList();
@@ -231,7 +234,6 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         }
 
         // Step 2: Get all matching entities in a single query and build coordinate mapping
-        List<Long> favoriteIds = new ArrayList<>();
         Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // One favorite can match multiple coordinates
 
         for (Object[] row : matchingResults) {
@@ -240,12 +242,17 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
             Double inputLat = (Double) row[2];
             String coordKey = inputLon + "," + inputLat;
 
-            favoriteIds.add(id);
             idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
         }
 
-        // Get all entities in a single IN query
-        List<FavoritesEntity> entities = find("id in ?1", favoriteIds).list();
+        // Load each matched favorite once, in IN-list chunks (Hibernate pads an IN list to the next
+        // power of two; a PostgreSQL statement takes at most 65,535 parameters).
+        List<Long> uniqueFavoriteIds = new ArrayList<>(idToCoordListMap.keySet());
+        List<FavoritesEntity> entities = new ArrayList<>(uniqueFavoriteIds.size());
+        for (int i = 0; i < uniqueFavoriteIds.size(); i += ENTITY_ID_CHUNK) {
+            entities.addAll(find("id in ?1",
+                    uniqueFavoriteIds.subList(i, Math.min(i + ENTITY_ID_CHUNK, uniqueFavoriteIds.size()))).list());
+        }
 
         // Build result map
         Map<String, FavoritesEntity> resultMap = new HashMap<>();

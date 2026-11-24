@@ -31,6 +31,7 @@ import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationServi
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobDiagnosticsService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineEventExplanationService;
 import org.jboss.resteasy.reactive.RestResponse;
@@ -68,6 +69,7 @@ public class StreamingTimelineResource {
     @Inject CurrentUserService currentUserService;
     @Inject TimelineConfigurationProvider configurationProvider;
     @Inject TimelineJobProgressService jobProgressService;
+    @Inject TimelineJobDiagnosticsService jobDiagnosticsService;
     @Inject AsyncTimelineGenerationService asyncTimelineGenerationService;
     @Inject org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
     @Inject MultiUserTimelineService multiUserTimelineService;
@@ -247,6 +249,24 @@ public class StreamingTimelineResource {
     public TimelineJobProgress getJobProgress(
             @Parameter(description = "Timeline job ID.")
             @PathParam("jobId") String jobId) {
+        return ownJob(jobId);
+    }
+
+    @GET
+    @Path("/jobs/{jobId}/diagnostics")
+    @Operation(summary = "Get timeline job diagnostics",
+            description = "Returns what is needed to understand a slow or failed timeline job: its steps with timings, "
+                    + "counters and memory, the backend's limits and version, the settings that change how much work "
+                    + "a rebuild is, and the database settings. It contains no coordinates, place names, notes or "
+                    + "event times; the rebuilt period is given as dates only.")
+    public Map<String, Object> getJobDiagnostics(
+            @Parameter(description = "Timeline job ID.")
+            @PathParam("jobId") String jobId) {
+        return jobDiagnosticsService.diagnostics(ownJob(jobId));
+    }
+
+    /** The job, when it exists and belongs to the signed-in user. */
+    private TimelineJobProgress ownJob(String jobId) {
         UUID jobUuid;
         try {
             jobUuid = UUID.fromString(jobId);

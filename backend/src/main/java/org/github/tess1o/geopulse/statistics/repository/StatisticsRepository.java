@@ -9,6 +9,12 @@ import java.util.Arrays;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import jakarta.transaction.Transactional;
+import org.hibernate.Session;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.statistics.model.*;
 
@@ -142,7 +148,7 @@ public class StatisticsRepository {
                 SELECT
                     COALESCE(AVG(ST_Y(s.location::geometry)), 0) as latitude,
                     COALESCE(AVG(ST_X(s.location::geometry)), 0) as longitude,
-                    COALESCE(SUM(s.stay_duration), 0)            as total_duration,
+                    COALESCE(SUM(s.stay_duration), 0)::bigint    as total_duration,
                     COUNT(*)                                     as visits,
                     s.location_name
                 FROM timeline_stays s
@@ -155,22 +161,18 @@ public class StatisticsRepository {
                 ORDER BY total_duration DESC
                 """;
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> results = entityManager.createNativeQuery(sql)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .getResultList();
-
-        return results.stream()
-                .map(row -> HeatmapPlace.builder()
-                        .latitude(((Number) row[0]).doubleValue())
-                        .longitude(((Number) row[1]).doubleValue())
-                        .durationSeconds(((Number) row[2]).longValue())
-                        .visits(((Number) row[3]).longValue())
-                        .name((String) row[4])
-                        .build())
-                .toList();
+        Session session = entityManager.unwrap(Session.class);
+        if (session.isJoinedToTransaction()) {
+            session.flush();
+        }
+        return session.doReturningWork(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setObject(1, userId);
+                statement.setObject(2, startTime.atOffset(ZoneOffset.UTC));
+                statement.setObject(3, endTime.atOffset(ZoneOffset.UTC));
+                return readHeatmapPlaces(statement);
+            }
+        });
     }
 
     /**
@@ -186,6 +188,7 @@ public class StatisticsRepository {
      * @param maxGapSeconds Max seconds between points to count toward intensity
      * @return Movement heatmap points (no location names)
      */
+    @Transactional
     public List<HeatmapPlace> getTripHeatmapPlaces(UUID userId,
                                                    Instant startTime,
                                                    Instant endTime,
@@ -226,30 +229,40 @@ public class StatisticsRepository {
                 SELECT
                     ST_Y(center) AS latitude,
                     ST_X(center) AS longitude,
-                    COALESCE(total_duration, 0) AS total_duration,
-                    COALESCE(visits, 0) AS visits
+                    TRUNC(COALESCE(total_duration, 0))::bigint AS total_duration,
+                    COALESCE(visits, 0) AS visits,
+                    NULL::text AS name
                 FROM aggregated
-                ORDER BY total_duration DESC
+                ORDER BY aggregated.total_duration DESC
                 """;
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> results = entityManager.createNativeQuery(sql)
-                .setParameter(1, userId)
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .setParameter(4, gridSizeMeters)
-                .setParameter(5, maxGapSeconds)
-                .getResultList();
+        Session session = entityManager.unwrap(Session.class);
+        session.flush();
+        return session.doReturningWork(connection -> {
+            // JIT compilation dominated this short query. This setting expires with its read transaction.
+            try (var settings = connection.createStatement()) {
+                settings.execute("SET LOCAL jit = off");
+            }
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setObject(1, userId);
+                statement.setObject(2, startTime.atOffset(ZoneOffset.UTC));
+                statement.setObject(3, endTime.atOffset(ZoneOffset.UTC));
+                statement.setInt(4, gridSizeMeters);
+                statement.setInt(5, maxGapSeconds);
+                return readHeatmapPlaces(statement);
+            }
+        });
+    }
 
-        return results.stream()
-                .map(row -> HeatmapPlace.builder()
-                        .latitude(((Number) row[0]).doubleValue())
-                        .longitude(((Number) row[1]).doubleValue())
-                        .durationSeconds(((Number) row[2]).longValue())
-                        .visits(((Number) row[3]).longValue())
-                        .name(null)
-                        .build())
-                .toList();
+    private static List<HeatmapPlace> readHeatmapPlaces(PreparedStatement statement) throws SQLException {
+        try (ResultSet rows = statement.executeQuery()) {
+            List<HeatmapPlace> places = new ArrayList<>();
+            while (rows.next()) {
+                places.add(new HeatmapPlace(rows.getDouble(1), rows.getDouble(2), rows.getLong(3),
+                        rows.getLong(4), rows.getString(5)));
+            }
+            return places;
+        }
     }
 
     /**

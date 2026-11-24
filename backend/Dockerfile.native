@@ -70,14 +70,19 @@ COPY --chmod=755 backend/src/main/docker/geopulse /usr/local/bin/geopulse
 EXPOSE 8080
 USER 1001
 
-# These can be overridden via NATIVE_IMAGE_OPTS environment variable
-ENV GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT="-XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15"
+# These can be overridden via NATIVE_IMAGE_OPTS environment variable.
+# - MaxNewSize (32 MiB) bounds the young generation, where request garbage lives: idle memory after
+#   browsing drops from ~71 to ~50 MiB, for ~6% more time on a 2M-point full rebuild.
+# - MaxHeapFree (8 MiB) returns free heap to the OS after a collection instead of keeping it.
+# - ExitOnOutOfMemoryError: a job that runs out of heap restarts the process instead of hanging
+#   with its transaction open.
+ENV GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT="-XX:MaximumHeapSizePercent=70 -XX:MaxNewSize=33554432 -XX:MaxHeapFree=8388608 -XX:+ExitOnOutOfMemoryError"
 
 # Start native binary with optimized GC settings
 # JFR support is included at build time, but recording remains disabled unless
 # started with NATIVE_IMAGE_OPTS.
 # NATIVE_IMAGE_OPTS replaces the defaults below, so include them when profiling.
 # Example:
-# NATIVE_IMAGE_OPTS='-XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15 -XX:StartFlightRecording=name=geopulse,duration=300s,filename=/work/geopulse.jfr,dumponexit=true,maxsize=250M'
+# NATIVE_IMAGE_OPTS='-XX:MaximumHeapSizePercent=70 -XX:MaxNewSize=33554432 -XX:MaxHeapFree=8388608 -XX:+ExitOnOutOfMemoryError -XX:StartFlightRecording=name=geopulse,duration=300s,filename=/work/geopulse.jfr,dumponexit=true,maxsize=250M'
 # Use NATIVE_IMAGE_OPTS if provided, otherwise use defaults.
 ENTRYPOINT ["geopulse"]

@@ -39,8 +39,8 @@ public class StreamingTimelineProcessor {
      * Distance epsilon tolerance in meters for cross-platform reproducibility.
      * A 50cm tolerance ensures that small floating-point variations in Haversine
      * calculations don't cause different stay/trip boundary decisions across JVM versions.
+     * Tolerance allowed over the stay radius.
      */
-    /** Tolerance allowed over the stay radius. */
     static final double DISTANCE_EPSILON_METERS = 0.5;
     private static final double DEFAULT_WATER_TRANSITION_SPLIT_DISTANCE_METERS = 300.0;
     private static final double MIN_WATER_TRANSITION_SPLIT_DURATION_SECONDS = 120.0;
@@ -213,11 +213,11 @@ public class StreamingTimelineProcessor {
         }
 
         jobProgressService.updateProgress(
-            jobId,
-            TimelineJobProgressService.step("processingStateMachine", "Processing GPS points through state machine", details),
-            4,
-            percentage,
-            details
+                jobId,
+                TimelineJobProgressService.step("processingStateMachine", "Processing GPS points through state machine", details),
+                4,
+                percentage,
+                details
         );
     }
 
@@ -314,10 +314,7 @@ public class StreamingTimelineProcessor {
                 userState.addActivePoint(point);
 
                 // Check duration for confirmation as normal
-                Duration stayDuration = calculateCurrentStayDuration(userState);
-                Duration minStayDuration = getMinStayDuration(config);
-
-                if (stayDuration.compareTo(minStayDuration) >= 0) {
+                if (stayLastsMinimum(userState, config)) {
                     confirmStay(userState, config);
                 }
 
@@ -331,10 +328,7 @@ public class StreamingTimelineProcessor {
             userState.addActivePoint(point);
 
             // Check if we've been here long enough to confirm the stay
-            Duration stayDuration = calculateCurrentStayDuration(userState);
-            Duration minStayDuration = getMinStayDuration(config);
-
-            if (stayDuration.compareTo(minStayDuration) >= 0) {
+            if (stayLastsMinimum(userState, config)) {
                 confirmStay(userState, config);
             }
 
@@ -361,9 +355,9 @@ public class StreamingTimelineProcessor {
             } else {
                 // Points not in same favorite area - finalize stay and start trip as before
                 Stay finalizedStay = finalizationService.finalizeStayWithoutLocation(userState, config);
-                long distanceMeters = Math.round(distance);
-                TimelineExplanation stayExplanation = userState.finishExplanation(TimelineReason.of(
-                        TimelineReasons.MOVED_AWAY, "distanceMeters", distanceMeters, "radiusMeters", (int) stayRadius));
+                TimelineReason movedAway = TimelineReason.of(TimelineReasons.MOVED_AWAY,
+                        "distanceMeters", Math.round(distance), "radiusMeters", (int) stayRadius);
+                TimelineExplanation stayExplanation = userState.finishExplanation(movedAway);
                 if (finalizedStay != null) {
                     finalizedStay.setExplanation(stayExplanation);
                 }
@@ -372,8 +366,8 @@ public class StreamingTimelineProcessor {
                 userState.setCurrentMode(ProcessorMode.IN_TRIP);
                 userState.clearActivePoints();
                 userState.addActivePoint(point);
-                userState.startExplanation(TimelineReason.of(
-                        TimelineReasons.LEFT_STAY, "distanceMeters", distanceMeters, "radiusMeters", (int) stayRadius));
+                // The same point ends the stay and starts the trip: both reasons share the (immutable) params
+                userState.startExplanation(new TimelineReason(TimelineReasons.LEFT_STAY, movedAway.params()));
 
                 return ProcessingResult.withSingleEvent(userState, finalizedStay);
             }
@@ -481,9 +475,9 @@ public class StreamingTimelineProcessor {
         // Slow points that are far apart in time are an ordinary arrival, only with fewer points than usual
         TimelineReason sparseStop = stop.slow()
                 ? TimelineReason.of(TimelineReasons.ARRIVAL,
-                        "stopSeconds", stop.gap().getSeconds(), "points", 2, "stopSpeedKmh", stop.stopSpeedThresholdKmh())
+                "stopSeconds", stop.gap().getSeconds(), "points", 2, "stopSpeedKmh", stop.stopSpeedThresholdKmh())
                 : TimelineReason.of(TimelineReasons.SPARSE_STOP,
-                        "gapSeconds", stop.gap().getSeconds(), "distanceMeters", Math.round(stop.distanceMeters()));
+                "gapSeconds", stop.gap().getSeconds(), "distanceMeters", Math.round(stop.distanceMeters()));
 
         // The trip ends at the point where it stopped, which also starts the stay. A trip of that one point is dropped.
         Trip finalizedTrip = null;
@@ -598,9 +592,9 @@ public class StreamingTimelineProcessor {
 
     private void confirmStay(UserState userState, TimelineConfig config) {
         userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
-        userState.getActiveExplanation().note(TimelineReason.of(TimelineReasons.CONFIRMED,
+        userState.getActiveExplanation().note(userState.reuse(TimelineReason.of(TimelineReasons.CONFIRMED,
                 "radiusMeters", config.getStaypointRadiusMeters(),
-                "minMinutes", config.getStaypointMinDurationMinutes()));
+                "minMinutes", config.getStaypointMinDurationMinutes())));
     }
 
     /**
@@ -682,10 +676,29 @@ public class StreamingTimelineProcessor {
         return StopDetectionResult.noStop();
     }
 
-
     /**
+     *
      * Calculate current stay duration from active points (extracted for reuse).
+     * {@code calculateCurrentStayDuration(userState).compareTo(getMinStayDuration(config)) >= 0} without
+     * allocating two Durations: it runs for every point of a potential or confirmed stay.
      */
+    private boolean stayLastsMinimum(UserState userState, TimelineConfig config) {
+        long minimumSeconds = 60L * config.getStaypointMinDurationMinutes();
+        GPSPoint firstPoint = userState.getFirstActivePoint();
+        GPSPoint lastPoint = userState.getLastActivePoint();
+        if (firstPoint == null || lastPoint == null) {
+            return minimumSeconds <= 0;
+        }
+        Instant first = firstPoint.getTimestamp();
+        Instant last = lastPoint.getTimestamp();
+        long seconds = last.getEpochSecond() - first.getEpochSecond();
+        if (last.getNano() < first.getNano()) {
+            seconds--; // borrow: the normalized duration is (seconds, nanos >= 0)
+        }
+        // With non-negative nanos, (seconds, nanos) >= (minimumSeconds, 0) exactly when seconds >= minimumSeconds.
+        return seconds >= minimumSeconds;
+    }
+
     private Duration calculateCurrentStayDuration(UserState userState) {
         GPSPoint firstPoint = userState.getFirstActivePoint();
         GPSPoint lastPoint = userState.getLastActivePoint();
@@ -702,7 +715,7 @@ public class StreamingTimelineProcessor {
      * Points with accuracy exceeding the threshold are filtered out to prevent
      * unreliable GPS data from affecting timeline processing.
      *
-     * @param point the GPS point to check
+     * @param point  the GPS point to check
      * @param config timeline configuration containing accuracy threshold
      * @return true if point should be included, false if it should be filtered out
      */

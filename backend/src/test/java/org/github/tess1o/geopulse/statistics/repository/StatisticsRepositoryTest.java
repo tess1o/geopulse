@@ -322,6 +322,41 @@ class StatisticsRepositoryTest {
                 .isEqualTo(statisticsRepository.getChartDataByWeeks(testUserId, start, end, "WALK", KOLKATA));
     }
 
+    @Test
+    void stayHeatmapPreservesCoordinatesNamesAndIntegerTotals() {
+        var places = statisticsRepository.getHeatmapPlaces(testUserId, testStart, testEnd);
+        assertEquals(3, places.size());
+        assertEquals("Home", places.getFirst().getName());
+        assertEquals(10800L, places.getFirst().getDurationSeconds());
+        assertEquals(3L, places.getFirst().getVisits());
+        assertEquals(40.7128, places.getFirst().getLatitude(), 0.000001);
+        assertEquals(-74.0060, places.getFirst().getLongitude(), 0.000001);
+    }
+
+    @Test
+    @Transactional
+    void tripHeatmapKeepsCrossMidnightTripsAndTruncatesFractionalTotals() {
+        createTrip(testUser, "2024-01-04T23:59:58Z", 100, 10, "WALK");
+        entityManager.createNativeQuery("""
+                INSERT INTO gps_points (user_id, coordinates, timestamp, source_type, created_at)
+                SELECT :user, ST_SetSRID(ST_MakePoint(-74,40),4326), ts::timestamptz, 'OWNTRACKS', now()
+                FROM (VALUES ('2024-01-04T23:59:59.100Z'), ('2024-01-05T00:00:00.100Z'),
+                             ('2024-01-05T00:00:01.900Z'), ('2024-01-05T00:00:03.900Z'),
+                             ('2024-01-05T00:00:04.000Z')) points(ts)
+                """).setParameter("user", testUserId).executeUpdate();
+        Instant from = Instant.parse("2024-01-05T00:00:00Z");
+        Instant to = Instant.parse("2024-01-05T00:00:03.900Z");
+
+        var places = statisticsRepository.getTripHeatmapPlaces(testUserId, from, to, 75, 300);
+        assertEquals(1, places.size());
+        assertEquals(3L, places.getFirst().getDurationSeconds()); // 1.8 + 2.0, truncated once after SUM
+        assertEquals(2L, places.getFirst().getVisits());
+        assertNull(places.getFirst().getName());
+        assertTrue(Double.isFinite(places.getFirst().getLatitude()));
+        assertTrue(Double.isFinite(places.getFirst().getLongitude()));
+        assertTrue(statisticsRepository.getTripHeatmapPlaces(UUID.randomUUID(), from, to, 75, 300).isEmpty());
+    }
+
     // Helper methods to create test data
     private void createStay(UserEntity user, String timestamp, String locationName, double lat, double lon, long durationSeconds) {
         TimelineStayEntity stay = new TimelineStayEntity();

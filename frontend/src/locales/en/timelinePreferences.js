@@ -4,6 +4,8 @@ export default {
         description: 'Fine-tune how your location timeline is generated from GPS data',
         searchPlaceholder: 'Search timeline settings...',
         regenerateButton: 'Regenerate Timeline',
+        regeneratingButton: 'Regenerating…',
+        regeneratingButtonProgress: 'Regenerating… {progress}%',
         saveButton: 'Save Changes',
         moreButton: 'More',
         mobileSectionLabel: 'Settings section',
@@ -33,7 +35,8 @@ export default {
             exportConfig: 'Export Config',
             importConfig: 'Import Config',
             resetToDefaults: 'Reset to Defaults',
-            viewActiveJob: 'View Active Job'
+            viewActiveJob: 'View Active Job',
+            timelineJobs: 'Timeline jobs'
         },
         importDialog: {
             header: 'Import Timeline Configuration',

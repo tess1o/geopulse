@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.model.TimelineJobType;
+
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -184,7 +186,7 @@ public class TimelineRegenerationCampaignService {
                 return true;
             }
 
-            jobId = jobProgressService.createJob(work.userId());
+            jobId = jobProgressService.createJob(work.userId(), TimelineJobType.CAMPAIGN);
             campaignUserRepository.assignJobId(work.campaignUserId(), jobId);
             jobProgressService.updateProgress(jobId,
                     TimelineJobProgressService.step("regenerationQueued", "Forced timeline regeneration queued", null), 1, 1,

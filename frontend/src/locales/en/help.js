@@ -2,6 +2,22 @@ export default {
     page: {
         title: 'Help & Support',
         description: 'Get help, access documentation, and report issues',
+        faq: {
+            title: 'Common Questions',
+            description: 'Quick answers to the questions people ask most. Each opens the answer in the documentation.',
+            browseAll: 'Browse all FAQ',
+            adminTitle: 'For administrators',
+            questions: {
+                timelineNotGenerating: 'Why isn\'t my timeline generating?',
+                timelineGaps: 'Why are there gaps in my timeline?',
+                tripMisclassified: 'Why is my car trip classified as walking (or vice versa)?',
+                jobsFailing: 'Timeline jobs keep failing. What should I do?',
+                importGoogle: 'Can I import my Google Timeline history?',
+                backup: 'How do I back up my data?',
+                reduceMemory: 'How can I reduce GeoPulse\'s memory usage?',
+                backendRestarts: 'The backend restarts or runs out of memory. What should I do?'
+            }
+        },
         issues: {
             title: 'Having Issues?',
             description: "If you're experiencing problems with timeline generation, trip classification, or other features, you can export anonymized debug data to help us troubleshoot.",

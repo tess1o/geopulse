@@ -6,12 +6,15 @@ import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Represents the progress of a timeline generation job.
- * Stored in-memory with a 1-hour retention period.
+ * Stored in memory (see {@code TimelineJobProgressService} for the retention period); lost when the backend restarts.
  */
 @Data
 @Builder
@@ -77,6 +80,28 @@ public class TimelineJobProgress {
      */
     @Builder.Default
     private Map<String, Object> details = new HashMap<>();
+
+    /** What started the job. */
+    @Builder.Default
+    private TimelineJobType type = TimelineJobType.OTHER;
+
+    /** The steps the job went through so far, in order, with their timings, counters and memory. */
+    @Builder.Default
+    private List<TimelineJobStep> steps = new CopyOnWriteArrayList<>();
+
+    /** The steps a job of this type usually goes through ({@link TimelineJobStep#getPhase()} values), for the page. */
+    @Builder.Default
+    private List<String> plannedSteps = List.of();
+
+    /** Limits and kernel memory peaks around the job. */
+    private TimelineJobResources resources;
+
+    /**
+     * What the job worked on and produced: rebuilt period (dates), GPS points read, stays, trips and gaps written,
+     * corrections applied and not applied.
+     */
+    @Builder.Default
+    private Map<String, Object> summary = new ConcurrentHashMap<>();
 
     /**
      * Job status enumeration

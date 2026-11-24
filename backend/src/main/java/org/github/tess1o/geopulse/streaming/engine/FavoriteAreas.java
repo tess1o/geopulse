@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
 import java.util.List;
@@ -41,8 +42,18 @@ final class FavoriteAreas {
             return null;
         }
 
-        var location = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(point.getLongitude(), point.getLatitude());
+        // Bounding boxes first, on the rounded coordinates createPoint would use: most areas are
+        // ruled out without building a JTS point (whose envelope checks allocate on every call).
+        double lon = GeoUtils.roundCoordinate(point.getLongitude());
+        double lat = GeoUtils.roundCoordinate(point.getLatitude());
+        org.locationtech.jts.geom.Point location = null;
         for (FavoriteAreaDto area : favoriteAreas) {
+            if (!area.boundsCover(lon, lat)) {
+                continue;
+            }
+            if (location == null) {
+                location = GeoUtils.createPoint(point.getLongitude(), point.getLatitude());
+            }
             if (area.preparedGeometry().covers(location)) return area;
         }
 

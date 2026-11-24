@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.locationtech.jts.geom.Point;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,9 +26,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 /**
  * Unit tests for TimelineEventFinalizationService.
@@ -95,8 +98,7 @@ class TimelineEventFinalizationServiceTest {
                 LocationResolutionResult.fromFavorite("Home", 123L, 40.7580, -73.9855)
         );
 
-        when(locationPointResolver.resolveLocationsWithReferencesBatch(eq(userId), anyList(), isNull()))
-                .thenReturn(results);
+        when(locationPointResolver.resolveChunk(any(), anyList())).thenReturn(results);
 
         service.populateStayLocations(events, userId);
 
@@ -104,6 +106,41 @@ class TimelineEventFinalizationServiceTest {
         assertEquals(123L, stay.getFavoriteId());
         assertEquals(40.7580, stay.getLatitude(), 0.000001);
         assertEquals(-73.9855, stay.getLongitude(), 0.000001);
+    }
+
+    @Test
+    void shouldResolveStaysChunkByChunkInOneBatch() {
+        service.locationChunkSize = 2;
+        List<Stay> stays = java.util.stream.IntStream.range(0, 5)
+                .mapToObj(i -> Stay.builder()
+                        .startTime(Instant.parse("2024-08-15T08:00:00Z").plusSeconds(3600L * i))
+                        .duration(java.time.Duration.ofMinutes(30))
+                        .latitude(50.0 + i)
+                        .longitude(30.0 + i)
+                        .build())
+                .toList();
+        UUID userId = UUID.randomUUID();
+        when(locationPointResolver.resolveChunk(any(), anyList())).thenAnswer(invocation -> {
+            List<Point> points = invocation.getArgument(1);
+            Map<String, LocationResolutionResult> results = new java.util.HashMap<>();
+            for (Point point : points) {
+                results.put(LocationPointResolver.coordinateKey(point),
+                        LocationResolutionResult.fromGeocoding("Place " + point.getY(), (long) point.getY()));
+            }
+            return results;
+        });
+
+        service.populateStayLocations(new java.util.ArrayList<>(stays), userId, null);
+
+        ArgumentCaptor<List<Point>> chunks = ArgumentCaptor.forClass(List.class);
+        verify(locationPointResolver).startBatch(userId, null, 5);
+        verify(locationPointResolver, times(3)).resolveChunk(any(), chunks.capture());
+        verify(locationPointResolver).finishBatch(any());
+        assertEquals(List.of(2, 2, 1), chunks.getAllValues().stream().map(List::size).toList());
+        for (int i = 0; i < stays.size(); i++) {
+            assertEquals("Place " + (50.0 + i), stays.get(i).getLocationName());
+            assertEquals(50L + i, stays.get(i).getGeocodingId());
+        }
     }
 
     @Test

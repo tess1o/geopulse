@@ -148,16 +148,35 @@ public final class GeoUtils {
         
         validateCoordinates(lat, lon, "point");
         
-        double lonRoundedValue = BigDecimal.valueOf(lon)
-                .setScale(POINT_SCALE, RoundingMode.HALF_UP)
-                .doubleValue();
-        double latRoundedValue = BigDecimal.valueOf(lat)
-                .setScale(POINT_SCALE, RoundingMode.HALF_UP)
-                .doubleValue();
-
         return GEOMETRY_FACTORY.createPoint(
-                new Coordinate(lonRoundedValue, latRoundedValue)
+                new Coordinate(roundCoordinate(lon), roundCoordinate(lat))
         );
+    }
+
+    /**
+     * {@code BigDecimal.valueOf(value).setScale(8, RoundingMode.HALF_UP).doubleValue()}, without
+     * allocating in the common case. Timeline generation rounds every centroid and every point it
+     * tests against a favorite area, millions of times per rebuild.
+     * <p>
+     * For |value| &lt; 1000, {@code |value| * 1e8} is an integer plus a fraction known to within about
+     * 1.3e-5 (half an ulp between the double and its shortest decimal, which {@code BigDecimal.valueOf}
+     * starts from, plus the multiplication's rounding). Unless the fraction is within 1e-4 of one
+     * half, that decides the HALF_UP direction, and {@code n / 1e8} (two exact doubles) is correctly
+     * rounded, as is {@code BigDecimal.doubleValue()} of the same decimal. Near-ties, zero, NaN and
+     * large magnitudes take the exact BigDecimal path.
+     */
+    public static double roundCoordinate(double value) {
+        double magnitude = Math.abs(value);
+        if (magnitude > 0 && magnitude < 1000) {
+            double scaled = magnitude * 1e8;
+            double floor = Math.floor(scaled);
+            double fraction = scaled - floor;
+            if (Math.abs(fraction - 0.5) > 1e-4) {
+                double rounded = (fraction > 0.5 ? floor + 1 : floor) / 1e8;
+                return value < 0 ? -rounded : rounded;
+            }
+        }
+        return BigDecimal.valueOf(value).setScale(POINT_SCALE, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**

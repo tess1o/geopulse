@@ -188,6 +188,32 @@ class ReverseGeocodingLocationRepositoryTest {
 
     @Test
     @Transactional
+    @DisplayName("Test 5b: Place batch query returns the same id and name as the entity batch query")
+    void testPlaceBatchMatchesEntityBatch() {
+        Point starbucks = coord(STARBUCKS_LON, STARBUCKS_LAT);
+        Point centralPark = coord(CENTRAL_PARK_LON, CENTRAL_PARK_LAT);
+        repository.persist(createOriginal(starbucks, "Starbucks"));
+        repository.persist(createUserCopy(USER_A_ID, starbucks, "My Coffee Shop"));
+        repository.persist(createOriginal(centralPark, "Central Park"));
+        entityManager.flush();
+        // Duplicate input coordinates resolve once per key, like the entity query's DISTINCT ON.
+        List<Point> input = List.of(starbucks, centralPark, starbucks);
+
+        Map<String, ReverseGeocodingLocationEntity> entities =
+                repository.findByCoordinatesBatchReal(USER_A_ID, input, 25.0, Double.MAX_VALUE);
+        Map<String, ReverseGeocodingLocationRepository.CachedPlace> places =
+                repository.findPlacesByCoordinatesBatch(USER_A_ID, input, 25.0, Double.MAX_VALUE);
+
+        assertEquals(entities.keySet(), places.keySet());
+        entities.forEach((key, entity) -> {
+            assertEquals(entity.getId(), places.get(key).id(), key);
+            assertEquals(entity.getDisplayName(), places.get(key).displayName(), key);
+        });
+        assertEquals("My Coffee Shop", places.get(starbucks.getX() + "," + starbucks.getY()).displayName());
+    }
+
+    @Test
+    @Transactional
     @DisplayName("Test 6: Batch query filters out other users' copies")
     void testBatchQueryFiltersOtherUsersCopies() {
         // Given: User A has custom copy, User B searches

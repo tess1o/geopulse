@@ -73,6 +73,19 @@ class UserStateTest {
         assertThat(state.calculateCentroid().getLongitude()).isEqualTo(round(-10.123456785));
     }
 
+    @Test
+    void reuseKeepsOneInstanceOfAnEqualReason() {
+        UserState state = new UserState();
+        TimelineReason first = state.reuse(TimelineReason.of(TimelineReasons.CONFIRMED, "radiusMeters", 50, "minMinutes", 7));
+
+        assertThat(state.reuse(TimelineReason.of(TimelineReasons.CONFIRMED, "radiusMeters", 50, "minMinutes", 7)))
+                .isSameAs(first);
+        TimelineReason changed = TimelineReason.of(TimelineReasons.CONFIRMED, "radiusMeters", 80, "minMinutes", 7);
+        assertThat(state.reuse(changed)).isSameAs(changed);
+        assertThat(state.reuse(TimelineReason.of(TimelineReasons.CONFIRMED, "radiusMeters", 80, "minMinutes", 7)))
+                .isSameAs(changed);
+    }
+
     private double round(double value) {
         return BigDecimal.valueOf(value).setScale(8, RoundingMode.HALF_UP).doubleValue();
     }

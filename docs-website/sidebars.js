@@ -289,6 +289,7 @@ const sidebars = {
                         'system-administration/configuration/location-sharing',
                         'system-administration/configuration/apprise-notifications',
                         'system-administration/configuration/frontend',
+                        'system-administration/configuration/memory-and-performance',
                         {
                             type: 'doc',
                             id: 'system-administration/configuration/ai-assistant',

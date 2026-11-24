@@ -192,6 +192,16 @@ If timeline jobs consistently fail:
 
 Common causes include database connectivity issues, corrupted GPS data, or configuration errors.
 
+### The backend restarts or runs out of memory – what should I do?
+
+A full timeline rebuild or a large import needs more memory than day-to-day use. If the backend
+restarts during one, or its container is killed with exit code 137, give it more memory or adjust
+its heap settings. Errors such as "Acquisition timeout" or "too many clients" point at the database
+connection pool instead.
+
+[Memory and Performance Tuning](/docs/system-administration/configuration/memory-and-performance#troubleshooting)
+explains each symptom and what to change.
+
 
 ---
 
@@ -349,6 +359,16 @@ Yes! Use the **Data Export & Import** page to export your GPS data in various fo
 - **Disk**: 50+ GB SSD
 
 See the [Deployment Guide](/docs/getting-started/deployment/docker-compose) for detailed requirements.
+
+### How can I reduce GeoPulse's memory usage?
+
+Most memory while GeoPulse is idle goes to open database connections: each one keeps about 50 MiB
+inside PostgreSQL until it closes. The defaults close idle connections after a minute and keep the
+backend's heap small between requests. You can adjust both with environment variables, for example a
+smaller connection pool on a Raspberry Pi or a larger memory limit for big imports.
+
+See [Memory and Performance Tuning](/docs/system-administration/configuration/memory-and-performance)
+for recommended setups and every setting.
 
 ### How do I configure authentication?
 

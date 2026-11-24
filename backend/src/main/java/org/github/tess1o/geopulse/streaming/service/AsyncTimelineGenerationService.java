@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import org.github.tess1o.geopulse.streaming.model.TimelineJobType;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.common.annotation.Identifier;
 import io.quarkus.scheduler.Scheduled;
@@ -99,7 +101,7 @@ public class AsyncTimelineGenerationService {
      * @throws IllegalStateException if a job is already running for this user
      */
     public UUID regenerateTimelineAsync(UUID userId) {
-        return createAndRunAsyncJob(userId, jobId -> {
+        return createAndRunAsyncJob(userId, TimelineJobType.FULL_REBUILD, jobId -> {
             log.info("Starting async full timeline regeneration for job {}", jobId);
             executeRegenerationWithTransaction(userId, jobId);
             finalizeJobAfterTimelineGeneration(jobId);
@@ -116,7 +118,7 @@ public class AsyncTimelineGenerationService {
      * @throws IllegalStateException if a job is already running for this user
      */
     public UUID regenerateTimelineFromTimestampAsync(UUID userId, Instant earliestAffectedTimestamp) {
-        return createAndRunAsyncJob(userId, jobId -> {
+        return createAndRunAsyncJob(userId, TimelineJobType.PARTIAL_REBUILD, jobId -> {
             log.info("Starting async partial timeline regeneration for job {} from {}", jobId, earliestAffectedTimestamp);
             executeRegenerationFromTimestampWithTransaction(userId, earliestAffectedTimestamp, jobId);
             finalizeJobAfterTimelineGeneration(jobId);
@@ -134,7 +136,7 @@ public class AsyncTimelineGenerationService {
             return new TimelineSchedulingResult(null, true, true);
         }
         try {
-            UUID jobId = createAndRunAsyncJob(userId, id -> {
+            UUID jobId = createAndRunAsyncJob(userId, TimelineJobType.CORRECTION, id -> {
                 executeCorrectionRebuildWithTransaction(userId, id);
                 finalizeJobAfterTimelineGeneration(id);
             });
@@ -175,7 +177,7 @@ public class AsyncTimelineGenerationService {
                 .orElse(false));
     }
 
-    private UUID createAndRunAsyncJob(UUID userId, TimelineJobRunner runner) {
+    private UUID createAndRunAsyncJob(UUID userId, TimelineJobType type, TimelineJobRunner runner) {
         var existingJob = jobProgressService.getUserActiveJob(userId);
         if (existingJob.isPresent()) {
             UUID existingJobId = existingJob.get().getJobId();
@@ -183,7 +185,7 @@ public class AsyncTimelineGenerationService {
             throw new IllegalStateException("A timeline generation job is already running. Job ID: " + existingJobId);
         }
 
-        UUID jobId = jobProgressService.createJob(userId);
+        UUID jobId = jobProgressService.createJob(userId, type);
         log.info("Created async timeline generation job {} for user {}", jobId, userId);
 
         CompletableFuture.runAsync(() -> {

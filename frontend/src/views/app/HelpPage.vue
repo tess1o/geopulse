@@ -14,7 +14,64 @@
           </div>
         </div>
 
-        <!-- Section 1: Having Issues? -->
+        <!-- Common questions: direct links to the most asked FAQ answers -->
+        <Card class="help-section">
+          <template #content>
+            <div class="section-content">
+              <div class="section-header">
+                <div class="section-icon faq-icon">
+                  <i class="pi pi-question-circle"></i>
+                </div>
+                <div class="section-text">
+                  <h2 class="section-title">{{ t('help.page.faq.title') }}</h2>
+                  <p class="section-description">
+                    {{ t('help.page.faq.description') }}
+                  </p>
+                </div>
+                <a
+                  :href="FAQ_URL"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="faq-browse-link"
+                  data-testid="help-faq-browse"
+                >
+                  {{ t('help.page.faq.browseAll') }} <i class="pi pi-external-link"></i>
+                </a>
+              </div>
+              <div class="faq-list">
+                <a
+                  v-for="question in faqQuestions"
+                  :key="question.key"
+                  :href="question.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="faq-link"
+                >
+                  <i class="pi pi-angle-right faq-link-icon"></i>
+                  <span class="faq-link-text">{{ question.text }}</span>
+                </a>
+              </div>
+              <template v-if="isAdmin">
+                <h3 class="faq-group-title">{{ t('help.page.faq.adminTitle') }}</h3>
+                <div class="faq-list">
+                  <a
+                    v-for="question in adminFaqQuestions"
+                    :key="question.key"
+                    :href="question.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="faq-link"
+                  >
+                    <i class="pi pi-angle-right faq-link-icon"></i>
+                    <span class="faq-link-text">{{ question.text }}</span>
+                  </a>
+                </div>
+              </template>
+            </div>
+          </template>
+        </Card>
+
+        <!-- Having Issues? -->
         <Card class="help-section">
           <template #content>
             <div class="section-content">
@@ -230,7 +287,27 @@ const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
 const versionStore = useVersionStore()
-const { demoModeEnabled } = storeToRefs(authStore)
+const { demoModeEnabled, isAdmin } = storeToRefs(authStore)
+
+// The FAQ lives in the (English) documentation; anchors are the Docusaurus heading ids.
+const FAQ_URL = 'https://geopulse.cc/docs/faq'
+const faqLinks = (entries) => entries.map(({ key, anchor }) => ({
+  key,
+  url: `${FAQ_URL}#${anchor}`,
+  text: t(`help.page.faq.questions.${key}`)
+}))
+const faqQuestions = computed(() => faqLinks([
+  { key: 'timelineNotGenerating', anchor: 'why-isnt-my-timeline-generating' },
+  { key: 'timelineGaps', anchor: 'why-are-there-gaps-in-my-timeline' },
+  { key: 'tripMisclassified', anchor: 'why-is-my-car-trip-classified-as-walking-or-vice-versa' },
+  { key: 'jobsFailing', anchor: 'timeline-jobs-keep-failing--what-should-i-do' },
+  { key: 'importGoogle', anchor: 'can-i-import-my-google-timeline-history' },
+  { key: 'backup', anchor: 'how-do-i-backup-my-data' }
+]))
+const adminFaqQuestions = computed(() => faqLinks([
+  { key: 'reduceMemory', anchor: 'how-can-i-reduce-geopulses-memory-usage' },
+  { key: 'backendRestarts', anchor: 'the-backend-restarts-or-runs-out-of-memory--what-should-i-do' }
+]))
 const appVersion = ref(null)
 
 const docLinkMeta = [
@@ -328,6 +405,79 @@ onMounted(() => {
 
 .about-icon {
   background: #10b981;
+}
+
+.faq-icon {
+  background: #8b5cf6;
+}
+
+/* Common questions */
+.faq-browse-link {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--gp-primary);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-primary);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.faq-browse-link:hover {
+  background: var(--gp-primary);
+  color: white;
+}
+
+.faq-browse-link i {
+  font-size: 0.8rem;
+}
+
+.faq-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.faq-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: var(--gp-surface-ground);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-text-primary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.faq-link:hover {
+  border-color: var(--gp-primary);
+  color: var(--gp-primary);
+}
+
+.faq-link-icon {
+  color: var(--gp-primary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.faq-link-text {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.faq-group-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gp-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 1.5rem 0 0.75rem 0;
 }
 
 .section-text {
@@ -618,6 +768,14 @@ onMounted(() => {
 
   .docs-grid {
     grid-template-columns: 1fr;
+  }
+
+  .faq-list {
+    grid-template-columns: 1fr;
+  }
+
+  .faq-browse-link {
+    align-self: center;
   }
 
   .about-grid {

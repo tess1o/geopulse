@@ -27,7 +27,32 @@ export default {
         resolvedFromFavorites: 'Resolved {favoritesResolved} locations from favorites',
         resolvedFromCache: 'Resolved {cachedResolved} from cache ({batchResolved} from batch, {individualResolved} from individual lookup)',
         geocodingLocationProgress: 'Geocoding location {current}/{total}',
-        geocodingComplete: 'Geocoding complete: {favoritesResolved} favorites, {cachedResolved} cached, {externalCompleted} external API calls'
+        geocodingComplete: 'Geocoding complete: {favoritesResolved} favorites, {cachedResolved} cached, {externalCompleted} external API calls',
+        applyingCorrections: 'Applying corrections'
+    },
+    // The steps a job reports (TimelineJobProgressService groups its progress messages into these); a step the
+    // catalog does not know falls back to the backend's English title
+    steps: {
+        queued: 'Waiting to start',
+        preparing: 'Preparing',
+        processingPoints: 'Processing GPS points',
+        correctionWindow: 'Rebuilding the corrected period',
+        geocoding: 'Naming stays',
+        postProcessingTrips: 'Post-processing trips',
+        merging: 'Merging stays',
+        corrections: 'Applying corrections',
+        persisting: 'Saving the timeline',
+        finalizing: 'Finalizing',
+        badges: 'Recalculating badges'
+    },
+    // What started a job (TimelineJobType)
+    types: {
+        FULL_REBUILD: 'Full regeneration',
+        PARTIAL_REBUILD: 'Partial regeneration',
+        CORRECTION: 'Correction',
+        IMPORT: 'Import',
+        CAMPAIGN: 'Regeneration campaign',
+        OTHER: 'Timeline job'
     },
     listPage: {
         title: 'Timeline Generation Jobs',
@@ -75,48 +100,32 @@ export default {
             started: 'Started:',
             completed: 'Completed:',
             duration: 'Duration:',
-            currentStep: 'Current Step:',
-            stepOf: '{current} of {total}'
+            type: 'Type:',
+            gpsPoints: 'GPS points:',
+            produced: 'Produced:',
+            producedValue: '{stays} stays, {trips} trips, {gaps} data gaps',
+            corrections: 'Corrections:',
+            correctionsValue: '{applied} applied, {notApplied} not applied',
+            memoryLimit: 'Memory limit:',
+            noMemoryLimit: 'None (heap up to {heap})',
+            cpus: 'CPUs:'
         },
         stepsTitle: 'Processing Steps',
-        steps: {
-            acquiringLock: {
-                title: 'Acquiring Lock',
-                description: 'Ensuring exclusive access to timeline data'
-            },
-            cleaningUp: {
-                title: 'Cleaning Up',
-                description: 'Removing old timeline events'
-            },
-            preparingGpsProcessing: {
-                title: 'Preparing GPS Processing',
-                description: 'Counting GPS points and preparing streaming iterator'
-            },
-            processingGeocoding: {
-                title: 'Processing & Geocoding',
-                description: 'Streaming and processing GPS points through state machine, then resolving location names'
-            },
-            postProcessingTrips: {
-                title: 'Post-Processing Trips',
-                description: 'Validating and refining trip detection'
-            },
-            mergingSimplifying: {
-                title: 'Merging & Simplifying',
-                description: 'Applying timeline optimizations'
-            },
-            persistingTimeline: {
-                title: 'Persisting Timeline',
-                description: 'Saving timeline events to database'
-            },
-            dataGapDetection: {
-                title: 'Data Gap Detection',
-                description: 'Identifying gaps in GPS coverage'
-            },
-            finalizing: {
-                title: 'Finalizing',
-                description: 'Calculating milestones and completing generation'
-            }
+        stepBadges: {
+            slowest: 'Slowest',
+            memoryPeak: 'Memory peak',
+            failed: 'Failed here',
+            pending: 'Pending'
         },
+        stepMemory: {
+            label: 'Highest memory:',
+            heap: 'heap {value}',
+            process: 'process {value}',
+            container: 'container {value}'
+        },
+        stepShare: '{percent}% of the job',
+        stepShareTiny: '<1% of the job',
+        durationUnderSeconds: '<{seconds}s',
         detail: {
             gpsPoints: 'GPS Points: {loaded} / {total}',
             processingHeader: 'Processing GPS Points: {processed} / {total}',
@@ -126,6 +135,15 @@ export default {
             cachedInDatabase: 'Cached in Database: {count}',
             externalApiCalls: 'External API Calls: {count}',
             pending: 'Pending: {count}'
+        },
+        diagnostics: {
+            button: 'Copy diagnostics',
+            title: 'Job diagnostics',
+            description: 'Steps, timings, memory, version and settings of this job, for a support request or an issue. It contains no coordinates, place names, notes or event times.',
+            copy: 'Copy',
+            copied: 'Diagnostics copied to the clipboard',
+            copyFailed: 'Could not copy. Select the text and copy it instead.',
+            loadFailed: 'Could not load the diagnostics'
         },
         completion: {
             title: 'Timeline Generation Complete!',

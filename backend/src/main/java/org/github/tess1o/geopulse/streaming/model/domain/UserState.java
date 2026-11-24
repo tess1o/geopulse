@@ -4,9 +4,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.AccessLevel;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +35,23 @@ public class UserState {
 
     /** The user's favorite areas: stay detection keeps points in the same area as the stay together. */
     private List<FavoriteAreaDto> favoriteAreas = List.of();
+
+    /** The last reason passed to {@link #reuse}. */
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private TimelineReason reusableReason;
+
+    /**
+     * The given reason, or an equal one returned before: a reason that comes out the same for every event, such as
+     * CONFIRMED with the configured radius, is then kept once for the whole run instead of once per event.
+     */
+    public TimelineReason reuse(TimelineReason reason) {
+        if (reason.equals(reusableReason)) {
+            return reusableReason;
+        }
+        reusableReason = reason;
+        return reason;
+    }
 
     /**
      * Begins explaining a new event.
@@ -96,14 +112,7 @@ public class UserState {
         double avgLat = latitudeSum / activePoints.size();
         double avgLon = longitudeSum / activePoints.size();
 
-        double latRounded = BigDecimal.valueOf(avgLat)
-                .setScale(8, RoundingMode.HALF_UP)
-                .doubleValue();
-        double lonRounded = BigDecimal.valueOf(avgLon)
-                .setScale(8, RoundingMode.HALF_UP)
-                .doubleValue();
-
-        return new GPSPoint(latRounded, lonRounded, 0, 0);
+        return new GPSPoint(GeoUtils.roundCoordinate(avgLat), GeoUtils.roundCoordinate(avgLon), 0, 0);
     }
 
     public List<GPSPoint> copyActivePoints() {
