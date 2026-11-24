@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReverseGeocodingLocationRepository implements PanacheRepository<ReverseGeocodingLocationEntity> {
 
+    /** Ids per {@code id in ?1} load; padded by Hibernate to at most 16,384 parameters. */
+    private static final int ENTITY_ID_CHUNK = 10_000;
+
     /**
      * Find cached location using comprehensive spatial query with user filtering.
      * Prioritizes user-specific copies over originals.
@@ -173,9 +176,9 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             return Map.of();
         }
 
-        // Reduced batch size to prevent transaction timeouts
-        // For large imports (20K+ points), this splits into manageable chunks
-        final int BATCH_SIZE = 1000;
+        // Coordinates are bound as two float8 arrays, so one statement covers a whole rebuild in the
+        // common case (36k stays resolve in about 1.5 s); the cap only bounds a pathological input.
+        final int BATCH_SIZE = 50_000;
         Map<String, ReverseGeocodingLocationEntity> finalResultMap = new HashMap<>();
         int totalPoints = coordinates.size();
 
@@ -210,25 +213,114 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     private Map<String, ReverseGeocodingLocationEntity> findForBatch(
             UUID userId, List<Point> batchPoints, double toleranceMeters, double maxBboxAreaKm2) {
 
-        // Build VALUES clause for input coordinates
-        StringBuilder valuesClause = new StringBuilder();
+        // Input coordinates travel as two float8 arrays: one short statement with five parameters
+        // instead of a VALUES list with two parameters per point (4,000 per 1,000-point batch).
+        double[] longitudes = new double[batchPoints.size()];
+        double[] latitudes = new double[batchPoints.size()];
         for (int i = 0; i < batchPoints.size(); i++) {
-            if (i > 0) valuesClause.append(", ");
-            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(i)
-                    .append(", :lat").append(i).append("), 4326), :lon").append(i)
-                    .append(", :lat").append(i).append(")");
+            Point point = batchPoints.get(i);
+            longitudes[i] = point.getX();
+            latitudes[i] = point.getY();
         }
 
         // Step 1: Get matching geocoding IDs and their corresponding input coordinates.
-        // Split user-specific and original branches so PostgreSQL can use partial indexes
-        // on user_id more effectively than a single OR predicate.
-        String matchingQuery = """
-                WITH input_coords AS (
-                    SELECT input_point, input_lon, input_lat
-                    FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
-                )
+        String matchingQuery = INPUT_COORDS_CTE + """
                 SELECT DISTINCT ON (ic.input_lon, ic.input_lat)
                        r.id, ic.input_lon, ic.input_lat
+                """ + MATCHED_PLACE_FROM + """
+                ORDER BY ic.input_lon, ic.input_lat
+                """;
+
+        var matchingQueryExec = bindMatchParameters(getEntityManager().createNativeQuery(matchingQuery),
+                userId, longitudes, latitudes, toleranceMeters, maxBboxAreaKm2);
+
+        // Set query timeout to 60 seconds (instead of default 7 minute transaction timeout)
+        // This allows faster failure and retry if needed
+        matchingQueryExec.setHint("jakarta.persistence.query.timeout", 60000);
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> matchingResults = matchingQueryExec.getResultList();
+
+        return loadMatchedEntities(matchingResults);
+    }
+
+    /** Id and display name of a cached place: all the timeline's location resolution reads. */
+    public record CachedPlace(long id, String displayName) {
+    }
+
+    /**
+     * The cached place each coordinate resolves to, with the same matching and priority as
+     * {@link #findByCoordinatesBatchReal}, as (id, display name) read in the matching statement
+     * itself. No entities are loaded: a full rebuild resolves tens of thousands of stays, and
+     * materialising each entity (three geometries) dominated its CPU and heap.
+     *
+     * @return map of coordinate key ({@code lon + "," + lat}) to the matched place
+     */
+    public Map<String, CachedPlace> findPlacesByCoordinatesBatch(
+            UUID userId, List<Point> coordinates, double toleranceMeters, double maxBboxAreaKm2) {
+        if (coordinates == null || coordinates.isEmpty()) {
+            return Map.of();
+        }
+        String query = INPUT_COORDS_CTE + """
+                SELECT ic.input_lon, ic.input_lat, g.id, g.display_name
+                """ + MATCHED_PLACE_FROM + """
+                JOIN reverse_geocoding_location g ON g.id = r.id
+                """;
+        Map<String, CachedPlace> places = new HashMap<>(coordinates.size() * 2);
+        // The statement's planner cost is far above jit_above_cost, and PostgreSQL's JIT compilation
+        // took about as long as the lookup itself (1.3 s for 36k stays). Off for this transaction
+        // only; outside one, set_config(..., true) has no lasting effect.
+        getEntityManager().createNativeQuery("SELECT set_config('jit', 'off', true)").getSingleResult();
+        for (int i = 0; i < coordinates.size(); i += PLACE_BATCH_SIZE) {
+            List<Point> batch = coordinates.subList(i, Math.min(i + PLACE_BATCH_SIZE, coordinates.size()));
+            double[] longitudes = new double[batch.size()];
+            double[] latitudes = new double[batch.size()];
+            for (int j = 0; j < batch.size(); j++) {
+                longitudes[j] = batch.get(j).getX();
+                latitudes[j] = batch.get(j).getY();
+            }
+            var exec = bindMatchParameters(getEntityManager().createNativeQuery(query),
+                    userId, longitudes, latitudes, toleranceMeters, maxBboxAreaKm2);
+            exec.setHint("jakarta.persistence.query.timeout", 60000);
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = exec.getResultList();
+            for (Object[] row : rows) {
+                places.put(row[0] + "," + row[1],
+                        new CachedPlace(((Number) row[2]).longValue(), (String) row[3]));
+            }
+        }
+        return places;
+    }
+
+    private static jakarta.persistence.Query bindMatchParameters(jakarta.persistence.Query query, UUID userId,
+            double[] longitudes, double[] latitudes, double toleranceMeters, double maxBboxAreaKm2) {
+        return query
+                .setParameter("userId", userId)
+                .setParameter("tolerance", toleranceMeters)
+                .setParameter("maxBboxAreaKm2", maxBboxAreaKm2)
+                .setParameter("longitudes", longitudes)
+                .setParameter("latitudes", latitudes);
+    }
+
+    /** Coordinates per matching statement; one statement covers a typical full rebuild. */
+    private static final int PLACE_BATCH_SIZE = 50_000;
+
+    /** The input coordinates, bound as two float8 arrays (five parameters whatever the size). */
+    private static final String INPUT_COORDS_CTE = """
+            WITH input_coords AS (
+                SELECT ST_SetSRID(ST_MakePoint(c.lon, c.lat), 4326) AS input_point,
+                       c.lon AS input_lon, c.lat AS input_lat
+                FROM unnest(CAST(:longitudes AS float8[]), CAST(:latitudes AS float8[])) AS c(lon, lat)
+            )
+            """;
+
+    /**
+     * One matched place {@code r.id} per input coordinate: the user's own copies before originals,
+     * point matches before bounding-box matches, then the most recently used. User-specific and
+     * original branches are split so PostgreSQL can use partial indexes on user_id more
+     * effectively than a single OR predicate.
+     */
+    private static final String MATCHED_PLACE_FROM = """
                 FROM input_coords ic
                 CROSS JOIN LATERAL (
                     SELECT candidate.id
@@ -276,28 +368,10 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                     ORDER BY candidate.user_priority, candidate.match_priority, candidate.last_accessed_at DESC
                     LIMIT 1
                 ) r
-                ORDER BY ic.input_lon, ic.input_lat
-                """.formatted(valuesClause.toString());
+                """;
 
-        var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
-                .setParameter("userId", userId)
-                .setParameter("tolerance", toleranceMeters)
-                .setParameter("maxBboxAreaKm2", maxBboxAreaKm2);
-
-        // Set query timeout to 60 seconds (instead of default 7 minute transaction timeout)
-        // This allows faster failure and retry if needed
-        matchingQueryExec.setHint("jakarta.persistence.query.timeout", 60000);
-
-        // Set coordinate parameters
-        for (int i = 0; i < batchPoints.size(); i++) {
-            Point point = batchPoints.get(i);
-            matchingQueryExec.setParameter("lon" + i, point.getX());
-            matchingQueryExec.setParameter("lat" + i, point.getY());
-        }
-
-        @SuppressWarnings("unchecked")
-        List<Object[]> matchingResults = matchingQueryExec.getResultList();
-
+    /** Step 2 of {@link #findByCoordinatesBatchReal}: the full entities for (id, lon, lat) matches. */
+    private Map<String, ReverseGeocodingLocationEntity> loadMatchedEntities(List<Object[]> matchingResults) {
         if (matchingResults.isEmpty()) {
             return Map.of();
         }
@@ -317,8 +391,13 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         // Get unique IDs for the query (removes duplicates)
         List<Long> uniqueGeocodingIds = new ArrayList<>(idToCoordListMap.keySet());
 
-        // Get all entities in a single IN query
-        List<ReverseGeocodingLocationEntity> entities = find("id in ?1", uniqueGeocodingIds).list();
+        // Load the entities in IN-list chunks: Hibernate pads an IN list to the next power of two, and
+        // a PostgreSQL statement takes at most 65,535 parameters (36k ids would pad to 65,536).
+        List<ReverseGeocodingLocationEntity> entities = new ArrayList<>(uniqueGeocodingIds.size());
+        for (int i = 0; i < uniqueGeocodingIds.size(); i += ENTITY_ID_CHUNK) {
+            entities.addAll(find("id in ?1",
+                    uniqueGeocodingIds.subList(i, Math.min(i + ENTITY_ID_CHUNK, uniqueGeocodingIds.size()))).list());
+        }
 
         // Build result map
         Map<String, ReverseGeocodingLocationEntity> resultMap = new HashMap<>();
@@ -332,8 +411,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             }
         }
 
-        log.debug("Batch geocoding found {} cached results for {} coordinates",
-                resultMap.size(), batchPoints.size());
+        log.debug("Batch geocoding found {} cached results", resultMap.size());
 
         return resultMap;
     }

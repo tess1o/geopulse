@@ -135,4 +135,36 @@ public class CacheGeocodingBatchService {
                 : settingsService.getInteger("geocoding.cache.max-bbox-area-km2");
         return Math.max(0d, maxArea);
     }
+
+    /**
+     * The cached place (id and display name) each coordinate resolves to, matched like
+     * {@link #getCachedGeocodingResultsAndIdsBatch} but without loading entities: timeline
+     * generation needs nothing else, and a full rebuild resolves tens of thousands of stays.
+     * Errors are logged and give an empty map, so the caller falls back to individual lookups.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public Map<String, ReverseGeocodingLocationRepository.CachedPlace> getCachedPlacesBatch(UUID userId,
+                                                                                         List<Point> coordinates) {
+        if (coordinates == null || coordinates.isEmpty()) {
+            return Map.of();
+        }
+        long startTime = System.currentTimeMillis();
+        try {
+            Map<String, ReverseGeocodingLocationRepository.CachedPlace> places =
+                    repository.findPlacesByCoordinatesBatch(userId, coordinates, spatialToleranceMeters,
+                            getMaxBboxAreaKm2());
+            log.info("Batch cached place lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
+                    System.currentTimeMillis() - startTime, userId, coordinates.size(), places.size());
+            return places;
+        } catch (QueryTimeoutException e) {
+            log.warn("Batch cached place lookup timed out after {}ms for user {} with {} coordinates. " +
+                            "Locations will need individual geocoding.",
+                    System.currentTimeMillis() - startTime, userId, coordinates.size());
+            return Map.of();
+        } catch (Exception e) {
+            log.error("Error retrieving batch cached places for user {} with {} coordinates after {}ms",
+                    userId, coordinates.size(), System.currentTimeMillis() - startTime, e);
+            return Map.of();
+        }
+    }
 }

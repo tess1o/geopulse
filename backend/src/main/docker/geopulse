@@ -1,18 +1,24 @@
 #!/bin/sh
 set -eu
 
+# Runtime options:
+# - NATIVE_IMAGE_OPTS / JAVA_OPTS replace the image defaults entirely.
+# - NATIVE_IMAGE_OPTS_EXTRA / JAVA_OPTS_EXTRA are appended after the defaults (or after the
+#   replacement). A later option wins, so these change single settings, e.g.
+#   NATIVE_IMAGE_OPTS_EXTRA="-XX:MaxNewSize=67108864" keeps every other default.
+
 if [ -x /work/application ]; then
   if [ "$#" -eq 0 ]; then
-    exec /work/application -Dquarkus.http.host=0.0.0.0 ${NATIVE_IMAGE_OPTS:-${GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT:-}}
+    exec /work/application -Dquarkus.http.host=0.0.0.0 ${NATIVE_IMAGE_OPTS:-${GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT:-}} ${NATIVE_IMAGE_OPTS_EXTRA:-}
   fi
   exec /work/application -Dquarkus.http.port=0 "$@"
 fi
 
 if [ -f /app/quarkus-run.jar ]; then
   if [ "$#" -eq 0 ]; then
-    exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} -jar /app/quarkus-run.jar
+    exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} ${JAVA_OPTS_EXTRA:-} -jar /app/quarkus-run.jar
   fi
-  exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} -Dquarkus.http.port=0 -jar /app/quarkus-run.jar "$@"
+  exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} ${JAVA_OPTS_EXTRA:-} -Dquarkus.http.port=0 -jar /app/quarkus-run.jar "$@"
 fi
 
 echo "GeoPulse backend executable not found" >&2

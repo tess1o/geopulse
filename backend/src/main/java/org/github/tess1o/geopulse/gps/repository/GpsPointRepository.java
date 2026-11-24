@@ -17,7 +17,14 @@ import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.service.explanation.TimelineExplanationPointClassifier;
 import org.locationtech.jts.geom.Point;
 
+import org.hibernate.Session;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -466,48 +473,63 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp, Instant toTimestamp,
                                                  Instant cursorTimestamp, Long cursorId, int limit,
                                                  String environmentDatasetVersion) {
-        String environmentSelect = environmentDatasetVersion == null
-                ? "NULL::boolean as on_water "
-                : "env.on_water as on_water ";
-        String environmentJoin = environmentDatasetVersion == null
-                ? ""
-                : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
-        String cursorPredicate = cursorTimestamp != null && cursorId != null
-                ? "AND (gp.timestamp, gp.id) > (:cursorTimestamp, :cursorId) "
-                : "";
+        boolean withEnvironment = environmentDatasetVersion != null;
+        boolean withCursor = cursorTimestamp != null && cursorId != null;
+        String sql = "SELECT gp.timestamp, ST_Y(gp.coordinates), ST_X(gp.coordinates), " +
+                "COALESCE(gp.velocity, 0.0) / 3.6, COALESCE(gp.accuracy, 0.0), " +
+                (withEnvironment ? "env.on_water" : "NULL::boolean") + ", gp.altitude, gp.id " +
+                "FROM gps_points gp " +
+                (withEnvironment
+                        ? "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = ? "
+                        : "") +
+                "WHERE gp.user_id = ? AND gp.timestamp >= ? " +
+                (toTimestamp == null ? "" : "AND gp.timestamp < ? ") +
+                (withCursor ? "AND (gp.timestamp, gp.id) > (?, ?) " : "") +
+                "ORDER BY gp.timestamp ASC, gp.id ASC LIMIT ?";
 
-        Query query = getEntityManager().createNativeQuery(
-                        "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
-                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
-                                environmentSelect + ", gp.altitude as altitude, gp.id as gps_point_id " +
-                                "FROM gps_points gp " +
-                                environmentJoin +
-                                "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
-                                (toTimestamp == null ? "" : "AND gp.timestamp < :toTimestamp ") +
-                                cursorPredicate +
-                                "ORDER BY gp.timestamp ASC, gp.id ASC " +
-                                "LIMIT :limit")
-                .setParameter("userId", userId)
-                .setParameter("fromTimestamp", fromTimestamp)
-                .setParameter("limit", limit);
-
-        if (toTimestamp != null) {
-            query.setParameter("toTimestamp", toTimestamp);
+        // Plain JDBC: this runs once per 10,000 points of every rebuild. Reading the timestamp as an
+        // OffsetDateTime and the numbers as primitives skips Hibernate's Object[] rows, boxed values
+        // and the java.sql.Timestamp/Calendar conversion, which were most of a rebuild's garbage.
+        // Hibernate flushes before a native query; keep that when a transaction is active.
+        Session session = getEntityManager().unwrap(Session.class);
+        if (session.isJoinedToTransaction()) {
+            session.flush();
         }
-        if (cursorTimestamp != null && cursorId != null) {
-            query.setParameter("cursorTimestamp", cursorTimestamp);
-            query.setParameter("cursorId", cursorId);
-        }
-        if (environmentDatasetVersion != null) {
-            query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
-        }
-
-        @SuppressWarnings("unchecked")
-        List<Object[]> results = query.getResultList();
-
-        return results.stream()
-                .map(this::mapToGPSPoint)
-                .toList();
+        return session.doReturningWork(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                int index = 1;
+                if (withEnvironment) {
+                    statement.setString(index++, environmentDatasetVersion);
+                }
+                statement.setObject(index++, userId);
+                statement.setObject(index++, fromTimestamp.atOffset(ZoneOffset.UTC));
+                if (toTimestamp != null) {
+                    statement.setObject(index++, toTimestamp.atOffset(ZoneOffset.UTC));
+                }
+                if (withCursor) {
+                    statement.setObject(index++, cursorTimestamp.atOffset(ZoneOffset.UTC));
+                    statement.setLong(index++, cursorId);
+                }
+                statement.setInt(index, limit);
+                try (ResultSet rows = statement.executeQuery()) {
+                    List<GPSPoint> points = new ArrayList<>(limit);
+                    while (rows.next()) {
+                        GPSPoint point = new GPSPoint(rows.getDouble(2), rows.getDouble(3),
+                                rows.getDouble(4), rows.getDouble(5),
+                                rows.getObject(1, OffsetDateTime.class).toInstant());
+                        boolean onWater = rows.getBoolean(6);
+                        point.setOnWater(rows.wasNull() ? null : onWater);
+                        double altitude = rows.getDouble(7);
+                        if (!rows.wasNull()) {
+                            point.setAltitude(altitude);
+                        }
+                        point.setId(rows.getLong(8));
+                        points.add(point);
+                    }
+                    return points;
+                }
+            }
+        });
     }
 
     /**

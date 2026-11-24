@@ -286,8 +286,11 @@ class TripStopHeuristicsService {
             this.stopSpeedThresholdMetersPerSecond = stopSpeedThresholdMetersPerSecond;
         }
 
+        /** Immutable, so every "no stop" answer (most trip points) shares one instance. */
+        private static final TripStopDetection NO_STOP = new TripStopDetection(false, -1, Duration.ZERO, 0, 0.0);
+
         static TripStopDetection noStop() {
-            return new TripStopDetection(false, -1, Duration.ZERO, 0, 0.0);
+            return NO_STOP;
         }
 
         static TripStopDetection stopDetected(int startIndex, Duration stopDuration, int stoppedPoints,

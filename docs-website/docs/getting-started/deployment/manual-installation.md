@@ -651,7 +651,7 @@ WorkingDirectory=/opt/geopulse/backend
 EnvironmentFile=/etc/geopulse/geopulse.env
 
 # Start the native binary with GC options
-ExecStart=/opt/geopulse/backend/geopulse-backend -Dquarkus.http.host=0.0.0.0 -XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15
+ExecStart=/opt/geopulse/backend/geopulse-backend -Dquarkus.http.host=0.0.0.0 -XX:MaximumHeapSizePercent=70 -XX:MaxNewSize=33554432 -XX:MaxHeapFree=8388608 -XX:+ExitOnOutOfMemoryError
 
 # Restart policy
 Restart=on-failure

@@ -286,6 +286,8 @@ public class FavoriteLocationService {
      * @param points List of points to search for
      * @return Map of coordinate string (lon,lat) to FavoriteLocationsDto
      */
+    // A transaction so the repository's transaction-local "jit = off" applies to its lookup.
+    @Transactional
     public Map<String, FavoriteLocationsDto> findByPointsBatch(UUID userId, List<Point> points) {
         int maxDistanceFromPoint = getFavoritePointMatchingDistanceMeters(userId);
         Map<String, FavoritesEntity> entities = repository.findByPointsBatch(

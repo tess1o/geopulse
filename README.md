@@ -243,6 +243,7 @@ Choose the installation path that matches your environment:
 | Helm values reference | Advanced Helm customization | [Helm Values Reference](https://geopulse.cc/docs/getting-started/deployment/helm-deployment) |
 | Manual installation | Bare metal servers or VMs without Docker/Kubernetes | [Manual Installation Guide](https://geopulse.cc/docs/getting-started/deployment/manual-installation) |
 | Environment configuration | Reviewing all runtime settings | [Environment Variables Reference](https://geopulse.cc/docs/getting-started/deployment/environment-variables) |
+| Memory and performance | Small hosts, large histories, memory or connection errors | [Memory and Performance Tuning](https://geopulse.cc/docs/system-administration/configuration/memory-and-performance) |
 
 ### Kubernetes / Helm Quick Install
 
@@ -265,6 +266,7 @@ Or install the signed OCI chart from GHCR: `helm install my-geopulse oci://ghcr.
 ## 📖 Docs & Next Steps
 
 * **New users:** [Quick Start Guide](https://geopulse.cc/docs/getting-started/quick-start)
+* **Questions & troubleshooting:** [FAQ](https://geopulse.cc/docs/faq) | [Memory & Performance Tuning](https://geopulse.cc/docs/system-administration/configuration/memory-and-performance)
 * **GPS setup:** [GPS Sources Overview](https://geopulse.cc/docs/user-guide/gps-sources/overview)
 * **Home Assistant:** [GeoPulse for Home Assistant](https://github.com/tess1o/geopulse-homeassistant)
 * **Deployment:** [Docker](https://geopulse.cc/docs/getting-started/deployment/docker-compose) | [Unraid](https://geopulse.cc/docs/getting-started/deployment/unraid) | [Proxmox](https://geopulse.cc/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://geopulse.cc/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://geopulse.cc/docs/getting-started/deployment/manual-installation) | [Env Variables](https://geopulse.cc/docs/getting-started/deployment/environment-variables)
