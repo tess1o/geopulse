@@ -114,8 +114,7 @@ public class GeonamesCityRepository {
             double longitude,
             Double maxDistanceMeters
     ) {
-        // Same lookup as GeonamesTimezoneRepository: KNN on idx_geonames_city_geom_gist ranks by planar degrees,
-        // so the closest few candidates are re-ranked by sphere distance.
+        // Geography KNN uses sphere distance, so the index finds the true nearest city at any latitude.
         @SuppressWarnings("unchecked")
         List<Object[]> rows = entityManager.createNativeQuery("""
                         SELECT
@@ -131,14 +130,13 @@ public class GeonamesCityRepository {
                                        ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
                                    ) AS distance_m
                             FROM geonames_city gc
-                            ORDER BY ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326)
-                                     <-> ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
-                            LIMIT 8
+                            ORDER BY ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326)::geography
+                                     <-> ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                                     COALESCE(gc.population, 0) DESC
+                            LIMIT 1
                         ) k
                         LEFT JOIN geonames_country gct ON gct.iso_alpha2 = k.country_code
                         WHERE CAST(:maxDistanceMeters AS float8) IS NULL OR k.distance_m <= :maxDistanceMeters
-                        ORDER BY k.distance_m ASC, COALESCE(k.population, 0) DESC
-                        LIMIT 1
                         """)
                 .setParameter("lat", latitude)
                 .setParameter("lon", longitude)

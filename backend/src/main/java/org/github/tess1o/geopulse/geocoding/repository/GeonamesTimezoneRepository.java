@@ -13,9 +13,8 @@ import java.util.Optional;
 /**
  * Nearest-city lookups on {@code geonames_city}, used to resolve the local timezone of a coordinate.
  *
- * <p>The lookup orders by {@code ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) <-> point}, which matches the
- * {@code idx_geonames_city_geom_gist} expression index (V36.65.0). KNN on SRID 4326 ranks by planar degrees, so the
- * closest few candidates are re-ranked by true sphere distance.</p>
+ * <p>Geography KNN uses the {@code idx_geonames_city_geog_gist} expression index to find the nearest city
+ * by sphere distance, including at high latitudes and across the date line.</p>
  */
 @ApplicationScoped
 public class GeonamesTimezoneRepository {
@@ -42,16 +41,12 @@ public class GeonamesTimezoneRepository {
                 SELECT c.cell_lat, c.cell_lon, n.geonameid, n.name, n.country_code, n.timezone, n.distance_m
                 FROM cells c
                 LEFT JOIN LATERAL (
-                    SELECT k.*
-                    FROM (
-                        SELECT gc.geonameid, gc.name, gc.country_code, gc.timezone,
-                               ST_DistanceSphere(ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326), c.pt)
-                                   AS distance_m
-                        FROM geonames_city gc
-                        ORDER BY ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326) <-> c.pt
-                        LIMIT 8
-                    ) k
-                    ORDER BY k.distance_m
+                    SELECT gc.geonameid, gc.name, gc.country_code, gc.timezone,
+                           ST_DistanceSphere(ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326), c.pt)
+                               AS distance_m
+                    FROM geonames_city gc
+                    ORDER BY ST_SetSRID(ST_MakePoint(gc.longitude, gc.latitude), 4326)::geography
+                             <-> c.pt::geography
                     LIMIT 1
                 ) n ON TRUE
             )

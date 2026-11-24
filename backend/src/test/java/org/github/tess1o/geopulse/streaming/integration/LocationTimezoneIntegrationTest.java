@@ -180,10 +180,39 @@ class LocationTimezoneIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void resolve_FindsNearestBeyondEightPlanarCandidates() {
+        for (int i = 1; i <= 8; i++) {
+            insertCity(100 + i, "North " + i, "NO", "Europe/Oslo", 70.46 + i * 0.001, 20.0);
+        }
+        insertCity(109, "East", "FI", "Europe/Helsinki", 70.0, 20.6);
+
+        List<LocationTimezoneDTO> zones = locationTimezoneService.resolve(
+                new double[]{70.0, 50.45, 70.0}, new double[]{20.0, 30.52, 20.0}, "test");
+
+        assertResolved(zones.get(0), "Europe/Helsinki", "East", "FI");
+        assertThat(zones.get(0).getDistanceKm()).isBetween(22.0, 23.0);
+        assertResolved(zones.get(1), "Europe/Kyiv", "Kyiv", "UA");
+        assertResolved(zones.get(2), "Europe/Helsinki", "East", "FI");
+    }
+
+    @Test
+    @Transactional
+    void resolve_FindsNearestAcrossDateLine() {
+        for (int i = 1; i <= 8; i++) {
+            insertCity(100 + i, "West " + i, "FJ", "Pacific/Fiji", 0.0, 179.0 - i * 0.01);
+        }
+        insertCity(109, "Across date line", "KI", "Pacific/Tarawa", 0.0, -179.9);
+
+        assertResolved(locationTimezoneService.resolve(0.0, 179.9, "test"),
+                "Pacific/Tarawa", "Across date line", "KI");
+    }
+
+    @Test
     void migration_CreatesSpatialIndexUsedByTheLookup() {
         List<?> index = entityManager.createNativeQuery("""
                         SELECT 1 FROM pg_indexes
-                        WHERE tablename = 'geonames_city' AND indexname = 'idx_geonames_city_geom_gist'
+                        WHERE tablename = 'geonames_city' AND indexname = 'idx_geonames_city_geog_gist'
                         """)
                 .getResultList();
 

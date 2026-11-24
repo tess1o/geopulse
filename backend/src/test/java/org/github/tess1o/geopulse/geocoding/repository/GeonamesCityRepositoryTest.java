@@ -84,6 +84,47 @@ class GeonamesCityRepositoryTest {
                 .hasValue("Town");
     }
 
+    @Test
+    @Transactional
+    void findsCityWithinRadiusBeyondEightPlanarCandidates() {
+        for (int i = 1; i <= 8; i++) {
+            insertCity(i, "North " + i, 70.46 + i * 0.001, 20.0, 1_000);
+        }
+        insertCity(9, "East", 70.0, 20.6, 1_000);
+
+        assertThat(geonamesCityRepository.findNearestNormalizedLocation(70.0, 20.0, 50_000.0))
+                .hasValueSatisfying(location -> {
+                    assertThat(location.city()).isEqualTo("East");
+                    assertThat(location.distanceMeters()).isBetween(22_000.0, 23_000.0);
+                });
+        assertThat(geonamesCityRepository.findNearestNormalizedLocation(70.0, 20.0, null))
+                .map(GeonamesNormalizedLocation::city).hasValue("East");
+    }
+
+    @Test
+    @Transactional
+    void findsNearestCityAcrossDateLine() {
+        for (int i = 1; i <= 8; i++) {
+            insertCity(i, "West " + i, 0.0, 179.0 - i * 0.01, 1_000);
+        }
+        insertCity(9, "Across date line", 0.0, -179.9, 1_000);
+
+        assertThat(geonamesCityRepository.findNearestNormalizedLocation(0.0, 179.9, 50_000.0))
+                .map(GeonamesNormalizedLocation::city).hasValue("Across date line");
+    }
+
+    @Test
+    @Transactional
+    void considersAllCitiesAtTheSameDistanceForPopulationTieBreak() {
+        for (int i = 1; i <= 12; i++) {
+            insertCity(i, "Village " + i, 70.0, 20.5, 600);
+        }
+        insertCity(13, "Town", 70.0, 20.5, 9_000);
+
+        assertThat(geonamesCityRepository.findNearestNormalizedLocation(70.0, 20.0, 50_000.0))
+                .map(GeonamesNormalizedLocation::city).hasValue("Town");
+    }
+
     private void deleteSeededCities() {
         entityManager.createNativeQuery("DELETE FROM geonames_city WHERE geonameid > :base")
                 .setParameter("base", GEONAME_ID_BASE)
