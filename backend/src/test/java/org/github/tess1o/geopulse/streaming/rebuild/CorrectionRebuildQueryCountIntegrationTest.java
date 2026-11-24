@@ -64,7 +64,7 @@ class CorrectionRebuildQueryCountIntegrationTest {
 
     private long statementsForRebuildWith(int corrections) {
         UUID user = harness.createUserWithFavoriteAreas("query-count-" + corrections, SyntheticDays.NAMED_PLACES);
-        harness.ingest(user, SyntheticDays.generate(11, FIRST_DAY, 21));
+        harness.seedRecording(user, SyntheticDays.generate(11, FIRST_DAY, 21));
         harness.fullRebuild(user);
 
         List<TimelineStayEntity> labelled = QuarkusTransaction.requiringNew().call(() ->

@@ -168,7 +168,7 @@ class CorrectionWindowRebuildIntegrationTest {
         UUID windowed = harness.createUserWithFavoriteAreas(prefix + "-a", SyntheticDays.NAMED_PLACES);
         UUID reference = harness.createUserWithFavoriteAreas(prefix + "-b", SyntheticDays.NAMED_PLACES);
         for (UUID user : List.of(windowed, reference)) {
-            harness.ingest(user, recording);
+            harness.seedRecording(user, recording);
             harness.fullRebuild(user);
         }
         Twins twins = new Twins(windowed, reference, recording);

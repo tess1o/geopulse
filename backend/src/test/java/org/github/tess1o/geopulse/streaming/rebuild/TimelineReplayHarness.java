@@ -13,12 +13,15 @@ import org.github.tess1o.geopulse.export.dto.TimelineDataDto;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.importdata.model.DebugImportRequest;
 import org.github.tess1o.geopulse.importdata.model.DebugTimelineComparison;
 import org.github.tess1o.geopulse.importdata.service.DebugTimelineComparisonService;
 import org.github.tess1o.geopulse.importdata.service.DebugImportService;
+import org.github.tess1o.geopulse.importdata.service.BatchProcessor;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.jobs.RealTimeTimelineJob;
 import org.github.tess1o.geopulse.streaming.model.TimelineRebuildRequest;
@@ -89,6 +92,12 @@ public class TimelineReplayHarness {
 
     @Inject
     GpsPointService gpsPointService;
+
+    @Inject
+    GpsPointMapper gpsPointMapper;
+
+    @Inject
+    BatchProcessor batchProcessor;
 
     @Inject
     RealTimeTimelineJob realTimeTimelineJob;
@@ -321,6 +330,22 @@ public class TimelineReplayHarness {
         replayLive(userId, arrivalBatches(messages(export)));
     }
 
+    /** Seeds a fresh user's generated history; live uploads still go through {@link #ingest}. */
+    public void seedRecording(UUID userId, List<OwnTracksLocationMessage> messages) {
+        if (messages.isEmpty()) {
+            return;
+        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            UserEntity user = entityManager.getReference(UserEntity.class, userId);
+            List<GpsPointEntity> points = messages.stream()
+                    .map(message -> gpsPointMapper.toEntity(message, user, message.getTid(), GpsSourceType.OWNTRACKS))
+                    .toList();
+            batchProcessor.processBatch(points, false);
+            rebuildRequestRepository.request(userId,
+                    points.stream().map(GpsPointEntity::getTimestamp).min(Instant::compareTo).orElseThrow());
+        });
+    }
+
     /** Sends messages through the OwnTracks ingest path in one request, as the live endpoint does. */
     public void ingest(UUID userId, List<OwnTracksLocationMessage> messages) {
         GpsSourceConfigEntity source = GpsSourceConfigEntity.builder()
@@ -328,9 +353,15 @@ public class TimelineReplayHarness {
                 .active(true)
                 .build();
         QuarkusTransaction.requiringNew().run(() -> {
+            int processed = 0;
             for (OwnTracksLocationMessage message : messages) {
                 gpsPointService.saveOwnTracksGpsPoint(message, userId, message.getTid(), GpsSourceType.OWNTRACKS,
                         source);
+                // Per-point queries otherwise dirty-check the entire history accumulated in this transaction.
+                if (++processed % 100 == 0) {
+                    entityManager.flush();
+                    entityManager.clear();
+                }
             }
         });
     }

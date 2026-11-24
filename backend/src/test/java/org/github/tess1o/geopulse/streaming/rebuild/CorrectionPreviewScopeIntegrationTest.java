@@ -132,7 +132,7 @@ class CorrectionPreviewScopeIntegrationTest {
 
     private UUID recordedUser(String prefix, List<OwnTracksLocationMessage> recording) {
         UUID user = harness.createUserWithFavoriteAreas(prefix, SyntheticDays.NAMED_PLACES);
-        harness.ingest(user, recording);
+        harness.seedRecording(user, recording);
         harness.fullRebuild(user);
         assertThat(harness.pendingRebuild(user)).isEmpty();
         return user;
