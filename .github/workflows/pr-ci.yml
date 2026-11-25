@@ -60,13 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - shard: replay
-            tests: 'SyntheticDaysReplayIntegrationTest,TimelineEditLifecycleIntegrationTest,TimelineEditMatchingIntegrationTest,RealDayReplayIntegrationTest'
-          - shard: timeline
-            tests: '**/streaming/**/*Test.java,!**/SyntheticDaysReplayIntegrationTest.java,!**/TimelineEditLifecycleIntegrationTest.java,!**/TimelineEditMatchingIntegrationTest.java,!**/RealDayReplayIntegrationTest.java'
-          - shard: other
-            tests: '**/*Test.java,!**/streaming/**/*Test.java'
+        shard: [replay, timeline, other]
 
     services:
       postgres:
@@ -110,9 +104,8 @@ jobs:
           QUARKUS_DATASOURCE_PASSWORD: testpass
 
       - name: Run backend integration tests
-        run: ./mvnw -pl backend -DskipITs=false "-Dit.test=$INTEGRATION_TESTS" failsafe:integration-test failsafe:verify
+        run: make backend-test-integration-shard-${{ matrix.shard }}
         env:
-          INTEGRATION_TESTS: ${{ matrix.tests }}
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/geopulse_test
           QUARKUS_DATASOURCE_USERNAME: geopulse_test
           QUARKUS_DATASOURCE_PASSWORD: testpass
@@ -122,7 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-integration-test-results-${{ matrix.shard }}
-          path: backend/target/failsafe-reports/
+          path: backend/target/failsafe-reports/${{ matrix.shard }}/
           retention-days: 7
 
   frontend-unit-tests:

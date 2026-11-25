@@ -184,11 +184,26 @@ backend-test-unit:
 	@echo "Running backend unit tests"
 	./mvnw -pl backend clean test
 
+# Keep these selectors shared by local runs and CI; each shard keeps one Quarkus JVM.
+BACKEND_IT_SHARDS := replay timeline other
+BACKEND_IT_TARGETS := $(addprefix backend-test-integration-shard-,$(BACKEND_IT_SHARDS))
+BACKEND_IT_TESTS_replay := SyntheticDaysReplayIntegrationTest,TimelineEditLifecycleIntegrationTest,TimelineEditMatchingIntegrationTest,RealDayReplayIntegrationTest
+BACKEND_IT_TESTS_timeline := **/streaming/**/*Test.java,!**/SyntheticDaysReplayIntegrationTest.java,!**/TimelineEditLifecycleIntegrationTest.java,!**/TimelineEditMatchingIntegrationTest.java,!**/RealDayReplayIntegrationTest.java
+BACKEND_IT_TESTS_other := **/*Test.java,!**/streaming/**/*Test.java
+
+# Called after compilation, so concurrent shards only read the compiled classes.
+.PHONY: $(BACKEND_IT_TARGETS)
+$(BACKEND_IT_TARGETS): backend-test-integration-shard-%:
+	./mvnw -pl backend -DskipITs=false "-Dit.test=$(BACKEND_IT_TESTS_$*)" \
+		"-Dintegration-test-reports-directory=$(CURDIR)/backend/target/failsafe-reports/$*" \
+		-DtempDir=surefire-$* failsafe:integration-test failsafe:verify
+
 # Backend integration tests
 .PHONY: backend-test-integration
 backend-test-integration:
 	@echo "Running backend integration tests"
-	./mvnw -pl backend -DskipITs=false test-compile failsafe:integration-test failsafe:verify
+	./mvnw -pl backend test-compile
+	$(MAKE) --no-print-directory -k -j3 $(BACKEND_IT_TARGETS)
 
 .PHONY: backend-test-integration-one
 backend-test-integration-one:
@@ -200,7 +215,8 @@ backend-test-integration-one:
 .PHONY: backend-test-all
 backend-test-all:
 	@echo "Running full backend test suite"
-	./mvnw -pl backend clean verify pmd:check -DskipITs=false
+	./mvnw -pl backend clean verify pmd:check -DskipITs=true
+	$(MAKE) --no-print-directory -k -j3 $(BACKEND_IT_TARGETS)
 
 # PMD gate (backend/pmd-ruleset.xml). Compiles first: without target/classes PMD cannot type our own classes
 # and reports false positives (e.g. a project exception passed to log.warn counted as a format argument).
@@ -501,8 +517,8 @@ help:
 	@echo ""
 	@echo "🧪 TESTING TARGETS:"
 	@echo "  backend-test-unit      Run backend unit tests"
-	@echo "  backend-test-integration Run backend integration tests"
-	@echo "  backend-test-all       Run all backend tests (unit + integration) and PMD"
+	@echo "  backend-test-integration Run backend integration tests in three parallel shards"
+	@echo "  backend-test-all       Run unit tests, PMD, and all integration tests in three parallel shards"
 	@echo "  backend-pmd            Run the backend PMD checks"
 	@echo "  frontend-test          Run frontend vitest tests (optional TEST=<file filter>)"
 	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR + OIDC, requires E2E environment)"
