@@ -280,8 +280,10 @@ Or install the signed OCI chart from GHCR: `helm install my-geopulse oci://ghcr.
 
 GeoPulse is licensed under the **Business Source License 1.1 (BSL 1.1)**.
 
-- Free for personal, educational, and non-commercial use.
-- Commercial use requires a separate commercial license.
+- Free to self-host for personal use: for yourself, your household, family and friends, or a non-profit or educational organization, as long as you don't charge for access.
+- Free for anyone to use for non-production purposes, such as development, testing and evaluation.
+- Use by a for-profit business, or offering GeoPulse to others as a paid hosted (SaaS) service, requires a separate commercial license.
+- Each release becomes available under the GNU AGPL v3.0 (or later) four years after it is published.
 
-See [LICENSE](./LICENSE) for full terms.  
+See [LICENSE](./LICENSE) for full terms and [CONTRIBUTING.md](./CONTRIBUTING.md) for how to contribute.  
 For commercial licensing: `kerriden1@gmail.com`

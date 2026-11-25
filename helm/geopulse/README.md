@@ -172,4 +172,4 @@ For the complete list of parameters, see the [values.yaml](values.yaml) file or 
 
 ## License
 
-BSL 1.1
+Business Source License 1.1. See [LICENSE](https://github.com/tess1o/geopulse/blob/main/LICENSE) for the full terms.

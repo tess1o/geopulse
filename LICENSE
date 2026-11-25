@@ -1,73 +1,110 @@
 Business Source License 1.1
 
-Licensor: Oleksandr Chalyi
-Licensed Work: The GeoPulse software and associated source code files.
-(c) 2025 Oleksandr Chalyi
+Parameters
 
-Change Date: 2075-01-01
-Change License: GNU Affero General Public License v3.0 only
+Licensor:             Oleksandr Chalyi
+Licensed Work:        GeoPulse
+                      The Licensed Work is (c) 2025-2026 Oleksandr Chalyi.
+Additional Use Grant: You may make production use of the Licensed Work,
+                      provided that such use is Personal Use.
 
-_____________________________________________________________________________
+                      "Personal Use" means use by an individual, or by a
+                      non-profit or educational organization, for
+                      non-commercial purposes, including self-hosting the
+                      Licensed Work for yourself, your household, family and
+                      friends, provided no fee or other commercial benefit
+                      is charged for access.
+
+                      Personal Use does not include (a) use by or on behalf
+                      of a for-profit business, or (b) offering the Licensed
+                      Work, or access to it, to third parties as a hosted,
+                      managed or software-as-a-service offering for a fee or
+                      other commercial benefit.
+
+Change Date:          Four years from the date the Licensed Work is
+                      published.
+
+Change License:       GNU Affero General Public License v3.0 or later
+
+For information about alternative licensing arrangements for the Licensed
+Work, please contact kerriden1@gmail.com.
+
+Notice
+
+The Business Source License (this document, or the “License”) is not an Open
+Source license. However, the Licensed Work will eventually be made available
+under an Open Source License, as stated in this License.
+
+License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
+“Business Source License” is a trademark of MariaDB Corporation Ab.
+
+-----------------------------------------------------------------------------
+
+Business Source License 1.1
 
 Terms
 
 The Licensor hereby grants you the right to copy, modify, create derivative
-works, redistribute, and make use of the Licensed Work for any use, subject
-to the following conditions:
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited
+production use.
 
-1. Additional Use Grant:
-   You may use the Licensed Work for "Personal Use" only.
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under
+the terms of the Change License, and the rights granted in the paragraph
+above terminate.
 
-   "Personal Use" is defined as use by an individual for non-profit,
-   private, or educational purposes.
+If your use of the Licensed Work does not comply with the requirements
+currently in effect as described in this License, you must purchase a
+commercial license from the Licensor, its affiliated entities, or authorized
+resellers, or you must refrain from using the Licensed Work.
 
-   You may NOT use the Licensed Work for any "Commercial Purpose" without
-   a separate commercial license agreement with the Licensor.
+All copies of the original and modified Licensed Work, and derivative works
+of the Licensed Work, are subject to this License. This License applies
+separately for each version of the Licensed Work and the Change Date may vary
+for each version of the Licensed Work released by Licensor.
 
-   "Commercial Purpose" includes, but is not limited to:
-   (a) Using the Licensed Work to provide a service to third parties
-       (including SaaS, PaaS, or Application Service Provider models);
-   (b) Using the Licensed Work in a production environment for any business
-       enterprise or commercial entity;
-   (c) Selling, reselling, or monetizing the Licensed Work or any derivative
-       works.
+You must conspicuously display this License on each original or modified copy
+of the Licensed Work. If you receive the Licensed Work in original or
+modified form from a third party, the terms and conditions set forth in this
+License apply to your use of that work.
 
-   If you are unsure whether your use qualifies as Personal Use, please
-   contact the Licensor at: kerriden1@gmail.com
+Any use of the Licensed Work in violation of this License will automatically
+terminate your rights under this License for the current and all other
+versions of the Licensed Work.
 
-2. Change Date:
-   On the Change Date specified above, the Licensor hereby grants you rights
-   under the terms of the Change License specified above, and this License
-   shall terminate.
+This License does not grant you any right in any trademark or logo of
+Licensor or its affiliates (provided that you may use a trademark or logo of
+Licensor as expressly required by this License).
 
-3. Offer of Commercial License:
-   If you wish to use the Licensed Work for any purpose not granted in the
-   Additional Use Grant above (such as Commercial Use), you must purchase
-   a Commercial License. Please contact the Licensor at: kerriden1@gmail.com
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON
+AN “AS IS” BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS,
+EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND
+TITLE.
 
-_____________________________________________________________________________
+MariaDB hereby grants you permission to use this License’s text to license
+your works, and to refer to it using the trademark “Business Source License”,
+as long as you comply with the Covenants of Licensor below.
 
-GENERAL TERMS
+Covenants of Licensor
 
-4. Redistribution
-   If you redistribute the Licensed Work or any derivative works, you must
-   include this License in full.
+In consideration of the right to use this License’s text and the “Business
+Source License” name and trademark, Licensor covenants to MariaDB, and to all
+other recipients of the licensed work to be provided by Licensor:
 
-5. Disclaimer of Warranty
-   THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-   FROM, OUT OF OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER
-   DEALINGS IN THE LICENSED WORK.
+1. To specify as the Change License the GPL Version 2.0 or any later version,
+   or a license that is compatible with GPL Version 2.0 or a later version,
+   where “compatible” means that software provided under the Change License can
+   be included in a program with software provided under GPL Version 2.0 or a
+   later version. Licensor may specify additional Change Licenses without
+   limitation.
 
-6. Limitation of Liability
-   Except to the extent required by applicable law, in no event will the
-   Licensor be liable to you on any legal theory for any special, incidental,
-   consequential, punitive, or exemplary damages arising out of this License
-   or the use of the Licensed Work.
+2. To either: (a) specify an additional grant of rights to use that does not
+   impose any additional restriction on the right granted in this License, as
+   the Additional Use Grant; or (b) insert the text “None”.
 
-7. Termination
-   This License and the rights granted hereunder will terminate automatically
-   if you breach any of its terms.
+3. To specify a Change Date.
+
+4. Not to modify this License in any other way.

@@ -1044,4 +1044,4 @@ For feature-specific configuration details, see:
 
 ## License
 
-AGPL-3.0 with Non-Commercial Use Restriction
+Business Source License 1.1. See [LICENSE](https://github.com/tess1o/geopulse/blob/main/LICENSE) for the full terms.

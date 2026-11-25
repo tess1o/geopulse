@@ -73,9 +73,12 @@ with each other, and each permission is granted separately.
 
 ### Is GeoPulse free?
 
-GeoPulse is source-available under the Business Source License 1.1 and free for personal, non-commercial use.
-Commercial use, including running it as a service for others, needs a separate license. The source code is available
-on [GitHub](https://github.com/tess1o/geopulse).
+GeoPulse is source-available under the Business Source License 1.1. It is free to self-host for yourself, your family
+and friends, or a non-profit or educational organization, as long as you don't charge for access. Use by a for-profit
+business, or offering GeoPulse to others as a paid hosted service, needs a separate commercial license. Each release
+becomes available under the GNU AGPL v3.0 four years after it is published. The source code is available
+on [GitHub](https://github.com/tess1o/geopulse), and the full terms are in its
+[LICENSE](https://github.com/tess1o/geopulse/blob/main/LICENSE) file.
 
 ### Do I need AI?
 
