@@ -11,7 +11,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
@@ -23,7 +22,6 @@ import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
-import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +53,9 @@ public class AdminOidcProviderResource {
 
     @Inject
     OidcProviderConfigurationService configurationService;
+
+    @Inject
+    org.github.tess1o.geopulse.auth.oidc.http.OidcHttpClient oidcHttpClient;
 
     @Inject
     AuditLogService auditLogService;
@@ -325,11 +326,8 @@ public class AdminOidcProviderResource {
                             Map.of("name", name)));
 
             // Attempt to fetch discovery document
-            OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
-                    .baseUri(URI.create(provider.getDiscoveryUrl()))
-                    .followRedirects(true)
-                    .build(OidcDiscoveryClient.class)
-                    .getDiscoveryDocument();
+            OidcDiscoveryDocument discovery = oidcHttpClient.getJson(
+                    provider.getDiscoveryUrl(), OidcDiscoveryDocument.class);
 
             // Build success response
             TestOidcProviderResponse response = TestOidcProviderResponse.success(
@@ -377,13 +375,4 @@ public class AdminOidcProviderResource {
                 .build();
     }
 
-    /**
-     * REST client interface for OIDC discovery document.
-     */
-    @Path("/")
-    public interface OidcDiscoveryClient {
-        @GET
-        @Produces(MediaType.APPLICATION_JSON)
-        OidcDiscoveryDocument getDiscoveryDocument();
-    }
 }

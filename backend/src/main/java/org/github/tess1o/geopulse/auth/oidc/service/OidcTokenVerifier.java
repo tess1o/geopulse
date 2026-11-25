@@ -13,12 +13,12 @@ import com.nimbusds.jwt.SignedJWT;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcHttpClient;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 
-import java.net.URI;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,6 +45,9 @@ public class OidcTokenVerifier {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    OidcHttpClient oidcHttpClient;
 
     @ConfigProperty(name = "geopulse.oidc.jwks-cache.ttl-hours", defaultValue = "24")
     @StaticInitSafe
@@ -127,7 +130,7 @@ public class OidcTokenVerifier {
         if (needsRefresh) {
             try {
                 log.debug("Fetching JWKS from: {} (cache expired, missing or key not found)", jwksUri);
-                JWKSet jwkSet = JWKSet.load(new URI(jwksUri).toURL());
+                JWKSet jwkSet = JWKSet.parse(oidcHttpClient.getString(jwksUri));
                 jwksCache.put(jwksUri, new CachedJwks(jwkSet, Instant.now()));
                 return jwkSet;
             } catch (Exception e) {

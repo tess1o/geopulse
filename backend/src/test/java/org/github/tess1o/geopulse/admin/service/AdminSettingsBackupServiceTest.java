@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcTlsConfig;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
 import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -120,7 +122,8 @@ class AdminSettingsBackupServiceTest {
         });
         assertThat(backup.getSettings())
                 .extracting(AdminSettingsBackupDto.SettingBackupDto::getKey)
-                .doesNotContain("import.drop-folder.path");
+                .doesNotContain("import.drop-folder.path", OidcTlsConfig.CA_CERT_PATH_KEY);
+        verify(settingsService, never()).getString(OidcTlsConfig.CA_CERT_PATH_KEY);
         assertThat(backup.getSettings()).anySatisfy(setting -> {
             assertThat(setting.getKey()).isEqualTo("geocoding.googlemaps.api-key");
             assertThat(setting.getValue()).isEqualTo("plain-google-key");
@@ -248,6 +251,42 @@ class AdminSettingsBackupServiceTest {
         verify(settingsService, never()).setValue(eq("import.drop-folder.path"), any(), any());
     }
 
+    /**
+     * A backup made on a host with a custom OIDC CA contains that host's file path. On a host without the file the
+     * real setting validator rejects the path, which used to fail the whole import. The path must be skipped:
+     * not validated, not written, and an override this host already has must survive the import.
+     */
+    @Test
+    void importBackupSkipsOidcCaCertPathWithoutValidatingTheFile() {
+        Map<String, SettingDefinition> definitions = definitions();
+        when(settingsService.getSettingDefinitions()).thenReturn(definitions);
+        when(settingsRepository.listAllSettings()).thenReturn(List.of(SystemSettingsEntity.builder()
+                .key(OidcTlsConfig.CA_CERT_PATH_KEY)
+                .value("/this-host/ca.pem")
+                .build()));
+        when(customGeocodingProviderService.listForBackupExport()).thenReturn(List.of());
+        when(oidcProviderConfigurationService.loadAllProviders()).thenReturn(List.of());
+        // Behave like SystemSettingsService for this key: it checks the file on disk.
+        lenient().doAnswer(invocation -> {
+            if (OidcTlsConfig.CA_CERT_PATH_KEY.equals(invocation.getArgument(0))) {
+                OidcTlsConfig.validate(invocation.getArgument(1));
+            }
+            return null;
+        }).when(settingsService).validateValueForImport(any(), any());
+
+        AdminSettingsBackupDto backup = backup();
+        backup.getSettings().add(setting(OidcTlsConfig.CA_CERT_PATH_KEY, "auth", ValueType.STRING,
+                "/other-host/certs/does-not-exist.pem"));
+
+        AdminSettingsImportResult result = service.importBackup(backup, adminId);
+
+        assertThat(result.getSettingsImported()).isEqualTo(4);
+        assertThat(result.getUnsupportedSettings()).containsExactly(OidcTlsConfig.CA_CERT_PATH_KEY);
+        verify(settingsService, never()).validateValueForImport(eq(OidcTlsConfig.CA_CERT_PATH_KEY), any());
+        verify(settingsService, never()).setValue(eq(OidcTlsConfig.CA_CERT_PATH_KEY), any(), any());
+        verify(settingsRepository, never()).deleteByKey(OidcTlsConfig.CA_CERT_PATH_KEY);
+    }
+
     @Test
     void importBackupTreatsInheritedLogLevelAsNoOverride() {
         Map<String, SettingDefinition> definitions = definitions();
@@ -303,6 +342,7 @@ class AdminSettingsBackupServiceTest {
 
         assertThat(definitions).containsKeys(
                 "auth.oidc.callback-base-url",
+                "auth.oidc.tls.ca-cert-path",
                 "auth.oidc.jwks-cache.ttl-hours",
                 "auth.oidc.cleanup.session-states.enabled",
                 "geocoding.cache.max-bbox-area-km2",
@@ -367,6 +407,8 @@ class AdminSettingsBackupServiceTest {
                 new SettingDefinition("geopulse.weather.enabled", "true", ValueType.BOOLEAN, "weather", "Weather"));
         definitions.put("auth.oidc.callback-base-url",
                 new SettingDefinition("geopulse.oidc.callback-base-url", "", ValueType.STRING, "auth", "OIDC callback URL"));
+        definitions.put(OidcTlsConfig.CA_CERT_PATH_KEY,
+                new SettingDefinition("geopulse.oidc.tls.ca-cert-path", "", ValueType.STRING, "auth", "OIDC custom CA path"));
         definitions.put("import.geonames.cities.url",
                 new SettingDefinition("geopulse.geonames.import.url", "https://download.geonames.org/export/dump/cities500.zip", ValueType.STRING, "import", "GeoNames cities URL"));
         definitions.put("import.drop-folder.path",

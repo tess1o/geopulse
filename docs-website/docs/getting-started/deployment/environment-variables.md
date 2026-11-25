@@ -97,7 +97,7 @@ Notes:
 | `GEOPULSE_USER_DEFAULT_DISTANCE_UNIT` | `KILOMETERS` | Default distance unit for newly created users. Property: \`geopulse.user.default-distance-unit\`. Existing users keep their profile preference. | `KILOMETERS` or `MILES`. | Backend restart |
 | `GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT` | `CELSIUS` | Default temperature unit for newly created users. Property: \`geopulse.user.default-temperature-unit\`. Existing users keep their profile preference. | `CELSIUS` or `FAHRENHEIT`. | Backend restart |
 
-### OIDC Core (6)
+### OIDC Core (7)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -106,6 +106,7 @@ Notes:
 | `GEOPULSE_OIDC_CLEANUP_ENABLED` | `true` | OIDC Cleanup Configuration Property: \`geopulse.oidc.cleanup.session-states.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_ENABLED` | `false` | OIDC Configuration Property: \`geopulse.oidc.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_RP_LOGOUT_ENABLED` | `true` | When signing out of GeoPulse, also sign out of the OIDC provider if it publishes an \`end_session_endpoint\` (RP-initiated logout). Best effort. Property: \`geopulse.oidc.rp-logout.enabled\`. Also in Admin → Settings → Authentication. | \`true\` or \`false\`. | Immediate (Admin UI) / Backend restart |
+| `GEOPULSE_OIDC_TLS_CA_CERT_PATH` | `(empty)` | Path (inside the container) to a PEM file with CA certificate(s) trusted for OIDC provider connections, in addition to the system defaults. For identity providers using a private CA. See [Private / Custom CA Certificates](/docs/system-administration/configuration/oidc-sso#private--custom-ca-certificates). Property: `geopulse.oidc.tls.ca-cert-path`. Also in Admin → Settings → Authentication. | Readable file with at least one PEM certificate. | Immediate (Admin UI) / Backend restart |
 | `GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS` | `24` | JWKS (signing keys) caching Lower TTL recommended to handle provider key rotation Property: \`geopulse.oidc.jwks-cache.ttl-hours\`. | Non-negative numeric value. | Backend restart |
 
 ### AI, Immich, and Memos (10)

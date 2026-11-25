@@ -159,6 +159,12 @@ export default {
                     label: 'OIDC Callback Base URL',
                     description: 'Optional public base URL used to build OIDC callback redirects'
                 },
+                tls: {
+                    'ca-cert-path': {
+                        label: 'OIDC Custom CA Certificate Path',
+                        description: 'Path to a PEM file with CA certificate(s) trusted for OIDC provider connections, in addition to system defaults. Use when your identity provider uses a private CA. The file must be mounted into the container.'
+                    }
+                },
                 'rp-logout': {
                     enabled: {
                         label: 'Sign Out of OIDC Provider',

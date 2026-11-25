@@ -141,7 +141,7 @@ Both `ALTER DATABASE ... RENAME` statements run in one PostgreSQL transaction. I
 
 ### Settings and user exports remain separate
 
-**Admin settings export** is JSON for global settings and provider configuration. It can contain plaintext provider credentials; handle it as sensitive. It excludes the backup password, runtime infrastructure, and user data. Ordinary per-user export/import is unchanged and is not a full-database restore.
+**Admin settings export** is JSON for global settings and provider configuration. It can contain plaintext provider credentials; handle it as sensitive. It excludes the backup password, host-specific file paths (the import drop folder and the OIDC custom CA certificate path), runtime infrastructure, and user data. Ordinary per-user export/import is unchanged and is not a full-database restore.
 
 ## Manual PostgreSQL backups (separate from `.gpb`)
 

@@ -96,6 +96,84 @@ Signing out of the provider also signs the user out of every other application t
 `GEOPULSE_OIDC_RP_LOGOUT_ENABLED=false` or switch off **Sign Out of OIDC Provider** in Admin → Settings →
 Authentication.
 
+## Private / Custom CA Certificates
+
+If your identity provider (Keycloak, Authentik, Authelia, ...) uses a certificate signed by a **private or internal certificate authority**, GeoPulse fails to reach it with a TLS error such as `PKIX path building failed` or `unable to find valid certification path`. Fix it by giving GeoPulse the CA certificate.
+
+The CA is trusted **in addition to** the system defaults, so providers with public certificates (Google, GitHub, ...) keep working. It is used for every request GeoPulse makes to an OIDC provider: discovery, token exchange and signing keys (JWKS).
+
+### 1. Get the CA certificate as a PEM file
+
+The file must be PEM-encoded (it starts with `-----BEGIN CERTIFICATE-----`). It may contain several certificates, for example a root and an intermediate CA. Trust the **CA** certificate, not the provider's own server certificate.
+
+```bash
+# Check it is a valid PEM certificate
+openssl x509 -in ca.pem -noout -subject -dates
+```
+
+### 2. Mount the file into the backend container
+
+The file must be readable inside the container, so mount it as a volume (read-only is recommended).
+
+**Docker Compose**
+
+```yaml
+services:
+  geopulse-backend:
+    environment:
+      GEOPULSE_OIDC_ENABLED: "true"
+      GEOPULSE_OIDC_TLS_CA_CERT_PATH: /certs/ca.pem
+    volumes:
+      - ./certs/ca.pem:/certs/ca.pem:ro
+```
+
+**Kubernetes / Helm**
+
+Create a ConfigMap (a CA certificate is public, so a Secret is not required):
+
+```bash
+kubectl create configmap oidc-ca --from-file=ca.pem=./ca.pem
+```
+
+Then in `values.yaml`:
+
+```yaml
+backend:
+  extraEnv:
+    - name: GEOPULSE_OIDC_TLS_CA_CERT_PATH
+      value: /certs/ca.pem
+  extraVolumes:
+    - name: oidc-ca
+      configMap:
+        name: oidc-ca
+  extraVolumeMounts:
+    - name: oidc-ca
+      mountPath: /certs
+      readOnly: true
+```
+
+### 3. Configure the path
+
+Either set the environment variable `GEOPULSE_OIDC_TLS_CA_CERT_PATH` (as above) or set it in the Admin Panel under **Admin → Settings → Authentication → OIDC Advanced → OIDC Custom CA Certificate Path**. The path is the location **inside the container**, not on the host. A change made in the Admin Panel applies immediately; no restart is needed. When you replace the file's contents, GeoPulse picks up the new certificates on the next OIDC request.
+
+When you save the setting in the Admin Panel, GeoPulse checks that the file exists, is readable and contains at least one certificate, and rejects the change otherwise. Use the **Test** button on the provider to confirm the discovery document can now be fetched.
+
+The path is specific to this host, so the Admin settings export leaves it out and an import never changes it. After restoring settings on another installation, mount the CA file there and set the path again.
+
+### Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `CA certificate file not found` | The volume is not mounted, or the path is the host path instead of the container path. |
+| `CA certificate file is not readable` | File permissions: the container user must be able to read the file (for example `chmod 644 ca.pem`). |
+| `No valid PEM certificates found` | The file is DER-encoded or not a certificate. Convert it with `openssl x509 -inform der -in ca.der -out ca.pem`. |
+| Still a TLS error | The file holds the server certificate instead of the issuing CA, the chain is incomplete (add the intermediate CA), or the provider's certificate does not match its host name. |
+
+
+:::warning
+GeoPulse intentionally has no option to disable TLS verification. Use a CA file instead.
+:::
+
 ## Supported Providers
 
 The system supports any OIDC-compliant provider. Here are configuration examples for popular providers:
@@ -292,6 +370,9 @@ GEOPULSE_OIDC_METADATA_CACHE_MAX_SIZE=10
 # JWKS (JSON Web Key Set) cache TTL in hours (default: 24)
 # Controls how often OIDC provider's public keys are refreshed for token validation
 GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS=24
+
+# Trust a private CA for OIDC providers (PEM file path inside the container), see Private / Custom CA Certificates
+# GEOPULSE_OIDC_TLS_CA_CERT_PATH=/certs/ca.pem
 
 # Also sign out of the provider when signing out of GeoPulse (default: true), see Single Logout
 GEOPULSE_OIDC_RP_LOGOUT_ENABLED=true

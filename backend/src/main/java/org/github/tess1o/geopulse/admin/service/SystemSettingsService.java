@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcTlsConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -60,6 +61,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.oidc.callback-base-url", "", ValueType.STRING, "auth", "Base URL used to build OIDC callback URLs"));
         SETTING_DEFINITIONS.put("auth.oidc.jwks-cache.ttl-hours",
                 new SettingDefinition("geopulse.oidc.jwks-cache.ttl-hours", "24", ValueType.INTEGER, "auth", "Hours to cache OIDC provider signing keys"));
+        SETTING_DEFINITIONS.put("auth.oidc.tls.ca-cert-path",
+                new SettingDefinition("geopulse.oidc.tls.ca-cert-path", "", ValueType.STRING, "auth", "Path to a PEM file with custom CA certificate(s) trusted for OIDC providers"));
         SETTING_DEFINITIONS.put("auth.oidc.rp-logout.enabled",
                 new SettingDefinition("geopulse.oidc.rp-logout.enabled", "true", ValueType.BOOLEAN, "auth", "Sign out of the OIDC provider too when signing out of GeoPulse"));
         SETTING_DEFINITIONS.put("auth.oidc.cleanup.session-states.enabled",
@@ -892,6 +895,9 @@ public class SystemSettingsService {
         }
         if (key.startsWith("auth.oidc.") && key.endsWith("-url")) {
             validateOptionalHttpUrl(key, value);
+        }
+        if ("auth.oidc.tls.ca-cert-path".equals(key) && value != null && !value.isBlank()) {
+            OidcTlsConfig.validate(value.trim());
         }
         if ("auth.oidc.jwks-cache.ttl-hours".equals(key)) {
             requireIntegerAtLeast(key, value, 1);

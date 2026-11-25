@@ -154,6 +154,12 @@ export default {
                     label: 'Basis-URL für OIDC-Callbacks',
                     description: 'Optionale öffentliche Basis-URL für die Weiterleitungen nach der OIDC-Anmeldung'
                 },
+                tls: {
+                    'ca-cert-path': {
+                        label: 'Pfad zum benutzerdefinierten OIDC-CA-Zertifikat',
+                        description: 'Pfad zu einer PEM-Datei mit CA-Zertifikat(en), denen bei Verbindungen zum OIDC-Anbieter zusätzlich zu den Systemstandards vertraut wird. Verwenden, wenn Ihr Identitätsanbieter eine private CA nutzt. Die Datei muss in den Container eingebunden sein.'
+                    }
+                },
                 'rp-logout': {
                     enabled: {
                         label: 'Auch beim OIDC-Anbieter abmelden',

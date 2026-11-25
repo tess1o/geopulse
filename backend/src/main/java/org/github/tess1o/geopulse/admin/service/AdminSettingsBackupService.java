@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
 import org.github.tess1o.geopulse.admin.model.SettingDefinition;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcTlsConfig;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
@@ -30,8 +31,11 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class AdminSettingsBackupService {
 
+    // Host-specific values: they point at this machine's filesystem (or are secrets for it), so restoring them
+    // on another host would be wrong. auth.oidc.tls.ca-cert-path is also validated against the file on save,
+    // which would make the whole import fail on a host without that file.
     private static final Set<String> BACKUP_EXCLUDED_SETTING_KEYS = Set.of(
-            "import.drop-folder.path", "backup.password"
+            "import.drop-folder.path", "backup.password", OidcTlsConfig.CA_CERT_PATH_KEY
     );
 
     @Inject

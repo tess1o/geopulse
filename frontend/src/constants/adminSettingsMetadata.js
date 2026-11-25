@@ -29,6 +29,10 @@ export const SETTING_METADATA = {
     label: 'OIDC Callback Base URL',
     description: 'Optional public base URL used to build OIDC callback redirects'
   },
+  'auth.oidc.tls.ca-cert-path': {
+    label: 'OIDC Custom CA Certificate Path',
+    description: 'Path to a PEM file with CA certificate(s) trusted for OIDC provider connections, in addition to system defaults. Use when your identity provider uses a private CA. The file must be mounted into the container.'
+  },
   'auth.oidc.jwks-cache.ttl-hours': {
     label: 'JWKS Cache TTL',
     description: 'Hours to cache OIDC provider signing keys'

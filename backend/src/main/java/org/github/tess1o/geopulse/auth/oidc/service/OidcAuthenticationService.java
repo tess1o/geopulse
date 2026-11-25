@@ -7,11 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.Form;
 import jakarta.ws.rs.core.MediaType;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcHttpClient;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
@@ -32,6 +29,7 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,7 +87,8 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     boolean coverageEnabledByDefault;
 
-    private final Client httpClient = ClientBuilder.newClient();
+    @Inject
+    OidcHttpClient oidcHttpClient;
 
     @ConfigProperty(name = "geopulse.oidc.enabled", defaultValue = "false")
     @StaticInitSafe
@@ -544,25 +543,20 @@ public class OidcAuthenticationService {
         String redirectUri = getCallbackUrl();
         log.debug("Exchanging authorization code for tokens with provider: {}", provider.getName());
 
-        Form form = new Form()
-                .param("grant_type", "authorization_code")
-                .param("code", code)
-                .param("redirect_uri", redirectUri)
-                .param("client_id", provider.getClientId())
-                .param("client_secret", provider.getClientSecret());
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("grant_type", "authorization_code");
+        form.put("code", code);
+        form.put("redirect_uri", redirectUri);
+        form.put("client_id", provider.getClientId());
+        form.put("client_secret", provider.getClientSecret());
 
-        try (var response = httpClient.target(provider.getTokenEndpoint())
-                .request(MediaType.APPLICATION_JSON_TYPE)
-                .post(Entity.form(form))) {
-
-            if (response.getStatus() != 200) {
-                log.error("Failed to exchange code for token. Provider: {}, status={}",
-                        provider.getName(), response.getStatus());
-                throw new OidcExchangeCodeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
-            }
-
-            return response.readEntity(OidcTokenResponse.class);
+        OidcHttpClient.Response response = oidcHttpClient.postForm(provider.getTokenEndpoint(), form);
+        if (response.status() != 200) {
+            log.error("Failed to exchange code for token. Provider: {}, status={}",
+                    provider.getName(), response.status());
+            throw new OidcExchangeCodeException("Failed to exchange authorization code for token. Status: " + response.status());
         }
+        return oidcHttpClient.parseJson(response.body(), OidcTokenResponse.class);
     }
 
     private OidcUserInfo validateAndExtractUserInfo(OidcTokenResponse tokenResponse, OidcProviderConfiguration provider, OidcSessionStateEntity sessionState) {

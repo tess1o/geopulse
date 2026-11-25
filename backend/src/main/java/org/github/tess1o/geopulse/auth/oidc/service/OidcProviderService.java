@@ -3,19 +3,14 @@ package org.github.tess1o.geopulse.auth.oidc.service;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
+import org.github.tess1o.geopulse.auth.oidc.http.OidcHttpClient;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.admin.service.OidcProviderConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcFailedMetadataFetchException;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcDiscoveryDocument;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 
-import java.net.URI;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -39,6 +34,9 @@ public class OidcProviderService {
 
     @Inject
     OidcProviderConfigurationService configurationService;
+
+    @Inject
+    OidcHttpClient oidcHttpClient;
 
     @ConfigProperty(name = "geopulse.oidc.metadata-cache.ttl-hours", defaultValue = "24")
     @StaticInitSafe
@@ -173,11 +171,8 @@ public class OidcProviderService {
             log.debug("Fetching OIDC metadata for provider: {}", provider.getName());
 
             // Create REST client for discovery document
-            OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
-                    .baseUri(URI.create(provider.getDiscoveryUrl()))
-                    .followRedirects(true)
-                    .build(OidcDiscoveryClient.class)
-                    .getDiscoveryDocument();
+            OidcDiscoveryDocument discovery = oidcHttpClient.getJson(
+                    provider.getDiscoveryUrl(), OidcDiscoveryDocument.class);
 
             // Update provider configuration
             provider.setAuthorizationEndpoint(discovery.getAuthorizationEndpoint());
@@ -227,11 +222,4 @@ public class OidcProviderService {
         }
     }
 
-    // REST client interface for OIDC discovery
-    @Path("/")
-    public interface OidcDiscoveryClient {
-        @GET
-        @Produces(MediaType.APPLICATION_JSON)
-        OidcDiscoveryDocument getDiscoveryDocument();
-    }
 }

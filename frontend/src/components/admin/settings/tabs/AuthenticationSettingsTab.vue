@@ -66,6 +66,7 @@ const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const authSettings = ref([])
 const oidcAdvancedKeys = [
   'auth.oidc.callback-base-url',
+  'auth.oidc.tls.ca-cert-path',
   'auth.oidc.jwks-cache.ttl-hours',
   'auth.oidc.cleanup.session-states.enabled'
 ]

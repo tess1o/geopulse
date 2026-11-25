@@ -159,6 +159,12 @@ export default {
                     label: 'OIDC Callback Basis URL',
                     description: 'Optionele publieke basis URL die wordt gebruikt om OIDC callback-redirects op te bouwen'
                 },
+                tls: {
+                    'ca-cert-path': {
+                        label: 'Pad naar aangepast OIDC CA-certificaat',
+                        description: 'Pad naar een PEM-bestand met CA-certificaten die naast de systeemstandaarden worden vertrouwd voor verbindingen met de OIDC-provider. Gebruik dit als uw identiteitsprovider een privé-CA gebruikt. Het bestand moet in de container zijn gemount.'
+                    }
+                },
                 'rp-logout': {
                     enabled: {
                         label: 'Uit OIDC-provider afmelden',

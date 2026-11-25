@@ -73,6 +73,7 @@ const settingsByCategory = {
   auth: [
     setting('auth.registration.enabled', 'BOOLEAN', true),
     setting('auth.oidc.callback-base-url', 'STRING', 'https://app.example'),
+    setting('auth.oidc.tls.ca-cert-path', 'STRING', ''),
     setting('auth.oidc.jwks-cache.ttl-hours'),
     setting('auth.oidc.cleanup.session-states.enabled', 'BOOLEAN', true)
   ],
