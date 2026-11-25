@@ -1,8 +1,8 @@
 package org.github.tess1o.geopulse.admin.service;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -28,10 +28,15 @@ abstract class AbstractAdminBootstrapIntegrationTest {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    SystemSettingsService settingsService;
+
     @BeforeEach
-    @Transactional
     void resetUsers() {
-        entityManager.createNativeQuery("TRUNCATE TABLE users CASCADE").executeUpdate();
+        QuarkusTransaction.requiringNew().run(() ->
+                entityManager.createNativeQuery("TRUNCATE TABLE users CASCADE").executeUpdate());
+        // CASCADE also empties system_settings (updated_by references users), bypassing the settings cache.
+        settingsService.invalidateCache();
     }
 
     protected UserEntity registerUser(String prefix) {

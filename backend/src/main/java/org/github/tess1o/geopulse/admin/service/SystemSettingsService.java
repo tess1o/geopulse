@@ -1,13 +1,18 @@
 package org.github.tess1o.geopulse.admin.service;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.auth.oidc.http.OidcTlsConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.event.LoggingSettingsChangedEvent;
 import org.github.tess1o.geopulse.admin.model.*;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
@@ -18,14 +23,24 @@ import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 
 /**
  * Service for managing system settings with environment variable fallback.
  * <p>
  * Pattern: Check DB first, fall back to env var if not found.
  * Similar to TimelineConfigurationProvider pattern.
+ * <p>
+ * Database lookups are cached in memory for {@code geopulse.settings.cache.ttl}, because background jobs read
+ * settings every few seconds and each read would otherwise keep a pooled database connection busy. GeoPulse runs as a
+ * single backend, so changes made through this service evict the cache once their transaction ends and are visible
+ * immediately. Only rows changed directly in the database wait for the TTL; {@link #invalidateCache()} clears it.
  */
 @ApplicationScoped
 @Slf4j
@@ -37,6 +52,22 @@ public class SystemSettingsService {
     private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
     private final Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent;
     private final Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent;
+    private final TransactionSynchronizationRegistry transactions;
+
+    // Settings cache. A lookup is cached only while no write is pending and no write started during the database
+    // read, so a reader can never store a value older than a change made through this service.
+    private static final Duration MAX_CACHE_TTL = Duration.ofDays(365);
+    private final long cacheTtlNanos; // 0 = cache disabled
+    private final Map<String, CachedLookup> cache = new ConcurrentHashMap<>();
+    private final AtomicLong cacheGeneration = new AtomicLong();
+    private final AtomicInteger pendingWrites = new AtomicInteger();
+    LongSupplier nanoTime = System::nanoTime;
+
+    private record StoredSetting(String value, ValueType valueType, String encryptionKeyId) {
+    }
+
+    private record CachedLookup(Optional<StoredSetting> stored, long expiresAtNanos) {
+    }
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
     private static final String DEFAULT_DISTANCE_UNIT_KEY = "system.user.default-distance-unit";
@@ -458,22 +489,28 @@ public class SystemSettingsService {
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
             Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent,
-            Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent) {
+            Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent,
+            TransactionSynchronizationRegistry transactions,
+            @ConfigProperty(name = "geopulse.settings.cache.enabled", defaultValue = "true") boolean cacheEnabled,
+            @ConfigProperty(name = "geopulse.settings.cache.ttl", defaultValue = "1h") Duration cacheTtl) {
         this.repository = repository;
         this.encryptionService = encryptionService;
         this.weatherSettingsChangedEvent = weatherSettingsChangedEvent;
         this.mapMatchingSettingsChangedEvent = mapMatchingSettingsChangedEvent;
         this.loggingSettingsChangedEvent = loggingSettingsChangedEvent;
+        this.transactions = transactions;
+        this.cacheTtlNanos = cacheTtlNanos(cacheEnabled, cacheTtl);
         this.config = ConfigProvider.getConfig();
     }
 
     // Retained for focused unit tests and non-CDI callers that predate the
     // map-matching settings event. CDI always uses the @Inject constructor.
+    // These read the database on every call, as they did before the cache existed.
     public SystemSettingsService(
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
-        this(repository, encryptionService, weatherSettingsChangedEvent, null, null);
+        this(repository, encryptionService, weatherSettingsChangedEvent, null);
     }
 
     public SystemSettingsService(
@@ -481,7 +518,33 @@ public class SystemSettingsService {
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
             Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
-        this(repository, encryptionService, weatherSettingsChangedEvent, mapMatchingSettingsChangedEvent, null);
+        this(repository, encryptionService, weatherSettingsChangedEvent, mapMatchingSettingsChangedEvent, null,
+                null, false, Duration.ZERO);
+    }
+
+    private static long cacheTtlNanos(boolean enabled, Duration ttl) {
+        if (!enabled || ttl == null || ttl.isNegative() || ttl.isZero()) {
+            return 0;
+        }
+        return (ttl.compareTo(MAX_CACHE_TTL) > 0 ? MAX_CACHE_TTL : ttl).toNanos();
+    }
+
+    @PostConstruct
+    void logCacheConfiguration() {
+        if (cacheTtlNanos > 0) {
+            log.info("System settings cache enabled with TTL {}", Duration.ofNanos(cacheTtlNanos));
+        } else {
+            log.info("System settings cache disabled: every settings read queries the database");
+        }
+    }
+
+    /**
+     * Drop every cached settings lookup. Settings changed through this service are evicted automatically; call this
+     * after changing the system_settings table any other way.
+     */
+    public void invalidateCache() {
+        cacheGeneration.incrementAndGet();
+        cache.clear();
     }
 
     /**
@@ -542,16 +605,16 @@ public class SystemSettingsService {
      */
     private String getValue(String key) {
         // Check DB first
-        Optional<SystemSettingsEntity> dbSetting = repository.findByKey(key);
+        Optional<StoredSetting> dbSetting = lookup(key);
         if (dbSetting.isPresent()) {
-            SystemSettingsEntity entity = dbSetting.get();
+            StoredSetting stored = dbSetting.get();
 
-            // Decrypt if type is ENCRYPTED
-            if (entity.getValueType() == ValueType.ENCRYPTED) {
+            // Decrypt if type is ENCRYPTED. The cache keeps the encrypted form, so secrets are not held in plain text.
+            if (stored.valueType() == ValueType.ENCRYPTED) {
                 try {
                     String decrypted = encryptionService.decrypt(
-                            entity.getValue(),
-                            entity.getEncryptionKeyId()
+                            stored.value(),
+                            stored.encryptionKeyId()
                     );
                     return decrypted;
                 } catch (Exception e) {
@@ -560,7 +623,7 @@ public class SystemSettingsService {
                 }
             }
 
-            return entity.getValue();
+            return stored.value();
         }
 
         // Fall back to env var
@@ -580,6 +643,89 @@ public class SystemSettingsService {
 
         log.warn("Unknown setting key: {}", key);
         return "";
+    }
+
+    /**
+     * The database row for a setting, from the cache when it holds a fresh entry.
+     */
+    private Optional<StoredSetting> lookup(String key) {
+        if (cacheTtlNanos <= 0) {
+            return load(key);
+        }
+        long now = nanoTime.getAsLong();
+        CachedLookup cached = cache.get(key);
+        if (cached != null && now - cached.expiresAtNanos() < 0) {
+            return cached.stored();
+        }
+
+        long generation = cacheGeneration.get();
+        Optional<StoredSetting> loaded = load(key);
+        if (pendingWrites.get() == 0 && cacheGeneration.get() == generation) {
+            CachedLookup entry = new CachedLookup(loaded, now + cacheTtlNanos);
+            cache.put(key, entry);
+            // A write that began after the check above may have evicted this key before the put: undo the put.
+            if (pendingWrites.get() != 0 || cacheGeneration.get() != generation) {
+                cache.remove(key, entry);
+            }
+        }
+        return loaded;
+    }
+
+    private Optional<StoredSetting> load(String key) {
+        return repository.findByKey(key)
+                .map(entity -> new StoredSetting(entity.getValue(), entity.getValueType(), entity.getEncryptionKeyId()));
+    }
+
+    /**
+     * Run a change to one setting row so the cache cannot keep the old value. The key is evicted now, nothing is
+     * cached while the change is pending, and the key is evicted again when the transaction commits or rolls back.
+     * Observers of the change events that run before that still read the committed row, because a pending write
+     * bypasses the cache.
+     */
+    private void writeSetting(String key, Runnable write) {
+        pendingWrites.incrementAndGet();
+        cacheGeneration.incrementAndGet();
+        cache.remove(key);
+        boolean endsWithTransaction = endWriteWhenTransactionCompletes(key);
+        try {
+            write.run();
+        } finally {
+            if (!endsWithTransaction) {
+                endWrite(key);
+            }
+        }
+    }
+
+    private boolean endWriteWhenTransactionCompletes(String key) {
+        if (transactions == null) {
+            return false;
+        }
+        try {
+            if (transactions.getTransactionStatus() != Status.STATUS_ACTIVE) {
+                return false;
+            }
+            transactions.registerInterposedSynchronization(new Synchronization() {
+                @Override
+                public void beforeCompletion() {
+                }
+
+                @Override
+                public void afterCompletion(int status) {
+                    endWrite(key);
+                }
+            });
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("Could not tie settings cache eviction for {} to the transaction; evicting right after the write",
+                    key, e);
+            return false;
+        }
+    }
+
+    private void endWrite(String key) {
+        cacheGeneration.incrementAndGet();
+        cache.remove(key);
+        pendingWrites.decrementAndGet();
     }
 
     /**
@@ -616,7 +762,7 @@ public class SystemSettingsService {
      * Check if a setting is using the default value (not overridden in DB).
      */
     public boolean isDefault(String key) {
-        return repository.findByKey(key).isEmpty();
+        return lookup(key).isEmpty();
     }
 
     /**
@@ -651,26 +797,30 @@ public class SystemSettingsService {
             keyId = encryptionService.getCurrentKeyId();
         }
 
-        Optional<SystemSettingsEntity> existing = repository.findByKey(key);
-        if (existing.isPresent()) {
-            SystemSettingsEntity entity = existing.get();
-            entity.setValue(storedValue);
-            entity.setUpdatedBy(updatedBy);
-            entity.setUpdatedAt(Instant.now());
-            entity.setEncryptionKeyId(keyId);
-        } else {
-            SystemSettingsEntity entity = SystemSettingsEntity.builder()
-                    .key(key)
-                    .value(storedValue)
-                    .valueType(def.valueType())
-                    .category(def.category())
-                    .description(def.description())
-                    .updatedBy(updatedBy)
-                    .updatedAt(Instant.now())
-                    .encryptionKeyId(keyId)
-                    .build();
-            repository.persist(entity);
-        }
+        String valueToStore = storedValue;
+        String encryptionKeyId = keyId;
+        writeSetting(key, () -> {
+            Optional<SystemSettingsEntity> existing = repository.findByKey(key);
+            if (existing.isPresent()) {
+                SystemSettingsEntity entity = existing.get();
+                entity.setValue(valueToStore);
+                entity.setUpdatedBy(updatedBy);
+                entity.setUpdatedAt(Instant.now());
+                entity.setEncryptionKeyId(encryptionKeyId);
+            } else {
+                SystemSettingsEntity entity = SystemSettingsEntity.builder()
+                        .key(key)
+                        .value(valueToStore)
+                        .valueType(def.valueType())
+                        .category(def.category())
+                        .description(def.description())
+                        .updatedBy(updatedBy)
+                        .updatedAt(Instant.now())
+                        .encryptionKeyId(encryptionKeyId)
+                        .build();
+                repository.persist(entity);
+            }
+        });
 
         log.info("Setting {} updated by user {}", key, updatedBy);
         fireWeatherSettingsChanged(key);
@@ -683,7 +833,7 @@ public class SystemSettingsService {
      */
     @Transactional
     public void resetToDefault(String key) {
-        repository.deleteByKey(key);
+        writeSetting(key, () -> repository.deleteByKey(key));
         log.info("Setting {} reset to default", key);
         fireWeatherSettingsChanged(key);
         fireMapMatchingSettingsChanged(key);

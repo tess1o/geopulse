@@ -161,7 +161,7 @@ class AdminSettingsBackupServiceTest {
         verify(customGeocodingProviderService).deleteFromBackupImport("old-provider");
         verify(oidcProviderConfigurationService).saveProvider(any(OidcProviderConfiguration.class), eq(adminId));
         verify(oidcProviderConfigurationService).deleteProvider("old-oidc");
-        verify(settingsRepository).deleteByKey("old.setting");
+        verify(settingsService).resetToDefault("old.setting");
         verify(settingsService).setValue("ai.default-system-message", "hello", adminId);
     }
 
@@ -284,7 +284,7 @@ class AdminSettingsBackupServiceTest {
         assertThat(result.getUnsupportedSettings()).containsExactly(OidcTlsConfig.CA_CERT_PATH_KEY);
         verify(settingsService, never()).validateValueForImport(eq(OidcTlsConfig.CA_CERT_PATH_KEY), any());
         verify(settingsService, never()).setValue(eq(OidcTlsConfig.CA_CERT_PATH_KEY), any(), any());
-        verify(settingsRepository, never()).deleteByKey(OidcTlsConfig.CA_CERT_PATH_KEY);
+        verify(settingsService, never()).resetToDefault(OidcTlsConfig.CA_CERT_PATH_KEY);
     }
 
     @Test

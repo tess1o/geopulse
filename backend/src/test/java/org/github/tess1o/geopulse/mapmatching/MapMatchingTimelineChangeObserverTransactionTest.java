@@ -7,6 +7,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -33,6 +34,9 @@ class MapMatchingTimelineChangeObserverTransactionTest {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     private UUID userId;
 
@@ -61,6 +65,8 @@ class MapMatchingTimelineChangeObserverTransactionTest {
             insertSetting("map-matching.automatic.enabled", "true", "BOOLEAN");
             insertSetting("map-matching.automatic.quiet-period-minutes", "15", "INTEGER");
         });
+        // Settings were changed with SQL, bypassing SystemSettingsService and its cache.
+        settingsService.invalidateCache();
     }
 
     @Test

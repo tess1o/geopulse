@@ -58,6 +58,22 @@ appears as `GeoPulse-<id>` in `pg_stat_activity`). It holds a lock that tells ba
 backend is running, and stays small because it runs no other queries. So the backend opens at most
 `GEOPULSE_DB_POOL_MAX_SIZE + 1` connections, and one while idle.
 
+### System settings cache
+
+Background jobs check admin settings every few seconds. The backend keeps those settings in memory, so
+these checks do not query the database and do not keep pool connections from closing while GeoPulse is
+idle.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `GEOPULSE_SETTINGS_CACHE_ENABLED` | `true` | Set to `false` to read settings from the database on every use. |
+| `GEOPULSE_SETTINGS_CACHE_TTL` | `1h` | How long a setting is kept in memory. `0` also turns the cache off. |
+
+Settings changed in GeoPulse (the admin panel, the API or a settings backup import) take effect
+immediately. Only rows edited directly in the `system_settings` table wait for the TTL or a backend
+restart. If a setting change ever seems not to apply, set `GEOPULSE_SETTINGS_CACHE_ENABLED=false` and
+restart the backend.
+
 ### Measured effect of the defaults
 
 Synthetic single-user test, 300,000 GPS points, backend limit 512 MiB, idle for six minutes after

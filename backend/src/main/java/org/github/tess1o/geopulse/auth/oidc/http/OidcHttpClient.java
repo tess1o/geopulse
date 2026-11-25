@@ -97,11 +97,11 @@ public class OidcHttpClient {
     private HttpClient httpClient() {
         SSLContext ssl = tlsConfig.getSslContext(); // null = JVM defaults
         HttpClient current = client;
-        if (current != null && builtFor == ssl) {
+        if (current != null && builtFor == ssl) { // NOPMD - SSL context identity determines whether the client must be rebuilt
             return current;
         }
         synchronized (this) {
-            if (client == null || builtFor != ssl) {
+            if (client == null || builtFor != ssl) { // NOPMD - a new SSL context must replace the cached client's trust configuration
                 HttpClient.Builder builder = HttpClient.newBuilder()
                         .connectTimeout(CONNECT_TIMEOUT)
                         .followRedirects(HttpClient.Redirect.NORMAL);

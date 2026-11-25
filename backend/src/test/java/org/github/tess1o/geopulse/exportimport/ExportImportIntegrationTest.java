@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.exportimport;
 import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.map;
 import static org.github.tess1o.geopulse.testsupport.CorrectionTestPayloads.payload;
 
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportFormat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -112,6 +113,8 @@ class ExportImportIntegrationTest {
     ExportDataGenerator exportDataGenerator;
     @Inject
     ImportDataService importDataService;
+    @Inject
+    SystemSettingsService settingsService;
     @Inject
     org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService timelineGeneration;
     @Inject
@@ -311,6 +314,8 @@ class ExportImportIntegrationTest {
                            ('map-matching.automatic.enabled', 'true', 'BOOLEAN', 'map-matching', 'Test', NOW())
                     """).executeUpdate();
         });
+        // Settings were changed with SQL, bypassing SystemSettingsService and its cache.
+        settingsService.invalidateCache();
 
         try {
             List<String> dataTypes = new ArrayList<>(allNativeImportDataTypes());
@@ -346,6 +351,7 @@ class ExportImportIntegrationTest {
                 entityManager.createNativeQuery("DELETE FROM map_matching_reconciliations").executeUpdate();
                 entityManager.createNativeQuery("DELETE FROM system_settings WHERE key LIKE 'map-matching.%'").executeUpdate();
             });
+            settingsService.invalidateCache();
         }
     }
 

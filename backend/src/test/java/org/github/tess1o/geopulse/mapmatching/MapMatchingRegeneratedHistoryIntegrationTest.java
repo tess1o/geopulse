@@ -7,6 +7,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingReconciliation;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
@@ -59,6 +60,9 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    SystemSettingsService settingsService;
+
     private UUID userId;
 
     @BeforeEach
@@ -80,11 +84,14 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
             entityManager.flush();
             userId = user.getId();
         });
+        // Settings were changed with SQL, bypassing SystemSettingsService and its cache.
+        settingsService.invalidateCache();
     }
 
     @AfterEach
     void tearDown() {
         QuarkusTransaction.requiringNew().run(this::clearMapMatchingState);
+        settingsService.invalidateCache();
     }
 
     /**
@@ -225,6 +232,7 @@ class MapMatchingRegeneratedHistoryIntegrationTest {
             // Nothing listens here: matching attempts fail fast and are retried, discovery is what is under test.
             insertSetting("map-matching.valhalla.base-url", "http://127.0.0.1:9", "STRING");
         });
+        settingsService.invalidateCache();
     }
 
     private long persistTripWithPoints(Instant start, Duration duration) {

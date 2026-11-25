@@ -328,7 +328,7 @@ public class AdminSettingsBackupService {
     private void removeMissingSystemSettings(Set<String> importedSettingKeys) {
         for (SystemSettingsEntity existing : settingsRepository.listAllSettings()) {
             if (!importedSettingKeys.contains(existing.getKey()) && !BACKUP_EXCLUDED_SETTING_KEYS.contains(existing.getKey())) {
-                settingsRepository.deleteByKey(existing.getKey());
+                settingsService.resetToDefault(existing.getKey());
             }
         }
     }

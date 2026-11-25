@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
@@ -39,11 +40,14 @@ class LegacyIngestionRewriterTest {
         Logger logger = LogContext.getLogContext().getLogger(LegacyIngestionRewriter.class.getName());
         Handler handler = recordingHandler(captured);
         logger.addHandler(handler);
+        Level originalLevel = logger.getLevel();
+        logger.setLevel(Level.WARNING);
         try {
             String accessToken = ingestVia("/api/owntracks");
             assertMapPoints(accessToken, 1);
             assertThat(captured).anyMatch(message -> message != null && message.contains("[DEPRECATION]"));
         } finally {
+            logger.setLevel(originalLevel);
             logger.removeHandler(handler);
         }
     }
