@@ -86,6 +86,15 @@ export const LOCALE_REGISTRY = [
         loadPrimeVue: () => import('primelocale/nl.json'),
         loadDayjs: () => import('dayjs/locale/nl')
     },
+    {
+        code: 'zh',
+        name: '简体中文',
+        intl: 'zh-CN',
+        status: 'ready',
+        loadCatalog: () => import('./zh/index.js'),
+        loadPrimeVue: async () => (await import('primelocale/zh-CN.json')).default['zh-CN'],
+        loadDayjs: () => import('dayjs/locale/zh')
+    },
 
     // add-locale:entries -- `npm run i18n:add` inserts new entries above this line.
 ]

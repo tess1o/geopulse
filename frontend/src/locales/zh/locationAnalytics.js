@@ -1,0 +1,40 @@
+export default {
+    cityPage: {
+        loading: "正在加载城市详情…",
+        errorTitle: "城市详情加载失败",
+        loadFailed: "无法加载城市详情",
+        subtitle: "城市统计及到访记录",
+        visitsCount: "{count} 次到访",
+        topPlacesTitle: "{name}的常去地点",
+        placeStats: "{count} 次到访 · {duration}",
+        latestPhotosTitle: "{name}的最新照片",
+        noPhotosMessage: "未找到该城市的 Immich 照片。",
+        loadVisitsFailed: "无法加载到访记录",
+        exportSuccessSummary: "导出成功",
+        exportSuccessDetail: "已导出到访 {name} 的记录",
+        exportFailedSummary: "导出失败",
+        exportFailedDetail: "无法导出到访记录"
+    },
+    countryPage: {
+        loading: "正在加载国家详情…",
+        errorTitle: "国家详情加载失败",
+        loadFailed: "无法加载国家详情",
+        subtitle: "国家统计及到访记录",
+        citiesVisitedCount: "已到访 {count} 座城市",
+        visitsCount: "{count} 次到访",
+        citiesTitle: "{name}的城市",
+        cityStats: "{count} 次到访 · {duration} · {places} 个地点",
+        showTop5: "显示前 5 个",
+        showAllCities: "显示全部 {count} 座城市",
+        topPlacesTitle: "{name}的常去地点",
+        placeStats: "{count} 次到访 · {duration}",
+        photoLocationsTitle: "{name}的照片拍摄地点",
+        latestPhotosTitle: "{name}的最新照片",
+        noPhotosMessage: "未找到该国家的 Immich 照片。",
+        loadVisitsFailed: "无法加载到访记录",
+        exportSuccessSummary: "导出成功",
+        exportSuccessDetail: "已导出到访 {name} 的记录",
+        exportFailedSummary: "导出失败",
+        exportFailedDetail: "无法导出到访记录"
+    }
+}

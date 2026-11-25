@@ -1,0 +1,123 @@
+export default {
+    candidates: {
+        save: "保存",
+        current: "当前地点",
+        linkedStays: "保存后将更新你在此地点的所有关联停留记录。",
+        load: "加载候选地点",
+        empty: "未找到候选地点。请尝试其他服务提供商。",
+        single: "此服务提供商返回了一个候选地点。",
+        choose: "选择正确的地点",
+        distance: "距离记录的坐标 {distance} m",
+        loadFailed: "无法加载候选地点，请重试。",
+        saveFailed: "无法保存所选地点。请重新加载候选地点后重试。"
+    },
+    page: {
+        title: "反向地理编码管理",
+        subtitle: "管理和更新地理编码结果",
+        reconcileAllButton: "重新查询全部（{count}）",
+        bulkEditButton: "批量编辑（{count}）",
+        reconcileSelectedButton: "重新查询所选项（{count}）",
+        providerSwitchInfo: "更换服务提供商后，新的查询将使用新服务。可用“重新查询所选项”或“重新查询全部”刷新已有的缓存记录。",
+        normalization: {
+            title: "名称规范化规则",
+            subtitle: "为你的账户设置国家和城市名称的映射规则。新生成的地理编码结果会自动应用这些规则。使用“立即应用规则”可更新已保存的地理编码结果和收藏地点。",
+            collapse: "收起",
+            expand: "展开",
+            addRule: "添加规则",
+            applyRulesNow: "立即应用规则",
+            collapsedHint: "已收起。展开后可管理规则。",
+            empty: "尚无名称规范化规则。",
+            typeColumn: "类型",
+            typeCountry: "国家",
+            typeCity: "城市",
+            fromColumn: "原名称",
+            toColumn: "目标名称",
+            actionsColumn: "操作",
+            valueDash: "-"
+        },
+        filters: {
+            providerLabel: "服务提供商",
+            allProviders: "所有服务提供商",
+            searchLabel: "搜索",
+            searchPlaceholder: "按地点、城市或国家搜索",
+            clearFilters: "清除筛选条件"
+        },
+        table: {
+            title: "地理编码结果",
+            emptyTitle: "未找到地理编码结果",
+            emptyDescription: "没有符合所选条件的地理编码数据。",
+            displayNameColumn: "显示名称",
+            cityColumn: "城市",
+            countryColumn: "国家",
+            providerColumn: "服务提供商",
+            coordinatesColumn: "坐标",
+            lastUsedColumn: "上次使用",
+            actionsColumn: "操作",
+            nullValue: "-",
+            viewDetailsTooltip: "查看详情",
+            editTooltip: "编辑",
+            reconcileTooltip: "重新查询"
+        },
+        bulkEdit: {
+            itemTypeName: "地理编码结果"
+        },
+        ruleDialog: {
+            editHeader: "编辑名称规范化规则",
+            addHeader: "添加名称规范化规则",
+            ruleTypeLabel: "规则类型",
+            fromCountryLabel: "原国家名称",
+            toCountryLabel: "目标国家名称",
+            fromCityLabel: "原城市名称",
+            toCityLabel: "目标城市名称",
+            countryPlaceholderFrom: "例如 Болгарія",
+            countryPlaceholderTo: "例如 保加利亚",
+            cityPlaceholderFrom: "例如 Sofia",
+            cityPlaceholderTo: "例如 索非亚",
+            cancel: "取消",
+            save: "保存"
+        },
+        applyRulesDialog: {
+            applySelectedHeader: "应用所选规则",
+            applyAllHeader: "应用名称规范化规则",
+            applying: "正在应用 {source} → {target}",
+            applyToGeocoding: "应用于反向地理编码结果",
+            applyToFavorites: "应用于收藏地点",
+            cancel: "取消",
+            apply: "应用"
+        },
+        ruleTypeOptions: {
+            country: "国家",
+            city: "城市"
+        },
+        deleteRuleConfirm: "确定要删除“{source} → {target}”的映射规则吗？",
+        toasts: {
+            loadResultsFailed: "无法加载地理编码结果",
+            loadRulesFailed: "无法加载名称规范化规则",
+            ruleUpdatedSummary: "规则已更新",
+            ruleUpdatedDetail: "名称规范化规则已更新",
+            ruleAddedSummary: "规则已添加",
+            ruleAddedDetail: "名称规范化规则已创建",
+            saveFailedSummary: "保存失败",
+            saveRuleFailedFallback: "无法保存名称规范化规则",
+            ruleDeletedSummary: "规则已删除",
+            ruleDeletedDetail: "名称规范化规则已删除",
+            deleteFailedSummary: "删除失败",
+            deleteRuleFailedFallback: "无法删除名称规范化规则",
+            normalizationStartedSummary: "已开始规范化名称",
+            normalizationStartedSingleDetail: "正在后台应用所选规则…",
+            normalizationStartedAllDetail: "正在后台应用规则…",
+            applyFailedSummary: "应用失败",
+            applyFailedFallback: "无法启动名称规范化任务",
+            updateSuccessDetail: "地理编码结果已更新",
+            updateFailedSummary: "更新失败",
+            updateFailedFallback: "无法更新地理编码结果",
+            reconciliationFailedSummary: "重新查询失败",
+            reconciliationFailedFallback: "无法启动重新查询",
+            reconciliationCompleteSummary: "重新查询完成",
+            reconciliationCompleteDetail: "已重新查询 {total} 条结果，其中 {success} 条成功",
+            normalizationCompleteSummary: "名称规范化完成",
+            normalizationCompleteDetail: "已更新 {geocodingUpdated} 条地理编码结果和 {favoritesUpdated} 个收藏地点",
+            normalizationCompleteFailedSuffix: "（{count} 项失败）"
+        }
+    }
+}
