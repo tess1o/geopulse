@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,10 +30,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
@@ -66,6 +67,8 @@ class OidcLogoutIntegrationTest {
     SystemSettingsService settingsService;
 
     private RSAKey signingKey;
+    private HttpServer jwksServer;
+    private String jwksUri;
     private String provider;
     private TestActor actor;
     private String subject;
@@ -73,13 +76,11 @@ class OidcLogoutIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         signingKey = new RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate();
-        Path jwks = Files.createTempFile("geopulse-test-jwks", ".json");
-        jwks.toFile().deleteOnExit();
-        Files.writeString(jwks, new JWKSet(signingKey.toPublicJWK()).toString());
+        jwksUri = startJwksServer(new JWKSet(signingKey.toPublicJWK()).toString());
 
         provider = "idp" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         subject = "subject-" + UUID.randomUUID();
-        saveProvider(jwks, END_SESSION_ENDPOINT);
+        saveProvider(END_SESSION_ENDPOINT);
         actor = QuarkusTransaction.requiringNew().call(() -> testUserFactory.createUser("oidc-logout"));
     }
 
@@ -87,6 +88,7 @@ class OidcLogoutIntegrationTest {
     void tearDown() {
         QuarkusTransaction.requiringNew().run(() -> providerConfigurationService.deleteProvider(provider));
         settingsService.resetToDefault("auth.oidc.rp-logout.enabled");
+        jwksServer.stop(0);
     }
 
     @Test
@@ -166,10 +168,8 @@ class OidcLogoutIntegrationTest {
     }
 
     @Test
-    void logoutSkipsProviderWhenItHasNoEndSessionEndpoint() throws Exception {
-        Path jwks = Files.createTempFile("geopulse-test-jwks", ".json");
-        Files.writeString(jwks, new JWKSet(signingKey.toPublicJWK()).toString());
-        saveProvider(jwks, null);
+    void logoutSkipsProviderWhenItHasNoEndSessionEndpoint() {
+        saveProvider(null);
         String session = oidcSession("sid-1");
 
         Response logout = given().cookie(SESSION_COOKIE, session).when().delete("/api/v1/auth/sessions/current");
@@ -190,7 +190,25 @@ class OidcLogoutIntegrationTest {
         assertThat(logout.jsonPath().getString("idpLogoutUrl")).isNull();
     }
 
-    private void saveProvider(Path jwks, String endSessionEndpoint) {
+    /**
+     * Serves the JWKS over HTTP like a real provider does (GeoPulse only fetches http/https URIs). The path is unique
+     * per test because the token verifier caches key sets by URI and the server port may be reused.
+     */
+    private String startJwksServer(String jwksJson) throws Exception {
+        String path = "/jwks/" + UUID.randomUUID();
+        byte[] body = jwksJson.getBytes(StandardCharsets.UTF_8);
+        jwksServer = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        jwksServer.createContext(path, exchange -> {
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        jwksServer.start();
+        return "http://127.0.0.1:" + jwksServer.getAddress().getPort() + path;
+    }
+
+    private void saveProvider(String endSessionEndpoint) {
         OidcProviderConfiguration configuration = OidcProviderConfiguration.builder()
                 .name(provider)
                 .displayName("Test IdP")
@@ -200,7 +218,7 @@ class OidcLogoutIntegrationTest {
                 .discoveryUrl(ISSUER + "/.well-known/openid-configuration")
                 .authorizationEndpoint(ISSUER + "/authorize")
                 .tokenEndpoint(ISSUER + "/token")
-                .jwksUri(jwks.toUri().toString())
+                .jwksUri(jwksUri)
                 .issuer(ISSUER)
                 .endSessionEndpoint(endSessionEndpoint)
                 .metadataCachedAt(Instant.now())
