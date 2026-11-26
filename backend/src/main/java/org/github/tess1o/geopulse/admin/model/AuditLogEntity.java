@@ -33,8 +33,12 @@ public class AuditLogEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private Instant timestamp = Instant.now();
 
-    @Column(name = "admin_user_id", nullable = false)
+    /** NULL once the admin has been deleted; {@link #adminEmail} still names them. */
+    @Column(name = "admin_user_id")
     private UUID adminUserId;
+
+    @Column(name = "admin_email", length = 255)
+    private String adminEmail;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "action_type", nullable = false, length = 50)

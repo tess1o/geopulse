@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.admin.dto;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionResponse;
 import lombok.Builder;
 import lombok.Data;
 
@@ -17,6 +18,9 @@ public class UserListResponse {
     private boolean isActive;
     private Instant createdAt;
     private Instant updatedAt;
-    private long gpsPointsCount;
+    /** Not counted while the user is being deleted (see {@link #deletion}). */
+    private Long gpsPointsCount;
     private List<String> linkedOidcProviders;
+    /** The pending deletion of this user, or null. */
+    private UserDeletionResponse deletion;
 }

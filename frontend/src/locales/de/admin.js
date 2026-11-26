@@ -228,12 +228,29 @@ export default {
         confirmDeleteDetail: 'Dabei werden alle Daten dauerhaft gelöscht, auch GPS-Punkte, Zeitleiste und Einstellungen.',
         cancel: 'Abbrechen',
         delete: 'Löschen',
+        deletion: {
+            queued: 'Zur Löschung vorgemerkt',
+            running: 'Wird gelöscht',
+            failed: 'Löschung fehlgeschlagen',
+            retry: 'Löschung erneut versuchen',
+            phases: {
+                WAITING: 'Wartet auf das Ende der Zeitachsenverarbeitung',
+                TIMELINE: 'Zeitachse wird gelöscht',
+                LOCATION_DATA: 'Orte und Standortdaten werden gelöscht',
+                GPS_POINTS: 'GPS-Punkte werden gelöscht',
+                FINALIZING: 'Wird abgeschlossen'
+            },
+            deletedPoints: '{count} GPS-Punkte gelöscht'
+        },
         toasts: {
             loadFailedDetail: 'Benutzer konnten nicht geladen werden',
             userEnabled: 'Benutzer aktiviert',
             userDisabled: 'Benutzer deaktiviert',
             updateStatusFailedFallback: 'Status des Benutzers konnte nicht aktualisiert werden',
-            deletedDetail: 'Benutzer gelöscht',
+            deletionStartedDetail: 'Löschung gestartet. Der Benutzer ist gesperrt, seine Daten werden im Hintergrund gelöscht.',
+            deletionRetriedDetail: 'Löschung neu gestartet',
+            deletionRetryFailedFallback: 'Löschung konnte nicht neu gestartet werden',
+            userBeingDeletedDetail: 'Dieser Benutzer wird gelöscht. Der Fortschritt wird in der Benutzerliste angezeigt.',
             deleteFailedFallback: 'Benutzer konnte nicht gelöscht werden'
         }
     }

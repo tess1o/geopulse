@@ -23,6 +23,7 @@ export default {
             settingReset: 'Налаштування скинуто',
             userEnabled: 'Користувача увімкнено',
             userDisabled: 'Користувача вимкнено',
+            userDeletionRequested: 'Запит на видалення користувача',
             userDeleted: 'Користувача видалено',
             userRoleChanged: 'Роль користувача змінено',
             userPasswordReset: 'Пароль користувача скинуто',

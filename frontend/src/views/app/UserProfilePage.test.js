@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -14,8 +14,10 @@ vi.hoisted(() => {
   Object.defineProperty(window, 'localStorage', { configurable: true, value: localStorageShim })
 })
 
+const mockRoute = vi.hoisted(() => ({ path: '/app/profile', query: {} }))
+
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: '/app/profile', query: {} }),
+  useRoute: () => mockRoute,
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   onBeforeRouteLeave: vi.fn()
 }))
@@ -35,7 +37,9 @@ vi.mock('@/components/ui/layout/AppLayout.vue', () => ({ default: { template: '<
 vi.mock('@/components/ui/layout/PageContainer.vue', () => ({ default: { template: '<div><slot /></div>' } }))
 vi.mock('@/components/profile/ProfileTab.vue', () => ({ default: stub }))
 vi.mock('@/components/profile/SecurityTab.vue', () => ({ default: stub }))
-vi.mock('@/components/profile/TimelineDisplayTab.vue', () => ({ default: stub }))
+vi.mock('@/components/profile/TimelineDisplayTab.vue', () => ({
+  default: { name: 'TimelineDisplayTabStub', props: ['initialPreferences', 'readOnly'], template: '<div />' }
+}))
 vi.mock('@/components/profile/ConnectedAppsTab.vue', () => ({ default: stub }))
 vi.mock('@/components/profile/NotificationsPreferencesTab.vue', () => ({ default: stub }))
 vi.mock('@/components/search/SettingsSearchTrigger.vue', () => ({
@@ -50,6 +54,7 @@ describe('UserProfilePage', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     vi.clearAllMocks()
+    mockRoute.query = {}
 
     // Stub the network calls the page makes on mount so no request leaves the test.
     const { useAuthStore } = await import('@/stores/auth')
@@ -130,5 +135,35 @@ describe('UserProfilePage', () => {
 
     expect(notice.exists()).toBe(true)
     expect(notice.text()).toContain('Демо-режим')
+  })
+
+  it('drops cleared timeline fields after saving, so the tab is not left dirty', async () => {
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+    authStore.fetchTimelineDisplayPreferences.mockResolvedValue({
+      customMapStyleUrl: 'https://example.com/style.json',
+      customMapTileUrl: 'https://tiles.example.com/{z}/{x}/{y}.png',
+      defaultDateRangePreset: 'lastWeek'
+    })
+    // The server stores a cleared value as null and omits it from the response (NON_NULL).
+    vi.spyOn(authStore, 'updateTimelineDisplayPreferences').mockResolvedValue({
+      mapRenderMode: 'VECTOR',
+      mapMatchingAvailable: false
+    })
+    mockRoute.query = { tab: 'timeline' }
+
+    const wrapper = mountPage()
+    await flushPromises()
+    const tab = wrapper.findComponent({ name: 'TimelineDisplayTabStub' })
+    expect(tab.props('initialPreferences').customMapStyleUrl).toBe('https://example.com/style.json')
+
+    tab.vm.$emit('save', { customMapStyleUrl: '', customMapTileUrl: '', defaultDateRangePreset: '' })
+    await flushPromises()
+
+    expect(tab.props('initialPreferences')).toMatchObject({
+      customMapStyleUrl: '',
+      customMapTileUrl: '',
+      defaultDateRangePreset: ''
+    })
   })
 })

@@ -8,6 +8,8 @@ import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.AuditLogEntity;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.repository.AuditLogRepository;
+import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,10 +23,12 @@ import java.util.UUID;
 public class AuditLogService {
 
     private final AuditLogRepository repository;
+    private final UserRepository userRepository;
 
     @Inject
-    public AuditLogService(AuditLogRepository repository) {
+    public AuditLogService(AuditLogRepository repository, UserRepository userRepository) {
         this.repository = repository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -41,6 +45,9 @@ public class AuditLogService {
 
         AuditLogEntity entry = AuditLogEntity.builder()
                 .adminUserId(adminUserId)
+                // Kept with the entry, so it still names the admin after the admin's account is deleted.
+                .adminEmail(adminUserId == null ? null
+                        : userRepository.findByIdOptional(adminUserId).map(UserEntity::getEmail).orElse(null))
                 .actionType(actionType)
                 .targetType(targetType)
                 .targetId(targetId)

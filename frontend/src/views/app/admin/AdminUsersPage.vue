@@ -69,13 +69,20 @@
 
         <Column field="active" :header="t('admin.usersPage.columnStatus')" sortable>
           <template #body="{ data }">
-            <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
+            <UserDeletionStatus
+              v-if="data.deletion"
+              :deletion="data.deletion"
+              :can-retry="!adminReadOnly"
+              :retrying="retryingUserId === data.id"
+              @retry="retryDeletion(data)"
+            />
+            <Tag v-else :severity="data.active ? 'success' : 'danger'" :value="data.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
           </template>
         </Column>
 
         <Column field="gpsPointsCount" :header="t('admin.usersPage.columnGpsPoints')">
           <template #body="{ data }">
-            {{ formatNumber(data.gpsPointsCount) }}
+            {{ data.deletion ? '—' : formatNumber(data.gpsPointsCount) }}
           </template>
         </Column>
 
@@ -103,7 +110,7 @@
                 :severity="data.active ? 'warning' : 'success'"
                 @click="toggleUserStatus(data)"
                 v-tooltip="data.active ? t('admin.usersPage.disableUser') : t('admin.usersPage.enableUser')"
-                :disabled="adminReadOnly || data.id === currentUserId"
+                :disabled="adminReadOnly || data.id === currentUserId || !!data.deletion"
               />
               <Button
                 icon="pi pi-trash"
@@ -112,7 +119,7 @@
                 severity="danger"
                 @click="confirmDelete(data)"
                 v-tooltip="t('admin.usersPage.deleteUser')"
-                :disabled="adminReadOnly || data.id === currentUserId"
+                :disabled="adminReadOnly || data.id === currentUserId || !!data.deletion"
               />
             </div>
           </template>
@@ -145,14 +152,23 @@
             </div>
             <div class="user-badges">
               <Tag :severity="user.role === 'ADMIN' ? 'warning' : 'info'" :value="user.role" />
-              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
+              <Tag v-if="!user.deletion" :severity="user.active ? 'success' : 'danger'" :value="user.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
             </div>
+          </div>
+
+          <div v-if="user.deletion" class="user-card-deletion" @click.stop>
+            <UserDeletionStatus
+              :deletion="user.deletion"
+              :can-retry="!adminReadOnly"
+              :retrying="retryingUserId === user.id"
+              @retry="retryDeletion(user)"
+            />
           </div>
 
           <div class="gp-admin-list-card-body">
             <div class="user-stat">
               <span class="stat-label">{{ t('admin.usersPage.columnGpsPoints') }}</span>
-              <span class="stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
+              <span class="stat-value">{{ user.deletion ? '—' : formatNumber(user.gpsPointsCount) }}</span>
             </div>
             <div class="user-stat">
               <span class="stat-label">{{ t('admin.usersPage.columnCreated') }}</span>
@@ -175,7 +191,7 @@
               text
               :severity="user.active ? 'warning' : 'success'"
               @click="toggleUserStatus(user)"
-              :disabled="adminReadOnly || user.id === currentUserId"
+              :disabled="adminReadOnly || user.id === currentUserId || !!user.deletion"
               size="small"
             />
             <Button
@@ -184,7 +200,7 @@
               text
               severity="danger"
               @click="confirmDelete(user)"
-              :disabled="adminReadOnly || user.id === currentUserId"
+              :disabled="adminReadOnly || user.id === currentUserId || !!user.deletion"
               size="small"
             />
           </div>
@@ -251,7 +267,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
@@ -266,6 +282,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
+import UserDeletionStatus from '@/components/admin/UserDeletionStatus.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useAdminStore } from '@/stores/admin'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
@@ -303,11 +320,23 @@ const searchTimeout = ref(null)
 const deleteDialogVisible = ref(false)
 const userToDelete = ref(null)
 const deleting = ref(false)
+const retryingUserId = ref(null)
+
+// While a deletion on this page is queued or running, the list refreshes itself to show progress.
+const DELETION_POLL_INTERVAL_MS = 5000
+let deletionPollTimer = null
+// A refresh that is still in flight when the page is left must not schedule another one.
+let unmounted = false
+const hasDeletionInProgress = computed(() =>
+  users.value.some(user => user.deletion && user.deletion.status !== 'FAILED')
+)
 
 const currentUserId = computed(() => authStore.userId)
 
-const loadUsers = async () => {
-  loading.value = true
+const loadUsers = async ({ silent = false } = {}) => {
+  if (!silent) {
+    loading.value = true
+  }
   try {
     const params = new URLSearchParams({
       page: page.value.toString(),
@@ -325,6 +354,9 @@ const loadUsers = async () => {
     totalRecords.value = response.totalElements
   } catch (error) {
     console.error('Failed to load users:', error)
+    if (silent) {
+      return
+    }
     toast.add({
       severity: 'error',
       summary: t('common.error'),
@@ -332,7 +364,44 @@ const loadUsers = async () => {
       life: 3000
     })
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
+    scheduleDeletionPoll()
+  }
+}
+
+const scheduleDeletionPoll = () => {
+  if (deletionPollTimer) {
+    clearTimeout(deletionPollTimer)
+    deletionPollTimer = null
+  }
+  if (!unmounted && hasDeletionInProgress.value) {
+    deletionPollTimer = setTimeout(() => loadUsers({ silent: true }), DELETION_POLL_INTERVAL_MS)
+  }
+}
+
+const retryDeletion = async (user) => {
+  retryingUserId.value = user.id
+  try {
+    user.deletion = await adminStore.retryUserDeletion(user.id)
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('admin.usersPage.toasts.deletionRetriedDetail'),
+      life: 3000
+    })
+    scheduleDeletionPoll()
+  } catch (error) {
+    console.error('Failed to retry user deletion:', error)
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.deletionRetryFailedFallback')),
+      life: 3000
+    })
+  } finally {
+    retryingUserId.value = null
   }
 }
 
@@ -401,8 +470,8 @@ const deleteUser = async () => {
     toast.add({
       severity: 'success',
       summary: t('common.success'),
-      detail: t('admin.usersPage.toasts.deletedDetail'),
-      life: 3000
+      detail: t('admin.usersPage.toasts.deletionStartedDetail'),
+      life: 5000
     })
 
     deleteDialogVisible.value = false
@@ -463,9 +532,21 @@ const goToLastPage = () => {
 onMounted(() => {
   loadUsers()
 })
+
+onUnmounted(() => {
+  unmounted = true
+  if (deletionPollTimer) {
+    clearTimeout(deletionPollTimer)
+    deletionPollTimer = null
+  }
+})
 </script>
 
 <style scoped>
+.user-card-deletion {
+  padding: 0 0 0.5rem;
+}
+
 .no-underline {
   text-decoration: none;
 }

@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.admin.service;
 
 import org.github.tess1o.geopulse.admin.model.AuditLogEntity;
 import org.github.tess1o.geopulse.admin.repository.AuditLogRepository;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,7 +20,7 @@ class AuditLogServiceTest {
     @Test
     void redactedSettingChangeNeverPersistsValues() {
         AuditLogRepository repository = mock(AuditLogRepository.class);
-        AuditLogService service = new AuditLogService(repository);
+        AuditLogService service = new AuditLogService(repository, mock(UserRepository.class));
 
         service.logSettingChange(UUID.randomUUID(), "backup.password", "old-secret", "new-secret", true, "127.0.0.1");
 

@@ -24,6 +24,7 @@ export default {
             settingReset: 'Instelling gereset',
             userEnabled: 'Gebruiker ingeschakeld',
             userDisabled: 'Gebruiker uitgeschakeld',
+            userDeletionRequested: 'Verwijdering gebruiker aangevraagd',
             userDeleted: 'Gebruiker verwijderd',
             userRoleChanged: 'Gebruikersrol gewijzigd',
             userPasswordReset: 'Gebruikerswachtwoord gereset',

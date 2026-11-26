@@ -230,12 +230,29 @@ export default {
         confirmDeleteDetail: 'Це остаточно видалить усі його дані, включно з GPS-точками, хронологією та налаштуваннями.',
         cancel: 'Скасувати',
         delete: 'Видалити',
+        deletion: {
+            queued: 'У черзі на видалення',
+            running: 'Видаляється',
+            failed: 'Не вдалося видалити',
+            retry: 'Повторити видалення',
+            phases: {
+                WAITING: 'Очікує завершення обробки хронології',
+                TIMELINE: 'Видалення хронології',
+                LOCATION_DATA: 'Видалення місць і даних про місцезнаходження',
+                GPS_POINTS: 'Видалення GPS-точок',
+                FINALIZING: 'Завершення'
+            },
+            deletedPoints: 'Видалено GPS-точок: {count}'
+        },
         toasts: {
             loadFailedDetail: 'Не вдалося завантажити користувачів',
             userEnabled: 'Користувача увімкнено',
             userDisabled: 'Користувача вимкнено',
             updateStatusFailedFallback: 'Не вдалося оновити статус користувача',
-            deletedDetail: 'Користувача успішно видалено',
+            deletionStartedDetail: 'Видалення розпочато. Користувача заблоковано, його дані видаляються у фоновому режимі.',
+            deletionRetriedDetail: 'Видалення перезапущено',
+            deletionRetryFailedFallback: 'Не вдалося перезапустити видалення',
+            userBeingDeletedDetail: 'Цей користувач видаляється. Хід видалення показано у списку користувачів.',
             deleteFailedFallback: 'Не вдалося видалити користувача'
         }
     }

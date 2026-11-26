@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.auth.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.session.model.IssuedApiSession;
@@ -30,18 +31,21 @@ public class AuthenticationService {
     private final AdminBootstrapService adminBootstrapService;
     private final DemoModeService demoModeService;
     private final UserSessionService userSessionService;
+    private final UserDeletionService userDeletionService;
 
     @Inject
     public AuthenticationService(UserService userService,
                                  SecurePasswordUtils securePasswordUtils,
                                  AdminBootstrapService adminBootstrapService,
                                  DemoModeService demoModeService,
-                                 UserSessionService userSessionService) {
+                                 UserSessionService userSessionService,
+                                 UserDeletionService userDeletionService) {
         this.userService = userService;
         this.securePasswordUtils = securePasswordUtils;
         this.adminBootstrapService = adminBootstrapService;
         this.demoModeService = demoModeService;
         this.userSessionService = userSessionService;
+        this.userDeletionService = userDeletionService;
     }
 
     /**
@@ -60,11 +64,12 @@ public class AuthenticationService {
     }
 
     /**
-     * Checks an authenticated user may sign in: the account is enabled, and the bootstrap admin
+     * Checks an authenticated user may sign in: the account is enabled and not being deleted, and the bootstrap admin
      * gets its role. Every session creation goes through here.
      */
     private UserEntity prepareSignIn(UserEntity user) {
-        if (!user.isActive()) {
+        // A user being deleted stays locked out, also before the deletion worker has disabled the account.
+        if (!user.isActive() || userDeletionService.isPending(user.getId())) {
             throw new GeoPulseException(ACCESS_DENIED, "User account is disabled");
         }
         adminBootstrapService.ensureAdminForAuthenticatedUser(user);

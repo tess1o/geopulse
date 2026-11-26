@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import org.github.tess1o.geopulse.auth.session.service.UserSessionService;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
@@ -31,13 +32,14 @@ class AuthenticationServiceTest {
     @Mock AdminBootstrapService adminBootstrapService;
     @Mock DemoModeService demoModeService;
     @Mock UserSessionService userSessionService;
+    @Mock UserDeletionService userDeletionService;
 
     AuthenticationService service;
 
     @BeforeEach
     void setUp() {
         service = new AuthenticationService(userService, securePasswordUtils, adminBootstrapService, demoModeService,
-                userSessionService);
+                userSessionService, userDeletionService);
     }
 
     @Test

@@ -74,7 +74,10 @@ public class TimelineSafetyNetService {
     public List<UUID> usersWithPointsSince(Instant since) {
         @SuppressWarnings("unchecked")
         List<Object> rows = entityManager.createNativeQuery(
-                        "SELECT DISTINCT user_id FROM gps_points WHERE timestamp >= ?1")
+                        """
+                        SELECT DISTINCT g.user_id FROM gps_points g JOIN users u ON u.id = g.user_id
+                        WHERE g.timestamp >= ?1 AND u.timeline_status <> 'DELETING'
+                        """)
                 .setParameter(1, since)
                 .getResultList();
         return rows.stream().map(row -> row instanceof UUID uuid ? uuid : UUID.fromString(row.toString())).toList();

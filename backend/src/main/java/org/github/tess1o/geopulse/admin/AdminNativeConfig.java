@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.admin;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionPhase;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionResponse;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionStatus;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.admin.service.LogLevelService;
 import org.github.tess1o.geopulse.admin.backup.RestorePhase;
@@ -42,6 +45,7 @@ import org.github.tess1o.geopulse.admin.model.*;
                 UpdateUserStatusRequest.class,
                 UpdateUserRoleRequest.class,
                 UserListResponse.class,
+                UserDeletionResponse.class,
                 SettingInfo.class,
                 SettingDefinition.class,
                 AuditLogResponse.class,
@@ -77,6 +81,8 @@ import org.github.tess1o.geopulse.admin.model.*;
                 TargetType.class,
                 ValueType.class,
                 SettingsCategory.class,
+                UserDeletionStatus.class,
+                UserDeletionPhase.Stage.class,
                 InvitationStatus.class
         }
 )

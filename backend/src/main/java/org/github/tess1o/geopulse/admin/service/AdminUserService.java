@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.deletion.AdminMembershipGuard;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.shared.security.CryptoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -37,6 +39,12 @@ public class AdminUserService {
 
     @Inject
     UserSessionService userSessionService;
+
+    @Inject
+    AdminMembershipGuard adminGuard;
+
+    @Inject
+    UserDeletionService userDeletionService;
 
     @Inject
     public AdminUserService(UserRepository userRepository,
@@ -145,6 +153,10 @@ public class AdminUserService {
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
         }
+        userDeletionService.requireNotPending(userId);
+        if (!active) {
+            adminGuard.checkCanStopBeingAdmin(userId);
+        }
 
         user.setActive(active);
         if (!active) {
@@ -163,12 +175,9 @@ public class AdminUserService {
             throw new IllegalArgumentException("User not found: " + userId);
         }
 
-        // Check if this is the last admin trying to demote themselves
-        if (user.getRole() == Role.ADMIN && newRole == Role.USER) {
-            long adminCount = userRepository.count("role", Role.ADMIN);
-            if (adminCount <= 1) {
-                throw new IllegalStateException("Cannot demote the last admin user");
-            }
+        userDeletionService.requireNotPending(userId);
+        if (newRole != Role.ADMIN) {
+            adminGuard.checkCanStopBeingAdmin(userId);
         }
 
         Role oldRole = user.getRole();
@@ -185,6 +194,7 @@ public class AdminUserService {
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
         }
+        userDeletionService.requireNotPending(userId);
 
         String tempPassword = generateTemporaryPassword();
         user.setPasswordHash(passwordUtils.hashPassword(tempPassword));
@@ -192,101 +202,6 @@ public class AdminUserService {
 
         log.info("Password reset for user {} by admin", userId);
         return tempPassword;
-    }
-
-    /**
-     * Delete user and all associated data.
-     */
-    @Transactional
-    public void deleteUser(UUID userId) {
-        UserEntity user = userRepository.findById(userId);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found: " + userId);
-        }
-
-        // Check if trying to delete the last admin
-        if (user.getRole() == Role.ADMIN) {
-            long adminCount = userRepository.count("role", Role.ADMIN);
-            if (adminCount <= 1) {
-                throw new IllegalStateException("Cannot delete the last admin user");
-            }
-        }
-
-
-        // Delete in order due to foreign key constraints
-        // Note: Some entities have cascade delete, but we'll be explicit
-
-        // Delete OIDC connections
-        entityManager.createQuery("DELETE FROM UserOidcConnectionEntity c WHERE c.userId = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete audit logs (keep for compliance? or delete?)
-        // For now, we'll keep audit logs but they'll reference a deleted user
-
-        // Delete timeline data
-        entityManager.createQuery("DELETE FROM TimelineTripEntity t WHERE t.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        entityManager.createQuery("DELETE FROM TimelineStayEntity s WHERE s.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        entityManager.createQuery("DELETE FROM TimelineDataGapEntity g WHERE g.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete GPS points
-        entityManager.createQuery("DELETE FROM GpsPointEntity g WHERE g.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete GPS source configs
-        entityManager.createQuery("DELETE FROM GpsSourceConfigEntity c WHERE c.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete favorite locations
-        entityManager.createQuery("DELETE FROM FavoritesEntity f WHERE f.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete shared links
-        entityManager.createQuery("DELETE FROM SharedLinkEntity s WHERE s.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete friend relationships
-        entityManager.createQuery("DELETE FROM UserFriendEntity f WHERE f.user.id = :userId OR f.friend.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete friend invitations
-        entityManager.createQuery("DELETE FROM FriendInvitationEntity i WHERE i.sender.id = :userId OR i.receiver.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Break invitation-user references before deleting the user.
-        // `usedBy` is nullable, so we can preserve the invitation record.
-        entityManager.createQuery("UPDATE UserInvitationEntity i SET i.usedBy = null WHERE i.usedBy = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // `createdBy` is NOT NULL, so invitations created by this user must be removed.
-        entityManager.createQuery("DELETE FROM UserInvitationEntity i WHERE i.createdBy = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Delete badges
-        entityManager.createQuery("DELETE FROM UserBadgeEntity b WHERE b.user.id = :userId")
-                .setParameter("userId", userId)
-                .executeUpdate();
-
-        // Finally delete the user
-        userRepository.deleteById(userId);
-
-        log.info("User {} deleted with all associated data", userId);
     }
 
     private String generateTemporaryPassword() {

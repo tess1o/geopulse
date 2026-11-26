@@ -11,7 +11,14 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionResponse;
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import org.github.tess1o.geopulse.admin.dto.*;
+import org.github.tess1o.geopulse.admin.model.ActionType;
+import org.github.tess1o.geopulse.admin.model.TargetType;
+import org.jboss.resteasy.reactive.RestResponse;
 import org.github.tess1o.geopulse.admin.service.AdminUserService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
@@ -21,6 +28,7 @@ import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -53,6 +61,9 @@ public class AdminUserResource {
     @Inject
     CurrentUserService currentUserService;
 
+    @Inject
+    UserDeletionService userDeletionService;
+
     /**
      * Get paginated list of users.
      */
@@ -77,8 +88,10 @@ public class AdminUserResource {
         List<UserEntity> users = adminUserService.getUsers(search, page, size, sortBy, sortDir);
         long total = adminUserService.countUsers(search);
 
+        Map<UUID, UserDeletionResponse> deletions = userDeletionService.findPending(
+                users.stream().map(UserEntity::getId).toList());
         List<UserListResponse> userResponses = users.stream()
-                .map(this::toUserListResponse)
+                .map(user -> toUserListResponse(user, deletions.get(user.getId())))
                 .collect(Collectors.toList());
 
         return new PageResponse<>(userResponses, page, size, total, (int) Math.ceil((double) total / size));
@@ -188,16 +201,20 @@ public class AdminUserResource {
     }
 
     /**
-     * Delete user and all associated data.
+     * Start deleting a user and all associated data.
      */
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
+    @APIResponse(responseCode = "202", description = "Deletion started")
     @Operation(summary = "Delete a user",
-            description = "Permanently deletes a user and all of their data. Administrators cannot delete their own "
-                    + "account or the last administrator. This cannot be undone. The deletion is recorded in the "
-                    + "audit log.")
-    public void deleteUser(
+            description = "Starts permanently deleting a user and all of their data, and returns at once. The user is "
+                    + "locked out immediately: sessions, API tokens, GPS sources, shares and friendships are removed. "
+                    + "The data is then deleted in the background; follow it with `GET /admin/users/{id}/deletion` "
+                    + "or the `deletion` field of the user. Repeating the request returns the deletion in progress. "
+                    + "Administrators cannot delete their own account or the last active administrator. This cannot "
+                    + "be undone. The request is recorded in the audit log.")
+    public RestResponse<UserDeletionResponse> deleteUser(
             @Parameter(description = "User ID.")
             @PathParam("id") UUID id) {
 
@@ -210,22 +227,49 @@ public class AdminUserResource {
 
         UserEntity user = adminUserService.getUserById(id)
                 .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
+        boolean alreadyPending = userDeletionService.isPending(id);
 
-        String userEmail = user.getEmail();
+        UserDeletionResponse deletion = userDeletionService.requestDeletion(id, adminId);
 
-        try {
-            adminUserService.deleteUser(id);
-        } catch (IllegalStateException e) {
-            throw new GeoPulseException(ADMIN_USER_UPDATE_INVALID, ADMIN_USER_UPDATE_INVALID.title(), e);
+        if (!alreadyPending) {
+            auditLogService.logAction(adminId, ActionType.USER_DELETION_REQUESTED, TargetType.USER, id.toString(),
+                    Map.of("email", user.getEmail()), UserIpAddress.resolve(httpRequest));
         }
-
-        // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest);
-        auditLogService.logUserDeleted(adminId, id, userEmail, ipAddress);
-
+        return RestResponse.status(Response.Status.ACCEPTED, deletion);
     }
 
-    private UserListResponse toUserListResponse(UserEntity user) {
+    /**
+     * Progress of a user deletion.
+     */
+    @GET
+    @Path("/{id}/deletion")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    @Operation(summary = "Get a user deletion",
+            description = "Returns the progress of a user's deletion. It stays available after the user is gone, "
+                    + "with status `COMPLETED`.")
+    public UserDeletionResponse getUserDeletion(
+            @Parameter(description = "User ID.")
+            @PathParam("id") UUID id) {
+        return userDeletionService.find(id)
+                .orElseThrow(() -> new GeoPulseException(USER_DELETION_NOT_FOUND, "User deletion not found"));
+    }
+
+    /**
+     * Retry a failed user deletion.
+     */
+    @POST
+    @Path("/{id}/deletion/retries")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    @Operation(summary = "Retry a user deletion",
+            description = "Starts a failed user deletion again where it stopped. The user stays locked out while the "
+                    + "deletion is pending, including after it failed.")
+    public UserDeletionResponse retryUserDeletion(
+            @Parameter(description = "User ID.")
+            @PathParam("id") UUID id) {
+        return userDeletionService.retry(id);
+    }
+
+    private UserListResponse toUserListResponse(UserEntity user, UserDeletionResponse deletion) {
         return UserListResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -234,12 +278,15 @@ public class AdminUserResource {
                 .isActive(user.isActive())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
-                .gpsPointsCount(adminUserService.getGpsPointsCount(user.getId()))
+                // Counting the points of a user being deleted is slow and the count is about to be zero.
+                .gpsPointsCount(deletion == null ? adminUserService.getGpsPointsCount(user.getId()) : null)
                 .linkedOidcProviders(adminUserService.getLinkedOidcProviders(user.getId()))
+                .deletion(deletion)
                 .build();
     }
 
     private UserDetailsResponse toUserDetailsResponse(UserEntity user) {
+        UserDeletionResponse deletion = userDeletionService.findPending(List.of(user.getId())).get(user.getId());
         return UserDetailsResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -251,9 +298,10 @@ public class AdminUserResource {
                 .timezone(user.getTimezone())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
-                .gpsPointsCount(adminUserService.getGpsPointsCount(user.getId()))
-                .lastGpsPointAt(adminUserService.getLastGpsPointTimestamp(user.getId()))
+                .gpsPointsCount(deletion == null ? adminUserService.getGpsPointsCount(user.getId()) : null)
+                .lastGpsPointAt(deletion == null ? adminUserService.getLastGpsPointTimestamp(user.getId()) : null)
                 .linkedOidcProviders(adminUserService.getLinkedOidcProviders(user.getId()))
+                .deletion(deletion)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isBlank())
                 .build();
     }

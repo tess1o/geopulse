@@ -361,6 +361,17 @@ const loadUser = async () => {
   loading.value = true
   try {
     const response = await adminStore.getUserDetails(route.params.id)
+    if (response?.deletion) {
+      // A user being deleted can no longer be edited; the list shows the deletion's progress.
+      toast.add({
+        severity: 'info',
+        summary: t('admin.usersPage.deletion.running'),
+        detail: t('admin.usersPage.toasts.userBeingDeletedDetail'),
+        life: 5000
+      })
+      router.replace('/app/admin/users')
+      return
+    }
     user.value = response
     // Update breadcrumb with user name
     breadcrumbLastLabel.value = user.value.fullName || user.value.email
@@ -553,8 +564,8 @@ const deleteUser = async () => {
     toast.add({
       severity: 'success',
       summary: t('common.success'),
-      detail: t('admin.usersPage.toasts.deletedDetail'),
-      life: 3000
+      detail: t('admin.usersPage.toasts.deletionStartedDetail'),
+      life: 5000
     })
 
     router.push('/app/admin/users')

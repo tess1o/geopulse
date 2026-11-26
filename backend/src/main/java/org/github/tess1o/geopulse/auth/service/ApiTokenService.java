@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -35,6 +36,9 @@ public class ApiTokenService {
 
     @Inject
     ApiTokenSecretService apiTokenSecretService;
+
+    @Inject
+    UserDeletionRepository deletionRepository;
 
     /** Creates a full-access ({@link ApiTokenScope#ALL}) token. */
     @Transactional
@@ -174,7 +178,8 @@ public class ApiTokenService {
 
         UserApiTokenEntity token = tokenOpt.get();
         UserEntity user = token.getUser();
-        if (user == null || !user.isActive() || !token.isActive()) {
+        // A token created by a request that was in flight when the user's deletion was requested is refused too.
+        if (user == null || !user.isActive() || !token.isActive() || deletionRepository.isPending(user.getId())) {
             return Optional.empty();
         }
 

@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
@@ -49,6 +50,9 @@ class ImportJobServiceCoverageTest {
 
     @Mock
     DataJobNotificationService dataJobNotificationService;
+
+    @Mock
+    UserDeletionService userDeletionService;
 
     @InjectMocks
     ImportJobService importJobService;

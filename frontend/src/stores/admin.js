@@ -221,12 +221,30 @@ const actions = {
     },
 
     /**
-     * Delete a user
+     * Start deleting a user. The user is locked out at once and the data is deleted in the background.
      * @param {string} userId - User ID
-     * @returns {Promise<Object>} Result
+     * @returns {Promise<Object>} The deletion: status, phase, deletedGpsPoints
      */
     async deleteUser(userId) {
         return apiService.delete(`/admin/users/${userId}`);
+    },
+
+    /**
+     * Progress of a user deletion
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} The deletion: status, phase, deletedGpsPoints
+     */
+    async getUserDeletion(userId) {
+        return apiService.get(`/admin/users/${userId}/deletion`);
+    },
+
+    /**
+     * Start a failed user deletion again where it stopped
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} The deletion
+     */
+    async retryUserDeletion(userId) {
+        return apiService.post(`/admin/users/${userId}/deletion/retries`, {});
     },
 
     async getUserApiTokens(userId, page = 0, size = 20) {

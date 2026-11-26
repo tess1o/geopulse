@@ -9,6 +9,8 @@ public enum SessionRevocationReason {
     PASSWORD_CHANGED,
     PASSWORD_RESET,
     USER_DISABLED,
+    /** An admin requested the user's deletion. */
+    USER_DELETED,
     /** An already rotated refresh token was presented again: the token was probably stolen. */
     REFRESH_TOKEN_REUSE
 }

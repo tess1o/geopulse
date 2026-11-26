@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -51,6 +52,9 @@ public class ImportJobService {
     @Inject
     DataJobNotificationService dataJobNotificationService;
 
+    @Inject
+    UserDeletionService userDeletionService;
+
     private final ConcurrentHashMap<UUID, ImportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
@@ -63,6 +67,7 @@ public class ImportJobService {
     }
 
     public ImportJob createImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
+        userDeletionService.requireNotPending(userId);
         ImportJob job = new ImportJob(userId, options, fileName, zipData);
         activeJobs.put(job.getJobId(), job);
 
@@ -77,6 +82,7 @@ public class ImportJobService {
      * Automatically sets detected data types for non-geopulse formats (they only support rawgps).
      */
     public void registerJob(ImportJob job) {
+        userDeletionService.requireNotPending(job.getUserId());
         String format = job.getOptions().getImportFormat();
 
         // Non-geopulse formats only support rawgps data type
@@ -158,6 +164,7 @@ public class ImportJobService {
         for (ImportJob job : validatingJobs) {
             try {
                 log.debug("Validating import job {}", job.getJobId());
+                userDeletionService.requireNotPending(job.getUserId());
 
                 List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(job);
 
@@ -189,6 +196,7 @@ public class ImportJobService {
         for (ImportJob job : processingJobs) {
             try {
                 log.debug("Processing import job {}", job.getJobId());
+                userDeletionService.requireNotPending(job.getUserId());
 
                 importDataService.processImportData(job);
 

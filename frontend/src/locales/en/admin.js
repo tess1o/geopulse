@@ -231,12 +231,29 @@ export default {
         confirmDeleteDetail: 'This will permanently delete all their data including GPS points, timeline, and settings.',
         cancel: 'Cancel',
         delete: 'Delete',
+        deletion: {
+            queued: 'Queued for deletion',
+            running: 'Deleting',
+            failed: 'Deletion failed',
+            retry: 'Retry deletion',
+            phases: {
+                WAITING: 'Waiting for timeline processing to finish',
+                TIMELINE: 'Deleting timeline',
+                LOCATION_DATA: 'Deleting places and location data',
+                GPS_POINTS: 'Deleting GPS points',
+                FINALIZING: 'Finishing'
+            },
+            deletedPoints: '{count} GPS points deleted'
+        },
         toasts: {
             loadFailedDetail: 'Failed to load users',
             userEnabled: 'User enabled',
             userDisabled: 'User disabled',
             updateStatusFailedFallback: 'Failed to update user status',
-            deletedDetail: 'User deleted successfully',
+            deletionStartedDetail: 'Deletion started. The user is locked out and their data is being deleted in the background.',
+            deletionRetriedDetail: 'Deletion restarted',
+            deletionRetryFailedFallback: 'Failed to retry the deletion',
+            userBeingDeletedDetail: 'This user is being deleted. Progress is shown in the user list.',
             deleteFailedFallback: 'Failed to delete user'
         }
     }

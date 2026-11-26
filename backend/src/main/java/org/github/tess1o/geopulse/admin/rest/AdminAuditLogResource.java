@@ -102,6 +102,7 @@ public class AdminAuditLogResource {
         // Fetch admin user emails
         Set<UUID> adminUserIds = auditLogs.stream()
                 .map(AuditLogEntity::getAdminUserId)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
         Map<UUID, String> adminEmails = new HashMap<>();
@@ -124,7 +125,8 @@ public class AdminAuditLogResource {
                 .id(entity.getId())
                 .timestamp(entity.getTimestamp())
                 .adminUserId(entity.getAdminUserId())
-                .adminEmail(adminEmail != null ? adminEmail : "Unknown")
+                .adminEmail(adminEmail != null ? adminEmail
+                        : entity.getAdminEmail() != null ? entity.getAdminEmail() : "Unknown")
                 .actionType(entity.getActionType())
                 .targetType(entity.getTargetType())
                 .targetId(entity.getTargetId())

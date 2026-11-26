@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,6 +30,9 @@ public class BatchProcessor {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    UserDeletionService userDeletionService;
     
     /**
      * Process a batch of GPS points using intelligent upsert logic.
@@ -80,6 +84,11 @@ public class BatchProcessor {
         for (int i = 0; i < gpsPoints.size(); i += batchSize) {
             int endIndex = Math.min(i + batchSize, gpsPoints.size());
             List<GpsPointEntity> subBatch = gpsPoints.subList(i, endIndex);
+
+            // An import that was already running when its user's deletion was requested stops at the next batch.
+            if (subBatch.get(0).getUser() != null) {
+                userDeletionService.requireNotPending(subBatch.get(0).getUser().getId());
+            }
 
             long batchStartTime = System.currentTimeMillis();
             try {

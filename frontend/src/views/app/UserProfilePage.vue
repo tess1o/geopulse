@@ -143,6 +143,28 @@ const pickAppearancePreferences = (source = {}) => Object.fromEntries(APPEARANCE
   return [key, value === undefined || value === null ? APPEARANCE_PREFERENCE_DEFAULTS[key] : value]
 }))
 
+// Builds the full local preferences from a server payload, which omits unset fields: each one resolves
+// to its default here, so a value cleared on the server never lingers from earlier state.
+const toTimelineDisplayPrefs = (data) => ({
+  customMapTileUrl: data.customMapTileUrl || '',
+  customMapStyleUrl: data.customMapStyleUrl || '',
+  mapRenderMode: data.mapRenderMode || 'VECTOR',
+  pathSimplificationEnabled: data.pathSimplificationEnabled ?? true,
+  pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
+  pathMaxPoints: data.pathMaxPoints ?? 0,
+  pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
+  defaultDateRangePreset: data.defaultDateRangePreset || '',
+  showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
+  showUnknownActivity: data.showUnknownActivity ?? true,
+  enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
+  mapMatchingEnabled: data.mapMatchingEnabled ?? false,
+  mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)
+    ? data.mapMatchingExcludedMovementTypes
+    : [],
+  mapMatchingAvailable: data.mapMatchingAvailable ?? false,
+  ...pickAppearancePreferences(data)
+})
+
 // Timeline Display Preferences state
 const timelineDisplayPrefs = ref({
   ...pickAppearancePreferences(authStore.user || {}),
@@ -382,14 +404,11 @@ const handleTimelineDisplaySave = async (displayPrefs) => {
   try {
     const savedDisplayPrefs = await authStore.updateTimelineDisplayPreferences(displayPrefs)
 
-    // Update local state from canonical backend response when available. The response omits unset
-    // (follow-the-scheme) appearance values, so those are re-derived rather than kept from before the save.
+    // The canonical response replaces local state rather than being merged over it: the server omits
+    // unset values (a field cleared to blank comes back absent), so a merge would keep the old value
+    // and leave the tab dirty after a successful save.
     timelineDisplayPrefs.value = savedDisplayPrefs
-      ? {
-          ...timelineDisplayPrefs.value,
-          ...savedDisplayPrefs,
-          ...pickAppearancePreferences(savedDisplayPrefs)
-        }
+      ? toTimelineDisplayPrefs(savedDisplayPrefs)
       : { ...timelineDisplayPrefs.value, ...displayPrefs }
 
     toast.add({
@@ -547,25 +566,7 @@ const loadTimelineDisplayPreferences = async () => {
     const data = await authStore.fetchTimelineDisplayPreferences()
 
     if (data) {
-      timelineDisplayPrefs.value = {
-        customMapTileUrl: data.customMapTileUrl || '',
-        customMapStyleUrl: data.customMapStyleUrl || '',
-        mapRenderMode: data.mapRenderMode || 'VECTOR',
-        pathSimplificationEnabled: data.pathSimplificationEnabled ?? true,
-        pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
-        pathMaxPoints: data.pathMaxPoints ?? 0,
-        pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
-        defaultDateRangePreset: data.defaultDateRangePreset || '',
-        showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
-        showUnknownActivity: data.showUnknownActivity ?? true,
-        enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
-        mapMatchingEnabled: data.mapMatchingEnabled ?? false,
-        mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)
-          ? data.mapMatchingExcludedMovementTypes
-          : [],
-        mapMatchingAvailable: data.mapMatchingAvailable ?? false,
-        ...pickAppearancePreferences(data)
-      }
+      timelineDisplayPrefs.value = toTimelineDisplayPrefs(data)
     }
   } catch (error) {
     console.warn('Failed to load timeline display preferences:', error)

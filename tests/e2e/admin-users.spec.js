@@ -271,16 +271,19 @@ test.describe('Admin Users', () => {
     await adminUsersPage.navigateToUserDetails(targetDbUser.id);
     await adminUsersPage.deleteUser(targetDbUser.id);
 
-    const deletedResult = await dbManager.client.query('SELECT id FROM users WHERE id = $1', [targetDbUser.id]);
-    expect(deletedResult.rowCount).toBe(0);
+    // The request only starts the deletion; the background worker removes the user shortly after.
+    await expect.poll(async () => {
+      const result = await dbManager.client.query('SELECT id FROM users WHERE id = $1', [targetDbUser.id]);
+      return result.rowCount;
+    }, { timeout: 60000 }).toBe(0);
 
     // The deleted user no longer appears in the list.
     await adminUsersPage.searchUsers(targetUser.email);
     await expect(adminUsersPage.userRow(targetUser.email)).toHaveCount(0);
 
     const auditRows = await auditActionsFor(dbManager, adminId, targetDbUser.id);
-    expect(auditRows.map(r => r.action_type)).toEqual(['USER_DELETED']);
-    expect(JSON.stringify(auditRows[0].details)).toContain(targetUser.email);
+    expect(auditRows.map(r => r.action_type)).toEqual(['USER_DELETION_REQUESTED', 'USER_DELETED']);
+    expect(JSON.stringify(auditRows[1].details)).toContain(targetUser.email);
 
     await expectAuditLogRow(adminUsersPage, {
       adminEmail: admin.email,

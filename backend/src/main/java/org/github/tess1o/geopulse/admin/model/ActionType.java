@@ -19,6 +19,7 @@ public enum ActionType {
     // User management
     USER_ENABLED,
     USER_DISABLED,
+    USER_DELETION_REQUESTED,
     USER_DELETED,
     USER_ROLE_CHANGED,
     USER_PASSWORD_RESET,

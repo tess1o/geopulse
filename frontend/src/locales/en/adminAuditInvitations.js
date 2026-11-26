@@ -24,6 +24,7 @@ export default {
             settingReset: 'Setting Reset',
             userEnabled: 'User Enabled',
             userDisabled: 'User Disabled',
+            userDeletionRequested: 'User Deletion Requested',
             userDeleted: 'User Deleted',
             userRoleChanged: 'User Role Changed',
             userPasswordReset: 'User Password Reset',

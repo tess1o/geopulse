@@ -50,3 +50,30 @@ describe('admin store backups', () => {
     expect(apiService.downloadViaBrowser).not.toHaveBeenCalled()
   })
 })
+
+describe('admin store user deletion', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('starts a deletion and returns its progress', async () => {
+    apiService.delete.mockResolvedValue({ status: 'QUEUED', phase: 'WAITING', deletedGpsPoints: 0 })
+
+    const deletion = await useAdminStore().deleteUser('user-1')
+
+    expect(apiService.delete).toHaveBeenCalledWith('/admin/users/user-1')
+    expect(deletion.status).toBe('QUEUED')
+  })
+
+  it('reads and retries a deletion', async () => {
+    apiService.get.mockResolvedValue({ status: 'FAILED' })
+    apiService.post.mockResolvedValue({ status: 'RUNNING' })
+    const store = useAdminStore()
+
+    expect((await store.getUserDeletion('user-1')).status).toBe('FAILED')
+    expect(apiService.get).toHaveBeenCalledWith('/admin/users/user-1/deletion')
+    expect((await store.retryUserDeletion('user-1')).status).toBe('RUNNING')
+    expect(apiService.post).toHaveBeenCalledWith('/admin/users/user-1/deletion/retries', {})
+  })
+})

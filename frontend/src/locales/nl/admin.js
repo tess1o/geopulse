@@ -231,12 +231,29 @@ export default {
         confirmDeleteDetail: 'Dit verwijdert permanent al hun gegevens, inclusief GPS-punten, tijdlijn en instellingen.',
         cancel: 'Annuleren',
         delete: 'Verwijderen',
+        deletion: {
+            queued: 'Ingepland voor verwijdering',
+            running: 'Wordt verwijderd',
+            failed: 'Verwijderen mislukt',
+            retry: 'Verwijderen opnieuw proberen',
+            phases: {
+                WAITING: 'Wacht tot de tijdlijnverwerking klaar is',
+                TIMELINE: 'Tijdlijn wordt verwijderd',
+                LOCATION_DATA: 'Plaatsen en locatiegegevens worden verwijderd',
+                GPS_POINTS: 'GPS-punten worden verwijderd',
+                FINALIZING: 'Wordt afgerond'
+            },
+            deletedPoints: '{count} GPS-punten verwijderd'
+        },
         toasts: {
             loadFailedDetail: 'Gebruikers laden is mislukt',
             userEnabled: 'Gebruiker ingeschakeld',
             userDisabled: 'Gebruiker uitgeschakeld',
             updateStatusFailedFallback: 'Gebruikersstatus bijwerken is mislukt',
-            deletedDetail: 'Gebruiker succesvol verwijderd',
+            deletionStartedDetail: 'Verwijdering gestart. De gebruiker is geblokkeerd en de gegevens worden op de achtergrond verwijderd.',
+            deletionRetriedDetail: 'Verwijdering opnieuw gestart',
+            deletionRetryFailedFallback: 'Verwijdering kon niet opnieuw worden gestart',
+            userBeingDeletedDetail: 'Deze gebruiker wordt verwijderd. De voortgang staat in de gebruikerslijst.',
             deleteFailedFallback: 'Gebruiker verwijderen is mislukt'
         }
     }

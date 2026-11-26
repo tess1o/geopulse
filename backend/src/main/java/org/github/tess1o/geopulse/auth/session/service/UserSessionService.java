@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.session.service;
 
+import org.github.tess1o.geopulse.admin.deletion.UserDeletionRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -45,6 +46,13 @@ public class UserSessionService {
 
     @Inject
     SessionTokenService tokenService;
+
+    /**
+     * A sign-in that passed its checks just before a deletion was requested can create its session just after the
+     * request revoked the others, so sessions are refused while the user is being deleted.
+     */
+    @Inject
+    UserDeletionRepository deletionRepository;
 
     @ConfigProperty(name = "geopulse.auth.session.idle-timeout", defaultValue = "7d")
     Duration idleTimeout;
@@ -93,7 +101,8 @@ public class UserSessionService {
         UserSessionEntity session = found.get();
         Instant now = Instant.now();
         SessionClientType expectedType = browser ? SessionClientType.BROWSER : SessionClientType.API;
-        if (session.getClientType() != expectedType || !session.isActiveAt(now) || !session.getUser().isActive()) {
+        if (session.getClientType() != expectedType || !session.isActiveAt(now) || !session.getUser().isActive()
+                || deletionRepository.isPending(session.getUser().getId())) {
             return Optional.empty();
         }
         if (expectedType == SessionClientType.API
@@ -122,7 +131,8 @@ public class UserSessionService {
         Optional<UserSessionEntity> current = repository.findByRefreshTokenHashForUpdate(hash);
         if (current.isPresent()) {
             UserSessionEntity session = current.get();
-            if (!session.isActiveAt(now) || !session.getUser().isActive()) {
+            if (!session.isActiveAt(now) || !session.getUser().isActive()
+                    || deletionRepository.isPending(session.getUser().getId())) {
                 throw invalidRefreshToken();
             }
             session.setPreviousRefreshTokenHash(hash);
