@@ -1,7 +1,7 @@
 # ==========================
 # Stage 1: Native build
 # ==========================
-FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0.4.1-Final-java25 AS build
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0.5.1-Final-java25 AS build
 ARG VERSION
 ARG QUARKUS_NATIVE_BUILD_ARGS=""
 
@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
 # ==========================
 # Stage 2: Runtime image
 # ==========================
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1791279563
+FROM registry.access.redhat.com/ubi9/ubi-minimal:1795198241
 LABEL org.opencontainers.image.source="https://github.com/tess1o/geopulse"
 WORKDIR /work
 
