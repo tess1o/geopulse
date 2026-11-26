@@ -27,6 +27,12 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+    ignore:
+      # PrimeVue 5 is no longer MIT-licensed.
+      - dependency-name: "primevue"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@primevue/*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gomod
     directory: /demo-integrations
@@ -47,3 +53,7 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+    ignore:
+      # Stay on the Java 25 LTS line; move to the next LTS deliberately.
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
