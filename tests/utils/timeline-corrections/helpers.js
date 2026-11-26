@@ -66,7 +66,8 @@ async function rows(db, user) {
 async function setup(page, db, users, { timezone = 'UTC', overnight = false, zeroDuration = false, recipe = null, date = DAY, endDate = date, preferences = {} } = {}) {
   const timeline = new TimelinePage(page);
   const managed = buildManagedUser(users, { timezone });
-  await timeline.loginAndNavigate(managed, { dbManager: db, mapMode: await resolvePageMapMode(page) });
+  // The seeded range is opened once the recording and its timeline exist.
+  await timeline.loginAndNavigate(managed, { dbManager: db, mapMode: await resolvePageMapMode(page), landing: null });
   await UserSettingsApi.updateCurrentUserProfile(page, { timezone, dateFormat: 'YMD', timeFormat: '24h' });
   const user = await db.getUserByEmail(managed.email);
   preferences = { staypointRadiusMeters: 50, staypointMinDurationMinutes: 7, tripDetectionAlgorithm: 'single',

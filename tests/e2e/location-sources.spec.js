@@ -2,7 +2,6 @@ import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
 import {UserProfilePage} from '../pages/UserProfilePage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
 
@@ -15,9 +14,7 @@ test.describe('Location Sources Management', () => {
       const testUser = await isolatedUsers.create(page);
       
       // Login to the app
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Navigate to location sources
       await locationSourcesPage.navigate();
@@ -72,9 +69,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -108,9 +103,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -143,9 +136,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -178,9 +169,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -213,9 +202,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -251,9 +238,7 @@ test.describe('Location Sources Management', () => {
       const locationSourcesPage = new LocationSourcesPage(page);
       const userProfilePage = new UserProfilePage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -293,9 +278,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -311,9 +294,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -355,9 +336,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -397,9 +376,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -435,9 +412,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -476,9 +451,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -516,9 +489,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -554,9 +525,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -579,9 +548,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -609,9 +576,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -636,9 +601,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -660,9 +623,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();
@@ -684,9 +645,7 @@ test.describe('Location Sources Management', () => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       await locationSourcesPage.navigate();
       await locationSourcesPage.waitForPageLoad();

@@ -255,26 +255,26 @@ export class GpsDataFactory {
    * Database helper methods
    */
   static async insertGpsData(dbManager, points) {
-    for (const point of points) {
-      const query = `
-        INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `;
-      
-      const values = [
-        point.device_id,
-        point.user_id,
-        point.coordinates,
-        point.timestamp,
-        point.accuracy,
-        point.battery,
-        point.velocity,
-        point.altitude,
-        point.source_type,
-        point.created_at
-      ];
+    // One multi-row INSERT per chunk instead of a round trip per point; rows keep their order.
+    // 1000 rows x 10 parameters stays well under PostgreSQL's 65535-parameter limit.
+    const columns = ['device_id', 'user_id', 'coordinates', 'timestamp', 'accuracy', 'battery', 'velocity', 'altitude', 'source_type', 'created_at'];
+    const chunkSize = 1000;
 
-      await dbManager.client.query(query, values);
+    for (let start = 0; start < points.length; start += chunkSize) {
+      const chunk = points.slice(start, start + chunkSize);
+      const values = [];
+      const rows = chunk.map(point => {
+        const placeholders = columns.map(column => {
+          values.push(point[column]);
+          return `$${values.length}`;
+        });
+        return `(${placeholders.join(', ')})`;
+      });
+
+      await dbManager.client.query(
+        `INSERT INTO gps_points (${columns.join(', ')}) VALUES ${rows.join(', ')}`,
+        values
+      );
     }
   }
 

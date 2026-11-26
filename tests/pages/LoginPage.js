@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import { TestHelpers } from '../utils/test-helpers.js';
+import { TestConfig } from '../config/test-config.js';
 
 export class LoginPage {
   constructor(page) {
@@ -34,6 +35,24 @@ export class LoginPage {
     const loginButton = this.page.locator(this.selectors.loginButton);
     await expect(loginButton).toBeEnabled({ timeout: 10000 });
     await loginButton.click();
+  }
+
+  /**
+   * Sign in through the session API instead of the form. The session cookies land in the browser
+   * context, so the next page.goto opens the app signed in. Only the sign-in specs need the form.
+   * Pass landing to open that page afterwards (the form lands on /app/timeline).
+   */
+  async loginViaApi(email, password, { landing = null } = {}) {
+    await TestHelpers.waitForBackendHealthy(this.page);
+    const response = await this.page.request.post(TestConfig.API_ENDPOINTS.login, {
+      data: { email, password },
+    });
+    expect(response.ok(), `API sign-in for ${email} returned ${response.status()}`).toBe(true);
+
+    if (landing) {
+      await this.page.goto(landing);
+      await TestHelpers.waitForNavigation(this.page, `**${landing}`, 30000);
+    }
   }
 
   /**

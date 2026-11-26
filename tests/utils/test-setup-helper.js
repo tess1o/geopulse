@@ -1,6 +1,5 @@
 import { LoginPage } from '../pages/LoginPage.js';
 import { ShareLinksPage } from '../pages/ShareLinksPage.js';
-import { TestHelpers } from './test-helpers.js';
 import { TestData } from '../fixtures/test-data.js';
 import { UserFactory } from './user-factory.js';
 import { GpsDataFactory } from './gps-data-factory.js';
@@ -48,7 +47,7 @@ export class TestSetupHelper {
   }
 
   /**
-   * Create a user, login, and return necessary objects
+   * Create a user, sign in through the API and open /app/timeline (or options.landing; null opens nothing)
    * @returns {Promise<{loginPage, user, testUser}>}
    */
   static async createAndLoginUser(page, dbManager, userData = null, options = {}) {
@@ -60,46 +59,10 @@ export class TestSetupHelper {
     await this.applyMapRenderModeIfProvided(dbManager, testUser.email, mapMode);
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
 
-    const maxLoginAttempts = options?.loginAttempts ?? 3;
-    let lastLoginError = null;
-
-    for (let attempt = 1; attempt <= maxLoginAttempts; attempt += 1) {
-      try {
-        await TestHelpers.waitForBackendHealthy(page, { timeout: options?.backendHealthTimeout ?? 30000 });
-        await loginPage.navigate();
-
-        if (await TestHelpers.isBackendUnavailablePage(page)) {
-          throw new Error('Backend unavailable while navigating to login page');
-        }
-
-        await loginPage.login(testUser.email, testUser.password);
-        await TestHelpers.waitForNavigation(page, '**/app/timeline', options?.loginNavigationTimeout ?? 30000);
-        lastLoginError = null;
-        break;
-      } catch (error) {
-        lastLoginError = error;
-
-        const canRetry = attempt < maxLoginAttempts;
-        const backendUnavailable = await TestHelpers.isBackendUnavailablePage(page);
-        const stillOnLogin = /\/login(?:\?|#|$)/.test(page.url());
-
-        if (!canRetry || (!backendUnavailable && !stillOnLogin)) {
-          throw error;
-        }
-
-        await page.context().clearCookies();
-        await page.evaluate(() => {
-          localStorage.clear();
-          sessionStorage.clear();
-        }).catch(() => {});
-        await TestHelpers.waitForBackendHealthy(page, { timeout: options?.backendHealthTimeout ?? 30000 });
-        await page.waitForTimeout(500 * attempt);
-      }
-    }
-
-    if (lastLoginError) {
-      throw lastLoginError;
-    }
+    // The form lands on /app/timeline; helpers that open another page next pass landing: null.
+    await loginPage.loginViaApi(testUser.email, testUser.password, {
+      landing: options?.landing === undefined ? '/app/timeline' : options.landing
+    });
 
     const user = await dbManager.getUserByEmail(testUser.email);
 
@@ -107,7 +70,7 @@ export class TestSetupHelper {
   }
 
   static async createAndLoginUserAndNavigateToFriendsPage(page, dbManager, userData = null, options = {}) {
-    const {testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
+    const {testUser} = await this.createAndLoginUser(page, dbManager, userData, {...options, landing: null});
     const friendsPage = new FriendsPage(page);
     await friendsPage.navigate();
     await friendsPage.waitForPageLoad();
@@ -134,7 +97,7 @@ export class TestSetupHelper {
    * Setup for share links tests: create user, login, navigate to share links page
    */
   static async setupShareLinksTest(page, dbManager, userData = null, options = {}) {
-    const { loginPage, user, testUser } = await this.createAndLoginUser(page, dbManager, userData, options);
+    const { loginPage, user, testUser } = await this.createAndLoginUser(page, dbManager, userData, {...options, landing: null});
     const shareLinksPage = new ShareLinksPage(page);
 
     await shareLinksPage.navigate();
@@ -149,7 +112,7 @@ export class TestSetupHelper {
    * @param {Object|null} userData - Optional user object for isolated test user injection
    */
   static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5, userData = null, options = {}) {
-    const publicShareOptions = { ...options, mapMode: options?.mapMode || 'RASTER' };
+    const publicShareOptions = { ...options, mapMode: options?.mapMode || 'RASTER', landing: null };
     const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData, publicShareOptions);
 
     if (gpsPointCount > 0) {
@@ -179,12 +142,10 @@ export class TestSetupHelper {
    * @param {Object} userData - User data with email and password
    * @returns {Promise<void>}
    */
-  static async loginExistingUser(page, userData) {
-    const loginPage = new LoginPage(page);
-    await loginPage.navigate();
-    await loginPage.login(userData.email, userData.password);
-    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+  static async loginExistingUser(page, userData, { landing = '/app/timeline' } = {}) {
+    await new LoginPage(page).loginViaApi(userData.email, userData.password, { landing });
   }
+
 
   /**
    * Login user and navigate to Friends page
@@ -194,13 +155,13 @@ export class TestSetupHelper {
    * @returns {Promise<void>}
    */
   static async loginAndNavigateToFriendsPage(page, userData, friendsPage) {
-    await this.loginExistingUser(page, userData);
+    await this.loginExistingUser(page, userData, { landing: null });
     await friendsPage.navigate();
     await friendsPage.waitForPageLoad();
   }
 
   static async loginAndNavigateToUserProfilePage(page, dbManager, userData, options = {}) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {...options, landing: null});
     const profilePage = new UserProfilePage(page);
     await profilePage.navigate();
     await profilePage.waitForPageLoad();
@@ -266,9 +227,7 @@ export class TestSetupHelper {
     const { testUser, friendUser, user, friend, loginPage, friendsPage } =
       await this.setupTwoUserFriendsTest(page, dbManager, testUserData, friendUserData);
 
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+    await loginPage.loginViaApi(testUser.email, testUser.password);
 
     await friendsPage.navigate();
     await friendsPage.waitForPageLoad();
@@ -324,9 +283,7 @@ export class TestSetupHelper {
     const user = await dbManager.getUserByEmail(testUser.email);
 
     if (login) {
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await friendsPage.navigate();
       await friendsPage.waitForPageLoad();
@@ -408,9 +365,7 @@ export class TestSetupHelper {
     const invitationId = await FriendsPage.insertInvitation(dbManager, friend.id, user.id);
 
     if (loginAsReceiver) {
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await friendsPage.navigate();
       await friendsPage.waitForPageLoad();
@@ -434,7 +389,7 @@ export class TestSetupHelper {
    * @returns {Promise<{geofencesPage, user, testUser}>}
    */
   static async loginAndNavigateToGeofencesPage(page, dbManager, userData = null, options = {}) {
-    const geofenceOptions = { ...options, mapMode: options?.mapMode || 'RASTER' };
+    const geofenceOptions = { ...options, mapMode: options?.mapMode || 'RASTER', landing: null };
     const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, geofenceOptions);
     const geofencesPage = new GeofencesPage(page);
     await geofencesPage.navigate();
@@ -447,7 +402,7 @@ export class TestSetupHelper {
    * @returns {Promise<{favoritesPage, user, testUser}>}
    */
   static async loginAndNavigateToFavoritesPage(page, dbManager, userData = null, options = {}) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {...options, landing: null});
     const favoritesPage = new FavoritesManagementPage(page);
     await favoritesPage.navigate();
     await favoritesPage.waitForPageLoad();
@@ -597,7 +552,7 @@ export class TestSetupHelper {
    * @returns {Promise<{geocodingPage, user, testUser}>}
    */
   static async loginAndNavigateToGeocodingPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {landing: null});
     const geocodingPage = new GeocodingManagementPage(page);
     await geocodingPage.navigate();
     await geocodingPage.waitForPageLoad();
@@ -909,7 +864,7 @@ export class TestSetupHelper {
    * @returns {Promise<{timelineLabelsPage, user, testUser}>}
    */
   static async loginAndNavigateToTimelineLabelsPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {landing: null});
     const timelineLabelsPage = new TimelineLabelsManagementPage(page);
     await timelineLabelsPage.navigate();
     await timelineLabelsPage.waitForPageLoad();
@@ -921,7 +876,7 @@ export class TestSetupHelper {
    * @returns {Promise<{tripsPage, user, testUser}>}
    */
   static async loginAndNavigateToTripsPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {landing: null});
     const tripsPage = new TripsManagementPage(page);
     await tripsPage.navigate();
     await tripsPage.waitForPageLoad();
@@ -933,7 +888,7 @@ export class TestSetupHelper {
    * @returns {Promise<{tripWorkspacePage, user, testUser}>}
    */
   static async loginAndNavigateToTripWorkspacePage(page, dbManager, tripId, userData = null, options = {}) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {...options, landing: null});
     const tripWorkspacePage = new TripWorkspacePage(page);
     await tripWorkspacePage.navigate(tripId);
     await tripWorkspacePage.waitForPageLoad();
@@ -1253,7 +1208,7 @@ export class TestSetupHelper {
    * @returns {Promise<{locationAnalyticsPage, user, testUser}>}
    */
   static async loginAndNavigateToLocationAnalyticsPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, {landing: null});
     const LocationAnalyticsPage = (await import('../pages/LocationAnalyticsPage.js')).LocationAnalyticsPage;
     const locationAnalyticsPage = new LocationAnalyticsPage(page);
     await locationAnalyticsPage.navigateToTab('cities');

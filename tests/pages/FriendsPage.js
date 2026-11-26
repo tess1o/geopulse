@@ -134,15 +134,25 @@ export class FriendsPage {
     await this.page.waitForURL('**/app/friends**');
     await this.page.waitForLoadState('domcontentloaded');
     await expect(this.page.locator(this.selectors.tabs.live)).toBeVisible({ timeout: 15000 });
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator('.friends-map-tab')).toBeVisible();
+    await expect(this.page.locator('.friends-map-tab .loading-state')).toBeHidden();
   }
 
   /**
    * Tab Navigation Methods
    */
   async switchToTab(tabName) {
+    const firstTimelineVisit = tabName === 'timeline' && await this.page.locator(this.selectors.friendsTimelineTab).count() === 0;
+    const loaded = firstTimelineVisit
+      ? this.page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/timeline/multi-user' && r.request().method() === 'GET')
+      : null;
     await this.page.locator(this.selectors.tabs[tabName]).click();
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.tabs[tabName])).toHaveClass(/p-tabmenu-item-active/);
+    if (loaded) expect((await loaded).ok()).toBe(true);
+    if (tabName === 'timeline') {
+      await expect(this.page.locator(this.selectors.friendsTimelineTab)).toBeVisible();
+      await expect(this.page.locator('.friends-timeline-tab .loading-overlay')).toBeHidden();
+    }
   }
 
   async isTabActive(tabName) {
@@ -482,8 +492,7 @@ export class FriendsPage {
     } catch {
       // Toast might have already disappeared
     }
-    // Add small delay to ensure toast animations complete
-    await this.page.waitForTimeout(300);
+    await expect(this.page.locator('.p-toast-message')).toHaveCount(0);
   }
 
   /**

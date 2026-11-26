@@ -333,7 +333,8 @@ test.describe('Immich integration', () => {
       await expectPhotoMarkers(page, TIMELINE_MAP);
     });
 
-    test('shows every photo on the stay card it was taken during and opens the gallery', async ({ page, isolatedUsers, dbManager }) => {
+    test('shows every photo on the stay card it was taken during and opens the gallery', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+      test.skip(mapMode === 'VECTOR', 'Card gallery behavior is covered by chromium.');
       const { photos } = await createPhotoUser(page, dbManager, isolatedUsers);
       await openTimelineRange(page);
 

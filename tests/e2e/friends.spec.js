@@ -97,40 +97,40 @@ test.describe('Friends Page', () => {
     test('should default to Live tab on page load', async ({page, isolatedUsers, dbManager}) => {
       const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
       // Should be on Live tab by default
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
     });
 
     test('should switch between tabs correctly', async ({page, isolatedUsers, dbManager}) => {
       const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Default should be Live tab
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
-      expect(await friendsPage.isTabActive('timeline')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('timeline')).toBe(true);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      expect(await friendsPage.isTabActive('friends')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('friends')).toBe(true);
 
       // Switch back to Live tab
       await friendsPage.switchToTab('live');
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
     });
 
     test('should not show Invitations tab when no invites exist', async ({page, isolatedUsers, dbManager}) => {
       const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Invitations tab should not be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
     test('should show Invitations tab when invites exist', async ({page, isolatedUsers, dbManager}) => {
       const {friendsPage} = await setupInvitationTest(page, dbManager, isolatedUsers);
 
       // Invitations tab should be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(true);
     });
 
     test('should show tab badges with correct counts', async ({page, isolatedUsers, dbManager}) => {
@@ -154,7 +154,7 @@ test.describe('Friends Page', () => {
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
-      expect(await friendsPage.isInviteDialogVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isInviteDialogVisible()).toBe(true);
 
       // Send invitation
       await friendsPage.sendInvitation(friendUser.email);
@@ -170,8 +170,7 @@ test.describe('Friends Page', () => {
       expect(invitation.status).toBe('PENDING');
 
       // Invitations tab should now be visible
-      await page.waitForTimeout(500);
-      expect(await friendsPage.isInvitesTabVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(true);
     });
 
     test('should show validation error for invalid email', async ({page, isolatedUsers, dbManager}) => {
@@ -185,7 +184,6 @@ test.describe('Friends Page', () => {
       await page.locator(friendsPage.selectors.sendInvitationButton).click();
 
       // Should show validation error
-      await page.waitForTimeout(500);
       const error = await friendsPage.getInviteEmailError();
       expect(error).toBeTruthy();
       expect(error).toContain('valid email');
@@ -201,7 +199,6 @@ test.describe('Friends Page', () => {
       await page.locator(friendsPage.selectors.sendInvitationButton).click();
 
       // Should show validation error
-      await page.waitForTimeout(500);
       const error = await friendsPage.getInviteEmailError();
       expect(error).toBeTruthy();
       expect(error).toContain('required');
@@ -245,10 +242,9 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Verify sent invitation is displayed
-      expect(await friendsPage.hasSentInvitesSection()).toBe(true);
+      await expect.poll(() => friendsPage.hasSentInvitesSection()).toBe(true);
       const sentInvites = await friendsPage.getSentInvitationsList();
       expect(sentInvites.length).toBeGreaterThanOrEqual(1);
     });
@@ -260,10 +256,9 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Verify invitation is displayed
-      expect(await friendsPage.hasReceivedInvitesSection()).toBe(true);
+      await expect.poll(() => friendsPage.hasReceivedInvitesSection()).toBe(true);
       const receivedInvites = await friendsPage.getReceivedInvitationsList();
       expect(receivedInvites.length).toBe(1);
     });
@@ -274,7 +269,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Accept invitation (using email since that's what's displayed)
       await friendsPage.acceptInvitation(senderData.email);
@@ -284,23 +278,21 @@ test.describe('Friends Page', () => {
       await friendsPage.waitForToastToDisappear();
 
       // Wait for UI to update
-      await page.waitForTimeout(1500);
 
       // Verify friendship was created in database
-      expect(await FriendsPage.verifyFriendshipExists(dbManager, receiver.id, sender.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipExists(dbManager, receiver.id, sender.id)).toBe(true);
 
       // Verify invitation status changed to ACCEPTED
       const status = await FriendsPage.getInvitationStatus(dbManager, invitationId);
       expect(status).toBe('ACCEPTED');
 
       // Invitations tab should no longer be visible (no more pending invites)
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
 
       // Switch to friends tab and verify friend is added
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
-      expect(await friendsPage.getFriendsListCount()).toBe(1);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(1);
       const friends = await friendsPage.getFriendsList();
       expect(friends[0].email).toBe(senderData.email);
     });
@@ -311,7 +303,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Reject invitation (using email since that's what's displayed)
       await friendsPage.rejectInvitation(senderData.email);
@@ -319,17 +310,16 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('rejected');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1000);
 
       // Verify no friendship was created
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, receiver.id, sender.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipNotExists(dbManager, receiver.id, sender.id)).toBe(true);
 
       // Verify invitation status changed to REJECTED
       const status = await FriendsPage.getInvitationStatus(dbManager, invitationId);
       expect(status).toBe('REJECTED');
 
       // Invitations tab should no longer be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
     test('should accept multiple invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
@@ -345,7 +335,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Accept all invitations
       await friendsPage.acceptAllInvitations();
@@ -353,19 +342,17 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('Accepted');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1500);
 
       // Verify friendships created
-      expect(await FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
-      expect(await FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
 
       // Invitations tab should no longer be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
 
       // Switch to friends tab and verify friends count
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
-      expect(await friendsPage.getFriendsListCount()).toBe(2);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(2);
     });
 
     test('should reject multiple invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
@@ -381,7 +368,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Reject all invitations
       await friendsPage.rejectAllInvitations();
@@ -389,14 +375,13 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('Rejected');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1500);
 
       // Verify no friendships created
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
 
       // Invitations tab should no longer be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
     });
   });
 
@@ -413,7 +398,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Cancel invitation (using email since that's what's displayed)
       await friendsPage.cancelSentInvitation(friendUser.email);
@@ -421,14 +405,13 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('cancelled');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1000);
 
       // Verify database status changed to CANCELLED
       const status = await FriendsPage.getInvitationStatus(dbManager, invitationId);
       expect(status).toBe('CANCELLED');
 
       // Invitations tab should no longer be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
     test('should cancel multiple sent invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
@@ -444,7 +427,6 @@ test.describe('Friends Page', () => {
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
-      await page.waitForTimeout(1000);
 
       // Cancel all sent invitations
       await friendsPage.cancelAllSentInvitations();
@@ -452,7 +434,6 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('Cancelled');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1500);
 
       // Verify database - invitations should be CANCELLED
       const status1 = await FriendsPage.getInvitationStatus(dbManager, invitation1Id);
@@ -462,7 +443,7 @@ test.describe('Friends Page', () => {
       expect(status2).toBe('CANCELLED');
 
       // Invitations tab should no longer be visible
-      expect(await friendsPage.isInvitesTabVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isInvitesTabVisible()).toBe(false);
     });
   });
 
@@ -479,7 +460,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Verify friend is displayed
       const friends = await friendsPage.getFriendsList();
@@ -502,7 +482,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Verify all friends are displayed
       const friendsList = await friendsPage.getFriendsList();
@@ -519,10 +498,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Check empty state in friends list
-      expect(await friendsPage.hasEmptyFriendsState()).toBe(true);
+      await expect.poll(() => friendsPage.hasEmptyFriendsState()).toBe(true);
     });
 
     test('should remove friend on confirmation', async ({page, isolatedUsers, dbManager}) => {
@@ -537,11 +515,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Remove friend
       await friendsPage.removeFriend(friendUser.email);
-      await page.waitForTimeout(500);
 
       // Confirm removal
       await friendsPage.confirmAction();
@@ -549,14 +525,13 @@ test.describe('Friends Page', () => {
       // Wait for success toast
       await friendsPage.waitForSuccessToast('removed');
       await friendsPage.waitForToastToDisappear();
-      await page.waitForTimeout(1000);
 
       // Verify friend is removed
-      expect(await friendsPage.getFriendsListCount()).toBe(0);
-      expect(await friendsPage.hasEmptyFriendsState()).toBe(true);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(0);
+      await expect.poll(() => friendsPage.hasEmptyFriendsState()).toBe(true);
 
       // Verify database - bidirectional removal
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friend.id)).toBe(true);
+      await expect.poll(() => FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friend.id)).toBe(true);
     });
 
     test('should navigate to live map when clicking Live button', async ({page, isolatedUsers, dbManager}) => {
@@ -571,14 +546,12 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Click Live button for the friend (now enabled because friend shares live location)
       await friendsPage.showFriendOnLiveMap(friendUser.email);
-      await page.waitForTimeout(1000);
 
       // Should switch to Live tab
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
 
       const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first();
       const googleMapsLink = popup.locator('.gp-map-popup-action', { hasText: 'Open in Google Maps' }).first();
@@ -601,7 +574,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab.
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Live action is disabled until the friend has a usable live coordinate.
       const friendCard = page.locator('.friend-card').filter({ hasText: friendUser.email }).first();
@@ -624,14 +596,12 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Click Timeline button for the friend (always enabled - shows your own data at minimum)
       await friendsPage.showFriendTimeline(friendUser.email);
-      await page.waitForTimeout(1000);
 
       // Should switch to Timeline tab
-      expect(await friendsPage.isTabActive('timeline')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('timeline')).toBe(true);
     });
 
     test('should disable Live button when friend does not share live location', async ({page, isolatedUsers, dbManager}) => {
@@ -646,7 +616,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Find the friend card
       const friendCards = await page.locator('.friend-card').all();
@@ -663,10 +632,10 @@ test.describe('Friends Page', () => {
       }
 
       // Live button should be disabled (friend doesn't share live location)
-      expect(await liveButton.isDisabled()).toBe(true);
+      await expect.poll(() => liveButton.isDisabled()).toBe(true);
 
       // Timeline button should be enabled (always shows at least your own data)
-      expect(await timelineButton.isDisabled()).toBe(false);
+      await expect.poll(() => timelineButton.isDisabled()).toBe(false);
     });
 
     test('should enable Live button when friend shares live location', async ({page, isolatedUsers, dbManager}) => {
@@ -681,7 +650,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Find the friend card
       const friendCards = await page.locator('.friend-card').all();
@@ -696,7 +664,7 @@ test.describe('Friends Page', () => {
       }
 
       // Live button should be enabled (friend shares live location)
-      expect(await liveButton.isDisabled()).toBe(false);
+      await expect.poll(() => liveButton.isDisabled()).toBe(false);
     });
   });
 
@@ -713,14 +681,12 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Toggle live location permission
       await friendsPage.toggleLiveLocationPermission(friendUser.email);
-      await page.waitForTimeout(500);
 
       // Should show confirmation dialog
-      expect(await friendsPage.isConfirmDialogVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isConfirmDialogVisible()).toBe(true);
 
       // Confirm the change
       await friendsPage.confirmPermissionChange();
@@ -742,14 +708,12 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Toggle timeline permission
       await friendsPage.toggleTimelinePermission(friendUser.email);
-      await page.waitForTimeout(500);
 
       // Should show confirmation dialog
-      expect(await friendsPage.isConfirmDialogVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isConfirmDialogVisible()).toBe(true);
 
       // Confirm the change
       await friendsPage.confirmPermissionChange();
@@ -771,22 +735,19 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Toggle live location permission
       await friendsPage.toggleLiveLocationPermission(friendUser.email);
-      await page.waitForTimeout(500);
 
       // Should show confirmation dialog
-      expect(await friendsPage.isConfirmDialogVisible()).toBe(true);
+      await expect.poll(() => friendsPage.isConfirmDialogVisible()).toBe(true);
 
       // Cancel the change
       await friendsPage.cancelAction();
-      await page.waitForTimeout(500);
 
       // No toast should appear (change was cancelled)
       // Dialog should be closed
-      expect(await friendsPage.isConfirmDialogVisible()).toBe(false);
+      await expect.poll(() => friendsPage.isConfirmDialogVisible()).toBe(false);
     });
 
     test('should display sharing status sections', async ({page, isolatedUsers, dbManager}) => {
@@ -801,23 +762,22 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Verify sharing status section exists
       const sharingStatusSection = page.locator('.friend-sharing-status').first();
-      expect(await sharingStatusSection.isVisible()).toBe(true);
+      await expect.poll(() => sharingStatusSection.isVisible()).toBe(true);
 
       // Verify permissions section exists
       const permissionsSection = page.locator('.friend-permissions').first();
-      expect(await permissionsSection.isVisible()).toBe(true);
+      await expect.poll(() => permissionsSection.isVisible()).toBe(true);
 
       // Verify status items for what friend shares
       const statusItems = sharingStatusSection.locator('.status-item');
-      expect(await statusItems.count()).toBe(2); // Live Location and Timeline History
+      await expect.poll(() => statusItems.count()).toBe(2); // Live Location and Timeline History
 
       // Verify permission items for what you share
       const permissionItems = permissionsSection.locator('.permission-item');
-      expect(await permissionItems.count()).toBe(2); // Live Location and Timeline History
+      await expect.poll(() => permissionItems.count()).toBe(2); // Live Location and Timeline History
     });
   });
 
@@ -835,7 +795,7 @@ test.describe('Friends Page', () => {
       await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Should default to Live tab
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
 
       // Live tab badge should show 2 (only friends who share live location)
       const liveBadge = await friendsPage.getTabBadgeValue('live');
@@ -844,22 +804,18 @@ test.describe('Friends Page', () => {
       }
 
       // Verify the Live tab shows markers on the map (2 friends with permission)
-      await page.waitForTimeout(1500); // Wait for map to load
       const mapContainer = page.locator('.leaflet-container');
-      expect(await mapContainer.isVisible()).toBe(true);
+      await expect.poll(() => mapContainer.isVisible()).toBe(true);
 
       // Check for friend markers on the map (should be 2)
       const friendMarkers = page.locator('.leaflet-marker-pane .leaflet-zoom-animated');
-      const markerCount = await friendMarkers.count();
-      // Should have 2 markers for friends who share live location (not 3)
-      expect(markerCount).toBeGreaterThanOrEqual(2);
+      await expect.poll(() => friendMarkers.count()).toBeGreaterThanOrEqual(2);
 
       // Switch to Friends tab to see all friends
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Friends tab should show all 3 friends
-      expect(await friendsPage.getFriendsListCount()).toBe(3);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(3);
 
       // Friends tab badge should show 3
       const friendsBadge = await friendsPage.getTabBadgeValue('friends');
@@ -869,6 +825,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should auto-refresh live map when friend location changes (polling)', async ({page, isolatedUsers, dbManager}) => {
+      await page.clock.install();
       let friendsEndpointGetCalls = 0;
       const friendCoordinatesHistory = [];
       let trackedFriendId = null;
@@ -932,7 +889,7 @@ test.describe('Friends Page', () => {
       );
 
       await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
 
       await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 15000 });
       await expect.poll(() => friendCoordinatesHistory.length, {
@@ -962,7 +919,8 @@ test.describe('Friends Page', () => {
         newerTimestamp
       ]);
 
-      // Polling should fetch /api/v1/friends again and update marker position automatically.
+      // Advance the browser's real polling callback while keeping the backend request and location checks.
+      await page.clock.fastForward(15000);
       await expect.poll(() => friendsEndpointGetCalls, {
         timeout: 45000
       }).toBeGreaterThan(callsBeforeLocationUpdate);
@@ -998,7 +956,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
-      await page.waitForTimeout(1500);
 
       // Timeline tab badge should show 2 (only friends who share timeline)
       const timelineBadge = await friendsPage.getTabBadgeValue('timeline');
@@ -1007,7 +964,7 @@ test.describe('Friends Page', () => {
       }
 
       // Verify Timeline tab is active
-      expect(await friendsPage.isTabActive('timeline')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('timeline')).toBe(true);
 
       // Note: Since there's no timeline data (stays/trips) for the friends,
       // the Timeline tab will show 0 items, which is correct behavior.
@@ -1016,10 +973,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab to verify all 3 friends exist
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // Friends tab should show all 3 friends (regardless of permissions)
-      expect(await friendsPage.getFriendsListCount()).toBe(3);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(3);
 
       // Friends tab badge should show 3
       const friendsBadge = await friendsPage.getTabBadgeValue('friends');
@@ -1053,10 +1009,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
-      await page.waitForTimeout(2000); // Wait for timeline data to load
 
       // Verify Timeline tab is active
-      expect(await friendsPage.isTabActive('timeline')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('timeline')).toBe(true);
 
       // Verify Timeline tab shows badge with 2 friends (permission filtering works)
       const timelineBadge = await friendsPage.getTabBadgeValue('timeline');
@@ -1066,29 +1021,27 @@ test.describe('Friends Page', () => {
 
       // Verify user selection panel is visible
       const userSelectionPanel = page.locator('.user-selection-panel');
-      expect(await userSelectionPanel.isVisible()).toBe(true);
+      await expect.poll(() => userSelectionPanel.isVisible()).toBe(true);
 
       // Verify both friends appear in the selection panel
       // Note: User selection panel includes current user + friends (3 total)
       const userItems = page.locator('.user-item');
-      const userItemCount = await userItems.count();
-      expect(userItemCount).toBe(3); // Current user + 2 friends
+      await expect(userItems).toHaveCount(3); // Current user + 2 friends
 
       // Verify date picker is visible
       const datePicker = page.locator('.date-range-picker');
-      expect(await datePicker.isVisible()).toBe(true);
+      await expect.poll(() => datePicker.isVisible()).toBe(true);
 
       // PHASE 1: Verify default last 7 days shows NO data
       // Select all friends to view their timelines
       const selectAllButton = page.locator('button:has-text("All")');
       if (await selectAllButton.isVisible()) {
         await selectAllButton.click();
-        await page.waitForTimeout(1500);
       }
 
       // Verify timeline list is visible
       const timelineList = page.locator('.merged-timeline-list');
-      expect(await timelineList.isVisible()).toBe(true);
+      await expect.poll(() => timelineList.isVisible()).toBe(true);
 
       // Should show 0 timeline items for default last 7 days (data is in Sept 2025)
       let timelineItems = page.locator('.friend-timeline-card');
@@ -1105,34 +1058,30 @@ test.describe('Friends Page', () => {
         const customButton = page.locator('button:has-text("Custom")');
         if (await customButton.isVisible()) {
           await customButton.click();
-          await page.waitForTimeout(500);
         }
       }
 
       // Option 2: Open date picker and navigate calendar
       const dateInput = page.locator('.p-datepicker-input').first();
       await dateInput.click();
-      await page.waitForTimeout(500);
 
       // Verify calendar popup is visible
       const calendar = page.locator('.p-datepicker-panel').first();
-      if (await calendar.isVisible()) {
+      await expect(calendar).toBeVisible();
+      {
         // Go to September 2025 (month index 8)
         await TestHelpers.navigateDatePickerToMonth(calendar, 2025, 8);
 
         // Select September 20, 2025 (start date)
         const day20 = page.locator('.p-datepicker-calendar td:not(.p-datepicker-other-month) span:has-text("20")').first();
         await day20.click();
-        await page.waitForTimeout(300);
 
         // Select September 22, 2025 (end date)
         const day22 = page.locator('.p-datepicker-calendar td:not(.p-datepicker-other-month) span:has-text("22")').first();
         await day22.click();
-        await page.waitForTimeout(300);
 
         // Close the calendar
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(2000); // Wait for timeline to reload with new date range
       }
 
       const dateRangeInputValue = await page.locator('.date-range-picker .p-datepicker-input').first().inputValue();
@@ -1141,6 +1090,7 @@ test.describe('Friends Page', () => {
 
       // PHASE 3: Verify timeline items now appear
       timelineItems = page.locator('.friend-timeline-card');
+      await expect.poll(() => timelineItems.count()).toBeGreaterThan(0);
       itemCount = await timelineItems.count();
 
       // Each friend has 3 stays and 3 trips = 6 items per friend = 12 total
@@ -1154,18 +1104,18 @@ test.describe('Friends Page', () => {
       );
       // Verify timeline map is visible
       const timelineMap = page.locator('.leaflet-container');
-      expect(await timelineMap.isVisible()).toBe(true);
+      await expect.poll(() => timelineMap.isVisible()).toBe(true);
 
       // PHASE 4: Test deselecting all friends
       const deselectAllButton = page.locator('button:has-text("None")');
       if (await deselectAllButton.isVisible()) {
         await deselectAllButton.click();
-        await page.waitForTimeout(1000);
+        await expect(timelineItems).toHaveCount(0);
 
         // Timeline items should be cleared or show empty message
         const emptyMessage = page.locator('.empty-message');
         if (await emptyMessage.count() > 0) {
-          expect(await emptyMessage.first().isVisible()).toBe(true);
+          await expect.poll(() => emptyMessage.first().isVisible()).toBe(true);
         }
       }
     });
@@ -1181,7 +1131,7 @@ test.describe('Friends Page', () => {
       await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Should default to Live tab
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      await expect.poll(() => friendsPage.isTabActive('live')).toBe(true);
 
       // Live tab badge should not be shown (0 friends with permission)
       const liveBadge = await friendsPage.getTabBadgeValue('live');
@@ -1189,12 +1139,10 @@ test.describe('Friends Page', () => {
 
       // Live tab should show "No Location Data Available" or empty state
       // (even though friend has GPS data, they don't share the permission)
-      await page.waitForTimeout(1000);
 
       // Switch to Friends tab - should show 1 friend (friendship exists)
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
-      expect(await friendsPage.getFriendsListCount()).toBe(1);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(1);
 
       // Friends tab badge should show 1
       const friendsBadge = await friendsPage.getTabBadgeValue('friends');
@@ -1217,7 +1165,6 @@ test.describe('Friends Page', () => {
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
-      await page.waitForTimeout(1000);
 
       // Timeline tab badge should not be shown (0 friends with timeline permission)
       const timelineBadge = await friendsPage.getTabBadgeValue('timeline');
@@ -1225,12 +1172,10 @@ test.describe('Friends Page', () => {
 
       // Timeline tab should show 0 timeline items
       // (friend exists but doesn't share timeline permission, so their data isn't included)
-      await page.waitForTimeout(1000);
 
       // Switch to Friends tab - should show 1 friend (friendship exists)
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
-      expect(await friendsPage.getFriendsListCount()).toBe(1);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(1);
 
       // Friends tab badge should show 1
       const friendsBadge = await friendsPage.getTabBadgeValue('friends');
@@ -1253,10 +1198,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // User1 should see user2 as friend
-      expect(await friendsPage.getFriendsListCount()).toBe(1);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(1);
       let friends = await friendsPage.getFriendsList();
       expect(friends[0].email).toBe(user2.email);
 
@@ -1269,10 +1213,9 @@ test.describe('Friends Page', () => {
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
-      await page.waitForTimeout(1000);
 
       // User2 should see user1 as friend
-      expect(await friendsPage.getFriendsListCount()).toBe(1);
+      await expect.poll(() => friendsPage.getFriendsListCount()).toBe(1);
       friends = await friendsPage.getFriendsList();
       expect(friends[0].email).toBe(user1.email);
     });

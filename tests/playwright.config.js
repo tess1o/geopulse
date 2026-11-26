@@ -74,7 +74,8 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  retries: 3,
+  /* One retry absorbs a transient failure; a real failure no longer runs four times. */
+  retries: 1,
   /* Worker count for parallel-safe specs. */
   workers: Number.isNaN(parallelWorkers) ? 4 : parallelWorkers,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -94,8 +95,8 @@ export default defineConfig({
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
     
-    /* Record video on failure */
-    video: 'retain-on-failure',
+    /* Record video on the retry only: recording every first attempt costs CPU on the shared CI runner */
+    video: 'on-first-retry',
 
     /* Accept all cookies and enable JavaScript */
     acceptDownloads: true,

@@ -296,6 +296,10 @@ backend-test-integration-tz-matrix:
 E2E_COMPOSE_FILE := tests/docker-compose.e2e.yml
 # chromium-oidc runs after the other two (it switches global auth settings); see tests/playwright.config.js
 E2E_PLAYWRIGHT_PROJECTS ?= --project=chromium --project=chromium-vector --project=chromium-oidc
+# test-e2e runs the OIDC project as a second step, so it still runs when an earlier spec fails (as a Playwright
+# dependency it would be skipped). These are the projects chromium-oidc depends on.
+E2E_MAIN_PROJECTS ?= --project=chromium --project=chromium-vector --project=chromium-timeline-vector \
+	--project=chromium-timeline-mobile $(if $(DEMO_BASE_URL),--project=chromium-timeline-demo)
 E2E_SERVICES := geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e geopulse-demo-integrations-e2e
 
 # Start E2E test environment (UI + Backend + DB + fake Immich/Memos/OIDC)
@@ -340,8 +344,13 @@ e2e-logs:
 # Run E2E tests (requires environment to be running)
 .PHONY: test-e2e
 test-e2e:
-	@echo "🧪 Running E2E tests (RASTER + VECTOR + OIDC)..."
-	@status=0; cd tests && npx playwright test $(E2E_PLAYWRIGHT_PROJECTS) || status=$$?; \
+	@echo "🧪 Running E2E tests (RASTER + VECTOR, then OIDC)..."
+	@status=0; cd tests && \
+	PLAYWRIGHT_HTML_OPEN=never npx playwright test $(E2E_MAIN_PROJECTS) || status=$$?; \
+	echo "🔐 Running OIDC E2E tests (report: tests/playwright-report/oidc)..."; \
+	PLAYWRIGHT_HTML_OPEN=never PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/oidc \
+	PLAYWRIGHT_JUNIT_OUTPUT_FILE=test-results/oidc/results.xml \
+	npx playwright test --project=chromium-oidc --no-deps --output=test-results/oidc --reporter=list,html,junit || status=$$?; \
 	node scripts/validate-backend-logs.js || status=$$?; exit $$status
 
 # Run E2E tests with UI (interactive)

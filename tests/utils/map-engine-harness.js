@@ -360,8 +360,14 @@ export async function readTimelinePathColors(page, { rootSelector = null } = {})
         ? highlightedPaint.filter((entry) => typeof entry === 'string' && entry.startsWith('#'))
         : (highlightedPaint ? [highlightedPaint] : [])
 
+      // A per-path colour is an expression like ['coalesce', ['get', 'color'], '#007bff']; its default is the last colour.
+      const normalPaint = normalLayer ? map.getPaintProperty(normalLayer.id, 'line-color') : null
+      const normalPaintColor = Array.isArray(normalPaint)
+        ? normalPaint.filter((entry) => typeof entry === 'string' && entry.startsWith('#')).at(-1)
+        : normalPaint
+
       return {
-        normalColor: normalLayer ? normalize(map.getPaintProperty(normalLayer.id, 'line-color')) : null,
+        normalColor: normalLayer ? normalize(normalPaintColor) : null,
         highlightedColors: [...new Set(highlightedColors.map(normalize))]
       }
     }

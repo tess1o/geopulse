@@ -42,11 +42,11 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForPageLoad();
 
       // Should not show password prompt
-      expect(await sharedLocationPage.isPasswordRequired()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isPasswordRequired()).toBe(false);
 
       // Should show location display
       await sharedLocationPage.waitForLocationToLoad();
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(true);
 
       // Verify scope
       const scope = await sharedLocationPage.getScope();
@@ -54,14 +54,12 @@ test.describe('Shared Links Public Access', () => {
 
       // Verify map
       await sharedLocationPage.waitForMapReady();
-      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
-      expect(await sharedLocationPage.hasLocationMarker()).toBe(true);
-      expect(await sharedLocationPage.hasPathLayer()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.hasLocationMarker()).toBe(true);
+      await expect.poll(() => sharedLocationPage.hasPathLayer()).toBe(false);
 
       // Verify view count
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
-      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(1);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
     });
 
     test('should render live location map embed without page chrome', async ({page, isolatedUsers, dbManager, context}) => {
@@ -81,11 +79,11 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForLocationToLoad();
       await sharedLocationPage.waitForMapReady();
 
-      expect(await sharedLocationPage.isHeaderVisible()).toBe(false);
-      expect(await sharedLocationPage.isLocationInfoVisible()).toBe(false);
-      expect(await sharedLocationPage.isFooterVisible()).toBe(false);
-      expect(await sharedLocationPage.isRefreshButtonVisible()).toBe(false);
-      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isHeaderVisible()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isLocationInfoVisible()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isFooterVisible()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isRefreshButtonVisible()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isMapDisplayed()).toBe(true);
 
       const viewport = page.viewportSize();
       const mapBox = await sharedLocationPage.getMapContainerBox();
@@ -94,6 +92,7 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should auto-refresh live location at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      await page.clock.install();
       const sharedLocationPage = new SharedLocationPage(page);
       const { user } = await TestSetupHelper.setupPublicShareAccess(
         page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL, createManagedUser(isolatedUsers)
@@ -111,17 +110,17 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
       await sharedLocationPage.waitForLocationToLoad();
-      expect(await sharedLocationPage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
-      expect(await sharedLocationPage.isAutoFollowEnabled()).toBe(true);
+      await expect.poll(() => sharedLocationPage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      await expect.poll(() => sharedLocationPage.isAutoFollowEnabled()).toBe(true);
 
       const requestsBeforePolling = locationRequests;
       await sharedLocationPage.selectAutoRefresh('Auto: 5 sec');
+      await page.clock.fastForward(5000);
       await expect.poll(() => locationRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
 
       await sharedLocationPage.selectAutoRefresh('Auto: Off');
-      await page.waitForTimeout(1000);
       const requestsAfterStopping = locationRequests;
-      await page.waitForTimeout(5500);
+      await page.clock.fastForward(6000);
       expect(locationRequests).toBe(requestsAfterStopping);
     });
 
@@ -150,7 +149,7 @@ test.describe('Shared Links Public Access', () => {
 
       // Verify map has path
       await sharedLocationPage.waitForMapReady();
-      expect(await sharedLocationPage.hasPathLayer()).toBe(true);
+      await expect.poll(() => sharedLocationPage.hasPathLayer()).toBe(true);
     });
 
     test('should require password for protected live location share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -172,16 +171,16 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForPasswordPrompt();
 
       // Verify password prompt
-      expect(await sharedLocationPage.isPasswordRequired()).toBe(true);
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(false);
+      await expect.poll(() => sharedLocationPage.isPasswordRequired()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(false);
 
       // Submit correct password
       await sharedLocationPage.submitPassword(TestConstants.PASSWORDS.testpass123);
       await sharedLocationPage.waitForLocationToLoad();
 
       // Verify access granted
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
-      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isMapDisplayed()).toBe(true);
     });
 
     test('should reject incorrect password for live location share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -202,14 +201,12 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForPageLoad();
       await sharedLocationPage.waitForPasswordPrompt();
       await sharedLocationPage.submitPassword('wrongpass');
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
       // Verify error shown
-      expect(await sharedLocationPage.isErrorShown()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isErrorShown()).toBe(true);
 
       // View count should NOT increment
-      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(1);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
     });
 
     test('should show error for expired live location share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -231,7 +228,7 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForError();
 
       // Verify error
-      expect(await sharedLocationPage.isErrorShown()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isErrorShown()).toBe(true);
       const errorMsg = await sharedLocationPage.getErrorMessage();
       expect(errorMsg.toLowerCase()).toContain('expired');
     });
@@ -251,10 +248,9 @@ test.describe('Shared Links Public Access', () => {
       // Access as guest
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Should show no data message
-      expect(await sharedLocationPage.isNoDataShown()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isNoDataShown()).toBe(true);
     });
   });
 
@@ -280,20 +276,19 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForLoadingToFinish();
 
       // Verify no password prompt
-      expect(await sharedTimelinePage.isPasswordRequired()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.isPasswordRequired()).toBe(false);
 
       // Wait for timeline to load
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline display
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineDisplayed()).toBe(true);
 
       // Verify status
       const status = await sharedTimelinePage.getStatus();
       expect(status).toBe('Active');
-      expect(await sharedTimelinePage.getTimelineName()).toBe('Public Timeline');
-      expect(await sharedTimelinePage.getHeader()).toContain(testUser.fullName);
-      expect(await sharedTimelinePage.getStatusSeverity()).toBe('success');
+      await expect.poll(() => sharedTimelinePage.getTimelineName()).toBe('Public Timeline');
+      await expect.poll(() => sharedTimelinePage.getHeader()).toContain(testUser.fullName);
+      await expect.poll(() => sharedTimelinePage.getStatusSeverity()).toBe('success');
     });
 
     test('should render timeline share embed variants', async ({page, isolatedUsers, dbManager, context}) => {
@@ -312,28 +307,29 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      expect(await sharedTimelinePage.isHeaderVisible()).toBe(true);
-      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
-      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isHeaderVisible()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
 
       await sharedTimelinePage.navigateToSharedTimelineEmbed(link.id, 'map');
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
       await sharedTimelinePage.waitForMapReady();
-      expect(await sharedTimelinePage.isHeaderVisible()).toBe(false);
-      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
-      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.isHeaderVisible()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineSidebarVisible()).toBe(false);
 
       await sharedTimelinePage.navigateToSharedTimelineEmbed(link.id, 'timeline');
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
       await sharedTimelinePage.waitForMapReady();
-      expect(await sharedTimelinePage.isHeaderVisible()).toBe(false);
-      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
-      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isHeaderVisible()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
     });
 
     test('should auto-refresh an active timeline at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      await page.clock.install();
       const sharedTimelinePage = new SharedTimelinePage(page);
       const { user } = await TestSetupHelper.setupPublicShareAccess(
         page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
@@ -351,17 +347,17 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      expect(await sharedTimelinePage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
-      expect(await sharedTimelinePage.isAutoFollowEnabled()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      await expect.poll(() => sharedTimelinePage.isAutoFollowEnabled()).toBe(false);
 
       const requestsBeforePolling = timelineRequests;
       await sharedTimelinePage.selectAutoRefresh('Auto: 5 sec');
+      await page.clock.fastForward(5000);
       await expect.poll(() => timelineRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
 
       await sharedTimelinePage.selectAutoRefresh('Auto: Off');
-      await page.waitForTimeout(1000);
       const requestsAfterStopping = timelineRequests;
-      await page.waitForTimeout(5500);
+      await page.clock.fastForward(6000);
       expect(timelineRequests).toBe(requestsAfterStopping);
     });
 
@@ -448,7 +444,7 @@ test.describe('Shared Links Public Access', () => {
       await expect.poll(async () => (await readTimelinePathColors(page)).normalColor).toBe('#007bff');
 
       // The choice is remembered in this browser.
-      expect(await page.evaluate(() => window.localStorage.getItem('gp-shared-map-colors'))).toBe('DEFAULT');
+      await expect.poll(() => page.evaluate(() => window.localStorage.getItem('gp-shared-map-colors'))).toBe('DEFAULT');
       await page.reload();
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
@@ -535,10 +531,10 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForLoadingToFinish();
 
       // Verify upcoming message
-      expect(await sharedTimelinePage.isUpcomingTrip()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isUpcomingTrip()).toBe(true);
 
       // Verify timeline not shown yet
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.isTimelineDisplayed()).toBe(false);
     });
 
     test('should access password-protected timeline share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -560,14 +556,13 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForPasswordPrompt();
 
       // Verify password prompt
-      expect(await sharedTimelinePage.isPasswordRequired()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isPasswordRequired()).toBe(true);
 
       // Submit password
       await sharedTimelinePage.verifyPassword(TestConstants.PASSWORDS.timelinepass);
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify access granted
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineDisplayed()).toBe(true);
     });
 
     test('should reject incorrect password for timeline share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -592,8 +587,7 @@ test.describe('Shared Links Public Access', () => {
       expect(passwordError).toContain('Invalid password');
 
       // View count should NOT increment
-      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(1);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
     });
 
     test('should show error for expired timeline share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -613,7 +607,7 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForError();
 
       // Verify error
-      expect(await sharedTimelinePage.isErrorShown()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isErrorShown()).toBe(true);
       const errorMsg = await sharedTimelinePage.getErrorMessage();
       expect(errorMsg.toLowerCase()).toContain('expired');
     });
@@ -634,10 +628,9 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline view is shown but empty
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineDisplayed()).toBe(true);
 
       // Check for empty states
       const hasTimelineData = await sharedTimelinePage.hasTimelineData();
@@ -666,12 +659,11 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify refresh button appears for active timelines
       const status = await sharedTimelinePage.getStatus();
       if (status === 'Active') {
-        expect(await sharedTimelinePage.hasRefreshButton()).toBe(true);
+        await expect.poll(() => sharedTimelinePage.hasRefreshButton()).toBe(true);
       }
     });
 
@@ -720,29 +712,23 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      expect(await sharedTimelinePage.hasDateFilter()).toBe(true);
-      const initialItemCount = await sharedTimelinePage.getTimelineItemCount();
-      expect(initialItemCount).toBe(3);
+      await expect.poll(() => sharedTimelinePage.hasDateFilter()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.getTimelineItemCount()).toBe(3);
 
       // Apply date filter for the first day
       await sharedTimelinePage.setDateRange(new Date('2025-09-20'), new Date('2025-09-20'));
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
-      const filteredItemCount = await sharedTimelinePage.getTimelineItemCount();
-      expect(filteredItemCount).toBe(2);
-      expect(await sharedTimelinePage.isDateFilterActive()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.getTimelineItemCount()).toBe(2);
+      await expect.poll(() => sharedTimelinePage.isDateFilterActive()).toBe(true);
 
       // Clear filter
       await sharedTimelinePage.clearDateFilter();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
-      const restoredItemCount = await sharedTimelinePage.getTimelineItemCount();
-      expect(restoredItemCount).toBe(3);
-      expect(await sharedTimelinePage.isDateFilterActive()).toBe(false);
+      await expect.poll(() => sharedTimelinePage.getTimelineItemCount()).toBe(3);
+      await expect.poll(() => sharedTimelinePage.isDateFilterActive()).toBe(false);
     });
 
     test('should display timeline data and map correctly', async ({page, isolatedUsers, dbManager, context}) => {
@@ -771,16 +757,16 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForMapReady();
 
       // Verify timeline and map are displayed
-      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
-      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isMapDisplayed()).toBe(true);
 
       // Verify timeline has data
       const itemCount = await sharedTimelinePage.getTimelineItemCount();
       expect(itemCount).toBe(3);
 
       // Verify map has data
-      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
-      expect(await sharedTimelinePage.hasPathLayer()).toBe(true); // Should have path as GPS points are inserted
+      await expect.poll(() => sharedTimelinePage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.hasPathLayer()).toBe(true); // Should have path as GPS points are inserted
     });
   });
 
@@ -802,22 +788,19 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
       await sharedLocationPage.waitForLocationToLoad();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(1);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
+      const refreshed = page.waitForResponse(r => new URL(r.url()).pathname.endsWith('/api/v1/public/share-links/' + link.id + '/location'));
       await page.locator(sharedLocationPage.selectors.refreshButton).click();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
-      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
+      expect((await refreshed).ok()).toBe(true);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
       // Second access (reload)
       await page.reload();
       await sharedLocationPage.waitForLocationToLoad();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(2);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(2);
     });
 
     test('should increment view count on timeline access', async ({page, isolatedUsers, dbManager, context}) => {
@@ -837,22 +820,19 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(1);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
+      const refreshed = page.waitForResponse(r => new URL(r.url()).pathname.endsWith('/api/v1/public/share-links/' + link.id + '/timeline'));
       await page.locator(sharedTimelinePage.selectors.refreshButton).click();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
-      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
+      expect((await refreshed).ok()).toBe(true);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
       // Second access
       await page.reload();
       await sharedTimelinePage.waitForPageLoad();
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(2);
+      await expect.poll(() => ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(2);
     });
   });
 
@@ -867,7 +847,7 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForError();
 
       // Verify error is shown
-      expect(await sharedLocationPage.isErrorShown()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isErrorShown()).toBe(true);
       const errorMsg = await sharedLocationPage.getErrorMessage();
       expect(errorMsg.toLowerCase()).toMatch(/not found|invalid|does not exist/);
     });
@@ -882,7 +862,7 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForError();
 
       // Verify error is shown
-      expect(await sharedTimelinePage.isErrorShown()).toBe(true);
+      await expect.poll(() => sharedTimelinePage.isErrorShown()).toBe(true);
       const errorMsg = await sharedTimelinePage.getErrorMessage();
       expect(errorMsg.toLowerCase()).toMatch(/not found|invalid|does not exist/);
     });
@@ -893,14 +873,9 @@ test.describe('Shared Links Public Access', () => {
 
       // Access with malformed UUID
       await page.goto('/shared/not-a-valid-uuid');
-      await page.waitForTimeout(1000);
 
       // Should show error or redirect
-      const isError = await sharedLocationPage.isErrorShown();
-      const url = page.url();
-
-      // Either shows error page or redirects (both are acceptable)
-      expect(isError || url.includes('/login') || url.includes('/error')).toBe(true);
+      await expect.poll(async () => await sharedLocationPage.isErrorShown() || /\/(login|error)/.test(page.url())).toBe(true);
     });
   });
 
@@ -923,8 +898,8 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForLocationToLoad();
 
       // Should be able to access
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
-      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isMapDisplayed()).toBe(true);
     });
 
     test('should allow other authenticated users to access public shared links', async ({page, isolatedUsers, dbManager}) => {
@@ -955,8 +930,8 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForLocationToLoad();
 
       // Should be able to access (it's public)
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
-      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isMapDisplayed()).toBe(true);
 
       // Verify it's showing owner's name
       const sharedBy = await sharedLocationPage.getSharedBy();
@@ -991,14 +966,14 @@ test.describe('Shared Links Public Access', () => {
       await sharedLocationPage.waitForPasswordPrompt();
 
       // Should still require password even though logged in
-      expect(await sharedLocationPage.isPasswordRequired()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isPasswordRequired()).toBe(true);
 
       // Submit correct password
       await sharedLocationPage.submitPassword(TestConstants.PASSWORDS.testpass123);
       await sharedLocationPage.waitForLocationToLoad();
 
       // Now should have access
-      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
+      await expect.poll(() => sharedLocationPage.isLocationDisplayed()).toBe(true);
     });
   });
 });

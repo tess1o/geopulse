@@ -99,6 +99,7 @@ export class FavoritesManagementPage {
 
         await this.page.waitForSelector(this.selectors.pageContainer, { timeout: 15000 });
         await this.page.waitForSelector(this.selectors.pageTitle, { timeout: 10000 });
+        await expect(this.page.locator('.gp-page-container')).not.toHaveClass(/gp-page-container--loading/);
         await this.waitForMapReady();
         return;
       } catch (error) {
@@ -130,7 +131,7 @@ export class FavoritesManagementPage {
     // Click the hamburger menu button
     const menuButton = this.page.locator('button:has(.pi-bars)');
     await menuButton.click();
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator('nav.gp-nav-content')).toBeVisible();
   }
 
   async clickNavigationLink(linkText) {
@@ -172,7 +173,7 @@ export class FavoritesManagementPage {
 
   async rightClickOnMap(x, y) {
     await this.mapHarness.rightClickOnMap(x, y, { mapId: 'favorites-map' });
-    await this.page.waitForTimeout(700);
+    await this.waitForMapContextMenu();
   }
 
   async waitForMapContextMenu() {
@@ -202,7 +203,7 @@ export class FavoritesManagementPage {
 
   async cancelDrawing() {
     await this.page.keyboard.press('Escape');
-    await this.page.waitForTimeout(500);
+    await expect(this.page.getByRole('group', { name: 'Draw favorite area', exact: true })).toBeHidden();
   }
 
   async countFavoriteMarkers() {
@@ -225,14 +226,14 @@ export class FavoritesManagementPage {
     const marker = this.page.locator(this.selectors.favoriteMarker).nth(index);
     await marker.waitFor({ state: 'visible', timeout: 5000 });
     await marker.click({ button: 'right', force: true });
-    await this.page.waitForTimeout(1000);
+    await this.waitForMapContextMenu();
   }
 
   async rightClickPendingMarker(index = 0) {
     const marker = this.page.locator(this.selectors.pendingPointMarker).nth(index);
     await marker.waitFor({ state: 'visible', timeout: 5000 });
     await marker.click({ button: 'right', force: true });
-    await this.page.waitForTimeout(1000);
+    await this.waitForMapContextMenu();
   }
 
   async searchPlaceToAdd(query) {
@@ -270,8 +271,9 @@ export class FavoritesManagementPage {
   // ===========================================
 
   async toggleBulkMode() {
+    const enabled = await this.isBulkModeEnabled();
     await this.page.click(this.selectors.bulkModeButton);
-    await this.page.waitForTimeout(500);
+    await expect.poll(() => this.isBulkModeEnabled()).toBe(!enabled);
   }
 
   async isBulkModeEnabled() {
@@ -330,8 +332,9 @@ export class FavoritesManagementPage {
   async removePendingItem(index) {
     const item = this.page.locator(this.selectors.pendingItem).nth(index);
     const removeButton = item.locator('button:has(.pi-trash)');
+    const count = await this.getPendingItemCount();
     await removeButton.click();
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.pendingItem)).toHaveCount(count - 1);
   }
 
   async clickClearPending() {
@@ -349,21 +352,20 @@ export class FavoritesManagementPage {
   async selectTypeFilter(type) {
     // type: 'POINT', 'AREA', or null for 'All Types'
     await this.page.click(this.selectors.typeSelect);
-    await this.page.waitForTimeout(300);
 
     const optionText = type === 'POINT' ? 'Point' : type === 'AREA' ? 'Area' : 'All Types';
     await this.page.click(`.p-select-option:has-text("${optionText}")`);
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator('.p-select-overlay')).toBeHidden();
   }
 
   async fillSearchInput(text) {
     await this.page.fill(this.selectors.searchInput, text);
-    await this.page.waitForTimeout(600); // Wait for debounce
   }
 
   async clearFilters() {
     await this.page.click(this.selectors.clearFiltersButton);
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.searchInput)).toHaveValue('');
+    await expect(this.page.locator(this.selectors.clearFiltersButton)).toBeDisabled();
   }
 
   async isClearFiltersButtonEnabled() {
@@ -429,7 +431,7 @@ export class FavoritesManagementPage {
     const row = this.page.locator(this.selectors.tableRow).nth(index);
     const mapButton = row.locator(this.selectors.mapButton);
     await mapButton.click();
-    await this.page.waitForTimeout(1000);
+    await this.waitForMapReady();
   }
 
   async isTableEmpty() {
@@ -492,6 +494,7 @@ export class FavoritesManagementPage {
   async submitAddDialog() {
     const dialog = this.getAddDialog();
     await dialog.locator('button:has-text("Save")').click();
+    // Validation errors keep the dialog open, so a dialog that stays is not a failure here.
     await dialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   }
 
@@ -629,28 +632,6 @@ export class FavoritesManagementPage {
     });
   }
 
-  async waitForTimelineRegenerationCycle(options = {}) {
-    const appearanceTimeout = options.appearanceTimeout ?? 7000;
-    const completionTimeout = options.completionTimeout ?? 45000;
-    const optional = options.optional ?? true;
-
-    try {
-      await this.page.waitForSelector(this.selectors.timelineRegenerationModal, { timeout: appearanceTimeout });
-    } catch (error) {
-      if (optional) {
-        return false;
-      }
-      throw error;
-    }
-
-    await this.page.waitForSelector(this.selectors.timelineRegenerationModal, {
-      state: 'hidden',
-      timeout: completionTimeout
-    });
-
-    return true;
-  }
-
   // ===========================================
   // TOAST NOTIFICATIONS
   // ===========================================
@@ -673,25 +654,12 @@ export class FavoritesManagementPage {
   }
 
   async waitForSuccessToast(expectedText = null, options = {}) {
-    const timeout = options.timeout ?? 20000;
-    const allowInfoFallback = options.allowInfoFallback ?? true;
-    const required = options.required ?? true;
-
-    try {
-      await this.waitForToastBySelector(this.selectors.successToast, expectedText, timeout);
-      return 'success';
-    } catch (error) {
-      if (!required) {
-        return null;
-      }
-
-      if (!allowInfoFallback) {
-        throw error;
-      }
-
-      await this.waitForToastBySelector(this.selectors.infoToast, expectedText, timeout);
-      return 'info';
-    }
+    const selector = options.allowInfoFallback === false
+      ? this.selectors.successToast
+      : this.selectors.successToast + ', ' + this.selectors.infoToast;
+    const toast = this.page.locator(selector).filter({ visible: true });
+    if (expectedText) await expect(toast).toContainText(expectedText, { timeout: options.timeout ?? 20000 });
+    else await expect(toast.first()).toBeVisible({ timeout: options.timeout ?? 20000 });
   }
 
   async waitForInfoToast() {
@@ -716,7 +684,10 @@ export class FavoritesManagementPage {
     await this.waitForMapContextMenu();
     await this.clickContextMenuItem('Add to Favorites');
     await this.fillAddDialog(name);
+    const saved = this.page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/points');
     await this.submitAddDialog();
+    expect((await saved).ok()).toBe(true);
+    await expect(this.page.locator(this.selectors.tableRow).filter({ hasText: name })).toBeVisible();
   }
 
   async addFavoriteAreaWorkflow(startX, startY, endX, endY, name) {
@@ -725,7 +696,10 @@ export class FavoritesManagementPage {
     await this.clickContextMenuItem('Add an area to Favorites');
     await this.drawRectangle(startX, startY, endX, endY);
     await this.fillAddDialog(name);
+    const saved = this.page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/areas');
     await this.submitAddDialog();
+    expect((await saved).ok()).toBe(true);
+    await expect(this.page.locator(this.selectors.tableRow).filter({ hasText: name })).toBeVisible();
   }
 
   async addFavoritePointInBulkMode(x, y, name) {
@@ -740,28 +714,24 @@ export class FavoritesManagementPage {
     await this.fillAddDialog(name);
     await this.submitAddDialog();
 
-    // Should add to pending, not trigger timeline regeneration
-    await this.page.waitForTimeout(1000);
+    await expect(this.page.locator(this.selectors.pendingItem).filter({ hasText: name })).toBeVisible();
   }
 
   async editFavoriteWorkflow(index, newName) {
     await this.clickEditInTable(index);
     await this.fillEditDialog(newName);
+    const saved = this.page.waitForResponse(r => r.request().method() === 'PUT' && /\/api\/v1\/favorites\/\d+$/.test(new URL(r.url()).pathname));
     await this.submitEditDialog();
-
-    // Wait for success toast (timeline regeneration happens in background)
-    await this.waitForSuccessToast();
-
-    // Wait a bit for database update to complete
-    await this.page.waitForTimeout(2000);
+    expect((await saved).ok()).toBe(true);
+    await expect(this.page.locator(this.selectors.tableRow).filter({ hasText: newName })).toBeVisible();
   }
 
   async deleteFavoriteWorkflow(index) {
     const initialRowCount = await this.getTableRowCount();
     await this.clickDeleteInTable(index);
+    const deleted = this.page.waitForResponse(r => r.request().method() === 'DELETE' && /\/api\/v1\/favorites\/\d+$/.test(new URL(r.url()).pathname));
     await this.confirmDialog();
-    await this.waitForTimelineRegenerationCycle({ optional: true });
-    await this.waitForSuccessToast(null, { required: false, timeout: 20000 });
+    expect((await deleted).ok()).toBe(true);
 
     await expect.poll(async () => {
       const currentCount = await this.getTableRowCount();
@@ -776,8 +746,10 @@ export class FavoritesManagementPage {
   async bulkSaveWorkflow() {
     await this.clickSavePending();
     await this.waitForBulkSaveDialog();
+    const saved = this.page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/bulk-apply');
     await this.confirmBulkSave();
-    await this.waitForTimelineRegenerationCycle({ optional: true });
-    await this.waitForSuccessToast(null, { required: false, timeout: 20000 });
+    expect((await saved).ok()).toBe(true);
+    await expect(this.page.locator(this.selectors.pendingPanel)).toBeHidden();
+    await expect(this.page.locator(this.selectors.savePendingButton)).toBeHidden();
   }
 }

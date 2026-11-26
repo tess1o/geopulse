@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import { test, expect } from '../fixtures/isolated-fixture.js';
 import { LoginPage } from '../pages/LoginPage.js';
-import { TestHelpers } from '../utils/test-helpers.js';
 
 test.describe('Admin Invitations', () => {
   test('should keep USED invitation and show "Deleted user" after deleting the invited user', async ({ page, isolatedUsers, dbManager }) => {
@@ -32,18 +31,16 @@ test.describe('Admin Invitations', () => {
       [invitationId, invitationToken, adminDbUser.id, invitedDbUser.id]
     );
 
-    await loginPage.navigate();
-    await loginPage.login(adminUser.email, adminUser.password);
-    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+    await loginPage.loginViaApi(adminUser.email, adminUser.password, { landing: '/app/timeline' });
 
     const deleteResponse = await page.request.delete(`/api/v1/admin/users/${invitedDbUser.id}`);
     expect(deleteResponse.ok()).toBe(true);
 
-    const deletedUserResult = await dbManager.client.query(
-      'SELECT id FROM users WHERE id = $1',
-      [invitedDbUser.id]
-    );
-    expect(deletedUserResult.rowCount).toBe(0);
+    // The request only starts the deletion; the background worker removes the user shortly after.
+    await expect.poll(async () => {
+      const result = await dbManager.client.query('SELECT id FROM users WHERE id = $1', [invitedDbUser.id]);
+      return result.rowCount;
+    }, { timeout: 60000 }).toBe(0);
 
     const invitationResult = await dbManager.client.query(
       'SELECT used, used_by FROM user_invitations WHERE id = $1',

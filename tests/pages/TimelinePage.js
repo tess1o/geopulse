@@ -1,5 +1,4 @@
 import {LoginPage} from './LoginPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {DateFormatTestHelper} from '../utils/date-format-test-helper.js';
@@ -51,7 +50,7 @@ export class TimelinePage {
   }
 
   /**
-   * Common setup: login and navigate to timeline page
+   * Common setup: login and navigate to timeline page (options.landing: another page, or null for none)
    */
   async loginAndNavigate(testUser = TestData.users.existing, options = {}) {
     const loginPage = new LoginPage(this.page);
@@ -65,9 +64,9 @@ export class TimelinePage {
         [testUser.email, mapMode]
       );
     }
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline', 30000);
+    await loginPage.loginViaApi(testUser.email, testUser.password, {
+      landing: options.landing === undefined ? '/app/timeline' : options.landing
+    });
     
     return { loginPage, testUser };
   }
@@ -89,12 +88,9 @@ export class TimelinePage {
     }
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
 
-    const loginPage = new LoginPage(this.page);
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline', 30000);
+    await new LoginPage(this.page).loginViaApi(testUser.email, testUser.password);
     
-    // Insert test data
+    // Insert test data before the first page load
     const user = await dbManager.getUserByEmail(testUser.email);
     const testData = await dataInsertFunction(dbManager, user.id);
     
@@ -103,7 +99,7 @@ export class TimelinePage {
       const { startDate, endDate } = dateRange;
       await this.navigateWithDateRange(startDate, endDate);
     } else {
-      await this.page.reload();
+      await this.navigate();
     }
     
     await this.waitForPageLoad();

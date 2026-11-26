@@ -8,21 +8,24 @@ const CLIENT_ID = 'geopulse-e2e';
 
 /**
  * Global auth settings every OIDC test starts from: password login off, auto-launch on, and a callback
- * base URL the browser can reach. Settings are read from the database on every request, so writing the
- * rows is enough; the original rows are restored afterwards.
+ * base URL the browser can reach. They go through the admin settings API rather than straight into the
+ * table: the backend caches settings, and only its own writes evict that cache. The original values are
+ * restored afterwards.
  */
 const baseSettings = (baseURL) => ({
-  'auth.login.enabled': ['true', 'BOOLEAN'],
-  'auth.password-login.enabled': ['false', 'BOOLEAN'],
-  'auth.oidc.login.enabled': ['true', 'BOOLEAN'],
-  'auth.oidc.auto-launch.enabled': ['true', 'BOOLEAN'],
+  'auth.login.enabled': 'true',
+  'auth.password-login.enabled': 'false',
+  'auth.oidc.login.enabled': 'true',
+  'auth.oidc.auto-launch.enabled': 'true',
   // Signs the test's password user in through the provider without the linking dialog.
-  'auth.oidc.auto-link-accounts': ['true', 'BOOLEAN'],
-  'auth.oidc.rp-logout.enabled': ['true', 'BOOLEAN'],
-  'auth.admin-login-bypass.enabled': ['true', 'BOOLEAN'],
-  'auth.guest-root-redirect-to-login.enabled': ['false', 'BOOLEAN'],
-  'auth.oidc.callback-base-url': [baseURL.replace(/\/+$/, ''), 'STRING'],
+  'auth.oidc.auto-link-accounts': 'true',
+  'auth.oidc.rp-logout.enabled': 'true',
+  'auth.admin-login-bypass.enabled': 'true',
+  'auth.guest-root-redirect-to-login.enabled': 'false',
+  'auth.oidc.callback-base-url': baseURL.replace(/\/+$/, ''),
 });
+
+const settingUrl = (key) => `${TestConfig.API_BASE_URL}/api/v1/admin/settings/keys/${encodeURIComponent(key)}`;
 
 class OidcEnvironment {
   constructor({ page, playwright, baseURL, isolatedUsers, dbManager }) {
@@ -56,25 +59,22 @@ class OidcEnvironment {
 
     const settings = baseSettings(this.baseURL);
     const snapshot = await this.db.query(
-      'SELECT key, value, value_type, category, description FROM system_settings WHERE key = ANY($1::text[])',
+      'SELECT key, value FROM system_settings WHERE key = ANY($1::text[])',
       [Object.keys(settings)]
     );
     this.settingsSnapshot = { keys: Object.keys(settings), rows: snapshot.rows };
-    for (const [key, [value, type]] of Object.entries(settings)) {
-      await this.setSetting(key, value, type);
+    for (const [key, value] of Object.entries(settings)) {
+      await this.setSetting(key, value);
     }
 
     await this.addProvider({ endSession });
   }
 
-  async setSetting(key, value, type = 'BOOLEAN') {
-    await this.db.query(
-      `INSERT INTO system_settings (key, value, value_type, category, description, updated_at)
-       VALUES ($1, $2, $3, 'auth', 'e2e override', NOW())
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-      [key, value, type]
-    );
+  async setSetting(key, value) {
+    const response = await this.adminApi.put(settingUrl(key), { data: { value } });
+    expect(response.ok(), `setting ${key} returned ${response.status()}`).toBe(true);
   }
+
 
   /**
    * Register a mock provider realm and the matching GeoPulse provider.
@@ -126,13 +126,13 @@ class OidcEnvironment {
         [this.providers.map((provider) => provider.name)]);
     }
     if (this.settingsSnapshot) {
-      await this.db.query('DELETE FROM system_settings WHERE key = ANY($1::text[])', [this.settingsSnapshot.keys]);
-      for (const row of this.settingsSnapshot.rows) {
-        await this.db.query(
-          `INSERT INTO system_settings (key, value, value_type, category, description, updated_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())`,
-          [row.key, row.value, row.value_type, row.category, row.description]
-        );
+      // Keys without a saved row go back to their default; the others get their saved value back.
+      const saved = new Map(this.settingsSnapshot.rows.map((row) => [row.key, row.value]));
+      for (const key of this.settingsSnapshot.keys) {
+        const response = saved.has(key)
+          ? await this.adminApi.put(settingUrl(key), { data: { value: saved.get(key) } })
+          : await this.adminApi.delete(settingUrl(key));
+        expect(response.ok(), `restoring ${key} returned ${response.status()}`).toBe(true);
       }
     }
     await this.adminApi?.dispose();

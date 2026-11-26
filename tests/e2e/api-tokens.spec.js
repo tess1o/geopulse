@@ -1,7 +1,6 @@
 import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {UserProfilePage} from '../pages/UserProfilePage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {TestConfig} from '../config/test-config.js';
 
 // Endpoints chosen from ApiTokenScopeFilter: safe methods need `read`, other methods need `write`,
@@ -14,9 +13,7 @@ const unwrap = (payload) => payload?.data ?? payload;
 async function loginAndOpenApiTokens(page, user) {
   const loginPage = new LoginPage(page);
   const userProfilePage = new UserProfilePage(page);
-  await loginPage.navigate();
-  await loginPage.login(user.email, user.password);
-  await TestHelpers.waitForNavigation(page, '**/app/timeline');
+  await loginPage.loginViaApi(user.email, user.password);
   await openApiTokens(page, userProfilePage);
   return userProfilePage;
 }

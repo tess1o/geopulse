@@ -1,7 +1,6 @@
 import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {TimeDigestPage} from '../pages/TimeDigestPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 test.describe('Time Digest', () => {
@@ -13,9 +12,7 @@ test.describe('Time Digest', () => {
       const testUser = await isolatedUsers.create(page);
 
       // Login to the app
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Navigate to time digest page (defaults to current month)
       await digestPage.navigate();
@@ -49,9 +46,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Navigate to time digest
       await digestPage.navigate();
@@ -76,9 +71,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data for January 2024
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -131,9 +124,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -163,9 +154,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data with places
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -211,9 +200,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data with significant activity for milestones
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -250,9 +237,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -286,9 +271,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data for entire year 2024
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -336,9 +319,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test digest data for entire year
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -391,9 +372,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert comprehensive test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -427,9 +406,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test data for current month and previous month
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -461,9 +438,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test data for multiple months
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -494,9 +469,7 @@ test.describe('Time Digest', () => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       // Insert test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -652,9 +625,7 @@ async function openSeededYearlyRewind(page, isolatedUsers, dbManager) {
   const loginPage = new LoginPage(page);
   const digestPage = new TimeDigestPage(page);
   const testUser = await isolatedUsers.create(page);
-  await loginPage.navigate();
-  await loginPage.login(testUser.email, testUser.password);
-  await TestHelpers.waitForNavigation(page, '**/app/timeline');
+  await loginPage.loginViaApi(testUser.email, testUser.password);
 
   const user = await dbManager.getUserByEmail(testUser.email);
   await insertYearlyDigestTestData(dbManager, user.id, 2024);
