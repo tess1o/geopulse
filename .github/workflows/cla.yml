@@ -3,12 +3,15 @@ name: CLA Assistant
 # Asks every pull request author to accept the Contributor License Agreement
 # in CONTRIBUTING.md. Signatures are stored on the cla-signatures branch.
 # pull_request_target is safe here: this workflow never checks out PR code.
+# Every comment on any issue or PR starts a run; the job-level `if` skips the ones that are not
+# a CLA signature or "recheck", so skipped runs in the Actions list are expected.
+# No `closed` trigger: it is only needed for lock-pullrequest-aftermerge, which is off.
 
 on:
   issue_comment:
     types: [created]
   pull_request_target:
-    types: [opened, closed, synchronize]
+    types: [opened, synchronize, reopened]
 
 permissions:
   actions: write
