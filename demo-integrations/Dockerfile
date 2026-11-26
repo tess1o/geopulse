@@ -1,6 +1,6 @@
 # Fake Immich (port 2283) and fake Memos (port 5230) for the GeoPulse demo, in one container.
 # The e2e tests also start the fake OIDC provider (port 9400) with FAKE_OIDC_ENABLED=true.
-FROM golang:1.25.14-alpine3.24 AS build
+FROM golang:1.27.4-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fake-immich ./cmd/
  && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fake-memos ./cmd/fake-memos \
  && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/fake-oidc ./cmd/fake-oidc
 
-FROM alpine:3.22.6
+FROM alpine:3.24.4
 RUN apk add --no-cache tzdata && adduser -D -H -u 10001 demo
 COPY --from=build /out/ /usr/local/bin/
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
