@@ -10,17 +10,17 @@ test.describe('Location Analytics Page', () => {
       const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the location analytics page
-      expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
 
       // Verify page title and subtitle
-      expect(await locationAnalyticsPage.verifyPageTitle()).toBe(true);
-      expect(await locationAnalyticsPage.verifyPageSubtitle()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.verifyPageTitle()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.verifyPageSubtitle()).toBe(true);
 
       // Verify Cities tab is active by default
-      expect(await locationAnalyticsPage.isTabActive('Cities')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Cities')).toBe(true);
 
       // Verify empty state when no data exists
-      expect(await locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
     });
 
     test('should display correct tab counts', async ({page, isolatedUsers, dbManager}) => {
@@ -32,30 +32,26 @@ test.describe('Location Analytics Page', () => {
       // Reload to see data
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000); // Wait for data to load
 
       // Verify tab counts
-      const citiesCount = await locationAnalyticsPage.getCitiesTabCount();
-      const countriesCount = await locationAnalyticsPage.getCountriesTabCount();
 
-      expect(citiesCount).toBe(7); // 7 cities in diverse data
-      expect(countriesCount).toBe(4); // 4 countries in diverse data
+      await expect.poll(() => locationAnalyticsPage.getCitiesTabCount()).toBe(7); // 7 cities in diverse data
+      await expect.poll(() => locationAnalyticsPage.getCountriesTabCount()).toBe(4); // 4 countries in diverse data
     });
 
     test('should display empty state when no locations exist', async ({page, isolatedUsers, dbManager}) => {
       const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify empty state for cities
-      expect(await locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
       const citiesEmptyText = await locationAnalyticsPage.getEmptyStateText();
       expect(citiesEmptyText).toContain('No cities found');
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(500);
 
       // Verify empty state for countries
-      expect(await locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
       const countriesEmptyText = await locationAnalyticsPage.getEmptyStateText();
       expect(countriesEmptyText).toContain('No countries found');
     });
@@ -68,13 +64,11 @@ test.describe('Location Analytics Page', () => {
 
       // Navigate away and back to trigger loading
       await page.goto('/app/timeline');
-      await page.waitForTimeout(500);
 
       await locationAnalyticsPage.navigateToTab('cities');
 
       // Loading state may appear briefly - just verify page loads correctly
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify data is displayed
       const cardCount = await locationAnalyticsPage.getLocationCardCount();
@@ -99,8 +93,8 @@ test.describe('Location Analytics Page', () => {
 
       await locationAnalyticsPage.navigateToTab('map');
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
+      await expect(page.locator('.map-place-timeline').first()).toContainText(KnownDateStrings.sep21_2025.DMY);
       const lastVisitText = await page.locator('.map-place-timeline').first().textContent();
       DateFormatTestHelper.expectContainsDate(
         lastVisitText,
@@ -119,7 +113,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify cities are displayed
       const cards = await locationAnalyticsPage.getLocationCards();
@@ -166,7 +159,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify cities are sorted by visit count (descending)
       const cards = await locationAnalyticsPage.getLocationCards();
@@ -187,7 +179,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify statistics match database
       const dbStats = await TestSetupHelper.getCityStatistics(dbManager, user.id, cityName);
@@ -209,13 +200,12 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Click on city card
       await locationAnalyticsPage.clickLocationCardByName(cityName);
 
       // Verify navigation to city details page
-      expect(await locationAnalyticsPage.verifyNavigationToCityDetails(cityName)).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.verifyNavigationToCityDetails(cityName)).toBe(true);
     });
 
     test('should display multiple cities from same country', async ({page, isolatedUsers, dbManager}) => {
@@ -249,7 +239,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       const cards = await locationAnalyticsPage.getLocationCards();
       expect(cards.length).toBe(3);
@@ -270,11 +259,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       // Verify countries are displayed
       const cards = await locationAnalyticsPage.getLocationCards();
@@ -320,11 +307,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       // Verify countries are sorted by visit count (descending)
       const cards = await locationAnalyticsPage.getLocationCards();
@@ -344,11 +329,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       // Verify statistics match database
       const dbStats = await TestSetupHelper.getCountryStatistics(dbManager, user.id, countryName);
@@ -371,17 +354,15 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       // Click on country card
       await locationAnalyticsPage.clickLocationCardByName(countryName);
 
       // Verify navigation to country details page
-      expect(await locationAnalyticsPage.verifyNavigationToCountryDetails(countryName)).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.verifyNavigationToCountryDetails(countryName)).toBe(true);
     });
 
     test('should show multiple cities count for country', async ({page, isolatedUsers, dbManager}) => {
@@ -396,11 +377,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       const cardData = await locationAnalyticsPage.getLocationCardByName('USA');
       expect(cardData.stats.cities).toBe(4);
@@ -415,15 +394,13 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify Cities tab is active initially
-      expect(await locationAnalyticsPage.isTabActive('Cities')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Cities')).toBe(true);
 
       // Switch to Countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
-      expect(await locationAnalyticsPage.isTabActive('Countries')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Countries')).toBe(true);
 
       // Verify countries are displayed
       let cards = await locationAnalyticsPage.getLocationCards();
@@ -431,8 +408,7 @@ test.describe('Location Analytics Page', () => {
 
       // Switch back to Cities tab
       await locationAnalyticsPage.clickCitiesTab();
-      await page.waitForTimeout(1000);
-      expect(await locationAnalyticsPage.isTabActive('Cities')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Cities')).toBe(true);
 
       // Verify cities are displayed
       cards = await locationAnalyticsPage.getLocationCards();
@@ -446,11 +422,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Switch to Countries tab
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(500);
 
       // Get URL to verify it doesn't have query params (tab is managed by client state)
       const urlBeforeReload = page.url();
@@ -458,9 +432,8 @@ test.describe('Location Analytics Page', () => {
       // Reload page
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(1000);
 
-      expect(await locationAnalyticsPage.isTabActive('Countries')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Countries')).toBe(true);
     });
   });
 
@@ -470,7 +443,7 @@ test.describe('Location Analytics Page', () => {
 
       // Verify search input is visible
       const searchInput = page.locator('.p-autocomplete-input');
-      expect(await searchInput.isVisible()).toBe(true);
+      await expect.poll(() => searchInput.isVisible()).toBe(true);
     });
 
     test('should search and navigate to city', async ({page, isolatedUsers, dbManager}) => {
@@ -484,18 +457,16 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Search for the city
       await locationAnalyticsPage.fillSearchInput(cityName);
-      await page.waitForTimeout(1000);
 
       // Verify dropdown appears
-      if (await locationAnalyticsPage.isSearchDropdownVisible()) {
+      await locationAnalyticsPage.waitForSearchDropdown();
+      {
         await locationAnalyticsPage.clickSearchResult(0);
         // Verify navigation
-        await page.waitForTimeout(1000);
-        expect(page.url()).toContain('location-analytics/city');
+        await expect(page).toHaveURL(/location-analytics\/city\//);
       }
     });
 
@@ -509,18 +480,16 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Search for the country
       await locationAnalyticsPage.fillSearchInput('France');
-      await page.waitForTimeout(1000);
 
       // Verify dropdown appears
-      if (await locationAnalyticsPage.isSearchDropdownVisible()) {
+      await locationAnalyticsPage.waitForSearchDropdown();
+      {
         await locationAnalyticsPage.clickSearchResult(0);
         // Verify navigation
-        await page.waitForTimeout(1000);
-        expect(page.url()).toContain('location-analytics/country');
+        await expect(page).toHaveURL(/location-analytics\/country\//);
       }
     });
 
@@ -531,11 +500,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Search for non-existent location
       await locationAnalyticsPage.fillSearchInput('NonExistentCity123');
-      await page.waitForTimeout(1000);
 
       // Dropdown may not appear or may show empty
       const dropdownVisible = await locationAnalyticsPage.isSearchDropdownVisible();
@@ -588,7 +555,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       const cardData = await locationAnalyticsPage.getLocationCardByName('Multi-Place City');
       expect(cardData).not.toBeNull();
@@ -617,10 +583,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Page should still load without errors
-      expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
     });
   });
 
@@ -635,18 +600,16 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify page still works on mobile
-      expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
 
       const cardCount = await locationAnalyticsPage.getLocationCardCount();
       expect(cardCount).toBeGreaterThan(0);
 
       // Verify tabs still work
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(500);
-      expect(await locationAnalyticsPage.isTabActive('Countries')).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isTabActive('Countries')).toBe(true);
     });
 
     test('should handle tablet viewport', async ({page, isolatedUsers, dbManager}) => {
@@ -659,10 +622,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify page works on tablet
-      expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
 
       const cardCount = await locationAnalyticsPage.getLocationCardCount();
       expect(cardCount).toBeGreaterThan(0);
@@ -675,7 +637,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Test desktop
       await locationAnalyticsPage.setDesktopViewport();
@@ -708,7 +669,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       const cardData = await locationAnalyticsPage.getLocationCardByName('Frequent Visit City');
       expect(cardData).not.toBeNull();
@@ -733,7 +693,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       const cardData = await locationAnalyticsPage.getLocationCardByName("L'Aquila");
       expect(cardData).not.toBeNull();
@@ -757,10 +716,9 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Page should handle long names without breaking
-      expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
+      await expect.poll(() => locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
       const cardCount = await locationAnalyticsPage.getLocationCardCount();
       expect(cardCount).toBe(1);
     });
@@ -779,7 +737,6 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Verify cities
       let cardCount = await locationAnalyticsPage.getLocationCardCount();
@@ -787,7 +744,6 @@ test.describe('Location Analytics Page', () => {
 
       // Switch to countries and verify
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       cardCount = await locationAnalyticsPage.getLocationCardCount();
       expect(cardCount).toBe(4);
@@ -808,15 +764,13 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Hover over first card
       const firstCard = page.locator('.location-card').first();
       await firstCard.hover();
-      await page.waitForTimeout(500);
 
       // Verify card is visible (hover effect exists in CSS)
-      expect(await firstCard.isVisible()).toBe(true);
+      await expect.poll(() => firstCard.isVisible()).toBe(true);
     });
 
     test('should display correct icons for cities and countries', async ({page, isolatedUsers, dbManager}) => {
@@ -826,18 +780,16 @@ test.describe('Location Analytics Page', () => {
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
       // Check cities have building icon
       const cityIcon = page.locator('.location-card .pi-building').first();
-      expect(await cityIcon.isVisible()).toBe(true);
+      await expect.poll(() => cityIcon.isVisible()).toBe(true);
 
       // Switch to countries and check globe icon
       await locationAnalyticsPage.clickCountriesTab();
-      await page.waitForTimeout(1000);
 
       const countryIcon = page.locator('.location-card .pi-globe').first();
-      expect(await countryIcon.isVisible()).toBe(true);
+      await expect.poll(() => countryIcon.isVisible()).toBe(true);
     });
   });
 
@@ -865,7 +817,6 @@ test.describe('Location Analytics Page', () => {
       // Measure load time
       const startTime = Date.now();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
       const loadTime = Date.now() - startTime;
 
       // Verify page loaded in reasonable time (< 10 seconds)

@@ -350,9 +350,11 @@ test('should keep stationary overnight timeline data at a readable zoom level', 
 });
 
 test.describe('Timeline Map Interactions', () => {
-  test.use({ mapMode: 'RASTER' });
-
   test.describe('Raster map loading', () => {
+    test.use({ mapMode: 'RASTER' });
+    test.beforeEach(({}, testInfo) => {
+      test.skip(testInfo.project.name === 'chromium-vector', 'Raster asset loading is covered by chromium.');
+    });
     test('should not request vector map assets when raster mode is selected on initial timeline load', async ({page, isolatedUsers, dbManager}) => {
       const vectorRequests = [];
       page.on('request', (request) => {
@@ -526,6 +528,7 @@ test.describe('Timeline Map Interactions', () => {
     });
 
     test('should show the speed legend in the trip summary', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
       const { timelinePage } = await setupCarTrip(page, isolatedUsers, dbManager, mapMode, {
         colorScheme: 'RED_GREEN_SAFE'
       });
@@ -790,6 +793,7 @@ test.describe('Timeline Map Interactions', () => {
     });
 
     test('should handle add favorite dialog cancellation', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
@@ -1104,6 +1108,7 @@ test.describe('Timeline Map Interactions', () => {
 
   test.describe('Immich Integration Disabled', () => {
     test('should not show Immich controls when integration is disabled', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
@@ -1152,30 +1157,34 @@ test.describe('Timeline Map Interactions', () => {
 
   test.describe('Timeline Regeneration Modal', () => {
     test('should show timeline regeneration modal during favorite operations', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
       await setupTimelineWithMapMode(timelinePage, dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers), null, mapMode);
       await mapPage.waitForMapReady();
       
+      let release;
+      const released = new Promise(resolve => { release = resolve; });
+      await page.route('**/api/v1/favorites/points', async route => {
+        const response = await route.fetch();
+        await released;
+        await route.fulfill({ response });
+      });
       try {
-        // Start add favorite workflow
         await mapPage.rightClickOnMap(300, 300);
         await mapPage.waitForMapContextMenu();
         await mapPage.clickContextMenuItem('Add to Favorites');
-        
         await mapPage.waitForAddFavoriteDialog();
+        const saved = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/points');
         await mapPage.submitAddFavoriteDialog('Test Regeneration');
-        
-        // Verify timeline regeneration modal appears
         await mapPage.waitForTimelineRegenerationModal();
-        
-        // Modal should automatically close after regeneration
+        release();
+        expect((await saved).ok()).toBe(true);
+        await expect(page.locator('.p-toast-message-success, .p-toast-message-info').first()).toBeVisible();
         await mapPage.waitForTimelineRegenerationModalToClose();
-        
-      } catch (error) {
-        console.log('Timeline regeneration modal test failed:', error.message);
-        // This test depends on backend integration working properly
+      } finally {
+        release();
       }
     });
   });

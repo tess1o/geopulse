@@ -1,7 +1,6 @@
 import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {DataExportImportPage} from '../pages/DataExportImportPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import path from 'path';
 import fs from 'fs';
 import {fileURLToPath} from 'url';
@@ -258,9 +257,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -276,9 +273,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -296,9 +291,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -311,9 +304,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -330,9 +321,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -352,9 +341,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -381,9 +368,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -409,9 +394,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -436,9 +419,7 @@ test.describe('Data Export & Import', () => {
                 [DateFormatValues.DMY, user.id]
             );
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -458,9 +439,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -486,9 +465,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 100);
             await DataExportImportPage.insertSampleFavorites(dbManager, user.id, 5);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -534,9 +511,7 @@ test.describe('Data Export & Import', () => {
             // Insert sample data
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -572,9 +547,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 500);
             await DataExportImportPage.insertSampleFavorites(dbManager, user.id, 10);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -619,9 +592,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -645,9 +616,7 @@ test.describe('Data Export & Import', () => {
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -684,9 +653,7 @@ test.describe('Data Export & Import', () => {
             // Insert GPS data and generate timeline
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 100);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -734,9 +701,7 @@ test.describe('Data Export & Import', () => {
                 endDate: twoDaysAgo
             });
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -771,9 +736,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -798,9 +761,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -830,9 +791,7 @@ test.describe('Data Export & Import', () => {
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -870,9 +829,7 @@ test.describe('Data Export & Import', () => {
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 20);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -901,9 +858,7 @@ test.describe('Data Export & Import', () => {
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -933,9 +888,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -950,9 +903,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -967,9 +918,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1003,9 +952,7 @@ test.describe('Data Export & Import', () => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1052,9 +999,7 @@ test.describe('Data Export & Import', () => {
             );
 
             // Login and create export
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1083,9 +1028,7 @@ test.describe('Data Export & Import', () => {
             await appNav.logout();
 
             const importUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(importUser.email, importUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(importUser.email, importUser.password);
 
             // Import the file
             await exportImportPage.navigate();
@@ -1167,9 +1110,7 @@ test.describe('Data Export & Import', () => {
             );
 
             // Login and create export
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1198,9 +1139,7 @@ test.describe('Data Export & Import', () => {
             await appNav.logout();
 
             const importUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(importUser.email, importUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(importUser.email, importUser.password);
 
             // Import only GPS data (not favorites)
             await exportImportPage.navigate();
@@ -1283,9 +1222,7 @@ test.describe('Data Export & Import', () => {
             // Total: 120 GPS points
 
             // Export ALL data
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1393,9 +1330,7 @@ test.describe('Data Export & Import', () => {
             const originalVelocities = originalPoints.rows.map(p => ({id: p.id, velocity: parseFloat(p.velocity)}));
 
             // Export this data
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1490,9 +1425,7 @@ test.describe('Data Export & Import', () => {
             const fixture = buildFailingGeoPulseZip(fixturePath, testIdentity, 'rollback-imported-data');
 
             try {
-                await loginPage.navigate();
-                await loginPage.login(testUser.email, testUser.password);
-                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+                await loginPage.loginViaApi(testUser.email, testUser.password);
 
                 await exportImportPage.navigate();
                 await exportImportPage.waitForPageLoad();
@@ -1542,9 +1475,7 @@ test.describe('Data Export & Import', () => {
             const originalGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
 
             try {
-                await loginPage.navigate();
-                await loginPage.login(testUser.email, testUser.password);
-                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+                await loginPage.loginViaApi(testUser.email, testUser.password);
 
                 await exportImportPage.navigate();
                 await exportImportPage.waitForPageLoad();
@@ -1591,9 +1522,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
             // Login
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             // Navigate to import page
             await exportImportPage.navigate();
@@ -1639,9 +1568,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
             // Login
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             // Navigate to import page
             await exportImportPage.navigate();
@@ -1700,9 +1627,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
             // Login
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             // Navigate to import page
             await exportImportPage.navigate();
@@ -1749,9 +1674,7 @@ test.describe('Data Export & Import', () => {
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
             // Login
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             // Navigate to import page
             await exportImportPage.navigate();
@@ -1795,9 +1718,7 @@ test.describe('Data Export & Import', () => {
             // Insert reverse geocoding data to avoid Nominatim API calls
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1849,9 +1770,7 @@ test.describe('Data Export & Import', () => {
             // Insert reverse geocoding data to avoid Nominatim API calls
             await DataExportImportPage.insertReverseGeocodingForSampleFiles(dbManager);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1913,9 +1832,7 @@ test.describe('Data Export & Import', () => {
             ].join('\n'));
 
             try {
-                await loginPage.navigate();
-                await loginPage.login(testUser.email, testUser.password);
-                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+                await loginPage.loginViaApi(testUser.email, testUser.password);
 
                 await exportImportPage.navigate();
                 await exportImportPage.waitForPageLoad();
@@ -1958,9 +1875,7 @@ test.describe('Data Export & Import', () => {
             const originalFavoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, exportUserId);
 
             // Export data
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -1989,9 +1904,7 @@ test.describe('Data Export & Import', () => {
             await appNav.logout();
 
             const importUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(importUser.email, importUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(importUser.email, importUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -2035,9 +1948,7 @@ test.describe('Data Export & Import', () => {
             const originalGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, exportUserId);
 
             // Export data in OwnTracks format
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await exportImportPage.navigate();
             await exportImportPage.waitForPageLoad();
@@ -2066,9 +1977,7 @@ test.describe('Data Export & Import', () => {
             await appNav.logout();
 
             const importUser = await isolatedUsers.create(page);
-            await loginPage.navigate();
-            await loginPage.login(importUser.email, importUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(importUser.email, importUser.password);
 
             // Import OwnTracks file
             await exportImportPage.navigate();

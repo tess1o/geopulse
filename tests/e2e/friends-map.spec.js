@@ -400,6 +400,7 @@ test.describe('Friends Map Coverage', () => {
   })
 
   test('should auto-refresh Live map when friend location changes (polling)', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+    await page.clock.install()
     const mapHarness = new MapEngineHarness(page)
     let friendsEndpointGetCalls = 0
     const friendCoordinatesHistory = []
@@ -480,6 +481,7 @@ test.describe('Friends Map Coverage', () => {
       newerTimestamp
     ])
 
+    await page.clock.fastForward(15000)
     await expect.poll(() => friendsEndpointGetCalls, { timeout: 45000 }).toBeGreaterThan(callsBeforeLocationUpdate)
 
     await expect.poll(() => {
@@ -597,7 +599,6 @@ test.describe('Friends Map Coverage', () => {
 
     await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
     await friendsPage.switchToTab('timeline')
-    await page.waitForTimeout(1200)
 
     expect(await friendsPage.isTabActive('timeline')).toBe(true)
     const timelineBadge = await friendsPage.getTabBadgeValue('timeline')

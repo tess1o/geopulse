@@ -1,7 +1,6 @@
 import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {DashboardPage} from '../pages/DashboardPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import {DateFormatValues} from '../utils/date-format-test-helper.js';
 
@@ -16,9 +15,7 @@ test.describe('Dashboard', () => {
       // Create user first
       
       // Login to the app
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Navigate to dashboard
       await dashboardPage.navigate();
@@ -61,9 +58,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Navigate to dashboard
       await dashboardPage.navigate();
@@ -88,9 +83,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -127,9 +120,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data with places
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -179,9 +170,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       const user = await dbManager.getUserByEmail(testUser.email);
       await insertDashboardTestDataWithPlaces(dbManager, user.id);
@@ -230,9 +219,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data with routes
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -263,9 +250,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -299,9 +284,7 @@ test.describe('Dashboard', () => {
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page, { timezone: 'America/Los_Angeles' });
       
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -345,9 +328,7 @@ test.describe('Dashboard', () => {
       const user = await dbManager.getUserByEmail(testUser.email);
       await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2", [DateFormatValues.DMY, user.id]);
 
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
 
       await insertDashboardTestData(dbManager, user.id);
 
@@ -383,9 +364,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert comprehensive test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -426,9 +405,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert data across different time periods
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -462,9 +439,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test data with known distance and time values
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -501,9 +476,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert minimal test data (only stays, no trips)
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -528,9 +501,7 @@ test.describe('Dashboard', () => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test data
       const user = await dbManager.getUserByEmail(testUser.email);

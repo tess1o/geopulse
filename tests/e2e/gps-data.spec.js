@@ -127,9 +127,7 @@ const loginAndOpenGpsData = async (page, testUser) => {
     const loginPage = new LoginPage(page);
     const gpsDataPage = new GpsDataPage(page);
 
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+    await loginPage.loginViaApi(testUser.email, testUser.password);
 
     await gpsDataPage.navigate();
     await gpsDataPage.waitForPageLoad();
@@ -151,9 +149,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate to GPS data page
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -186,9 +182,7 @@ test.describe('GPS Data Page', () => {
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device').byDate.august10.slice(0, 3);
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -218,9 +212,7 @@ test.describe('GPS Data Page', () => {
             // Create user without GPS data
 
             // Login and navigate to GPS data page
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -248,9 +240,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, singleDayData);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -292,9 +282,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -368,9 +356,7 @@ test.describe('GPS Data Page', () => {
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -429,9 +415,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, historicalData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -515,9 +499,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, todaysPointsGmtPlus3);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -542,9 +524,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -609,9 +589,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -649,9 +627,7 @@ test.describe('GPS Data Page', () => {
             const gpsDataPage = new GpsDataPage(page);
             const testUser = await isolatedUsers.create(page);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -772,9 +748,7 @@ test.describe('GPS Data Page', () => {
                 geofence_lat: 51.5074
             })]);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -809,9 +783,7 @@ test.describe('GPS Data Page', () => {
                 lte_pct: 72
             })]);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -873,9 +845,7 @@ test.describe('GPS Data Page', () => {
                 VALUES ($1, $2, 'OWNTRACKS', 'after-recreate', '', true, 'HTTP')
             `, [secondSourceId, user.id]);
 
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -924,9 +894,7 @@ test.describe('GPS Data Page', () => {
             expect(user2DbCount).toBe(user2GpsData.allPoints.length);
 
             // Login as user1 and verify they only see their data
-            await loginPage.navigate();
-            await loginPage.login(user1.email, user1.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(user1.email, user1.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1251,9 +1219,7 @@ test.describe('GPS Data Page', () => {
             );
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1302,9 +1268,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1365,9 +1329,7 @@ test.describe('GPS Data Page', () => {
             // Create user without GPS data
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1394,9 +1356,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1448,9 +1408,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1514,9 +1472,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
@@ -1579,9 +1535,7 @@ test.describe('GPS Data Page', () => {
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
 
             // Login and navigate
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await loginPage.loginViaApi(testUser.email, testUser.password);
 
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();

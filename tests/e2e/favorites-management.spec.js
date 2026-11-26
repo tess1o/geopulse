@@ -12,22 +12,23 @@ test.describe('Favorites Management Page', () => {
                                                                               dbManager,
                                                                               mapMode
                                                                           }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
             } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Verify we're on the favorites page
-            expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
+            await expect.poll(() => favoritesPage.isOnFavoritesPage()).toBe(true);
 
             // Verify bulk mode is off by default
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(false);
 
             // Verify no pending favorites initially
-            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            await expect.poll(() => favoritesPage.isSavePendingButtonVisible()).toBe(false);
 
             // Verify table is empty initially
-            expect(await favoritesPage.isTableEmpty()).toBe(true);
+            await expect.poll(() => favoritesPage.isTableEmpty()).toBe(true);
         });
 
         test('should display existing favorites on page load', async ({page, isolatedUsers, dbManager, mapMode}) => {
@@ -88,7 +89,7 @@ test.describe('Favorites Management Page', () => {
 
             // Verify marker is visible
             const marker = page.locator('.favorite-marker-icon').first();
-            expect(await marker.isVisible()).toBe(true);
+            await expect.poll(() => marker.isVisible()).toBe(true);
         });
     });
 
@@ -105,10 +106,8 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.addFavoritePointWorkflow(300, 300, 'Test Favorite Point');
 
             // Wait for timeline regeneration
-            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
 
             // Verify success toast
-            await favoritesPage.waitForSuccessToast(null, {required: false, timeout: 20000});
 
             // Verify database
             await expect.poll(
@@ -176,6 +175,7 @@ test.describe('Favorites Management Page', () => {
         };
 
         test('should add favorite point from place search', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             await mockPlanSearch(page);
             const {
                 favoritesPage,
@@ -185,14 +185,15 @@ test.describe('Favorites Management Page', () => {
 
             await favoritesPage.searchPlaceToAdd('Central');
 
-            expect(await favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
+            await expect.poll(() => favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
             await favoritesPage.waitForPlaceSearchResult('Central Library');
 
             await favoritesPage.selectPlaceSearchResult('Central Library');
-            expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+            await expect.poll(() => favoritesPage.getAddDialogNameValue()).toBe('Central Library');
 
+            const saved = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/points');
             await favoritesPage.submitAddDialog();
-            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
+            expect((await saved).ok()).toBe(true);
 
             await expect.poll(
                 () => TestSetupHelper.countFavorites(dbManager, user.id),
@@ -208,6 +209,7 @@ test.describe('Favorites Management Page', () => {
                                                                                      dbManager,
                                                                                      mapMode
                                                                                  }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             await mockPlanSearch(page);
             const {
                 favoritesPage,
@@ -218,14 +220,14 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.toggleBulkMode();
             await favoritesPage.searchPlaceToAdd('Central');
             await favoritesPage.selectPlaceSearchResult('Central Library');
-            expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+            await expect.poll(() => favoritesPage.getAddDialogNameValue()).toBe('Central Library');
 
             await favoritesPage.submitAddDialog();
 
-            expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(initialCount);
-            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
-            expect(await favoritesPage.getPendingCount()).toBe(1);
-            expect(await favoritesPage.getPendingItemName(0)).toContain('Central Library');
+            await expect.poll(() => TestSetupHelper.countFavorites(dbManager, user.id)).toBe(initialCount);
+            await expect.poll(() => favoritesPage.isSavePendingButtonVisible()).toBe(true);
+            await expect.poll(() => favoritesPage.getPendingCount()).toBe(1);
+            await expect.poll(() => favoritesPage.getPendingItemName(0)).toContain('Central Library');
         });
     });
 
@@ -242,10 +244,8 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.addFavoriteAreaWorkflow(200, 200, 400, 350, 'Test Favorite Area');
 
             // Wait for timeline regeneration
-            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
 
             // Verify success toast
-            await favoritesPage.waitForSuccessToast(null, {required: false, timeout: 20000});
 
             // Verify database
             await expect.poll(
@@ -270,8 +270,6 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.rightClickOnMap(300, 300);
             await favoritesPage.waitForMapContextMenu();
             await favoritesPage.clickContextMenuItem('Add an area to Favorites');
-
-            await page.waitForTimeout(1000);
 
             // Cancel with Escape
             await favoritesPage.cancelDrawing();
@@ -325,12 +323,13 @@ test.describe('Favorites Management Page', () => {
             await page.getByRole('button',{name:'Finish shape',exact:true}).click();
             const request=page.waitForRequest(r=>r.url().endsWith('/favorites/areas') && r.method()==='POST');
             await favoritesPage.fillAddDialog('Concave polygon');
+            const savedResponse = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/v1/favorites/areas');
             await favoritesPage.submitAddDialog();
+            expect((await savedResponse).ok()).toBe(true);
             const payload=(await request).postDataJSON();
             expect(payload.geometry.coordinates[0]).toHaveLength(7);
             expect(payload.northEastLat).toBeUndefined();
             await expect.poll(async()=> (await readShape(dbManager,user)).length,{timeout:30000}).toBe(1);
-            await favoritesPage.waitForTimelineRegenerationCycle({optional:true});
             await page.reload(); await favoritesPage.waitForPageLoad();
             const saved=(await readShape(dbManager,user))[0];
             for(let i=0;i<7;i++) for(let axis=0;axis<2;axis++) expect(saved.geometry.coordinates[0][i][axis]).toBeCloseTo(payload.geometry.coordinates[0][i][axis],7);
@@ -405,7 +404,6 @@ test.describe('Favorites Management Page', () => {
             expect(saved).toHaveLength(6);
             expect(saved[1][1]).not.toBe(50.4);
             expect(saved[0]).toEqual(saved.at(-1));
-            await favoritesPage.waitForTimelineRegenerationCycle({optional:true});
             await page.reload(); await favoritesPage.waitForPageLoad();
             await favoritesPage.clickEditInTable(0); await favoritesPage.waitForEditAreaMapReady();
             await page.getByRole('button',{name:'Adjust vertices',exact:true}).click();
@@ -504,16 +502,17 @@ test.describe('Favorites Management Page', () => {
 
     test.describe('Bulk Add Mode', () => {
         test('should enable and disable bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Verify bulk mode is off
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(false);
 
             // Enable bulk mode
             await favoritesPage.toggleBulkMode();
 
             // Verify bulk mode is on
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(true);
 
             // Verify toast message
             await favoritesPage.waitForSuccessToast();
@@ -522,7 +521,7 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.toggleBulkMode();
 
             // Verify bulk mode is off again
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(false);
         });
 
         test('should add favorites to pending list in bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
@@ -535,7 +534,6 @@ test.describe('Favorites Management Page', () => {
 
             // Enable bulk mode
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             // Add first favorite to pending
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Favorite 1');
@@ -545,7 +543,7 @@ test.describe('Favorites Management Page', () => {
             expect(dbCount).toBe(initialCount); // No database change yet
 
             // Verify pending count
-            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
+            await expect.poll(() => favoritesPage.isSavePendingButtonVisible()).toBe(true);
             const pendingCount = await favoritesPage.getPendingCount();
             expect(pendingCount).toBe(1);
 
@@ -566,18 +564,16 @@ test.describe('Favorites Management Page', () => {
 
             // Enable bulk mode
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             // Add pending favorites
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-            await page.waitForTimeout(1000);
 
             // Verify pending marker appears on map
-            const pendingMarkerCount = await favoritesPage.countPendingMarkers();
-            expect(pendingMarkerCount).toBe(1);
+            await expect.poll(() => favoritesPage.countPendingMarkers()).toBe(1);
         });
 
         test('should queue edits and deletions without requests and undo or discard them', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
                 page, dbManager, createManagedUser(isolatedUsers), {mapMode});
             await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -609,6 +605,7 @@ test.describe('Favorites Management Page', () => {
         });
 
         test('should keep pending deletions when Save All fails', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(
                 page, dbManager, createManagedUser(isolatedUsers), {mapMode});
             await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -630,8 +627,8 @@ test.describe('Favorites Management Page', () => {
             await expect(page.locator('.pending-panel')).toContainText('Keep on failure');
             await expect(page.locator('.pending-panel')).toContainText('Deletion');
             await expect(page.locator('.save-pending-button')).toBeEnabled();
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
-            expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(true);
+            await expect.poll(() => TestSetupHelper.countFavorites(dbManager, user.id)).toBe(1);
         });
 
         test('should save all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
@@ -644,12 +641,9 @@ test.describe('Favorites Management Page', () => {
 
             // Enable bulk mode and add pending favorites
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-            await page.waitForTimeout(500);
             await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
-            await page.waitForTimeout(500);
 
             // Save all pending
             await favoritesPage.bulkSaveWorkflow();
@@ -661,10 +655,10 @@ test.describe('Favorites Management Page', () => {
             ).toBe(initialCount + 2);
 
             // Verify pending list is cleared
-            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            await expect.poll(() => favoritesPage.isSavePendingButtonVisible()).toBe(false);
 
             // Verify bulk mode is disabled after save
-            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isBulkModeEnabled()).toBe(false);
         });
 
         test('should show bulk save confirmation dialog with counts', async ({
@@ -673,17 +667,15 @@ test.describe('Favorites Management Page', () => {
                                                                                  dbManager,
                                                                                  mapMode
                                                                              }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Enable bulk mode
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             // Add 2 points and 1 area
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Point 1');
-            await page.waitForTimeout(500);
             await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Point 2');
-            await page.waitForTimeout(500);
 
             // Start area drawing
             await favoritesPage.rightClickOnMap(200, 200);
@@ -708,46 +700,41 @@ test.describe('Favorites Management Page', () => {
         });
 
         test('should remove individual pending favorite', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Enable bulk mode and add pending favorites
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Keep This');
-            await page.waitForTimeout(500);
             await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Remove This');
-            await page.waitForTimeout(500);
 
             // Verify 2 pending
-            expect(await favoritesPage.getPendingCount()).toBe(2);
+            await expect.poll(() => favoritesPage.getPendingCount()).toBe(2);
 
             // Remove second pending item
             await favoritesPage.removePendingItem(1);
-            await page.waitForTimeout(500);
 
             // Verify count decreased
-            expect(await favoritesPage.getPendingCount()).toBe(1);
+            await expect.poll(() => favoritesPage.getPendingCount()).toBe(1);
         });
 
         test('should clear all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Enable bulk mode and add pending favorites
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-            await page.waitForTimeout(500);
             await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
-            await page.waitForTimeout(500);
 
             // Clear all pending
             await favoritesPage.clickClearPending();
             await favoritesPage.confirmDialog();
 
             // Verify pending list is cleared
-            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            await expect.poll(() => favoritesPage.isSavePendingButtonVisible()).toBe(false);
 
             // Verify toast message
             await favoritesPage.waitForInfoToast();
@@ -759,14 +746,13 @@ test.describe('Favorites Management Page', () => {
                                                                                         dbManager,
                                                                                         mapMode
                                                                                     }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Enable bulk mode and add pending favorite
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending');
-            await page.waitForTimeout(1000);
 
             // Try to navigate away by clicking Timeline in navigation menu
             // This triggers Vue Router navigation which will show the guard confirmation
@@ -782,10 +768,9 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.rejectDialog();
 
             // Wait a bit for navigation to be cancelled
-            await page.waitForTimeout(500);
 
             // Verify still on favorites page
-            expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
+            await expect.poll(() => favoritesPage.isOnFavoritesPage()).toBe(true);
         });
     });
 
@@ -796,6 +781,7 @@ test.describe('Favorites Management Page', () => {
                                                                                              dbManager,
                                                                                              mapMode
                                                                                          }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -838,6 +824,7 @@ test.describe('Favorites Management Page', () => {
                                                                                             dbManager,
                                                                                             mapMode
                                                                                         }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -864,12 +851,12 @@ test.describe('Favorites Management Page', () => {
             const input = page.locator('.p-dialog input[placeholder*="name"]');
             await input.clear();
             await input.fill('Updated Area Name');
-
+            const saved = page.waitForResponse(r => r.request().method() === 'PUT' && /\/api\/v1\/favorites\/\d+$/.test(new URL(r.url()).pathname));
             await favoritesPage.submitEditDialog();
+            expect((await saved).ok()).toBe(true);
 
             // Should NOT show timeline regeneration modal for metadata-only changes
             await favoritesPage.waitForSuccessToast();
-            await page.waitForTimeout(2000);
 
             // Verify database - name should be updated, geometry unchanged
             const result = await dbManager.client.query(`
@@ -1007,7 +994,6 @@ test.describe('Favorites Management Page', () => {
 
             await page.reload();
             await favoritesPage.waitForPageLoad();
-            await page.waitForTimeout(2000);
 
             // Right-click on marker
             await favoritesPage.rightClickFavoriteMarker(0);
@@ -1023,7 +1009,6 @@ test.describe('Favorites Management Page', () => {
 
             // Wait for success toast
             await favoritesPage.waitForSuccessToast();
-            await page.waitForTimeout(2000);
 
             // Verify database - name should be updated
             const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
@@ -1033,6 +1018,7 @@ test.describe('Favorites Management Page', () => {
 
     test.describe('Delete Favorite', () => {
         test('should delete favorite from table', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1074,6 +1060,7 @@ test.describe('Favorites Management Page', () => {
         });
 
         test('should cancel delete confirmation', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1119,19 +1106,16 @@ test.describe('Favorites Management Page', () => {
 
             await page.reload();
             await favoritesPage.waitForPageLoad();
-            await page.waitForTimeout(2000);
 
             // Right-click on marker and delete
             await favoritesPage.rightClickFavoriteMarker(0);
             await favoritesPage.waitForMapContextMenu();
             await favoritesPage.clickContextMenuItem('Delete');
 
-            // Confirm deletion
+            const deleted = page.waitForResponse(r => r.request().method() === 'DELETE' && /\/api\/v1\/favorites\/\d+$/.test(new URL(r.url()).pathname));
             await favoritesPage.confirmDialog();
-
-            // Wait for timeline regeneration
-            await favoritesPage.waitForTimelineRegenerationModal();
-            await favoritesPage.waitForTimelineRegenerationToComplete();
+            expect((await deleted).ok()).toBe(true);
+            await expect(page.locator(favoritesPage.selectors.favoriteMarker)).toHaveCount(0);
 
             // Verify database
             const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
@@ -1141,6 +1125,7 @@ test.describe('Favorites Management Page', () => {
 
     test.describe('Filters', () => {
         test('should filter by type', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1156,25 +1141,23 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.selectTypeFilter('POINT');
 
             // Verify only points are shown
-            const pointRowCount = await favoritesPage.getTableRowCount();
-            expect(pointRowCount).toBe(2);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(2);
 
             // Filter by AREA
             await favoritesPage.selectTypeFilter('AREA');
 
             // Verify only areas are shown
-            const areaRowCount = await favoritesPage.getTableRowCount();
-            expect(areaRowCount).toBe(1);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(1);
 
             // Show all
             await favoritesPage.selectTypeFilter(null);
 
             // Verify all are shown
-            const allRowCount = await favoritesPage.getTableRowCount();
-            expect(allRowCount).toBe(3);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(3);
         });
 
         test('should search by name', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1204,14 +1187,14 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.fillSearchInput('Coffee');
 
             // Verify only matching favorite is shown
-            const searchRowCount = await favoritesPage.getTableRowCount();
-            expect(searchRowCount).toBe(1);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(1);
 
             const rowData = await favoritesPage.getTableRowData(0);
             expect(rowData.name).toContain('Coffee');
         });
 
         test('should search by city', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1241,11 +1224,11 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.fillSearchInput('Boston');
 
             // Verify only Boston favorite is shown
-            const searchRowCount = await favoritesPage.getTableRowCount();
-            expect(searchRowCount).toBe(1);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(1);
         });
 
         test('should clear filters', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1262,22 +1245,22 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.fillSearchInput('Test');
 
             // Verify clear button is enabled
-            expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(true);
+            await expect.poll(() => favoritesPage.isClearFiltersButtonEnabled()).toBe(true);
 
             // Clear filters
             await favoritesPage.clearFilters();
 
             // Verify all favorites are shown
-            const allRowCount = await favoritesPage.getTableRowCount();
-            expect(allRowCount).toBe(3);
+            await expect.poll(() => favoritesPage.getTableRowCount()).toBe(3);
 
             // Verify clear button is disabled
-            expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isClearFiltersButtonEnabled()).toBe(false);
         });
     });
 
     test.describe('Bulk Operations', () => {
         test('should select multiple rows', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1304,6 +1287,7 @@ test.describe('Favorites Management Page', () => {
                                                                               dbManager,
                                                                               mapMode
                                                                           }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1319,18 +1303,19 @@ test.describe('Favorites Management Page', () => {
             const bulkEditButton = page.locator(favoritesPage.selectors.bulkEditButton);
             const reconcileSelectedButton = page.locator(favoritesPage.selectors.reconcileSelectedButton);
 
-            expect(await bulkEditButton.isVisible()).toBe(false);
-            expect(await reconcileSelectedButton.isVisible()).toBe(false);
+            await expect.poll(() => bulkEditButton.isVisible()).toBe(false);
+            await expect.poll(() => reconcileSelectedButton.isVisible()).toBe(false);
 
             // Select a row
             await favoritesPage.selectTableRow(0);
 
             // Now buttons should be visible
-            expect(await bulkEditButton.isVisible()).toBe(true);
-            expect(await reconcileSelectedButton.isVisible()).toBe(true);
+            await expect.poll(() => bulkEditButton.isVisible()).toBe(true);
+            await expect.poll(() => reconcileSelectedButton.isVisible()).toBe(true);
         });
 
         test('should perform bulk edit of city and country', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1378,7 +1363,6 @@ test.describe('Favorites Management Page', () => {
             // Enable and fill city field (autocomplete input)
             const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
             await cityCheckbox.check();
-            await page.waitForTimeout(300);
 
             const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
             await cityInput.click();
@@ -1390,7 +1374,6 @@ test.describe('Favorites Management Page', () => {
             // Enable and fill country field (autocomplete input)
             const countryCheckbox = dialog.locator('label:has-text("Country")').locator('..').locator('input[type="checkbox"]');
             await countryCheckbox.check();
-            await page.waitForTimeout(300);
 
             const countryInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="country"]');
             await countryInput.click();
@@ -1400,21 +1383,19 @@ test.describe('Favorites Management Page', () => {
             await expect(dialog).toBeVisible();
 
             // Submit bulk edit
+            const saved = page.waitForResponse(r => r.request().method() === 'PATCH' && new URL(r.url()).pathname === '/api/v1/favorites/bulk-update');
             const saveButton = dialog.locator('button:has-text("Update")');
             await saveButton.click();
 
-            await page.waitForTimeout(1000);
-
             // Handle possible typo detection dialog
             const continueButton = page.locator('button:has-text("Continue Anyway")');
-            if (await continueButton.isVisible({timeout: 2000}).catch(() => false)) {
+            await expect(page.locator('button:has-text("Continue Anyway"), .p-toast-message-success').filter({ visible: true }).first()).toBeVisible();
+            if (await continueButton.isVisible()) {
                 await continueButton.click();
-                await page.waitForTimeout(300);
             }
 
             // Wait for success
-            await favoritesPage.waitForSuccessToast();
-            await page.waitForTimeout(2000);
+            expect((await saved).ok()).toBe(true);
 
             // Verify database - first two favorites should be updated
             const result1 = await dbManager.client.query(
@@ -1450,6 +1431,7 @@ test.describe('Favorites Management Page', () => {
         });
 
         test('should perform bulk edit of only city', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1489,7 +1471,6 @@ test.describe('Favorites Management Page', () => {
             // Enable city field (autocomplete input)
             const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
             await cityCheckbox.check();
-            await page.waitForTimeout(300);
 
             const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
             await cityInput.click();
@@ -1501,20 +1482,18 @@ test.describe('Favorites Management Page', () => {
             // Do NOT enable country field - leave it unchecked so it won't be updated
 
             // Submit
+            const saved = page.waitForResponse(r => r.request().method() === 'PATCH' && new URL(r.url()).pathname === '/api/v1/favorites/bulk-update');
             const saveButton = dialog.locator('button:has-text("Update")');
             await saveButton.click();
 
-            await page.waitForTimeout(1000);
-
             // Handle possible typo detection dialog
             const continueButton = page.locator('button:has-text("Continue Anyway")');
-            if (await continueButton.isVisible({timeout: 2000}).catch(() => false)) {
+            await expect(page.locator('button:has-text("Continue Anyway"), .p-toast-message-success').filter({ visible: true }).first()).toBeVisible();
+            if (await continueButton.isVisible()) {
                 await continueButton.click();
-                await page.waitForTimeout(300);
             }
 
-            await favoritesPage.waitForSuccessToast();
-            await page.waitForTimeout(2000);
+            expect((await saved).ok()).toBe(true);
 
             // Verify database - city updated, country unchanged
             const result1 = await dbManager.client.query(
@@ -1535,13 +1514,14 @@ test.describe('Favorites Management Page', () => {
 
     test.describe('Reconcile Favorites', () => {
         test('should show reconcile all button', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
             } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Initially button should be disabled (no favorites)
-            expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(true);
+            await expect.poll(() => favoritesPage.isReconcileAllButtonDisabled()).toBe(true);
 
             // Create a favorite
             await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -1556,10 +1536,11 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.waitForPageLoad();
 
             // Button should now be enabled
-            expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(false);
+            await expect.poll(() => favoritesPage.isReconcileAllButtonDisabled()).toBe(false);
         });
 
         test('should open reconcile dialog for all favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1578,7 +1559,7 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.waitForReconcileDialog();
 
             const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
-            expect(await dialog.isVisible()).toBe(true);
+            await expect.poll(() => dialog.isVisible()).toBe(true);
         });
 
         test('should open reconcile dialog for selected favorites', async ({
@@ -1587,6 +1568,7 @@ test.describe('Favorites Management Page', () => {
                                                                                dbManager,
                                                                                mapMode
                                                                            }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1609,7 +1591,7 @@ test.describe('Favorites Management Page', () => {
             await favoritesPage.waitForReconcileDialog();
 
             const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
-            expect(await dialog.isVisible()).toBe(true);
+            await expect.poll(() => dialog.isVisible()).toBe(true);
         });
     });
 
@@ -1620,6 +1602,7 @@ test.describe('Favorites Management Page', () => {
                                                                                       dbManager,
                                                                                       mapMode
                                                                                   }) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {
                 favoritesPage,
                 user
@@ -1673,18 +1656,21 @@ test.describe('Favorites Management Page', () => {
             // Click show on map
             await favoritesPage.clickShowOnMap(0);
 
-            // Verify map is focused (this would require map zoom level check)
-            // For now just verify no errors occurred
-            await page.waitForTimeout(1000);
+            await expect.poll(() => page.evaluate(() => {
+                const map = window.__GP_E2E_MAPS['favorites-map'];
+                const center = map.getCenter();
+                return Math.abs(center.lat - 40.7128) < 0.001 && Math.abs(center.lng + 74.0060) < 0.001;
+            })).toBe(true);
         });
     });
 
     test.describe('Empty State', () => {
         test('should show empty state when no favorites exist', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            test.skip(mapMode === 'VECTOR', 'Renderer-independent behavior is covered by chromium.');
             const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
             // Verify empty state
-            expect(await favoritesPage.isTableEmpty()).toBe(true);
+            await expect.poll(() => favoritesPage.isTableEmpty()).toBe(true);
 
             // Verify empty message text
             const emptyState = page.locator('.gp-empty-state');
@@ -1704,10 +1690,8 @@ test.describe('Favorites Management Page', () => {
 
             // Enable bulk mode and add pending
             await favoritesPage.toggleBulkMode();
-            await page.waitForTimeout(1000);
 
             await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Test');
-            await page.waitForTimeout(1500);
 
             // Right-click on pending marker
             await favoritesPage.rightClickPendingMarker(0);
@@ -1715,7 +1699,7 @@ test.describe('Favorites Management Page', () => {
 
             // Verify context menu has "Remove from Pending" option
             const removeItem = page.locator('.p-contextmenu-item-label:has-text("Remove from Pending")');
-            expect(await removeItem.isVisible()).toBe(true);
+            await expect.poll(() => removeItem.isVisible()).toBe(true);
         });
     });
 
@@ -1741,7 +1725,7 @@ test.describe('Favorites Management Page', () => {
 
             // Verify map is still visible
             const map = page.locator(favoritesPage.selectors.leafletMap);
-            expect(await map.isVisible()).toBe(true);
+            await expect.poll(() => map.isVisible()).toBe(true);
         });
     });
 });

@@ -9,9 +9,7 @@ import { TestHelpers } from '../utils/test-helpers.js';
 
 const loginAs = async (page, user) => {
   const loginPage = new LoginPage(page);
-  await loginPage.navigate();
-  await loginPage.login(user.email, user.password);
-  await TestHelpers.waitForNavigation(page, '**/app/timeline');
+  await loginPage.loginViaApi(user.email, user.password, { landing: '/app/timeline' });
 };
 
 // Leave the app before dropping the session cookies so in-flight requests don't redirect mid-navigation.

@@ -200,10 +200,11 @@ test.describe('User Profile Management', () => {
         });
       });
       
+      // The sign-in form is under test here, so this one does not sign in through the API.
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
+
       // Navigate to profile to check if timezone was auto-updated
       await profilePage.navigate();
       await profilePage.waitForPageLoad();

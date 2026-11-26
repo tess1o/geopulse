@@ -1,7 +1,6 @@
 import { test, expect } from '../fixtures/isolated-fixture.js';
 import { LoginPage } from '../pages/LoginPage.js';
 import { GpsDataPage } from '../pages/GpsDataPage.js';
-import { TestHelpers } from '../utils/test-helpers.js';
 import { TestSetupHelper } from '../utils/test-setup-helper.js';
 import { GpsDataFactory } from '../utils/gps-data-factory.js';
 import { buildManagedUser as createManagedUser } from '../utils/isolated-user-helper.js';
@@ -57,9 +56,7 @@ const createUserAndLogin = async (page, dbManager, isolatedUsers, { timezone, ti
   }
 
   const loginPage = new LoginPage(page);
-  await loginPage.navigate();
-  await loginPage.login(testUser.email, testUser.password);
-  await TestHelpers.waitForNavigation(page, '**/app/timeline', 30000);
+  await loginPage.loginViaApi(testUser.email, testUser.password, { landing: '/app/timeline' });
 
   return { testUser, user };
 };

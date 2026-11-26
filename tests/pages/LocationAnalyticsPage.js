@@ -14,7 +14,7 @@ export class LocationAnalyticsPage {
       headerControls: '.header-actions',
       searchContainer: '.search-container',
       searchInput: '.p-autocomplete-input',
-      searchDropdown: '.p-autocomplete-panel',
+      searchDropdown: '.p-autocomplete-overlay',
       searchResultItem: '.search-result-item',
 
       // Tabs
@@ -64,7 +64,8 @@ export class LocationAnalyticsPage {
   async waitForPageLoad() {
     await this.page.waitForSelector(this.selectors.pageContainer, { timeout: 10000 });
     await this.page.waitForSelector(this.selectors.pageTitle, { timeout: 5000 });
-    await this.page.waitForTimeout(1000); // Give time for data to load
+    await expect(this.page.locator(this.selectors.loadingContainer)).toHaveCount(0);
+    await expect(this.page.locator('.location-grid, .empty-state, .map-tab-content').first()).toBeVisible();
   }
 
   async isOnLocationAnalyticsPage() {
@@ -82,12 +83,14 @@ export class LocationAnalyticsPage {
 
   async clickCitiesTab() {
     await this.page.locator(this.selectors.citiesTab).click();
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.citiesTab)).toHaveClass(/active-tab/);
+    await this.waitForLoadingToComplete();
   }
 
   async clickCountriesTab() {
     await this.page.locator(this.selectors.countriesTab).click();
-    await this.page.waitForTimeout(500);
+    await expect(this.page.locator(this.selectors.countriesTab)).toHaveClass(/active-tab/);
+    await this.waitForLoadingToComplete();
   }
 
   async getActiveTabText() {
@@ -121,8 +124,13 @@ export class LocationAnalyticsPage {
   async fillSearchInput(query) {
     const searchInput = this.page.locator(this.selectors.searchInput);
     await searchInput.click();
+    const searched = this.page.waitForResponse(r => {
+      const url = new URL(r.url());
+      return url.pathname === '/api/v1/location-analytics/search' && url.searchParams.get('q') === query;
+    });
     await searchInput.fill(query);
-    await this.page.waitForTimeout(500); // Wait for debounce
+    expect((await searched).ok()).toBe(true);
+    await expect(this.page.locator('.p-autocomplete-loader')).toHaveCount(0);
   }
 
   async waitForSearchDropdown() {
@@ -157,7 +165,7 @@ export class LocationAnalyticsPage {
   async clickSearchResult(index = 0) {
     const results = this.page.locator(this.selectors.searchResultItem);
     await results.nth(index).click();
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForURL(/\/app\/location-analytics\/(?:city|country)\//);
   }
 
   async searchAndSelect(query, index = 0) {
@@ -175,40 +183,13 @@ export class LocationAnalyticsPage {
   }
 
   async waitForLoadingToComplete() {
-    try {
-      await this.page.waitForSelector(this.selectors.loadingContainer, {
-        state: 'visible',
-        timeout: 2000
-      });
-      await this.page.waitForSelector(this.selectors.loadingContainer, {
-        state: 'hidden',
-        timeout: 10000
-      });
-    } catch {
-      // Loading might complete too quickly
-    }
+    await expect(this.page.locator(this.selectors.loadingContainer)).toHaveCount(0);
+    await expect(this.page.locator('.location-grid, .empty-state, .map-tab-content').first()).toBeVisible();
   }
 
   async isEmptyStateVisible() {
-    const emptyState = this.page.locator(this.selectors.emptyState).first();
-    const locationCards = this.page.locator(this.selectors.locationCard);
-    const timeoutMs = 10000;
-    const pollMs = 250;
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-      if (await emptyState.isVisible().catch(() => false)) {
-        return true;
-      }
-
-      if (await locationCards.count() > 0) {
-        return false;
-      }
-
-      await this.page.waitForTimeout(pollMs);
-    }
-
-    return await emptyState.isVisible().catch(() => false);
+    await this.waitForLoadingToComplete();
+    return this.page.locator(this.selectors.emptyState).first().isVisible();
   }
 
   async getEmptyStateText() {
@@ -279,23 +260,15 @@ export class LocationAnalyticsPage {
   async clickLocationCard(index) {
     const cards = this.page.locator(this.selectors.locationCard);
     await cards.nth(index).click();
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForURL(/\/app\/location-analytics\/(?:city|country)\//);
   }
 
   async clickLocationCardByName(name) {
-    const cards = this.page.locator(this.selectors.locationCard);
-    const count = await cards.count();
-
-    for (let i = 0; i < count; i++) {
-      const cardName = await cards.nth(i).locator(this.selectors.locationName).textContent();
-      if (cardName.trim() === name) {
-        await cards.nth(i).click();
-        await this.page.waitForTimeout(1000);
-        return;
-      }
-    }
-
-    throw new Error(`Location card with name "${name}" not found`);
+    const card = this.page.locator(this.selectors.locationCard).filter({
+      has: this.page.locator(this.selectors.locationName, { hasText: new RegExp('^' + name.replace(/[.*+?^$()|[\]\\]/g, '\\$&') + '$') })
+    });
+    await card.click();
+    await this.page.waitForURL(/\/app\/location-analytics\/(?:city|country)\//);
   }
 
   // ===========================================
@@ -350,17 +323,14 @@ export class LocationAnalyticsPage {
 
   async setMobileViewport() {
     await this.page.setViewportSize({ width: 375, height: 667 });
-    await this.page.waitForTimeout(500);
   }
 
   async setTabletViewport() {
     await this.page.setViewportSize({ width: 768, height: 1024 });
-    await this.page.waitForTimeout(500);
   }
 
   async setDesktopViewport() {
     await this.page.setViewportSize({ width: 1920, height: 1080 });
-    await this.page.waitForTimeout(500);
   }
 
   // ===========================================
@@ -389,18 +359,13 @@ export class LocationAnalyticsPage {
   async loginAndNavigate(userData) {
     const LoginPage = (await import('./LoginPage.js')).LoginPage;
     const TestData = (await import('../fixtures/test-data.js')).TestData;
-    const TestHelpers = (await import('../utils/test-helpers.js')).TestHelpers;
     const UserFactory = (await import('../utils/user-factory.js')).UserFactory;
 
     const loginPage = new LoginPage(this.page);
     const testUser = userData || TestData.users.existing;
 
     await UserFactory.createUser(this.page, testUser);
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-
-    // Wait for redirect to timeline
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
+    await loginPage.loginViaApi(testUser.email, testUser.password);
 
     // Navigate to location analytics
     await this.navigate();

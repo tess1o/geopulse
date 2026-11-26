@@ -16,9 +16,7 @@ test.describe('Journey Insights', () => {
       const testUser = await isolatedUsers.create(page);
       
       // Login to the app
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Navigate to journey insights
       await journeyInsightsPage.navigate();
@@ -56,9 +54,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Navigate to journey insights
       await journeyInsightsPage.navigate();
@@ -84,9 +80,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -141,9 +135,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data with specific distances
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -191,9 +183,7 @@ test.describe('Journey Insights', () => {
       const testUser = await isolatedUsers.create(page);
       const createdUser = await dbManager.getUserByEmail(testUser.email);
       await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{timeFormat}', to_jsonb($1::text)) WHERE id = $2", ['12h', createdUser.id]);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -237,9 +227,7 @@ test.describe('Journey Insights', () => {
       const testUser = await isolatedUsers.create(page);
       const createdUser = await dbManager.getUserByEmail(testUser.email);
       await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{timeFormat}', to_jsonb($1::text)) WHERE id = $2", ['12h', createdUser.id]);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -268,9 +256,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert test timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -310,9 +296,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       // Insert comprehensive test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -353,9 +337,7 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await loginPage.loginViaApi(testUser.email, testUser.password);
       
       const user = await dbManager.getUserByEmail(testUser.email);
       

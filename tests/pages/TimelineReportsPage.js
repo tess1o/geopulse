@@ -1,5 +1,4 @@
 import {LoginPage} from './LoginPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {DateFormatTestHelper} from '../utils/date-format-test-helper.js';
@@ -49,13 +48,8 @@ export class TimelineReportsPage {
     const loginPage = new LoginPage(this.page);
 
     await UserFactory.createUser(this.page, testUser);
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
+    await loginPage.loginViaApi(testUser.email, testUser.password);
 
-    // Wait for automatic redirect after login (goes to /app/timeline by default)
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
-
-    // Now navigate to timeline reports
     await this.navigate();
     await this.waitForPageLoad();
 
@@ -70,15 +64,9 @@ export class TimelineReportsPage {
     await UserFactory.createUser(this.page, testUser);
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
 
-    const loginPage = new LoginPage(this.page);
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
+    await new LoginPage(this.page).loginViaApi(testUser.email, testUser.password);
 
-    await this.navigate();
-    await this.waitForPageLoad();
-
-    // Insert test data
+    // Insert test data before the first page load
     const user = await dbManager.getUserByEmail(testUser.email);
     const testData = await dataInsertFunction(dbManager, user.id);
 
@@ -87,7 +75,7 @@ export class TimelineReportsPage {
       const { startDate, endDate } = dateRange;
       await this.navigateWithDateRange(startDate, endDate);
     } else {
-      await this.page.reload();
+      await this.navigate();
     }
 
     await this.waitForPageLoad();
