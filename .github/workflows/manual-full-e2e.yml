@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout selected branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
@@ -37,7 +37,7 @@ jobs:
           echo "All services are ready!"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '26.10.0'
           cache: 'npm'
@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload Playwright HTML report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-manual-full-report
           path: tests/playwright-report/
@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-manual-full-results
           path: tests/test-results/
@@ -80,7 +80,7 @@ jobs:
 
       - name: Upload test videos
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: manual-test-videos
           path: tests/test-results/**/*.webm
@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload test screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: manual-test-screenshots
           path: tests/test-results/**/*.png

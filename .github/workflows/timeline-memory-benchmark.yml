@@ -32,7 +32,7 @@ jobs:
     env:
       BASELINE_IMAGE: ${{ inputs.baseline_image || vars.MEMORY_BENCHMARK_BASELINE_IMAGE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Preserve baseline image before building candidate
         run: |
           docker pull "$BASELINE_IMAGE"
@@ -41,7 +41,7 @@ jobs:
         run: |
           docker build -f backend/Dockerfile.native -t geopulse-memory-candidate .
           docker image save -o "$RUNNER_TEMP/candidate-image.tar" geopulse-memory-candidate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: timeline-memory-images
           path: ${{ runner.temp }}/*-image.tar
@@ -62,11 +62,11 @@ jobs:
       BENCHMARK_DATASET: ${{ matrix.dataset }}
       BASELINE_COMMIT: ${{ inputs.baseline_commit || vars.MEMORY_BENCHMARK_BASELINE_COMMIT || 'unknown' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: timeline-memory-images
           path: ${{ runner.temp }}/memory-images
@@ -94,7 +94,7 @@ jobs:
             --scenarios normal load retention concurrency interrupt database-failure
       - name: Upload evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: timeline-memory-${{ matrix.dataset }}
           path: |

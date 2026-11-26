@@ -616,7 +616,8 @@ test.describe('Geocoding Management Page', () => {
           }))}));
         });
         await new Promise(resolve => server.listen(0, '0.0.0.0', resolve));
-        // The backend and test runner share the Compose network in CI; host runs reach the fixture through Docker's host alias.
+        // Inside the playwright-tests container the backend reaches the fixture over the Compose network; host runs
+        // go through host.docker.internal, which docker-compose.e2e.yml maps via extra_hosts for Linux Docker.
         const host = (process.env.BASE_URL || '').includes('geopulse-ui-e2e') ? 'playwright-tests' : 'host.docker.internal';
         try {
           await dbManager.client.query(`INSERT INTO geocoding_provider_configs

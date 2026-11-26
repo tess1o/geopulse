@@ -1,0 +1,49 @@
+version: 2
+
+# Weekly, one grouped PR per ecosystem to keep the update noise low.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      maven:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directories:
+      - /frontend
+      - /tests
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /demo-integrations
+    schedule:
+      interval: weekly
+    groups:
+      gomod:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+      - /demo-integrations
+      - /tests
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]

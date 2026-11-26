@@ -20,6 +20,10 @@ services:
       - "8081:8080"  # Different port to avoid conflicts
     volumes:
       - ../keys:/app/keys
+    # Lets the backend reach fixtures served by a Playwright run on the host (e.g. the fake Photon
+    # server in geocoding-management.spec.js). Docker Desktop defines this name; Linux Docker does not.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       geopulse-keygen-e2e:
         condition: service_completed_successfully
