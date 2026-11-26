@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service.explanation;
 
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.shared.geo.LongitudeMean;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineExplanation;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineReason;
@@ -191,16 +192,16 @@ public final class TimelineExplanationPointClassifier {
             return storedLocation;
         }
         double latitude = 0;
-        double longitude = 0;
+        LongitudeMean longitude = new LongitudeMean();
         int count = 0;
         for (Entry entry : entries) {
             if (entry.part == Part.EVENT && entry.used) {
                 latitude += entry.point.latitude();
-                longitude += entry.point.longitude();
+                longitude.add(entry.point.longitude());
                 count++;
             }
         }
-        return count == 0 ? storedLocation : new Coordinates(latitude / count, longitude / count);
+        return count == 0 ? storedLocation : new Coordinates(latitude / count, longitude.mean());
     }
 
     private static void markStay(List<Entry> entries, Instant start, Instant end, TimelineExplanation explanation,

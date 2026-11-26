@@ -116,6 +116,20 @@ public class StreamingTimelineProcessor {
      */
     public List<TimelineEvent> processPoints(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId,
                                              TripReplay replay) {
+        List<TimelineEvent> events = detectEvents(newPoints, config, userId, jobId, replay);
+        // Batch populate location data for all stays at once (with progress tracking if jobId provided)
+        memoryDiagnostics.checkpoint(userId, jobId, "before_geocoding", Map.of("events", events.size()));
+        finalizationService.populateStayLocations(events, userId, jobId);
+        memoryDiagnostics.checkpoint(userId, jobId, "after_geocoding", Map.of("events", events.size()));
+        return events;
+    }
+
+    /**
+     * As {@link #processPoints(Iterable, TimelineConfig, UUID, UUID, TripReplay)}, leaving the stays without place
+     * names, for a caller that resolves them as a step of its own.
+     */
+    public List<TimelineEvent> detectEvents(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId,
+                                            TripReplay replay) {
         UserState userState = new UserState();
         List<TimelineEvent> finalizedEvents = new ArrayList<>();
         boolean tripToPickUp = replay != null;
@@ -175,13 +189,9 @@ public class StreamingTimelineProcessor {
             finalizedEvents.removeIf(event -> event.getStartTime().isBefore(replay.emitFrom()));
         }
 
-        // 4. Batch populate location data for all stays at once (with progress tracking if jobId provided)
-        memoryDiagnostics.checkpoint(userId, jobId, "before_geocoding", Map.of(
+        memoryDiagnostics.checkpoint(userId, jobId, "detection_end", Map.of(
                 "processedPoints", processedCount, "activePoints", userState.getActivePoints().size(),
                 "events", finalizedEvents.size()));
-        finalizationService.populateStayLocations(finalizedEvents, userId, jobId);
-        memoryDiagnostics.checkpoint(userId, jobId, "after_geocoding", Map.of("events", finalizedEvents.size()));
-
         return finalizedEvents;
     }
 
@@ -735,7 +745,7 @@ public class StreamingTimelineProcessor {
         try {
             FavoriteLocationsDto favoriteLocations = favoriteLocationService.getFavorites(userId);
             return favoriteLocations != null && favoriteLocations.getAreas() != null
-                    ? favoriteLocations.getAreas()
+                    ? FavoriteAreas.mostSpecificFirst(favoriteLocations.getAreas())
                     : new ArrayList<>();
         } catch (Exception e) {
             log.warn("Failed to load favorite areas for user {}: {}", userId, e.getMessage());

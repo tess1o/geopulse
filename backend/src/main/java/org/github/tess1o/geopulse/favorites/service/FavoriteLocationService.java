@@ -20,6 +20,8 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
+import org.github.tess1o.geopulse.streaming.repository.TimelineRebuildRequestRepository;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -49,6 +51,7 @@ public class FavoriteLocationService {
     private final TimelineConfigurationProvider timelineConfigurationProvider;
     private final ManagedExecutor managedExecutor;
     private final UserLocationNormalizationService userLocationNormalizationService;
+    private final TimelineRebuildRequestRepository rebuildRequestRepository;
 
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
@@ -59,7 +62,8 @@ public class FavoriteLocationService {
                                    ReconciliationJobProgressService reconciliationProgressService,
                                    TimelineConfigurationProvider timelineConfigurationProvider,
                                    ManagedExecutor managedExecutor,
-                                   UserLocationNormalizationService userLocationNormalizationService) {
+                                   UserLocationNormalizationService userLocationNormalizationService,
+                                   TimelineRebuildRequestRepository rebuildRequestRepository) {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;
@@ -70,6 +74,7 @@ public class FavoriteLocationService {
         this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.managedExecutor = managedExecutor;
         this.userLocationNormalizationService = userLocationNormalizationService;
+        this.rebuildRequestRepository = rebuildRequestRepository;
     }
 
     public FavoriteLocationsDto getFavorites(UUID userId) {
@@ -101,6 +106,7 @@ public class FavoriteLocationService {
         }
 
         repository.persist(entity);
+        requestTimelineRebuild(userId);
 
         log.info("Successfully added point favorite for user {}", userId);
     }
@@ -130,12 +136,18 @@ public class FavoriteLocationService {
         }
 
         repository.persist(entity);
+        requestTimelineRebuild(userId);
 
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
     }
 
+    /**
+     * Applies the batch atomically.
+     *
+     * @return whether the batch changes the timeline: it adds or deletes favorites, or changes an area's shape
+     */
     @Transactional
-    public void applyBulkChanges(UUID userId, BulkApplyFavoritesDto request) {
+    public boolean applyBulkChanges(UUID userId, BulkApplyFavoritesDto request) {
         if (request.getPoints().isEmpty() && request.getAreas().isEmpty()
                 && request.getUpdates().isEmpty() && request.getDeleteIds().isEmpty()) {
             throw new IllegalArgumentException("No favorite changes provided");
@@ -164,11 +176,16 @@ public class FavoriteLocationService {
                 throw new SecurityException("Not authorized to change this favorite");
             }
         }
+        boolean timelineChanged = !request.getPoints().isEmpty() || !request.getAreas().isEmpty()
+                || !request.getDeleteIds().isEmpty();
         for (var point : request.getPoints()) addFavorite(userId, point);
         for (var area : request.getAreas()) addFavorite(userId, area);
-        for (var update : request.getUpdates()) updateFavorite(userId, update.getFavoriteId(), update.getChanges());
+        for (var update : request.getUpdates()) {
+            timelineChanged |= updateFavorite(userId, update.getFavoriteId(), update.getChanges());
+        }
         for (Long id : request.getDeleteIds()) deleteFavorite(userId, id);
         repository.flush();
+        return timelineChanged;
     }
 
     @Transactional
@@ -250,6 +267,9 @@ public class FavoriteLocationService {
 
         int successCount = createdFavoriteIds.size();
         int failedCount = failures.size();
+        if (successCount > 0) {
+            requestTimelineRebuild(userId);
+        }
 
         log.info("Bulk add favorites completed for user {}: {} successful, {} failed out of {} total",
                 userId, successCount, failedCount, totalRequested);
@@ -453,6 +473,9 @@ public class FavoriteLocationService {
         }
 
         repository.persistAndFlush(favoritesEntity);
+        if (boundsChanged) {
+            requestTimelineRebuild(userId);
+        }
 
         // Fire event for timeline system (only if name changed)
         if (!oldName.equals(dto.getName())) {
@@ -497,8 +520,17 @@ public class FavoriteLocationService {
                 .favoriteType(favoritesEntity.getType())
                 .geometry(favoritesEntity.getGeometry())
                 .build());
+        requestTimelineRebuild(userId);
 
         log.info("User {} successfully deleted favorite {} ('{}')", userId, id, favoriteName);
+    }
+
+    /**
+     * Records that the user's whole timeline is out of date, in the transaction of the favorite change. A job started
+     * after the commit can be lost (a restart, a busy timeline); the request makes the real-time job catch up then.
+     */
+    private void requestTimelineRebuild(UUID userId) {
+        rebuildRequestRepository.request(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE);
     }
 
     /**

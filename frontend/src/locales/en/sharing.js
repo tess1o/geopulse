@@ -94,6 +94,7 @@ export default {
                 bulkModeFollowUpEnabled: 'Additions, edits and deletions will be queued.',
                 bulkModeFollowUpDisabled: 'Favorites will be saved immediately.',
                 bulkSaveSuccessMessage: 'Applied {count} changes. Timeline is regenerating.',
+                bulkSaveSavedMessage: 'Applied {count} changes.',
                 bulkSaveErrorMessage: 'Failed to apply changes. Nothing was saved.',
                 bulkSaveFailedSummary: 'Bulk Save Failed',
                 bulkSaveFailedDetail: 'Failed to apply pending changes',

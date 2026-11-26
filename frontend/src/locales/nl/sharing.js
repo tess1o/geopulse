@@ -94,6 +94,7 @@ export default {
                 bulkModeFollowUpEnabled: 'Toevoegingen, bewerkingen en verwijderingen worden in de wachtrij geplaatst.',
                 bulkModeFollowUpDisabled: 'Favorieten worden onmiddellijk opgeslagen.',
                 bulkSaveSuccessMessage: '{count} wijzigingen toegepast. Tijdlijn wordt geregereerd.',
+                bulkSaveSavedMessage: '{count} wijzigingen toegepast.',
                 bulkSaveErrorMessage: 'Wijzigingen toepassen is mislukt. Niets is opgeslagen.',
                 bulkSaveFailedSummary: 'Bulk Opslaan Mislukt',
                 bulkSaveFailedDetail: 'In afwachting zijnde wijzigingen toepassen is mislukt',

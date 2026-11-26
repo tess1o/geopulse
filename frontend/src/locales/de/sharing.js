@@ -94,6 +94,7 @@ export default {
                 bulkModeFollowUpEnabled: 'Hinzufügen, Bearbeiten und Löschen werden vorgemerkt.',
                 bulkModeFollowUpDisabled: 'Favoriten werden sofort gespeichert.',
                 bulkSaveSuccessMessage: '{count} Änderungen übernommen. Die Zeitleiste wird neu berechnet.',
+                bulkSaveSavedMessage: '{count} Änderungen übernommen.',
                 bulkSaveErrorMessage: 'Änderungen konnten nicht übernommen werden. Es wurde nichts gespeichert.',
                 bulkSaveFailedSummary: 'Speichern fehlgeschlagen',
                 bulkSaveFailedDetail: 'Vorgemerkte Änderungen konnten nicht übernommen werden',

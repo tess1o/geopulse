@@ -89,6 +89,27 @@ public class CacheGeocodingService {
     }
 
     /**
+     * The cached place (id and display name) for the coordinates, matched and prioritized like
+     * {@link #getCachedGeocodingResult}, in one lookup.
+     */
+    @Transactional(TxType.REQUIRES_NEW)
+    public Optional<ReverseGeocodingLocationRepository.CachedPlace> getCachedPlace(UUID userId, Point requestCoordinates) {
+        if (requestCoordinates == null) {
+            return Optional.empty();
+        }
+        try {
+            ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
+                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaKm2());
+            return Optional.ofNullable(match)
+                    .map(entity -> new ReverseGeocodingLocationRepository.CachedPlace(entity.getId(),
+                            entity.getDisplayName()));
+        } catch (Exception e) {
+            log.error("Error retrieving cached place for user {}", userId, e);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Get the entity ID for a cached geocoding result.
      * Prioritizes user-specific copies over originals.
      *

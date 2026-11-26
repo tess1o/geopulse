@@ -154,6 +154,17 @@ public final class GeoUtils {
     }
 
     /**
+     * The longitude halfway between two, the short way round: across the 180th meridian when that is shorter, as for
+     * two points on either side of it (179.99 and -179.99 are 2 km apart, and their arithmetic mean is 0).
+     */
+    public static double midpointLongitude(double first, double second) {
+        if (Math.abs(first - second) <= 180) {
+            return (first + second) / 2.0;
+        }
+        return Math.IEEEremainder(first + Math.IEEEremainder(second - first, 360) / 2.0, 360);
+    }
+
+    /**
      * {@code BigDecimal.valueOf(value).setScale(8, RoundingMode.HALF_UP).doubleValue()}, without
      * allocating in the common case. Timeline generation rounds every centroid and every point it
      * tests against a favorite area, millions of times per rebuild.

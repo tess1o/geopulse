@@ -5,6 +5,7 @@ import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
+import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
@@ -42,15 +43,8 @@ class LocationPointResolverCacheTest {
         ReverseGeocodingManagementService managementService = mock(ReverseGeocodingManagementService.class);
 
         when(favoriteLocationService.findByPoint(userId, point)).thenReturn(null);
-        when(cacheGeocodingService.getCachedGeocodingResult(userId, point)).thenReturn(Optional.of(
-                SimpleFormattableResult.builder()
-                        .requestCoordinates(point)
-                        .resultCoordinates(point)
-                        .formattedDisplayName("Bukit Timah Rd, Singapore")
-                        .providerName("nominatim")
-                        .build()
-        ));
-        when(cacheGeocodingService.getCachedGeocodingResultId(userId, point)).thenReturn(Optional.of(42L));
+        when(cacheGeocodingService.getCachedPlace(userId, point)).thenReturn(Optional.of(
+                new ReverseGeocodingLocationRepository.CachedPlace(42L, "Bukit Timah Rd, Singapore")));
         when(managementService.normalizeGeocodingForResolution(userId, 42L))
                 .thenReturn(ReverseGeocodingDTO.builder().id(42L).build());
 

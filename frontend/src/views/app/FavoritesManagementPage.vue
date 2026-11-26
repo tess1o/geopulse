@@ -1119,6 +1119,8 @@ const handleBulkSaveConfirm = async () => {
     await withTimelineRegeneration(action, {
       modalType: 'favorite',
       successMessage: t('sharing.favorites.managementPage.toasts.bulkSaveSuccessMessage', { count: pendingCount.value }),
+      // Renames and city or country edits leave the timeline as it is, so no job is started for them
+      noJobMessage: t('sharing.favorites.managementPage.toasts.bulkSaveSavedMessage', { count: pendingCount.value }),
       errorMessage: t('sharing.favorites.managementPage.toasts.bulkSaveErrorMessage'),
       onSuccess: () => {
         loadFavorites()

@@ -297,6 +297,26 @@ class FavoritesResourceContractTest {
     }
 
     @Test
+    void appliesMetadataOnlyBatchWithoutRegeneration() {
+        long pointId = createPoint(ownerToken, "Point to rename");
+        long areaId = createArea(ownerToken, "Area to rename");
+        clearInvocations(timelineGeneration);
+        Response response = authenticated(ownerToken).body(Map.of("updates", List.of(
+                        Map.of("favoriteId", pointId, "changes", Map.of("name", "Renamed point", "city", "Kyiv")),
+                        // The same bounds again: a rename of an area, not a change of its shape.
+                        Map.of("favoriteId", areaId, "changes", Map.of("name", "Renamed area",
+                                "northEastLat", 50.50, "northEastLon", 30.60,
+                                "southWestLat", 50.40, "southWestLon", 30.40)))))
+                .post(FAVORITES + "/bulk-apply");
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.jsonPath().getString("jobId")).isNull();
+        Response favorites = authenticated(ownerToken).get(FAVORITES);
+        assertThat(favorite(favorites, "points", "Renamed point")).containsEntry("city", "Kyiv");
+        assertThat(names(favorites, "areas")).contains("Renamed area");
+        verify(timelineGeneration, never()).requestFullRegeneration(any());
+    }
+
+    @Test
     void appliesDeletionOnlyBatch() {
         long pointId = createPoint(ownerToken, "Delete point");
         long areaId = createArea(ownerToken, "Delete area");

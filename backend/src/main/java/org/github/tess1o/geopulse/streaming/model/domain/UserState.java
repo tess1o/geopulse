@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.AccessLevel;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.shared.geo.LongitudeMean;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +24,7 @@ public class UserState {
     private double latitudeSum;
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
-    private double longitudeSum;
+    private final LongitudeMean longitudeMean = new LongitudeMean();
     private GPSPoint lastProcessedPoint;
     private WaterTransitionTracker waterTransitionTracker;
 
@@ -74,7 +75,7 @@ public class UserState {
         this.activePoints.add(point);
         // Streamed GPS coordinates are immutable after insertion; preserve the original summation order.
         latitudeSum += point.getLatitude();
-        longitudeSum += point.getLongitude();
+        longitudeMean.add(point.getLongitude());
     }
 
     public void clearActivePoints() {
@@ -82,7 +83,7 @@ public class UserState {
         this.activePoints.clear();
         if (previousSize > 10_000) activePoints.trimToSize();
         latitudeSum = 0;
-        longitudeSum = 0;
+        longitudeMean.clear();
         waterTransitionTracker = null;
     }
 
@@ -110,7 +111,7 @@ public class UserState {
         // Apply consistent rounding to match GeoUtils.createPoint() behavior
         // 8 decimal places provides approximately 1.1 meter precision at the equator
         double avgLat = latitudeSum / activePoints.size();
-        double avgLon = longitudeSum / activePoints.size();
+        double avgLon = longitudeMean.mean();
 
         return new GPSPoint(GeoUtils.roundCoordinate(avgLat), GeoUtils.roundCoordinate(avgLon), 0, 0);
     }

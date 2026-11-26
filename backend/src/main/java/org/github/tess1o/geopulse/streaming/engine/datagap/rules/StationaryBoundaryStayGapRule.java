@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
@@ -209,7 +210,8 @@ public class StationaryBoundaryStayGapRule implements DataGapRule {
     private Stay createInferredStayFromGap(DataGapContext context) {
         Duration stayDuration = Duration.between(context.lastPoint().getTimestamp(), context.currentPoint().getTimestamp());
         double inferredLatitude = (context.lastPoint().getLatitude() + context.currentPoint().getLatitude()) / 2.0;
-        double inferredLongitude = (context.lastPoint().getLongitude() + context.currentPoint().getLongitude()) / 2.0;
+        double inferredLongitude = GeoUtils.midpointLongitude(context.lastPoint().getLongitude(),
+                context.currentPoint().getLongitude());
 
         return Stay.builder()
                 .startTime(context.lastPoint().getTimestamp())

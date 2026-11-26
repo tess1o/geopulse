@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.QueryTimeoutException;
@@ -13,6 +14,8 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.locationtech.jts.geom.Point;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,35 +139,83 @@ public class CacheGeocodingBatchService {
         return Math.max(0d, maxArea);
     }
 
+    /** SQLSTATE of a statement PostgreSQL cancelled, by its timeout among others. */
+    private static final String QUERY_CANCELLED = "57014";
+
+    /** How often a place lookup that timed out is retried as two halves before its coordinates are given up. */
+    private static final int MAX_PLACE_LOOKUP_SPLITS = 3;
+
+    /**
+     * Result of {@link #getCachedPlacesBatch}: the cached place of each coordinate that has one, and the coordinates
+     * whose lookup failed. A coordinate in neither is not cached.
+     */
+    public record CachedPlaces(Map<String, ReverseGeocodingLocationRepository.CachedPlace> places, List<Point> failed) {
+    }
+
     /**
      * The cached place (id and display name) each coordinate resolves to, matched like
      * {@link #getCachedGeocodingResultsAndIdsBatch} but without loading entities: timeline
      * generation needs nothing else, and a full rebuild resolves tens of thousands of stays.
-     * Errors are logged and give an empty map, so the caller falls back to individual lookups.
+     * <p>
+     * A lookup that times out is retried as two halves, at most {@value #MAX_PLACE_LOOKUP_SPLITS} times deep, so one
+     * slow statement does not leave a whole chunk to individual lookups. Each attempt has a transaction of its own: a
+     * statement that timed out aborts its transaction. Errors are logged and leave the coordinates in
+     * {@link CachedPlaces#failed()}.
      */
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public Map<String, ReverseGeocodingLocationRepository.CachedPlace> getCachedPlacesBatch(UUID userId,
-                                                                                         List<Point> coordinates) {
+    public CachedPlaces getCachedPlacesBatch(UUID userId, List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
-            return Map.of();
+            return new CachedPlaces(Map.of(), List.of());
         }
+        Map<String, ReverseGeocodingLocationRepository.CachedPlace> places = new HashMap<>();
+        List<Point> failed = new ArrayList<>();
+        lookUpPlaces(userId, coordinates, MAX_PLACE_LOOKUP_SPLITS, places, failed);
+        return new CachedPlaces(places, failed);
+    }
+
+    private void lookUpPlaces(UUID userId, List<Point> coordinates, int splitsLeft,
+                              Map<String, ReverseGeocodingLocationRepository.CachedPlace> places, List<Point> failed) {
         long startTime = System.currentTimeMillis();
         try {
-            Map<String, ReverseGeocodingLocationRepository.CachedPlace> places =
-                    repository.findPlacesByCoordinatesBatch(userId, coordinates, spatialToleranceMeters,
-                            getMaxBboxAreaKm2());
+            Map<String, ReverseGeocodingLocationRepository.CachedPlace> found = QuarkusTransaction.requiringNew()
+                    .call(() -> repository.findPlacesByCoordinatesBatch(userId, coordinates, spatialToleranceMeters,
+                            getMaxBboxAreaKm2()));
             log.info("Batch cached place lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
-                    System.currentTimeMillis() - startTime, userId, coordinates.size(), places.size());
-            return places;
-        } catch (QueryTimeoutException e) {
+                    System.currentTimeMillis() - startTime, userId, coordinates.size(), found.size());
+            places.putAll(found);
+        } catch (RuntimeException e) {
+            if (!isTimeout(e)) {
+                log.error("Error retrieving batch cached places for user {} with {} coordinates after {}ms",
+                        userId, coordinates.size(), System.currentTimeMillis() - startTime, e);
+                failed.addAll(coordinates);
+                return;
+            }
+            if (splitsLeft > 0 && coordinates.size() > 1) {
+                log.warn("Batch cached place lookup timed out after {}ms for user {} with {} coordinates; "
+                                + "retrying as two halves",
+                        System.currentTimeMillis() - startTime, userId, coordinates.size());
+                int half = coordinates.size() / 2;
+                lookUpPlaces(userId, coordinates.subList(0, half), splitsLeft - 1, places, failed);
+                lookUpPlaces(userId, coordinates.subList(half, coordinates.size()), splitsLeft - 1, places, failed);
+                return;
+            }
             log.warn("Batch cached place lookup timed out after {}ms for user {} with {} coordinates. " +
-                            "Locations will need individual geocoding.",
+                            "Locations will need individual lookups.",
                     System.currentTimeMillis() - startTime, userId, coordinates.size());
-            return Map.of();
-        } catch (Exception e) {
-            log.error("Error retrieving batch cached places for user {} with {} coordinates after {}ms",
-                    userId, coordinates.size(), System.currentTimeMillis() - startTime, e);
-            return Map.of();
+            failed.addAll(coordinates);
         }
+    }
+
+    /**
+     * Whether the lookup failed by timing out. PostgreSQL aborts the transaction of a cancelled statement, so
+     * Hibernate reports the timeout as a plain PersistenceException with its QueryTimeoutException as the cause.
+     */
+    private static boolean isTimeout(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof QueryTimeoutException || cause instanceof org.hibernate.QueryTimeoutException
+                    || cause instanceof SQLException sql && QUERY_CANCELLED.equals(sql.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

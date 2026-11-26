@@ -236,10 +236,10 @@ These metrics are recorded as work happens. They are intended to help correlate 
 | `geopulse_gps_ingest_stage_duration_seconds`     | GPS ingest stage duration, such as filtering, duplicate lookup, persistence, geofence checks, and boat enrichment. | `component`, `source`, `stage`, `result` |
 | `geopulse_gps_ingest_points_total`               | GPS points accepted, duplicated, or filtered.                    | `component`, `source`, `transport`, `result` |
 | `geopulse_timeline_regeneration_duration_seconds` | Timeline regeneration duration.                                  | `component`, `trigger`, `result` |
-| `geopulse_timeline_regeneration_stage_duration_seconds` | Timeline regeneration stage duration.                      | `component`, `trigger`, `stage`, `result` |
+| `geopulse_timeline_regeneration_stage_duration_seconds` | Timeline regeneration stage duration. `state_machine` is stay and trip detection over the GPS points; `location_resolution` is naming the stays from favorites, the geocoding cache and the geocoding provider. | `component`, `trigger`, `stage`, `result` |
 | `geopulse_timeline_regeneration_runs_total`      | Timeline regeneration runs.                                      | `component`, `trigger`, `result` |
 | `geopulse_timeline_regeneration_gps_points_total` | GPS points processed by timeline regeneration.                  | `component`, `trigger`, `result` |
-| `geopulse_timeline_regeneration_events_total`    | Timeline events produced by timeline regeneration.               | `component`, `trigger`, `event_type` |
+| `geopulse_timeline_regeneration_events_total`    | Timeline events produced by timeline regeneration, counted after detection (`stage=raw`) and after trip post-processing (`stage=postprocessed`). | `component`, `trigger`, `stage`, `result` |
 | `geopulse_timeline_realtime_scheduler_duration_seconds` | Realtime timeline scheduler duration.                      | `component`, `trigger`, `result` |
 | `geopulse_timeline_realtime_users_total`         | Realtime scheduler user discovery/submission counts.             | `component`, `trigger`, `result` |
 | `geopulse_coverage_job_duration_seconds`         | Coverage job duration.                                           | `component`, `trigger`, `mode`, `result` |

@@ -17,10 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -77,13 +78,11 @@ public class LocationPointResolver {
         }
 
         // No favorite found, reuse cached geocoding before making an external provider call.
-        var cachedGeocodingResult = cacheGeocodingService.getCachedGeocodingResult(userId, point);
-        if (cachedGeocodingResult.isPresent()) {
-            Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(userId, point).orElse(null);
-            geocodingId = normalizeGeocodingReference(userId, geocodingId);
+        var cachedPlace = cacheGeocodingService.getCachedPlace(userId, point);
+        if (cachedPlace.isPresent()) {
             return LocationResolutionResult.fromGeocoding(
-                    cachedGeocodingResult.get().getFormattedDisplayName(),
-                    geocodingId
+                    cachedPlace.get().displayName(),
+                    normalizeGeocodingReference(userId, cachedPlace.get().id())
             );
         }
 
@@ -202,8 +201,11 @@ public class LocationPointResolver {
                 needGeocoding.size());
 
         // Step 2: Batch lookup cached places (id and display name) with user filtering
-        Map<String, ReverseGeocodingLocationRepository.CachedPlace> cachedResults =
-                batchService.getCachedPlacesBatch(userId, needGeocoding);
+        CacheGeocodingBatchService.CachedPlaces cached = batchService.getCachedPlacesBatch(userId, needGeocoding);
+        Set<String> lookupFailed = new HashSet<>();
+        for (Point point : cached.failed()) {
+            lookupFailed.add(coordinateKey(point));
+        }
 
         // Normalization without rules returns the same id; skip its per-location transaction then.
         if (batch.normalize == null) {
@@ -211,40 +213,27 @@ public class LocationPointResolver {
         }
         boolean normalize = batch.normalize;
 
-        List<Point> needExternalGeocoding = new ArrayList<>();
+        List<Point> stillNeedExternal = new ArrayList<>();
+        int individualResolved = 0;
         for (Point point : needGeocoding) {
             String coordKey = coordinateKey(point);
-            ReverseGeocodingLocationRepository.CachedPlace cached = cachedResults.get(coordKey);
-            if (cached != null) {
-                Long cachedId = normalize ? normalizeGeocodingReference(userId, cached.id()) : cached.id();
-                results.put(coordKey, LocationResolutionResult.fromGeocoding(cached.displayName(), cachedId));
-            } else {
-                needExternalGeocoding.add(point);
+            ReverseGeocodingLocationRepository.CachedPlace place = cached.places().get(coordKey);
+            // Step 3: Individual lookup only where the batch lookup failed: one that ran and found nothing would
+            // find nothing alone either, as both match the same way.
+            if (place == null && lookupFailed.contains(coordKey)) {
+                place = cacheGeocodingService.getCachedPlace(userId, point).orElse(null);
+                if (place != null) {
+                    individualResolved++;
+                }
             }
-        }
-        int batchResolved = cachedResults.size();
-
-        // Step 3: Fallback individual cache lookup for missing coordinates
-        // This is a temporary fix while debugging the batch query issue
-        List<Point> stillNeedExternal = new ArrayList<>();
-        for (Point point : needExternalGeocoding) {
-            // Try individual cache lookup as fallback with user filtering
-            Optional<FormattableGeocodingResult> individualResult =
-                    cacheGeocodingService.getCachedGeocodingResult(userId, point);
-            Optional<Long> individualId = cacheGeocodingService.getCachedGeocodingResultId(userId, point);
-
-            if (individualResult.isPresent()) {
-                log.debug("Batch missed but individual lookup found cached location for user {}", userId);
-                Long normalizedId = normalize
-                        ? normalizeGeocodingReference(userId, individualId.orElse(null))
-                        : individualId.orElse(null);
-                results.put(coordinateKey(point), LocationResolutionResult.fromGeocoding(
-                        individualResult.get().getFormattedDisplayName(), normalizedId));
+            if (place != null) {
+                Long placeId = normalize ? normalizeGeocodingReference(userId, place.id()) : place.id();
+                results.put(coordKey, LocationResolutionResult.fromGeocoding(place.displayName(), placeId));
             } else {
                 stillNeedExternal.add(point);
             }
         }
-        int individualResolved = needExternalGeocoding.size() - stillNeedExternal.size();
+        int batchResolved = cached.places().size();
         batch.batchCacheResolved += batchResolved;
         batch.individualCacheResolved += individualResolved;
         batch.cachedResolved += batchResolved + individualResolved;
@@ -252,8 +241,7 @@ public class LocationPointResolver {
         updateGeocodingProgress(batch, "resolvedFromCache",
                 "Resolved " + batch.cachedResolved + " from cache (" + batch.batchCacheResolved + " from batch, "
                         + batch.individualCacheResolved + " from individual lookup)",
-                stillNeedExternal.size(),
-                Map.of("batchResolved", batch.batchCacheResolved, "individualResolved", batch.individualCacheResolved));
+                stillNeedExternal.size());
 
         // Step 4: Process truly external geocoding with rate limiting
         if (!stillNeedExternal.isEmpty()) {
@@ -418,6 +406,8 @@ public class LocationPointResolver {
             details.put("totalLocations", batch.totalLocations);
             details.put("favoritesResolved", batch.favoritesResolved);
             details.put("cachedResolved", batch.cachedResolved);
+            details.put("batchResolved", batch.batchCacheResolved);
+            details.put("individualResolved", batch.individualCacheResolved);
             details.put("externalPending", externalPending);
             details.put("externalCompleted", batch.externalCompleted);
             details.put("totalResolved", totalResolved);

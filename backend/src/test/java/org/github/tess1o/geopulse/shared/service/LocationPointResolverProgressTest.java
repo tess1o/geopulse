@@ -47,9 +47,8 @@ class LocationPointResolverProgressTest {
         TimelineJobProgressService progressService = mock(TimelineJobProgressService.class);
 
         when(favoriteLocationService.findByPointsBatch(eq(userId), anyList())).thenReturn(Map.of());
-        when(batchService.getCachedPlacesBatch(eq(userId), anyList())).thenReturn(Map.of());
-        when(cacheGeocodingService.getCachedGeocodingResult(eq(userId), any(Point.class)))
-                .thenReturn(Optional.empty());
+        when(batchService.getCachedPlacesBatch(eq(userId), anyList()))
+                .thenReturn(new CacheGeocodingBatchService.CachedPlaces(Map.of(), List.of()));
         when(cacheGeocodingService.getCachedGeocodingResultId(eq(userId), any(Point.class)))
                 .thenReturn(Optional.empty());
         when(configurationService.getPrimaryProviderDelayMs()).thenReturn(0);
@@ -104,8 +103,8 @@ class LocationPointResolverProgressTest {
         TimelineJobProgressService progressService = mock(TimelineJobProgressService.class);
 
         when(favoriteLocationService.findByPointsBatch(eq(userId), anyList())).thenReturn(Map.of());
-        when(batchService.getCachedPlacesBatch(eq(userId), anyList())).thenReturn(Map.of());
-        when(cacheGeocodingService.getCachedGeocodingResult(eq(userId), any(Point.class))).thenReturn(Optional.empty());
+        when(batchService.getCachedPlacesBatch(eq(userId), anyList()))
+                .thenReturn(new CacheGeocodingBatchService.CachedPlaces(Map.of(), List.of()));
         when(cacheGeocodingService.getCachedGeocodingResultId(eq(userId), any(Point.class))).thenReturn(Optional.empty());
         when(configurationService.getPrimaryProviderDelayMs()).thenReturn(300);
         List<Long> requestTimes = new java.util.ArrayList<>();

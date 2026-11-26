@@ -1,13 +1,20 @@
 package org.github.tess1o.geopulse.streaming.rebuild;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.favorites.model.AddAreaToFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.BulkAddFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.BulkApplyFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.EditFavoriteDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
@@ -26,6 +33,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,6 +67,12 @@ class RebuildTriggersIntegrationTest {
 
     @Inject
     TimelineImportHelper timelineImportHelper;
+
+    @Inject
+    OwnTracksPoiService ownTracksPoiService;
+
+    @Inject
+    EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -129,6 +145,92 @@ class RebuildTriggersIntegrationTest {
 
         assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Gym'"));
         harness.assertMatchesFullRebuild(userId, "favorite added during another job");
+    }
+
+    @Test
+    void favoriteChangesRequestARebuildEvenIfTheScheduledRegenerationIsLost() {
+        UUID userId = harness.createUser("favorite-lost-job");
+        Day day = new Day();
+        harness.ingest(userId, day.all());
+        harness.process(userId);
+
+        // Each change goes through the service only: the REST resource also starts a job after the commit, which a
+        // restart could lose. The request must commit with the change itself.
+        favoriteLocationService.addFavorite(userId, area("Gym", day.gym));
+        assertRebuildRequestedAndApplied(userId, "after adding an area");
+        assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Gym'"));
+
+        favoriteLocationService.addFavorite(userId, new AddPointToFavoritesDto("Office", day.office[0], day.office[1]));
+        assertRebuildRequestedAndApplied(userId, "after adding a point");
+        assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Office'"));
+
+        long gymId = favoriteLocationService.getFavorites(userId).getAreas().getFirst().getId();
+        AddAreaToFavoritesDto larger = area("Gym", day.gym, 200);
+        favoriteLocationService.updateFavorite(userId, gymId, new EditFavoriteDto("Gym", null, null,
+                larger.getNorthEastLat(), larger.getNorthEastLon(), larger.getSouthWestLat(), larger.getSouthWestLon()));
+        assertRebuildRequestedAndApplied(userId, "after resizing an area");
+
+        favoriteLocationService.deleteFavorite(userId, gymId);
+        assertRebuildRequestedAndApplied(userId, "after deleting an area");
+        assertThat(harness.snapshot(userId).stays()).hasSize(3).noneSatisfy(stay -> assertThat(stay).contains("'Gym'"));
+
+        favoriteLocationService.bulkAddFavorites(userId, new BulkAddFavoritesDto(List.of(), List.of(area("Gym", day.gym))));
+        assertRebuildRequestedAndApplied(userId, "after a bulk add");
+
+        BulkApplyFavoritesDto removeAll = new BulkApplyFavoritesDto();
+        removeAll.setDeleteIds(favoriteLocationService.getFavorites(userId).getPoints().stream()
+                .map(point -> point.getId()).toList());
+        favoriteLocationService.applyBulkChanges(userId, removeAll);
+        assertRebuildRequestedAndApplied(userId, "after a bulk apply");
+        assertThat(harness.snapshot(userId).stays()).noneSatisfy(stay -> assertThat(stay).contains("'Office'"));
+    }
+
+    @Test
+    void ownTracksPoiSavesItsFavoriteAndLeavesTheRebuildToTheRealtimeJob() throws Exception {
+        UUID userId = harness.createUser("owntracks-poi");
+        Day day = new Day();
+        harness.ingest(userId, day.all());
+        harness.process(userId);
+        OwnTracksLocationMessage poi = OwnTracksLocationMessage.builder().type("location").tid("track")
+                .tst(at("18:00").getEpochSecond()).createdAt(at("18:00").getEpochSecond())
+                .lat(day.gym[0]).lon(day.gym[1]).acc(5.0).vel(0.0).poi("Gym").build();
+
+        CompletableFuture<Void> saved = CompletableFuture.runAsync(() -> ownTracksPoiService.handlePoi(poi, userId));
+        try {
+            saved.get(20, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            cancelLockWaits();
+            throw new AssertionError("the POI never committed: it waited for a lock its own transaction holds", e);
+        }
+
+        assertThat(favoriteLocationService.getFavorites(userId).getPoints())
+                .extracting(point -> point.getName()).containsExactly("Gym");
+        assertRebuildRequestedAndApplied(userId, "after an OwnTracks POI");
+        assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Gym'"));
+    }
+
+    /** Unblocks a transaction stuck on a row lock, so a failing run ends instead of hanging. */
+    private void cancelLockWaits() {
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery("""
+                SELECT pg_cancel_backend(pid) FROM pg_stat_activity
+                WHERE datname = current_database() AND wait_event_type = 'Lock'
+                """).getResultList());
+    }
+
+    @Test
+    void favoriteChangesThatKeepTheTimelineRequestNoRebuild() {
+        UUID userId = harness.createUser("favorite-metadata");
+        Day day = new Day();
+        harness.ingest(userId, day.all());
+        favoriteLocationService.addFavorite(userId, area("Gym", day.gym));
+        harness.process(userId);
+        long gymId = favoriteLocationService.getFavorites(userId).getAreas().getFirst().getId();
+
+        favoriteLocationService.updateFavorite(userId, gymId, new EditFavoriteDto("Fitness", "Lviv", "Ukraine",
+                null, null, null, null));
+
+        assertThat(harness.pendingRebuild(userId)).isEmpty();
+        assertThat(harness.snapshot(userId).stays()).anySatisfy(stay -> assertThat(stay).contains("'Fitness'"));
     }
 
     @Test
@@ -205,9 +307,22 @@ class RebuildTriggersIntegrationTest {
         throw new AssertionError("timeline job " + jobId + " did not finish");
     }
 
+    private void assertRebuildRequestedAndApplied(UUID userId, String scenario) {
+        assertThat(harness.pendingRebuild(userId)).as(scenario).isPresent()
+                .get().extracting(request -> request.rebuildFrom())
+                .isEqualTo(StreamingTimelineGenerationService.DEFAULT_START_DATE);
+        assertThat(harness.process(userId)).as(scenario).isEqualTo(Outcome.REBUILT);
+        assertThat(harness.pendingRebuild(userId)).as(scenario).isEmpty();
+        harness.assertMatchesFullRebuild(userId, scenario);
+    }
+
     private static AddAreaToFavoritesDto area(String name, double[] place) {
-        double dLat = 90 / 111_320.0;
-        double dLon = 90 / (111_320.0 * Math.cos(Math.toRadians(place[0])));
+        return area(name, place, 90);
+    }
+
+    private static AddAreaToFavoritesDto area(String name, double[] place, double halfSideMeters) {
+        double dLat = halfSideMeters / 111_320.0;
+        double dLon = halfSideMeters / (111_320.0 * Math.cos(Math.toRadians(place[0])));
         return new AddAreaToFavoritesDto(name, place[0] + dLat, place[1] + dLon, place[0] - dLat, place[1] - dLon);
     }
 

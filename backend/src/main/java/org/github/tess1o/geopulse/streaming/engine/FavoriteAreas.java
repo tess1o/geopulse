@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -35,7 +36,22 @@ final class FavoriteAreas {
     }
 
     /**
-     * The favorite area that contains the point, using polygon coverage, or null if none does.
+     * Where areas overlap, the most specific one wins: the smallest, then the one saved first. Place lookups order
+     * covering areas the same way (see FavoritesRepository), so detection and naming agree, whatever order the areas
+     * were saved or updated in.
+     */
+    static final Comparator<FavoriteAreaDto> MOST_SPECIFIC_FIRST = Comparator
+            .comparingDouble((FavoriteAreaDto area) -> area.preparedGeometry().getGeometry().getArea())
+            .thenComparingLong(FavoriteAreaDto::getId);
+
+    /** The areas in the order {@link #containing} tries them. */
+    static List<FavoriteAreaDto> mostSpecificFirst(List<FavoriteAreaDto> favoriteAreas) {
+        return favoriteAreas.stream().sorted(MOST_SPECIFIC_FIRST).toList();
+    }
+
+    /**
+     * The favorite area that contains the point, using polygon coverage, or null if none does. With the areas in
+     * {@link #mostSpecificFirst} order, the most specific one.
      */
     static FavoriteAreaDto containing(GPSPoint point, List<FavoriteAreaDto> favoriteAreas) {
         if (point == null || favoriteAreas == null || favoriteAreas.isEmpty()) {

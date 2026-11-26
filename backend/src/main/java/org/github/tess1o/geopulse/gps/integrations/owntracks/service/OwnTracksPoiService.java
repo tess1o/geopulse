@@ -64,10 +64,9 @@ public class OwnTracksPoiService {
             newFavorite.setLat(lat);
             newFavorite.setLon(lon);
 
+            // The favorite's rebuild request commits with it, and the real-time job regenerates the timeline then.
+            // A job started here, inside this transaction, would wait for that request's row.
             favoriteLocationService.addFavorite(userId, newFavorite);
-
-            // Regenerate timeline after adding favorite
-            favoriteLocationService.createTimelineRegenerationJob(userId);
 
             log.info("Created favorite from OwnTracks POI");
         } else {

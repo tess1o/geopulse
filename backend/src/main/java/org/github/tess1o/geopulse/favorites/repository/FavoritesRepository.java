@@ -62,6 +62,10 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
      * distance; area favorites are matched by containment or a small boundary
      * tolerance. Unlike findByPoint, this preserves overlapping favorites for
      * callers that need to present the ambiguity to the user.
+     * <p>
+     * Ordered as {@link #findByPointsBatch} picks: covering areas, then areas within the boundary tolerance, then
+     * points; nearest first; among equals the smallest, then the oldest. A single lookup and a timeline rebuild
+     * then name a place the same way.
      */
     public List<FavoritesEntity> findAllByPoint(UUID userId, Point point, int maxDistanceFromPoint, int maxDistanceFromArea) {
         String query = """
@@ -87,8 +91,14 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                     )
                 ))
                 ORDER BY
-                    CASE WHEN type = 'AREA' AND ST_Covers(geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)) THEN 0 ELSE 1 END,
-                    ST_Distance(geometry::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)
+                    CASE
+                        WHEN type = 'AREA' AND ST_Covers(geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)) THEN 1
+                        WHEN type = 'AREA' THEN 2
+                        ELSE 3
+                    END,
+                    ST_Distance(geometry::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography),
+                    ST_Area(geometry),
+                    id
                 """;
 
         @SuppressWarnings("unchecked")
@@ -214,7 +224,9 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                                  WHEN f.type = 'AREA' THEN 2
                                  ELSE 3
                              END,
-                             ST_Distance(f.geometry::geography, ic.input_point::geography)
+                             ST_Distance(f.geometry::geography, ic.input_point::geography),
+                             ST_Area(f.geometry),
+                             f.id
                     LIMIT 1
                 ) f
                 """;

@@ -96,6 +96,7 @@ export default {
                 bulkModeFollowUpEnabled: 'Додавання, редагування та видалення накопичуватимуться.',
                 bulkModeFollowUpDisabled: 'Обране буде збережено негайно.',
                 bulkSaveSuccessMessage: 'Застосовано змін: {count}. Хронологія перебудовується.',
+                bulkSaveSavedMessage: 'Застосовано змін: {count}.',
                 bulkSaveErrorMessage: 'Не вдалося застосувати зміни. Нічого не збережено.',
                 bulkSaveFailedSummary: 'Помилка масового збереження',
                 bulkSaveFailedDetail: 'Не вдалося застосувати незбережені зміни',

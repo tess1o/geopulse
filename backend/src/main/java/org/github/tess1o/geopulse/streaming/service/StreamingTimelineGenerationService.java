@@ -305,14 +305,19 @@ public class StreamingTimelineGenerationService {
 
             // Process points using streaming iterator - loads data lazily in 10K chunks
             long stateMachineStartNanos = System.nanoTime();
-            List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId, restart.replay());
+            List<TimelineEvent> rawEvents = processor.detectEvents(gpsStream, config, userId, jobId, restart.replay());
             recordTimelineStage(stateMachineStartNanos, trigger, "state_machine", "success");
             countTimelineEvents(trigger, "raw", rawEvents.size());
             memoryDiagnostics.checkpoint(userId, jobId, "state_machine_end", Map.of("rawEvents", rawEvents.size()));
             log.info("Timeline state-machine processing completed for user {} in {} ms (rawEvents={})",
                     userId, elapsedMillis(stateMachineStartNanos), rawEvents.size());
-            // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
-            // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
+
+            // Place names: favorites, the geocoding cache, then the provider. A stage of its own, as it can take as
+            // long as detection. Progress updates happen inside LocationPointResolver.
+            stageStart = metricsStart();
+            finalization.populateStayLocations(rawEvents, userId, jobId);
+            recordTimelineStage(stageStart, trigger, "location_resolution", "success");
+            memoryDiagnostics.checkpoint(userId, jobId, "location_resolution_end", Map.of("rawEvents", rawEvents.size()));
 
             // Step 5: Post-processing trips (70%)
             updateProgress(jobId, "postProcessingTrips", "Post-processing trips and validating detections", 5, 70, null);
@@ -705,7 +710,7 @@ public class StreamingTimelineGenerationService {
         if (pending.isEmpty()) {
             return;
         }
-        if (pending.get().hasCorrectionWindow() && regenerateCorrectionWindow(userId, pending.get(), jobId, trigger)) {
+        if (pending.get().hasCorrectionWindow() && regenerateCorrectionWindow(userId, jobId, trigger)) {
             return;
         }
         generateTimelineFromTimestamp(userId, pending.get().rebuildFrom(), jobId, trigger, true,
@@ -718,9 +723,11 @@ public class StreamingTimelineGenerationService {
     public static final String CORRECTION_WINDOW_GPS_POINTS = "geopulse.timeline.correction.window.gps_points";
 
     /**
-     * Rebuilds only the period a correction affected, splicing it into the stored timeline. Returns false, having
-     * changed nothing, when the regular pass is needed instead:
+     * Rebuilds only the period the user's pending corrections affected, splicing it into the stored timeline. Returns
+     * true when it did, or when nothing is pending any more. Returns false, having changed nothing, when the regular
+     * pass is needed instead:
      * <ul>
+     *     <li>no correction window is pending;</li>
      *     <li>no detection stay before the period to restart at, or fewer than two stored detection stays after it
      *     (the end of the recording or of the stored timeline);</li>
      *     <li>an open-ended change (new or deleted points) is pending at or before the end of what would be read;</li>
@@ -730,45 +737,55 @@ public class StreamingTimelineGenerationService {
      * The restart is two stays back with the trip into the restart stay replayed, as the real-time job restarts.
      * Detection, trip post-processing and the merge pass only look back, so reading up to the end of the second stay
      * after the period gives every event up to the first one exactly as a full pass; that first stay is the check.
+     * <p>
+     * The request and the stays the window is planned from are read under the user's timeline lock: a generation that
+     * finished while this one waited for the lock has rewritten those stays, and may have covered the request.
      */
     @Transactional
-    public boolean regenerateCorrectionWindow(UUID userId, TimelineRebuildRequest request, UUID jobId, String trigger) {
+    public boolean regenerateCorrectionWindow(UUID userId, UUID jobId, String trigger) {
         long metricsStart = metricsStart();
-        Optional<Restart> found = findRestart(userId, request.rebuildFrom(), RestartPoint.BEFORE_PREVIOUS_STAY);
-        if (found.isEmpty()) {
-            return windowFallback("no_restart_stay");
-        }
-        Restart restart = found.get();
-        // Corrections reaching into the period reach as far as their own affected range.
-        Instant periodEnd = request.windowTo();
-        for (boolean widened = true; widened; ) {
-            widened = false;
-            for (var edit : timelineEditService.activeOverlapping(userId, restart.from(), periodEnd)) {
-                if (edit.getAffectedTo().isAfter(periodEnd)) {
-                    periodEnd = edit.getAffectedTo();
-                    widened = true;
-                }
-            }
-        }
-        List<TimelineStayEntity> after = timelineStayRepository.findDetectionStaysFrom(userId, periodEnd, 2);
-        if (after.size() < 2) {
-            return windowFallback("end_of_timeline");
-        }
-        TimelineStayEntity edge = after.getFirst();
-        TimelineStayEntity buffer = after.getLast();
-        Instant until = buffer.getTimestamp().plusSeconds(buffer.getStayDuration());
-        if (request.openFrom() != null) {
-            Instant openRestart = findRestart(userId, request.openFrom(), RestartPoint.BEFORE_PREVIOUS_STAY)
-                    .map(Restart::from).orElse(DEFAULT_START_DATE);
-            if (openRestart.isBefore(until)) {
-                return windowFallback("gps_changed_in_window");
-            }
-        }
-
         if (!acquireLock(userId)) {
             throw new TimelineGenerationLockException(userId);
         }
         try {
+            Optional<TimelineRebuildRequest> pending = rebuildRequestRepository.find(userId);
+            if (pending.isEmpty()) {
+                return true;
+            }
+            if (!pending.get().hasCorrectionWindow()) {
+                return false;
+            }
+            TimelineRebuildRequest request = pending.get();
+            Optional<Restart> found = findRestart(userId, request.rebuildFrom(), RestartPoint.BEFORE_PREVIOUS_STAY);
+            if (found.isEmpty()) {
+                return windowFallback("no_restart_stay");
+            }
+            Restart restart = found.get();
+            // Corrections reaching into the period reach as far as their own affected range.
+            Instant periodEnd = request.windowTo();
+            for (boolean widened = true; widened; ) {
+                widened = false;
+                for (var edit : timelineEditService.activeOverlapping(userId, restart.from(), periodEnd)) {
+                    if (edit.getAffectedTo().isAfter(periodEnd)) {
+                        periodEnd = edit.getAffectedTo();
+                        widened = true;
+                    }
+                }
+            }
+            List<TimelineStayEntity> after = timelineStayRepository.findDetectionStaysFrom(userId, periodEnd, 2);
+            if (after.size() < 2) {
+                return windowFallback("end_of_timeline");
+            }
+            TimelineStayEntity edge = after.getFirst();
+            TimelineStayEntity buffer = after.getLast();
+            Instant until = buffer.getTimestamp().plusSeconds(buffer.getStayDuration());
+            if (request.openFrom() != null) {
+                Instant openRestart = findRestart(userId, request.openFrom(), RestartPoint.BEFORE_PREVIOUS_STAY)
+                        .map(Restart::from).orElse(DEFAULT_START_DATE);
+                if (openRestart.isBefore(until)) {
+                    return windowFallback("gps_changed_in_window");
+                }
+            }
             return rebuildWindow(userId, request, jobId, trigger, metricsStart, restart, edge, buffer, until);
         } catch (RuntimeException e) {
             recordPendingRebuildFailure(userId, e);

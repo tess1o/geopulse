@@ -170,17 +170,20 @@ public class FavoritesResource {
     @Path("/bulk-apply")
     @Operation(summary = "Apply queued favorite changes",
             description = "Atomically creates, edits and deletes favorites. Any failure rolls back all changes. "
-                    + "Starts one timeline regeneration after committing the batch." + ALREADY_RUNNING_JOB_NOTE)
+                    + "When the batch adds or deletes favorites, or changes an area's shape, one timeline "
+                    + "regeneration starts after committing it and its job ID is returned; otherwise the job ID is "
+                    + "empty." + ALREADY_RUNNING_JOB_NOTE)
     public JobResponse applyBulkChanges(@NotNull @Valid BulkApplyFavoritesDto request) {
         UUID userId = currentUserService.getCurrentUserId();
+        boolean timelineChanged;
         try {
-            service.applyBulkChanges(userId, request);
+            timelineChanged = service.applyBulkChanges(userId, request);
         } catch (SecurityException exception) {
             throw new GeoPulseException(FAVORITE_ACCESS_DENIED, "Not authorized to change this favorite", exception);
         } catch (IllegalArgumentException exception) {
             throw new GeoPulseException(INVALID_FAVORITE, exception.getMessage(), exception);
         }
-        return new JobResponse(service.createTimelineRegenerationJob(userId));
+        return new JobResponse(timelineChanged ? service.createTimelineRegenerationJob(userId) : null);
     }
 
     @POST
