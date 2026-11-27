@@ -29,6 +29,28 @@ services:
         condition: service_completed_successfully
       geopulse-postgres-e2e:
         condition: service_healthy
+      geopulse-mosquitto-e2e:
+        condition: service_healthy
+
+  # MQTT broker for the OwnTracks MQTT spec (location-sources.spec.js). Anonymous access and no password
+  # file, so it accepts the backend's configured credentials. Published on 1884 for Playwright on the host.
+  geopulse-mosquitto-e2e:
+    image: eclipse-mosquitto:2.0.22
+    container_name: geopulse-mosquitto-e2e
+    restart: "no"
+    ports:
+      - "1884:1883"
+    # Outside /mosquitto, which the image's entrypoint chowns, so the read-only file is left alone.
+    volumes:
+      - ./mosquitto/mosquitto.conf:/etc/mosquitto-e2e.conf:ro
+    command: ["mosquitto", "-c", "/etc/mosquitto-e2e.conf"]
+    # The backend connects once at startup and does not retry a failed first connection, so it must not start
+    # before the broker accepts connections.
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "127.0.0.1", "-t", "e2e/healthcheck", "-m", "ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
 
   geopulse-ui-e2e: &timeline-ui
     build:
@@ -96,6 +118,8 @@ services:
     environment:
       GEOPULSE_DEMO_MODE: "true"
       GEOPULSE_UI_URL: http://localhost:5557
+      # Both backends would connect with the same MQTT client id and keep disconnecting each other.
+      GEOPULSE_MQTT_ENABLED: "false"
 
   geopulse-ui-demo-e2e:
     <<: *timeline-ui
@@ -120,6 +144,7 @@ services:
       - NODE_ENV=test
       - CI=true
       - MOCK_OIDC_CONTROL_URL=http://geopulse-demo-integrations-e2e:9400
+      - MQTT_BROKER_URL=mqtt://geopulse-mosquitto-e2e:1883
     depends_on:
       geopulse-ui-e2e:
         condition: service_healthy
