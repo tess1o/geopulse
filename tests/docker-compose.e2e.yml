@@ -40,8 +40,10 @@ services:
     restart: "no"
     ports:
       - "1884:1883"
-    command: >
-      sh -c "printf 'listener 1883\nallow_anonymous true\n' > /tmp/mosquitto.conf && exec mosquitto -c /tmp/mosquitto.conf"
+    # Outside /mosquitto, which the image's entrypoint chowns, so the read-only file is left alone.
+    volumes:
+      - ./mosquitto/mosquitto.conf:/etc/mosquitto-e2e.conf:ro
+    command: ["mosquitto", "-c", "/etc/mosquitto-e2e.conf"]
     # The backend connects once at startup and does not retry a failed first connection, so it must not start
     # before the broker accepts connections.
     healthcheck:
