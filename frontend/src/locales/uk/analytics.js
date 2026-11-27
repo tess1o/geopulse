@@ -176,6 +176,7 @@ export default {
         noCoverageDataYet: 'Даних покриття поки немає',
         noCoverageInView: 'Немає покриття в поточному вигляді',
         cellsInView: '{count} комірок у поточному вигляді',
+        zoomInForAllCells: 'Наблизьте карту, щоб побачити всі комірки',
         statusUnavailable: 'Статус покриття недоступний',
         refreshFailed: 'Не вдалося оновити поточний вигляд',
         checkingCoverageStatus: 'Перевірка статусу покриття',

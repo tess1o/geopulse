@@ -79,6 +79,9 @@
             <span v-else-if="showNoCoverageDataYet">{{ t('analytics.coverageExplorer.noCoverageDataYet') }}</span>
             <span v-else-if="showNoCoverageInView">{{ t('analytics.coverageExplorer.noCoverageInView') }}</span>
             <span v-else>{{ t('analytics.coverageExplorer.cellsInView', { count: coverageCells.length.toLocaleString() }) }}</span>
+            <small v-if="cellsTruncated && selectedGrid !== 'auto'" class="truncation-hint">
+              {{ t('analytics.coverageExplorer.zoomInForAllCells') }}
+            </small>
           </div>
         </div>
         <div class="map-container">
@@ -95,7 +98,7 @@
                   v-if="map && isReady"
                   :map="map"
                   :cells="coverageCells"
-                  :grid-meters="effectiveGrid"
+                  :grid-meters="cellsGrid"
                   :visible="true"
               />
             </template>
@@ -188,6 +191,7 @@ import {useCoverageStore} from '@/stores/coverage'
 import {useLocationStore} from '@/stores/location'
 import {showDemoModeToast} from '@/utils/demoMode'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
+import {isVectorMapInstance} from '@/maps/contracts/mapContracts'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -218,6 +222,8 @@ const selectedGrid = ref('auto')
 
 const {
   cells: storeCells,
+  cellsGrid,
+  cellsTruncated,
   loadingCells,
   cellsError,
   status,
@@ -266,6 +272,8 @@ const showDemoCoverageReadOnlyToast = () => {
   showDemoModeToast(toast, t('analytics.coverageExplorer.demoReadOnlyToast'))
 }
 
+const adjustedZoom = computed(() => mapZoom.value + (isVectorMapInstance(mapInstance.value) ? 1 : 0))
+
 const getGridForZoom = (zoom) => {
   if (zoom <= 4) return 40000
   if (zoom <= 6) return 20000
@@ -278,7 +286,7 @@ const getGridForZoom = (zoom) => {
 
 const effectiveGrid = computed(() => {
   if (selectedGrid.value === 'auto') {
-    return getGridForZoom(mapZoom.value)
+    return getGridForZoom(adjustedZoom.value)
   }
   return selectedGrid.value
 })
@@ -287,9 +295,9 @@ let fetchTimer = null
 let mapMoveHandler = null
 let lastRequestKey = ''
 let fetchRequestId = 0
+let autoGrid = null
 let coverageOverlayTimer = null
 let coverageMetaTimer = null
-let summaryRefreshTimer = null
 const showCoverageLoadingOverlay = ref(false)
 const showCoverageUpdatingMeta = ref(false)
 
@@ -355,16 +363,37 @@ const fetchCoverage = async () => {
   const bbox = getBboxFromMap()
   if (!bbox) return
 
-  const requestKey = `${effectiveGrid.value}:${bbox}`
+  const selection = selectedGrid.value
+  const zoom = adjustedZoom.value
+  const requestKey = `${selection}:${zoom}:${bbox}`
   if (requestKey === lastRequestKey) return
   lastRequestKey = requestKey
 
   const requestId = ++fetchRequestId
-  const cells = await coverageStore.fetchCoverageCells(bbox, effectiveGrid.value)
-  if (requestId !== fetchRequestId) return
-  if (cells === null) {
-    lastRequestKey = ''
-    return
+  const isCurrentView = () => requestId === fetchRequestId
+    && bbox === getBboxFromMap()
+    && zoom === adjustedZoom.value
+    && selection === selectedGrid.value
+    && coverageAllowed.value
+    && !processing.value
+  let grid = selection === 'auto' ? autoGrid || effectiveGrid.value : effectiveGrid.value
+  const getNextGrid = () => gridOptions.value.find(option => option.value > grid)?.value
+  while (true) {
+    const response = await coverageStore.fetchCoverageCells(bbox, grid, {
+      shouldCommit: response => isCurrentView()
+        && (selection !== 'auto' || !response.truncated || !getNextGrid())
+    })
+    if (requestId !== fetchRequestId) return
+    if (response === null) {
+      lastRequestKey = ''
+      return
+    }
+    if (!isCurrentView()) return
+    if (selection !== 'auto' || !response.truncated) return
+    const nextGrid = getNextGrid()
+    if (!nextGrid) return
+    autoGrid = nextGrid
+    grid = nextGrid
   }
 }
 
@@ -379,52 +408,23 @@ let statusPollTimer = null
 
 const loadStatus = async (options = {}) => {
   const data = await coverageStore.fetchCoverageStatus(options)
-  if (data?.processing) {
+  if (data?.userEnabled) {
     startStatusPolling()
   }
   return data
 }
 
 const startStatusPolling = () => {
-  if (statusPollTimer) return
+  stopStatusPolling()
   statusPollTimer = setInterval(async () => {
-    const data = await coverageStore.fetchCoverageStatus({silent: true})
-    if (!data) {
-      return
-    }
-    if (!data.processing) {
-      stopStatusPolling()
-      if (coverageAllowed.value) {
-        coverageStore.invalidateSummary(summaryGrid)
-        await loadSummary()
-        lastRequestKey = ''
-        scheduleFetch()
-      }
-    }
-  }, 5000)
+    await coverageStore.fetchCoverageStatus({silent: true})
+  }, processing.value ? 5000 : 60000)
 }
 
 const stopStatusPolling = () => {
   if (!statusPollTimer) return
   clearInterval(statusPollTimer)
   statusPollTimer = null
-}
-
-const startSummaryRefresh = () => {
-  if (summaryRefreshTimer) return
-  summaryRefreshTimer = setInterval(() => {
-    if (!coverageAllowed.value || processing.value || summaryLoading.value) {
-      return
-    }
-    coverageStore.invalidateSummary(summaryGrid)
-    loadSummary()
-  }, 60000)
-}
-
-const stopSummaryRefresh = () => {
-  if (!summaryRefreshTimer) return
-  clearInterval(summaryRefreshTimer)
-  summaryRefreshTimer = null
 }
 
 const handleCoverageToggle = async () => {
@@ -449,7 +449,6 @@ const handleCoverageToggle = async () => {
 
     if (!desired) {
       stopStatusPolling()
-      stopSummaryRefresh()
       coverageStore.cancelCoverageCellsRequests()
       coverageStore.clearCells()
       coverageStore.invalidateSummary(summaryGrid)
@@ -464,9 +463,7 @@ const handleCoverageToggle = async () => {
       return
     }
 
-    coverageStore.invalidateSummary(summaryGrid)
     await loadSummary()
-    startSummaryRefresh()
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
@@ -512,7 +509,6 @@ const handleCoverageRecalculation = async () => {
       startStatusPolling()
       return
     }
-    coverageStore.invalidateSummary(summaryGrid)
     await loadSummary()
     lastRequestKey = ''
     scheduleFetch()
@@ -587,7 +583,9 @@ const handleMapReady = async (map) => {
   mapMoveHandler()
 }
 
-watch(effectiveGrid, () => {
+watch([adjustedZoom, selectedGrid], () => {
+  autoGrid = null
+  lastRequestKey = ''
   scheduleFetch()
 })
 
@@ -596,9 +594,17 @@ watch(status, (value) => {
   userCoverageEnabled.value = value.userEnabled
 })
 
+watch(() => status.value?.lastProcessed, (value, previous) => {
+  if (previous === undefined || value === previous || !coverageAllowed.value) return
+  coverageStore.invalidateSummary(summaryGrid)
+  loadSummary()
+  lastRequestKey = ''
+  scheduleFetch()
+})
+
 watch(coverageAllowed, (allowed) => {
   if (!allowed) {
-    stopSummaryRefresh()
+    stopStatusPolling()
     coverageStore.cancelCoverageCellsRequests()
     coverageStore.clearCells()
     coverageStore.invalidateSummary(summaryGrid)
@@ -609,19 +615,13 @@ watch(coverageAllowed, (allowed) => {
     return
   }
   loadSummary()
-  startSummaryRefresh()
+  startStatusPolling()
   scheduleFetch()
 })
 
-watch(processing, (isProcessing) => {
-  if (isProcessing) {
-    stopSummaryRefresh()
+watch(processing, () => {
+  if (coverageAllowed.value) {
     startStatusPolling()
-  } else {
-    stopStatusPolling()
-    if (coverageAllowed.value) {
-      startSummaryRefresh()
-    }
   }
 })
 
@@ -671,9 +671,8 @@ watch(() => [coverageLoading.value, coverageCells.value.length], ([isLoading, ce
 
 onMounted(() => {
   loadStatus().then(() => {
-    if (coverageAllowed.value) {
+    if (coverageAllowed.value && !summary.value && !summaryLoading.value) {
       loadSummary()
-      startSummaryRefresh()
     }
   })
 })
@@ -693,7 +692,6 @@ onBeforeUnmount(() => {
   }
   showCoverageLoadingOverlay.value = false
   showCoverageUpdatingMeta.value = false
-  stopSummaryRefresh()
   coverageStore.cancelCoverageCellsRequests()
   fetchRequestId += 1
   stopStatusPolling()
@@ -827,6 +825,10 @@ onBeforeUnmount(() => {
 .map-meta {
   color: var(--gp-text-muted);
   font-size: 0.85rem;
+}
+
+.truncation-hint {
+  display: block;
 }
 
 .map-container {

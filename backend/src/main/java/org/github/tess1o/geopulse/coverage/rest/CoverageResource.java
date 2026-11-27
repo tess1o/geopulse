@@ -15,7 +15,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.core.MediaType;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
-import org.github.tess1o.geopulse.coverage.model.CoverageCell;
+import org.github.tess1o.geopulse.coverage.model.CoverageCells;
 import org.github.tess1o.geopulse.coverage.model.CoverageSettingsRequest;
 import org.github.tess1o.geopulse.coverage.model.CoverageSummary;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
@@ -24,7 +24,6 @@ import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -125,9 +124,11 @@ public class CoverageResource {
     @APIResponse(responseCode = "400", description = "Invalid coverage query")
     @APIResponse(responseCode = "403", description = "Coverage is not enabled")
     @Operation(summary = "Get coverage cells",
-            description = "Returns the explored grid cells inside a bounding box for drawing on a map. Coverage must "
-                    + "be enabled.")
-    public List<CoverageCell> getCoverageCells(
+            description = "Returns the explored grid cells inside a bounding box for drawing on a map, as "
+                    + "`[cellX, cellY, seenCount]` in Web Mercator (EPSG:3857) cells of `gridMeters`: a cell spans "
+                    + "`cellX * gridMeters` to `(cellX + 1) * gridMeters` in x, and the same for y. When the box holds "
+                    + "more cells than `limit`, `truncated` is true. Coverage must be enabled.")
+    public CoverageCells getCoverageCells(
             @Parameter(description = "Bounding box as `minLon,minLat,maxLon,maxLat` in degrees. Required.",
                     example = "-9.25,38.69,-9.09,38.80")
             @QueryParam("bbox") String bbox,
@@ -171,7 +172,7 @@ public class CoverageResource {
         double maxLon = Math.max(bounds[0], bounds[2]);
         double maxLat = Math.max(bounds[1], bounds[3]);
 
-        List<CoverageCell> cells = coverageService.getCoverageCells(
+        return coverageService.getCoverageCells(
                 userId,
                 minLon,
                 minLat,
@@ -180,8 +181,6 @@ public class CoverageResource {
                 grid,
                 cellLimit
         );
-
-        return cells;
     }
 
     @GET
