@@ -6,7 +6,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
-import org.github.tess1o.geopulse.coverage.model.CoverageCell;
+import org.github.tess1o.geopulse.coverage.model.CoverageCells;
 import org.github.tess1o.geopulse.coverage.model.CoverageProcessingCursor;
 import org.github.tess1o.geopulse.coverage.model.CoverageSummary;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
@@ -16,7 +16,6 @@ import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
-import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -90,13 +89,13 @@ public class CoverageService {
         processUserCoverage(userId, "full");
     }
 
-    public List<CoverageCell> getCoverageCells(UUID userId,
-                                               double minLon,
-                                               double minLat,
-                                               double maxLon,
-                                               double maxLat,
-                                               int gridMeters,
-                                               int limit) {
+    public CoverageCells getCoverageCells(UUID userId,
+                                         double minLon,
+                                         double minLat,
+                                         double maxLon,
+                                         double maxLat,
+                                         int gridMeters,
+                                         int limit) {
         ensureGridSupported(gridMeters);
         int boundedLimit = Math.max(1, Math.min(limit, CoverageDefaults.MAX_CELLS_PER_VIEW));
         return coverageRepository.findCoverageCells(userId, minLon, minLat, maxLon, maxLat, gridMeters, boundedLimit);

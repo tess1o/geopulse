@@ -171,6 +171,7 @@ export default {
         "noCoverageDataYet": "Noch keine Abdeckungsdaten",
         "noCoverageInView": "Keine Abdeckung im aktuellen Ausschnitt",
         "cellsInView": "{count} Zellen im aktuellen Ausschnitt",
+        "zoomInForAllCells": "Zoom hinein, um alle Zellen zu sehen",
         "statusUnavailable": "Status der Abdeckung nicht verfügbar",
         "refreshFailed": "Der aktuelle Ausschnitt konnte nicht aktualisiert werden",
         "checkingCoverageStatus": "Status der Abdeckung wird geprüft",

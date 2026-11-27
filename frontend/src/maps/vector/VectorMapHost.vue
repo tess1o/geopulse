@@ -654,7 +654,7 @@ watch(() => props.center, (newCenter, oldCenter) => {
 })
 
 watch(() => props.zoom, (newZoom) => {
-  if (!map.value || !Number.isFinite(newZoom)) {
+  if (!map.value || !Number.isFinite(newZoom) || newZoom === map.value.getZoom()) {
     return
   }
 

@@ -7,6 +7,7 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -18,6 +19,7 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,6 +48,7 @@ class CoverageContractTest {
     @Inject UserService userService;
     @Inject AuthenticationService authenticationService;
     @Inject UserRepository userRepository;
+    @Inject EntityManager entityManager;
 
     private UUID ownerId;
     private String ownerToken;
@@ -106,7 +109,9 @@ class CoverageContractTest {
 
         Response cells = authenticated(ownerToken).queryParam("bbox", VALID_BBOX).when().get(COVERAGE + "/cells");
         assertThat(cells.statusCode()).isEqualTo(200);
-        assertThat(cells.jsonPath().getList("$")).isEmpty();
+        assertThat(cells.jsonPath().getInt("gridMeters")).isEqualTo(50);
+        assertThat(cells.jsonPath().getBoolean("truncated")).isFalse();
+        assertThat(cells.jsonPath().getList("cells")).isEmpty();
 
         Response summary = authenticated(ownerToken).when().get(COVERAGE + "/summary");
         assertThat(summary.statusCode()).isEqualTo(200);
@@ -118,6 +123,43 @@ class CoverageContractTest {
         assertThat(swapped.statusCode())
                 .as("swapped corners are normalised, not rejected")
                 .isEqualTo(200);
+    }
+
+    /** Cells are Web Mercator cell indexes; (-74.0, 40.7) is x -8237.6 km, y 4968.2 km. */
+    @Test
+    void cellsAreIndexTriplesInIndexOrderAndReportTruncation() {
+        enableCoverage();
+        QuarkusTransaction.requiringNew().run(() -> entityManager.createNativeQuery(
+                        "INSERT INTO coverage_cells (user_id, grid_m, cell_x, cell_y, first_seen, last_seen, seen_count) " +
+                                "VALUES (:userId, 1000, -8237, 4968, NOW(), NOW(), 7), " +
+                                "       (:userId, 1000, -8238, 4969, NOW(), NOW(), 1), " +
+                                "       (:userId, 1000, -8238, 4968, NOW(), NOW(), 3), " +
+                                "       (:userId, 1000, 0, 0, NOW(), NOW(), 9), " +
+                                "       (:userId, 50, -164753, 99363, NOW(), NOW(), 2)")
+                .setParameter("userId", ownerId)
+                .executeUpdate());
+
+        Response all = authenticated(ownerToken)
+                .queryParam("bbox", VALID_BBOX).queryParam("grid", 1000)
+                .when().get(COVERAGE + "/cells");
+        assertThat(all.statusCode()).isEqualTo(200);
+        assertThat(all.jsonPath().getInt("gridMeters")).isEqualTo(1000);
+        assertThat(all.jsonPath().getBoolean("truncated")).isFalse();
+        assertThat(all.jsonPath().getList("cells")).containsExactly(
+                List.of(-8238, 4968, 3), List.of(-8238, 4969, 1), List.of(-8237, 4968, 7));
+
+        Response limited = authenticated(ownerToken)
+                .queryParam("bbox", VALID_BBOX).queryParam("grid", 1000).queryParam("limit", 2)
+                .when().get(COVERAGE + "/cells");
+        assertThat(limited.jsonPath().getBoolean("truncated")).isTrue();
+        assertThat(limited.jsonPath().getList("cells")).containsExactly(
+                List.of(-8238, 4968, 3), List.of(-8238, 4969, 1));
+
+        Response exact = authenticated(ownerToken)
+                .queryParam("bbox", VALID_BBOX).queryParam("grid", 1000).queryParam("limit", 3)
+                .when().get(COVERAGE + "/cells");
+        assertThat(exact.jsonPath().getBoolean("truncated")).isFalse();
+        assertThat(exact.jsonPath().getList("cells")).hasSize(3);
     }
 
     @Test

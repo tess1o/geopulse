@@ -75,7 +75,7 @@ class CoverageSummaryIntegrationTest {
         for (int grid : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
             CoverageSummary summary = coverageService.getCoverageSummary(walkerId, grid);
             int listed = coverageService.getCoverageCells(walkerId, -180, -85, 180, 85, grid,
-                    CoverageDefaults.MAX_CELLS_PER_VIEW).size();
+                    CoverageDefaults.MAX_CELLS_PER_VIEW).cells().size();
 
             assertThat(summary.gridMeters()).isEqualTo(grid);
             assertThat(summary.totalCells()).as("grid %d summary vs cells", grid).isEqualTo(listed);

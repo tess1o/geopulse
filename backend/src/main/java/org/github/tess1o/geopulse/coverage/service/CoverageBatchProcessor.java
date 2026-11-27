@@ -8,7 +8,9 @@ import org.github.tess1o.geopulse.coverage.model.CoverageProcessingCursor;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class CoverageBatchProcessor {
@@ -59,24 +61,16 @@ public class CoverageBatchProcessor {
             return null;
         }
 
-        for (int gridMeters : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
+        coverageRepository.configureBatchSession();
+        for (List<Integer> gridSizes : CoverageDefaults.GRID_SIZE_PASSES) {
+            String gridLabel = gridSizes.stream().map(String::valueOf).collect(Collectors.joining(","));
             startedAtNanos = metricsStart();
             try {
-                int upserted = coverageRepository.upsertCoverageCells(
-                        userId,
-                        lowerBound,
-                        batchUpperBound,
-                        gridMeters,
-                        CoverageDefaults.RADIUS_METERS,
-                        CoverageDefaults.SEGMENTIZE_METERS,
-                        CoverageDefaults.MAX_GAP_SECONDS,
-                        CoverageDefaults.MAX_SPEED_MPS,
-                        CoverageDefaults.MAX_ACCURACY_METERS
-                );
-                recordStage(startedAtNanos, "upsert_grid", String.valueOf(gridMeters), "success");
-                countCells(upserted, gridMeters);
+                int upserted = coverageRepository.upsertCoverageCells(userId, lowerBound, batchUpperBound, gridSizes);
+                recordStage(startedAtNanos, "upsert_cells", gridLabel, "success");
+                countCells(upserted, gridLabel);
             } catch (Exception e) {
-                recordStage(startedAtNanos, "upsert_grid", String.valueOf(gridMeters), "error");
+                recordStage(startedAtNanos, "upsert_cells", gridLabel, "error");
                 throw e;
             }
         }
@@ -113,13 +107,13 @@ public class CoverageBatchProcessor {
                 "result", result);
     }
 
-    private void countCells(int count, int gridMeters) {
+    private void countCells(int count, String gridMeters) {
         if (workloadMetrics == null || count <= 0) {
             return;
         }
         workloadMetrics.increment("geopulse.coverage.cells_upserted", count,
                 "component", "coverage",
-                "grid_m", String.valueOf(gridMeters),
+                "grid_m", gridMeters,
                 "result", "success");
     }
 }

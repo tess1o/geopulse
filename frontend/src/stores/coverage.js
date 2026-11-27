@@ -4,7 +4,9 @@ import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useCoverageStore = defineStore('coverage', {
   state: () => ({
-    cells: [],
+    cells: Object.freeze([]),
+    cellsGrid: 50,
+    cellsTruncated: false,
     loadingCells: false,
     cellsError: null,
     cellsRequestSeq: 0,
@@ -32,7 +34,8 @@ export const useCoverageStore = defineStore('coverage', {
 
   actions: {
     clearCells() {
-      this.cells = []
+      this.cells = Object.freeze([])
+      this.cellsTruncated = false
     },
 
     cancelCoverageCellsRequests() {
@@ -120,8 +123,15 @@ export const useCoverageStore = defineStore('coverage', {
           return null
         }
 
-        this.cells = Array.isArray(data) ? data : []
-        return this.cells
+        if (!Array.isArray(data?.cells) || !Number.isFinite(data.gridMeters) || data.gridMeters <= 0) {
+          throw new Error('Invalid coverage cells response')
+        }
+        if (options.shouldCommit?.(data) !== false) {
+          this.cells = Object.freeze(data.cells)
+          this.cellsGrid = data.gridMeters
+          this.cellsTruncated = data.truncated === true
+        }
+        return data
       } catch (error) {
         console.error('Error fetching coverage cells:', error)
         if (!silent && requestSeq === this.cellsRequestSeq) {

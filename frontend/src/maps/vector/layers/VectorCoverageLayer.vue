@@ -10,8 +10,7 @@ import {
   nextLayerToken,
   removeLayers,
   removeSources,
-  setLayerVisibility,
-  toFiniteNumber
+  setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
 
 const props = defineProps({
@@ -68,11 +67,9 @@ const getOpacity = (count, maxCount) => {
   return Math.min(props.maxOpacity, Math.max(props.minOpacity, props.minOpacity + normalized * (props.maxOpacity - props.minOpacity)))
 }
 
-const metersToDegrees = (meters, latitude) => {
-  const latDegrees = meters / 111320
-  const lngDegrees = meters / (111320 * Math.cos((latitude * Math.PI) / 180) || 1)
-
-  return { latDegrees, lngDegrees }
+const unproject = (x, y) => {
+  const radius = 6378137
+  return [x / radius * 180 / Math.PI, (2 * Math.atan(Math.exp(y / radius)) - Math.PI / 2) * 180 / Math.PI]
 }
 
 const buildCollection = () => {
@@ -85,34 +82,35 @@ const buildCollection = () => {
   }
 
   const maxCount = maxCells.reduce((maximum, cell) => {
-    const value = Number(cell?.seenCount ?? 0)
+    const value = Number(cell?.[2] ?? 0)
     return value > maximum ? value : maximum
   }, 0)
 
-  const halfCell = props.gridMeters / 2
+  const grid = props.gridMeters
 
   const features = maxCells
     .map((cell) => {
-      const latitude = toFiniteNumber(cell?.latitude)
-      const longitude = toFiniteNumber(cell?.longitude)
+      if (!Array.isArray(cell)) return null
+      const [cellX, cellY, seenCount] = cell
 
-      if (latitude === null || longitude === null) {
+      if (!Number.isFinite(cellX) || !Number.isFinite(cellY)) {
         return null
       }
 
-      const { latDegrees, lngDegrees } = metersToDegrees(halfCell, latitude)
-      const opacity = getOpacity(Number(cell?.seenCount ?? 0), maxCount)
+      const sw = unproject(cellX * grid, cellY * grid)
+      const ne = unproject((cellX + 1) * grid, (cellY + 1) * grid)
+      const opacity = getOpacity(Number(seenCount ?? 0), maxCount)
 
       return {
         type: 'Feature',
         geometry: {
           type: 'Polygon',
           coordinates: [[
-            [longitude - lngDegrees, latitude - latDegrees],
-            [longitude + lngDegrees, latitude - latDegrees],
-            [longitude + lngDegrees, latitude + latDegrees],
-            [longitude - lngDegrees, latitude + latDegrees],
-            [longitude - lngDegrees, latitude - latDegrees]
+            sw,
+            [ne[0], sw[1]],
+            ne,
+            [sw[0], ne[1]],
+            sw
           ]]
         },
         properties: {
@@ -194,7 +192,7 @@ watch(
 
     renderLayer()
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 )
 
 onBeforeUnmount(() => {

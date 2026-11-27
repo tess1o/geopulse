@@ -7,14 +7,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -49,7 +52,7 @@ class CoverageBatchProcessorTest {
     }
 
     @Test
-    void processNextBatch_processesAllGridsAndCommitsCursor() {
+    void processNextBatch_configuresSessionUpsertsAllGridsAndCommitsCursor() {
         CoverageProcessingCursor lowerBound = new CoverageProcessingCursor(
                 Instant.parse("2026-01-01T00:00:00Z"),
                 100L
@@ -66,19 +69,11 @@ class CoverageBatchProcessorTest {
 
         assertThat(result).isEqualTo(upperBound);
         verify(coverageRepository).findBatchUpperBound(userId, lowerBound, CoverageDefaults.MAX_ACCURACY_METERS, 5_000);
-        for (int gridMeters : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
-            verify(coverageRepository).upsertCoverageCells(
-                    userId,
-                    lowerBound,
-                    upperBound,
-                    gridMeters,
-                    CoverageDefaults.RADIUS_METERS,
-                    CoverageDefaults.SEGMENTIZE_METERS,
-                    CoverageDefaults.MAX_GAP_SECONDS,
-                    CoverageDefaults.MAX_SPEED_MPS,
-                    CoverageDefaults.MAX_ACCURACY_METERS
-            );
-        }
+        InOrder inOrder = inOrder(coverageRepository);
+        inOrder.verify(coverageRepository).configureBatchSession();
+        inOrder.verify(coverageRepository).upsertCoverageCells(userId, lowerBound, upperBound, List.of(20));
+        inOrder.verify(coverageRepository).upsertCoverageCells(userId, lowerBound, upperBound,
+                List.of(50, 250, 1000, 5000, 20000, 40000));
         verify(coverageRepository).upsertLastProcessed(userId, upperBound);
         verifyNoMoreInteractions(coverageRepository);
     }

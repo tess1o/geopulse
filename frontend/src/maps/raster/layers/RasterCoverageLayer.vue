@@ -40,6 +40,7 @@ const props = defineProps({
 })
 
 let coverageLayer = null
+let renderer = null
 let currentMap = null
 const cellLayers = new Map()
 
@@ -50,12 +51,14 @@ const removeLayer = () => {
     if (layerMap) {
       coverageLayer.clearLayers()
       layerMap.removeLayer(coverageLayer)
+      renderer?.remove()
     }
   } catch (e) {
     // ignore cleanup errors
   }
   cellLayers.clear()
   coverageLayer = null
+  renderer = null
   currentMap = null
 }
 
@@ -82,6 +85,7 @@ const renderCells = () => {
   }
 
   if (!coverageLayer) {
+    renderer = L.canvas({ padding: 0.5 })
     coverageLayer = L.layerGroup().addTo(props.map)
     currentMap = props.map
   }
@@ -99,32 +103,31 @@ const renderCells = () => {
   }
 
   const maxCount = maxCells.reduce((max, cell) => {
-    const value = Number(cell?.seenCount ?? 0)
+    const value = Number(cell?.[2] ?? 0)
     return value > max ? value : max
   }, 0)
 
-  const half = props.gridMeters / 2
-  const crs = props.map?.options?.crs || L.CRS.EPSG3857
+  const grid = props.gridMeters
+  const crs = L.CRS.EPSG3857
   const visibleKeys = new Set()
 
   maxCells.forEach((cell) => {
-    const lat = Number(cell?.latitude)
-    const lon = Number(cell?.longitude)
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+    if (!Array.isArray(cell)) return
+    const [cellX, cellY, seenCount] = cell
+    if (!Number.isFinite(cellX) || !Number.isFinite(cellY)) return
 
-    const key = `${lat.toFixed(6)}:${lon.toFixed(6)}`
+    const key = `${cellX}:${cellY}`
     visibleKeys.add(key)
 
-    const center = L.latLng(lat, lon)
-    const centerPoint = crs.project(center)
-    const swPoint = L.point(centerPoint.x - half, centerPoint.y - half)
-    const nePoint = L.point(centerPoint.x + half, centerPoint.y + half)
+    const swPoint = L.point(cellX * grid, cellY * grid)
+    const nePoint = L.point((cellX + 1) * grid, (cellY + 1) * grid)
     const sw = crs.unproject(swPoint)
     const ne = crs.unproject(nePoint)
     const bounds = L.latLngBounds(sw, ne)
 
-    const opacity = getOpacity(Number(cell?.seenCount ?? 0), maxCount)
+    const opacity = getOpacity(Number(seenCount ?? 0), maxCount)
     const style = {
+      renderer,
       color: props.fillColor,
       weight: 0,
       fillColor: props.fillColor,

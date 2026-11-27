@@ -177,6 +177,7 @@ export default {
         noCoverageDataYet: 'No coverage data yet',
         noCoverageInView: 'No coverage in current view',
         cellsInView: '{count} cells in current view',
+        zoomInForAllCells: 'Zoom in to see all cells',
         statusUnavailable: 'Coverage status unavailable',
         refreshFailed: 'Failed to refresh current view',
         checkingCoverageStatus: 'Checking coverage status',

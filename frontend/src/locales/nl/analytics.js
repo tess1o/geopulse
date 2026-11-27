@@ -177,6 +177,7 @@ export default {
         noCoverageDataYet: 'Nog geen dekkingsgegevens',
         noCoverageInView: 'Geen dekking in huidige weergave',
         cellsInView: '{count} cellen in huidige weergave',
+        zoomInForAllCells: 'Zoom in om alle cellen te zien',
         statusUnavailable: 'Dekkingsstatus niet beschikbaar',
         refreshFailed: 'Huidige weergave vernieuwen is mislukt',
         checkingCoverageStatus: 'Dekkingsstatus controleren',
