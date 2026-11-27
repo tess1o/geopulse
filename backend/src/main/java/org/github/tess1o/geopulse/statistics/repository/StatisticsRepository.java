@@ -239,10 +239,6 @@ public class StatisticsRepository {
         Session session = entityManager.unwrap(Session.class);
         session.flush();
         return session.doReturningWork(connection -> {
-            // JIT compilation dominated this short query. This setting expires with its read transaction.
-            try (var settings = connection.createStatement()) {
-                settings.execute("SET LOCAL jit = off");
-            }
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setObject(1, userId);
                 statement.setObject(2, startTime.atOffset(ZoneOffset.UTC));

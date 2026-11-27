@@ -159,11 +159,6 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
         Map<String, FavoritesEntity> finalResultMap = new HashMap<>();
         int totalPoints = points.size();
-        // One statement for tens of thousands of points has a planner cost far above jit_above_cost,
-        // and PostgreSQL's JIT compilation took about as long as the lookup itself (1.2 s for 40k
-        // stays). Only for this transaction; outside one, set_config(..., true) has no lasting effect.
-        em.createNativeQuery("SELECT set_config('jit', 'off', true)").getSingleResult();
-
         for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, totalPoints);
             List<Point> batchPoints = points.subList(i, end);
