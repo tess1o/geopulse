@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build native backend, UI and demo integrations
         run: docker compose -f "$E2E_COMPOSE_FILE" build geopulse-backend-e2e geopulse-ui-e2e geopulse-demo-integrations-e2e
@@ -78,7 +78,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download images
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-images
 
@@ -189,7 +189,7 @@ jobs:
           npm ci
 
       - name: Download blob reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: tests/all-blob-reports
           pattern: blob-report-*
