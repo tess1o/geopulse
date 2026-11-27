@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM maven:3.9.16-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /app
 
 # Copy parent pom.xml first
@@ -31,7 +31,7 @@ COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/app/ /app/app/
 COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/quarkus/ /app/quarkus/
 
 # Stage 2: Create a minimal runtime image
-FROM eclipse-temurin:25.0.4.1_1-jdk-alpine-3.24
+FROM eclipse-temurin:25-jdk-alpine-3.24
 LABEL org.opencontainers.image.source="https://github.com/tess1o/geopulse"
 WORKDIR /app
 

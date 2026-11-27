@@ -1,4 +1,4 @@
-FROM node:26.10.0-alpine3.24 AS build
+FROM node:26.13.1-alpine3.24 AS build
 WORKDIR /app
 
 # Copy package.json and package-lock.json
@@ -14,7 +14,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Runtime
-FROM nginx:1.30.5-alpine3.24
+FROM nginx:1.30.7-alpine3.24
 LABEL org.opencontainers.image.source="https://github.com/tess1o/geopulse"
 WORKDIR /usr/share/nginx/html
 
