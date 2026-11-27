@@ -267,10 +267,6 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 JOIN reverse_geocoding_location g ON g.id = r.id
                 """;
         Map<String, CachedPlace> places = new HashMap<>(coordinates.size() * 2);
-        // The statement's planner cost is far above jit_above_cost, and PostgreSQL's JIT compilation
-        // took about as long as the lookup itself (1.3 s for 36k stays). Off for this transaction
-        // only; outside one, set_config(..., true) has no lasting effect.
-        getEntityManager().createNativeQuery("SELECT set_config('jit', 'off', true)").getSingleResult();
         for (int i = 0; i < coordinates.size(); i += PLACE_BATCH_SIZE) {
             List<Point> batch = coordinates.subList(i, Math.min(i + PLACE_BATCH_SIZE, coordinates.size()));
             double[] longitudes = new double[batch.size()];

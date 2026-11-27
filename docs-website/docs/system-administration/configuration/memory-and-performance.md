@@ -235,14 +235,19 @@ Memory is returned to the OS at garbage collections, and collections only happen
 allocates. Right after heavy work (an import or a full rebuild) memory can stay higher until the next
 activity. `-XX:MaxHeapFree` controls how much free heap is kept after each collection.
 
-### Full timeline rebuilds are slow and PostgreSQL CPU is high
+### PostgreSQL JIT compilation
 
-GeoPulse turns off PostgreSQL JIT compilation for its large batch lookups, where compiling took
-longer than the query. If you use an external PostgreSQL and still see high CPU during rebuilds,
-check `jit` in `pg_settings`. Turning JIT off for the GeoPulse role is a safe option:
+GeoPulse turns off PostgreSQL JIT compilation on its own database connections, for every PostgreSQL
+version and also with an external PostgreSQL. The planner's cost estimates for PostGIS queries are high,
+so PostgreSQL compiled queries that run in milliseconds, and compiling often took longer than the query:
+a year of statistics loaded in 2.1 s with JIT and 1.0 s without. PostgreSQL 19 turns JIT off by
+default for the same reason. Your server's `jit` setting is unchanged for other clients.
 
-```sql
-ALTER ROLE "geopulse-user" SET jit = off;
+The setting is part of `quarkus.datasource.jdbc.new-connection-sql`, the SQL each new connection runs.
+If you override that property (`QUARKUS_DATASOURCE_JDBC_NEW_CONNECTION_SQL`), keep both statements:
+
+```properties
+quarkus.datasource.jdbc.new-connection-sql=SET TIME ZONE 'UTC'; SET jit = off
 ```
 
 ## Related docs
