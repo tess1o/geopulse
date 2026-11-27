@@ -463,7 +463,6 @@
                 </property>
             </activation>
             <properties>
-                <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
                 <quarkus.native.additional-build-args>
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.backup.BackupEnvelope,
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.AdminPasswordRecoveryService,
@@ -484,7 +483,7 @@
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.logcat,
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.messages,
                     -H:+UnlockExperimentalVMOptions,
-                    -H:+UseServiceLoaderFeature${env.QUARKUS_NATIVE_BUILD_ARGS}
+                    -Os${env.QUARKUS_NATIVE_BUILD_ARGS}
                 </quarkus.native.additional-build-args>
             </properties>
         </profile>

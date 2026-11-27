@@ -4,6 +4,7 @@ import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
 import {UserProfilePage} from '../pages/UserProfilePage.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
+import {publishMqtt} from '../utils/mqtt-publisher.js';
 
 test.describe('Location Sources Management', () => {
   
@@ -661,6 +662,39 @@ test.describe('Location Sources Management', () => {
       // Check for validation error
       const apiKeyError = await page.locator('.error-message').filter({hasText: 'API key is required'});
       expect(await apiKeyError.isVisible()).toBe(true);
+    });
+  });
+
+  test.describe('OwnTracks MQTT Ingest', () => {
+    // The backend's MQTT client (Paho) finds its tcp/ssl transports with ServiceLoader, which a native image
+    // only sees when they are registered at build time. Unit and JVM tests cannot catch a missing registration,
+    // so this runs the whole path against the native e2e image: broker -> subscriber -> database.
+    test('should save a location published over MQTT for an OwnTracks MQTT source', async ({page, isolatedUsers, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.loginViaApi(testUser.email, testUser.password);
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+      const mqttUsername = `mqtt-ingest-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      await locationSourcesPage.createOwnTracksMqttSource(mqttUsername, 'mqttpassword');
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      const tst = Math.floor(Date.now() / 1000) - 60;
+      await publishMqtt(`owntracks/${mqttUsername}/phone`, JSON.stringify({
+        _type: 'location', lat: 50.4501, lon: 30.5234, tst, acc: 5,
+      }));
+
+      await expect.poll(async () => {
+        const result = await dbManager.client.query(
+          `SELECT ST_Y(coordinates) AS lat, ST_X(coordinates) AS lon, extract(epoch FROM timestamp)::bigint AS tst,
+                  device_id, source_type
+           FROM gps_points WHERE user_id = $1`, [user.id]);
+        return result.rows;
+      }, {timeout: 15000, message: 'the point published over MQTT reaches gps_points'}).toEqual([
+        {lat: 50.4501, lon: 30.5234, tst: String(tst), device_id: 'phone', source_type: 'OWNTRACKS'},
+      ]);
     });
   });
 });
