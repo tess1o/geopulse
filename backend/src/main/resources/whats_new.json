@@ -1,5 +1,23 @@
 [
   {
+    "version": "2.5.0",
+    "title": "GeoPulse 2.5.0",
+    "highlights": [
+      "Lower memory use during timeline generation and while idle, with fewer background database queries",
+      "Statistics, heatmaps and other map queries are faster now that GeoPulse turns off PostgreSQL JIT compilation on its own connections",
+      "Faster coverage processing and Coverage Explorer map loading. In Auto grid mode, views with too many cells switch to a coarser grid instead of showing partial coverage",
+      "Improved Timeline Jobs page with processing steps, timings, memory usage, correction results and diagnostics you can copy for support",
+      "Favorite additions, removals and area changes now reliably update your timeline; name-only bulk edits avoid unnecessary regeneration",
+      "Overlapping favorite areas now consistently use the smallest area containing the location",
+      "Fixed repeated timeline regeneration when GPS points arrive during a rebuild, and made correction updates safer when jobs overlap",
+      "Corrected stay locations near the International Date Line, with faster and more accurate nearest-city and timezone lookups, including Immich location matching",
+      "OIDC sign-in now supports private certificate authorities through a custom PEM certificate file",
+      "Admin account deletion now runs in the background with progress and retry controls, avoiding long waits for large accounts",
+      "New FAQ shortcuts on the Help page and guidance for memory tuning and troubleshooting"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v2.5.0"
+  },
+  {
     "version": "2.4.0",
     "title": "GeoPulse 2.4.0",
     "highlights": [
