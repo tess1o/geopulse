@@ -1,0 +1,449 @@
+{
+  "tips": [
+    {
+      "id": "export-trip-or-stay-gpx",
+      "title": "将停留或行程导出为 GPX",
+      "description": "在时间线页面右键单击停留或行程卡片，然后选择“导出为 GPX”。可以用导出的文件分享路线、存档，或在其他地图工具中查看。",
+      "icon": "pi pi-download",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开时间线",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "show-favorites-on-map",
+      "title": "在时间线地图上查看收藏地点",
+      "description": "在时间线地图的控件中选择“显示收藏地点”，即可在回顾一天的活动时查看所有收藏的地点和区域。",
+      "icon": "pi pi-heart",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开时间线",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "favorite-point-vs-area",
+      "title": "选择收藏地点或收藏区域",
+      "description": "收藏地点代表具体位置，可匹配停留检测半径内的 GPS 记录。收藏区域可以匹配边界内的所有记录，适合校园、公园、商场等较大的场所。",
+      "icon": "pi pi-map-marker",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "收藏地点管理",
+          "url": "/app/favorites-management"
+        }
+      ]
+    },
+    {
+      "id": "manage-favorites",
+      "title": "管理收藏地点和区域",
+      "description": "浏览时间线时可直接在地图上添加或更新收藏地点。如需批量整理或详细编辑，请打开收藏地点管理。",
+      "icon": "pi pi-star",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "收藏地点管理",
+          "url": "/app/favorites-management"
+        },
+        {
+          "label": "地点管理文档",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/managing-places"
+        }
+      ]
+    },
+    {
+      "id": "journey-insights-overview",
+      "title": "在出行洞察中查看里程碑",
+      "description": "出行洞察会按国家和城市汇总你的足迹。打开里程碑和进度视图，回顾一段时间内的出行。",
+      "icon": "pi pi-compass",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开出行洞察",
+          "url": "/app/journey-insights"
+        },
+        {
+          "label": "出行洞察文档",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/journey-insights"
+        }
+      ]
+    },
+    {
+      "id": "rewind-heatmaps",
+      "title": "在回顾中查看月度和年度热力图",
+      "description": "回顾页面提供各时段的详细统计和热力图，可以用来了解季节性规律，或对比不同月份和年份。",
+      "icon": "pi pi-calendar",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开回顾",
+          "url": "/app/rewind"
+        },
+        {
+          "label": "回顾文档",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/rewind"
+        }
+      ]
+    },
+    {
+      "id": "geofences-for-you-and-friends",
+      "title": "使用地理围栏记录进出事件",
+      "description": "配置地理围栏规则后，可以检测自己以及向你共享实时位置的好友何时进入或离开指定区域。你可以用这些事件发送到达提醒或触发自动化。",
+      "icon": "pi pi-map",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开地理围栏",
+          "url": "/app/geofences"
+        },
+        {
+          "label": "地理围栏文档",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/geofences"
+        }
+      ]
+    },
+    {
+      "id": "ai-setup-and-chat",
+      "title": "使用自己的密钥或服务配置 AI",
+      "description": "在个人设置中填写兼容 OpenAI 的端点和密钥，然后通过 AI 聊天询问自己的时间线。好友授权共享后，也可以查询对方允许访问的数据。",
+      "icon": "pi pi-sparkles",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "AI 设置",
+          "url": "/app/profile?tab=ai"
+        },
+        {
+          "label": "打开 AI 聊天",
+          "url": "/app/ai/chat"
+        }
+      ]
+    },
+    {
+      "id": "location-analytics-drilldown",
+      "title": "在位置分析中逐级查看足迹",
+      "description": "位置分析可以从国家逐级查看到城市和具体地点。结合地图与列表，可以了解自己常去哪里、在哪里停留最久。",
+      "icon": "pi pi-globe",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开位置分析",
+          "url": "/app/location-analytics?tab=map"
+        }
+      ]
+    },
+    {
+      "id": "timeline-preferences-rebuild",
+      "title": "调整时间线的检测与分类",
+      "description": "根据自己的移动方式和数据质量，调整时间线的检测和分类设置。相关设置变更后，GeoPulse 会自动重新生成时间线。",
+      "icon": "pi pi-sliders-h",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "时间线偏好",
+          "url": "/app/timeline/preferences"
+        }
+      ]
+    },
+    {
+      "id": "share-links-live-and-timeline",
+      "title": "通过链接分享实时位置或时间线",
+      "description": "在分享链接页面为实时位置或历史时间线创建访问链接。根据你的设置，登录用户和访客均可通过链接查看。",
+      "icon": "pi pi-share-alt",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开分享链接",
+          "url": "/app/share-links"
+        }
+      ]
+    },
+    {
+      "id": "trip-type-override",
+      "title": "手动修改行程类型",
+      "description": "如果 GeoPulse 识别错了出行方式，可以在时间线中手动修改行程类型。后续统计和报告会按修正后的类型计算。",
+      "icon": "pi pi-pencil",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开时间线",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "时间线文档",
+          "url": "https://geopulse.cc/docs/user-guide/core-features/timeline"
+        }
+      ]
+    },
+    {
+      "id": "classification-explainer",
+      "title": "查看行程分类依据",
+      "description": "在时间线中右键单击行程卡片，然后选择“为什么这样分类？”，即可查看 GeoPulse 判断出行方式的过程。",
+      "icon": "pi pi-info-circle",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开时间线",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "enable-more-trip-types",
+      "title": "启用骑行、跑步和火车检测",
+      "description": "在时间线偏好中启用其他出行方式，并按需要调整阈值，以提高非驾车行程的识别准确度。",
+      "icon": "pi pi-cog",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "时间线偏好",
+          "url": "/app/timeline/preferences?tab=trips"
+        }
+      ]
+    },
+    {
+      "id": "friends-sharing",
+      "title": "添加好友并设置共享权限",
+      "description": "在好友页面发送好友请求，并分别设置实时位置和历史时间线的访问权限。",
+      "icon": "pi pi-users",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开好友页面",
+          "url": "/app/friends"
+        }
+      ]
+    },
+    {
+      "id": "setup-admin-user",
+      "title": "将自己的账号设为管理员",
+      "description": "在 .env 中将 GEOPULSE_ADMIN_EMAIL 设置为你的邮箱地址，重启 GeoPulse 后退出并重新登录，即可访问系统管理页面。",
+      "icon": "pi pi-shield",
+      "audiences": [
+        "non_admin"
+      ],
+      "links": [
+        {
+          "label": "管理员设置文档",
+          "url": "https://geopulse.cc/docs/system-administration/configuration/admin-panel"
+        }
+      ]
+    },
+    {
+      "id": "disable-registration",
+      "title": "控制新用户注册",
+      "description": "如果希望只允许受邀用户注册，管理员可以在系统设置中关闭公开注册。",
+      "icon": "pi pi-user-minus",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "身份验证设置",
+          "url": "/app/admin/settings?tab=authentication"
+        }
+      ]
+    },
+    {
+      "id": "configure-geocoding",
+      "title": "配置全站反向地理编码服务",
+      "description": "管理员可以为整个实例指定主要和备用的反向地理编码服务，并配置各服务的 API 密钥和选项。",
+      "icon": "pi pi-map-marker",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "地理编码设置",
+          "url": "/app/admin/settings?tab=geocoding"
+        }
+      ]
+    },
+    {
+      "id": "schedule-encrypted-backups",
+      "title": "定期创建加密备份",
+      "description": "管理员可在系统设置中指定备份存储位置和密码，再通过 cron 表达式启用定期完整备份。也可以在同一页面输入密码，从可信的备份恢复。",
+      "icon": "pi pi-file-export",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "打开备份与恢复",
+          "url": "/app/admin/settings?tab=backup"
+        },
+        {
+          "label": "备份与恢复文档",
+          "url": "https://geopulse.cc/docs/system-administration/maintenance/backup-restore"
+        }
+      ]
+    },
+    {
+      "id": "configure-map-matching",
+      "title": "使用地图匹配修正路线",
+      "description": "管理员配置 Valhalla 服务器并启用地图匹配后，用户可以让行程轨迹贴合道路。原始 GPS 记录会保留。",
+      "icon": "pi pi-map",
+      "audiences": [
+        "admin"
+      ],
+      "links": [
+        {
+          "label": "打开地图匹配设置",
+          "url": "/app/admin/settings?tab=map-matching"
+        },
+        {
+          "label": "地图匹配文档",
+          "url": "https://geopulse.cc/docs/user-guide/timeline/map-matching"
+        }
+      ]
+    },
+    {
+      "id": "connect-an-ai-client-with-mcp",
+      "title": "通过 MCP 连接 AI 客户端",
+      "description": "MCP（模型上下文协议）让 ChatGPT 等 AI 客户端访问 GeoPulse 的只读时间线工具。MCP 默认开启，连接前请在个人设置的安全页面创建 API 令牌。",
+      "icon": "pi pi-sparkles",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "MCP 服务文档",
+          "url": "https://geopulse.cc/docs/api/mcp"
+        },
+        {
+          "label": "打开 API 令牌",
+          "url": "/app/profile?tab=security"
+        }
+      ]
+    },
+    {
+      "id": "split-a-trip-with-a-stay",
+      "title": "在行程中补记漏掉的停留",
+      "description": "如果一段行程漏记了中途停留，可打开行程卡片的菜单，选择“按停留拆分行程”。该事件会拆为行程、停留、行程三段，重新生成时间线后也会保留。",
+      "icon": "pi pi-directions-alt",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开时间线",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "手动拆分行程文档",
+          "url": "https://geopulse.cc/docs/user-guide/timeline/manual-trip-split"
+        }
+      ]
+    },
+    {
+      "id": "weather-on-your-timeline",
+      "title": "查看沿途天气",
+      "description": "天气信息会显示在停留、行程、时间线地图和出行洞察中。GeoPulse 默认收集新记录对应的天气，管理员也可以开启历史天气补录。",
+      "icon": "pi pi-cloud",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "天气文档",
+          "url": "https://geopulse.cc/docs/system-administration/configuration/weather"
+        }
+      ]
+    },
+    {
+      "id": "timeline-local-time-zone",
+      "title": "出行时按当地时区查看时间",
+      "description": "在个人设置的常规页面中选择到访地点的当地时间，时间线和 GPS 数据就会按当地时间显示。此选项需要服务器载入 GeoNames 城市数据。",
+      "icon": "pi pi-clock",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "时间线时区",
+          "url": "/app/profile?tab=general&setting=timeDisplayMode"
+        }
+      ]
+    },
+    {
+      "id": "enable-3d-buildings",
+      "title": "开启 3D 建筑",
+      "description": "在个人设置的时间线与地图页面开启 3D 建筑，即可缩放到街道级别查看建筑立体轮廓。该功能需要矢量地图（MapLibre）以及包含建筑高度的地图样式。",
+      "icon": "pi pi-building",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "3D 建筑设置",
+          "url": "/app/profile?tab=timeline&setting=enable3dBuildingsByDefault"
+        }
+      ]
+    },
+    {
+      "id": "profile-appearance-colors",
+      "title": "自定义时间线配色",
+      "description": "在个人设置的外观页面可以修改轨迹、速度和热力图的颜色与线条样式。选择色觉辅助预设可一次应用整套配色，并即时预览浅色、深色和卫星地图上的效果。",
+      "icon": "pi pi-palette",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开外观设置",
+          "url": "/app/profile?tab=appearance"
+        }
+      ]
+    },
+    {
+      "id": "profile-notification-settings",
+      "title": "选择要接收的通知",
+      "description": "在个人设置的通知页面可以管理 GPS 状态提醒、月度回顾提醒和版本亮点。GPS 状态和回顾提醒可发送至站内通知、通过 Apprise 发送，或同时使用这两种方式。",
+      "icon": "pi pi-bell",
+      "audiences": [
+        "all"
+      ],
+      "links": [
+        {
+          "label": "打开通知设置",
+          "url": "/app/profile?tab=notifications"
+        }
+      ]
+    }
+  ]
+}

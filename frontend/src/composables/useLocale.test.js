@@ -51,6 +51,28 @@ describe('boot with a cached non-default locale', () => {
     expect(locales.t('profile.page.title')).toBe('Персональні налаштування')
   })
 
+  it('restores Simplified Chinese with the matching widget and date locales', async () => {
+    localStorage.setItem('userInfo', JSON.stringify({ language: 'zh' }))
+
+    vi.resetModules()
+    const dayjs = (await import('dayjs')).default
+    const locales = await import('@/locales')
+    const { setLocale } = await import('@/composables/useLocale')
+
+    expect(locales.i18n.global.locale.value).toBe('zh')
+    try {
+      await setLocale('zh', { persist: false })
+      expect(locales.t('nav.logout')).toBe('退出登录')
+      expect(locales.intlLocale()).toBe('zh-CN')
+      expect(document.documentElement.lang).toBe('zh')
+      expect(dayjs.locale()).toBe('zh')
+      expect(dayjs('2026-01-15').format('MMMM')).toBe('一月')
+      expect((await locales.loadPrimeVueLocale('zh')).monthNames[0]).toBe('一月')
+    } finally {
+      await setLocale('en', { persist: false })
+    }
+  })
+
   it('falls back to English for a user with no cached language', async () => {
     vi.resetModules()
     const locales = await import('@/locales')
